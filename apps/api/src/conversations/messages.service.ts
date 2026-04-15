@@ -6,6 +6,7 @@ import { ConversationsService } from './conversations.service';
 import { EventsGateway } from '../gateways/events.gateway';
 import { AiService } from '../ai/ai.service';
 import { TasksService } from '../tasks/tasks.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Priority } from '@prisma/client';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class MessagesService {
     private readonly events: EventsGateway,
     private readonly aiService: AiService,
     private readonly tasksService: TasksService,
+    private readonly notificationsService: NotificationsService,
   ) { }
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 50) {
@@ -212,6 +214,12 @@ export class MessagesService {
 
     if (!result) return;
 
+    // Fetch conversation for notification context
+    const conv = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { subject: true, assigned_user_id: true },
+    });
+
     // Update conversation with AI classification and category
     await this.prisma.conversation.update({
       where: { id: conversationId },
@@ -267,6 +275,31 @@ export class MessagesService {
       this.logger.log(
         `Tarea AI creada para conversación ${conversationId} [urgencia: ${result.urgency}]`,
       );
+
+      // Notify the assigned agent or all workspace agents
+      const targetUserId = conv?.assigned_user_id;
+      if (targetUserId) {
+        await this.notificationsService.create(workspaceId, {
+          user_id: targetUserId,
+          type: 'AI_TASK_CREATED',
+          title: `Tarea creada por IA: ${result.task_title}`,
+          body: `Urgencia ${result.urgency} detectada en conversación "${conv.subject || 'Sin asunto'}". Se creó la tarea automáticamente.`,
+          related_entity_type: 'CONVERSATION',
+          related_entity_id: conversationId,
+        });
+      } else {
+        // No assigned agent — notify workspace owner
+        if (ownerWorkspaceUser) {
+          await this.notificationsService.create(workspaceId, {
+            user_id: ownerWorkspaceUser.user.id,
+            type: 'AI_TASK_CREATED',
+            title: `Tarea creada por IA: ${result.task_title}`,
+            body: `Urgencia ${result.urgency} detectada en conversación "${conv?.subject || 'Sin asunto'}". Se creó la tarea automáticamente.`,
+            related_entity_type: 'CONVERSATION',
+            related_entity_id: conversationId,
+          });
+        }
+      }
     }
   }
 }
