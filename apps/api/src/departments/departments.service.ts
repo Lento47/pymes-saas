@@ -39,7 +39,7 @@ export class DepartmentsService {
             user: { select: { id: true, name: true, email: true, avatar_url: true } },
           },
         },
-        channels: { select: { id: true, name: true, type: true, is_active: true } },
+        channels: { select: { id: true, name: true, type: true, status: true } },
         _count: { select: { conversations: true } },
       },
     });

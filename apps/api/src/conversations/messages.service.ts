@@ -216,9 +216,9 @@ export class MessagesService {
     await this.prisma.conversation.update({
       where: { id: conversationId },
       data: {
-        ai_classification_json: result as any,
+        ai_classification_json: result,
         category: result.category,
-      },
+      } as any,
     });
 
     // Create task for HIGH or CRITICAL urgency if task_title is provided
