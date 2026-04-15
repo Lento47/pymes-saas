@@ -11,7 +11,6 @@ import {
   Query,
   Res,
 } from '@nestjs/common';
-import { Response } from 'express';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MessagesService } from './messages.service';
 
@@ -48,7 +47,7 @@ export class InboundController {
     @Query('hub.mode') mode: string,
     @Query('hub.verify_token') token: string,
     @Query('hub.challenge') challenge: string,
-    @Res() res: Response,
+    @Res() res: any,
   ) {
     const expected = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN ?? '';
 
