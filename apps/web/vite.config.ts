@@ -27,6 +27,12 @@ export default defineConfig({
         target: "http://localhost:4000",
         changeOrigin: true,
       },
+      // Socket.io WebSocket — must be proxied separately from /api
+      "/socket.io": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+        ws: true,
+      },
     },
     fs: {
       strict: true,
