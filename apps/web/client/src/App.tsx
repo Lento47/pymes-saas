@@ -22,12 +22,7 @@ import NotFound from "@/pages/not-found";
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Redirect to="/login" />;
-  return (
-    <div className="flex h-screen bg-[#0d0f14] text-[#e2e8f0] overflow-hidden">
-      <AppSidebar>{null}</AppSidebar>
-      <main className="flex-1 overflow-y-auto">{children}</main>
-    </div>
-  );
+  return <AppSidebar>{children}</AppSidebar>;
 }
 
 function AppRouter() {

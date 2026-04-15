@@ -1,14 +1,12 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
-import { useRequireAuth } from "@/hooks/use-auth";
+import { useRequireAuth, useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PriorityDot } from "@/components/shared/priority-dot";
-import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import {
@@ -16,16 +14,19 @@ import {
   Mail,
   CheckSquare,
   FileText,
-  Sparkles,
+  RefreshCw,
   Loader2,
+  ArrowRight,
 } from "lucide-react";
 import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 export default function DashboardPage() {
   useRequireAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data: summaries, isLoading: summariesLoading } = useQuery({
+  const { data: summaries } = useQuery({
     queryKey: ["/api/summaries/daily"],
     queryFn: () => api.getDailySummaries(),
   });
@@ -33,161 +34,197 @@ export default function DashboardPage() {
   const { data: todayStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/workspaces/current/stats/today"],
     queryFn: () => api.getTodayStats(),
-    refetchInterval: 60000, // refresh every minute
+    refetchInterval: 60000,
   });
 
   const { data: conversations, isLoading: convsLoading } = useQuery({
     queryKey: ["/api/conversations", "dashboard"],
-    queryFn: () => api.getConversations({ limit: "5", sort: "desc" }),
+    queryFn: () => api.getConversations({ limit: "5" }),
   });
 
   const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ["/api/tasks", "dashboard"],
-    queryFn: () => api.getTasks({ limit: "5", sort: "desc" }),
+    queryFn: () => api.getTasks({ limit: "5" }),
   });
 
   const generateMutation = useMutation({
     mutationFn: () => api.generateSummary(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/summaries/daily"] });
-      toast({ title: "Summary generated successfully" });
+      toast({ title: "Resumen generado" });
     },
     onError: (err: any) => {
-      toast({ title: "Failed to generate summary", description: err.message, variant: "destructive" });
+      toast({ title: "Error al generar resumen", description: err.message, variant: "destructive" });
     },
   });
 
-  const lastSummary = Array.isArray(summaries) ? summaries[0] : summaries?.data?.[0] || null;
-  const metrics = lastSummary?.metrics || lastSummary || {};
-  const convList = Array.isArray(conversations) ? conversations : conversations?.data || [];
-  const taskList = Array.isArray(tasks) ? tasks : tasks?.data || [];
+  const lastSummary = Array.isArray(summaries) ? summaries[0] : summaries?.data?.[0] ?? null;
+  const convList    = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
+  const taskList    = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
+
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return "Buenos días";
+    if (h < 19) return "Buenas tardes";
+    return "Buenas noches";
+  };
 
   const statCards = [
-    { label: "New Conversations", value: todayStats?.new_conversations ?? "—", icon: MessageSquare, color: "text-blue-400" },
-    { label: "Messages Received", value: todayStats?.received_messages ?? "—", icon: Mail, color: "text-emerald-400" },
-    { label: "Tasks Created", value: todayStats?.created_tasks ?? "—", icon: CheckSquare, color: "text-amber-400" },
-    { label: "Documents Uploaded", value: todayStats?.uploaded_documents ?? "—", icon: FileText, color: "text-purple-400" },
+    { label: "Conversaciones",  value: todayStats?.new_conversations  ?? "—", icon: MessageSquare, accent: "text-primary" },
+    { label: "Mensajes",        value: todayStats?.received_messages   ?? "—", icon: Mail,          accent: "text-primary" },
+    { label: "Tareas creadas",  value: todayStats?.created_tasks       ?? "—", icon: CheckSquare,   accent: "text-primary" },
+    { label: "Documentos",      value: todayStats?.uploaded_documents  ?? "—", icon: FileText,      accent: "text-primary" },
   ];
 
   return (
-    <div>
-      <PageHeader title="Dashboard" description="Overview of your workspace activity">
+    <div className="min-h-full">
+      <PageHeader
+        title="Dashboard"
+        description={format(new Date(), "EEEE d 'de' MMMM", { locale: es })}
+      >
         <Button
           size="sm"
+          variant="outline"
           onClick={() => generateMutation.mutate()}
           disabled={generateMutation.isPending}
-          className="h-8 text-xs"
+          className="h-8 text-[12px] gap-1.5"
           data-testid="button-generate-summary"
         >
-          {generateMutation.isPending ? (
-            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-          ) : (
-            <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-          )}
-          Generate Summary
+          {generateMutation.isPending
+            ? <Loader2 className="w-3 h-3 animate-spin" />
+            : <RefreshCw className="w-3 h-3" />
+          }
+          Resumen IA
         </Button>
       </PageHeader>
 
-      {/* Metric cards */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        {statCards.map((stat) => (
-          <Card key={stat.label} className="bg-card border-border p-4" data-testid={`metric-card-${stat.label.toLowerCase().replace(/\s/g, "-")}`}>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
-                <stat.icon className={`w-4.5 h-4.5 ${stat.color}`} />
+      <div className="p-6 space-y-6">
+
+        {/* Greeting */}
+        <div>
+          <p className="text-[22px] font-semibold text-foreground tracking-tight leading-none">
+            {greeting()}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}.
+          </p>
+          <p className="text-[13px] text-muted-foreground mt-1">Aquí está el resumen de hoy.</p>
+        </div>
+
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {statCards.map((s) => (
+            <div
+              key={s.label}
+              className="bg-[hsl(var(--card))] border border-border rounded-lg px-4 py-3.5"
+              data-testid={`stat-${s.label}`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{s.label}</span>
+                <s.icon className={`w-3.5 h-3.5 ${s.accent} opacity-60`} strokeWidth={1.8} />
               </div>
-              <div>
-                {statsLoading ? (
-                  <Skeleton className="h-6 w-10 mb-1" />
-                ) : (
-                  <div className="text-xl font-semibold text-foreground">{stat.value}</div>
-                )}
-                <div className="text-[11px] text-muted-foreground">{stat.label}</div>
-              </div>
+              {statsLoading
+                ? <Skeleton className="h-7 w-10" />
+                : <span className="text-[26px] font-semibold text-foreground leading-none tabular-nums">{s.value}</span>
+              }
             </div>
-          </Card>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      {/* Summary text */}
-      {(lastSummary?.generated_text || lastSummary?.summary) && (
-        <Card className="bg-card border-border p-4 mb-6" data-testid="summary-text">
-          <div className="text-xs font-medium text-muted-foreground mb-2">AI Summary</div>
-          <p className="text-sm text-foreground leading-relaxed">{lastSummary.generated_text || lastSummary.summary}</p>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-2 gap-4">
-        {/* Recent conversations */}
-        <Card className="bg-card border-border" data-testid="recent-conversations">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-medium text-foreground">Recent Conversations</h3>
-            <Link href="/inbox" className="text-xs text-primary hover:underline">View all</Link>
+        {/* AI Summary */}
+        {(lastSummary?.generated_text || lastSummary?.summary) && (
+          <div className="bg-[hsl(var(--card))] border border-border rounded-lg p-4" data-testid="summary-text">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              Resumen IA
+            </div>
+            <p className="text-[13px] text-foreground leading-relaxed">
+              {lastSummary.generated_text || lastSummary.summary}
+            </p>
           </div>
-          <div className="divide-y divide-border">
-            {convsLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="px-4 py-3">
-                  <Skeleton className="h-4 w-48 mb-2" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              ))
-            ) : convList.length === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-muted-foreground">No conversations yet</div>
-            ) : (
-              convList.slice(0, 5).map((conv: any) => (
-                <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                  <div className="px-4 py-2.5 hover:bg-white/[0.02] cursor-pointer transition-colors" data-testid={`conversation-row-${conv.id}`}>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm text-foreground truncate flex-1">{conv.subject || "No subject"}</span>
+        )}
+
+        {/* Two-column feed */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* Recent conversations */}
+          <div className="bg-[hsl(var(--card))] border border-border rounded-lg overflow-hidden" data-testid="recent-conversations">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="text-[13px] font-medium text-foreground">Conversaciones recientes</span>
+              <Link href="/inbox">
+                <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                  Ver todo <ArrowRight className="w-3 h-3" />
+                </span>
+              </Link>
+            </div>
+            <div className="divide-y divide-border">
+              {convsLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="px-4 py-3 space-y-1.5">
+                    <Skeleton className="h-3.5 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                ))
+              ) : convList.length === 0 ? (
+                <div className="px-4 py-8 text-center text-[12px] text-muted-foreground">Sin conversaciones</div>
+              ) : (
+                convList.slice(0, 5).map((conv: any) => (
+                  <Link key={conv.id} href={`/inbox/${conv.id}`}>
+                    <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.025] cursor-pointer transition-colors">
+                      <PriorityDot priority={conv.priority} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] text-foreground truncate leading-snug">
+                          {conv.subject || "Sin asunto"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {conv.contact?.full_name || "—"}
+                          {conv.updated_at && ` · ${format(new Date(conv.updated_at), "d MMM", { locale: es })}`}
+                        </p>
+                      </div>
                       <StatusBadge status={conv.status} type="conversation" />
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <PriorityDot priority={conv.priority} />
-                      <span>{conv.contact?.name || conv.contactName || "Unknown"}</span>
-                      {conv.updatedAt && <span>· {format(new Date(conv.updatedAt || conv.updated_at), "MMM d")}</span>}
-                    </div>
-                  </div>
-                </Link>
-              ))
-            )}
+                  </Link>
+                ))
+              )}
+            </div>
           </div>
-        </Card>
 
-        {/* Recent tasks */}
-        <Card className="bg-card border-border" data-testid="recent-tasks">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-medium text-foreground">Recent Tasks</h3>
-            <Link href="/tasks" className="text-xs text-primary hover:underline">View all</Link>
-          </div>
-          <div className="divide-y divide-border">
-            {tasksLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="px-4 py-3">
-                  <Skeleton className="h-4 w-48 mb-2" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              ))
-            ) : taskList.length === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-muted-foreground">No tasks yet</div>
-            ) : (
-              taskList.slice(0, 5).map((task: any) => (
-                <div key={task.id} className="px-4 py-2.5 hover:bg-white/[0.02] transition-colors" data-testid={`task-row-${task.id}`}>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm text-foreground truncate flex-1">{task.title}</span>
+          {/* Recent tasks */}
+          <div className="bg-[hsl(var(--card))] border border-border rounded-lg overflow-hidden" data-testid="recent-tasks">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="text-[13px] font-medium text-foreground">Tareas recientes</span>
+              <Link href="/tasks">
+                <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                  Ver todo <ArrowRight className="w-3 h-3" />
+                </span>
+              </Link>
+            </div>
+            <div className="divide-y divide-border">
+              {tasksLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="px-4 py-3 space-y-1.5">
+                    <Skeleton className="h-3.5 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                ))
+              ) : taskList.length === 0 ? (
+                <div className="px-4 py-8 text-center text-[12px] text-muted-foreground">Sin tareas</div>
+              ) : (
+                taskList.slice(0, 5).map((task: any) => (
+                  <div key={task.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.025] transition-colors">
+                    <PriorityDot priority={task.priority} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-foreground truncate leading-snug">{task.title}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {task.due_date
+                          ? `Vence ${format(new Date(task.due_date), "d MMM", { locale: es })}`
+                          : "Sin fecha"}
+                      </p>
+                    </div>
                     <StatusBadge status={task.status} type="task" />
                   </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {task.dueDate || task.due_date
-                      ? `Due ${format(new Date(task.dueDate || task.due_date), "MMM d")}`
-                      : "No due date"}
-                    {task.assignedTo?.firstName && ` · ${task.assignedTo.firstName}`}
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
-        </Card>
+
+        </div>
       </div>
     </div>
   );

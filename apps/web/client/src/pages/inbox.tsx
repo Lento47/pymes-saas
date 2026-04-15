@@ -66,17 +66,17 @@ function NewConversationModal() {
           <Plus className="h-3.5 w-3.5 mr-1.5" />Nueva conversación
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-[#1c2030] border-[#272d3f]">
+      <DialogContent className="bg-card border-border">
         <DialogHeader><DialogTitle>Nueva conversación</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-2">
 
           <div>
             <Label>Canal <span className="text-red-400">*</span></Label>
             <Select value={channelId} onValueChange={setChannelId}>
-              <SelectTrigger className="mt-1 bg-[#151820] border-[#272d3f]">
+              <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border">
                 <SelectValue placeholder="Seleccioná un canal activo" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1c2030] border-[#272d3f]">
+              <SelectContent className="bg-card border-border">
                 {activeChannels.length === 0
                   ? <SelectItem value="-" disabled>Sin canales activos</SelectItem>
                   : activeChannels.map((c: any) => (
@@ -90,10 +90,10 @@ function NewConversationModal() {
           <div>
             <Label>Contacto</Label>
             <Select value={contactId} onValueChange={setContactId}>
-              <SelectTrigger className="mt-1 bg-[#151820] border-[#272d3f]">
+              <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border">
                 <SelectValue placeholder="Seleccioná un contacto (opcional)" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1c2030] border-[#272d3f]">
+              <SelectContent className="bg-card border-border">
                 <SelectItem value="none">Sin contacto</SelectItem>
                 {contactList.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>
@@ -110,7 +110,7 @@ function NewConversationModal() {
               value={subject}
               onChange={e => setSubject(e.target.value)}
               placeholder="ej. Consulta sobre factura #123"
-              className="mt-1 bg-[#151820] border-[#272d3f]"
+              className="mt-1 bg-[hsl(var(--elevated))] border-border"
             />
           </div>
 

@@ -54,7 +54,7 @@ function SecretInput({ value, onChange, placeholder }: { value: string; onChange
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="bg-[#151820] border-[#272d3f] pr-10 font-mono text-xs"
+        className="bg-[hsl(var(--elevated))] border-border pr-10 font-mono text-xs"
       />
       <button
         type="button"
@@ -144,18 +144,18 @@ function MembersTab() {
               <UserPlus className="h-4 w-4 mr-2" />Invitar
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-[#1c2030] border-[#272d3f]">
+          <DialogContent className="bg-card border-border">
             <DialogHeader><DialogTitle>Invitar usuario</DialogTitle></DialogHeader>
             <div className="space-y-3 pt-2">
               <div>
                 <Label>Email</Label>
-                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" className="mt-1 bg-[#151820] border-[#272d3f]" />
+                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
               </div>
               <div>
                 <Label>Rol</Label>
                 <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger className="mt-1 bg-[#151820] border-[#272d3f]"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-[#1c2030] border-[#272d3f]">
+                  <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-card border-border">
                     {["ADMIN", "AGENT", "VIEWER"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -171,10 +171,10 @@ function MembersTab() {
       {isLoading ? <div className="text-muted-foreground text-sm">Cargando...</div> : (
         <div className="space-y-2">
           {members.map((m: any) => (
-            <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-[#1c2030] border border-[#272d3f]">
+            <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
               <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-[#272d3f] text-xs">{m.name?.[0]?.toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="bg-elevated text-xs">{m.name?.[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="text-sm font-medium">{m.name}</p>
@@ -236,7 +236,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
       <div>
         <Label>Email remitente</Label>
         <Input type="email" value={fromEmail} onChange={e => setFromEmail(e.target.value)}
-          placeholder="onboarding@resend.dev" className="mt-1 bg-[#151820] border-[#272d3f]" />
+          placeholder="onboarding@resend.dev" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
         <p className="text-xs text-muted-foreground mt-1">
           Sin dominio propio usá <span className="font-mono">onboarding@resend.dev</span>
         </p>
@@ -245,7 +245,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
       <div>
         <Label>Nombre remitente</Label>
         <Input value={fromName} onChange={e => setFromName(e.target.value)}
-          placeholder="PYMES CRM" className="mt-1 bg-[#151820] border-[#272d3f]" />
+          placeholder="PYMES CRM" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
       </div>
 
       <Button
@@ -302,16 +302,16 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
       <div>
         <Label>Phone Number ID</Label>
         <Input value={phoneNumberId} onChange={e => setPhoneNumberId(e.target.value)}
-          placeholder="123456789012345" className="mt-1 bg-[#151820] border-[#272d3f] font-mono text-xs" />
+          placeholder="123456789012345" className="mt-1 bg-[hsl(var(--elevated))] border-border font-mono text-xs" />
       </div>
 
       <div>
         <Label>WhatsApp Business Account ID</Label>
         <Input value={wabaId} onChange={e => setWabaId(e.target.value)}
-          placeholder="987654321098765" className="mt-1 bg-[#151820] border-[#272d3f] font-mono text-xs" />
+          placeholder="987654321098765" className="mt-1 bg-[hsl(var(--elevated))] border-border font-mono text-xs" />
       </div>
 
-      <div className="p-3 rounded-lg bg-[#151820] border border-[#272d3f] text-xs text-muted-foreground space-y-1">
+      <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs text-muted-foreground space-y-1">
         <p className="font-medium text-foreground">Webhook para Meta Developers:</p>
         <p className="font-mono break-all">https://tu-dominio.com/api/inbound/whatsapp/webhook</p>
         <p>Token de verificación: el valor de <span className="font-mono">WHATSAPP_WEBHOOK_VERIFY_TOKEN</span> en tu .env</p>
@@ -417,18 +417,18 @@ function ChannelsTab() {
               <Plus className="h-4 w-4 mr-2" />Nuevo canal
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-[#1c2030] border-[#272d3f]">
+          <DialogContent className="bg-card border-border">
             <DialogHeader><DialogTitle>Crear canal</DialogTitle></DialogHeader>
             <div className="space-y-3 pt-2">
               <div>
                 <Label>Nombre</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder="ej. Correo Principal" className="mt-1 bg-[#151820] border-[#272d3f]" />
+                <Input value={name} onChange={e => setName(e.target.value)} placeholder="ej. Correo Principal" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
               </div>
               <div>
                 <Label>Tipo</Label>
                 <Select value={type} onValueChange={setType}>
-                  <SelectTrigger className="mt-1 bg-[#151820] border-[#272d3f]"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-[#1c2030] border-[#272d3f]">
+                  <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-card border-border">
                     {["EMAIL", "WHATSAPP", "FORM", "API", "MANUAL"].map(t => (
                       <SelectItem key={t} value={t}>{t}</SelectItem>
                     ))}
@@ -445,7 +445,7 @@ function ChannelsTab() {
 
       {/* Modal configuración EMAIL / WhatsApp */}
       <Dialog open={!!configChannel} onOpenChange={open => { if (!open) setConfigChannel(null); }}>
-        <DialogContent className="bg-[#1c2030] border-[#272d3f] max-w-md">
+        <DialogContent className="bg-card border-border max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isEmail ? <Mail className="h-4 w-4 text-blue-400" /> : <MessageCircle className="h-4 w-4 text-green-400" />}
@@ -476,7 +476,7 @@ function ChannelsTab() {
             const canEdit = isActive && (ch.type === "EMAIL" || ch.type === "WHATSAPP");
 
             return (
-              <div key={ch.id} className="flex items-center justify-between p-3 rounded-lg bg-[#1c2030] border border-[#272d3f]">
+              <div key={ch.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
                 <div className="flex items-center gap-3">
                   <Icon className="h-4 w-4 text-muted-foreground" />
                   <div>
@@ -510,7 +510,7 @@ function ChannelsTab() {
                   {/* Editar configuración */}
                   {canEdit && (
                     <Button size="sm" variant="outline"
-                      className="h-7 text-xs border-[#272d3f] text-muted-foreground hover:text-foreground"
+                      className="h-7 text-xs border-border text-muted-foreground hover:text-foreground"
                       onClick={() => setConfigChannel(ch)}
                     >
                       Editar
@@ -519,7 +519,7 @@ function ChannelsTab() {
 
                   {/* Conectar (FORM, API, MANUAL) */}
                   {canConnect && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs border-[#272d3f]"
+                    <Button size="sm" variant="outline" className="h-7 text-xs border-border"
                       onClick={() => api.connectChannel(ch.id).then(() => qc.invalidateQueries({ queryKey: ["/api/channels"] }))}
                     >
                       <Plug className="h-3 w-3 mr-1" />Conectar
@@ -663,7 +663,7 @@ function DepartmentsTab() {
       ) : (
         <div className="space-y-3">
           {departments.map((dept: any) => (
-            <div key={dept.id} className="border border-[#272d3f] rounded-lg p-4 space-y-3">
+            <div key={dept.id} className="border border-border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span
@@ -700,7 +700,7 @@ function DepartmentsTab() {
               {dept.members?.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {dept.members.map((m: any) => (
-                    <div key={m.id} className="flex items-center gap-1 bg-[#272d3f] rounded px-2 py-0.5 text-xs">
+                    <div key={m.id} className="flex items-center gap-1 bg-elevated rounded px-2 py-0.5 text-xs">
                       <span>{m.user?.name ?? m.user?.email}</span>
                       {m.is_lead && <Badge variant="outline" className="text-xs h-4 px-1">Lead</Badge>}
                       <button
@@ -852,21 +852,21 @@ export default function Settings() {
     <div className="p-6 space-y-6">
       <PageHeader title="Configuración" />
       <Tabs defaultValue="workspace">
-        <TabsList className="bg-[#1c2030] border border-[#272d3f]">
-          <TabsTrigger value="workspace" className="data-[state=active]:bg-[#272d3f]">
+        <TabsList className="bg-card border border-border">
+          <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">
             <Building2 className="h-4 w-4 mr-2" />Workspace
           </TabsTrigger>
-          <TabsTrigger value="members" className="data-[state=active]:bg-[#272d3f]">
+          <TabsTrigger value="members" className="data-[state=active]:bg-elevated">
             <Users className="h-4 w-4 mr-2" />Miembros
           </TabsTrigger>
-          <TabsTrigger value="channels" className="data-[state=active]:bg-[#272d3f]">
+          <TabsTrigger value="channels" className="data-[state=active]:bg-elevated">
             <PlugZap className="h-4 w-4 mr-2" />Canales
           </TabsTrigger>
-          <TabsTrigger value="departments" className="data-[state=active]:bg-[#272d3f]">
+          <TabsTrigger value="departments" className="data-[state=active]:bg-elevated">
             <Layers className="h-4 w-4 mr-2" />Departamentos
           </TabsTrigger>
         </TabsList>
-        <Card className="mt-4 bg-[#1c2030] border-[#272d3f]">
+        <Card className="mt-4 bg-card border-border">
           <CardContent className="pt-6">
             <TabsContent value="workspace"><WorkspaceTab /></TabsContent>
             <TabsContent value="members"><MembersTab /></TabsContent>

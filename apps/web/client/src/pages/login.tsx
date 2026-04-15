@@ -6,19 +6,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
-function PymesMark() {
-  return (
-    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="PYMES Logo">
-      <rect width="40" height="40" rx="10" fill="#4f8ef7" fillOpacity="0.12" />
-      <path
-        d="M14 28V12h7.5c1.6 0 2.9.5 3.8 1.4.9.9 1.4 2.1 1.4 3.6s-.5 2.7-1.4 3.6c-.9.9-2.2 1.4-3.8 1.4H18v6h-4z"
-        fill="#4f8ef7"
-      />
-      <path d="M18 15.2h3.2c.6 0 1 .2 1.3.5.3.3.5.7.5 1.3s-.2 1-.5 1.3c-.3.3-.7.5-1.3.5H18v-3.6z" fill="#0d0f14" />
-    </svg>
-  );
-}
-
 function parseLoginError(err: unknown): string {
   if (err instanceof Error) {
     const m = err.message;
@@ -46,9 +33,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    if (isAuthenticated) {
-      window.location.hash = "#/";
-    }
+    if (isAuthenticated) window.location.hash = "#/";
   }, [isAuthenticated]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,45 +51,73 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-[380px]">
-        <div className="flex flex-col items-center mb-8">
-          <PymesMark />
-          <h1 className="text-lg font-semibold text-foreground mt-4">PYMES</h1>
-          <p className="text-xs text-muted-foreground mt-1">Sign in to your workspace</p>
+    <div className="min-h-screen flex bg-[hsl(var(--background))]">
+      {/* Left panel — branding */}
+      <div className="hidden lg:flex lg:w-[44%] flex-col justify-between p-12 bg-[hsl(var(--card))] border-r border-border">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-[8px] bg-primary flex items-center justify-center">
+            <span className="text-[12px] font-bold text-primary-foreground">P</span>
+          </div>
+          <span className="text-[14px] font-semibold text-foreground">Pymeshub</span>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <div>
+          <blockquote className="text-[22px] font-light text-foreground leading-snug tracking-tight max-w-xs">
+            "La operación de tu negocio,<br />en un solo lugar."
+          </blockquote>
+          <p className="text-[13px] text-muted-foreground mt-4">
+            Conversaciones, contactos, tareas y documentos<br />para pymes en Costa Rica.
+          </p>
+        </div>
+
+        <p className="text-[11px] text-muted-foreground/50">© 2026 Pymeshub</p>
+      </div>
+
+      {/* Right panel — form */}
+      <div className="flex-1 flex items-center justify-center px-6">
+        <div className="w-full max-w-[360px]">
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2 mb-10 lg:hidden">
+            <div className="w-8 h-8 rounded-[8px] bg-primary flex items-center justify-center">
+              <span className="text-[12px] font-bold text-primary-foreground">P</span>
+            </div>
+            <span className="text-[14px] font-semibold text-foreground">Pymeshub</span>
+          </div>
+
+          <div className="mb-8">
+            <h1 className="text-[20px] font-semibold text-foreground tracking-tight">Iniciar sesión</h1>
+            <p className="text-[13px] text-muted-foreground mt-1">Ingresa a tu workspace</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="workspace" className="text-xs text-muted-foreground">Workspace</Label>
+              <Label className="text-[12px] font-medium text-muted-foreground">Workspace</Label>
               <Input
-                id="workspace"
                 data-testid="input-workspace-slug"
-                placeholder="my-company"
+                placeholder="mi-empresa"
                 value={workspaceSlug}
                 onChange={(e) => setWorkspaceSlug(e.target.value)}
                 required
-                className="bg-background border-border h-9 text-sm"
+                className="bg-[hsl(var(--card))] border-border h-9 text-[13px] placeholder:text-muted-foreground/40"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs text-muted-foreground">Email</Label>
+              <Label className="text-[12px] font-medium text-muted-foreground">Correo</Label>
               <Input
                 id="email"
                 type="email"
                 data-testid="input-email"
-                placeholder="you@company.com"
+                placeholder="nombre@empresa.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-background border-border h-9 text-sm"
+                className="bg-[hsl(var(--card))] border-border h-9 text-[13px] placeholder:text-muted-foreground/40"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs text-muted-foreground">Password</Label>
+              <Label className="text-[12px] font-medium text-muted-foreground">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
@@ -113,21 +126,21 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-background border-border h-9 text-sm"
+                className="bg-[hsl(var(--card))] border-border h-9 text-[13px]"
               />
             </div>
-          </div>
 
-          <Button
-            type="submit"
-            className="w-full h-9 text-sm font-medium"
-            disabled={isLoading}
-            data-testid="button-login"
-          >
-            {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Sign in
-          </Button>
-        </form>
+            <Button
+              type="submit"
+              className="w-full h-9 text-[13px] font-medium mt-2"
+              disabled={isLoading}
+              data-testid="button-login"
+            >
+              {isLoading && <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />}
+              Entrar
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );
