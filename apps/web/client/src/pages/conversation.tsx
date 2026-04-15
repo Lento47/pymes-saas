@@ -96,7 +96,7 @@ export default function ConversationPage() {
 
   const handleSend = () => {
     if (!message.trim()) return;
-    sendMutation.mutate({ content: message, direction: "OUTBOUND" });
+    sendMutation.mutate({ body_text: message, direction: "OUTBOUND" });
   };
 
   if (convLoading) return <PageLoader />;
@@ -167,7 +167,7 @@ export default function ConversationPage() {
                     "max-w-[70%] rounded-lg px-3 py-2",
                     isOutbound ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"
                   )}>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content || msg.body}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body_text || msg.body_html || msg.content || msg.body}</p>
                     <div className="text-[10px] text-muted-foreground mt-1">
                       {msg.createdAt || msg.created_at
                         ? format(new Date(msg.createdAt || msg.created_at), "MMM d, h:mm a")
