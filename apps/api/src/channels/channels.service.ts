@@ -8,8 +8,7 @@ import {
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { ConfigureEmailDto } from './dto/configure-email.dto';
-
-// ─── Type helpers ─────────────────────────────────────────────────────────────
+import { ConfigureWhatsAppDto } from './dto/configure-whatsapp.dto';
 
 interface CreateChannelDto {
   type: string;
@@ -22,8 +21,6 @@ interface UpdateChannelDto {
   status?: string;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Injectable()
 export class ChannelsService {
   private readonly logger = new Logger(ChannelsService.name);
@@ -33,146 +30,129 @@ export class ChannelsService {
     private readonly crypto: CryptoService,
   ) {}
 
-  // ── CRUD ──────────────────────────────────────────────────────────────────
-
   async create(workspaceId: string, dto: CreateChannelDto) {
     return this.prisma.channel.create({
       data: {
         workspace_id: workspaceId,
-        type: dto.type,
-        name: dto.name,
-        provider: dto.provider ?? dto.type.toLowerCase(),
-        status: 'INACTIVE',
-        config_json: {},
+        type:         dto.type as any,
+        name:         dto.name,
+        provider:     dto.provider ?? dto.type.toLowerCase(),
+        status:       'PENDING_SETUP',
+        config_json:  {},
       },
     });
   }
 
   async findAll(workspaceId: string) {
     const channels = await this.prisma.channel.findMany({
-      where: { workspace_id: workspaceId },
-      orderBy: { id: 'asc' },
+      where:   { workspace_id: workspaceId },
+      orderBy: { created_at: 'asc' },
     });
-
-    // Strip sensitive keys before returning
-    return channels.map((ch) => this.sanitise(ch));
+    return channels.map(ch => this.sanitise(ch));
   }
 
-  async findOne(workspaceId: string, channelId: string) {
+  async findOne(workspaceId: string, id: string) {
     const channel = await this.prisma.channel.findFirst({
-      where: { id: channelId, workspace_id: workspaceId },
+      where: { id, workspace_id: workspaceId },
     });
-
-    if (!channel) {
-      throw new NotFoundException(`Channel ${channelId} not found.`);
-    }
-
+    if (!channel) throw new NotFoundException('Canal no encontrado.');
     return this.sanitise(channel);
   }
 
-  async update(workspaceId: string, channelId: string, dto: UpdateChannelDto) {
-    await this.assertOwnership(workspaceId, channelId);
-
+  async update(workspaceId: string, id: string, dto: UpdateChannelDto) {
+    await this.assertOwnership(workspaceId, id);
     const updated = await this.prisma.channel.update({
-      where: { id: channelId },
+      where: { id },
       data: {
-        ...(dto.name ? { name: dto.name } : {}),
-        ...(dto.status ? { status: dto.status } : {}),
+        ...(dto.name   ? { name: dto.name }     : {}),
+        ...(dto.status ? { status: dto.status as any } : {}),
       },
     });
-
     return this.sanitise(updated);
   }
 
-  async remove(workspaceId: string, channelId: string) {
-    await this.assertOwnership(workspaceId, channelId);
-    return this.prisma.channel.delete({ where: { id: channelId } });
+  async remove(workspaceId: string, id: string) {
+    await this.assertOwnership(workspaceId, id);
+    await this.prisma.channel.delete({ where: { id } });
+    return { message: 'Canal eliminado.' };
   }
 
-  // ── Email-specific ────────────────────────────────────────────────────────
+  async connect(workspaceId: string, id: string) {
+    await this.assertOwnership(workspaceId, id);
+    return this.prisma.channel.update({ where: { id }, data: { status: 'ACTIVE' } });
+  }
 
-  /**
-   * Configure an EMAIL channel with Resend credentials.
-   *
-   * - Encrypts the api_key with AES-256-GCM before persisting.
-   * - Sets channel status to ACTIVE.
-   * - Returns the updated channel WITHOUT exposing the encrypted key.
-   */
-  async configureEmail(
-    workspaceId: string,
-    channelId: string,
-    dto: ConfigureEmailDto,
-  ) {
-    const channel = await this.prisma.channel.findFirst({
-      where: { id: channelId, workspace_id: workspaceId },
-    });
+  async disconnect(workspaceId: string, id: string) {
+    await this.assertOwnership(workspaceId, id);
+    return this.prisma.channel.update({ where: { id }, data: { status: 'INACTIVE' } });
+  }
 
-    if (!channel) {
-      throw new NotFoundException(`Channel ${channelId} not found.`);
-    }
+  // ── Email (Resend) ─────────────────────────────────────────────────────────
 
-    if (channel.type !== 'EMAIL') {
-      throw new BadRequestException(
-        `Channel ${channelId} is not of type EMAIL (got ${channel.type}).`,
-      );
-    }
+  async configureEmail(workspaceId: string, id: string, dto: ConfigureEmailDto) {
+    const channel = await this.prisma.channel.findFirst({ where: { id, workspace_id: workspaceId } });
+    if (!channel) throw new NotFoundException('Canal no encontrado.');
+    if (channel.type !== 'EMAIL') throw new BadRequestException('El canal no es de tipo EMAIL.');
 
-    // Encrypt the API key — never store in plaintext
     const api_key_encrypted = this.crypto.encrypt(dto.api_key);
 
     const updated = await this.prisma.channel.update({
-      where: { id: channelId },
+      where: { id },
       data: {
-        status: 'ACTIVE',
-        config_json: {
-          api_key_encrypted,
-          from_email: dto.from_email,
-          from_name: dto.from_name,
-        },
+        status:      'ACTIVE',
+        config_json: { api_key_encrypted, from_email: dto.from_email, from_name: dto.from_name },
       },
     });
 
-    this.logger.log(
-      `EMAIL channel ${channelId} configured for workspace ${workspaceId}`,
-    );
-
-    // Return without the encrypted key
+    this.logger.log(`EMAIL canal ${id} configurado para workspace ${workspaceId}`);
     return this.sanitise(updated);
   }
 
-  // ── Private helpers ───────────────────────────────────────────────────────
+  // ── WhatsApp (Meta) ────────────────────────────────────────────────────────
 
-  /**
-   * Remove sensitive fields from config_json before sending to the client.
-   */
+  async configureWhatsApp(workspaceId: string, id: string, dto: ConfigureWhatsAppDto) {
+    const channel = await this.prisma.channel.findFirst({ where: { id, workspace_id: workspaceId } });
+    if (!channel) throw new NotFoundException('Canal no encontrado.');
+    if (channel.type !== 'WHATSAPP') throw new BadRequestException('El canal no es de tipo WHATSAPP.');
+
+    const access_token_encrypted = this.crypto.encrypt(dto.access_token);
+
+    const updated = await this.prisma.channel.update({
+      where: { id },
+      data: {
+        status:      'ACTIVE',
+        config_json: { access_token_encrypted, phone_number_id: dto.phone_number_id, waba_id: dto.waba_id },
+      },
+    });
+
+    this.logger.log(`WHATSAPP canal ${id} configurado para workspace ${workspaceId}`);
+    return this.sanitise(updated);
+  }
+
+  // ── Helper interno para otros módulos ─────────────────────────────────────
+
+  async findActiveByType(workspaceId: string, type: string) {
+    return this.prisma.channel.findFirst({
+      where: { workspace_id: workspaceId, type: type as any, status: 'ACTIVE' },
+    });
+  }
+
+  // ── Privados ───────────────────────────────────────────────────────────────
+
   private sanitise(channel: any) {
     const { config_json, ...rest } = channel;
-
-    // Rebuild config without api_key_encrypted
     const safeConfig: Record<string, unknown> = {};
     if (config_json && typeof config_json === 'object') {
-      for (const [k, v] of Object.entries(config_json)) {
-        if (k !== 'api_key_encrypted') {
-          safeConfig[k] = v;
-        }
+      for (const [k, v] of Object.entries(config_json as object)) {
+        if (!k.includes('encrypted')) safeConfig[k] = v;
       }
     }
-
     return { ...rest, config: safeConfig };
   }
 
-  private async assertOwnership(workspaceId: string, channelId: string) {
-    const channel = await this.prisma.channel.findFirst({
-      where: { id: channelId },
-      select: { workspace_id: true },
-    });
-
-    if (!channel) {
-      throw new NotFoundException(`Channel ${channelId} not found.`);
-    }
-
-    if (channel.workspace_id !== workspaceId) {
-      throw new ForbiddenException('Access denied to this channel.');
-    }
+  private async assertOwnership(workspaceId: string, id: string) {
+    const ch = await this.prisma.channel.findFirst({ where: { id }, select: { workspace_id: true } });
+    if (!ch) throw new NotFoundException('Canal no encontrado.');
+    if (ch.workspace_id !== workspaceId) throw new ForbiddenException('Sin acceso a este canal.');
   }
 }

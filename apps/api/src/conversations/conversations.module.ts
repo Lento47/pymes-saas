@@ -4,9 +4,10 @@ import { InboundController } from './inbound.controller';
 import { ConversationsService } from './conversations.service';
 import { MessagesService } from './messages.service';
 import { EventsModule } from '../gateways/events.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
-  imports: [EventsModule],
+  imports: [EventsModule, EmailModule],
   controllers: [ConversationsController, InboundController],
   providers: [ConversationsService, MessagesService],
   exports: [ConversationsService, MessagesService],

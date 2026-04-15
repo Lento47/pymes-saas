@@ -181,7 +181,10 @@ export const api = {
     if (types) params.set("types", types);
     return request<any>("GET", `/api/search?${params.toString()}`);
   },
-  configureEmail: (id: string, data: any) =>
+  configureEmail: (id: string, data: { api_key: string; from_email: string; from_name: string }) =>
     request<any>('POST', `/api/channels/${id}/configure-email`, data),
+
+  configureWhatsApp: (id: string, data: { access_token: string; phone_number_id: string; waba_id: string }) =>
+    request<any>('POST', `/api/channels/${id}/configure-whatsapp`, data),
 };
 
