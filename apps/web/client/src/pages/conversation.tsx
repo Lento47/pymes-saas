@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useRoute, useLocation, Link } from "wouter";
+import { useConversationSocket } from "@/hooks/use-conversation-socket";
 import { ArrowLeft, Send, UserPlus, CheckCircle2, RefreshCw, Loader2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,9 @@ export default function ConversationPage() {
   const id = params?.id || "";
   const [message, setMessage] = useState("");
   const [showDelete, setShowDelete] = useState(false);
+
+  // Real-time messages via WebSocket
+  useConversationSocket(id);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: conversation, isLoading: convLoading } = useQuery({
@@ -37,7 +41,7 @@ export default function ConversationPage() {
     queryKey: ["/api/conversations", id, "messages"],
     queryFn: () => api.getMessages(id),
     enabled: !!id,
-    refetchInterval: 30000,
+    refetchInterval: 3000,
   });
 
   const { data: members } = useQuery({

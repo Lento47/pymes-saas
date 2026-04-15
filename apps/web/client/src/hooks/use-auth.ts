@@ -14,6 +14,12 @@ export interface AuthUser {
 let _user: AuthUser | null = null;
 let _listeners: Array<() => void> = [];
 
+// Auto-reconnect WebSocket when the page reloads with an existing session
+// (login() only runs on explicit login, not on refresh)
+if (isLoggedIn()) {
+  connectSocket();
+}
+
 function notifyListeners() {
   _listeners.forEach(fn => fn());
 }
