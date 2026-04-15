@@ -10,11 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Users, PlugZap, UserPlus, Plus, Plug,
   Mail, MessageCircle, Radio, Eye, EyeOff, ExternalLink,
+  PowerOff, Trash2,
 } from "lucide-react";
 
 // ─── Paletas ──────────────────────────────────────────────────────────────────
@@ -192,24 +194,28 @@ function MembersTab() {
 // CHANNELS TAB
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// channel.config viene del backend (sanitised — sin keys encrypted)
 function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  // Pre-populate with existing values; api_key is secret so can't be pre-filled
   const [apiKey, setApiKey] = useState("");
-  const [fromEmail, setFromEmail] = useState("");
-  const [fromName, setFromName] = useState("");
+  const [fromEmail, setFromEmail] = useState(channel?.config?.from_email ?? "");
+  const [fromName, setFromName] = useState(channel?.config?.from_name ?? "");
 
   const save = useMutation({
-    mutationFn: () => (api as any).configureEmail(channel.id, {
+    mutationFn: () => api.configureEmail(channel.id, {
       api_key: apiKey, from_email: fromEmail, from_name: fromName,
     }),
     onSuccess: () => {
-      toast({ title: "Canal EMAIL activado" });
+      toast({ title: "Canal EMAIL guardado y activado" });
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
       onClose();
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  const isEdit = channel?.status === "ACTIVE";
 
   return (
     <div className="space-y-4 pt-2">
@@ -221,9 +227,9 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
       </div>
 
       <div>
-        <Label>API Key de Resend</Label>
+        <Label>API Key de Resend {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener la actual)</span>}</Label>
         <div className="mt-1">
-          <SecretInput value={apiKey} onChange={setApiKey} placeholder="re_xxxxxxxxxxxxxxxxxxxx" />
+          <SecretInput value={apiKey} onChange={setApiKey} placeholder={isEdit ? "••••••••••••••••••••" : "re_xxxxxxxxxxxxxxxxxxxx"} />
         </div>
       </div>
 
@@ -244,10 +250,11 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
 
       <Button
         onClick={() => save.mutate()}
-        disabled={!apiKey || !fromEmail || !fromName || save.isPending}
+        // On edit, api_key can be blank (keep existing) — only require it on first setup
+        disabled={(!isEdit && !apiKey) || !fromEmail || !fromName || save.isPending}
         className="w-full bg-blue-600 hover:bg-blue-700"
       >
-        {save.isPending ? "Activando..." : "Guardar y activar canal"}
+        {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
       </Button>
     </div>
   );
@@ -256,21 +263,24 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
 function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  // Pre-populate non-secret fields
   const [accessToken, setAccessToken] = useState("");
-  const [phoneNumberId, setPhoneNumberId] = useState("");
-  const [wabaId, setWabaId] = useState("");
+  const [phoneNumberId, setPhoneNumberId] = useState(channel?.config?.phone_number_id ?? "");
+  const [wabaId, setWabaId] = useState(channel?.config?.waba_id ?? "");
 
   const save = useMutation({
-    mutationFn: () => (api as any).configureWhatsApp(channel.id, {
+    mutationFn: () => api.configureWhatsApp(channel.id, {
       access_token: accessToken, phone_number_id: phoneNumberId, waba_id: wabaId,
     }),
     onSuccess: () => {
-      toast({ title: "Canal WhatsApp activado" });
+      toast({ title: "Canal WhatsApp guardado y activado" });
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
       onClose();
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  const isEdit = channel?.status === "ACTIVE";
 
   return (
     <div className="space-y-4 pt-2">
@@ -283,9 +293,9 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
       </div>
 
       <div>
-        <Label>Access Token</Label>
+        <Label>Access Token {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener el actual)</span>}</Label>
         <div className="mt-1">
-          <SecretInput value={accessToken} onChange={setAccessToken} placeholder="EAAxxxxxxxxxx..." />
+          <SecretInput value={accessToken} onChange={setAccessToken} placeholder={isEdit ? "••••••••••••••••••••" : "EAAxxxxxxxxxx..."} />
         </div>
       </div>
 
@@ -309,12 +319,51 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
 
       <Button
         onClick={() => save.mutate()}
-        disabled={!accessToken || !phoneNumberId || !wabaId || save.isPending}
+        disabled={(!isEdit && !accessToken) || !phoneNumberId || !wabaId || save.isPending}
         className="w-full bg-green-600 hover:bg-green-700"
       >
-        {save.isPending ? "Activando..." : "Guardar y activar canal"}
+        {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
       </Button>
     </div>
+  );
+}
+
+// ─── Confirm delete ───────────────────────────────────────────────────────────
+function DeleteChannelDialog({ channel, onClose }: { channel: any; onClose: () => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const del = useMutation({
+    mutationFn: () => api.deleteChannel(channel.id),
+    onSuccess: () => {
+      toast({ title: "Canal eliminado" });
+      qc.invalidateQueries({ queryKey: ["/api/channels"] });
+      onClose();
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <AlertDialog open onOpenChange={open => { if (!open) onClose(); }}>
+      <AlertDialogContent className="bg-card border-border">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-sm">¿Eliminar canal "{channel?.name}"?</AlertDialogTitle>
+          <AlertDialogDescription className="text-xs text-muted-foreground">
+            Esta acción es irreversible. Se perderán la configuración y el historial de conversaciones asociadas.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="h-8 text-xs">Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => del.mutate()}
+            disabled={del.isPending}
+            className="h-8 text-xs bg-destructive hover:bg-destructive/90"
+          >
+            {del.isPending ? "Eliminando..." : "Eliminar"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -323,6 +372,7 @@ function ChannelsTab() {
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [configChannel, setConfigChannel] = useState<any>(null);
+  const [deleteChannel, setDeleteChannel] = useState<any>(null);
   const [name, setName] = useState("");
   const [type, setType] = useState("EMAIL");
 
@@ -338,6 +388,15 @@ function ChannelsTab() {
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
       setCreateOpen(false);
       setName("");
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const disconnect = useMutation({
+    mutationFn: (id: string) => api.disconnectChannel(id),
+    onSuccess: () => {
+      toast({ title: "Canal desactivado" });
+      qc.invalidateQueries({ queryKey: ["/api/channels"] });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -390,7 +449,7 @@ function ChannelsTab() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isEmail ? <Mail className="h-4 w-4 text-blue-400" /> : <MessageCircle className="h-4 w-4 text-green-400" />}
-              Configurar {configChannel?.type}
+              {configChannel?.status === "ACTIVE" ? "Editar" : "Configurar"} {configChannel?.type}
               <span className="text-muted-foreground font-normal text-sm ml-1">— {configChannel?.name}</span>
             </DialogTitle>
           </DialogHeader>
@@ -398,6 +457,11 @@ function ChannelsTab() {
           {isWA && <WhatsAppConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
         </DialogContent>
       </Dialog>
+
+      {/* Confirm delete */}
+      {deleteChannel && (
+        <DeleteChannelDialog channel={deleteChannel} onClose={() => setDeleteChannel(null)} />
+      )}
 
       {/* Lista */}
       {isLoading ? (
@@ -408,6 +472,8 @@ function ChannelsTab() {
             const Icon = CHANNEL_ICONS[ch.type] ?? Radio;
             const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP");
             const canConnect = ch.status !== "ACTIVE" && !needsConfig;
+            const isActive = ch.status === "ACTIVE";
+            const canEdit = isActive && (ch.type === "EMAIL" || ch.type === "WHATSAPP");
 
             return (
               <div key={ch.id} className="flex items-center justify-between p-3 rounded-lg bg-[#1c2030] border border-[#272d3f]">
@@ -422,13 +488,16 @@ function ChannelsTab() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className={
-                    ch.status === "ACTIVE"
+                    isActive
                       ? "text-green-400 border-green-500/30"
-                      : "text-gray-400 border-gray-500/30"
+                      : ch.status === "INACTIVE"
+                        ? "text-red-400 border-red-500/30"
+                        : "text-gray-400 border-gray-500/30"
                   }>
-                    {ch.status === "ACTIVE" ? "Activo" : ch.status}
+                    {isActive ? "Activo" : ch.status === "INACTIVE" ? "Inactivo" : ch.status}
                   </Badge>
 
+                  {/* Configurar (first time) */}
                   {needsConfig && (
                     <Button size="sm" variant="outline"
                       className={`h-7 text-xs ${ch.type === "EMAIL" ? "border-blue-500/30 text-blue-400" : "border-green-500/30 text-green-400"}`}
@@ -438,15 +507,17 @@ function ChannelsTab() {
                     </Button>
                   )}
 
-                  {ch.status === "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP") && (
+                  {/* Editar configuración */}
+                  {canEdit && (
                     <Button size="sm" variant="outline"
-                      className="h-7 text-xs border-[#272d3f] text-muted-foreground"
+                      className="h-7 text-xs border-[#272d3f] text-muted-foreground hover:text-foreground"
                       onClick={() => setConfigChannel(ch)}
                     >
                       Editar
                     </Button>
                   )}
 
+                  {/* Conectar (FORM, API, MANUAL) */}
                   {canConnect && (
                     <Button size="sm" variant="outline" className="h-7 text-xs border-[#272d3f]"
                       onClick={() => api.connectChannel(ch.id).then(() => qc.invalidateQueries({ queryKey: ["/api/channels"] }))}
@@ -454,6 +525,29 @@ function ChannelsTab() {
                       <Plug className="h-3 w-3 mr-1" />Conectar
                     </Button>
                   )}
+
+                  {/* Desactivar */}
+                  {isActive && (
+                    <Button
+                      size="sm" variant="outline"
+                      className="h-7 text-xs border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                      disabled={disconnect.isPending}
+                      onClick={() => disconnect.mutate(ch.id)}
+                      title="Desactivar canal"
+                    >
+                      <PowerOff className="h-3 w-3" />
+                    </Button>
+                  )}
+
+                  {/* Eliminar */}
+                  <Button
+                    size="sm" variant="outline"
+                    className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+                    onClick={() => setDeleteChannel(ch)}
+                    title="Eliminar canal"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
               </div>
             );

@@ -94,7 +94,11 @@ export class ChannelsService {
     if (!channel) throw new NotFoundException('Canal no encontrado.');
     if (channel.type !== 'EMAIL') throw new BadRequestException('El canal no es de tipo EMAIL.');
 
-    const api_key_encrypted = this.crypto.encrypt(dto.api_key);
+    // Keep existing encrypted key if no new one is provided
+    const existingConfig = (channel.config_json ?? {}) as Record<string, any>;
+    const api_key_encrypted = dto.api_key
+      ? this.crypto.encrypt(dto.api_key)
+      : existingConfig.api_key_encrypted;
 
     const updated = await this.prisma.channel.update({
       where: { id },
@@ -115,7 +119,11 @@ export class ChannelsService {
     if (!channel) throw new NotFoundException('Canal no encontrado.');
     if (channel.type !== 'WHATSAPP') throw new BadRequestException('El canal no es de tipo WHATSAPP.');
 
-    const access_token_encrypted = this.crypto.encrypt(dto.access_token);
+    // Keep existing encrypted token if no new one is provided
+    const existingConfigWA = (channel.config_json ?? {}) as Record<string, any>;
+    const access_token_encrypted = dto.access_token
+      ? this.crypto.encrypt(dto.access_token)
+      : existingConfigWA.access_token_encrypted;
 
     const updated = await this.prisma.channel.update({
       where: { id },
