@@ -1,113 +1,95 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,300..400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Design tokens — dark only ──────────────────────────────────────────────
-   Palette rationale:
-   - Base: near-black with a cool blue-gray tint (not pure #000 — too harsh)
-   - Surface hierarchy: bg → surface → elevated (each step +3-4% lightness)
-   - Accent: slate blue — professional, not neon
-   - Text: three levels of opacity for clear hierarchy
-   - Borders: very subtle, single shade
-──────────────────────────────────────────────────────────────────────────── */
+/*
+  Token system — modeled after Cloudflare dashboard dark mode.
+  Warm-neutral blacks, no blue tint. Single accent. Tight borders.
+*/
 :root {
-  /* Background layers */
-  --background:         218 20% 6%;    /* #0c0e14  — app shell */
-  --sidebar-bg:         220 22% 8%;    /* #101318  — sidebar */
-  --card:               220 18% 10%;   /* #141720  — card/panel */
-  --elevated:           220 16% 13%;   /* #191d27  — dropdown, dialog */
-  --surface-hover:      220 16% 15%;   /* #1c2030  — hover state */
+  /* ── Backgrounds ── */
+  --bg:           224 7% 10%;    /* #181818 — app shell */
+  --bg-sidebar:   220 8% 9%;     /* #151517 — sidebar */
+  --bg-card:      220 7% 13%;    /* #1f2024 — card / panel */
+  --bg-elevated:  220 7% 16%;    /* #262729 — dialog, dropdown */
+  --bg-hover:     220 6% 18%;    /* #2b2c2f — row hover */
+  --bg-active:    220 7% 20%;    /* #303236 — active nav item bg */
 
-  /* Borders */
-  --border:             220 16% 18%;   /* single border token */
+  /* ── Borders ── */
+  --border:       220 6% 22%;    /* single border color ~#333438 */
 
-  /* Text */
-  --foreground:         215 18% 86%;   /* primary text */
-  --muted-foreground:   215 12% 50%;   /* secondary text */
-  --subtle-foreground:  215 10% 35%;   /* disabled/placeholder */
+  /* ── Text ── */
+  --fg:           0 0% 93%;      /* #ededed — primary */
+  --fg-2:         0 0% 62%;      /* #9e9e9e — secondary */
+  --fg-3:         0 0% 42%;      /* #6b6b6b — disabled / placeholder */
 
-  /* Accent — slate blue, calm, professional */
-  --primary:            221 70% 58%;   /* #4a7de8 */
-  --primary-foreground: 220 20% 6%;
+  /* ── Accent ── */
+  --accent:       214 89% 52%;   /* #1a73e8 — CF-style blue */
+  --accent-fg:    0 0% 100%;
 
-  /* Semantic */
-  --destructive:        0 65% 60%;
-  --destructive-foreground: 215 18% 86%;
-  --success:            152 50% 48%;
-  --warning:            38 90% 52%;
+  /* ── Semantic ── */
+  --danger:       0 72% 51%;
+  --danger-fg:    0 0% 100%;
+  --success:      145 63% 42%;
+  --warning:      38 95% 54%;
 
-  /* Shared */
-  --secondary:          220 16% 13%;
-  --secondary-foreground: 215 18% 86%;
-  --muted:              220 16% 13%;
-  --accent:             220 16% 13%;
-  --accent-foreground:  215 18% 86%;
-  --popover:            220 18% 10%;
-  --popover-foreground: 215 18% 86%;
-  --input:              220 16% 18%;
-  --ring:               221 70% 58%;
+  /* ── Tailwind aliases ── */
+  --background:        var(--bg);
+  --foreground:        var(--fg);
+  --card:              var(--bg-card);
+  --card-foreground:   var(--fg);
+  --popover:           var(--bg-elevated);
+  --popover-foreground: var(--fg);
+  --border-color:      var(--border);
+  --primary:           var(--accent);
+  --primary-foreground: var(--accent-fg);
+  --secondary:         var(--bg-card);
+  --secondary-foreground: var(--fg);
+  --muted:             var(--bg-card);
+  --muted-foreground:  var(--fg-2);
+  --accent-tw:         var(--bg-card);
+  --accent-foreground: var(--fg);
+  --destructive:       var(--danger);
+  --destructive-foreground: var(--danger-fg);
+  --input:             var(--border);
+  --ring:              var(--accent);
+  --elevated:          var(--bg-elevated);
+  --sidebar:           var(--bg-sidebar);
+  --sidebar-foreground: var(--fg);
+  --sidebar-border:    var(--border);
+  --sidebar-primary:   var(--accent);
+  --sidebar-primary-foreground: var(--accent-fg);
+  --sidebar-accent:    var(--bg-active);
+  --sidebar-accent-foreground: var(--fg);
+  --sidebar-ring:      var(--accent);
+  --chart-1:           var(--accent);
+  --chart-2:           var(--success);
+  --chart-3:           var(--warning);
+  --chart-4:           262 60% 62%;
+  --chart-5:           var(--danger);
 
-  /* Sidebar aliases */
-  --sidebar:            220 22% 8%;
-  --sidebar-foreground: 215 18% 86%;
-  --sidebar-border:     220 16% 14%;
-  --sidebar-primary:    221 70% 58%;
-  --sidebar-primary-foreground: 220 20% 6%;
-  --sidebar-accent:     220 16% 13%;
-  --sidebar-accent-foreground: 215 18% 86%;
-  --sidebar-ring:       221 70% 58%;
-
-  /* Card / popover border */
-  --card-foreground:    215 18% 86%;
-
-  /* Charts */
-  --chart-1: 221 70% 58%;
-  --chart-2: 152 50% 48%;
-  --chart-3: 38 90% 52%;
-  --chart-4: 262 60% 62%;
-  --chart-5: 0 65% 60%;
-
-  /* Typography */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, monospace;
-  --radius: 0.375rem;
-
-  /* Shadows — subtle depth */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
-  --shadow:    0 2px 6px 0 rgb(0 0 0 / 0.35), 0 1px 2px -1px rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 12px 0 rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.35);
-  --shadow-lg: 0 8px 24px 0 rgb(0 0 0 / 0.45), 0 4px 8px -4px rgb(0 0 0 / 0.4);
+  --radius: 0.25rem; /* 4px — CF uses tight radius */
 }
 
-/* ─── Base resets ─────────────────────────────────────────────────────────── */
-* {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+* { -webkit-font-smoothing: antialiased; }
 
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background: hsl(var(--bg));
+  color: hsl(var(--fg));
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
-/* Scrollbar — thin, unobtrusive */
-::-webkit-scrollbar { width: 5px; height: 5px; }
+/* Thin, dark scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--fg-3)); }
 
-/* ─── Focus ring ──────────────────────────────────────────────────────────── */
-:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-}
+::selection { background: hsl(var(--accent) / 0.2); }
 
-/* ─── Selection ───────────────────────────────────────────────────────────── */
-::selection {
-  background: hsl(var(--primary) / 0.25);
-  color: hsl(var(--foreground));
-}
+:focus-visible { outline: 2px solid hsl(var(--accent)); outline-offset: 2px; }

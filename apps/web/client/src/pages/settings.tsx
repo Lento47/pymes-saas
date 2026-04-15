@@ -140,7 +140,7 @@ function MembersTab() {
         <p className="text-sm text-muted-foreground">{members.length} miembro(s)</p>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+            <Button size="sm" className="bg-primary hover:bg-primary/90">
               <UserPlus className="h-4 w-4 mr-2" />Invitar
             </Button>
           </DialogTrigger>
@@ -160,7 +160,7 @@ function MembersTab() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={() => invite.mutate()} disabled={!email || invite.isPending} className="w-full bg-blue-600 hover:bg-blue-700">
+              <Button onClick={() => invite.mutate()} disabled={!email || invite.isPending} className="w-full bg-primary hover:bg-primary/90">
                 {invite.isPending ? "Enviando..." : "Enviar invitación"}
               </Button>
             </div>
@@ -252,7 +252,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
         onClick={() => save.mutate()}
         // On edit, api_key can be blank (keep existing) — only require it on first setup
         disabled={(!isEdit && !apiKey) || !fromEmail || !fromName || save.isPending}
-        className="w-full bg-blue-600 hover:bg-blue-700"
+        className="w-full bg-primary hover:bg-primary/90"
       >
         {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
       </Button>
@@ -413,7 +413,7 @@ function ChannelsTab() {
         {/* Modal crear canal */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+            <Button size="sm" className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />Nuevo canal
             </Button>
           </DialogTrigger>
@@ -435,7 +435,7 @@ function ChannelsTab() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={() => create.mutate()} disabled={!name || create.isPending} className="w-full bg-blue-600 hover:bg-blue-700">
+              <Button onClick={() => create.mutate()} disabled={!name || create.isPending} className="w-full bg-primary hover:bg-primary/90">
                 {create.isPending ? "Creando..." : "Crear canal"}
               </Button>
             </div>

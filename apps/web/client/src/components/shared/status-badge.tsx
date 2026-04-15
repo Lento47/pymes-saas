@@ -1,30 +1,27 @@
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type ConversationStatus = "NEW" | "OPEN" | "PENDING" | "RESOLVED";
-type TaskStatus = "TODO" | "IN_PROGRESS" | "BLOCKED" | "DONE";
-type DocumentStatus = "UPLOADED" | "PROCESSING" | "PROCESSED" | "FAILED";
+// Cloudflare-style status pill: small, muted, text-only label.
+// No vivid backgrounds — rely on text color + subtle bg tint.
 
-const conversationColors: Record<ConversationStatus, string> = {
-  NEW: "bg-blue-500/15 text-blue-400 border-blue-500/20",
-  OPEN: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
-  PENDING: "bg-amber-500/15 text-amber-400 border-amber-500/20",
-  RESOLVED: "bg-zinc-500/15 text-zinc-400 border-zinc-500/20",
+const STYLES: Record<string, { bg: string; color: string; label?: string }> = {
+  // Conversation
+  NEW:        { bg: "hsl(214 89% 52% / 0.12)", color: "hsl(214 89% 62%)",   label: "Nuevo" },
+  OPEN:       { bg: "hsl(145 63% 42% / 0.12)", color: "hsl(145 63% 52%)",   label: "Abierto" },
+  PENDING:    { bg: "hsl(38 95% 54% / 0.12)",  color: "hsl(38 95% 60%)",    label: "Pendiente" },
+  RESOLVED:   { bg: "hsl(0 0% 42% / 0.12)",    color: "hsl(0 0% 60%)",      label: "Resuelto" },
+  // Task
+  TODO:       { bg: "hsl(0 0% 42% / 0.12)",    color: "hsl(0 0% 60%)",      label: "Por hacer" },
+  IN_PROGRESS:{ bg: "hsl(214 89% 52% / 0.12)", color: "hsl(214 89% 62%)",   label: "En progreso" },
+  BLOCKED:    { bg: "hsl(0 72% 51% / 0.12)",   color: "hsl(0 72% 62%)",     label: "Bloqueado" },
+  DONE:       { bg: "hsl(145 63% 42% / 0.12)", color: "hsl(145 63% 52%)",   label: "Listo" },
+  // Document
+  UPLOADED:   { bg: "hsl(214 89% 52% / 0.12)", color: "hsl(214 89% 62%)",   label: "Subido" },
+  PROCESSING: { bg: "hsl(38 95% 54% / 0.12)",  color: "hsl(38 95% 60%)",    label: "Procesando" },
+  PROCESSED:  { bg: "hsl(145 63% 42% / 0.12)", color: "hsl(145 63% 52%)",   label: "Procesado" },
+  FAILED:     { bg: "hsl(0 72% 51% / 0.12)",   color: "hsl(0 72% 62%)",     label: "Error" },
 };
 
-const taskColors: Record<TaskStatus, string> = {
-  TODO: "bg-zinc-500/15 text-zinc-400 border-zinc-500/20",
-  IN_PROGRESS: "bg-blue-500/15 text-blue-400 border-blue-500/20",
-  BLOCKED: "bg-red-500/15 text-red-400 border-red-500/20",
-  DONE: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
-};
-
-const documentColors: Record<DocumentStatus, string> = {
-  UPLOADED: "bg-blue-500/15 text-blue-400 border-blue-500/20",
-  PROCESSING: "bg-amber-500/15 text-amber-400 border-amber-500/20",
-  PROCESSED: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
-  FAILED: "bg-red-500/15 text-red-400 border-red-500/20",
-};
+const FALLBACK = { bg: "hsl(0 0% 42% / 0.10)", color: "hsl(0 0% 55%)" };
 
 interface StatusBadgeProps {
   status: string;
@@ -32,24 +29,25 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-export function StatusBadge({ status, type, className }: StatusBadgeProps) {
-  let colorClass = "bg-zinc-500/15 text-zinc-400 border-zinc-500/20";
-
-  if (type === "conversation" && status in conversationColors) {
-    colorClass = conversationColors[status as ConversationStatus];
-  } else if (type === "task" && status in taskColors) {
-    colorClass = taskColors[status as TaskStatus];
-  } else if (type === "document" && status in documentColors) {
-    colorClass = documentColors[status as DocumentStatus];
-  }
-
+export function StatusBadge({ status, className }: StatusBadgeProps) {
+  const s = STYLES[status] ?? FALLBACK;
   return (
-    <Badge
-      variant="outline"
-      className={cn("text-[11px] font-medium px-2 py-0.5 border", colorClass, className)}
+    <span
+      className={cn("inline-flex items-center shrink-0", className)}
+      style={{
+        background: s.bg,
+        color: s.color,
+        fontSize: "11px",
+        fontWeight: 500,
+        lineHeight: 1,
+        padding: "3px 7px",
+        borderRadius: "4px",
+        letterSpacing: "0.01em",
+        whiteSpace: "nowrap",
+      }}
       data-testid={`status-badge-${status.toLowerCase()}`}
     >
-      {status.replace("_", " ")}
-    </Badge>
+      {s.label ?? status.replace(/_/g, " ")}
+    </span>
   );
 }

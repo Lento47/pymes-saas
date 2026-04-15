@@ -12,33 +12,16 @@ import {
   Zap,
   Settings,
   LogOut,
-  ChevronDown,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
-const navItems = [
+const NAV = [
   { path: "/",            icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/inbox",       icon: Inbox,           label: "Bandeja",   badgeKey: "unread" },
+  { path: "/inbox",       icon: Inbox,           label: "Bandeja",   badge: "unread" },
   { path: "/contacts",    icon: Users,           label: "Contactos" },
-  { path: "/tasks",       icon: CheckSquare,     label: "Tareas",    badgeKey: "overdue" },
+  { path: "/tasks",       icon: CheckSquare,     label: "Tareas",    badge: "overdue" },
   { path: "/documents",   icon: FileText,        label: "Archivos" },
-  { path: "/automations", icon: Zap,             label: "Automatiz." },
+  { path: "/automations", icon: Zap,             label: "Automatizaciones" },
 ];
-
-/** Wordmark — plain text, no icon dependencies */
-function Brand() {
-  return (
-    <div className="flex items-center gap-2.5 select-none">
-      {/* Simple geometric mark */}
-      <div className="w-7 h-7 rounded-[7px] bg-primary flex items-center justify-center shrink-0">
-        <span className="text-[11px] font-bold text-primary-foreground tracking-tight">P</span>
-      </div>
-      <div>
-        <div className="text-[13px] font-semibold text-foreground leading-none">Pymeshub</div>
-      </div>
-    </div>
-  );
-}
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -46,132 +29,140 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
   const { data: unreadData } = useQuery({
     queryKey: ["/api/notifications/unread-count"],
-    queryFn: () => api.getUnreadCount(),
+    queryFn: api.getUnreadCount,
     refetchInterval: 30000,
   });
-
   const { data: overdueData } = useQuery({
     queryKey: ["/api/tasks/overdue"],
-    queryFn: () => api.getOverdueTasks(),
+    queryFn: api.getOverdueTasks,
     refetchInterval: 60000,
   });
 
   const unreadCount  = unreadData?.count ?? 0;
   const overdueCount = Array.isArray(overdueData) ? overdueData.length : 0;
-  const workspaceName = user?.workspace?.name || "Workspace";
-  const userName = user?.name || user?.email || "Usuario";
-  const initials = userName.slice(0, 2).toUpperCase();
+  const ws = user?.workspace?.name ?? "Workspace";
+  const name = user?.name ?? user?.email ?? "—";
+  const initials = name.slice(0, 2).toUpperCase();
 
-  const isActive = (path: string) =>
-    path === "/" ? location === "/" : location.startsWith(path);
+  const isActive = (p: string) => p === "/" ? location === "/" : location.startsWith(p);
+
+  const badge = (key?: string) =>
+    key === "unread" ? unreadCount : key === "overdue" ? overdueCount : 0;
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* ── Sidebar ──────────────────────────────────────────────────────── */}
+      {/* ── Sidebar ── */}
       <aside
-        className="w-52 shrink-0 flex flex-col bg-[hsl(var(--sidebar-bg))] border-r border-[hsl(var(--sidebar-border))]"
-        data-testid="sidebar"
+        style={{ background: "hsl(var(--bg-sidebar))", borderRight: "1px solid hsl(var(--border))" }}
+        className="w-[200px] shrink-0 flex flex-col"
       >
-        {/* Header */}
-        <div className="px-4 pt-5 pb-4">
-          <Brand />
-          <div className="mt-3 flex items-center gap-1.5">
-            <span className="text-[11px] text-muted-foreground truncate">{workspaceName}</span>
-            <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 opacity-50" />
+        {/* Workspace header */}
+        <div className="px-4 h-12 flex items-center gap-2.5 shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+          <div
+            style={{ background: "hsl(var(--accent))", borderRadius: "4px" }}
+            className="w-6 h-6 flex items-center justify-center shrink-0"
+          >
+            <span className="text-white font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-white leading-none truncate">{ws}</div>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="mx-4 h-px bg-[hsl(var(--sidebar-border))]" />
-
         {/* Nav */}
-        <nav className="flex-1 px-2 py-3 space-y-px overflow-y-auto">
-          {navItems.map((item) => {
-            const active = isActive(item.path);
-            const badge = item.badgeKey === "unread" ? unreadCount
-                        : item.badgeKey === "overdue" ? overdueCount
-                        : 0;
+        <nav className="flex-1 py-2 overflow-y-auto">
+          {NAV.map(({ path, icon: Icon, label, badge: bk }) => {
+            const active = isActive(path);
+            const b = badge(bk);
             return (
-              <Link key={item.path} href={item.path}>
+              <Link key={path} href={path}>
                 <div
                   className={cn(
-                    "group flex items-center gap-2.5 px-3 py-[6px] rounded-md text-[13px] cursor-pointer transition-all duration-100",
+                    "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
                     active
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/[0.05] font-normal"
+                      ? "text-white"
+                      : "text-[hsl(var(--fg-2))] hover:text-white"
                   )}
-                  data-testid={`nav-${item.label.toLowerCase()}`}
+                  style={active ? { background: "hsl(var(--bg-active))" } : undefined}
                 >
-                  <item.icon
-                    className={cn(
-                      "w-[15px] h-[15px] shrink-0 transition-colors",
-                      active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                    )}
+                  <Icon
+                    className="shrink-0"
+                    style={{ width: 14, height: 14 }}
                     strokeWidth={active ? 2.2 : 1.8}
                   />
-                  <span className="flex-1 truncate">{item.label}</span>
-                  {badge > 0 && (
+                  <span className="flex-1 truncate" style={{ fontSize: "13px" }}>{label}</span>
+                  {b > 0 && (
                     <span
-                      className={cn(
-                        "text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full leading-none",
-                        item.badgeKey === "overdue"
-                          ? "bg-destructive/15 text-destructive"
-                          : "bg-primary/15 text-primary"
-                      )}
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 600,
+                        lineHeight: 1,
+                        padding: "2px 5px",
+                        borderRadius: "10px",
+                        background: bk === "overdue" ? "hsl(var(--danger) / 0.15)" : "hsl(var(--accent) / 0.15)",
+                        color: bk === "overdue" ? "hsl(var(--danger))" : "hsl(var(--accent))",
+                      }}
                     >
-                      {badge}
+                      {b}
                     </span>
                   )}
                 </div>
               </Link>
             );
           })}
-        </nav>
 
-        {/* Divider */}
-        <div className="mx-4 h-px bg-[hsl(var(--sidebar-border))]" />
+          {/* Divider */}
+          <div className="my-2 mx-3" style={{ height: 1, background: "hsl(var(--border))" }} />
 
-        {/* Bottom */}
-        <div className="px-2 py-3 space-y-px">
           <Link href="/settings">
             <div
               className={cn(
-                "group flex items-center gap-2.5 px-3 py-[6px] rounded-md text-[13px] cursor-pointer transition-all duration-100",
-                isActive("/settings")
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/[0.05]"
+                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
+                isActive("/settings") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
               )}
+              style={isActive("/settings") ? { background: "hsl(var(--bg-active))" } : undefined}
             >
-              <Settings className="w-[15px] h-[15px] shrink-0" strokeWidth={1.8} />
-              <span>Configuración</span>
+              <Settings style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
+              <span style={{ fontSize: "13px" }}>Configuración</span>
             </div>
           </Link>
+        </nav>
 
-          {/* User row */}
-          <div className="flex items-center gap-2.5 px-3 py-2 mt-1">
-            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">
-              {initials}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[12px] font-medium text-foreground truncate leading-tight">{userName}</div>
-              <div className="text-[10px] text-muted-foreground truncate">{user?.role ?? "—"}</div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-              onClick={logout}
-              data-testid="button-logout"
-              title="Cerrar sesión"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </Button>
+        {/* User row */}
+        <div
+          className="px-3 py-3 flex items-center gap-2"
+          style={{ borderTop: "1px solid hsl(var(--border))" }}
+        >
+          <div
+            style={{
+              width: 24, height: 24,
+              borderRadius: "50%",
+              background: "hsl(var(--bg-active))",
+              border: "1px solid hsl(var(--border))",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "10px", fontWeight: 600, color: "hsl(var(--fg-2))",
+              flexShrink: 0,
+            }}
+          >
+            {initials}
           </div>
+          <div className="flex-1 min-w-0">
+            <div className="truncate font-medium text-white" style={{ fontSize: "12px", lineHeight: "1.3" }}>{name}</div>
+            <div className="truncate" style={{ fontSize: "11px", color: "hsl(var(--fg-3))" }}>{user?.role ?? ""}</div>
+          </div>
+          <button
+            onClick={logout}
+            style={{ color: "hsl(var(--fg-3))", padding: "4px" }}
+            className="hover:text-white transition-colors shrink-0 rounded"
+            title="Cerrar sesión"
+          >
+            <LogOut style={{ width: 13, height: 13 }} />
+          </button>
         </div>
       </aside>
 
-      {/* ── Main content ─────────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto bg-[hsl(var(--background))]">
+      {/* ── Main ── */}
+      <main className="flex-1 overflow-y-auto" style={{ background: "hsl(var(--bg))" }}>
         {children}
       </main>
     </div>

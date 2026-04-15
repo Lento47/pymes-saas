@@ -62,7 +62,7 @@ function NewConversationModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8 text-xs">
+        <Button size="sm" className="bg-primary hover:bg-primary/90 h-8 text-xs">
           <Plus className="h-3.5 w-3.5 mr-1.5" />Nueva conversación
         </Button>
       </DialogTrigger>
@@ -117,7 +117,7 @@ function NewConversationModal() {
           <Button
             onClick={() => create.mutate()}
             disabled={!channelId || create.isPending}
-            className="w-full bg-blue-600 hover:bg-blue-700"
+            className="w-full bg-primary hover:bg-primary/90"
           >
             {create.isPending ? "Creando..." : "Crear conversación"}
           </Button>
