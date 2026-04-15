@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { FilterNotificationsDto } from './dto/filter-notifications.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
+import { EventsGateway } from '../gateways/events.gateway';
 
 export interface CreateNotificationData {
   user_id: string;
@@ -14,7 +15,10 @@ export interface CreateNotificationData {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventsGateway,
+  ) { }
 
   async findAll(workspaceId: string, userId: string, filters: FilterNotificationsDto) {
     const page = Number(filters.page) || 1;
@@ -24,7 +28,6 @@ export class NotificationsService {
     const where: any = { workspace_id: workspaceId, user_id: userId };
 
     if (filters.read !== undefined) {
-      // read_at IS NULL → no leída | read_at IS NOT NULL → leída
       where.read_at = filters.read === 'true' ? { not: null } : null;
     }
 
@@ -49,7 +52,7 @@ export class NotificationsService {
       where: {
         workspace_id: workspaceId,
         user_id: userId,
-        read_at: null,     // read_at null = no leída
+        read_at: null,
       },
     });
     return { count };
@@ -72,7 +75,7 @@ export class NotificationsService {
       where: {
         workspace_id: workspaceId,
         user_id: userId,
-        read_at: null,     // solo las no leídas
+        read_at: null,
       },
       data: { read_at: new Date() },
     });
@@ -81,18 +84,22 @@ export class NotificationsService {
   }
 
   async create(workspaceId: string, data: CreateNotificationData) {
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
-        workspace_id:        workspaceId,
-        user_id:             data.user_id,
-        type:                data.type,
-        title:               data.title,
-        body:                data.body,
+        workspace_id: workspaceId,
+        user_id: data.user_id,
+        type: data.type,
+        title: data.title,
+        body: data.body,
         related_entity_type: data.related_entity_type,
-        related_entity_id:   data.related_entity_id,
-        // read_at omitido → null por defecto = no leída
+        related_entity_id: data.related_entity_id,
       },
     });
+
+    // Emitir en tiempo real al usuario
+    this.events.emitNotification(data.user_id, notification);
+
+    return notification;
   }
 
   async deleteOld(workspaceId: string) {
