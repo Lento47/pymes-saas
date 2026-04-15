@@ -13,17 +13,26 @@ export function getSocket(): Socket | null {
  * Inicializa la conexión WebSocket con el token JWT actual.
  * Llamar una sola vez al hacer login (en App.tsx o en el hook useAuth).
  */
+// In dev the Vite server runs on :5000 but the NestJS backend (and its
+// Socket.io server) runs on :4000. Connect directly to avoid proxy issues.
+// In production the WS server is co-located so we use a relative path.
+const WS_URL =
+  import.meta.env.DEV
+    ? 'http://localhost:4000'
+    : window.location.origin;
+
 export function connectSocket() {
   if (_socket?.connected) return _socket;
 
   const token = getAuthToken();
   if (!token) return null;
 
-  _socket = io('/ws', {
+  _socket = io(WS_URL, {
+    path: '/socket.io',
     auth: { token },
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     reconnection: true,
-    reconnectionAttempts: 5,
+    reconnectionAttempts: 10,
     reconnectionDelay: 1000,
   });
 
