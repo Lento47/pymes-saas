@@ -30,6 +30,12 @@ export default function DashboardPage() {
     queryFn: () => api.getDailySummaries(),
   });
 
+  const { data: todayStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["/api/workspaces/current/stats/today"],
+    queryFn: () => api.getTodayStats(),
+    refetchInterval: 60000, // refresh every minute
+  });
+
   const { data: conversations, isLoading: convsLoading } = useQuery({
     queryKey: ["/api/conversations", "dashboard"],
     queryFn: () => api.getConversations({ limit: "5", sort: "desc" }),
@@ -57,10 +63,10 @@ export default function DashboardPage() {
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data || [];
 
   const statCards = [
-    { label: "New Conversations", value: metrics.newConversations ?? metrics.new_conversations ?? "—", icon: MessageSquare, color: "text-blue-400" },
-    { label: "Messages Received", value: metrics.messagesReceived ?? metrics.messages_received ?? "—", icon: Mail, color: "text-emerald-400" },
-    { label: "Tasks Created", value: metrics.tasksCreated ?? metrics.tasks_created ?? "—", icon: CheckSquare, color: "text-amber-400" },
-    { label: "Documents Uploaded", value: metrics.documentsUploaded ?? metrics.documents_uploaded ?? "—", icon: FileText, color: "text-purple-400" },
+    { label: "New Conversations", value: todayStats?.new_conversations ?? "—", icon: MessageSquare, color: "text-blue-400" },
+    { label: "Messages Received", value: todayStats?.received_messages ?? "—", icon: Mail, color: "text-emerald-400" },
+    { label: "Tasks Created", value: todayStats?.created_tasks ?? "—", icon: CheckSquare, color: "text-amber-400" },
+    { label: "Documents Uploaded", value: todayStats?.uploaded_documents ?? "—", icon: FileText, color: "text-purple-400" },
   ];
 
   return (
@@ -91,7 +97,7 @@ export default function DashboardPage() {
                 <stat.icon className={`w-4.5 h-4.5 ${stat.color}`} />
               </div>
               <div>
-                {summariesLoading ? (
+                {statsLoading ? (
                   <Skeleton className="h-6 w-10 mb-1" />
                 ) : (
                   <div className="text-xl font-semibold text-foreground">{stat.value}</div>
@@ -104,10 +110,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Summary text */}
-      {lastSummary?.summary && (
+      {(lastSummary?.generated_text || lastSummary?.summary) && (
         <Card className="bg-card border-border p-4 mb-6" data-testid="summary-text">
           <div className="text-xs font-medium text-muted-foreground mb-2">AI Summary</div>
-          <p className="text-sm text-foreground leading-relaxed">{lastSummary.summary}</p>
+          <p className="text-sm text-foreground leading-relaxed">{lastSummary.generated_text || lastSummary.summary}</p>
         </Card>
       )}
 

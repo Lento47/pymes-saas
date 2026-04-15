@@ -40,6 +40,11 @@ export class WorkspacesController {
     return this.service.getStats(workspaceId);
   }
 
+  @Get('current/stats/today')
+  getTodayStats(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.service.getTodayStats(workspaceId);
+  }
+
   @Get('current/export')
   @Roles('ADMIN' as any)
   exportData(@CurrentUser('workspace_id') workspaceId: string, @Query('type') type: string) {

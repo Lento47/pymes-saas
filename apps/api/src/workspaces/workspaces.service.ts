@@ -82,6 +82,34 @@ export class WorkspacesService {
     };
   }
 
+  // ── GET /workspaces/current/stats/today ────────────────────────────────────
+
+  async getTodayStats(workspaceId: string) {
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+
+    const [new_conversations, received_messages, created_tasks, uploaded_documents] = await Promise.all([
+      this.prisma.conversation.count({
+        where: { workspace_id: workspaceId, created_at: { gte: startOfToday } },
+      }),
+      this.prisma.message.count({
+        where: {
+          workspace_id: workspaceId,
+          direction: 'INBOUND',
+          created_at: { gte: startOfToday },
+        },
+      }),
+      this.prisma.task.count({
+        where: { workspace_id: workspaceId, created_at: { gte: startOfToday } },
+      }),
+      this.prisma.document.count({
+        where: { workspace_id: workspaceId, created_at: { gte: startOfToday } },
+      }),
+    ]);
+
+    return { new_conversations, received_messages, created_tasks, uploaded_documents };
+  }
+
   // ── GET /workspaces/current/export ────────────────────────────────────────
 
   async exportData(workspaceId: string, type: string) {
