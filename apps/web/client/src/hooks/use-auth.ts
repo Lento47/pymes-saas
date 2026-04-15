@@ -37,14 +37,15 @@ export function useAuth() {
 
   const login = async (email: string, password: string, workspaceSlug: string) => {
     const res = await api.login(email, password, workspaceSlug);
-    setAuthState(res.access_token, workspaceSlug);
+    setAuthState(res.access_token, workspaceSlug, res.refresh_token);
     _user = res.user;
     connectSocket(); // ← WebSocket conecta al hacer login
     notifyListeners();
     return res;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try { await api.logout(); } catch { /* best-effort */ }
     disconnectSocket(); // ← WebSocket se corta al hacer logout
     clearAuthState();
     _user = null;

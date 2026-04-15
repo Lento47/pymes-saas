@@ -164,6 +164,8 @@ model Workspace {
   daily_summaries      DailySummary[]
   notifications        Notification[]
   audit_logs           AuditLog[]
+  departments          Department[]
+  refresh_tokens       RefreshToken[]
 
   @@index([slug])
   @@index([status])
@@ -190,6 +192,8 @@ model User {
   notifications         Notification[]
   audit_logs            AuditLog[]
   outbound_messages     Message[]           @relation("MessageSender")
+  department_memberships DepartmentMember[]
+  refresh_tokens        RefreshToken[]
 
   @@index([email])
   @@index([status])
@@ -212,6 +216,25 @@ model WorkspaceUser {
   @@index([workspace_id])
   @@index([user_id])
   @@map("workspace_users")
+}
+
+model RefreshToken {
+  id           String   @id @default(cuid())
+  token_hash   String   @unique  // SHA-256 of the raw token
+  user_id      String
+  workspace_id String
+  family       String   // random UUID per login session — for reuse detection
+  expires_at   DateTime
+  revoked_at   DateTime?
+  created_at   DateTime @default(now())
+
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([token_hash])
+  @@index([user_id, workspace_id])
+  @@index([expires_at])
+  @@map("refresh_tokens")
 }
 
 // ============================================================
@@ -258,8 +281,11 @@ model Channel {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  department_id String?
+
   workspace     Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   conversations Conversation[]
+  department    Department?    @relation("ChannelDepartment", fields: [department_id], references: [id])
 
   @@index([workspace_id])
   @@index([workspace_id, type])
@@ -286,10 +312,13 @@ model Conversation {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  workspace     Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  channel       Channel   @relation(fields: [channel_id], references: [id])
-  contact       Contact?  @relation(fields: [contact_id], references: [id])
-  assigned_user User?     @relation("ConversationAssignee", fields: [assigned_user_id], references: [id])
+  department_id    String?
+
+  workspace     Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  channel       Channel    @relation(fields: [channel_id], references: [id])
+  contact       Contact?   @relation(fields: [contact_id], references: [id])
+  assigned_user User?      @relation("ConversationAssignee", fields: [assigned_user_id], references: [id])
+  department    Department? @relation("ConversationDepartment", fields: [department_id], references: [id])
 
   messages  Message[]
   tasks     Task[]
@@ -401,6 +430,50 @@ model Document {
   @@index([workspace_id, contact_id])
   @@index([workspace_id, conversation_id])
   @@map("documents")
+}
+
+// ============================================================
+// DEPARTMENTS
+// ============================================================
+
+model Department {
+  id           String  @id @default(cuid())
+  workspace_id String
+  name         String
+  description  String?
+  color        String? // hex color for UI badge
+  is_active    Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace     Workspace          @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  members       DepartmentMember[]
+  channels      Channel[]          @relation("ChannelDepartment")
+  conversations Conversation[]     @relation("ConversationDepartment")
+
+  @@unique([workspace_id, name])
+  @@index([workspace_id])
+  @@index([workspace_id, is_active])
+  @@map("departments")
+}
+
+model DepartmentMember {
+  id            String  @id @default(cuid())
+  department_id String
+  user_id       String
+  workspace_id  String
+  is_lead       Boolean @default(false)
+
+  created_at DateTime @default(now())
+
+  department Department @relation(fields: [department_id], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([department_id, user_id])
+  @@index([workspace_id])
+  @@index([user_id])
+  @@map("department_members")
 }
 
 // ============================================================

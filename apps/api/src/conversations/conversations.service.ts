@@ -15,7 +15,7 @@ export class ConversationsService {
 
   // ── GET /conversations ─────────────────────────────────────────────────────
 
-  async findAll(workspaceId: string, filters: FilterConversationsDto) {
+  async findAll(workspaceId: string, filters: FilterConversationsDto, caller?: { id: string; role: string }) {
     const {
       status, priority, assigned_user_id, contact_id,
       channel_id, category, q, page = 1, limit = 20,
@@ -30,6 +30,19 @@ export class ConversationsService {
     if (channel_id)       where.channel_id       = channel_id;
     if (category)         where.category         = { contains: category, mode: 'insensitive' };
     if (q)                where.subject          = { contains: q, mode: 'insensitive' };
+
+    // AGENTs only see conversations belonging to their department(s)
+    if (caller && caller.role === 'AGENT') {
+      const memberships = await this.prisma.departmentMember.findMany({
+        where: { user_id: caller.id, workspace_id: workspaceId },
+        select: { department_id: true },
+      });
+      if (memberships.length > 0) {
+        const deptIds = memberships.map(m => m.department_id);
+        where.department_id = { in: deptIds };
+      }
+      // If AGENT has no department yet, still show all (graceful fallback)
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.conversation.findMany({

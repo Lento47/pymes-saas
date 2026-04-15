@@ -3,6 +3,7 @@ const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 const LS_TOKEN_KEY = "pymes_token";
 const LS_SLUG_KEY = "pymes_slug";
 const LS_EXPIRY_KEY = "pymes_token_expiry";
+const LS_REFRESH_KEY = "pymes_refresh_token";
 
 // ── In-memory state (hydrated from localStorage on load) ─────────────────────
 let _token: string | null = null;
@@ -10,14 +11,6 @@ let _workspaceSlug: string | null = null;
 
 function _loadFromStorage() {
   try {
-    const expiry = localStorage.getItem(LS_EXPIRY_KEY);
-    if (expiry && Date.now() > parseInt(expiry, 10)) {
-      // Session expired client-side
-      localStorage.removeItem(LS_TOKEN_KEY);
-      localStorage.removeItem(LS_SLUG_KEY);
-      localStorage.removeItem(LS_EXPIRY_KEY);
-      return;
-    }
     _token = localStorage.getItem(LS_TOKEN_KEY);
     _workspaceSlug = localStorage.getItem(LS_SLUG_KEY);
   } catch { /* localStorage may be unavailable in some environments */ }
@@ -26,14 +19,13 @@ function _loadFromStorage() {
 // Hydrate on module load
 _loadFromStorage();
 
-export function setAuthState(token: string, slug: string, ttlDays = 7) {
+export function setAuthState(token: string, slug: string, refreshToken?: string) {
   _token = token;
   _workspaceSlug = slug;
   try {
-    const expiryMs = Date.now() + ttlDays * 24 * 60 * 60 * 1000;
     localStorage.setItem(LS_TOKEN_KEY, token);
     localStorage.setItem(LS_SLUG_KEY, slug);
-    localStorage.setItem(LS_EXPIRY_KEY, String(expiryMs));
+    if (refreshToken) localStorage.setItem(LS_REFRESH_KEY, refreshToken);
   } catch { /* ignore */ }
 }
 
@@ -44,6 +36,7 @@ export function clearAuthState() {
     localStorage.removeItem(LS_TOKEN_KEY);
     localStorage.removeItem(LS_SLUG_KEY);
     localStorage.removeItem(LS_EXPIRY_KEY);
+    localStorage.removeItem(LS_REFRESH_KEY);
   } catch { /* ignore */ }
 }
 
@@ -53,8 +46,6 @@ export function isLoggedIn() { return !!_token; }
 
 /**
  * Extracts a human-readable message from API errors.
- * If the error is a 403 plan-limit rejection, it returns the server message
- * so we can show an upgrade prompt instead of a generic toast.
  */
 export function parsePlanError(err: any): { isPlanLimit: boolean; message: string } {
   const raw: string = err?.message ?? "";
@@ -63,7 +54,41 @@ export function parsePlanError(err: any): { isPlanLimit: boolean; message: strin
   return { isPlanLimit, message };
 }
 
+// Prevent concurrent refresh attempts
+let _refreshPromise: Promise<boolean> | null = null;
 
+async function _tryRefresh(): Promise<boolean> {
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
+    try {
+      const stored = localStorage.getItem(LS_REFRESH_KEY);
+      if (!stored) return false;
+
+      const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: stored }),
+      });
+
+      if (!res.ok) return false;
+
+      const data = await res.json();
+      _token = data.access_token;
+      try {
+        localStorage.setItem(LS_TOKEN_KEY, data.access_token);
+        if (data.refresh_token) localStorage.setItem(LS_REFRESH_KEY, data.refresh_token);
+      } catch { }
+      return true;
+    } catch {
+      return false;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
+}
 
 async function request<T>(
   method: string,
@@ -71,23 +96,33 @@ async function request<T>(
   data?: unknown,
   options?: { isFormData?: boolean }
 ): Promise<T> {
-  const headers: Record<string, string> = {};
-  if (_token) headers["Authorization"] = `Bearer ${_token}`;
-  if (_workspaceSlug) headers["x-workspace-slug"] = _workspaceSlug;
-  if (!options?.isFormData && data) headers["Content-Type"] = "application/json";
+  const buildHeaders = (): Record<string, string> => {
+    const h: Record<string, string> = {};
+    if (_token) h["Authorization"] = `Bearer ${_token}`;
+    if (_workspaceSlug) h["x-workspace-slug"] = _workspaceSlug;
+    if (!options?.isFormData && data) h["Content-Type"] = "application/json";
+    return h;
+  };
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: options?.isFormData ? (data as FormData) : data ? JSON.stringify(data) : undefined,
-  });
+  const body = options?.isFormData ? (data as FormData) : data ? JSON.stringify(data) : undefined;
+
+  let res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body });
+
+  // On 401, attempt token refresh and retry once
+  if (res.status === 401 && !path.includes("/auth/login") && !path.includes("/auth/refresh")) {
+    const refreshed = await _tryRefresh();
+    if (refreshed) {
+      res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body });
+    }
+    if (!refreshed || res.status === 401) {
+      clearAuthState();
+      window.location.hash = "#/login";
+      throw new Error("401: Sesión expirada.");
+    }
+  }
 
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    if (res.status === 401 && !path.includes("/auth/login")) {
-      clearAuthState();
-      window.location.hash = "#/login";
-    }
     throw new Error(`${res.status}: ${text}`);
   }
 
@@ -106,8 +141,9 @@ export const api = {
       body: JSON.stringify({ email, password }),
     });
     if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
-    return r.json() as Promise<{ access_token: string; user: any }>;
+    return r.json() as Promise<{ access_token: string; refresh_token: string; user: any }>;
   },
+  logout: () => request<any>("POST", "/api/auth/logout"),
   getMe: () => request<any>("GET", "/api/auth/me"),
   generateSummary: () => request<any>("POST", "/api/summaries/generate"),
   getDailySummaries: (params?: Record<string, string>) => {
@@ -185,8 +221,16 @@ export const api = {
   },
   configureEmail: (id: string, data: { api_key: string; from_email: string; from_name: string }) =>
     request<any>('POST', `/api/channels/${id}/configure-email`, data),
-
   configureWhatsApp: (id: string, data: { access_token: string; phone_number_id: string; waba_id: string }) =>
     request<any>('POST', `/api/channels/${id}/configure-whatsapp`, data),
+  // Departments
+  getDepartments: () => request<any>("GET", "/api/departments"),
+  createDepartment: (data: any) => request<any>("POST", "/api/departments", data),
+  updateDepartment: (id: string, data: any) => request<any>("PATCH", `/api/departments/${id}`, data),
+  deleteDepartment: (id: string) => request<any>("DELETE", `/api/departments/${id}`),
+  getDepartmentMembers: (id: string) => request<any>("GET", `/api/departments/${id}/members`),
+  addDepartmentMember: (id: string, data: { user_id: string; is_lead?: boolean }) =>
+    request<any>("POST", `/api/departments/${id}/members`, data),
+  removeDepartmentMember: (id: string, userId: string) =>
+    request<any>("DELETE", `/api/departments/${id}/members/${userId}`),
 };
-

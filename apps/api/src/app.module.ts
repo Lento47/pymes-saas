@@ -25,6 +25,7 @@ import { EventsModule } from './gateways/events.module';
 import { EmailModule } from './email/email.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { PlanLimitsModule } from './common/plan-limits/plan-limits.module';
+import { DepartmentsModule } from './departments/departments.module';
 
 @Module({
   imports: [
@@ -54,6 +55,8 @@ import { PlanLimitsModule } from './common/plan-limits/plan-limits.module';
 
     SearchModule,
     AuditModule,
+
+    DepartmentsModule,
 
     WorkersModule,
     EventsModule,

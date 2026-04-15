@@ -41,10 +41,10 @@ export class ConversationsController {
 
   @Get()
   findAll(
-    @CurrentUser('workspace_id') workspaceId: string,
+    @CurrentUser() user: AuthUser,
     @Query() filters: FilterConversationsDto,
   ) {
-    return this.service.findAll(workspaceId, filters);
+    return this.service.findAll(user.workspace_id, filters, { id: user.id, role: user.role });
   }
 
   @Post()

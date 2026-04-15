@@ -10,19 +10,14 @@ import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
-
-// ─── Nota de arquitectura ────────────────────────────────────────────────────
-// El campo `password_hash` debe agregarse al modelo User en schema.prisma:
-//   password_hash  String?
-// En producción, considera migrar a Clerk o Supabase Auth y eliminar
-// la gestión de contraseñas de esta capa.
-// ────────────────────────────────────────────────────────────────────────────
+import { RefreshTokenService } from './refresh-token.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly refreshTokenService: RefreshTokenService,
   ) {}
 
   // ── Login ──────────────────────────────────────────────────────────────────
@@ -61,15 +56,18 @@ export class AuthService {
     });
     if (!membership) throw new UnauthorizedException('Sin acceso a este workspace.');
 
-    const token = this.signToken({
+    const access_token = this.signToken({
       sub: user.id,
       email: user.email,
       workspace_id: workspace.id,
       role: membership.role,
     });
 
+    const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
+
     return {
-      access_token: token,
+      access_token,
+      refresh_token,
       user: {
         id: user.id,
         email: user.email,
@@ -106,14 +104,12 @@ export class AuthService {
       },
     });
 
-    // Si viene invite_token, procesar en WorkspacesService (ver invite flow)
     if (dto.invite_token) {
       throw new BadRequestException(
         'Invite token: implementar en WorkspacesService.acceptInvite()',
       );
     }
 
-    // Crear workspace propio con slug derivado del email
     const slug = dto.email
       .split('@')[0]
       .toLowerCase()
@@ -135,14 +131,16 @@ export class AuthService {
       },
     });
 
-    const token = this.signToken({
+    const access_token = this.signToken({
       sub: user.id,
       email: user.email,
       workspace_id: workspace.id,
       role: 'OWNER',
     });
 
-    return { access_token: token };
+    const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
+
+    return { access_token, refresh_token };
   }
 
   // ── Me ─────────────────────────────────────────────────────────────────────
