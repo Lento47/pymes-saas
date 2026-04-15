@@ -13,6 +13,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { ConversationsService } from './conversations.service';
 import { MessagesService } from './messages.service';
 import { EmailService } from '../email/email.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -32,6 +33,7 @@ export class ConversationsController {
     private readonly service: ConversationsService,
     private readonly messagesService: MessagesService,
     private readonly emailService: EmailService,
+    private readonly whatsAppService: WhatsAppService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -135,6 +137,16 @@ export class ConversationsController {
         );
       } catch (err: any) {
         this.logger.error(`Email dispatch failed: ${err?.message}`);
+      }
+    }
+
+    if (conv?.channel?.type === 'WHATSAPP' && (conv.contact as any)?.phone) {
+      try {
+        // Strip non-digits and leading + so Meta receives e.g. "50672134886"
+        const to = ((conv.contact as any).phone as string).replace(/\D/g, '');
+        await this.whatsAppService.sendMessage(conv.channel, to, dto.body_text ?? '');
+      } catch (err: any) {
+        this.logger.error(`WhatsApp dispatch failed: ${err?.message}`);
       }
     }
 
