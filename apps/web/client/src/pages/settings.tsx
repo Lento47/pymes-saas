@@ -229,9 +229,9 @@ function WorkspaceTab() {
         onClick={() => {
           // Only send fields that the backend DTO accepts (no slug)
           const payload: Record<string, string> = {};
-          if (form.name)         payload.name         = form.name;
-          if (form.timezone)     payload.timezone     = form.timezone;
-          if (form.locale)       payload.locale       = form.locale;
+          if (form.name) payload.name = form.name;
+          if (form.timezone) payload.timezone = form.timezone;
+          if (form.locale) payload.locale = form.locale;
           if (form.country_code) payload.country_code = form.country_code;
           updateMutation.mutate(payload as any);
         }}
@@ -410,149 +410,225 @@ function MembersTab() {
 
 // ─── 3. Channels Tab ──────────────────────────────────────────────────────────
 
+// ─── REEMPLAZAR la función ChannelsTab completa en settings.tsx ──────────────
+// Agrega: modal "Configurar Email" con campos api_key, from_email, from_name
+// El botón aparece solo en canales de tipo EMAIL que no están ACTIVE
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Agregar este import al api.ts:
+// configureEmail: (id: string, data: any) => request<any>('POST', `/api/channels/${id}/configure-email`, data),
+
+// ─── Reemplazar la función ChannelsTab con esta versión completa: ─────────────
+
 function ChannelsTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState<any>(null);
   const [name, setName] = useState("");
   const [type, setType] = useState("EMAIL");
-  const [editChannel, setEditChannel] = useState<any>(null);
-  const [editName, setEditName] = useState("");
+
+  // Campos de configuración email
+  const [apiKey, setApiKey] = useState("");
+  const [fromEmail, setFromEmail] = useState("");
+  const [fromName, setFromName] = useState("");
 
   const { data, isLoading } = useQuery({ queryKey: ["/api/channels"], queryFn: () => api.getChannels() });
 
   const create = useMutation({
     mutationFn: () => api.createChannel({ name, type }),
-    onSuccess: () => { toast({ title: "Canal creado" }); qc.invalidateQueries({ queryKey: ["/api/channels"] }); setOpen(false); setName(""); },
+    onSuccess: () => {
+      toast({ title: "Canal creado" });
+      qc.invalidateQueries({ queryKey: ["/api/channels"] });
+      setOpen(false);
+      setName("");
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const configureEmail = useMutation({
+    mutationFn: () => (api as any).configureEmail(selectedChannel?.id, {
+      api_key: apiKey,
+      from_email: fromEmail,
+      from_name: fromName,
+    }),
+    onSuccess: () => {
+      toast({ title: "Canal configurado", description: "El canal de email está activo." });
+      qc.invalidateQueries({ queryKey: ["/api/channels"] });
+      setConfigOpen(false);
+      setApiKey("");
+      setFromEmail("");
+      setFromName("");
+    },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const connect = useMutation({
     mutationFn: (id: string) => api.connectChannel(id),
-    onSuccess: () => { toast({ title: "Canal conectado" }); qc.invalidateQueries({ queryKey: ["/api/channels"] }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const disconnectCh = useMutation({
-    mutationFn: (id: string) => api.disconnectChannel(id),
-    onSuccess: () => { toast({ title: "Canal desconectado" }); qc.invalidateQueries({ queryKey: ["/api/channels"] }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const deleteCh = useMutation({
-    mutationFn: (id: string) => api.deleteChannel(id),
-    onSuccess: () => { toast({ title: "Canal eliminado" }); qc.invalidateQueries({ queryKey: ["/api/channels"] }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const updateCh = useMutation({
-    mutationFn: () => api.updateChannel(editChannel.id, { name: editName }),
-    onSuccess: () => { toast({ title: "Canal actualizado" }); qc.invalidateQueries({ queryKey: ["/api/channels"] }); setEditChannel(null); },
+    onSuccess: () => {
+      toast({ title: "Canal conectado" });
+      qc.invalidateQueries({ queryKey: ["/api/channels"] });
+    },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const channels = Array.isArray(data) ? data : [];
 
-  const CHANNEL_ICONS: Record<string, string> = {
-    EMAIL: "✉️", WHATSAPP: "💬", FORM: "📋", API: "🔌", MANUAL: "👤",
+  const openEmailConfig = (ch: any) => {
+    setSelectedChannel(ch);
+    setFromEmail("");
+    setFromName("");
+    setApiKey("");
+    setConfigOpen(true);
   };
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-5">
-        <p className="text-sm text-muted-foreground">{channels.length} canal(es) configurado(s)</p>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-muted-foreground">{channels.length} canal(es)</p>
+
+        {/* Modal crear canal */}
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8 text-xs"><Plus className="h-3.5 w-3.5 mr-1.5" /> Nuevo canal</Button>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="h-4 w-4 mr-2" />Nuevo canal
+            </Button>
           </DialogTrigger>
           <DialogContent className="bg-[#1c2030] border-[#272d3f]">
-            <DialogHeader><DialogTitle>Configurar canal de comunicación</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
+            <DialogHeader><DialogTitle>Crear canal</DialogTitle></DialogHeader>
+            <div className="space-y-3 pt-2">
               <div>
-                <Label>Nombre del canal</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: WhatsApp Ventas" className="mt-1 bg-[#151820] border-[#272d3f]" />
+                <Label>Nombre</Label>
+                <Input value={name} onChange={e => setName(e.target.value)} placeholder="Correo principal" className="mt-1 bg-[#151820] border-[#272d3f]" />
               </div>
               <div>
-                <Label>Tipo de canal</Label>
+                <Label>Tipo</Label>
                 <Select value={type} onValueChange={setType}>
                   <SelectTrigger className="mt-1 bg-[#151820] border-[#272d3f]"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-[#1c2030] border-[#272d3f]">
-                    {[["EMAIL", "✉️ Email"], ["WHATSAPP", "💬 WhatsApp"], ["FORM", "📋 Formulario Web"], ["API", "🔌 API"], ["MANUAL", "👤 Manual"]].map(([val, label]) => (
-                      <SelectItem key={val} value={val}>{label}</SelectItem>
+                    {["EMAIL", "WHATSAPP", "FORM", "API", "MANUAL"].map(t => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <Button onClick={() => create.mutate()} disabled={!name || create.isPending} className="w-full bg-blue-600 hover:bg-blue-700">
-                {create.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Crear canal
+                {create.isPending ? "Creando..." : "Crear canal"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Dialog open={!!editChannel} onOpenChange={o => !o && setEditChannel(null)}>
+      {/* Modal configurar email */}
+      <Dialog open={configOpen} onOpenChange={setConfigOpen}>
         <DialogContent className="bg-[#1c2030] border-[#272d3f]">
-          <DialogHeader><DialogTitle>Editar canal {editChannel?.type}</DialogTitle></DialogHeader>
-          <div className="space-y-4 pt-2">
+          <DialogHeader>
+            <DialogTitle>Configurar canal EMAIL</DialogTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Obtené tu API key en{" "}
+              <a href="https://resend.com/api-keys" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                resend.com/api-keys
+              </a>
+            </p>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
             <div>
-              <Label>Nombre del canal</Label>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} className="mt-1 bg-[#151820] border-[#272d3f]" />
+              <Label>API Key de Resend</Label>
+              <Input
+                type="password"
+                value={apiKey}
+                onChange={e => setApiKey(e.target.value)}
+                placeholder="re_xxxxxxxxxxxxxxxxxxxx"
+                className="mt-1 bg-[#151820] border-[#272d3f] font-mono text-xs"
+              />
             </div>
-            <Button onClick={() => updateCh.mutate()} disabled={!editName || updateCh.isPending} className="w-full bg-blue-600 hover:bg-blue-700">
-              {updateCh.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Guardar cambios
+            <div>
+              <Label>Email remitente</Label>
+              <Input
+                type="email"
+                value={fromEmail}
+                onChange={e => setFromEmail(e.target.value)}
+                placeholder="onboarding@resend.dev"
+                className="mt-1 bg-[#151820] border-[#272d3f]"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Usá <span className="font-mono">onboarding@resend.dev</span> para pruebas sin dominio propio.
+              </p>
+            </div>
+            <div>
+              <Label>Nombre remitente</Label>
+              <Input
+                value={fromName}
+                onChange={e => setFromName(e.target.value)}
+                placeholder="PYMES CRM"
+                className="mt-1 bg-[#151820] border-[#272d3f]"
+              />
+            </div>
+            <Button
+              onClick={() => configureEmail.mutate()}
+              disabled={!apiKey || !fromEmail || !fromName || configureEmail.isPending}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              {configureEmail.isPending ? "Configurando..." : "Guardar y activar canal"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {isLoading ? <div className="flex items-center text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Cargando...</div> : (
+      {/* Lista de canales */}
+      {isLoading ? (
+        <div className="text-muted-foreground text-sm">Cargando...</div>
+      ) : (
         <div className="space-y-2">
           {channels.map((ch: any) => (
-            <div key={ch.id} className="group flex items-center justify-between p-3.5 rounded-lg bg-[#1c2030] border border-[#272d3f] hover:border-[#38415c] transition-colors">
+            <div key={ch.id} className="flex items-center justify-between p-3 rounded-lg bg-[#1c2030] border border-[#272d3f]">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[#151820] border border-[#272d3f] flex items-center justify-center text-lg">{CHANNEL_ICONS[ch.type] ?? "📡"}</div>
+                <Radio className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">{ch.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Badge variant="outline" className={`text-xs ${CHANNEL_TYPE_COLORS[ch.type] ?? ""}`}>{ch.type}</Badge>
-                    {ch.provider && <span className="text-xs text-muted-foreground">{ch.provider}</span>}
-                  </div>
+                  <Badge variant="outline" className={`text-xs mt-1 ${CHANNEL_TYPE_COLORS[ch.type] ?? ""}`}>
+                    {ch.type}
+                  </Badge>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className={ch.status === "ACTIVE" ? "text-green-400 border-green-500/30 bg-green-500/5" : "text-gray-400 border-gray-500/30"}>
-                  {ch.status === "ACTIVE" ? "● Activo" : ch.status}
+                <Badge variant="outline" className={ch.status === "ACTIVE" ? "text-green-400 border-green-500/30" : "text-gray-400 border-gray-500/30"}>
+                  {ch.status}
                 </Badge>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"><MoreHorizontal className="h-4 w-4" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48 bg-[#1c2030] border-[#272d3f]">
-                    <DropdownMenuItem onClick={() => { setEditChannel(ch); setEditName(ch.name || ""); }}><Pencil className="w-4 h-4 mr-2" /> Editar nombre</DropdownMenuItem>
-                    {ch.status !== "ACTIVE"
-                      ? <DropdownMenuItem onClick={() => connect.mutate(ch.id)}><Plug className="w-4 h-4 mr-2" /> Conectar</DropdownMenuItem>
-                      : <DropdownMenuItem onClick={() => disconnectCh.mutate(ch.id)}><PlugZap className="w-4 h-4 mr-2" /> Desconectar</DropdownMenuItem>
-                    }
-                    <DropdownMenuSeparator className="bg-[#272d3f]" />
-                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteCh.mutate(ch.id)}><Trash className="w-4 h-4 mr-2" /> Eliminar canal</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {ch.status !== "ACTIVE" && ch.type === "EMAIL" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-blue-500/30 text-blue-400 h-7 text-xs"
+                    onClick={() => openEmailConfig(ch)}
+                  >
+                    <PlugZap className="h-3 w-3 mr-1" />Configurar
+                  </Button>
+                )}
+                {ch.status !== "ACTIVE" && ch.type !== "EMAIL" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-[#272d3f] h-7 text-xs"
+                    onClick={() => connect.mutate(ch.id)}
+                  >
+                    <Plug className="h-3 w-3 mr-1" />Conectar
+                  </Button>
+                )}
               </div>
             </div>
           ))}
           {channels.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <Radio className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Sin canales configurados</p>
-              <p className="text-xs mt-1">Agrega tu primer canal para comenzar a recibir mensajes</p>
-            </div>
+            <p className="text-sm text-muted-foreground text-center py-8">Sin canales configurados</p>
           )}
         </div>
       )}
     </div>
   );
 }
+
 
 // ─── 4. Billing & Usage Tab ───────────────────────────────────────────────────
 
@@ -811,10 +887,10 @@ function AuditTab() {
 // ─── 7. Security Tab ─────────────────────────────────────────────────────────
 
 const SESSION_OPTIONS = [
-  { days: 1,  label: "1 día",     description: "Alta seguridad — requiere login diario" },
-  { days: 7,  label: "7 días",    description: "Recomendado — balance entre seguridad y comodidad" },
-  { days: 30, label: "30 días",   description: "Conveniente — acceso mensual sin relogin" },
-  { days: 90, label: "90 días",   description: "Persistente — ideal para dispositivos de confianza" },
+  { days: 1, label: "1 día", description: "Alta seguridad — requiere login diario" },
+  { days: 7, label: "7 días", description: "Recomendado — balance entre seguridad y comodidad" },
+  { days: 30, label: "30 días", description: "Conveniente — acceso mensual sin relogin" },
+  { days: 90, label: "90 días", description: "Persistente — ideal para dispositivos de confianza" },
 ];
 
 function SecurityTab() {
@@ -847,16 +923,14 @@ function SecurityTab() {
             <button
               key={days}
               onClick={() => setCurrentTtl(days)}
-              className={`w-full flex items-center justify-between p-4 rounded-lg border text-left transition-all ${
-                currentTtl === days
+              className={`w-full flex items-center justify-between p-4 rounded-lg border text-left transition-all ${currentTtl === days
                   ? "border-blue-500/50 bg-blue-500/5"
                   : "border-[#272d3f] bg-[#1c2030] hover:border-[#38415c]"
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                  currentTtl === days ? "border-blue-500 bg-blue-500" : "border-[#38415c]"
-                }`}>
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${currentTtl === days ? "border-blue-500 bg-blue-500" : "border-[#38415c]"
+                  }`}>
                   {currentTtl === days && <div className="w-2 h-2 rounded-full bg-white" />}
                 </div>
                 <div>

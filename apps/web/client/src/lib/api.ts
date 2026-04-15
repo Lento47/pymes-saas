@@ -1,7 +1,7 @@
 const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 
 const LS_TOKEN_KEY = "pymes_token";
-const LS_SLUG_KEY  = "pymes_slug";
+const LS_SLUG_KEY = "pymes_slug";
 const LS_EXPIRY_KEY = "pymes_token_expiry";
 
 // ── In-memory state (hydrated from localStorage on load) ─────────────────────
@@ -181,5 +181,7 @@ export const api = {
     if (types) params.set("types", types);
     return request<any>("GET", `/api/search?${params.toString()}`);
   },
+  configureEmail: (id: string, data: any) =>
+    request<any>('POST', `/api/channels/${id}/configure-email`, data),
 };
 

@@ -2,117 +2,198 @@ import {
   Body,
   Controller,
   Get,
+  Logger,
   Param,
-  Patch,
   Post,
-  Query,
   UseGuards,
-  Delete,
 } from '@nestjs/common';
-import { ConversationsService } from './conversations.service';
-import { MessagesService } from './messages.service';
-import { CreateConversationDto } from './dto/create-conversation.dto';
-import { UpdateConversationDto } from './dto/update-conversation.dto';
-import { FilterConversationsDto } from './dto/filter-conversations.dto';
-import { SendMessageDto } from './dto/send-message.dto';
+import { PrismaService } from '../common/prisma/prisma.service';
+import { EmailService } from '../email/email.service';
+import { MessagesService } from '../messages/messages.service';
+
+// ── Guards / decorators (assumed to exist in your project) ────────────────────
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
+import { AuthUser } from '../auth/decorators/auth-user.decorator';
+import { IAuthUser } from '../auth/interfaces/auth-user.interface';
 
-@Controller('conversations')
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SendMessageDto {
+  body_text?: string;
+  body_html?: string;
+  subject?: string;
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('conversations')
 export class ConversationsController {
+  private readonly logger = new Logger(ConversationsController.name);
+
   constructor(
-    private readonly service: ConversationsService,
+    private readonly prisma: PrismaService,
     private readonly messagesService: MessagesService,
+    private readonly emailService: EmailService,
   ) {}
 
-  // ── Conversations ──────────────────────────────────────────────────────────
+  // ── Conversations ─────────────────────────────────────────────────────────
 
+  /**
+   * GET /conversations
+   * List conversations for the current workspace.
+   */
   @Get()
-  findAll(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Query() filters: FilterConversationsDto,
-  ) {
-    return this.service.findAll(workspaceId, filters);
+  findAll(@AuthUser() user: IAuthUser) {
+    return this.prisma.conversation.findMany({
+      where: { workspace_id: user.workspace_id },
+      include: { contact: true },
+      orderBy: { updated_at: 'desc' },
+    });
   }
 
-  @Post()
-  @Roles('AGENT' as any)
-  create(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Body() dto: CreateConversationDto,
-  ) {
-    return this.service.create(workspaceId, dto);
-  }
-
+  /**
+   * GET /conversations/:id
+   * Get a single conversation with messages.
+   */
   @Get(':id')
-  findOne(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
-  ) {
-    return this.service.findOne(workspaceId, id);
+  findOne(@AuthUser() user: IAuthUser, @Param('id') id: string) {
+    return this.prisma.conversation.findFirst({
+      where: { id, workspace_id: user.workspace_id },
+      include: { contact: true, messages: { orderBy: { created_at: 'asc' } } },
+    });
   }
 
-  @Patch(':id')
-  @Roles('AGENT' as any)
-  update(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
-    @Body() dto: UpdateConversationDto,
-  ) {
-    return this.service.update(workspaceId, id, dto);
-  }
+  // ── Messages ──────────────────────────────────────────────────────────────
 
-  @Post(':id/assign')
-  @Roles('AGENT' as any)
-  assign(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
-    @Body('user_id') userId: string,
-  ) {
-    return this.service.assign(workspaceId, id, userId);
-  }
-
-  @Post(':id/resolve')
-  @Roles('AGENT' as any)
-  resolve(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
-  ) {
-    return this.service.resolve(workspaceId, id);
-  }
-
-  @Delete(':id')
-  @Roles('AGENT' as any)
-  remove(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
-  ) {
-    return this.service.remove(workspaceId, id);
-  }
-
-  // ── Messages ───────────────────────────────────────────────────────────────
-
-  @Get(':id/messages')
-  getMessages(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') conversationId: string,
-    @Query('page') page = 1,
-    @Query('limit') limit = 50,
-  ) {
-    return this.messagesService.findAll(workspaceId, conversationId, +page, +limit);
-  }
-
+  /**
+   * POST /conversations/:id/messages
+   *
+   * Send an outbound message in a conversation.
+   *
+   * If the conversation belongs to an EMAIL channel AND the contact has an
+   * email address, the message is delivered via Resend automatically.
+   *
+   * Body: { body_text?, body_html?, subject? }
+   */
   @Post(':id/messages')
-  @Roles('AGENT' as any)
-  sendMessage(
-    @CurrentUser() user: AuthUser,
+  async sendMessage(
+    @AuthUser() user: IAuthUser,
     @Param('id') conversationId: string,
     @Body() dto: SendMessageDto,
   ) {
-    return this.messagesService.send(user.workspace_id, conversationId, user, dto);
+    // ── 1. Load conversation with contact ───────────────────────────────────
+    const conversation = await this.prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        workspace_id: user.workspace_id,
+      },
+      include: { contact: true },
+    });
+
+    if (!conversation) {
+      return { error: `Conversation ${conversationId} not found.` };
+    }
+
+    // ── 2. Persist message in DB via MessagesService ────────────────────────
+    const message = await this.messagesService.send({
+      workspace_id: user.workspace_id,
+      conversation_id: conversationId,
+      direction: 'OUTBOUND',
+      body_text: dto.body_text,
+      body_html: dto.body_html,
+    });
+
+    // ── 3. If EMAIL channel → deliver via Resend ────────────────────────────
+    if (conversation.channel_id) {
+      const channel = await this.prisma.channel.findFirst({
+        where: {
+          id: conversation.channel_id,
+          workspace_id: user.workspace_id,
+        },
+      });
+
+      if (channel?.type === 'EMAIL') {
+        const contactEmail = (conversation.contact as any)?.email;
+
+        if (contactEmail) {
+          const subject =
+            dto.subject ??
+            (conversation as any).subject ??
+            'Nuevo mensaje';
+
+          const bodyHtml =
+            dto.body_html ??
+            dto.body_text ??
+            message.body_html ??
+            message.body_text ??
+            '';
+
+          const bodyText = dto.body_text ?? message.body_text ?? undefined;
+
+          try {
+            const result = await this.emailService.sendOutbound(
+              channel,
+              contactEmail,
+              subject,
+              bodyHtml,
+              bodyText,
+            );
+
+            this.logger.log(
+              `Email sent to ${contactEmail} — Resend id: ${result.id}`,
+            );
+
+            // Optionally update message with external provider id
+            await this.prisma.message
+              .update({
+                where: { id: message.id },
+                data: {
+                  raw_payload_json: {
+                    ...(typeof message.raw_payload_json === 'object'
+                      ? (message.raw_payload_json as object)
+                      : {}),
+                    resend_id: result.id,
+                  },
+                },
+              })
+              .catch((err) => {
+                this.logger.warn(
+                  'Could not update message with Resend id',
+                  err?.message,
+                );
+              });
+          } catch (err: any) {
+            this.logger.error(
+              `Failed to send email via Resend: ${err?.message}`,
+            );
+            // Re-throw so the caller knows delivery failed.
+            throw err;
+          }
+        } else {
+          this.logger.warn(
+            `Conversation ${conversationId} is EMAIL but contact has no email address.`,
+          );
+        }
+      }
+    }
+
+    return message;
+  }
+
+  // ── Messages list ─────────────────────────────────────────────────────────
+
+  /**
+   * GET /conversations/:id/messages
+   * List all messages in a conversation.
+   */
+  @Get(':id/messages')
+  getMessages(@AuthUser() user: IAuthUser, @Param('id') conversationId: string) {
+    return this.prisma.message.findMany({
+      where: {
+        conversation_id: conversationId,
+        workspace_id: user.workspace_id,
+      },
+      orderBy: { created_at: 'asc' },
+    });
   }
 }
