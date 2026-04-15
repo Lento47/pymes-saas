@@ -1,0 +1,530 @@
+// ============================================================
+// schema.prisma — SaaS Multi-tenant Blueprint
+// Stack: NestJS + PostgreSQL + Prisma
+// Generado como blueprint de producto listo para construir
+// ============================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum WorkspaceStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+  DELETED
+}
+
+enum WorkspacePlan {
+  FREE
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  INVITED
+  BANNED
+}
+
+enum WorkspaceUserRole {
+  OWNER
+  ADMIN
+  AGENT
+  VIEWER
+}
+
+enum ContactType {
+  CUSTOMER
+  VENDOR
+  LEAD
+  OTHER
+}
+
+enum ChannelType {
+  EMAIL
+  WHATSAPP
+  FORM
+  API
+  MANUAL
+}
+
+enum ChannelStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  PENDING_SETUP
+}
+
+enum ConversationStatus {
+  NEW
+  OPEN
+  PENDING
+  RESOLVED
+  ARCHIVED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+  INTERNAL
+}
+
+enum DocumentStatus {
+  UPLOADED
+  PROCESSING
+  PROCESSED
+  FAILED
+  ARCHIVED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  ARCHIVED
+}
+
+enum TaskSource {
+  MANUAL
+  AUTOMATION
+  MESSAGE
+  DOCUMENT
+  SUMMARY
+}
+
+enum AutomationExecutionStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+enum TriggerType {
+  MESSAGE_RECEIVED
+  CONVERSATION_CREATED
+  CONVERSATION_STATUS_CHANGED
+  TASK_CREATED
+  TASK_OVERDUE
+  DOCUMENT_UPLOADED
+  DOCUMENT_PROCESSED
+  SCHEDULED
+  MANUAL
+}
+
+// ============================================================
+// CORE — Auth & Tenancy
+// ============================================================
+
+model Workspace {
+  id           String          @id @default(cuid())
+  name         String
+  slug         String          @unique
+  country_code String?         @db.Char(2)
+  timezone     String          @default("UTC")
+  locale       String          @default("en")
+  status       WorkspaceStatus @default(ACTIVE)
+  plan         WorkspacePlan   @default(FREE)
+  settings_json Json?          @db.JsonB
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  workspace_users      WorkspaceUser[]
+  contacts             Contact[]
+  channels             Channel[]
+  conversations        Conversation[]
+  messages             Message[]
+  tasks                Task[]
+  documents            Document[]
+  automation_rules     AutomationRule[]
+  automation_executions AutomationExecution[]
+  daily_summaries      DailySummary[]
+  notifications        Notification[]
+  audit_logs           AuditLog[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("workspaces")
+}
+
+model User {
+  id         String     @id @default(cuid())
+  email      String     @unique
+  name       String
+  avatar_url String?
+  password_hash String?
+  status     UserStatus @default(ACTIVE)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  workspace_users       WorkspaceUser[]
+  assigned_conversations Conversation[]     @relation("ConversationAssignee")
+  assigned_tasks        Task[]              @relation("TaskAssignee")
+  uploaded_documents    Document[]          @relation("DocumentUploader")
+  automation_rules      AutomationRule[]    @relation("RuleCreator")
+  notifications         Notification[]
+  audit_logs            AuditLog[]
+  outbound_messages     Message[]           @relation("MessageSender")
+
+  @@index([email])
+  @@index([status])
+  @@map("users")
+}
+
+model WorkspaceUser {
+  id           String            @id @default(cuid())
+  workspace_id String
+  user_id      String
+  role         WorkspaceUserRole @default(AGENT)
+  is_owner     Boolean           @default(false)
+
+  created_at DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, user_id])
+  @@index([workspace_id])
+  @@index([user_id])
+  @@map("workspace_users")
+}
+
+// ============================================================
+// CRM — Contacts & Channels
+// ============================================================
+
+model Contact {
+  id               String      @id @default(cuid())
+  workspace_id     String
+  type             ContactType @default(CUSTOMER)
+  full_name        String
+  company_name     String?
+  email            String?
+  phone            String?
+  external_ref     String?
+  tags_json        Json?       @db.JsonB
+  last_interaction_at DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace     Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  tasks         Task[]
+  documents     Document[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, email])
+  @@index([workspace_id, phone])
+  @@index([workspace_id, external_ref])
+  @@index([workspace_id, type])
+  @@map("contacts")
+}
+
+model Channel {
+  id           String        @id @default(cuid())
+  workspace_id String
+  type         ChannelType
+  provider     String?
+  name         String
+  status       ChannelStatus @default(PENDING_SETUP)
+  config_json  Json?         @db.JsonB // encrypted secrets at app layer
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace     Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, type])
+  @@index([workspace_id, status])
+  @@map("channels")
+}
+
+// ============================================================
+// CONVERSATIONS & MESSAGES
+// ============================================================
+
+model Conversation {
+  id               String             @id @default(cuid())
+  workspace_id     String
+  channel_id       String
+  contact_id       String?
+  subject          String?
+  status           ConversationStatus @default(NEW)
+  priority         Priority           @default(MEDIUM)
+  category         String?
+  assigned_user_id String?
+  last_message_at  DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace     Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  channel       Channel   @relation(fields: [channel_id], references: [id])
+  contact       Contact?  @relation(fields: [contact_id], references: [id])
+  assigned_user User?     @relation("ConversationAssignee", fields: [assigned_user_id], references: [id])
+
+  messages  Message[]
+  tasks     Task[]
+  documents Document[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, priority])
+  @@index([workspace_id, assigned_user_id])
+  @@index([workspace_id, contact_id])
+  @@index([workspace_id, channel_id])
+  @@index([workspace_id, last_message_at(sort: Desc)])
+  @@map("conversations")
+}
+
+model Message {
+  id                    String           @id @default(cuid())
+  workspace_id          String
+  conversation_id       String
+  direction             MessageDirection
+  sender_name           String?
+  sender_ref            String?           // email address, phone number, user_id, etc.
+  sender_user_id        String?           // populated for outbound/internal
+  body_text             String?           @db.Text
+  body_html             String?           @db.Text
+  raw_payload_json      Json?             @db.JsonB
+  ai_classification_json Json?            @db.JsonB
+  sent_at               DateTime?
+
+  created_at DateTime @default(now())
+
+  workspace    Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  sender_user  User?        @relation("MessageSender", fields: [sender_user_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([conversation_id])
+  @@index([workspace_id, direction])
+  @@index([sent_at(sort: Desc)])
+  @@map("messages")
+}
+
+// ============================================================
+// TASKS
+// ============================================================
+
+model Task {
+  id               String     @id @default(cuid())
+  workspace_id     String
+  conversation_id  String?
+  contact_id       String?
+  source           TaskSource @default(MANUAL)
+  title            String
+  description      String?    @db.Text
+  status           TaskStatus @default(TODO)
+  priority         Priority   @default(MEDIUM)
+  assigned_user_id String?
+  due_at           DateTime?
+  completed_at     DateTime?
+  metadata_json    Json?      @db.JsonB
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace     Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversation  Conversation? @relation(fields: [conversation_id], references: [id])
+  contact       Contact?     @relation(fields: [contact_id], references: [id])
+  assigned_user User?        @relation("TaskAssignee", fields: [assigned_user_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, priority])
+  @@index([workspace_id, assigned_user_id])
+  @@index([workspace_id, due_at])
+  @@index([workspace_id, source])
+  @@map("tasks")
+}
+
+// ============================================================
+// DOCUMENTS
+// ============================================================
+
+model Document {
+  id                  String         @id @default(cuid())
+  workspace_id        String
+  contact_id          String?
+  conversation_id     String?
+  task_id             String?
+  file_name           String
+  mime_type           String
+  storage_key         String         // S3/MinIO object key
+  file_size           Int            // bytes
+  ocr_text            String?        @db.Text
+  extracted_data_json Json?          @db.JsonB
+  summary_text        String?        @db.Text
+  status              DocumentStatus @default(UPLOADED)
+  uploaded_by_user_id String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace       Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact         Contact?     @relation(fields: [contact_id], references: [id])
+  conversation    Conversation? @relation(fields: [conversation_id], references: [id])
+  uploaded_by     User?        @relation("DocumentUploader", fields: [uploaded_by_user_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, contact_id])
+  @@index([workspace_id, conversation_id])
+  @@map("documents")
+}
+
+// ============================================================
+// AUTOMATIONS
+// ============================================================
+
+model AutomationRule {
+  id                   String      @id @default(cuid())
+  workspace_id         String
+  name                 String
+  description          String?     @db.Text
+  trigger_type         TriggerType
+  trigger_config_json  Json        @db.JsonB
+  condition_config_json Json?      @db.JsonB
+  action_config_json   Json        @db.JsonB
+  enabled              Boolean     @default(true)
+  created_by_user_id   String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace    Workspace             @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  created_by   User?                 @relation("RuleCreator", fields: [created_by_user_id], references: [id])
+  executions   AutomationExecution[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, enabled])
+  @@index([workspace_id, trigger_type])
+  @@map("automation_rules")
+}
+
+model AutomationExecution {
+  id                  String                    @id @default(cuid())
+  workspace_id        String
+  rule_id             String
+  trigger_entity_type String                    // "message" | "conversation" | "document" | "task"
+  trigger_entity_id   String
+  status              AutomationExecutionStatus @default(QUEUED)
+  input_json          Json?                     @db.JsonB
+  output_json         Json?                     @db.JsonB
+  error_message       String?                   @db.Text
+  started_at          DateTime?
+  finished_at         DateTime?
+
+  created_at DateTime @default(now())
+
+  workspace Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  rule      AutomationRule @relation(fields: [rule_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([rule_id])
+  @@index([workspace_id, status])
+  @@index([trigger_entity_type, trigger_entity_id])
+  @@map("automation_executions")
+}
+
+// ============================================================
+// SUMMARIES
+// ============================================================
+
+model DailySummary {
+  id             String   @id @default(cuid())
+  workspace_id   String
+  summary_date   DateTime @db.Date
+  generated_text String   @db.Text
+  metrics_json   Json?    @db.JsonB
+  generated_at   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, summary_date])
+  @@index([workspace_id])
+  @@index([workspace_id, summary_date(sort: Desc)])
+  @@map("daily_summaries")
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+model Notification {
+  id                  String   @id @default(cuid())
+  workspace_id        String
+  user_id             String
+  type                String   // "task_due" | "message_received" | "mention" | "automation_failed" etc.
+  title               String
+  body                String   @db.Text
+  read_at             DateTime?
+  related_entity_type String?  // "conversation" | "task" | "document"
+  related_entity_id   String?
+
+  created_at DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, user_id])
+  @@index([workspace_id, user_id, read_at])
+  @@index([created_at(sort: Desc)])
+  @@map("notifications")
+}
+
+// ============================================================
+// AUDIT LOGS
+// ============================================================
+
+model AuditLog {
+  id          String  @id @default(cuid())
+  workspace_id String
+  user_id     String?
+  action      String  // "contact.created" | "conversation.resolved" | "rule.enabled" etc.
+  entity_type String
+  entity_id   String
+  before_json Json?   @db.JsonB
+  after_json  Json?   @db.JsonB
+
+  created_at DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [user_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([workspace_id, entity_type, entity_id])
+  @@index([workspace_id, user_id])
+  @@index([created_at(sort: Desc)])
+  @@map("audit_logs")
+}

@@ -1,0 +1,44 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { SummariesService } from './summaries.service';
+import { FilterSummariesDto } from './dto/filter-summaries.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('summaries')
+export class SummariesController {
+  constructor(private readonly summariesService: SummariesService) {}
+
+  @Get('daily')
+  @Roles('AGENT', 'ADMIN', 'OWNER')
+  findAll(
+    @CurrentUser() user: any,
+    @Query() filters: FilterSummariesDto,
+  ) {
+    return this.summariesService.findAll(user.workspace_id, filters);
+  }
+
+  @Get('daily/:date')
+  @Roles('AGENT', 'ADMIN', 'OWNER')
+  findByDate(
+    @CurrentUser() user: any,
+    @Param('date') date: string,
+  ) {
+    return this.summariesService.findByDate(user.workspace_id, date);
+  }
+
+  @Post('generate')
+  @Roles('ADMIN', 'OWNER')
+  generate(@CurrentUser() user: any) {
+    return this.summariesService.generate(user.workspace_id);
+  }
+}

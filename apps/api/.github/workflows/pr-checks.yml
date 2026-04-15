@@ -1,0 +1,165 @@
+# =============================================================================
+# PR Checks — NestJS SaaS
+# =============================================================================
+# Valida que cada Pull Request cumpla con estándares mínimos antes de merge:
+#   1. Descripción del PR no vacía
+#   2. Build TypeScript sin errores
+#   3. Comentario automático en el PR si hay errores de build
+#
+# Secrets / Permisos:
+#   GITHUB_TOKEN — inyectado automáticamente; necesita permiso "pull-requests: write"
+#   Asegúrate de que en Settings > Actions > General > Workflow permissions
+#   esté habilitado "Read and write permissions" o usa el bloque "permissions" abajo.
+# =============================================================================
+
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write  # Necesario para comentar en el PR
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-validation:
+    name: PR Validation & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Paso 1: Verificar que la descripción del PR no esté vacía
+      # -----------------------------------------------------------------------
+      - name: Check PR description is not empty
+        id: check-description
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if [ -z "$(echo "$PR_BODY" | tr -d '[:space:]')" ]; then
+            echo "::error::La descripción del Pull Request está vacía."
+            echo "description_ok=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          else
+            echo "description_ok=true" >> "$GITHUB_OUTPUT"
+            echo "Descripción del PR: OK"
+          fi
+
+      # -----------------------------------------------------------------------
+      # Paso 2: Setup del entorno
+      # -----------------------------------------------------------------------
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js 20 with pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm exec prisma generate
+
+      # -----------------------------------------------------------------------
+      # Paso 3: TypeScript build — capturar resultado
+      # -----------------------------------------------------------------------
+      - name: TypeScript build
+        id: ts-build
+        run: |
+          set +e
+          BUILD_OUTPUT=$(pnpm run build 2>&1)
+          BUILD_EXIT_CODE=$?
+          set -e
+
+          # Guardar salida para usarla en el comentario
+          {
+            echo "build_output<<ENDOFBUILD"
+            echo "$BUILD_OUTPUT"
+            echo "ENDOFBUILD"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "build_exit_code=$BUILD_EXIT_CODE" >> "$GITHUB_OUTPUT"
+
+          if [ "$BUILD_EXIT_CODE" -ne 0 ]; then
+            echo "::error::El build de TypeScript falló. Ver detalles abajo."
+          fi
+
+          exit $BUILD_EXIT_CODE
+
+      # -----------------------------------------------------------------------
+      # Paso 4: Comentar en el PR si el build falla
+      # -----------------------------------------------------------------------
+      - name: Comment on PR if build fails
+        if: failure() && steps.ts-build.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const buildOutput = `${{ steps.ts-build.outputs.build_output }}`;
+            const sha = context.sha.substring(0, 7);
+
+            const body = [
+              `## ❌ Build fallido en \`${sha}\``,
+              '',
+              'El build de TypeScript encontró errores. Por favor corrígelos antes de mergear.',
+              '',
+              '<details>',
+              '<summary>Ver output del build</summary>',
+              '',
+              '```',
+              buildOutput.substring(0, 10000), // Limitar a 10k chars
+              '```',
+              '</details>',
+              '',
+              `> *Generado automáticamente por el workflow \`PR Checks\`*`,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      # -----------------------------------------------------------------------
+      # Paso 5: Comentar éxito en el PR (opcional, primera vez o re-run)
+      # -----------------------------------------------------------------------
+      - name: Comment on PR if build succeeds
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const sha = context.sha.substring(0, 7);
+
+            // Buscar comentario previo de error para reemplazarlo
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.data.find(
+              c => c.user.type === 'Bot' && c.body.includes('Build fallido')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: `## ✅ Build corregido en \`${sha}\`\n\nEl build de TypeScript pasa correctamente.\n\n> *Generado automáticamente por el workflow \`PR Checks\`*`,
+              });
+            }

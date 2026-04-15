@@ -1,0 +1,118 @@
+# =============================================================================
+# CI Pipeline — NestJS SaaS (pnpm + Prisma + PostgreSQL 16)
+# =============================================================================
+# Secrets requeridos en este workflow:
+#   (ninguno propio; usa GITHUB_TOKEN automático para acciones futuras)
+#
+# Variables de entorno esperadas en el repo (Settings > Secrets and variables):
+#   DATABASE_URL  — solo necesaria en el job "test" (inyectada como env abajo)
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Lint, type-check y build
+  # ---------------------------------------------------------------------------
+  lint-and-type-check:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js 20 with pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm exec prisma generate
+
+      - name: Build (NestJS / TypeScript)
+        run: pnpm run build
+        # Equivalente a tsc --noEmit + compilación de NestJS.
+        # Asegúrate de que el script "build" en package.json ejecute: nest build
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Tests con base de datos real (PostgreSQL 16)
+  # ---------------------------------------------------------------------------
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-type-check
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/test_db?schema=public
+      # Añade aquí otras variables de entorno necesarias para los tests:
+      # JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      # NODE_ENV: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js 20 with pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm exec prisma generate
+
+      - name: Run Prisma migrations
+        run: pnpm exec prisma migrate deploy
+
+      - name: Run tests
+        run: |
+          # TODO: Descomentar cuando los tests estén implementados:
+          # pnpm test
+          # pnpm run test:e2e
+          echo "Tests: agregar 'pnpm test' cuando estén implementados"
