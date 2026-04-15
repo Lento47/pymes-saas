@@ -46,7 +46,7 @@ function NewConversationModal() {
   const create = useMutation({
     mutationFn: () => api.createConversation({
       channel_id: channelId,
-      contact_id: contactId || undefined,
+      contact_id: (contactId && contactId !== "none") ? contactId : undefined,
       subject: subject || undefined,
     }),
     onSuccess: (conv: any) => {
@@ -94,7 +94,7 @@ function NewConversationModal() {
                 <SelectValue placeholder="Seleccioná un contacto (opcional)" />
               </SelectTrigger>
               <SelectContent className="bg-[#1c2030] border-[#272d3f]">
-                <SelectItem value="">Sin contacto</SelectItem>
+                <SelectItem value="none">Sin contacto</SelectItem>
                 {contactList.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.full_name}{c.email ? ` — ${c.email}` : ""}{c.phone ? ` · ${c.phone}` : ""}
