@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileText, Upload, Search, Loader2, MoreHorizontal, Trash } from "lucide-react";
+import { FileText, Upload, Search, Loader2, MoreHorizontal, Trash, Download } from "lucide-react";
 import { format } from "date-fns";
 
 const STATUS_OPTIONS = ["ALL", "UPLOADED", "PROCESSING", "PROCESSED", "FAILED"];
@@ -59,6 +59,32 @@ export default function DocumentsPage() {
       toast({ title: "Failed to delete document", description: err.message, variant: "destructive" });
     },
   });
+
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownload = async (doc: any) => {
+    try {
+      setDownloadingId(doc.id);
+      // GET /api/documents/:id returns the doc with a presigned download_url
+      const full = await api.getDocument(doc.id);
+      if (full?.download_url) {
+        const a = document.createElement("a");
+        a.href = full.download_url;
+        a.download = doc.file_name || doc.filename || doc.name || "document";
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        toast({ title: "No se pudo obtener la URL de descarga", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error al descargar", description: err.message, variant: "destructive" });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -143,7 +169,13 @@ export default function DocumentsPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm text-foreground truncate">{doc.filename || doc.name}</span>
+                      <button
+                        className="text-sm text-foreground truncate hover:text-primary hover:underline text-left"
+                        onClick={() => handleDownload(doc)}
+                        title="Descargar"
+                      >
+                        {doc.file_name || doc.filename || doc.name}
+                      </button>
                     </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{doc.mimeType || doc.mime_type || "—"}</TableCell>
@@ -166,9 +198,15 @@ export default function DocumentsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleDownload(doc)} disabled={downloadingId === doc.id}>
+                          {downloadingId === doc.id
+                            ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            : <Download className="w-4 h-4 mr-2" />}
+                          Descargar
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteMutation.mutate(doc.id)}>
                           <Trash className="w-4 h-4 mr-2" />
-                          Delete Document
+                          Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

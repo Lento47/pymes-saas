@@ -143,6 +143,7 @@ export const api = {
   completeTask: (id: string) => request<any>("POST", `/api/tasks/${id}/complete`),
   deleteTask: (id: string) => request<any>("DELETE", `/api/tasks/${id}`),
   getOverdueTasks: () => request<any>("GET", "/api/tasks/overdue"),
+  getDocument: (id: string) => request<any>("GET", `/api/documents/${id}`),
   getDocuments: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return request<any>("GET", `/api/documents${qs}`);
