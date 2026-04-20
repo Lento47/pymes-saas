@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEnum,
   IsLocale,
   IsOptional,
@@ -31,4 +32,8 @@ export class UpdateWorkspaceDto {
   @IsOptional()
   @IsEnum(WorkspaceStatus)
   status?: WorkspaceStatus;
+
+  @IsOptional()
+  @IsBoolean()
+  ai_message_finance_opt_in?: boolean;
 }

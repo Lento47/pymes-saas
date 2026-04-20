@@ -55,7 +55,7 @@ export default function ContactsPage() {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", company: "", type: "CUSTOMER" });
 
   const params: Record<string, string> = {};
-  if (search) params.search = search;
+  if (search) params.q = search;
   if (typeFilter !== "ALL") params.type = typeFilter;
 
   const { data, isLoading } = useQuery({
@@ -155,11 +155,11 @@ export default function ContactsPage() {
                   <TableCell>
                     <Link href={`/contacts/${c.id}`}>
                       <span className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-                        {c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim() || "—"}
+                        {c.full_name || c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim() || "—"}
                       </span>
                     </Link>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{c.company || "—"}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{c.company_name || c.company || "—"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{c.email || "—"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{c.phone || "—"}</TableCell>
                   <TableCell>
@@ -182,7 +182,7 @@ export default function ContactsPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => {
                           setEditingId(c.id);
-                          const [first = "", ...rest] = (c.name || c.full_name || "").split(" ");
+                          const [first = "", ...rest] = (c.full_name || c.name || "").split(" ");
                           setForm({
                             firstName: first,
                             lastName: rest.join(" "),

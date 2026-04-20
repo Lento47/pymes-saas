@@ -9,6 +9,7 @@ import {
   Users,
   CheckSquare,
   FileText,
+  Receipt,
   Zap,
   Settings,
   LogOut,
@@ -20,6 +21,7 @@ const NAV = [
   { path: "/contacts",    icon: Users,           label: "Contactos" },
   { path: "/tasks",       icon: CheckSquare,     label: "Tareas",    badge: "overdue" },
   { path: "/documents",   icon: FileText,        label: "Archivos" },
+  { path: "/invoices",    icon: Receipt,         label: "Facturas" },
   { path: "/automations", icon: Zap,             label: "Automatizaciones" },
 ];
 

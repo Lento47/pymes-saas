@@ -27,6 +27,7 @@ import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { PlanLimitsModule } from './common/plan-limits/plan-limits.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { InsightsModule } from './insights/insights.module';
+import { InvoicesModule } from './invoices/invoices.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { InsightsModule } from './insights/insights.module';
 
     DepartmentsModule,
     InsightsModule,
+    InvoicesModule,
 
     WorkersModule,
     EventsModule,

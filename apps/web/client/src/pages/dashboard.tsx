@@ -9,8 +9,8 @@ import { PriorityDot } from "@/components/shared/priority-dot";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
-import { RefreshCw, Loader2, ArrowRight } from "lucide-react";
 import { InsightsWidget } from "@/components/shared/insights-widget";
+import { RefreshCw, Loader2, ArrowRight, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -77,7 +77,7 @@ export default function DashboardPage() {
 
   const { data: summaries } = useQuery({
     queryKey: ["/api/summaries/daily"],
-    queryFn: api.getDailySummaries,
+    queryFn: () => api.getDailySummaries(),
   });
   const { data: todayStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/workspaces/current/stats/today"],
@@ -92,6 +92,11 @@ export default function DashboardPage() {
     queryKey: ["/api/tasks", "dash"],
     queryFn: () => api.getTasks({ limit: "5" }),
   });
+  const { data: overdueInvoices, isLoading: overdueInvoicesLoading } = useQuery({
+    queryKey: ["/api/invoices", "overdue-widget"],
+    queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "3" }),
+    refetchInterval: 60000,
+  });
 
   const generateMutation = useMutation({
     mutationFn: api.generateSummary,
@@ -105,6 +110,8 @@ export default function DashboardPage() {
   const lastSummary = Array.isArray(summaries) ? summaries[0] : summaries?.data?.[0] ?? null;
   const convList    = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList    = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
+  const overdueInvoiceCount = (overdueInvoices as any)?.meta?.total ?? 0;
+  const overdueInvoiceAmount = Number((overdueInvoices as any)?.summary?.total_amount ?? 0);
 
   const stats = [
     { label: "Conversaciones hoy",  value: todayStats?.new_conversations  ?? "—" },
@@ -166,6 +173,30 @@ export default function DashboardPage() {
 
         {/* Automatic Insights */}
         <InsightsWidget />
+
+        <Link href="/invoices">
+          <div
+            className="cursor-pointer transition-colors"
+            style={{ background: "hsl(var(--bg-card))", border: "1px solid hsl(var(--border))", borderRadius: "4px", padding: "14px 18px" }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <div>
+                  <p style={{ fontSize: "13px", fontWeight: 500, color: "hsl(var(--fg))" }}>
+                    {overdueInvoicesLoading ? "Cargando deudas..." : `${overdueInvoiceCount} factura${overdueInvoiceCount === 1 ? "" : "s"} vencida${overdueInvoiceCount === 1 ? "" : "s"}`}
+                  </p>
+                  <p style={{ fontSize: "12px", color: "hsl(var(--fg-2))", marginTop: "2px" }}>
+                    ${overdueInvoiceAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} pendientes de cobro
+                  </p>
+                </div>
+              </div>
+              <span className="flex items-center gap-1" style={{ fontSize: "12px", color: "hsl(var(--fg-2))" }}>
+                Ver deudas <ArrowRight className="w-3 h-3" />
+              </span>
+            </div>
+          </div>
+        </Link>
 
         {/* Two columns */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
