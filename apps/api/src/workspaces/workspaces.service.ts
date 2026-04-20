@@ -15,10 +15,22 @@ import { AuthUser } from '../auth/strategies/jwt.strategy';
 export class WorkspacesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
+    const settings =
+      workspace.settings_json && typeof workspace.settings_json === 'object'
+        ? (workspace.settings_json as Record<string, any>)
+        : {};
+
+    return {
+      ...workspace,
+      ai_message_finance_opt_in: settings.ai_message_finance_opt_in === true,
+    };
+  }
+
   // ── GET /workspaces/current ────────────────────────────────────────────────
 
   async getCurrent(workspaceId: string) {
-    return this.prisma.workspace.findUniqueOrThrow({
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
       where: { id: workspaceId },
       select: {
         id: true,
@@ -29,19 +41,77 @@ export class WorkspacesService {
         locale: true,
         status: true,
         plan: true,
+        settings_json: true,
         created_at: true,
         updated_at: true,
       },
     });
+
+    return this.serializeWorkspace(workspace);
   }
 
   // ── PATCH /workspaces/current ─────────────────────────────────────────────
 
   async updateCurrent(workspaceId: string, dto: UpdateWorkspaceDto) {
-    return this.prisma.workspace.update({
+    const { ai_message_finance_opt_in, ...rest } = dto;
+
+    const currentWorkspace = await this.prisma.workspace.findUniqueOrThrow({
       where: { id: workspaceId },
-      data: dto,
+      select: { settings_json: true },
     });
+
+    const currentSettings =
+      currentWorkspace.settings_json &&
+      typeof currentWorkspace.settings_json === 'object'
+        ? (currentWorkspace.settings_json as Record<string, any>)
+        : {};
+
+    const nextSettings =
+      ai_message_finance_opt_in === undefined
+        ? currentSettings
+        : {
+            ...currentSettings,
+            ai_message_finance_opt_in,
+          };
+
+    const workspace = await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: {
+        ...rest,
+        ...(ai_message_finance_opt_in === undefined
+          ? {}
+          : { settings_json: nextSettings }),
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        country_code: true,
+        timezone: true,
+        locale: true,
+        status: true,
+        plan: true,
+        settings_json: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+
+    return this.serializeWorkspace(workspace);
+  }
+
+  async getAiFinanceMessageConsent(workspaceId: string): Promise<boolean> {
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+
+    const settings =
+      workspace.settings_json && typeof workspace.settings_json === 'object'
+        ? (workspace.settings_json as Record<string, any>)
+        : {};
+
+    return settings.ai_message_finance_opt_in === true;
   }
 
   // ── GET /workspaces/current/stats ─────────────────────────────────────────

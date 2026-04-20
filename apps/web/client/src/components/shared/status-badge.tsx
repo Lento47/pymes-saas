@@ -19,13 +19,19 @@ const STYLES: Record<string, { bg: string; color: string; label?: string }> = {
   PROCESSING: { bg: "hsl(38 95% 54% / 0.12)",  color: "hsl(38 95% 60%)",    label: "Procesando" },
   PROCESSED:  { bg: "hsl(145 63% 42% / 0.12)", color: "hsl(145 63% 52%)",   label: "Procesado" },
   FAILED:     { bg: "hsl(0 72% 51% / 0.12)",   color: "hsl(0 72% 62%)",     label: "Error" },
+  // Invoice
+  DRAFT:      { bg: "hsl(0 0% 42% / 0.12)",    color: "hsl(0 0% 60%)",      label: "Borrador" },
+  SENT:       { bg: "hsl(214 89% 52% / 0.12)", color: "hsl(214 89% 62%)",   label: "Enviada" },
+  PAID:       { bg: "hsl(145 63% 42% / 0.12)", color: "hsl(145 63% 52%)",   label: "Pagada" },
+  OVERDUE:    { bg: "hsl(0 72% 51% / 0.12)",   color: "hsl(0 72% 62%)",     label: "Vencida" },
+  CANCELLED:  { bg: "hsl(0 0% 42% / 0.12)",    color: "hsl(0 0% 60%)",      label: "Cancelada" },
 };
 
 const FALLBACK = { bg: "hsl(0 0% 42% / 0.10)", color: "hsl(0 0% 55%)" };
 
 interface StatusBadgeProps {
   status: string;
-  type: "conversation" | "task" | "document";
+  type: "conversation" | "task" | "document" | "invoice";
   className?: string;
 }
 

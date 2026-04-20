@@ -15,6 +15,7 @@ import Contacts from "@/pages/contacts";
 import ContactDetail from "@/pages/contact-detail";
 import Tasks from "@/pages/tasks";
 import Documents from "@/pages/documents";
+import Invoices from "@/pages/invoices";
 import Automations from "@/pages/automations";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -36,19 +37,22 @@ function AppRouter() {
         {() => <ProtectedLayout><Inbox /></ProtectedLayout>}
       </Route>
       <Route path="/inbox/:id">
-        {(params: any) => <ProtectedLayout><Conversation id={params.id} /></ProtectedLayout>}
+        {() => <ProtectedLayout><Conversation /></ProtectedLayout>}
       </Route>
       <Route path="/contacts">
         {() => <ProtectedLayout><Contacts /></ProtectedLayout>}
       </Route>
       <Route path="/contacts/:id">
-        {(params: any) => <ProtectedLayout><ContactDetail id={params.id} /></ProtectedLayout>}
+        {() => <ProtectedLayout><ContactDetail /></ProtectedLayout>}
       </Route>
       <Route path="/tasks">
         {() => <ProtectedLayout><Tasks /></ProtectedLayout>}
       </Route>
       <Route path="/documents">
         {() => <ProtectedLayout><Documents /></ProtectedLayout>}
+      </Route>
+      <Route path="/invoices">
+        {() => <ProtectedLayout><Invoices /></ProtectedLayout>}
       </Route>
       <Route path="/automations">
         {() => <ProtectedLayout><Automations /></ProtectedLayout>}

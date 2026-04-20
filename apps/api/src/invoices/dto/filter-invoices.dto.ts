@@ -1,0 +1,39 @@
+import { Transform, Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
+import { InvoiceStatus } from '@prisma/client';
+
+export class FilterInvoicesDto {
+  @IsOptional()
+  @IsEnum(InvoiceStatus)
+  status?: InvoiceStatus;
+
+  @IsOptional()
+  @IsString()
+  contact_id?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  overdue_only?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 20;
+}

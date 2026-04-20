@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/shared/page-header";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -72,13 +73,35 @@ function SecretInput({ value, onChange, placeholder }: { value: string; onChange
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function WorkspaceTab() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["/api/workspaces/current"],
     queryFn: () => api.getWorkspace(),
   });
+  const [financeOptIn, setFinanceOptIn] = useState(false);
+
+  const saveWorkspace = useMutation({
+    mutationFn: (nextValue: boolean) =>
+      api.updateWorkspace({ ai_message_finance_opt_in: nextValue }),
+    onSuccess: (workspace) => {
+      qc.setQueryData(["/api/workspaces/current"], workspace);
+      setFinanceOptIn(workspace?.ai_message_finance_opt_in === true);
+      toast({ title: "Permiso actualizado" });
+    },
+    onError: (e: any) =>
+      toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const workspace = data;
+
+  useEffect(() => {
+    setFinanceOptIn(workspace?.ai_message_finance_opt_in === true);
+  }, [workspace?.ai_message_finance_opt_in]);
 
   if (isLoading) return <div className="text-muted-foreground text-sm">Cargando...</div>;
-  const ws = data;
+  const ws = workspace;
+  const hasFinanceOptInChanges = financeOptIn !== (ws?.ai_message_finance_opt_in === true);
 
   return (
     <div className="space-y-4 max-w-lg">
@@ -99,6 +122,39 @@ function WorkspaceTab() {
           <Badge variant="outline" className="text-blue-400 border-blue-500/30 bg-blue-500/10">
             {ws?.plan}
           </Badge>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-4 space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <Label className="text-sm font-medium text-foreground">
+              Permitir lectura de mensajes para cobros
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Cuando está activo, la IA puede leer mensajes para detectar promesas
+              o pendientes de pago. Si está apagado, solo se usarán las facturas
+              para detectar deuda.
+            </p>
+          </div>
+          <Switch
+            checked={financeOptIn}
+            onCheckedChange={setFinanceOptIn}
+            aria-label="Permitir lectura de mensajes para cobros"
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            Este permiso no afecta la detección por facturas vencidas.
+          </p>
+          <Button
+            size="sm"
+            onClick={() => saveWorkspace.mutate(financeOptIn)}
+            disabled={!hasFinanceOptInChanges || saveWorkspace.isPending}
+          >
+            {saveWorkspace.isPending ? "Guardando..." : "Guardar permiso"}
+          </Button>
         </div>
       </div>
     </div>

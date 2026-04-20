@@ -174,6 +174,18 @@ export const api = {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return request<any>("GET", `/api/tasks${qs}`);
   },
+  getInvoices: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return request<any>("GET", `/api/invoices${qs}`);
+  },
+  getInvoice: (id: string) => request<any>("GET", `/api/invoices/${id}`),
+  createInvoice: (data: any) => request<any>("POST", "/api/invoices", data),
+  updateInvoice: (id: string, data: any) => request<any>("PATCH", `/api/invoices/${id}`, data),
+  deleteInvoice: (id: string) => request<any>("DELETE", `/api/invoices/${id}`),
+  markInvoicePaid: (id: string) => request<any>("POST", `/api/invoices/${id}/paid`),
+  detectOverdueInvoices: () => request<any>("GET", "/api/invoices/overdue"),
+  generateInvoiceReminder: (id: string) => request<any>("POST", `/api/invoices/${id}/reminder`),
+  sendInvoiceReminder: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/reminder/send`, data),
   createTask: (data: any) => request<any>("POST", "/api/tasks", data),
   updateTask: (id: string, data: any) => request<any>("PATCH", `/api/tasks/${id}`, data),
   completeTask: (id: string) => request<any>("POST", `/api/tasks/${id}/complete`),
