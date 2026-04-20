@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { RefreshCw, Loader2, ArrowRight } from "lucide-react";
+import { InsightsWidget } from "@/components/shared/insights-widget";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -162,6 +163,9 @@ export default function DashboardPage() {
             </p>
           </div>
         )}
+
+        {/* Automatic Insights */}
+        <InsightsWidget />
 
         {/* Two columns */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -233,4 +233,5 @@ export const api = {
     request<any>("POST", `/api/departments/${id}/members`, data),
   removeDepartmentMember: (id: string, userId: string) =>
     request<any>("DELETE", `/api/departments/${id}/members/${userId}`),
+  getInsights: () => request<any>("GET", "/api/insights"),
 };
