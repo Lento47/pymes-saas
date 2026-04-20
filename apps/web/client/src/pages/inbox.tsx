@@ -13,11 +13,65 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Link, useLocation } from "wouter";
-import { Inbox as InboxIcon, Search, Plus } from "lucide-react";
+import { Inbox as InboxIcon, Search, Plus, Mail, MessageCircle, FileText, UserX, LayoutList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 
 const STATUS_OPTIONS = ["ALL", "NEW", "OPEN", "PENDING", "RESOLVED"];
+
+type ChannelTab = "ALL" | "WHATSAPP" | "EMAIL" | "FORM" | "UNASSIGNED";
+
+const CHANNEL_TABS: { id: ChannelTab; label: string; icon: React.ReactNode }[] = [
+  { id: "ALL",        label: "Todos",        icon: <LayoutList  style={{ width: 12, height: 12 }} /> },
+  { id: "WHATSAPP",  label: "WhatsApp",     icon: <MessageCircle style={{ width: 12, height: 12 }} /> },
+  { id: "EMAIL",     label: "Email",        icon: <Mail          style={{ width: 12, height: 12 }} /> },
+  { id: "FORM",      label: "Formularios",  icon: <FileText      style={{ width: 12, height: 12 }} /> },
+  { id: "UNASSIGNED",label: "Sin asignar",  icon: <UserX         style={{ width: 12, height: 12 }} /> },
+];
+
+function ChannelTabs({ active, onChange }: { active: ChannelTab; onChange: (t: ChannelTab) => void }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "2px",
+        padding: "3px",
+        background: "hsl(var(--bg-card))",
+        border: "1px solid hsl(var(--border))",
+        borderRadius: "4px",
+        width: "fit-content",
+      }}
+    >
+      {CHANNEL_TABS.map(tab => {
+        const isActive = tab.id === active;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onChange(tab.id)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "4px 10px",
+              borderRadius: "3px",
+              fontSize: "12px",
+              fontWeight: isActive ? 500 : 400,
+              color: isActive ? "hsl(var(--fg))" : "hsl(var(--fg-3))",
+              background: isActive ? "hsl(var(--elevated))" : "transparent",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.12s",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function NewConversationModal() {
   const { toast } = useToast();
@@ -69,7 +123,6 @@ function NewConversationModal() {
       <DialogContent className="bg-card border-border">
         <DialogHeader><DialogTitle>Nueva conversación</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-2">
-
           <div>
             <Label>Canal <span className="text-red-400">*</span></Label>
             <Select value={channelId} onValueChange={setChannelId}>
@@ -131,13 +184,16 @@ export default function InboxPage() {
   useRequireAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [channelTab, setChannelTab] = useState<ChannelTab>("ALL");
 
   const params: Record<string, string> = {};
-  if (search) params.search = search;
+  if (search) params.q = search;
   if (statusFilter !== "ALL") params.status = statusFilter;
+  if (channelTab === "UNASSIGNED") params.unassigned = "true";
+  else if (channelTab !== "ALL") params.channel_type = channelTab;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["/api/conversations", statusFilter, search],
+    queryKey: ["/api/conversations", statusFilter, search, channelTab],
     queryFn: () => api.getConversations(Object.keys(params).length ? params : undefined),
   });
 
@@ -145,8 +201,14 @@ export default function InboxPage() {
 
   return (
     <div>
-      <PageHeader title="Inbox" description="Manage your conversations" />
+      <PageHeader title="Inbox" description="Todas tus conversaciones en un lugar" />
 
+      {/* Channel tabs */}
+      <div className="mb-3">
+        <ChannelTabs active={channelTab} onChange={t => { setChannelTab(t); }} />
+      </div>
+
+      {/* Search + status filter + new button */}
       <div className="flex items-center gap-2 mb-4">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -164,17 +226,24 @@ export default function InboxPage() {
           </SelectTrigger>
           <SelectContent>
             {STATUS_OPTIONS.map((s) => (
-              <SelectItem key={s} value={s}>{s === "ALL" ? "Todos" : s}</SelectItem>
+              <SelectItem key={s} value={s}>{s === "ALL" ? "Todos los estados" : s}</SelectItem>
             ))}
           </SelectContent>
         </Select>
         <NewConversationModal />
       </div>
 
+      {/* List */}
       {isLoading ? (
         <PageLoader />
       ) : convList.length === 0 ? (
-        <EmptyState icon={InboxIcon} title="Sin conversaciones" description="Creá una nueva con el botón de arriba." />
+        <EmptyState
+          icon={InboxIcon}
+          title={channelTab === "UNASSIGNED" ? "Sin conversaciones sin asignar" : "Sin conversaciones"}
+          description={channelTab === "UNASSIGNED"
+            ? "Todas las conversaciones tienen un agente asignado."
+            : "Creá una nueva con el botón de arriba."}
+        />
       ) : (
         <div className="rounded-lg border border-border overflow-hidden bg-card">
           <div className="divide-y divide-border">
@@ -196,6 +265,9 @@ export default function InboxPage() {
                       {conv.contact?.full_name || conv.contact?.name || "Contacto desconocido"}
                       {conv.channel && (
                         <span className="ml-1 opacity-60">· {conv.channel.type}</span>
+                      )}
+                      {!conv.assigned_user && (
+                        <span className="ml-1 text-amber-500/70">· sin asignar</span>
                       )}
                     </div>
                   </div>

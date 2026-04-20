@@ -18,7 +18,7 @@ export class ConversationsService {
   async findAll(workspaceId: string, filters: FilterConversationsDto, caller?: { id: string; role: string }) {
     const {
       status, priority, assigned_user_id, contact_id,
-      channel_id, category, q, page = 1, limit = 20,
+      channel_id, channel_type, unassigned, category, q, page = 1, limit = 20,
     } = filters;
     const skip = (page - 1) * limit;
 
@@ -26,8 +26,10 @@ export class ConversationsService {
     if (status)           where.status           = status;
     if (priority)         where.priority         = priority;
     if (assigned_user_id) where.assigned_user_id = assigned_user_id;
+    if (unassigned)       where.assigned_user_id = null;
     if (contact_id)       where.contact_id       = contact_id;
     if (channel_id)       where.channel_id       = channel_id;
+    if (channel_type)     where.channel          = { type: channel_type };
     if (category)         where.category         = { contains: category, mode: 'insensitive' };
     if (q)                where.subject          = { contains: q, mode: 'insensitive' };
 
