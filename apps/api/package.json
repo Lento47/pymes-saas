@@ -58,12 +58,26 @@
     "@nestjs/cli": "^10.0.0",
     "@nestjs/testing": "^10.0.0",
     "@types/bcrypt": "^5.0.0",
+    "@types/jest": "^29.0.0",
     "@types/multer": "^2.1.0",
     "@types/node": "^20.0.0",
     "@types/passport-jwt": "^3.0.0",
+    "jest": "^29.0.0",
     "prisma": "^5.0.0",
+    "ts-jest": "^29.0.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.0"
+  },
+  "jest": {
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

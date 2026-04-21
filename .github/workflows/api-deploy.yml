@@ -2,16 +2,11 @@
 # Deploy Pipeline — NestJS SaaS
 # =============================================================================
 # Secrets REQUERIDOS (Settings > Secrets and variables > Actions):
-#
-#   DEPLOY_HOST    — IP o hostname del servidor de producción
-#   DEPLOY_USER    — Usuario SSH (ej: ubuntu, deploy)
-#   DEPLOY_KEY     — Clave SSH privada (RSA o ED25519, sin passphrase)
-#   DATABASE_URL   — PostgreSQL connection string de producción
-#   JWT_SECRET     — Secret para firmar tokens JWT
-#
-# El GITHUB_TOKEN se inyecta automáticamente para autenticarse en ghcr.io.
-# El servidor de producción debe tener Docker y docker compose v2 instalados.
-# El usuario SSH debe tener permisos para ejecutar docker sin sudo, o usar sudo.
+#   DEPLOY_HOST  — IP o hostname del servidor de producción
+#   DEPLOY_USER  — Usuario SSH (ej: ubuntu, deploy)
+#   DEPLOY_KEY   — Clave SSH privada (RSA o ED25519, sin passphrase)
+#   DATABASE_URL — PostgreSQL connection string de producción
+#   JWT_SECRET   — Secret para firmar tokens JWT
 # =============================================================================
 
 name: Deploy
@@ -23,12 +18,9 @@ on:
 
 concurrency:
   group: deploy-production
-  cancel-in-progress: false   # No cancelar deploys en curso; encolar
+  cancel-in-progress: false
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Job 1: Build y push imagen Docker a ghcr.io
-  # ---------------------------------------------------------------------------
   build-and-push:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
@@ -50,7 +42,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata (tags & labels)
+      - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -62,7 +54,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: apps/api
+          file: apps/api/Dockerfile.api
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/api:${{ github.sha }}
@@ -70,17 +63,12 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Asegúrate de que el Dockerfile esté en la raíz del repositorio.
-          # Para builds multi-stage añade: --build-arg NODE_ENV=production
 
-  # ---------------------------------------------------------------------------
-  # Job 2: Deploy en servidor de producción vía SSH
-  # ---------------------------------------------------------------------------
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: build-and-push
-    environment: production   # Requiere aprobación manual si está configurado
+    environment: production
 
     steps:
       - name: Checkout repository
@@ -109,7 +97,7 @@ jobs:
               ghcr.io/${{ github.repository }}/api:latest
 
             echo "==> Actualizando stack con zero-downtime..."
-            cd /opt/app   # <-- ajusta al directorio donde vive docker-compose.yml
+            cd /opt/app
             docker compose pull api
             docker compose up -d --no-deps api
 

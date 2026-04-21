@@ -1,13 +1,6 @@
 # =============================================================================
 # CI Pipeline — NestJS SaaS (pnpm + Prisma + PostgreSQL 16)
 # =============================================================================
-# Secrets requeridos en este workflow:
-#   (ninguno propio; usa GITHUB_TOKEN automático para acciones futuras)
-#
-# Variables de entorno esperadas en el repo (Settings > Secrets and variables):
-#   DATABASE_URL  — solo necesaria en el job "test" (inyectada como env abajo)
-# =============================================================================
-
 name: CI
 
 on:
@@ -24,12 +17,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Job 1: Lint, type-check y build
-  # ---------------------------------------------------------------------------
   lint-and-type-check:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
 
     steps:
       - name: Checkout repository
@@ -45,6 +38,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: apps/api/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -54,16 +48,14 @@ jobs:
 
       - name: Build (NestJS / TypeScript)
         run: pnpm run build
-        # Equivalente a tsc --noEmit + compilación de NestJS.
-        # Asegúrate de que el script "build" en package.json ejecute: nest build
 
-  # ---------------------------------------------------------------------------
-  # Job 2: Tests con base de datos real (PostgreSQL 16)
-  # ---------------------------------------------------------------------------
   test:
     name: Tests
     runs-on: ubuntu-latest
     needs: lint-and-type-check
+    defaults:
+      run:
+        working-directory: apps/api
 
     services:
       postgres:
@@ -82,9 +74,6 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/test_db?schema=public
-      # Añade aquí otras variables de entorno necesarias para los tests:
-      # JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      # NODE_ENV: test
 
     steps:
       - name: Checkout repository
@@ -100,6 +89,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: apps/api/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -111,8 +101,4 @@ jobs:
         run: pnpm exec prisma migrate deploy
 
       - name: Run tests
-        run: |
-          # TODO: Descomentar cuando los tests estén implementados:
-          # pnpm test
-          # pnpm run test:e2e
-          echo "Tests: agregar 'pnpm test' cuando estén implementados"
+        run: pnpm test

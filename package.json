@@ -1,0 +1,17 @@
+{
+  "name": "pymes-saas",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm --filter saas-api dev",
+    "dev:web": "pnpm --filter rest-express dev",
+    "build:api": "pnpm --filter saas-api build",
+    "build:web": "pnpm --filter rest-express build",
+    "test:api": "pnpm --filter saas-api test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r check"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10"
+  }
+}
