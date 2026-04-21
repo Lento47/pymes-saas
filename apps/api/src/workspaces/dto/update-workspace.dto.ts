@@ -2,6 +2,7 @@ import {
   IsBooleanString,
   IsBoolean,
   IsEnum,
+  IsIn,
   IsLocale,
   IsOptional,
   IsString,
@@ -41,28 +42,16 @@ export class UpdateWorkspaceDto {
   ai_message_finance_opt_in?: boolean;
 
   @IsOptional()
-  @IsString()
-  openai_api_key?: string;
+  @IsIn(['openai', 'anthropic', 'gemini', 'moonshot'])
+  ai_provider?: string;
 
   @IsOptional()
   @IsString()
-  resend_api_key?: string;
+  ai_api_key?: string;
 
   @IsOptional()
   @IsString()
-  anthropic_api_key?: string;
-
-  @IsOptional()
-  @IsString()
-  gemini_api_key?: string;
-
-  @IsOptional()
-  @IsString()
-  grok_api_key?: string;
-
-  @IsOptional()
-  @IsString()
-  kimi_api_key?: string;
+  ai_model?: string;
 
   @IsOptional()
   @IsString()

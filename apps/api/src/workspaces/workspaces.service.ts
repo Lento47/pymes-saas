@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { CryptoService } from '../common/crypto/crypto.service';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
@@ -13,7 +14,10 @@ import { AuthUser } from '../auth/strategies/jwt.strategy';
 
 @Injectable()
 export class WorkspacesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly crypto: CryptoService,
+  ) {}
 
   private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
     const settings =
@@ -26,21 +30,17 @@ export class WorkspacesService {
       ...workspace,
       workspace_tax_profile: taxProfile,
       ai_message_finance_opt_in: settings.ai_message_finance_opt_in === true,
-      openai_api_key_set: !!(settings.openai_api_key && settings.openai_api_key !== ''),
-      resend_api_key_set: !!(settings.resend_api_key && settings.resend_api_key !== ''),
-      anthropic_api_key_set: !!(settings.anthropic_api_key && settings.anthropic_api_key !== ''),
-      gemini_api_key_set: !!(settings.gemini_api_key && settings.gemini_api_key !== ''),
-      grok_api_key_set: !!(settings.grok_api_key && settings.grok_api_key !== ''),
-      kimi_api_key_set: !!(settings.kimi_api_key && settings.kimi_api_key !== ''),
+      ai_provider: settings.ai_provider ?? null,
+      ai_model: settings.ai_model ?? null,
       hacienda_environment: settings.hacienda_environment ?? 'staging',
       hacienda_callback_url: settings.hacienda_callback_url ?? null,
-      hacienda_username_set: !!(settings.hacienda_username && settings.hacienda_username !== ''),
-      hacienda_password_set: !!(settings.hacienda_password && settings.hacienda_password !== ''),
-      hacienda_client_id_set: !!(settings.hacienda_client_id && settings.hacienda_client_id !== ''),
-      hacienda_token_url_set: !!(settings.hacienda_token_url && settings.hacienda_token_url !== ''),
-      hacienda_access_token_set: !!(settings.hacienda_access_token && settings.hacienda_access_token !== ''),
-      hacienda_certificate_path_set: !!(settings.hacienda_certificate_path && settings.hacienda_certificate_path !== ''),
-      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin && settings.hacienda_certificate_pin !== ''),
+      hacienda_username_set: !!(settings.hacienda_username),
+      hacienda_password_set: !!(settings.hacienda_password),
+      hacienda_client_id_set: !!(settings.hacienda_client_id),
+      hacienda_token_url_set: !!(settings.hacienda_token_url),
+      hacienda_access_token_set: !!(settings.hacienda_access_token),
+      hacienda_certificate_path_set: !!(settings.hacienda_certificate_path),
+      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin),
       hacienda_signing_enabled: settings.hacienda_signing_enabled === true,
     };
   }
@@ -74,12 +74,9 @@ export class WorkspacesService {
   async updateCurrent(workspaceId: string, dto: UpdateWorkspaceDto) {
     const {
       ai_message_finance_opt_in,
-      openai_api_key,
-      resend_api_key,
-      anthropic_api_key,
-      gemini_api_key,
-      grok_api_key,
-      kimi_api_key,
+      ai_provider,
+      ai_api_key,
+      ai_model,
       hacienda_environment,
       hacienda_username,
       hacienda_password,
@@ -105,59 +102,12 @@ export class WorkspacesService {
         ? (currentWorkspace.settings_json as Record<string, any>)
         : {};
 
-    let nextSettings = { ...currentSettings };
+    const nextSettings = { ...currentSettings };
 
-    if (ai_message_finance_opt_in !== undefined) {
-      nextSettings.ai_message_finance_opt_in = ai_message_finance_opt_in;
-    }
-
-    if (openai_api_key !== undefined) {
-      if (openai_api_key === '') {
-        delete nextSettings.openai_api_key;
-      } else {
-        nextSettings.openai_api_key = openai_api_key;
-      }
-    }
-
-    if (resend_api_key !== undefined) {
-      if (resend_api_key === '') {
-        delete nextSettings.resend_api_key;
-      } else {
-        nextSettings.resend_api_key = resend_api_key;
-      }
-    }
-
-    if (anthropic_api_key !== undefined) {
-      if (anthropic_api_key === '') {
-        delete nextSettings.anthropic_api_key;
-      } else {
-        nextSettings.anthropic_api_key = anthropic_api_key;
-      }
-    }
-
-    if (gemini_api_key !== undefined) {
-      if (gemini_api_key === '') {
-        delete nextSettings.gemini_api_key;
-      } else {
-        nextSettings.gemini_api_key = gemini_api_key;
-      }
-    }
-
-    if (grok_api_key !== undefined) {
-      if (grok_api_key === '') {
-        delete nextSettings.grok_api_key;
-      } else {
-        nextSettings.grok_api_key = grok_api_key;
-      }
-    }
-
-    if (kimi_api_key !== undefined) {
-      if (kimi_api_key === '') {
-        delete nextSettings.kimi_api_key;
-      } else {
-        nextSettings.kimi_api_key = kimi_api_key;
-      }
-    }
+    if (ai_message_finance_opt_in !== undefined) nextSettings.ai_message_finance_opt_in = ai_message_finance_opt_in;
+    if (ai_provider !== undefined) nextSettings.ai_provider = ai_provider;
+    if (ai_model !== undefined) nextSettings.ai_model = ai_model;
+    if (ai_api_key) nextSettings.ai_api_key_enc = this.crypto.encrypt(ai_api_key);
 
     const setOrUnset = (key: string, value: string | undefined) => {
       if (value === undefined) return;
@@ -184,12 +134,9 @@ export class WorkspacesService {
 
     const settingsChanged =
       ai_message_finance_opt_in !== undefined ||
-      openai_api_key !== undefined ||
-      resend_api_key !== undefined ||
-      anthropic_api_key !== undefined ||
-      gemini_api_key !== undefined ||
-      grok_api_key !== undefined ||
-      kimi_api_key !== undefined ||
+      ai_provider !== undefined ||
+      ai_model !== undefined ||
+      !!ai_api_key ||
       hacienda_environment !== undefined ||
       hacienda_username !== undefined ||
       hacienda_password !== undefined ||

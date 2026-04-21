@@ -103,6 +103,7 @@ export class RemindersService {
     const balanceDue = Math.max(0, Number(invoice.amount) - amountPaid);
 
     const aiResult = await this.aiService.generatePaymentReminderDraft({
+      workspaceId,
       customerName: invoice.contact.full_name,
       currency: invoice.currency,
       amount: balanceDue.toFixed(2),
