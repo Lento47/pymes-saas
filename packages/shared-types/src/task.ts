@@ -1,0 +1,15 @@
+export enum TaskStatus {
+  TODO = 'TODO',
+  IN_PROGRESS = 'IN_PROGRESS',
+  BLOCKED = 'BLOCKED',
+  DONE = 'DONE',
+  ARCHIVED = 'ARCHIVED',
+}
+
+export enum TaskSource {
+  MANUAL = 'MANUAL',
+  AUTOMATION = 'AUTOMATION',
+  MESSAGE = 'MESSAGE',
+  DOCUMENT = 'DOCUMENT',
+  SUMMARY = 'SUMMARY',
+}
