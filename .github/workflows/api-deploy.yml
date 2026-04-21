@@ -42,11 +42,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set lowercase image name
+        run: echo "IMAGE=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/api" >> $GITHUB_ENV
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}/api
+          images: ${{ env.IMAGE }}
           tags: |
             type=sha,format=long,prefix=
             type=raw,value=latest
@@ -58,8 +61,8 @@ jobs:
           file: apps/api/Dockerfile.api
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/api:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/api:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -74,6 +77,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set lowercase image name
+        run: echo "IMAGE=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/api" >> $GITHUB_ENV
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -83,18 +89,17 @@ jobs:
           port: 22
           script: |
             set -euo pipefail
+            IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/api"
 
             echo "==> Autenticando en ghcr.io..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
               -u ${{ github.actor }} --password-stdin
 
             echo "==> Pulling nueva imagen..."
-            docker pull ghcr.io/${{ github.repository }}/api:${{ github.sha }}
+            docker pull "${IMAGE}:${{ github.sha }}"
 
             echo "==> Actualizando imagen latest localmente..."
-            docker tag \
-              ghcr.io/${{ github.repository }}/api:${{ github.sha }} \
-              ghcr.io/${{ github.repository }}/api:latest
+            docker tag "${IMAGE}:${{ github.sha }}" "${IMAGE}:latest"
 
             echo "==> Actualizando stack con zero-downtime..."
             cd /opt/app
