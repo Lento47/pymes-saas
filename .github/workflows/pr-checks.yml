@@ -1,17 +1,6 @@
 # =============================================================================
 # PR Checks — NestJS SaaS
 # =============================================================================
-# Valida que cada Pull Request cumpla con estándares mínimos antes de merge:
-#   1. Descripción del PR no vacía
-#   2. Build TypeScript sin errores
-#   3. Comentario automático en el PR si hay errores de build
-#
-# Secrets / Permisos:
-#   GITHUB_TOKEN — inyectado automáticamente; necesita permiso "pull-requests: write"
-#   Asegúrate de que en Settings > Actions > General > Workflow permissions
-#   esté habilitado "Read and write permissions" o usa el bloque "permissions" abajo.
-# =============================================================================
-
 name: PR Checks
 
 on:
@@ -20,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write  # Necesario para comentar en el PR
+  pull-requests: write
 
 concurrency:
   group: pr-checks-${{ github.event.pull_request.number }}
@@ -30,14 +19,14 @@ jobs:
   pr-validation:
     name: PR Validation & Build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -----------------------------------------------------------------------
-      # Paso 1: Verificar que la descripción del PR no esté vacía
-      # -----------------------------------------------------------------------
       - name: Check PR description is not empty
         id: check-description
         env:
@@ -52,9 +41,6 @@ jobs:
             echo "Descripción del PR: OK"
           fi
 
-      # -----------------------------------------------------------------------
-      # Paso 2: Setup del entorno
-      # -----------------------------------------------------------------------
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -65,6 +51,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: apps/api/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -72,9 +59,6 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm exec prisma generate
 
-      # -----------------------------------------------------------------------
-      # Paso 3: TypeScript build — capturar resultado
-      # -----------------------------------------------------------------------
       - name: TypeScript build
         id: ts-build
         run: |
@@ -83,7 +67,6 @@ jobs:
           BUILD_EXIT_CODE=$?
           set -e
 
-          # Guardar salida para usarla en el comentario
           {
             echo "build_output<<ENDOFBUILD"
             echo "$BUILD_OUTPUT"
@@ -98,9 +81,6 @@ jobs:
 
           exit $BUILD_EXIT_CODE
 
-      # -----------------------------------------------------------------------
-      # Paso 4: Comentar en el PR si el build falla
-      # -----------------------------------------------------------------------
       - name: Comment on PR if build fails
         if: failure() && steps.ts-build.outcome == 'failure'
         uses: actions/github-script@v7
@@ -119,7 +99,7 @@ jobs:
               '<summary>Ver output del build</summary>',
               '',
               '```',
-              buildOutput.substring(0, 10000), // Limitar a 10k chars
+              buildOutput.substring(0, 10000),
               '```',
               '</details>',
               '',
@@ -133,9 +113,6 @@ jobs:
               body,
             });
 
-      # -----------------------------------------------------------------------
-      # Paso 5: Comentar éxito en el PR (opcional, primera vez o re-run)
-      # -----------------------------------------------------------------------
       - name: Comment on PR if build succeeds
         if: success()
         uses: actions/github-script@v7
@@ -144,7 +121,6 @@ jobs:
           script: |
             const sha = context.sha.substring(0, 7);
 
-            // Buscar comentario previo de error para reemplazarlo
             const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
