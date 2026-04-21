@@ -95,6 +95,7 @@ export class RemindersService {
     );
 
     const aiResult = await this.aiService.generatePaymentReminderDraft({
+      workspaceId,
       customerName: invoice.contact.full_name,
       currency: invoice.currency,
       amount: invoice.amount.toString(),

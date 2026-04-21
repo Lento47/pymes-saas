@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { CryptoService } from '../common/crypto/crypto.service';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
@@ -13,7 +14,10 @@ import { AuthUser } from '../auth/strategies/jwt.strategy';
 
 @Injectable()
 export class WorkspacesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly crypto: CryptoService,
+  ) {}
 
   private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
     const settings =
@@ -24,6 +28,9 @@ export class WorkspacesService {
     return {
       ...workspace,
       ai_message_finance_opt_in: settings.ai_message_finance_opt_in === true,
+      ai_provider: settings.ai_provider ?? null,
+      ai_model: settings.ai_model ?? null,
+      // Never expose encrypted key to frontend
     };
   }
 
@@ -53,7 +60,7 @@ export class WorkspacesService {
   // ── PATCH /workspaces/current ─────────────────────────────────────────────
 
   async updateCurrent(workspaceId: string, dto: UpdateWorkspaceDto) {
-    const { ai_message_finance_opt_in, ...rest } = dto;
+    const { ai_message_finance_opt_in, ai_provider, ai_api_key, ai_model, ...rest } = dto;
 
     const currentWorkspace = await this.prisma.workspace.findUniqueOrThrow({
       where: { id: workspaceId },
@@ -66,21 +73,19 @@ export class WorkspacesService {
         ? (currentWorkspace.settings_json as Record<string, any>)
         : {};
 
-    const nextSettings =
-      ai_message_finance_opt_in === undefined
-        ? currentSettings
-        : {
-            ...currentSettings,
-            ai_message_finance_opt_in,
-          };
+    const nextSettings = { ...currentSettings };
+    if (ai_message_finance_opt_in !== undefined) nextSettings.ai_message_finance_opt_in = ai_message_finance_opt_in;
+    if (ai_provider !== undefined) nextSettings.ai_provider = ai_provider;
+    if (ai_model !== undefined) nextSettings.ai_model = ai_model;
+    if (ai_api_key) nextSettings.ai_api_key_enc = this.crypto.encrypt(ai_api_key);
+
+    const settingsChanged = ai_message_finance_opt_in !== undefined || ai_provider !== undefined || ai_model !== undefined || !!ai_api_key;
 
     const workspace = await this.prisma.workspace.update({
       where: { id: workspaceId },
       data: {
         ...rest,
-        ...(ai_message_finance_opt_in === undefined
-          ? {}
-          : { settings_json: nextSettings }),
+        ...(settingsChanged ? { settings_json: nextSettings } : {}),
       },
       select: {
         id: true,
