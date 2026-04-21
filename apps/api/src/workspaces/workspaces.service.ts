@@ -13,6 +13,15 @@ import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AiProvider, AiService } from '../ai/ai.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
+import { AuditService } from '../audit/audit.service';
+import {
+  PERMISSION_KEYS,
+  PERMISSION_LABELS,
+  PERMISSION_DESCRIPTIONS,
+  PermissionKey,
+  ROLE_DEFAULTS,
+  resolvePermissions,
+} from '../auth/permissions/permission.types';
 
 @Injectable()
 export class WorkspacesService {
@@ -20,6 +29,7 @@ export class WorkspacesService {
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
     private readonly aiService: AiService,
+    private readonly audit: AuditService,
   ) {}
 
   private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
@@ -521,12 +531,23 @@ export class WorkspacesService {
       throw new BadRequestException('Usa la ruta de transferencia de propiedad.');
     }
 
-    return this.prisma.workspaceUser.update({
+    const updated = await this.prisma.workspaceUser.update({
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
       },
       data: { role: dto.role },
     });
+
+    await this.audit.log(workspaceId, {
+      user_id: requestingUser.id,
+      action: 'member.role_changed',
+      entity_type: 'workspace_user',
+      entity_id: updated.id,
+      before: { role: membership.role },
+      after: { role: dto.role },
+    });
+
+    return updated;
   }
 
   // ── DELETE /workspaces/current/members/:userId ────────────────────────────
@@ -560,6 +581,124 @@ export class WorkspacesService {
       },
     });
 
+    await this.audit.log(workspaceId, {
+      user_id: requestingUser.id,
+      action: 'member.removed',
+      entity_type: 'workspace_user',
+      entity_id: membership.id,
+      before: { user_id: targetUserId, role: membership.role },
+      after: null,
+    });
+
     return { message: 'Miembro removido del workspace.' };
+  }
+
+  // ── Granular permissions ─────────────────────────────────────────────────────
+
+  /** Public catalog — lists all permission keys with labels and role defaults. */
+  getPermissionsCatalog() {
+    return {
+      permissions: PERMISSION_KEYS.map((key) => ({
+        key,
+        label: PERMISSION_LABELS[key],
+        description: PERMISSION_DESCRIPTIONS[key],
+      })),
+      role_defaults: ROLE_DEFAULTS,
+    };
+  }
+
+  /** Returns resolved permissions + raw overrides for a single member. */
+  async getMemberPermissions(workspaceId: string, targetUserId: string) {
+    const membership = await this.prisma.workspaceUser.findUnique({
+      where: {
+        workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
+      },
+    });
+    if (!membership) throw new NotFoundException('Miembro no encontrado.');
+
+    const overrides = (membership.permissions_json as Record<string, boolean> | null) ?? null;
+    const resolved = resolvePermissions(membership.role, overrides);
+
+    return {
+      user_id: targetUserId,
+      role: membership.role,
+      is_owner: membership.is_owner,
+      overrides: overrides ?? {},
+      resolved,
+    };
+  }
+
+  /**
+   * Update permission overrides for a member.
+   *
+   * Body shape: { "can_delete_contacts": true, "can_export_data": null, ... }
+   * - `true`  → grant (override to true)
+   * - `false` → revoke (override to false)
+   * - `null`  → remove override (fall back to role default)
+   */
+  async updateMemberPermissions(
+    workspaceId: string,
+    requestingUser: AuthUser,
+    targetUserId: string,
+    changes: Record<string, boolean | null>,
+  ) {
+    if (!['ADMIN', 'OWNER'].includes(requestingUser.role)) {
+      throw new ForbiddenException('Sin permisos para modificar permisos.');
+    }
+
+    const membership = await this.prisma.workspaceUser.findUnique({
+      where: {
+        workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
+      },
+    });
+    if (!membership) throw new NotFoundException('Miembro no encontrado.');
+    if (membership.is_owner) {
+      throw new BadRequestException('El OWNER siempre tiene todos los permisos.');
+    }
+    // An ADMIN cannot modify another ADMIN's permissions—only OWNER can.
+    if (membership.role === 'ADMIN' && requestingUser.role !== 'OWNER') {
+      throw new ForbiddenException(
+        'Solo el OWNER puede modificar los permisos de otros ADMIN.',
+      );
+    }
+
+    const current = (membership.permissions_json as Record<string, boolean> | null) ?? {};
+    const next: Record<string, boolean> = { ...current };
+    const validKeys = new Set<string>(PERMISSION_KEYS);
+
+    for (const [key, value] of Object.entries(changes)) {
+      if (!validKeys.has(key)) {
+        throw new BadRequestException(`Permiso desconocido: ${key}`);
+      }
+      if (value === null) {
+        delete next[key];
+      } else if (typeof value === 'boolean') {
+        next[key] = value;
+      } else {
+        throw new BadRequestException(
+          `El valor para ${key} debe ser true, false, o null.`,
+        );
+      }
+    }
+
+    const finalOverrides = Object.keys(next).length > 0 ? next : null;
+
+    const updated = await this.prisma.workspaceUser.update({
+      where: {
+        workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
+      },
+      data: { permissions_json: finalOverrides as any },
+    });
+
+    await this.audit.log(workspaceId, {
+      user_id: requestingUser.id,
+      action: 'member.permissions_updated',
+      entity_type: 'workspace_user',
+      entity_id: updated.id,
+      before: { overrides: (membership.permissions_json as Record<string, boolean> | null) ?? {} },
+      after: { overrides: finalOverrides ?? {} },
+    });
+
+    return this.getMemberPermissions(workspaceId, targetUserId);
   }
 }

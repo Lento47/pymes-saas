@@ -19,6 +19,7 @@ import {
   Building2, Users, PlugZap, UserPlus, Plus, Plug,
   Mail, MessageCircle, Radio, Eye, EyeOff, ExternalLink,
   PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen,
+  Send, X, RotateCw, Lock,
 } from "lucide-react";
 
 // ─── Paletas ──────────────────────────────────────────────────────────────────
@@ -524,35 +525,212 @@ function WorkspaceTab() {
 // MEMBERS TAB
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ─── Permissions modal ──────────────────────────────────────────────────────
+
+function PermissionsDialog({
+  member,
+  open,
+  onClose,
+}: {
+  member: any;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const { data: catalog } = useQuery({
+    queryKey: ["/api/workspaces/current/permissions/catalog"],
+    queryFn: () => api.getPermissionsCatalog(),
+    enabled: open,
+  });
+
+  const { data: memberPerms, isLoading } = useQuery({
+    queryKey: ["/api/workspaces/current/members", member?.id, "permissions"],
+    queryFn: () => api.getMemberPermissions(member.id),
+    enabled: open && !!member?.id,
+  });
+
+  const [draft, setDraft] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (memberPerms?.resolved) setDraft({ ...memberPerms.resolved });
+  }, [memberPerms]);
+
+  const save = useMutation({
+    mutationFn: () => {
+      // Compute diff against role defaults — send overrides, null to reset.
+      const defaults = catalog?.role_defaults?.[memberPerms?.role] ?? {};
+      const changes: Record<string, boolean | null> = {};
+      for (const key of Object.keys(draft)) {
+        const current = draft[key];
+        const def = defaults[key];
+        if (current === def) {
+          // Matches role default → clear override if one exists
+          if (memberPerms?.overrides?.[key] !== undefined) changes[key] = null;
+        } else {
+          changes[key] = current;
+        }
+      }
+      return api.updateMemberPermissions(member.id, changes);
+    },
+    onSuccess: () => {
+      toast({ title: "Permisos actualizados" });
+      qc.invalidateQueries({
+        queryKey: ["/api/workspaces/current/members", member?.id, "permissions"],
+      });
+      onClose();
+    },
+    onError: (e: any) =>
+      toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  if (!member) return null;
+
+  const isOwner = member.is_owner || memberPerms?.is_owner;
+  const permissions: Array<{ key: string; label: string; description: string }> =
+    catalog?.permissions ?? [];
+  const defaults: Record<string, boolean> =
+    catalog?.role_defaults?.[memberPerms?.role] ?? {};
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="bg-card border-border max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-sm font-semibold">
+            Permisos de {member.name ?? member.email}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isOwner ? (
+          <div className="p-4 rounded-[4px] bg-[hsl(var(--bg-elevated))] text-xs text-muted-foreground">
+            El OWNER tiene todos los permisos y no puede modificarse.
+          </div>
+        ) : isLoading || !memberPerms ? (
+          <div className="py-6 text-xs text-muted-foreground">Cargando…</div>
+        ) : (
+          <div className="space-y-1 max-h-[440px] overflow-y-auto -mx-2 px-2">
+            <div className="flex items-center gap-2 mb-3 text-[11px] text-muted-foreground">
+              <span className="uppercase tracking-wider">Rol:</span>
+              <Badge variant="outline" className={ROLE_COLORS[memberPerms.role] ?? ""}>
+                {memberPerms.role}
+              </Badge>
+              <span className="ml-auto">Los valores por defecto provienen del rol.</span>
+            </div>
+            {permissions.map((p) => {
+              const enabled = draft[p.key] ?? false;
+              const isOverride =
+                draft[p.key] !== undefined && draft[p.key] !== defaults[p.key];
+              return (
+                <div
+                  key={p.key}
+                  className="flex items-start justify-between gap-3 py-2.5 border-b border-border last:border-b-0"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[13px] font-medium text-foreground">{p.label}</p>
+                      {isOverride && (
+                        <span className="text-[10px] uppercase tracking-wider text-amber-500/80">
+                          override
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                      {p.description}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={enabled}
+                    onCheckedChange={(v) =>
+                      setDraft((d) => ({ ...d, [p.key]: v }))
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {!isOwner && (
+          <div className="flex justify-end gap-2 pt-3">
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => save.mutate()}
+              disabled={save.isPending || isLoading}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {save.isPending ? "Guardando…" : "Guardar permisos"}
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Members tab ────────────────────────────────────────────────────────────
+
 function MembersTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("AGENT");
+  const [permMember, setPermMember] = useState<any | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["/api/workspaces/current/members"],
     queryFn: () => api.getMembers(),
   });
 
+  const { data: invData } = useQuery({
+    queryKey: ["/api/invitations"],
+    queryFn: () => api.listInvitations(),
+  });
+
   const invite = useMutation({
-    mutationFn: () => api.inviteUser({ email, role }),
+    mutationFn: () => api.createInvitation({ email, role }),
     onSuccess: () => {
-      toast({ title: "Invitación enviada" });
-      qc.invalidateQueries({ queryKey: ["/api/workspaces/current/members"] });
+      toast({ title: "Invitación enviada", description: `Enviamos un email a ${email}.` });
+      qc.invalidateQueries({ queryKey: ["/api/invitations"] });
       setOpen(false);
       setEmail("");
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const resend = useMutation({
+    mutationFn: (id: string) => api.resendInvitation(id),
+    onSuccess: () => {
+      toast({ title: "Invitación reenviada" });
+      qc.invalidateQueries({ queryKey: ["/api/invitations"] });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const revoke = useMutation({
+    mutationFn: (id: string) => api.revokeInvitation(id),
+    onSuccess: () => {
+      toast({ title: "Invitación revocada" });
+      qc.invalidateQueries({ queryKey: ["/api/invitations"] });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   const members = Array.isArray(data) ? data : [];
+  const invitations = Array.isArray(invData) ? invData : [];
+  const pendingInvitations = invitations.filter((i: any) => i.status === "PENDING");
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-muted-foreground">{members.length} miembro(s)</p>
+        <p className="text-sm text-muted-foreground">
+          {members.length} miembro(s)
+          {pendingInvitations.length > 0 && ` · ${pendingInvitations.length} pendiente(s)`}
+        </p>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="bg-primary hover:bg-primary/90">
@@ -564,12 +742,15 @@ function MembersTab() {
             <div className="space-y-3 pt-2">
               <div>
                 <Label>Email</Label>
-                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" className="mt-1 bg-[hsl(var(--bg-elevated))] border-border" />
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  Recibirá un email con un enlace único para crear su cuenta.
+                </p>
               </div>
               <div>
                 <Label>Rol</Label>
                 <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 bg-[hsl(var(--bg-elevated))] border-border"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-card border-border">
                     {["ADMIN", "AGENT", "VIEWER"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                   </SelectContent>
@@ -586,21 +767,95 @@ function MembersTab() {
       {isLoading ? <div className="text-muted-foreground text-sm">Cargando...</div> : (
         <div className="space-y-2">
           {members.map((m: any) => (
-            <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
+            <div key={m.id} className="flex items-center justify-between p-3 rounded-[4px] bg-card border border-border">
               <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-elevated text-xs">{m.name?.[0]?.toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="bg-[hsl(var(--bg-elevated))] text-xs">{m.name?.[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="text-sm font-medium">{m.name}</p>
                   <p className="text-xs text-muted-foreground">{m.email}</p>
                 </div>
               </div>
-              <Badge variant="outline" className={ROLE_COLORS[m.role] ?? ""}>{m.role}</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className={ROLE_COLORS[m.role] ?? ""}>{m.role}</Badge>
+                {!m.is_owner && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setPermMember(m)}
+                    title="Permisos granulares"
+                  >
+                    <Lock className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Pending invitations */}
+      {pendingInvitations.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Invitaciones pendientes
+          </h3>
+          <div className="space-y-2">
+            {pendingInvitations.map((inv: any) => (
+              <div
+                key={inv.id}
+                className="flex items-center justify-between p-3 rounded-[4px] bg-card border border-border"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-8 w-8 rounded-[4px] bg-[hsl(var(--bg-elevated))] flex items-center justify-center shrink-0">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{inv.email}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Enviada {new Date(inv.last_sent_at).toLocaleDateString()}
+                      {inv.send_count > 1 && ` · ${inv.send_count} envíos`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge variant="outline" className={ROLE_COLORS[inv.role] ?? ""}>
+                    {inv.role}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => resend.mutate(inv.id)}
+                    disabled={resend.isPending}
+                    title="Reenviar invitación"
+                  >
+                    <RotateCw className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs hover:bg-red-500/10 hover:text-red-400"
+                    onClick={() => revoke.mutate(inv.id)}
+                    disabled={revoke.isPending}
+                    title="Revocar invitación"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <PermissionsDialog
+        member={permMember}
+        open={!!permMember}
+        onClose={() => setPermMember(null)}
+      />
     </div>
   );
 }
