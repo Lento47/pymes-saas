@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -147,9 +148,23 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p style={{ marginTop: "20px", fontSize: "12px", color: "hsl(var(--fg-3))", textAlign: "center" }}>
-          © {new Date().getFullYear()} Pymeshub
-        </p>
+        <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "10px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
+            <Link href="/legal/terms-and-conditions">
+              <span style={{ fontSize: "12px", color: "hsl(var(--fg-2))", cursor: "pointer" }}>Términos</span>
+            </Link>
+            <Link href="/legal/privacy-policy">
+              <span style={{ fontSize: "12px", color: "hsl(var(--fg-2))", cursor: "pointer" }}>Privacidad</span>
+            </Link>
+            <Link href="/legal">
+              <span style={{ fontSize: "12px", color: "hsl(var(--fg-2))", cursor: "pointer" }}>Centro legal</span>
+            </Link>
+          </div>
+
+          <p style={{ fontSize: "12px", color: "hsl(var(--fg-3))", textAlign: "center" }}>
+            © {new Date().getFullYear()} Pymeshub
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -39,6 +39,7 @@ El motor de análisis compara el mes actual contra el anterior y genera alertas 
 
 ### 💬 Inbox Unificado
 - Centraliza Email, WhatsApp, formularios y API en un solo inbox
+- Recepción de email inbound configurable por canal con Resend webhook
 - Asignación de conversaciones a agentes o departamentos
 - Prioridades (LOW / MEDIUM / HIGH / URGENT) con badges visuales
 - Resolución y archivado con trazabilidad completa
@@ -62,10 +63,21 @@ El motor de análisis compara el mes actual contra el anterior y genera alertas 
 - Clientes, proveedores, leads y otros
 - Última interacción, etiquetas libres, historial completo
 - Conversaciones, tareas y documentos vinculados por contacto
+- Edición del contacto vinculado directamente desde el inbox
 
 ### 📊 Resúmenes IA Diarios
 - Resumen en español generado automáticamente al cierre del día
 - Métricas de conversaciones, mensajes, tareas y documentos
+
+### 💳 Cobro y Facturación
+- Recordatorios y envío de facturas desde la conversación
+- Base de billing por workspace para desbloqueo por plan
+- Preparación de facturación electrónica CR desde Workspace
+
+### ⚖️ Ayuda y Cumplimiento
+- Centro de ayuda dentro del producto
+- Centro legal público con documentos del servicio
+- Paquete documental maestro en `docs/` para operación, seguridad y compliance
 
 ### 🏢 Departamentos & Roles
 - Organiza canales y conversaciones por departamento
@@ -133,7 +145,7 @@ pymes-saas/
 | **Jobs async** | BullMQ + Redis |
 | **Storage** | AWS S3 / MinIO |
 | **Email** | Resend |
-| **AI** | OpenAI API |
+| **AI** | OpenAI, Anthropic, Gemini, Moonshot |
 | **Iconos** | Lucide React |
 | **Fechas** | date-fns (locale `es`) |
 
@@ -186,6 +198,10 @@ OPENAI_API_KEY=sk-...
 
 # Email (Resend)
 RESEND_API_KEY=re_...
+RESEND_WEBHOOK_SECRET=whsec_...
+
+# Cifrado de secretos guardados en DB
+ENCRYPTION_KEY="clave-larga-para-cifrar-secretos"
 ```
 
 ### 3. Instala dependencias
@@ -271,6 +287,53 @@ GET    /api/notifications
 ```
 
 Todos los endpoints requieren `Authorization: Bearer <token>` y `x-workspace-slug: <slug>`.
+
+---
+
+## 📬 Email Inbound con Resend
+
+PymeHub ya soporta envío y recepción de correos por canal `EMAIL`.
+
+Configuración dentro del producto:
+
+1. Ve a `Configuración > Canales`
+2. Crea o abre un canal `EMAIL`
+3. Configura:
+   - `API Key de Resend`
+   - `Email remitente`
+   - `Nombre remitente`
+   - `Email receptor inbound` (opcional, recomendado si el buzón receptor es distinto)
+4. Copia desde PymeHub:
+   - `Webhook URL`
+   - `X-Workspace-Id`
+   - `X-Channel-Id`
+5. Configura esos valores en Resend inbound webhook
+
+Notas operativas:
+
+- Si `inbound_email` está definido, PymeHub lo usa para enrutar correos entrantes a ese canal.
+- Si no está definido, usa `from_email` como fallback.
+- Si tienes varios buzones por workspace, usa también `X-Channel-Id` para evitar ambigüedad.
+- Los mensajes inbound crean o reutilizan contacto y entran al inbox como conversación real.
+
+---
+
+## 📚 Documentación del repo
+
+La documentación maestra del proyecto vive en `docs/` e incluye:
+
+- `docs/legal/`
+- `docs/business/`
+- `docs/security/`
+- `docs/operations/`
+- `docs/product-compliance/`
+- `docs/architecture/`
+- `docs/templates/`
+
+El producto también expone:
+
+- `Ayuda` dentro de la aplicación
+- `Centro legal` para documentos públicos
 
 ---
 

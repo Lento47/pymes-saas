@@ -14,7 +14,7 @@ import { AutomationsModule } from '../automations/automations.module';
 @Module({
   imports: [
     EventsModule,
-    EmailModule,
+    forwardRef(() => EmailModule),
     forwardRef(() => WhatsAppModule),
     AiModule,
     forwardRef(() => TasksModule),

@@ -3,9 +3,10 @@ import { WorkspacesController } from './workspaces.controller';
 import { WorkspacesService } from './workspaces.service';
 import { CryptoModule } from '../common/crypto/crypto.module';
 import { PlanLimitsModule } from '../common/plan-limits/plan-limits.module';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
-  imports: [CryptoModule, PlanLimitsModule],
+  imports: [CryptoModule, PlanLimitsModule, AiModule],
   controllers: [WorkspacesController],
   providers: [WorkspacesService],
   exports: [WorkspacesService],

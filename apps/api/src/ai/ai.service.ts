@@ -42,7 +42,11 @@ export class AiService {
 
   // ── Resolve workspace AI config, fallback to env ───────────────────────────
 
-  async getConfig(workspaceId: string): Promise<AiProviderConfig | null> {
+  getDefaultModel(provider: AiProvider): string {
+    return DEFAULT_MODELS[provider];
+  }
+
+  async getWorkspaceConfig(workspaceId: string): Promise<AiProviderConfig | null> {
     const ws = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { settings_json: true },
@@ -59,6 +63,15 @@ export class AiService {
       } catch {
         this.logger.warn(`No se pudo desencriptar API key del workspace ${workspaceId}`);
       }
+    }
+
+    return null;
+  }
+
+  async getConfig(workspaceId: string): Promise<AiProviderConfig | null> {
+    const workspaceConfig = await this.getWorkspaceConfig(workspaceId);
+    if (workspaceConfig) {
+      return workspaceConfig;
     }
 
     // Fallback: env var OpenAI
@@ -177,6 +190,31 @@ export class AiService {
 
   // ── Public methods ─────────────────────────────────────────────────────────
 
+  async testConnection(config: AiProviderConfig): Promise<{
+    provider: AiProvider;
+    model: string;
+    reply: string;
+    tokens_used: number;
+    latency_ms: number;
+  }> {
+    const startedAt = Date.now();
+    const { text, tokens } = await this.chat(
+      config,
+      'Responde con una confirmacion breve en espanol para validar conectividad de API.',
+      'Devuelve exactamente una frase corta confirmando que la conexion funciona.',
+      60,
+      0,
+    );
+
+    return {
+      provider: config.provider,
+      model: config.model,
+      reply: text,
+      tokens_used: tokens,
+      latency_ms: Date.now() - startedAt,
+    };
+  }
+
   async analyzeConversation(
     workspaceId: string,
     conversationId: string,
@@ -225,14 +263,19 @@ export class AiService {
     const config = await this.getConfig(input.workspaceId);
     if (!config) throw new Error('No hay API key de IA configurada. Configúrala en Ajustes → Inteligencia Artificial.');
 
-    const system = 'Eres un asistente de cobros profesional. Redacta mensajes de recordatorio de pago en español.';
+    const isOverdue = input.daysOverdue > 0;
+    const system = isOverdue
+      ? 'Eres un asistente de cobros profesional. Redacta mensajes de recordatorio de pago en español.'
+      : 'Eres un asistente de facturación y cobro profesional. Redacta mensajes breves para enviar una factura o solicitar confirmación de pago en español.';
     const user = [
       `Cliente: ${input.customerName}`,
       `Monto adeudado: ${input.currency} ${input.amount}`,
       `Factura: ${input.invoiceNumber}`,
-      `Días vencida: ${input.daysOverdue}`,
+      `Estado temporal: ${isOverdue ? `vencida por ${input.daysOverdue} día(s)` : 'no vencida'}`,
       ``,
-      `Redacta un recordatorio de pago en español. Tono: profesional, directo y amigable.`,
+      isOverdue
+        ? `Redacta un recordatorio de pago en español. Tono: profesional, directo y amigable.`
+        : `Redacta un mensaje de envío de factura o cobro inicial en español. Tono: profesional, claro y amigable.`,
       `Máximo 3 oraciones. Sin saludos genéricos ni firmas. Solo el cuerpo del mensaje.`,
     ].join('\n');
 

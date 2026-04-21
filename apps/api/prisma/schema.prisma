@@ -32,6 +32,31 @@ enum WorkspacePlan {
   ENTERPRISE
 }
 
+enum BillingProvider {
+  MANUAL
+  STRIPE
+  PAYPAL
+  BAC
+  CUSTOM
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+  ONE_TIME
+  CUSTOM
+}
+
+enum WorkspaceSubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  UNPAID
+  CANCELLED
+  EXPIRED
+  MANUAL
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -213,6 +238,8 @@ model Workspace {
   error_reports        ErrorReport[]
   deal_stages          DealStage[]
   deals                Deal[]
+  subscriptions        WorkspaceSubscription[]
+  billing_events       BillingEvent[]
 
   @@index([slug])
   @@index([status])
@@ -245,6 +272,7 @@ model User {
   recorded_invoice_payments InvoicePayment[] @relation("InvoicePaymentRecorder")
   error_reports         ErrorReport[]
   assigned_deals        Deal[]              @relation("DealAssignee")
+  billing_events        BillingEvent[]
 
   @@index([email])
   @@index([status])
@@ -286,6 +314,66 @@ model RefreshToken {
   @@index([user_id, workspace_id])
   @@index([expires_at])
   @@map("refresh_tokens")
+}
+
+model WorkspaceSubscription {
+  id                       String                      @id @default(cuid())
+  workspace_id             String
+  provider                 BillingProvider             @default(MANUAL)
+  status                   WorkspaceSubscriptionStatus @default(MANUAL)
+  plan                     WorkspacePlan
+  billing_interval         BillingInterval             @default(MONTHLY)
+  provider_customer_id     String?
+  provider_subscription_id String?
+  external_reference       String?
+  current_period_start     DateTime?
+  current_period_end       DateTime?
+  cancel_at_period_end     Boolean                     @default(false)
+  trial_ends_at            DateTime?
+  notes                    String?                     @db.Text
+  metadata_json            Json?                       @db.JsonB
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  events    BillingEvent[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, plan])
+  @@index([provider, provider_customer_id])
+  @@index([provider, provider_subscription_id])
+  @@map("workspace_subscriptions")
+}
+
+model BillingEvent {
+  id                String           @id @default(cuid())
+  workspace_id      String
+  subscription_id   String?
+  provider          BillingProvider  @default(MANUAL)
+  source            String           @default("MANUAL")
+  event_type        String
+  provider_event_id String?
+  actor_user_id     String?
+  applied_plan      WorkspacePlan?
+  payload_json      Json?            @db.JsonB
+  processed_at      DateTime?
+  notes             String?          @db.Text
+
+  created_at DateTime @default(now())
+
+  workspace     Workspace              @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  subscription  WorkspaceSubscription? @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
+  actor_user    User?                  @relation(fields: [actor_user_id], references: [id], onDelete: SetNull)
+
+  @@unique([provider, provider_event_id])
+  @@index([workspace_id])
+  @@index([subscription_id])
+  @@index([provider, event_type])
+  @@index([processed_at])
+  @@index([actor_user_id])
+  @@map("billing_events")
 }
 
 // ============================================================

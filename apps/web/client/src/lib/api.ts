@@ -260,6 +260,7 @@ export const api = {
   deleteAutomation: (id: string) => request<any>("DELETE", `/api/automations/${id}`),
   getWorkspace: () => request<any>("GET", "/api/workspaces/current"),
   updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
+  testAiConnection: (data: any) => request<any>("POST", "/api/workspaces/current/ai/test", data),
   getApiKeys: () => request<any>("GET", "/api/workspaces/current/api-keys"),
   updateApiKeys: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   getMembers: () => request<any>("GET", "/api/workspaces/current/members"),
@@ -288,7 +289,7 @@ export const api = {
     if (types) params.set("types", types);
     return request<any>("GET", `/api/search?${params.toString()}`);
   },
-  configureEmail: (id: string, data: { api_key: string; from_email: string; from_name: string }) =>
+  configureEmail: (id: string, data: { api_key?: string; from_email: string; inbound_email?: string; from_name: string }) =>
     request<any>('POST', `/api/channels/${id}/configure-email`, data),
   configureWhatsApp: (id: string, data: { access_token: string; phone_number_id: string; waba_id: string }) =>
     request<any>('POST', `/api/channels/${id}/configure-whatsapp`, data),
@@ -327,6 +328,9 @@ export const api = {
     request<any>("POST", "/api/auth/switch-workspace", { workspace_slug }),
   // Platform admin
   platformListWorkspaces: () => request<any>("GET", "/api/platform/workspaces"),
+  platformGetWorkspaceBilling: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}/billing`),
+  platformUpdateWorkspaceBilling: (slug: string, data: any) =>
+    request<any>("PATCH", `/api/platform/workspaces/${slug}/billing`, data),
   platformListMembers: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}/members`),
   platformAssignMember: (slug: string, data: { email: string; role?: string }) =>
     request<any>("POST", `/api/platform/workspaces/${slug}/members`, data),

@@ -104,7 +104,14 @@ export class ChannelsService {
       where: { id },
       data: {
         status:      'ACTIVE',
-        config_json: { api_key_encrypted, from_email: dto.from_email, from_name: dto.from_name },
+        config_json: {
+          api_key_encrypted,
+          from_email: dto.from_email.trim().toLowerCase(),
+          from_name: dto.from_name.trim(),
+          ...(dto.inbound_email?.trim()
+            ? { inbound_email: dto.inbound_email.trim().toLowerCase() }
+            : {}),
+        },
       },
     });
 

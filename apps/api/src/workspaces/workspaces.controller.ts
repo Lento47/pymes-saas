@@ -19,6 +19,7 @@ import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 
 @Controller('workspaces')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -64,6 +65,15 @@ export class WorkspacesController {
     @Body() dto: UpdateWorkspaceDto,
   ) {
     return this.service.updateCurrent(workspaceId, dto);
+  }
+
+  @Post('current/ai/test')
+  @Roles('ADMIN' as any)
+  testAiConnection(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Body() dto: TestAiConnectionDto,
+  ) {
+    return this.service.testAiConnection(workspaceId, dto);
   }
 
   // ── Members ────────────────────────────────────────────────────────────────

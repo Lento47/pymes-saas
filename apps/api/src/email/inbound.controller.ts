@@ -23,6 +23,7 @@ export class InboundController {
   @HttpCode(HttpStatus.OK)
   async handleWebhook(
     @Headers('x-workspace-id') workspaceId: string,
+    @Headers('x-channel-id') channelId: string | undefined,
     @Headers('svix-signature') svixSignature: string | undefined,
     @Headers('svix-id') svixId: string | undefined,
     @Headers('svix-timestamp') svixTimestamp: string | undefined,
@@ -47,7 +48,10 @@ export class InboundController {
       this.logger.warn('RESEND_WEBHOOK_SECRET not set — skipping signature validation (dev mode).');
     }
 
-    await this.emailService.processInbound(workspaceId, body);
+    await this.emailService.processInbound(workspaceId, {
+      ...body,
+      ...(channelId ? { channel_id: channelId } : {}),
+    });
     return { received: true };
   }
 

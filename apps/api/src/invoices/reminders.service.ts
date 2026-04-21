@@ -73,8 +73,8 @@ export class RemindersService {
     });
 
     if (!invoice) throw new NotFoundException('Factura no encontrada.');
-    if (invoice.status !== InvoiceStatus.OVERDUE) {
-      throw new BadRequestException('Solo se generan recordatorios para facturas vencidas.');
+    if (invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.CANCELLED) {
+      throw new BadRequestException('Solo se puede enviar una factura que tenga saldo pendiente.');
     }
 
     const existing = await this.prisma.paymentReminder.findFirst({
@@ -91,16 +91,21 @@ export class RemindersService {
 
     if (existing) return existing;
 
-    const daysOverdue = Math.max(
-      1,
-      Math.floor((Date.now() - invoice.due_date.getTime()) / (1000 * 60 * 60 * 24)),
-    );
-
     const amountPaid = (invoice.payments ?? []).reduce(
       (sum, payment) => sum + Number(payment.amount ?? 0),
       0,
     );
     const balanceDue = Math.max(0, Number(invoice.amount) - amountPaid);
+    if (balanceDue <= 0) {
+      throw new BadRequestException('La factura no tiene saldo pendiente para enviar.');
+    }
+
+    const daysOverdue = invoice.due_date
+      ? Math.max(
+          0,
+          Math.floor((Date.now() - invoice.due_date.getTime()) / (1000 * 60 * 60 * 24)),
+        )
+      : 0;
 
     const aiResult = await this.aiService.generatePaymentReminderDraft({
       workspaceId,

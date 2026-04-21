@@ -11,12 +11,15 @@ import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
+import { AiProvider, AiService } from '../ai/ai.service';
+import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 
 @Injectable()
 export class WorkspacesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
+    private readonly aiService: AiService,
   ) {}
 
   private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
@@ -239,6 +242,41 @@ export class WorkspacesService {
         : {};
 
     return settings.ai_message_finance_opt_in === true;
+  }
+
+  async testAiConnection(workspaceId: string, dto: TestAiConnectionDto) {
+    const savedConfig = await this.aiService.getWorkspaceConfig(workspaceId);
+    const provider = (dto.ai_provider ?? savedConfig?.provider) as AiProvider | undefined;
+
+    if (!provider) {
+      throw new BadRequestException('Selecciona un proveedor de IA antes de probar la conexion.');
+    }
+
+    const canReuseSavedKey = savedConfig?.provider === provider;
+    const apiKey = dto.ai_api_key || (canReuseSavedKey ? savedConfig?.api_key : undefined);
+    if (!apiKey) {
+      throw new BadRequestException('Ingresa una API key o guarda una clave valida para este proveedor antes de probar la conexion.');
+    }
+
+    const model =
+      dto.ai_model ||
+      (canReuseSavedKey ? savedConfig?.model : undefined) ||
+      this.aiService.getDefaultModel(provider);
+
+    try {
+      const result = await this.aiService.testConnection({
+        provider,
+        model,
+        api_key: apiKey,
+      });
+
+      return {
+        ok: true,
+        ...result,
+      };
+    } catch (error) {
+      throw new BadRequestException((error as Error).message || 'No se pudo validar la conexion con el proveedor de IA.');
+    }
   }
 
   // ── GET /workspaces/current/api-keys ──────────────────────────────────────

@@ -14,6 +14,7 @@ import {
   Zap,
   KanbanSquare,
   Settings,
+  CircleHelp,
   LogOut,
   ChevronDown,
   Check,
@@ -171,6 +172,19 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             >
               <Settings style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
               <span style={{ fontSize: "13px" }}>Configuración</span>
+            </div>
+          </Link>
+
+          <Link href="/help">
+            <div
+              className={cn(
+                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
+                isActive("/help") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
+              )}
+              style={isActive("/help") ? { background: "hsl(var(--bg-active))" } : undefined}
+            >
+              <CircleHelp style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
+              <span style={{ fontSize: "13px" }}>Ayuda</span>
             </div>
           </Link>
         </nav>

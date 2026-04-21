@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug } from "@/lib/api";
 import { connectSocket, disconnectSocket } from "./use-socket";
 
@@ -15,6 +15,7 @@ export interface AuthUser {
 let _user: AuthUser | null = null;
 let _listeners: Array<() => void> = [];
 const LS_USER_KEY = "pymes_user";
+let _hydratePromise: Promise<AuthUser | null> | null = null;
 
 try {
   const storedUser = localStorage.getItem(LS_USER_KEY);
@@ -33,6 +34,30 @@ function notifyListeners() {
   _listeners.forEach(fn => fn());
 }
 
+async function hydrateUser() {
+  if (!isLoggedIn()) return null;
+  if (_hydratePromise) return _hydratePromise;
+
+  _hydratePromise = (async () => {
+    try {
+      const me = await api.getMe();
+      _user = me;
+      try { localStorage.setItem(LS_USER_KEY, JSON.stringify(me)); } catch { /* ignore */ }
+      notifyListeners();
+      return me;
+    } catch {
+      _user = null;
+      try { localStorage.removeItem(LS_USER_KEY); } catch { /* ignore */ }
+      notifyListeners();
+      return null;
+    } finally {
+      _hydratePromise = null;
+    }
+  })();
+
+  return _hydratePromise;
+}
+
 export function useAuth() {
   const [, forceUpdate] = useState(0);
 
@@ -42,7 +67,17 @@ export function useAuth() {
     return () => { _listeners = _listeners.filter(l => l !== fn); };
   }, []);
 
-  void subscribe;
+  useEffect(() => subscribe(), [subscribe]);
+
+  useEffect(() => {
+    const workspaceSlug = getWorkspaceSlug();
+    const hasWorkspaceMismatch =
+      !!_user?.workspace?.slug && !!workspaceSlug && _user.workspace.slug !== workspaceSlug;
+
+    if (isLoggedIn() && (!_user || hasWorkspaceMismatch)) {
+      void hydrateUser();
+    }
+  }, []);
 
   const login = async (email: string, password: string, workspaceSlug: string) => {
     const res = await api.login(email, password, workspaceSlug);
@@ -81,6 +116,7 @@ export function useAuth() {
     login,
     logout,
     switchWorkspace,
+    refreshUser: hydrateUser,
   };
 }
 

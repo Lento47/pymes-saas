@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Users, PlugZap, UserPlus, Plus, Plug,
   Mail, MessageCircle, Radio, Eye, EyeOff, ExternalLink,
-  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, Brain, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen,
+  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen,
 } from "lucide-react";
 
 // ─── Paletas ──────────────────────────────────────────────────────────────────
@@ -81,6 +81,7 @@ function WorkspaceTab() {
     queryFn: () => api.getWorkspace(),
   });
   const [financeOptIn, setFinanceOptIn] = useState(false);
+  const [taxStep, setTaxStep] = useState(0);
   const [taxConfig, setTaxConfig] = useState({
     legal_name: "",
     trade_name: "",
@@ -157,6 +158,19 @@ function WorkspaceTab() {
     },
   ];
   const readyChecklistCount = taxChecklist.filter((item) => item.ready).length;
+  const taxSectionStatus = {
+    issuer: taxChecklist[0].ready,
+    address: taxChecklist[1].ready,
+    hacienda: taxChecklist[2].ready,
+    certificate: taxChecklist[3].ready,
+  };
+  const taxSteps = [
+    { key: "issuer", title: "1. Perfil fiscal del emisor", description: "Razón social, identificación, actividad y correo tributario.", ready: taxSectionStatus.issuer },
+    { key: "address", title: "2. Dirección fiscal", description: "Provincia, cantón, distrito y dirección exacta.", ready: taxSectionStatus.address },
+    { key: "hacienda", title: "3. Conexión con Hacienda", description: "Ambiente, callback, client ID, token URL y credenciales.", ready: taxSectionStatus.hacienda },
+    { key: "certificate", title: "4. Certificado y firma", description: "Ruta del certificado, PIN y activación de firma real.", ready: taxSectionStatus.certificate },
+  ] as const;
+  const currentTaxStep = taxSteps[taxStep] ?? taxSteps[0];
 
   useEffect(() => {
     setFinanceOptIn(workspace?.ai_message_finance_opt_in === true);
@@ -187,272 +201,321 @@ function WorkspaceTab() {
   if (isLoading) return <div className="text-muted-foreground text-sm">Cargando...</div>;
   const ws = workspace;
   const hasFinanceOptInChanges = financeOptIn !== (ws?.ai_message_finance_opt_in === true);
+  const saveTaxConfig = () => saveWorkspace.mutate({
+    hacienda_environment: taxConfig.hacienda_environment,
+    hacienda_callback_url: taxConfig.hacienda_callback_url,
+    hacienda_client_id: taxConfig.hacienda_client_id,
+    hacienda_token_url: taxConfig.hacienda_token_url,
+    hacienda_username: taxConfig.hacienda_username,
+    hacienda_password: taxConfig.hacienda_password,
+    hacienda_certificate_path: taxConfig.hacienda_certificate_path,
+    hacienda_certificate_pin: taxConfig.hacienda_certificate_pin,
+    hacienda_signing_enabled: String(taxConfig.hacienda_signing_enabled),
+    tax_profile: {
+      legal_name: taxConfig.legal_name,
+      trade_name: taxConfig.trade_name,
+      identification_type: taxConfig.identification_type,
+      identification_number: taxConfig.identification_number,
+      activity_code: taxConfig.activity_code,
+      tax_email: taxConfig.tax_email,
+      phone: taxConfig.phone,
+      province: taxConfig.province,
+      canton: taxConfig.canton,
+      district: taxConfig.district,
+      address_detail: taxConfig.address_detail,
+    },
+  });
 
   return (
-    <div className="space-y-4 max-w-lg">
-      {[
-        { label: "Nombre", value: ws?.name },
-        { label: "Slug", value: ws?.slug },
-        { label: "Zona horaria", value: ws?.timezone },
-        { label: "Idioma", value: ws?.locale },
-      ].map(({ label, value }) => (
-        <div key={label}>
-          <Label className="text-xs text-muted-foreground uppercase tracking-wider">{label}</Label>
-          <p className="text-sm mt-1 font-medium">{value ?? "—"}</p>
-        </div>
-      ))}
-      <div>
-        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Plan</Label>
-        <div className="mt-1">
-          <Badge variant="outline" className="text-blue-400 border-blue-500/30 bg-blue-500/10">
-            {ws?.plan}
-          </Badge>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <section className="space-y-5">
+        <div className="grid gap-6 border-b border-border pb-5 lg:grid-cols-[minmax(0,1.8fr)_minmax(320px,0.9fr)] lg:items-start">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">{ws?.name ?? "Workspace"}</h2>
+              <Badge variant="outline" className="text-blue-400 border-blue-500/30 bg-blue-500/10">
+                {ws?.plan}
+              </Badge>
+            </div>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Configuración general del espacio, permisos rápidos de operación y preparación para facturación electrónica en Costa Rica.
+            </p>
 
-      <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-4 space-y-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <Label className="text-sm font-medium text-foreground">
-              Permitir lectura de mensajes para cobros
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Cuando está activo, la IA puede leer mensajes para detectar promesas
-              o pendientes de pago. Si está apagado, solo se usarán las facturas
-              para detectar deuda.
+            <div className="grid gap-x-10 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                { label: "Slug", value: ws?.slug },
+                { label: "Zona horaria", value: ws?.timezone },
+                { label: "Idioma", value: ws?.locale },
+                { label: "Estado", value: ws?.status ?? "—" },
+              ].map(({ label, value }) => (
+                <div key={label} className="min-w-0">
+                  <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
+                  <div className="mt-1 truncate text-sm font-medium text-foreground">{value ?? "—"}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3 lg:pl-4 lg:border-l lg:border-border">
+            <div>
+              <div className="text-sm font-medium text-foreground">Cobros con IA</div>
+              <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                Permite leer mensajes para detectar promesas o pendientes de pago. La detección por facturas vencidas sigue funcionando aunque esto esté apagado.
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-[hsl(var(--elevated))] px-3 py-3">
+              <div className="text-sm text-foreground">{financeOptIn ? "Activo" : "Inactivo"}</div>
+              <Switch
+                checked={financeOptIn}
+                onCheckedChange={setFinanceOptIn}
+                aria-label="Permitir lectura de mensajes para cobros"
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => saveWorkspace.mutate({ ai_message_finance_opt_in: financeOptIn })}
+                disabled={!hasFinanceOptInChanges || saveWorkspace.isPending}
+              >
+                {saveWorkspace.isPending ? "Guardando..." : "Guardar cambio"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <Label className="text-sm font-medium text-foreground">Facturación electrónica CR</Label>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Configura el emisor, la conexión con Hacienda y la firma del certificado sin salir de esta pantalla.
             </p>
           </div>
-          <Switch
-            checked={financeOptIn}
-            onCheckedChange={setFinanceOptIn}
-            aria-label="Permitir lectura de mensajes para cobros"
-          />
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            Este permiso no afecta la detección por facturas vencidas.
-          </p>
-          <Button
-            size="sm"
-            onClick={() => saveWorkspace.mutate({ ai_message_finance_opt_in: financeOptIn })}
-            disabled={!hasFinanceOptInChanges || saveWorkspace.isPending}
-          >
-            {saveWorkspace.isPending ? "Guardando..." : "Guardar permiso"}
-          </Button>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
-        <div>
-          <Label className="text-sm font-medium text-foreground">Facturación electrónica CR</Label>
-          <p className="text-sm text-muted-foreground mt-1">
-            Configuración base del emisor y conexión operativa con Hacienda.
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 p-4 space-y-3">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <BookOpen className="h-4 w-4 text-sky-400" />
-                Checklist rigurosa de Hacienda
-              </div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Para emitir de forma seria no alcanza con activar el módulo. Deben estar completos el emisor, la dirección fiscal,
-                la conexión a Hacienda y la firma real del certificado.
-              </p>
-            </div>
+          <div className="flex items-center gap-2">
             <Badge variant="outline" className="border-sky-500/30 bg-sky-500/10 text-sky-300">
               {readyChecklistCount}/{taxChecklist.length} listo
             </Badge>
+            <Button size="sm" onClick={saveTaxConfig} disabled={saveWorkspace.isPending}>
+              {saveWorkspace.isPending ? "Guardando..." : "Guardar configuración"}
+            </Button>
           </div>
-          <div className="space-y-2">
-            {taxChecklist.map((item) => (
-              <div key={item.label} className="flex items-start gap-2 rounded-md border border-border bg-background px-3 py-2">
-                {item.ready ? (
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />
-                ) : (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-400" />
-                )}
-                <div>
-                  <div className="text-sm text-foreground">{item.label}</div>
-                  <div className="text-xs text-muted-foreground">{item.detail}</div>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <aside className="space-y-3 xl:pr-2">
+            <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <BookOpen className="h-4 w-4 text-sky-400" />
+                Estado de preparación
+              </div>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Completa estos cuatro bloques para dejar listo el workspace de cara a una operación seria con Hacienda.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {taxSteps.map((step, index) => (
+                <button
+                  key={step.key}
+                  type="button"
+                  onClick={() => setTaxStep(index)}
+                  className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
+                    taxStep === index
+                      ? "border-sky-500/40 bg-sky-500/10"
+                      : "border-border bg-[hsl(var(--elevated))] hover:bg-[hsl(var(--elevated))]/80"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full border text-xs font-medium ${
+                        taxStep === index ? "border-sky-400/40 text-sky-200" : "border-border text-muted-foreground"
+                      }`}>
+                        {index + 1}
+                      </span>
+                      <div>
+                        <div className="text-sm font-medium text-foreground">{step.title.replace(/^\d+\.\s*/, "")}</div>
+                        <div className="text-xs text-muted-foreground">{step.description}</div>
+                      </div>
+                    </div>
+                    {step.ready ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-amber-400" />
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </aside>
+
+          <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-5">
+            <div className="mb-5 flex items-start justify-between gap-4 border-b border-border pb-4">
+              <div>
+                <div className="text-base font-semibold text-foreground">{currentTaxStep.title}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{currentTaxStep.description}</div>
+              </div>
+              <Badge variant="outline" className={currentTaxStep.ready ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-300"}>
+                {currentTaxStep.ready ? "Listo" : "Pendiente"}
+              </Badge>
+            </div>
+
+            <div className="min-h-[360px] space-y-4">
+            {currentTaxStep.key === "issuer" && (
+              <div className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>Razón social</Label>
+                    <Input value={taxConfig.legal_name} onChange={(e) => setTaxConfig((prev) => ({ ...prev, legal_name: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                    <p className="mt-1 text-[11px] text-muted-foreground">Ejemplo: `Servicios Técnicos del Valle S.A.`</p>
+                  </div>
+                  <div>
+                    <Label>Nombre comercial</Label>
+                    <Input value={taxConfig.trade_name} onChange={(e) => setTaxConfig((prev) => ({ ...prev, trade_name: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                    <p className="mt-1 text-[11px] text-muted-foreground">Ejemplo: `STV Soporte`</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div>
+                    <Label>Tipo ID</Label>
+                    <Input value={taxConfig.identification_type} onChange={(e) => setTaxConfig((prev) => ({ ...prev, identification_type: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" placeholder="02" />
+                    <p className="mt-1 text-[11px] text-muted-foreground">Ejemplo: `01` física, `02` jurídica.</p>
+                  </div>
+                  <div>
+                    <Label>Identificación</Label>
+                    <Input value={taxConfig.identification_number} onChange={(e) => setTaxConfig((prev) => ({ ...prev, identification_number: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                  <div>
+                    <Label>Actividad</Label>
+                    <Input value={taxConfig.activity_code} onChange={(e) => setTaxConfig((prev) => ({ ...prev, activity_code: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>Correo tributario</Label>
+                    <Input value={taxConfig.tax_email} onChange={(e) => setTaxConfig((prev) => ({ ...prev, tax_email: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                  <div>
+                    <Label>Teléfono</Label>
+                    <Input value={taxConfig.phone} onChange={(e) => setTaxConfig((prev) => ({ ...prev, phone: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            Además de esta configuración, la operación rigurosa requiere datos completos del contacto receptor, CABYS correcto,
-            impuestos correctos, XML válido, respuesta de Hacienda y trazabilidad de aceptación o rechazo.
-          </p>
-        </div>
+            )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Razón social</Label>
-            <Input value={taxConfig.legal_name} onChange={(e) => setTaxConfig((prev) => ({ ...prev, legal_name: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-            <p className="mt-1 text-[11px] text-muted-foreground">Ejemplo: `Servicios Técnicos del Valle S.A.`</p>
-          </div>
-          <div>
-            <Label>Nombre comercial</Label>
-            <Input value={taxConfig.trade_name} onChange={(e) => setTaxConfig((prev) => ({ ...prev, trade_name: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-            <p className="mt-1 text-[11px] text-muted-foreground">Ejemplo: `STV Soporte`</p>
-          </div>
-        </div>
+            {currentTaxStep.key === "address" && (
+              <div className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div>
+                    <Label>Provincia</Label>
+                    <Input value={taxConfig.province} onChange={(e) => setTaxConfig((prev) => ({ ...prev, province: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                  <div>
+                    <Label>Cantón</Label>
+                    <Input value={taxConfig.canton} onChange={(e) => setTaxConfig((prev) => ({ ...prev, canton: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                  <div>
+                    <Label>Distrito</Label>
+                    <Input value={taxConfig.district} onChange={(e) => setTaxConfig((prev) => ({ ...prev, district: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                </div>
+                <div>
+                  <Label>Dirección exacta</Label>
+                  <Input value={taxConfig.address_detail} onChange={(e) => setTaxConfig((prev) => ({ ...prev, address_detail: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                </div>
+              </div>
+            )}
 
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <Label>Tipo ID</Label>
-            <Input value={taxConfig.identification_type} onChange={(e) => setTaxConfig((prev) => ({ ...prev, identification_type: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" placeholder="02" />
-            <p className="mt-1 text-[11px] text-muted-foreground">Ejemplo: `01` física, `02` jurídica.</p>
-          </div>
-          <div>
-            <Label>Identificación</Label>
-            <Input value={taxConfig.identification_number} onChange={(e) => setTaxConfig((prev) => ({ ...prev, identification_number: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-            <p className="mt-1 text-[11px] text-muted-foreground">Número oficial del contribuyente.</p>
-          </div>
-          <div>
-            <Label>Actividad</Label>
-            <Input value={taxConfig.activity_code} onChange={(e) => setTaxConfig((prev) => ({ ...prev, activity_code: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-            <p className="mt-1 text-[11px] text-muted-foreground">Código de actividad económica ante Hacienda.</p>
-          </div>
-        </div>
+            {currentTaxStep.key === "hacienda" && (
+              <div className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>Ambiente Hacienda</Label>
+                    <Select value={taxConfig.hacienda_environment} onValueChange={(value) => setTaxConfig((prev) => ({ ...prev, hacienda_environment: value }))}>
+                      <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-card border-border">
+                        <SelectItem value="staging">staging</SelectItem>
+                        <SelectItem value="production">production</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-[11px] text-muted-foreground">Usa `staging` para pruebas y `production` cuando ya todo esté validado.</p>
+                  </div>
+                  <div>
+                    <Label>Callback URL</Label>
+                    <Input value={taxConfig.hacienda_callback_url} onChange={(e) => setTaxConfig((prev) => ({ ...prev, hacienda_callback_url: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>Client ID</Label>
+                    <Input value={taxConfig.hacienda_client_id} onChange={(e) => setTaxConfig((prev) => ({ ...prev, hacienda_client_id: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                  <div>
+                    <Label>Token URL</Label>
+                    <Input value={taxConfig.hacienda_token_url} onChange={(e) => setTaxConfig((prev) => ({ ...prev, hacienda_token_url: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>Usuario Hacienda</Label>
+                    <Input value={taxConfig.hacienda_username} onChange={(e) => setTaxConfig((prev) => ({ ...prev, hacienda_username: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                  <div>
+                    <Label>Contraseña Hacienda</Label>
+                    <SecretInput value={taxConfig.hacienda_password} onChange={(value) => setTaxConfig((prev) => ({ ...prev, hacienda_password: value }))} placeholder="••••••••" />
+                  </div>
+                </div>
+              </div>
+            )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Correo tributario</Label>
-            <Input value={taxConfig.tax_email} onChange={(e) => setTaxConfig((prev) => ({ ...prev, tax_email: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-          </div>
-          <div>
-            <Label>Teléfono</Label>
-            <Input value={taxConfig.phone} onChange={(e) => setTaxConfig((prev) => ({ ...prev, phone: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-          </div>
-        </div>
+            {currentTaxStep.key === "certificate" && (
+              <div className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>Ruta certificado</Label>
+                    <Input value={taxConfig.hacienda_certificate_path} onChange={(e) => setTaxConfig((prev) => ({ ...prev, hacienda_certificate_path: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                  <div>
+                    <Label>PIN certificado</Label>
+                    <SecretInput value={taxConfig.hacienda_certificate_pin} onChange={(value) => setTaxConfig((prev) => ({ ...prev, hacienda_certificate_pin: value }))} placeholder="••••" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-[hsl(var(--elevated))] p-3">
+                  <div>
+                    <Label className="text-sm font-medium text-foreground">Activar firma</Label>
+                    <p className="text-xs text-muted-foreground mt-1">Si está apagado, el backend usa firma placeholder para el flujo técnico.</p>
+                  </div>
+                  <Switch
+                    checked={taxConfig.hacienda_signing_enabled}
+                    onCheckedChange={(value) => setTaxConfig((prev) => ({ ...prev, hacienda_signing_enabled: value }))}
+                    aria-label="Activar firma Hacienda"
+                  />
+                </div>
+              </div>
+            )}
+            </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <Label>Provincia</Label>
-            <Input value={taxConfig.province} onChange={(e) => setTaxConfig((prev) => ({ ...prev, province: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-          </div>
-          <div>
-            <Label>Cantón</Label>
-            <Input value={taxConfig.canton} onChange={(e) => setTaxConfig((prev) => ({ ...prev, canton: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-          </div>
-          <div>
-            <Label>Distrito</Label>
-            <Input value={taxConfig.district} onChange={(e) => setTaxConfig((prev) => ({ ...prev, district: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-          </div>
-        </div>
-
-        <div>
-          <Label>Dirección exacta</Label>
-          <Input value={taxConfig.address_detail} onChange={(e) => setTaxConfig((prev) => ({ ...prev, address_detail: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Ambiente Hacienda</Label>
-            <Select value={taxConfig.hacienda_environment} onValueChange={(value) => setTaxConfig((prev) => ({ ...prev, hacienda_environment: value }))}>
-              <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
-              <SelectContent className="bg-card border-border">
-                <SelectItem value="staging">staging</SelectItem>
-                <SelectItem value="production">production</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="mt-1 text-[11px] text-muted-foreground">Usa `staging` para pruebas y `production` solo cuando todo esté validado.</p>
-          </div>
-          <div>
-            <Label>Callback URL</Label>
-            <Input value={taxConfig.hacienda_callback_url} onChange={(e) => setTaxConfig((prev) => ({ ...prev, hacienda_callback_url: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-            <p className="mt-1 text-[11px] text-muted-foreground">URL pública que Hacienda puede llamar para actualizar estados.</p>
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
+              <Button size="sm" onClick={saveTaxConfig} disabled={saveWorkspace.isPending}>
+                {saveWorkspace.isPending ? "Guardando..." : "Guardar"}
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="text-xs text-muted-foreground">
+                  Paso {taxStep + 1} de {taxSteps.length}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" onClick={() => setTaxStep((prev) => Math.max(prev - 1, 0))} disabled={taxStep === 0}>
+                    Anterior
+                  </Button>
+                  <Button type="button" onClick={() => setTaxStep((prev) => Math.min(prev + 1, taxSteps.length - 1))} disabled={taxStep === taxSteps.length - 1}>
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Client ID</Label>
-            <Input value={taxConfig.hacienda_client_id} onChange={(e) => setTaxConfig((prev) => ({ ...prev, hacienda_client_id: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-            <p className="mt-1 text-[11px] text-muted-foreground">Identificador del cliente OAuth/OIDC configurado para Hacienda.</p>
-          </div>
-          <div>
-            <Label>Token URL</Label>
-            <Input value={taxConfig.hacienda_token_url} onChange={(e) => setTaxConfig((prev) => ({ ...prev, hacienda_token_url: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-            <p className="mt-1 text-[11px] text-muted-foreground">Endpoint donde el sistema obtiene el token antes de enviar comprobantes.</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Usuario Hacienda</Label>
-            <Input value={taxConfig.hacienda_username} onChange={(e) => setTaxConfig((prev) => ({ ...prev, hacienda_username: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-            <p className="mt-1 text-[11px] text-muted-foreground">Usuario técnico para autenticación ante Hacienda.</p>
-          </div>
-          <div>
-            <Label>Contraseña Hacienda</Label>
-            <SecretInput value={taxConfig.hacienda_password} onChange={(value) => setTaxConfig((prev) => ({ ...prev, hacienda_password: value }))} placeholder="••••••••" />
-            <p className="mt-1 text-[11px] text-muted-foreground">Se usa junto con el token para el envío oficial.</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Ruta certificado</Label>
-            <Input value={taxConfig.hacienda_certificate_path} onChange={(e) => setTaxConfig((prev) => ({ ...prev, hacienda_certificate_path: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-            <p className="mt-1 text-[11px] text-muted-foreground">Ubicación del certificado real del emisor.</p>
-          </div>
-          <div>
-            <Label>PIN certificado</Label>
-            <SecretInput value={taxConfig.hacienda_certificate_pin} onChange={(value) => setTaxConfig((prev) => ({ ...prev, hacienda_certificate_pin: value }))} placeholder="••••" />
-            <p className="mt-1 text-[11px] text-muted-foreground">PIN necesario para firmar el XML.</p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Label className="text-sm font-medium text-foreground">Activar firma</Label>
-            <p className="text-xs text-muted-foreground mt-1">Si está apagado, el backend usa firma placeholder para el flujo técnico.</p>
-          </div>
-          <Switch
-            checked={taxConfig.hacienda_signing_enabled}
-            onCheckedChange={(value) => setTaxConfig((prev) => ({ ...prev, hacienda_signing_enabled: value }))}
-            aria-label="Activar firma Hacienda"
-          />
-        </div>
-
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            onClick={() => saveWorkspace.mutate({
-              hacienda_environment: taxConfig.hacienda_environment,
-              hacienda_callback_url: taxConfig.hacienda_callback_url,
-              hacienda_client_id: taxConfig.hacienda_client_id,
-              hacienda_token_url: taxConfig.hacienda_token_url,
-              hacienda_username: taxConfig.hacienda_username,
-              hacienda_password: taxConfig.hacienda_password,
-              hacienda_certificate_path: taxConfig.hacienda_certificate_path,
-              hacienda_certificate_pin: taxConfig.hacienda_certificate_pin,
-              hacienda_signing_enabled: String(taxConfig.hacienda_signing_enabled),
-              tax_profile: {
-                legal_name: taxConfig.legal_name,
-                trade_name: taxConfig.trade_name,
-                identification_type: taxConfig.identification_type,
-                identification_number: taxConfig.identification_number,
-                activity_code: taxConfig.activity_code,
-                tax_email: taxConfig.tax_email,
-                phone: taxConfig.phone,
-                province: taxConfig.province,
-                canton: taxConfig.canton,
-                district: taxConfig.district,
-                address_detail: taxConfig.address_detail,
-              },
-            })}
-            disabled={saveWorkspace.isPending}
-          >
-            {saveWorkspace.isPending ? "Guardando..." : "Guardar configuración Hacienda"}
-          </Button>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -553,11 +616,18 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
   // Pre-populate with existing values; api_key is secret so can't be pre-filled
   const [apiKey, setApiKey] = useState("");
   const [fromEmail, setFromEmail] = useState(channel?.config?.from_email ?? "");
+  const [inboundEmail, setInboundEmail] = useState(channel?.config?.inbound_email ?? "");
   const [fromName, setFromName] = useState(channel?.config?.from_name ?? "");
+  const webhookUrl = `${window.location.origin}/api/inbound/email/webhook`;
+  const resolvedInboundEmail = inboundEmail.trim() || fromEmail.trim();
+  const workspaceHeader = channel?.workspace_id ?? "WORKSPACE_ID";
 
   const save = useMutation({
     mutationFn: () => api.configureEmail(channel.id, {
-      api_key: apiKey, from_email: fromEmail, from_name: fromName,
+      api_key: apiKey || undefined,
+      from_email: fromEmail,
+      inbound_email: inboundEmail.trim() ? inboundEmail : undefined,
+      from_name: fromName,
     }),
     onSuccess: () => {
       toast({ title: "Canal EMAIL guardado y activado" });
@@ -590,7 +660,21 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
         <Input type="email" value={fromEmail} onChange={e => setFromEmail(e.target.value)}
           placeholder="onboarding@resend.dev" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
         <p className="text-xs text-muted-foreground mt-1">
-          Sin dominio propio usá <span className="font-mono">onboarding@resend.dev</span>
+          Este correo se usa para enviar. Sin dominio propio usá <span className="font-mono">onboarding@resend.dev</span>.
+        </p>
+      </div>
+
+      <div>
+        <Label>Email receptor inbound <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+        <Input
+          type="email"
+          value={inboundEmail}
+          onChange={e => setInboundEmail(e.target.value)}
+          placeholder="inbox@tu-dominio.com"
+          className="mt-1 bg-[hsl(var(--elevated))] border-border"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Si lo dejás vacío, PymeHub enruta por <span className="font-mono">{fromEmail || "from_email"}</span>. Si usás un buzón distinto para recibir, ponelo aquí.
         </p>
       </div>
 
@@ -598,6 +682,46 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
         <Label>Nombre remitente</Label>
         <Input value={fromName} onChange={e => setFromName(e.target.value)}
           placeholder="PYMES CRM" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+      </div>
+
+      <div className="space-y-3 rounded-lg border border-border bg-[hsl(var(--elevated))] p-3 text-xs">
+        <div>
+          <p className="font-medium text-foreground">Recepción de correos en PymeHub</p>
+          <p className="mt-1 text-muted-foreground">
+            Resend debe mandar los correos entrantes a este webhook para que aparezcan en el inbox del workspace.
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Webhook URL</p>
+          <p className="break-all rounded border border-border bg-background/60 px-2 py-1 font-mono text-[11px] text-foreground">
+            {webhookUrl}
+          </p>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Header requerido</p>
+            <p className="rounded border border-border bg-background/60 px-2 py-1 font-mono text-[11px] text-foreground">
+              X-Workspace-Id: {workspaceHeader}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Header recomendado</p>
+            <p className="rounded border border-border bg-background/60 px-2 py-1 font-mono text-[11px] text-foreground">
+              X-Channel-Id: {channel.id}
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-blue-200">
+          <p>
+            Dirección inbound activa: <span className="font-mono">{resolvedInboundEmail || "sin definir"}</span>
+          </p>
+          <p className="mt-1 text-blue-100/80">
+            Recomendado si tienes varios buzones: configurar esta dirección en Resend y además enviar <span className="font-mono">X-Channel-Id</span>.
+          </p>
+        </div>
       </div>
 
       <Button
@@ -1208,6 +1332,16 @@ function PlatformTab() {
   const [assignRole, setAssignRole] = useState("AGENT");
   const [searchEmail, setSearchEmail] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [billingPlan, setBillingPlan] = useState("FREE");
+  const [billingStatus, setBillingStatus] = useState("MANUAL");
+  const [billingProvider, setBillingProvider] = useState("MANUAL");
+  const [billingInterval, setBillingInterval] = useState("MONTHLY");
+  const [providerCustomerId, setProviderCustomerId] = useState("");
+  const [providerSubscriptionId, setProviderSubscriptionId] = useState("");
+  const [billingNotes, setBillingNotes] = useState("");
+  const [periodStart, setPeriodStart] = useState("");
+  const [periodEnd, setPeriodEnd] = useState("");
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
 
   const { data: workspaces, isLoading: wsLoading } = useQuery({
     queryKey: ["/api/platform/workspaces"],
@@ -1217,6 +1351,12 @@ function PlatformTab() {
   const { data: members, isLoading: membersLoading } = useQuery({
     queryKey: ["/api/platform/workspaces", selectedSlug, "members"],
     queryFn: () => api.platformListMembers(selectedSlug!),
+    enabled: !!selectedSlug,
+  });
+
+  const { data: billingData, isLoading: billingLoading } = useQuery({
+    queryKey: ["/api/platform/workspaces", selectedSlug, "billing"],
+    queryFn: () => api.platformGetWorkspaceBilling(selectedSlug!),
     enabled: !!selectedSlug,
   });
 
@@ -1246,9 +1386,48 @@ function PlatformTab() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const updateBilling = useMutation({
+    mutationFn: () =>
+      api.platformUpdateWorkspaceBilling(selectedSlug!, {
+        plan: billingPlan,
+        status: billingStatus,
+        provider: billingProvider,
+        billing_interval: billingInterval,
+        provider_customer_id: providerCustomerId || undefined,
+        provider_subscription_id: providerSubscriptionId || undefined,
+        current_period_start: periodStart || undefined,
+        current_period_end: periodEnd || undefined,
+        cancel_at_period_end: cancelAtPeriodEnd,
+        notes: billingNotes || undefined,
+      }),
+    onSuccess: () => {
+      toast({ title: "Billing actualizado" });
+      qc.invalidateQueries({ queryKey: ["/api/platform/workspaces"] });
+      qc.invalidateQueries({ queryKey: ["/api/platform/workspaces", selectedSlug, "billing"] });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  useEffect(() => {
+    const subscription = billingData?.subscription;
+    const workspace = billingData?.workspace;
+
+    setBillingPlan(subscription?.plan ?? workspace?.plan ?? "FREE");
+    setBillingStatus(subscription?.status ?? "MANUAL");
+    setBillingProvider(subscription?.provider ?? "MANUAL");
+    setBillingInterval(subscription?.billing_interval ?? "MONTHLY");
+    setProviderCustomerId(subscription?.provider_customer_id ?? "");
+    setProviderSubscriptionId(subscription?.provider_subscription_id ?? "");
+    setBillingNotes(subscription?.notes ?? "");
+    setPeriodStart(subscription?.current_period_start ? String(subscription.current_period_start).slice(0, 10) : "");
+    setPeriodEnd(subscription?.current_period_end ? String(subscription.current_period_end).slice(0, 10) : "");
+    setCancelAtPeriodEnd(subscription?.cancel_at_period_end === true);
+  }, [billingData]);
+
   const wsList = Array.isArray(workspaces) ? workspaces : [];
   const membersList = Array.isArray(members) ? members : [];
   const usersList = Array.isArray(users) ? users : [];
+  const billingEvents = Array.isArray(billingData?.events) ? billingData.events : [];
 
   return (
     <div className="space-y-6">
@@ -1290,11 +1469,11 @@ function PlatformTab() {
         )}
       </div>
 
-      <div className="h-px bg-border" />
+        <div className="h-px bg-border" />
 
-      {/* Workspace member management */}
-      <div>
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+        {/* Workspace member management */}
+        <div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
           <Building2 className="h-4 w-4" />Gestión de accesos por workspace
         </h3>
         <div className="grid grid-cols-2 gap-4">
@@ -1304,32 +1483,173 @@ function PlatformTab() {
             {wsLoading ? (
               <p className="text-sm text-muted-foreground">Cargando...</p>
             ) : (
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                {wsList.map((w: any) => (
-                  <button
-                    key={w.id}
-                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${selectedSlug === w.slug ? "bg-elevated text-white" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
-                    onClick={() => setSelectedSlug(w.slug)}
-                  >
-                    <span className="font-medium">{w.name}</span>
-                    <span className="ml-2 text-xs opacity-60">{w.member_count} miembros</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                  {wsList.map((w: any) => (
+                    <button
+                      key={w.id}
+                      className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${selectedSlug === w.slug ? "bg-elevated text-white" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
+                      onClick={() => setSelectedSlug(w.slug)}
+                    >
+                      <span className="font-medium">{w.name}</span>
+                      <span className="ml-2 text-xs opacity-60">{w.member_count} miembros</span>
+                      <span className="ml-2 text-[10px] rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-blue-300">
+                        {w.plan}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          {/* Members of selected workspace */}
-          <div>
-            {selectedSlug ? (
-              <>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-muted-foreground">{membersList.length} miembro(s)</p>
-                  <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="outline" className="h-7 text-xs">
-                        <UserPlus className="h-3 w-3 mr-1" />Asignar usuario
-                      </Button>
+            {/* Members of selected workspace */}
+            <div>
+              {selectedSlug ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Billing y desbloqueo</p>
+                        <p className="text-xs text-muted-foreground">
+                          Cuando el customer paga, aquí se actualiza la suscripción y el plan efectivo del workspace.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-300">
+                        Plan actual: {billingData?.workspace?.plan ?? "—"}
+                      </Badge>
+                    </div>
+
+                    {billingLoading ? (
+                      <p className="text-sm text-muted-foreground">Cargando billing...</p>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label>Plan efectivo</Label>
+                            <Select value={billingPlan} onValueChange={setBillingPlan}>
+                              <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                              <SelectContent className="bg-card border-border">
+                                {["FREE", "STARTER", "GROWTH", "ENTERPRISE"].map((value) => (
+                                  <SelectItem key={value} value={value}>{value}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Estado suscripción</Label>
+                            <Select value={billingStatus} onValueChange={setBillingStatus}>
+                              <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                              <SelectContent className="bg-card border-border">
+                                {["TRIALING", "ACTIVE", "PAST_DUE", "UNPAID", "CANCELLED", "EXPIRED", "MANUAL"].map((value) => (
+                                  <SelectItem key={value} value={value}>{value}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label>Proveedor</Label>
+                            <Select value={billingProvider} onValueChange={setBillingProvider}>
+                              <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                              <SelectContent className="bg-card border-border">
+                                {["MANUAL", "STRIPE", "PAYPAL", "BAC", "CUSTOM"].map((value) => (
+                                  <SelectItem key={value} value={value}>{value}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Intervalo</Label>
+                            <Select value={billingInterval} onValueChange={setBillingInterval}>
+                              <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                              <SelectContent className="bg-card border-border">
+                                {["MONTHLY", "YEARLY", "ONE_TIME", "CUSTOM"].map((value) => (
+                                  <SelectItem key={value} value={value}>{value}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label>Provider Customer ID</Label>
+                            <Input value={providerCustomerId} onChange={(e) => setProviderCustomerId(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                          </div>
+                          <div>
+                            <Label>Provider Subscription ID</Label>
+                            <Input value={providerSubscriptionId} onChange={(e) => setProviderSubscriptionId(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label>Periodo inicio</Label>
+                            <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                          </div>
+                          <div>
+                            <Label>Periodo fin</Label>
+                            <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
+                          <div>
+                            <p className="text-sm text-foreground">Cancelar al final del periodo</p>
+                            <p className="text-xs text-muted-foreground">Útil para bajas programadas sin cortar acceso hoy.</p>
+                          </div>
+                          <Switch checked={cancelAtPeriodEnd} onCheckedChange={setCancelAtPeriodEnd} />
+                        </div>
+
+                        <div>
+                          <Label>Notas internas</Label>
+                          <Input value={billingNotes} onChange={(e) => setBillingNotes(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" placeholder="Ej: pago manual confirmado por transferencia" />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs text-muted-foreground">
+                            Guardar aquí sincroniza la suscripción y actualiza el `workspace.plan`, que es lo que desbloquea el producto hoy.
+                          </p>
+                          <Button size="sm" onClick={() => updateBilling.mutate()} disabled={updateBilling.isPending}>
+                            {updateBilling.isPending ? "Guardando..." : "Guardar billing"}
+                          </Button>
+                        </div>
+
+                        {billingEvents.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider">Eventos recientes</p>
+                            <div className="space-y-1 max-h-40 overflow-y-auto">
+                              {billingEvents.map((event: any) => (
+                                <div key={event.id} className="rounded border border-border bg-card px-3 py-2">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className="text-xs font-medium text-foreground">{event.event_type}</p>
+                                    <Badge variant="outline" className="text-[10px] border-border text-muted-foreground">
+                                      {event.applied_plan ?? "sin plan"}
+                                    </Badge>
+                                  </div>
+                                  <p className="mt-1 text-[11px] text-muted-foreground">
+                                    {event.provider} · {event.source} · {event.created_at ? new Date(event.created_at).toLocaleString() : "sin fecha"}
+                                  </p>
+                                  {event.notes && (
+                                    <p className="mt-1 text-[11px] text-muted-foreground">{event.notes}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-muted-foreground">{membersList.length} miembro(s)</p>
+                    <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="outline" className="h-7 text-xs">
+                          <UserPlus className="h-3 w-3 mr-1" />Asignar usuario
+                        </Button>
                     </DialogTrigger>
                     <DialogContent className="bg-card border-border">
                       <DialogHeader><DialogTitle>Asignar usuario al workspace</DialogTitle></DialogHeader>
@@ -1388,17 +1708,17 @@ function PlatformTab() {
                         </div>
                       </div>
                     ))}
-                    {membersList.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-4">Sin miembros</p>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="text-xs text-muted-foreground pt-6 text-center">Seleccioná un workspace</p>
-            )}
+                      {membersList.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-4">Sin miembros</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground pt-6 text-center">Seleccioná un workspace</p>
+              )}
+            </div>
           </div>
-        </div>
       </div>
     </div>
   );
@@ -1455,24 +1775,14 @@ function ApiKeyCard({
 function IntegrationsTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [openaiKey, setOpenaiKey] = useState("");
-  const [anthropicKey, setAnthropicKey] = useState("");
   const [resendKey, setResendKey] = useState("");
-  const [geminiKey, setGeminiKey] = useState("");
-  const [grokKey, setGrokKey] = useState("");
-  const [kimiKey, setKimiKey] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["/api/workspaces/current/api-keys"],
     queryFn: () => api.getApiKeys(),
   });
 
-  const openaiSet = data?.openai_api_key_set === true;
-  const anthropicSet = data?.anthropic_api_key_set === true;
   const resendSet = data?.resend_api_key_set === true;
-  const geminiSet = data?.gemini_api_key_set === true;
-  const grokSet = data?.grok_api_key_set === true;
-  const kimiSet = data?.kimi_api_key_set === true;
 
   const saveKey = useMutation({
     mutationFn: (payload: Record<string, string>) => api.updateApiKeys(payload),
@@ -1480,12 +1790,7 @@ function IntegrationsTab() {
       qc.invalidateQueries({ queryKey: ["/api/workspaces/current/api-keys"] });
       const isDelete = Object.values(payload)[0] === "";
       toast({ title: isDelete ? "API key eliminada" : "API key guardada" });
-      if (payload.openai_api_key !== undefined) setOpenaiKey("");
-      if (payload.anthropic_api_key !== undefined) setAnthropicKey("");
       if (payload.resend_api_key !== undefined) setResendKey("");
-      if (payload.gemini_api_key !== undefined) setGeminiKey("");
-      if (payload.grok_api_key !== undefined) setGrokKey("");
-      if (payload.kimi_api_key !== undefined) setKimiKey("");
     },
     onError: (e: any) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -1496,85 +1801,8 @@ function IntegrationsTab() {
   return (
     <div className="space-y-4 max-w-lg">
       <p className="text-sm text-muted-foreground">
-        Configurá las API keys de servicios externos. Prioridad de IA: Claude → Grok → Gemini → Kimi → OpenAI.
+        Configurá aquí las integraciones operativas del workspace. La configuración de modelos y proveedores de IA se administra únicamente desde la pestaña de Inteligencia Artificial.
       </p>
-
-      <ApiKeyCard
-        label="Anthropic (Claude)"
-        description="Claude Haiku — análisis, resúmenes, tareas automáticas (prioridad 1)"
-        icon={<Brain className="h-4 w-4 text-purple-400" />}
-        iconBg="bg-purple-500/10 border border-purple-500/20"
-        iconColor="text-purple-400"
-        isSet={anthropicSet}
-        keyValue={anthropicKey}
-        onKeyChange={setAnthropicKey}
-        placeholder="sk-ant-..."
-        onSave={() => saveKey.mutate({ anthropic_api_key: anthropicKey })}
-        onClear={() => saveKey.mutate({ anthropic_api_key: "" })}
-        isPending={saveKey.isPending}
-      />
-
-      <ApiKeyCard
-        label="Grok (xAI)"
-        description="Grok 3 Mini — análisis de conversaciones (prioridad 2)"
-        icon={<Brain className="h-4 w-4 text-sky-400" />}
-        iconBg="bg-sky-500/10 border border-sky-500/20"
-        iconColor="text-sky-400"
-        isSet={grokSet}
-        keyValue={grokKey}
-        onKeyChange={setGrokKey}
-        placeholder="xai-..."
-        onSave={() => saveKey.mutate({ grok_api_key: grokKey })}
-        onClear={() => saveKey.mutate({ grok_api_key: "" })}
-        isPending={saveKey.isPending}
-      />
-
-      <ApiKeyCard
-        label="Gemini (Google)"
-        description="Gemini 2.0 Flash — análisis de conversaciones (prioridad 3)"
-        icon={<Brain className="h-4 w-4 text-orange-400" />}
-        iconBg="bg-orange-500/10 border border-orange-500/20"
-        iconColor="text-orange-400"
-        isSet={geminiSet}
-        keyValue={geminiKey}
-        onKeyChange={setGeminiKey}
-        placeholder="AIza..."
-        onSave={() => saveKey.mutate({ gemini_api_key: geminiKey })}
-        onClear={() => saveKey.mutate({ gemini_api_key: "" })}
-        isPending={saveKey.isPending}
-      />
-
-      <ApiKeyCard
-        label="Kimi (Moonshot)"
-        description="Kimi K2 — análisis de conversaciones (prioridad 4)"
-        icon={<Brain className="h-4 w-4 text-rose-400" />}
-        iconBg="bg-rose-500/10 border border-rose-500/20"
-        iconColor="text-rose-400"
-        isSet={kimiSet}
-        keyValue={kimiKey}
-        onKeyChange={setKimiKey}
-        placeholder="sk-..."
-        onSave={() => saveKey.mutate({ kimi_api_key: kimiKey })}
-        onClear={() => saveKey.mutate({ kimi_api_key: "" })}
-        isPending={saveKey.isPending}
-      />
-
-      <ApiKeyCard
-        label="OpenAI"
-        description="GPT-4o mini — fallback final (prioridad 5)"
-        icon={<Brain className="h-4 w-4 text-emerald-400" />}
-        iconBg="bg-emerald-500/10 border border-emerald-500/20"
-        iconColor="text-emerald-400"
-        isSet={openaiSet}
-        keyValue={openaiKey}
-        onKeyChange={setOpenaiKey}
-        placeholder="sk-..."
-        onSave={() => saveKey.mutate({ openai_api_key: openaiKey })}
-        onClear={() => saveKey.mutate({ openai_api_key: "" })}
-        isPending={saveKey.isPending}
-      />
-
-      <div className="h-px bg-border" />
 
       <ApiKeyCard
         label="Resend"
@@ -1616,6 +1844,7 @@ function AiTab() {
   const [model, setModel]       = useState("");
   const [apiKey, setApiKey]     = useState("");
   const [showKey, setShowKey]   = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
 
   useEffect(() => {
     if (workspace) {
@@ -1623,6 +1852,10 @@ function AiTab() {
       setModel(workspace.ai_model ?? "");
     }
   }, [workspace?.ai_provider, workspace?.ai_model]);
+
+  useEffect(() => {
+    setTestResult(null);
+  }, [provider, model, apiKey]);
 
   const save = useMutation({
     mutationFn: () => api.updateWorkspace({
@@ -1638,9 +1871,29 @@ function AiTab() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const testConnection = useMutation({
+    mutationFn: () => api.testAiConnection({
+      ai_provider: provider || undefined,
+      ai_model: model || undefined,
+      ai_api_key: apiKey || undefined,
+    }),
+    onSuccess: (result) => {
+      setTestResult(result);
+      toast({ title: "Conexion validada" });
+    },
+    onError: (e: any) => {
+      setTestResult({
+        ok: false,
+        message: e.message,
+      });
+      toast({ title: "Fallo la conexion", description: e.message, variant: "destructive" });
+    },
+  });
+
   const selectedProvider = AI_PROVIDERS.find(p => p.id === provider);
   const hasKey  = !!workspace?.ai_provider;
   const canSave = provider && (apiKey || hasKey);
+  const canTest = provider && (apiKey || hasKey);
 
   return (
     <div className="space-y-6 max-w-lg">
@@ -1658,6 +1911,21 @@ function AiTab() {
             API key configurada · {AI_PROVIDERS.find(p => p.id === workspace.ai_provider)?.label ?? workspace.ai_provider}
             {workspace.ai_model ? ` · ${workspace.ai_model}` : ""}
           </span>
+        </div>
+      )}
+
+      {testResult?.ok && (
+        <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+          Conexion valida con {AI_PROVIDERS.find(p => p.id === testResult.provider)?.label ?? testResult.provider}
+          {testResult.model ? ` · ${testResult.model}` : ""}
+          {typeof testResult.latency_ms === "number" ? ` · ${testResult.latency_ms} ms` : ""}
+          {testResult.reply ? ` · "${testResult.reply}"` : ""}
+        </div>
+      )}
+
+      {testResult && testResult.ok === false && (
+        <div className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+          No se pudo validar la conexion. {testResult.message}
         </div>
       )}
 
@@ -1714,13 +1982,24 @@ function AiTab() {
           </div>
         </div>
 
-        <Button
-          onClick={() => save.mutate()}
-          disabled={!canSave || save.isPending}
-          className="bg-primary hover:bg-primary/90 h-8 text-xs"
-        >
-          {save.isPending ? "Guardando..." : "Guardar configuración"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => testConnection.mutate()}
+            disabled={!canTest || testConnection.isPending}
+            className="h-8 text-xs border-border"
+          >
+            {testConnection.isPending ? "Probando..." : "Probar conexion"}
+          </Button>
+          <Button
+            onClick={() => save.mutate()}
+            disabled={!canSave || save.isPending}
+            className="bg-primary hover:bg-primary/90 h-8 text-xs"
+          >
+            {save.isPending ? "Guardando..." : "Guardar configuración"}
+          </Button>
+        </div>
       </div>
     </div>
   );

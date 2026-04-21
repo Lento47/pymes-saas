@@ -11,6 +11,11 @@ export class ConfigureEmailDto {
   @IsEmail()
   from_email: string;
 
+  /** Optional inbound mailbox used to route received emails to this channel */
+  @IsOptional()
+  @IsEmail()
+  inbound_email?: string;
+
   /** Display name shown as the sender */
   @IsString()
   from_name: string;

@@ -1,12 +1,15 @@
 import {
   BadGatewayException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { Resend } from 'resend';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { MessagesService } from '../conversations/messages.service';
 
 /**
  * Shape of config_json stored in the EMAIL channel.
@@ -15,6 +18,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 interface EmailChannelConfig {
   api_key_encrypted: string;
   from_email: string;
+  inbound_email?: string;
   from_name: string;
 }
 
@@ -27,6 +31,8 @@ interface NormalisedInbound {
   subject: string;
   body_html: string | null;
   body_text: string | null;
+  sender_name: string;
+  channel_id: string;
   raw: unknown;
 }
 
@@ -37,6 +43,8 @@ export class EmailService {
   constructor(
     private readonly crypto: CryptoService,
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => MessagesService))
+    private readonly messagesService: MessagesService,
   ) {}
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -121,14 +129,7 @@ export class EmailService {
    * @param payload      Raw Resend webhook body.
    */
   async processInbound(workspaceId: string, payload: any): Promise<void> {
-    // Locate the active EMAIL channel for this workspace
-    const channel = await this.prisma.channel.findFirst({
-      where: {
-        workspace_id: workspaceId,
-        type: 'EMAIL',
-        status: 'ACTIVE',
-      },
-    });
+    const channel = await this.resolveInboundChannel(workspaceId, payload);
 
     if (!channel) {
       throw new NotFoundException(
@@ -138,40 +139,89 @@ export class EmailService {
 
     // Normalise the Resend inbound event payload
     const normalised: NormalisedInbound = {
-      from: payload.from ?? '',
-      to: Array.isArray(payload.to) ? payload.to[0] : (payload.to ?? ''),
+      from: this.extractEmailAddress(payload.from ?? ''),
+      to: this.extractPrimaryRecipient(payload.to),
       subject: payload.subject ?? '(no subject)',
       body_html: payload.html ?? null,
       body_text: payload.text ?? null,
+      sender_name: this.extractSenderName(payload.from ?? ''),
+      channel_id: channel.id,
       raw: payload,
     };
 
     this.logger.log(
       `Inbound email from ${normalised.from} to ${normalised.to} — workspace ${workspaceId}`,
     );
+    await this.messagesService.receiveInbound(channel.provider ?? 'email', workspaceId, normalised);
+  }
 
-    // Delegate to MessagesService (imported lazily to avoid circular deps)
-    // In your real app, inject MessagesService directly in the constructor if
-    // there are no circular dependency issues, or use forwardRef().
-    const { MessagesService } = await import(
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      '../messages/messages.service' as string
-    ).catch(() => ({
-      MessagesService: null,
-    }));
+  private async resolveInboundChannel(workspaceId: string, payload: any) {
+    const explicitChannelId =
+      payload.channel_id ??
+      payload.channelId ??
+      payload?.headers?.['x-channel-id'];
 
-    if (MessagesService) {
-      // Resolve from the NestJS container — use ModuleRef for a cleaner approach.
-      // This stub shows the integration point; wire it up via constructor injection
-      // in production code.
-      this.logger.warn(
-        'MessagesService dynamic import is a stub. ' +
-          'Inject MessagesService via constructor using forwardRef() in production.',
-      );
+    if (explicitChannelId && typeof explicitChannelId === 'string') {
+      const explicit = await this.prisma.channel.findFirst({
+        where: {
+          id: explicitChannelId,
+          workspace_id: workspaceId,
+          type: 'EMAIL',
+          status: 'ACTIVE',
+        },
+      });
+      if (explicit) return explicit;
     }
 
-    // ── Production pattern (use this instead of the dynamic import above) ────
-    // await this.messagesService.receiveInbound('resend', workspaceId, normalised);
-    // ─────────────────────────────────────────────────────────────────────────
+    const toAddress = this.extractPrimaryRecipient(payload.to);
+    if (toAddress) {
+      const matchedInbound = await this.prisma.channel.findFirst({
+        where: {
+          workspace_id: workspaceId,
+          type: 'EMAIL',
+          status: 'ACTIVE',
+          config_json: { path: ['inbound_email'], equals: toAddress },
+        },
+      });
+      if (matchedInbound) return matchedInbound;
+
+      const matched = await this.prisma.channel.findFirst({
+        where: {
+          workspace_id: workspaceId,
+          type: 'EMAIL',
+          status: 'ACTIVE',
+          config_json: { path: ['from_email'], equals: toAddress },
+        },
+      });
+      if (matched) return matched;
+    }
+
+    return this.prisma.channel.findFirst({
+      where: {
+        workspace_id: workspaceId,
+        type: 'EMAIL',
+        status: 'ACTIVE',
+      },
+      orderBy: { created_at: 'asc' },
+    });
+  }
+
+  private extractPrimaryRecipient(value: unknown): string {
+    if (Array.isArray(value)) {
+      return this.extractEmailAddress(value[0] ?? '');
+    }
+    return this.extractEmailAddress(value ?? '');
+  }
+
+  private extractEmailAddress(value: unknown): string {
+    const raw = String(value ?? '').trim();
+    const match = raw.match(/<([^>]+)>/);
+    return (match?.[1] ?? raw).trim().toLowerCase();
+  }
+
+  private extractSenderName(value: unknown): string {
+    const raw = String(value ?? '').trim();
+    const match = raw.match(/^(.+?)\s*<[^>]+>$/);
+    return (match?.[1] ?? this.extractEmailAddress(raw) ?? raw).replace(/^"|"$/g, '').trim();
   }
 }

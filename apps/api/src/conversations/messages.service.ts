@@ -94,9 +94,14 @@ export class MessagesService {
     workspaceId: string,
     payload: Record<string, any>,
   ) {
-    const channel = await this.prisma.channel.findFirst({
-      where: { workspace_id: workspaceId, provider, status: 'ACTIVE' },
-    });
+    const explicitChannelId = typeof payload.channel_id === 'string' ? payload.channel_id : undefined;
+    const channel = explicitChannelId
+      ? await this.prisma.channel.findFirst({
+          where: { id: explicitChannelId, workspace_id: workspaceId, status: 'ACTIVE' },
+        })
+      : await this.prisma.channel.findFirst({
+          where: { workspace_id: workspaceId, provider, status: 'ACTIVE' },
+        });
     if (!channel) {
       return { ok: false, reason: 'No active channel for provider' };
     }
@@ -161,6 +166,7 @@ export class MessagesService {
         sender_name: senderName,
         sender_ref: senderRef,
         body_text: bodyText,
+        body_html: payload.body_html ?? payload.html ?? null,
         raw_payload_json: payload,
         sent_at: new Date(),
       },

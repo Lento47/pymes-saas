@@ -20,6 +20,9 @@ import Invoices from "@/pages/invoices";
 import Automations from "@/pages/automations";
 import Pipeline from "@/pages/pipeline";
 import Settings from "@/pages/settings";
+import HelpPage from "@/pages/help";
+import HelpDocumentPage from "@/pages/help-document";
+import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import NotFound from "@/pages/not-found";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -32,6 +35,12 @@ function AppRouter() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/legal">
+        {() => <LegalCenterPage />}
+      </Route>
+      <Route path="/legal/:slug">
+        {(params) => <LegalDocumentPage slug={params.slug} />}
+      </Route>
       <Route path="/">
         {() => <ProtectedLayout><Dashboard /></ProtectedLayout>}
       </Route>
@@ -64,6 +73,12 @@ function AppRouter() {
       </Route>
       <Route path="/settings">
         {() => <ProtectedLayout><Settings /></ProtectedLayout>}
+      </Route>
+      <Route path="/help">
+        {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/help/:slug">
+        {(params) => <ProtectedLayout><HelpDocumentPage slug={params.slug} /></ProtectedLayout>}
       </Route>
       <Route component={NotFound} />
     </Switch>

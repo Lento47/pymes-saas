@@ -214,6 +214,30 @@ export default function ConversationPage() {
     },
   });
 
+  const updateLinkedContactMutation = useMutation({
+    mutationFn: async () => {
+      if (!conversation?.contact?.id) throw new Error("No hay contacto vinculado.");
+      const fullName = [newContact.firstName, newContact.lastName].filter(Boolean).join(" ").trim();
+      return api.updateContact(conversation.contact.id, {
+        type: newContact.type,
+        full_name: fullName || conversation.contact.full_name || conversation.subject || "Sin nombre",
+        email: newContact.email.trim() || undefined,
+        phone: newContact.phone.trim() || undefined,
+        company_name: newContact.company.trim() || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      setShowContactDialog(false);
+      toast({ title: "Contacto actualizado" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error al actualizar contacto", description: err.message, variant: "destructive" });
+    },
+  });
+
   const createInvoiceMutation = useMutation({
     mutationFn: () =>
       api.createInvoice({
@@ -272,10 +296,35 @@ export default function ConversationPage() {
     },
   });
 
+  const sendInvoiceMutation = useMutation({
+    mutationFn: async (invoice: any) => {
+      const channelId = conversation?.channel?.id;
+      if (!channelId) {
+        throw new Error("Esta conversación no tiene un canal válido para enviar la factura.");
+      }
+
+      const reminder = await api.generateInvoiceReminder(invoice.id);
+      return api.sendInvoiceReminder(invoice.id, {
+        channel_id: channelId,
+        draft_text: reminder?.draft_text,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", "conversation", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
+      toast({ title: "Factura enviada desde este chat" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error al enviar factura", description: err.message, variant: "destructive" });
+    },
+  });
+
   const msgList = Array.isArray(messages) ? messages : messages?.data || [];
   const memberList = Array.isArray(members) ? members : members?.data || [];
   const contactList = Array.isArray(contactsData) ? contactsData : contactsData?.data || [];
   const invoiceList = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
+  const canSendInvoiceFromConversation = ["EMAIL", "WHATSAPP"].includes(String(conversation?.channel?.type ?? "").toUpperCase());
   const contact = conversation?.contact;
   const assignedMember = memberList.find(
     (m: any) => (m.user?.id || m.userId || m.id) === (conversation?.assigned_user?.id || conversation?.assigned_to_id || conversation?.assigned_user_id)
@@ -320,6 +369,20 @@ export default function ConversationPage() {
     : "Desconocido";
   const inferredEmail = contact?.email || (msgList.find((msg: any) => typeof msg.sender_ref === "string" && msg.sender_ref.includes("@"))?.sender_ref ?? "");
   const inferredPhone = contact?.phone || (msgList.find((msg: any) => typeof msg.sender_ref === "string" && !msg.sender_ref.includes("@"))?.sender_ref ?? "");
+  const openContactDialog = () => {
+    const fullName = String(contact?.full_name ?? "").trim();
+    const parts = fullName.split(/\s+/).filter(Boolean);
+    setSelectedContactId(contact?.id ?? "");
+    setNewContact({
+      firstName: parts[0] ?? "",
+      lastName: parts.slice(1).join(" "),
+      email: contact?.email ?? inferredEmail,
+      phone: contact?.phone ?? inferredPhone,
+      company: contact?.company_name ?? "",
+      type: contact?.type ?? "CUSTOMER",
+    });
+    setShowContactDialog(true);
+  };
 
   return (
     <TooltipProvider>
@@ -535,15 +598,7 @@ export default function ConversationPage() {
                   variant="ghost"
                   size="sm"
                   className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setSelectedContactId(contact?.id ?? "");
-                    setNewContact((prev) => ({
-                      ...prev,
-                      email: prev.email || inferredEmail,
-                      phone: prev.phone || inferredPhone,
-                    }));
-                    setShowContactDialog(true);
-                  }}
+                  onClick={openContactDialog}
                   data-testid="button-link-contact"
                 >
                   <UserPlus2 className="w-3 h-3" />
@@ -592,15 +647,7 @@ export default function ConversationPage() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-[11px]"
-                  onClick={() => {
-                    setSelectedContactId("");
-                    setNewContact((prev) => ({
-                      ...prev,
-                      email: inferredEmail,
-                      phone: inferredPhone,
-                    }));
-                    setShowContactDialog(true);
-                  }}
+                  onClick={openContactDialog}
                 >
                   <UserPlus2 className="w-3 h-3 mr-1.5" />
                   Vincular o crear contacto
@@ -668,19 +715,40 @@ export default function ConversationPage() {
                       </div>
                     </div>
                     {Number(invoice.balance_due ?? 0) > 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 mt-2 text-[11px] w-full"
-                        onClick={() => openPaymentDialog(invoice)}
-                      >
-                        <Coins className="w-3 h-3 mr-1.5" />
-                        Registrar pago
-                      </Button>
+                      <div className="mt-2 grid grid-cols-1 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px] w-full"
+                          onClick={() => openPaymentDialog(invoice)}
+                        >
+                          <Coins className="w-3 h-3 mr-1.5" />
+                          Registrar pago
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px] w-full"
+                          onClick={() => sendInvoiceMutation.mutate(invoice)}
+                          disabled={!canSendInvoiceFromConversation || sendInvoiceMutation.isPending}
+                        >
+                          {sendInvoiceMutation.isPending ? (
+                            <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                          ) : (
+                            <Send className="w-3 h-3 mr-1.5" />
+                          )}
+                          Enviar factura
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}
               </div>
+            )}
+            {contact && !canSendInvoiceFromConversation && invoiceList.length > 0 && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                El envío directo de factura desde el inbox solo está disponible en conversaciones de Email o WhatsApp.
+              </p>
             )}
           </div>
 
@@ -767,40 +835,19 @@ export default function ConversationPage() {
           <DialogContent className="bg-card border-border sm:max-w-[460px]">
             <DialogHeader>
               <DialogTitle className="text-sm">
-                {contact ? "Cambiar contacto vinculado" : "Vincular contacto"}
+                {contact ? "Editar contacto vinculado" : "Vincular contacto"}
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Contacto existente</Label>
-                <Select value={selectedContactId} onValueChange={setSelectedContactId}>
-                  <SelectTrigger className="h-9 text-xs bg-background border-border">
-                    <SelectValue placeholder="Seleccioná un contacto existente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contactList.map((existing: any) => (
-                      <SelectItem key={existing.id} value={existing.id}>
-                        {existing.full_name}
-                        {existing.email ? ` · ${existing.email}` : existing.phone ? ` · ${existing.phone}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="h-8 text-xs"
-                  disabled={!selectedContactId || linkContactMutation.isPending}
-                  onClick={() => linkContactMutation.mutate(selectedContactId)}
-                >
-                  {linkContactMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                  Vincular contacto existente
-                </Button>
-              </div>
+              {contact && (
+                <div className="rounded-md border border-border bg-background px-3 py-2">
+                  <div className="text-xs text-muted-foreground">Contacto actual</div>
+                  <div className="text-sm text-foreground">{contact.full_name}</div>
+                </div>
+              )}
 
-              <div className="border-t border-border pt-4 space-y-3">
-                <div className="text-xs text-muted-foreground">O crear un contacto nuevo</div>
+              <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Nombre</Label>
@@ -860,6 +907,38 @@ export default function ConversationPage() {
                   </Select>
                 </div>
               </div>
+
+              <div className="border-t border-border pt-4 space-y-3">
+                <div className="text-xs text-muted-foreground">
+                  {contact ? "O vincular otro contacto existente" : "O vincular un contacto existente"}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Contacto existente</Label>
+                  <Select value={selectedContactId} onValueChange={setSelectedContactId}>
+                    <SelectTrigger className="h-9 text-xs bg-background border-border">
+                      <SelectValue placeholder="Seleccioná un contacto existente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contactList.map((existing: any) => (
+                        <SelectItem key={existing.id} value={existing.id}>
+                          {existing.full_name}
+                          {existing.email ? ` · ${existing.email}` : existing.phone ? ` · ${existing.phone}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-8 text-xs"
+                    disabled={!selectedContactId || linkContactMutation.isPending}
+                    onClick={() => linkContactMutation.mutate(selectedContactId)}
+                  >
+                    {linkContactMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                    Vincular contacto existente
+                  </Button>
+                </div>
+              </div>
             </div>
 
             <DialogFooter>
@@ -869,11 +948,17 @@ export default function ConversationPage() {
               <Button
                 size="sm"
                 className="h-8 text-xs"
-                disabled={createAndLinkContactMutation.isPending}
-                onClick={() => createAndLinkContactMutation.mutate()}
+                disabled={createAndLinkContactMutation.isPending || updateLinkedContactMutation.isPending}
+                onClick={() => {
+                  if (contact) {
+                    updateLinkedContactMutation.mutate();
+                    return;
+                  }
+                  createAndLinkContactMutation.mutate();
+                }}
               >
-                {createAndLinkContactMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                Crear y vincular
+                {(createAndLinkContactMutation.isPending || updateLinkedContactMutation.isPending) && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                {contact ? "Guardar cambios" : "Crear y vincular"}
               </Button>
             </DialogFooter>
           </DialogContent>
