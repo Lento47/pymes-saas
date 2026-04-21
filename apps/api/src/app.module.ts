@@ -28,6 +28,10 @@ import { PlanLimitsModule } from './common/plan-limits/plan-limits.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { InsightsModule } from './insights/insights.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { ErrorReportsModule } from './error-reports/error-reports.module';
+import { PlatformModule } from './platform/platform.module';
+import { HaciendaModule } from './hacienda/hacienda.module';
+import { PipelineModule } from './pipeline/pipeline.module';
 
 @Module({
   imports: [
@@ -61,6 +65,10 @@ import { InvoicesModule } from './invoices/invoices.module';
     DepartmentsModule,
     InsightsModule,
     InvoicesModule,
+    HaciendaModule,
+    PipelineModule,
+    ErrorReportsModule,
+    PlatformModule,
 
     WorkersModule,
     EventsModule,

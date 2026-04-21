@@ -21,4 +21,8 @@ export class UpdateConversationDto {
   @IsOptional()
   @IsString()
   assigned_user_id?: string;
+
+  @IsOptional()
+  @IsString()
+  contact_id?: string | null;
 }

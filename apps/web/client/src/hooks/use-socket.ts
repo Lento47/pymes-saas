@@ -18,7 +18,7 @@ export function getSocket(): Socket | null {
 // In production the WS server is co-located so we use a relative path.
 const WS_URL =
   import.meta.env.DEV
-    ? 'http://localhost:4000'
+    ? `${window.location.protocol}//${window.location.hostname}:4000`
     : window.location.origin;
 
 export function connectSocket() {
@@ -27,7 +27,7 @@ export function connectSocket() {
   const token = getAuthToken();
   if (!token) return null;
 
-  _socket = io(WS_URL, {
+  _socket = io(`${WS_URL}/ws`, {
     path: '/socket.io',
     auth: { token },
     transports: ['websocket', 'polling'],

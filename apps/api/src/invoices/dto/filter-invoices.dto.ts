@@ -8,7 +8,12 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { InvoiceStatus } from '@prisma/client';
+import {
+  HaciendaStatus,
+  InvoiceDocumentType,
+  InvoiceIssuanceMode,
+  InvoiceStatus,
+} from '@prisma/client';
 
 export class FilterInvoicesDto {
   @IsOptional()
@@ -16,8 +21,24 @@ export class FilterInvoicesDto {
   status?: InvoiceStatus;
 
   @IsOptional()
+  @IsEnum(HaciendaStatus)
+  hacienda_status?: HaciendaStatus;
+
+  @IsOptional()
+  @IsEnum(InvoiceDocumentType)
+  document_type?: InvoiceDocumentType;
+
+  @IsOptional()
+  @IsEnum(InvoiceIssuanceMode)
+  issuance_mode?: InvoiceIssuanceMode;
+
+  @IsOptional()
   @IsString()
   contact_id?: string;
+
+  @IsOptional()
+  @IsString()
+  conversation_id?: string;
 
   @IsOptional()
   @Transform(({ value }) => value === true || value === 'true')

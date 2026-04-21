@@ -1,16 +1,20 @@
 import {
   Injectable,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
+import { TriggerType } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CreateAutomationDto } from './dto/create-automation.dto';
 import { UpdateAutomationDto } from './dto/update-automation.dto';
 import { FilterAutomationsDto } from './dto/filter-automations.dto';
+import { QueueService } from '../workers/queue.service';
 
 @Injectable()
 export class AutomationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly queueService: QueueService,
+  ) {}
 
   async findAll(workspaceId: string, filters: FilterAutomationsDto) {
     const page = Number(filters.page) || 1;
@@ -33,12 +37,20 @@ export class AutomationsService {
         skip,
         take: limit,
         orderBy: { created_at: 'desc' },
+        include: {
+          _count: {
+            select: { executions: true },
+          },
+        },
       }),
       this.prisma.automationRule.count({ where }),
     ]);
 
     return {
-      data,
+      data: data.map((rule) => ({
+        ...rule,
+        execution_count: rule._count.executions,
+      })),
       meta: {
         total,
         page,
@@ -156,6 +168,36 @@ export class AutomationsService {
       },
     };
   }
+
+  async triggerRules(
+    workspaceId: string,
+    triggerType: TriggerType,
+    triggerEntityType: string,
+    triggerEntityId: string,
+  ) {
+    const rules = await this.prisma.automationRule.findMany({
+      where: {
+        workspace_id: workspaceId,
+        trigger_type: triggerType,
+        enabled: true,
+      },
+      select: { id: true },
+    });
+
+    await Promise.all(
+      rules.map((rule) =>
+        this.queueService.enqueueAutomation(
+          rule.id,
+          workspaceId,
+          triggerEntityType,
+          triggerEntityId,
+        ),
+      ),
+    );
+
+    return { queued: rules.length };
+  }
+
   async remove(workspaceId: string, id: string) {
     await this.findOne(workspaceId, id);
     return this.prisma.automationRule.delete({ where: { id } });

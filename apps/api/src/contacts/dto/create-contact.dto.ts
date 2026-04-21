@@ -31,6 +31,45 @@ export class CreateContactDto {
 
   @IsOptional()
   @IsString()
+  @Length(1, 2)
+  identification_type?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 20)
+  identification_number?: string;
+
+  @IsOptional()
+  @IsEmail()
+  tax_email?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  province?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  canton?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  district?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 300)
+  address_detail?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 120)
+  foreign_identification?: string;
+
+  @IsOptional()
+  @IsString()
   external_ref?: string;
 
   @IsOptional()

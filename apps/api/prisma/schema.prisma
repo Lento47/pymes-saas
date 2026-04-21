@@ -116,9 +116,40 @@ enum TaskSource {
 enum InvoiceStatus {
   DRAFT
   SENT
+  PARTIALLY_PAID
   PAID
   OVERDUE
   CANCELLED
+}
+
+enum InvoiceDocumentType {
+  FACTURA_ELECTRONICA
+  TIQUETE_ELECTRONICO
+  NOTA_CREDITO
+  NOTA_DEBITO
+  MENSAJE_RECEPTOR
+}
+
+enum InvoiceIssuanceMode {
+  MANUAL_ONLY
+  HACIENDA
+}
+
+enum HaciendaStatus {
+  DRAFT
+  PENDING_SUBMISSION
+  SUBMITTED
+  RECIBIDO
+  PROCESANDO
+  ACEPTADO
+  RECHAZADO
+  ERROR
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
 }
 
 enum AutomationExecutionStatus {
@@ -168,6 +199,9 @@ model Workspace {
   tasks                Task[]
   documents            Document[]
   invoices             Invoice[]
+  invoice_lines        InvoiceLine[]
+  workspace_tax_profile WorkspaceTaxProfile?
+  invoice_payments     InvoicePayment[]
   automation_rules     AutomationRule[]
   automation_executions AutomationExecution[]
   daily_summaries      DailySummary[]
@@ -176,6 +210,9 @@ model Workspace {
   departments          Department[]
   refresh_tokens       RefreshToken[]
   payment_reminders    PaymentReminder[]
+  error_reports        ErrorReport[]
+  deal_stages          DealStage[]
+  deals                Deal[]
 
   @@index([slug])
   @@index([status])
@@ -183,12 +220,13 @@ model Workspace {
 }
 
 model User {
-  id         String     @id @default(cuid())
-  email      String     @unique
-  name       String
-  avatar_url String?
-  password_hash String?
-  status     UserStatus @default(ACTIVE)
+  id                 String     @id @default(cuid())
+  email              String     @unique
+  name               String
+  avatar_url         String?
+  password_hash      String?
+  status             UserStatus @default(ACTIVE)
+  is_platform_admin  Boolean    @default(false)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -204,6 +242,9 @@ model User {
   outbound_messages     Message[]           @relation("MessageSender")
   department_memberships DepartmentMember[]
   refresh_tokens        RefreshToken[]
+  recorded_invoice_payments InvoicePayment[] @relation("InvoicePaymentRecorder")
+  error_reports         ErrorReport[]
+  assigned_deals        Deal[]              @relation("DealAssignee")
 
   @@index([email])
   @@index([status])
@@ -259,6 +300,15 @@ model Contact {
   company_name     String?
   email            String?
   phone            String?
+  identification_type String?
+  identification_number String?
+  tax_email        String?
+  province         String?
+  canton           String?
+  district         String?
+  address_detail   String?
+  foreign_identification String?
+  receptor_validation_json Json? @db.JsonB
   external_ref     String?
   tags_json        Json?       @db.JsonB
   last_interaction_at DateTime?
@@ -271,10 +321,12 @@ model Contact {
   tasks         Task[]
   documents     Document[]
   invoices      Invoice[]
+  deals         Deal[]
 
   @@index([workspace_id])
   @@index([workspace_id, email])
   @@index([workspace_id, phone])
+  @@index([workspace_id, identification_number])
   @@index([workspace_id, external_ref])
   @@index([workspace_id, type])
   @@map("contacts")
@@ -334,6 +386,7 @@ model Conversation {
   messages  Message[]
   tasks     Task[]
   documents Document[]
+  invoices  Invoice[]
 
   @@index([workspace_id])
   @@index([workspace_id, status])
@@ -448,30 +501,114 @@ model Document {
 // ============================================================
 
 model Invoice {
-  id           String        @id @default(cuid())
-  workspace_id String
-  contact_id   String
-  number       String
-  amount       Decimal       @db.Decimal(12, 2)
-  currency     String        @default("USD")
-  due_date     DateTime
-  paid_at      DateTime?
-  status       InvoiceStatus @default(DRAFT)
-  description  String?       @db.Text
-  notes_json   Json?         @db.JsonB
+  id              String        @id @default(cuid())
+  workspace_id    String
+  contact_id      String
+  conversation_id String?
+  reference_invoice_id String?
+  number          String
+  amount          Decimal       @db.Decimal(12, 2)
+  currency        String        @default("USD")
+  due_date        DateTime
+  paid_at         DateTime?
+  status          InvoiceStatus @default(DRAFT)
+  document_type   InvoiceDocumentType @default(FACTURA_ELECTRONICA)
+  issuance_mode   InvoiceIssuanceMode @default(MANUAL_ONLY)
+  hacienda_status HaciendaStatus @default(DRAFT)
+  clave           String?
+  consecutivo     String?
+  activity_code   String?
+  sale_condition  String?
+  payment_method  String?
+  issue_date      DateTime?
+  exchange_rate   Decimal?      @db.Decimal(12, 5)
+  hacienda_location_url String?
+  signed_xml_storage_key String?
+  response_xml_storage_key String?
+  hacienda_last_error String?   @db.Text
+  hacienda_last_checked_at DateTime?
+  hacienda_submitted_at DateTime?
+  description     String?       @db.Text
+  notes_json      Json?         @db.JsonB
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  workspace Workspace          @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  contact   Contact            @relation(fields: [contact_id], references: [id])
-  reminders PaymentReminder[]
+  workspace    Workspace          @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact      Contact            @relation(fields: [contact_id], references: [id])
+  conversation Conversation?      @relation(fields: [conversation_id], references: [id], onDelete: SetNull)
+  reference_invoice Invoice?      @relation("InvoiceReference", fields: [reference_invoice_id], references: [id], onDelete: SetNull)
+  referenced_by     Invoice[]     @relation("InvoiceReference")
+  reminders    PaymentReminder[]
+  payments     InvoicePayment[]
+  lines        InvoiceLine[]
 
   @@index([workspace_id])
   @@index([workspace_id, status])
+  @@index([workspace_id, hacienda_status])
   @@index([workspace_id, contact_id])
+  @@index([workspace_id, conversation_id])
+  @@index([reference_invoice_id])
+  @@index([workspace_id, clave])
   @@index([workspace_id, due_date])
   @@map("invoices")
+}
+
+model InvoiceLine {
+  id                String   @id @default(cuid())
+  workspace_id      String
+  invoice_id        String
+  line_number       Int
+  description       String
+  quantity          Decimal  @db.Decimal(12, 3)
+  unit_price        Decimal  @db.Decimal(12, 5)
+  discount_amount   Decimal  @default(0) @db.Decimal(12, 5)
+  subtotal          Decimal  @db.Decimal(12, 5)
+  tax_amount        Decimal  @default(0) @db.Decimal(12, 5)
+  total_line_amount Decimal  @db.Decimal(12, 5)
+  cabys_code        String?
+  unit_of_measure   String?
+  tax_code          String?
+  tax_rate          Decimal? @db.Decimal(5, 2)
+  exoneration_json  Json?    @db.JsonB
+  metadata_json     Json?    @db.JsonB
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  invoice   Invoice   @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([invoice_id])
+  @@unique([invoice_id, line_number])
+  @@map("invoice_lines")
+}
+
+model InvoicePayment {
+  id                  String   @id @default(cuid())
+  workspace_id        String
+  invoice_id          String
+  recorded_by_user_id String?
+  amount              Decimal  @db.Decimal(12, 2)
+  currency            String   @default("USD")
+  method              String?
+  reference           String?
+  notes               String?  @db.Text
+  paid_at             DateTime
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace        Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  invoice          Invoice   @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  recorded_by_user User?     @relation("InvoicePaymentRecorder", fields: [recorded_by_user_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([invoice_id])
+  @@index([recorded_by_user_id])
+  @@index([workspace_id, paid_at])
+  @@map("invoice_payments")
 }
 
 model PaymentReminder {
@@ -492,6 +629,30 @@ model PaymentReminder {
   @@index([workspace_id])
   @@index([invoice_id])
   @@map("payment_reminders")
+}
+
+model WorkspaceTaxProfile {
+  id                    String @id @default(cuid())
+  workspace_id          String @unique
+  identification_type   String
+  identification_number String
+  legal_name            String
+  trade_name            String?
+  activity_code         String
+  province              String?
+  canton                String?
+  district              String?
+  address_detail        String?
+  tax_email             String?
+  phone                 String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@map("workspace_tax_profiles")
 }
 
 // ============================================================
@@ -662,4 +823,88 @@ model AuditLog {
   @@index([workspace_id, user_id])
   @@index([created_at(sort: Desc)])
   @@map("audit_logs")
+}
+
+// ============================================================
+// PIPELINE / DEALS
+// ============================================================
+
+model DealStage {
+  id           String  @id @default(cuid())
+  workspace_id String
+  name         String
+  order        Int
+  color        String  @default("#6366f1")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  deals     Deal[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, order])
+  @@map("deal_stages")
+}
+
+model Deal {
+  id               String     @id @default(cuid())
+  workspace_id     String
+  stage_id         String
+  contact_id       String?
+  assigned_user_id String?
+  title            String
+  value            Decimal?   @db.Decimal(14, 2)
+  currency         String     @default("CRC")
+  priority         Priority   @default(MEDIUM)
+  status           DealStatus @default(OPEN)
+  closing_date     DateTime?
+  notes            String?    @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace     Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  stage         DealStage  @relation(fields: [stage_id], references: [id])
+  contact       Contact?   @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  assigned_user User?      @relation("DealAssignee", fields: [assigned_user_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([workspace_id, stage_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, contact_id])
+  @@index([workspace_id, assigned_user_id])
+  @@map("deals")
+}
+
+model ErrorReport {
+  id          String   @id @default(cuid())
+  workspace_id String?
+  user_id     String?
+  source      String
+  category    String
+  severity    String   @default("ERROR")
+  title       String?
+  message     String   @db.Text
+  stack       String?  @db.Text
+  route       String?
+  url         String?
+  method      String?
+  status_code Int?
+  user_agent  String?  @db.Text
+  context_json Json?   @db.JsonB
+  occurred_at DateTime @default(now())
+  created_at  DateTime @default(now())
+
+  workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: SetNull)
+  user      User?      @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([user_id])
+  @@index([source])
+  @@index([category])
+  @@index([severity])
+  @@index([status_code])
+  @@index([occurred_at(sort: Desc)])
+  @@map("error_reports")
 }

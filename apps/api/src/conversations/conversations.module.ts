@@ -9,6 +9,7 @@ import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { AiModule } from '../ai/ai.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AutomationsModule } from '../automations/automations.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     AiModule,
     forwardRef(() => TasksModule),
     NotificationsModule,
+    AutomationsModule,
   ],
   controllers: [ConversationsController, InboundController],
   providers: [ConversationsService, MessagesService],

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,8 +12,11 @@ import {
   FileText,
   Receipt,
   Zap,
+  KanbanSquare,
   Settings,
   LogOut,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 
 const NAV = [
@@ -22,12 +26,20 @@ const NAV = [
   { path: "/tasks",       icon: CheckSquare,     label: "Tareas",    badge: "overdue" },
   { path: "/documents",   icon: FileText,        label: "Archivos" },
   { path: "/invoices",    icon: Receipt,         label: "Facturas" },
+  { path: "/pipeline",   icon: KanbanSquare,    label: "Pipeline" },
   { path: "/automations", icon: Zap,             label: "Automatizaciones" },
 ];
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, switchWorkspace } = useAuth();
+  const [wsMenuOpen, setWsMenuOpen] = useState(false);
+
+  const { data: myWorkspaces } = useQuery({
+    queryKey: ["/api/auth/my-workspaces"],
+    queryFn: api.getMyWorkspaces,
+    staleTime: 60_000,
+  });
 
   const { data: unreadData } = useQuery({
     queryKey: ["/api/notifications/unread-count"],
@@ -45,6 +57,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const ws = user?.workspace?.name ?? "Workspace";
   const name = user?.name ?? user?.email ?? "—";
   const initials = name.slice(0, 2).toUpperCase();
+  const multipleWorkspaces = Array.isArray(myWorkspaces) && myWorkspaces.length > 1;
 
   const isActive = (p: string) => p === "/" ? location === "/" : location.startsWith(p);
 
@@ -58,17 +71,49 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         style={{ background: "hsl(var(--bg-sidebar))", borderRight: "1px solid hsl(var(--border))" }}
         className="w-[200px] shrink-0 flex flex-col"
       >
-        {/* Workspace header */}
-        <div className="px-4 h-12 flex items-center gap-2.5 shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-          <div
-            style={{ background: "hsl(var(--accent))", borderRadius: "4px" }}
-            className="w-6 h-6 flex items-center justify-center shrink-0"
+        {/* Workspace header / switcher */}
+        <div className="relative shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+          <button
+            className="w-full px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
+            onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
+            style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
           >
-            <span className="text-white font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-white leading-none truncate">{ws}</div>
-          </div>
+            <div
+              style={{ background: "hsl(var(--accent))", borderRadius: "4px" }}
+              className="w-6 h-6 flex items-center justify-center shrink-0"
+            >
+              <span className="text-white font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
+            </div>
+            <div className="min-w-0 flex-1 text-left">
+              <div className="text-sm font-semibold text-white leading-none truncate">{ws}</div>
+            </div>
+            {multipleWorkspaces && (
+              <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
+            )}
+          </button>
+
+          {wsMenuOpen && multipleWorkspaces && (
+            <div
+              className="absolute left-0 right-0 top-full z-50 py-1"
+              style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))", borderTop: "none" }}
+            >
+              {(myWorkspaces as any[]).map((m: any) => {
+                const isCurrent = m.workspace.id === user?.workspace?.id;
+                return (
+                  <button
+                    key={m.workspace.id}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-white/5 transition-colors"
+                    onClick={() => { setWsMenuOpen(false); if (!isCurrent) switchWorkspace(m.workspace.slug); }}
+                  >
+                    <span className="flex-1 text-left text-sm truncate" style={{ color: isCurrent ? "white" : "hsl(var(--fg-2))" }}>
+                      {m.workspace.name}
+                    </span>
+                    {isCurrent && <Check style={{ width: 12, height: 12, color: "hsl(var(--accent))" }} />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Nav */}

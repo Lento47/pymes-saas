@@ -45,6 +45,12 @@ export class WorkspacesController {
     return this.service.getTodayStats(workspaceId);
   }
 
+  @Get('current/api-keys')
+  @Roles('ADMIN' as any)
+  getApiKeys(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.service.getApiKeys(workspaceId);
+  }
+
   @Get('current/export')
   @Roles('ADMIN' as any)
   exportData(@CurrentUser('workspace_id') workspaceId: string, @Query('type') type: string) {

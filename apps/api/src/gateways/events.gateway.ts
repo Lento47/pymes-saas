@@ -20,7 +20,13 @@ import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') ?? ['http://localhost:5000', 'http://localhost:5173'],
+    origin:
+      process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) ?? [
+        'http://localhost:5000',
+        'http://127.0.0.1:5000',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+      ],
     credentials: true,
   },
   namespace: '/ws',

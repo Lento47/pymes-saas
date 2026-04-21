@@ -20,10 +20,28 @@ export class WorkspacesService {
       workspace.settings_json && typeof workspace.settings_json === 'object'
         ? (workspace.settings_json as Record<string, any>)
         : {};
+    const taxProfile = (workspace as any).workspace_tax_profile ?? null;
 
     return {
       ...workspace,
+      workspace_tax_profile: taxProfile,
       ai_message_finance_opt_in: settings.ai_message_finance_opt_in === true,
+      openai_api_key_set: !!(settings.openai_api_key && settings.openai_api_key !== ''),
+      resend_api_key_set: !!(settings.resend_api_key && settings.resend_api_key !== ''),
+      anthropic_api_key_set: !!(settings.anthropic_api_key && settings.anthropic_api_key !== ''),
+      gemini_api_key_set: !!(settings.gemini_api_key && settings.gemini_api_key !== ''),
+      grok_api_key_set: !!(settings.grok_api_key && settings.grok_api_key !== ''),
+      kimi_api_key_set: !!(settings.kimi_api_key && settings.kimi_api_key !== ''),
+      hacienda_environment: settings.hacienda_environment ?? 'staging',
+      hacienda_callback_url: settings.hacienda_callback_url ?? null,
+      hacienda_username_set: !!(settings.hacienda_username && settings.hacienda_username !== ''),
+      hacienda_password_set: !!(settings.hacienda_password && settings.hacienda_password !== ''),
+      hacienda_client_id_set: !!(settings.hacienda_client_id && settings.hacienda_client_id !== ''),
+      hacienda_token_url_set: !!(settings.hacienda_token_url && settings.hacienda_token_url !== ''),
+      hacienda_access_token_set: !!(settings.hacienda_access_token && settings.hacienda_access_token !== ''),
+      hacienda_certificate_path_set: !!(settings.hacienda_certificate_path && settings.hacienda_certificate_path !== ''),
+      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin && settings.hacienda_certificate_pin !== ''),
+      hacienda_signing_enabled: settings.hacienda_signing_enabled === true,
     };
   }
 
@@ -42,6 +60,7 @@ export class WorkspacesService {
         status: true,
         plan: true,
         settings_json: true,
+        workspace_tax_profile: true,
         created_at: true,
         updated_at: true,
       },
@@ -53,7 +72,27 @@ export class WorkspacesService {
   // ── PATCH /workspaces/current ─────────────────────────────────────────────
 
   async updateCurrent(workspaceId: string, dto: UpdateWorkspaceDto) {
-    const { ai_message_finance_opt_in, ...rest } = dto;
+    const {
+      ai_message_finance_opt_in,
+      openai_api_key,
+      resend_api_key,
+      anthropic_api_key,
+      gemini_api_key,
+      grok_api_key,
+      kimi_api_key,
+      hacienda_environment,
+      hacienda_username,
+      hacienda_password,
+      hacienda_client_id,
+      hacienda_token_url,
+      hacienda_access_token,
+      hacienda_callback_url,
+      hacienda_certificate_path,
+      hacienda_certificate_pin,
+      hacienda_signing_enabled,
+      tax_profile,
+      ...rest
+    } = dto;
 
     const currentWorkspace = await this.prisma.workspace.findUniqueOrThrow({
       where: { id: workspaceId },
@@ -66,21 +105,107 @@ export class WorkspacesService {
         ? (currentWorkspace.settings_json as Record<string, any>)
         : {};
 
-    const nextSettings =
-      ai_message_finance_opt_in === undefined
-        ? currentSettings
-        : {
-            ...currentSettings,
-            ai_message_finance_opt_in,
-          };
+    let nextSettings = { ...currentSettings };
+
+    if (ai_message_finance_opt_in !== undefined) {
+      nextSettings.ai_message_finance_opt_in = ai_message_finance_opt_in;
+    }
+
+    if (openai_api_key !== undefined) {
+      if (openai_api_key === '') {
+        delete nextSettings.openai_api_key;
+      } else {
+        nextSettings.openai_api_key = openai_api_key;
+      }
+    }
+
+    if (resend_api_key !== undefined) {
+      if (resend_api_key === '') {
+        delete nextSettings.resend_api_key;
+      } else {
+        nextSettings.resend_api_key = resend_api_key;
+      }
+    }
+
+    if (anthropic_api_key !== undefined) {
+      if (anthropic_api_key === '') {
+        delete nextSettings.anthropic_api_key;
+      } else {
+        nextSettings.anthropic_api_key = anthropic_api_key;
+      }
+    }
+
+    if (gemini_api_key !== undefined) {
+      if (gemini_api_key === '') {
+        delete nextSettings.gemini_api_key;
+      } else {
+        nextSettings.gemini_api_key = gemini_api_key;
+      }
+    }
+
+    if (grok_api_key !== undefined) {
+      if (grok_api_key === '') {
+        delete nextSettings.grok_api_key;
+      } else {
+        nextSettings.grok_api_key = grok_api_key;
+      }
+    }
+
+    if (kimi_api_key !== undefined) {
+      if (kimi_api_key === '') {
+        delete nextSettings.kimi_api_key;
+      } else {
+        nextSettings.kimi_api_key = kimi_api_key;
+      }
+    }
+
+    const setOrUnset = (key: string, value: string | undefined) => {
+      if (value === undefined) return;
+      if (value === '') {
+        delete nextSettings[key];
+      } else {
+        nextSettings[key] = value;
+      }
+    };
+
+    setOrUnset('hacienda_environment', hacienda_environment);
+    setOrUnset('hacienda_username', hacienda_username);
+    setOrUnset('hacienda_password', hacienda_password);
+    setOrUnset('hacienda_client_id', hacienda_client_id);
+    setOrUnset('hacienda_token_url', hacienda_token_url);
+    setOrUnset('hacienda_access_token', hacienda_access_token);
+    setOrUnset('hacienda_callback_url', hacienda_callback_url);
+    setOrUnset('hacienda_certificate_path', hacienda_certificate_path);
+    setOrUnset('hacienda_certificate_pin', hacienda_certificate_pin);
+
+    if (hacienda_signing_enabled !== undefined) {
+      nextSettings.hacienda_signing_enabled = hacienda_signing_enabled === 'true';
+    }
+
+    const settingsChanged =
+      ai_message_finance_opt_in !== undefined ||
+      openai_api_key !== undefined ||
+      resend_api_key !== undefined ||
+      anthropic_api_key !== undefined ||
+      gemini_api_key !== undefined ||
+      grok_api_key !== undefined ||
+      kimi_api_key !== undefined ||
+      hacienda_environment !== undefined ||
+      hacienda_username !== undefined ||
+      hacienda_password !== undefined ||
+      hacienda_client_id !== undefined ||
+      hacienda_token_url !== undefined ||
+      hacienda_access_token !== undefined ||
+      hacienda_callback_url !== undefined ||
+      hacienda_certificate_path !== undefined ||
+      hacienda_certificate_pin !== undefined ||
+      hacienda_signing_enabled !== undefined;
 
     const workspace = await this.prisma.workspace.update({
       where: { id: workspaceId },
       data: {
         ...rest,
-        ...(ai_message_finance_opt_in === undefined
-          ? {}
-          : { settings_json: nextSettings }),
+        ...(settingsChanged ? { settings_json: nextSettings } : {}),
       },
       select: {
         id: true,
@@ -92,12 +217,67 @@ export class WorkspacesService {
         status: true,
         plan: true,
         settings_json: true,
+        workspace_tax_profile: true,
         created_at: true,
         updated_at: true,
       },
     });
 
-    return this.serializeWorkspace(workspace);
+    if (tax_profile) {
+      const hasAnyTaxProfileValue = Object.values(tax_profile).some((value) => value !== undefined && value !== '');
+      if (hasAnyTaxProfileValue) {
+        await this.prisma.workspaceTaxProfile.upsert({
+          where: { workspace_id: workspaceId },
+          update: {
+            ...(tax_profile.identification_type !== undefined && { identification_type: tax_profile.identification_type }),
+            ...(tax_profile.identification_number !== undefined && { identification_number: tax_profile.identification_number }),
+            ...(tax_profile.legal_name !== undefined && { legal_name: tax_profile.legal_name }),
+            ...(tax_profile.trade_name !== undefined && { trade_name: tax_profile.trade_name }),
+            ...(tax_profile.activity_code !== undefined && { activity_code: tax_profile.activity_code }),
+            ...(tax_profile.province !== undefined && { province: tax_profile.province }),
+            ...(tax_profile.canton !== undefined && { canton: tax_profile.canton }),
+            ...(tax_profile.district !== undefined && { district: tax_profile.district }),
+            ...(tax_profile.address_detail !== undefined && { address_detail: tax_profile.address_detail }),
+            ...(tax_profile.tax_email !== undefined && { tax_email: tax_profile.tax_email }),
+            ...(tax_profile.phone !== undefined && { phone: tax_profile.phone }),
+          },
+          create: {
+            workspace_id: workspaceId,
+            identification_type: tax_profile.identification_type ?? '',
+            identification_number: tax_profile.identification_number ?? '',
+            legal_name: tax_profile.legal_name ?? '',
+            activity_code: tax_profile.activity_code ?? '',
+            trade_name: tax_profile.trade_name,
+            province: tax_profile.province,
+            canton: tax_profile.canton,
+            district: tax_profile.district,
+            address_detail: tax_profile.address_detail,
+            tax_email: tax_profile.tax_email,
+            phone: tax_profile.phone,
+          },
+        });
+      }
+    }
+
+    const refreshed = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        country_code: true,
+        timezone: true,
+        locale: true,
+        status: true,
+        plan: true,
+        settings_json: true,
+        workspace_tax_profile: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+
+    return this.serializeWorkspace(refreshed);
   }
 
   async getAiFinanceMessageConsent(workspaceId: string): Promise<boolean> {
@@ -112,6 +292,36 @@ export class WorkspacesService {
         : {};
 
     return settings.ai_message_finance_opt_in === true;
+  }
+
+  // ── GET /workspaces/current/api-keys ──────────────────────────────────────
+
+  async getApiKeys(workspaceId: string) {
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+
+    const settings =
+      workspace.settings_json && typeof workspace.settings_json === 'object'
+        ? (workspace.settings_json as Record<string, any>)
+        : {};
+
+    return {
+      openai_api_key_set: !!(settings.openai_api_key && settings.openai_api_key !== ''),
+      resend_api_key_set: !!(settings.resend_api_key && settings.resend_api_key !== ''),
+      anthropic_api_key_set: !!(settings.anthropic_api_key && settings.anthropic_api_key !== ''),
+      gemini_api_key_set: !!(settings.gemini_api_key && settings.gemini_api_key !== ''),
+      grok_api_key_set: !!(settings.grok_api_key && settings.grok_api_key !== ''),
+      kimi_api_key_set: !!(settings.kimi_api_key && settings.kimi_api_key !== ''),
+      hacienda_username_set: !!(settings.hacienda_username && settings.hacienda_username !== ''),
+      hacienda_password_set: !!(settings.hacienda_password && settings.hacienda_password !== ''),
+      hacienda_client_id_set: !!(settings.hacienda_client_id && settings.hacienda_client_id !== ''),
+      hacienda_token_url_set: !!(settings.hacienda_token_url && settings.hacienda_token_url !== ''),
+      hacienda_access_token_set: !!(settings.hacienda_access_token && settings.hacienda_access_token !== ''),
+      hacienda_certificate_path_set: !!(settings.hacienda_certificate_path && settings.hacienda_certificate_path !== ''),
+      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin && settings.hacienda_certificate_pin !== ''),
+    };
   }
 
   // ── GET /workspaces/current/stats ─────────────────────────────────────────

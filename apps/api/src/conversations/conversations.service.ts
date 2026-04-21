@@ -8,10 +8,14 @@ import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { FilterConversationsDto } from './dto/filter-conversations.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
+import { AutomationsService } from '../automations/automations.service';
 
 @Injectable()
 export class ConversationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly automationsService: AutomationsService,
+  ) {}
 
   // ── GET /conversations ─────────────────────────────────────────────────────
 
@@ -57,6 +61,7 @@ export class ConversationsService {
           channel:       { select: { id: true, name: true, type: true } },
           assigned_user: { select: { id: true, name: true, avatar_url: true } },
           _count:        { select: { messages: true, tasks: true } },
+          messages:      { orderBy: { sent_at: 'desc' }, take: 1, select: { body_text: true, direction: true } },
         },
       }),
       this.prisma.conversation.count({ where }),
@@ -77,7 +82,7 @@ export class ConversationsService {
     });
     if (!channel) throw new NotFoundException('Canal no encontrado en este workspace.');
 
-    return this.prisma.conversation.create({
+    const conversation = await this.prisma.conversation.create({
       data: {
         workspace_id:     workspaceId,
         channel_id:       dto.channel_id,
@@ -93,6 +98,15 @@ export class ConversationsService {
         contact: { select: { id: true, full_name: true } },
       },
     });
+
+    await this.automationsService.triggerRules(
+      workspaceId,
+      'CONVERSATION_CREATED',
+      'conversation',
+      conversation.id,
+    );
+
+    return conversation;
   }
 
   // ── GET /conversations/:id ─────────────────────────────────────────────────
@@ -127,7 +141,17 @@ export class ConversationsService {
   async update(workspaceId: string, id: string, dto: UpdateConversationDto) {
     await this.findOne(workspaceId, id);
 
-    return this.prisma.conversation.update({
+    if (dto.contact_id) {
+      const contact = await this.prisma.contact.findFirst({
+        where: { id: dto.contact_id, workspace_id: workspaceId },
+        select: { id: true },
+      });
+      if (!contact) {
+        throw new NotFoundException('Contacto no encontrado.');
+      }
+    }
+
+    const updated = await this.prisma.conversation.update({
       where: { id },
       data: {
         ...(dto.status           && { status: dto.status }),
@@ -135,9 +159,21 @@ export class ConversationsService {
         ...(dto.category         !== undefined && { category: dto.category }),
         ...(dto.subject          !== undefined && { subject: dto.subject }),
         ...(dto.assigned_user_id !== undefined && { assigned_user_id: dto.assigned_user_id }),
+        ...(dto.contact_id !== undefined && { contact_id: dto.contact_id }),
         updated_at: new Date(),
       },
     });
+
+    if (dto.status !== undefined) {
+      await this.automationsService.triggerRules(
+        workspaceId,
+        'CONVERSATION_STATUS_CHANGED',
+        'conversation',
+        updated.id,
+      );
+    }
+
+    return updated;
   }
 
   // ── POST /conversations/:id/assign ─────────────────────────────────────────

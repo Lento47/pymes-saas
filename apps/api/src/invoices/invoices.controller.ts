@@ -18,6 +18,7 @@ import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { SendReminderDto } from './dto/send-reminder.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
+import { CreateInvoicePaymentDto } from './dto/create-invoice-payment.dto';
 import { InvoicesService } from './invoices.service';
 import { RemindersService } from './reminders.service';
 
@@ -75,10 +76,38 @@ export class InvoicesController {
   @Post(':id/paid')
   @Roles('AGENT' as any)
   markPaid(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.invoicesService.markPaid(user.workspace_id, user.id, id);
+  }
+
+  @Post(':id/payments')
+  @Roles('AGENT' as any)
+  registerPayment(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: CreateInvoicePaymentDto,
+  ) {
+    return this.invoicesService.registerPayment(user.workspace_id, user.id, id, dto);
+  }
+
+  @Post(':id/submit')
+  @Roles('AGENT' as any)
+  submitToHacienda(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
   ) {
-    return this.invoicesService.markPaid(workspaceId, id);
+    return this.invoicesService.submitToHacienda(workspaceId, id);
+  }
+
+  @Get(':id/hacienda-status')
+  @Roles('AGENT' as any)
+  syncHaciendaStatus(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+  ) {
+    return this.invoicesService.syncHaciendaStatus(workspaceId, id);
   }
 
   @Delete(':id')
@@ -107,5 +136,35 @@ export class InvoicesController {
     @Body() dto: SendReminderDto,
   ) {
     return this.remindersService.sendReminder(user.workspace_id, id, dto, user);
+  }
+
+  @Post(':id/credit-note')
+  @Roles('AGENT' as any)
+  createCreditNote(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+    @Body() dto: CreateInvoiceDto,
+  ) {
+    return this.invoicesService.createCreditNote(workspaceId, id, dto);
+  }
+
+  @Post(':id/debit-note')
+  @Roles('AGENT' as any)
+  createDebitNote(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+    @Body() dto: CreateInvoiceDto,
+  ) {
+    return this.invoicesService.createDebitNote(workspaceId, id, dto);
+  }
+
+  @Post(':id/receiver-message')
+  @Roles('AGENT' as any)
+  createReceiverMessage(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+    @Body() dto: { number?: string; description?: string; notes?: unknown[] },
+  ) {
+    return this.invoicesService.createReceiverMessage(workspaceId, id, dto);
   }
 }

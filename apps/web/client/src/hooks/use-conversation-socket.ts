@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getSocket } from './use-socket';
+import { connectSocket, getSocket } from './use-socket';
 
 /**
  * Hook para mensajes en tiempo real dentro de una conversación.
@@ -48,7 +48,7 @@ export function useConversationSocket(conversationId: string) {
   );
 
   useEffect(() => {
-    const socket = getSocket();
+    const socket = getSocket() ?? connectSocket();
     if (!socket || !conversationId) return;
 
     // Entrar al room de la conversación

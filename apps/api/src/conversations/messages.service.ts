@@ -8,6 +8,7 @@ import { AiService } from '../ai/ai.service';
 import { TasksService } from '../tasks/tasks.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Priority } from '@prisma/client';
+import { AutomationsService } from '../automations/automations.service';
 
 @Injectable()
 export class MessagesService {
@@ -20,6 +21,7 @@ export class MessagesService {
     private readonly aiService: AiService,
     private readonly tasksService: TasksService,
     private readonly notificationsService: NotificationsService,
+    private readonly automationsService: AutomationsService,
   ) { }
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 50) {
@@ -172,6 +174,13 @@ export class MessagesService {
     // Emitir en tiempo real
     this.events.emitNewMessage(conversation.id, workspaceId, message);
 
+    await this.automationsService.triggerRules(
+      workspaceId,
+      'MESSAGE_RECEIVED',
+      'message',
+      message.id,
+    );
+
     // ── AI analysis (fire-and-forget — no bloquea la respuesta al webhook) ──
     const conversationId = conversation.id;
     const contactId = conversation.contact_id;
@@ -220,13 +229,13 @@ export class MessagesService {
       select: { subject: true, assigned_user_id: true },
     });
 
-    // Update conversation with AI classification and category
+    // Persist only fields that exist on the current Conversation schema.
+    // The AI payload can still drive follow-up task creation below.
     await this.prisma.conversation.update({
       where: { id: conversationId },
       data: {
-        ai_classification_json: result,
         category: result.category,
-      } as any,
+      },
     });
 
     // Create task for HIGH or CRITICAL urgency if task_title is provided
@@ -253,6 +262,7 @@ export class MessagesService {
             workspace_id: workspaceId,
             role: ownerWorkspaceUser.role,
             is_owner: ownerWorkspaceUser.is_owner,
+            is_platform_admin: false,
           }
         : {
             id: 'system',
@@ -261,6 +271,7 @@ export class MessagesService {
             workspace_id: workspaceId,
             role: 'OWNER',
             is_owner: true,
+            is_platform_admin: false,
           };
 
       await this.tasksService.create(workspaceId, systemUser, {

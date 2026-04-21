@@ -26,7 +26,7 @@ export class RemindersService {
     await this.prisma.invoice.updateMany({
       where: {
         workspace_id: workspaceId,
-        status: { in: [InvoiceStatus.DRAFT, InvoiceStatus.SENT] },
+        status: { in: [InvoiceStatus.DRAFT, InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID] },
         due_date: { lt: now },
       },
       data: { status: InvoiceStatus.OVERDUE },
@@ -46,6 +46,7 @@ export class RemindersService {
             phone: true,
           },
         },
+        payments: true,
         reminders: {
           orderBy: { created_at: 'desc' },
           take: 1,
@@ -67,6 +68,7 @@ export class RemindersService {
             phone: true,
           },
         },
+        payments: true,
       },
     });
 
@@ -94,10 +96,16 @@ export class RemindersService {
       Math.floor((Date.now() - invoice.due_date.getTime()) / (1000 * 60 * 60 * 24)),
     );
 
+    const amountPaid = (invoice.payments ?? []).reduce(
+      (sum, payment) => sum + Number(payment.amount ?? 0),
+      0,
+    );
+    const balanceDue = Math.max(0, Number(invoice.amount) - amountPaid);
+
     const aiResult = await this.aiService.generatePaymentReminderDraft({
       customerName: invoice.contact.full_name,
       currency: invoice.currency,
-      amount: invoice.amount.toString(),
+      amount: balanceDue.toFixed(2),
       invoiceNumber: invoice.number,
       daysOverdue,
     });

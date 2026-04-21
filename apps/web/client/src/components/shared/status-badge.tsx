@@ -22,9 +22,17 @@ const STYLES: Record<string, { bg: string; color: string; label?: string }> = {
   // Invoice
   DRAFT:      { bg: "hsl(0 0% 42% / 0.12)",    color: "hsl(0 0% 60%)",      label: "Borrador" },
   SENT:       { bg: "hsl(214 89% 52% / 0.12)", color: "hsl(214 89% 62%)",   label: "Enviada" },
+  PARTIALLY_PAID: { bg: "hsl(38 95% 54% / 0.12)", color: "hsl(38 95% 60%)", label: "Abonada" },
   PAID:       { bg: "hsl(145 63% 42% / 0.12)", color: "hsl(145 63% 52%)",   label: "Pagada" },
   OVERDUE:    { bg: "hsl(0 72% 51% / 0.12)",   color: "hsl(0 72% 62%)",     label: "Vencida" },
   CANCELLED:  { bg: "hsl(0 0% 42% / 0.12)",    color: "hsl(0 0% 60%)",      label: "Cancelada" },
+  PENDING_SUBMISSION: { bg: "hsl(38 95% 54% / 0.12)", color: "hsl(38 95% 60%)", label: "Pend. envío" },
+  SUBMITTED: { bg: "hsl(214 89% 52% / 0.12)", color: "hsl(214 89% 62%)", label: "Enviado MH" },
+  RECIBIDO: { bg: "hsl(214 89% 52% / 0.12)", color: "hsl(214 89% 62%)", label: "Recibido MH" },
+  PROCESANDO: { bg: "hsl(38 95% 54% / 0.12)", color: "hsl(38 95% 60%)", label: "Procesando MH" },
+  ACEPTADO: { bg: "hsl(145 63% 42% / 0.12)", color: "hsl(145 63% 52%)", label: "Aceptado MH" },
+  RECHAZADO: { bg: "hsl(0 72% 51% / 0.12)", color: "hsl(0 72% 62%)", label: "Rechazado MH" },
+  ERROR: { bg: "hsl(0 72% 51% / 0.12)", color: "hsl(0 72% 62%)", label: "Error MH" },
 };
 
 const FALLBACK = { bg: "hsl(0 0% 42% / 0.10)", color: "hsl(0 0% 55%)" };

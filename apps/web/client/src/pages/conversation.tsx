@@ -9,12 +9,15 @@ import { PriorityDot } from "@/components/shared/priority-dot";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRoute, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
-import { ArrowLeft, Send, UserPlus, CheckCircle2, RefreshCw, Loader2, Trash2, Mail, MessageCircle, Globe, Phone, ExternalLink, Plus } from "lucide-react";
+import { ArrowLeft, Coins, ExternalLink, CheckCircle2, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2 } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +32,16 @@ function getChannelIcon(type?: string) {
     case "FORM": return <Globe className="w-3.5 h-3.5" />;
     default: return <Phone className="w-3.5 h-3.5" />;
   }
+}
+
+function formatMoney(amount: unknown, currency = "USD") {
+  const value = Number(amount ?? 0);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function DateSeparator({ date }: { date: Date }) {
@@ -50,9 +63,37 @@ export default function ConversationPage() {
   const id = params?.id || "";
   const [message, setMessage] = useState("");
   const [showDelete, setShowDelete] = useState(false);
+  const [showContactDialog, setShowContactDialog] = useState(false);
+  const [showCreateInvoiceDialog, setShowCreateInvoiceDialog] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState("");
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [newContact, setNewContact] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    company: "",
+    type: "CUSTOMER",
+  });
+  const [invoiceForm, setInvoiceForm] = useState({
+    number: "",
+    amount: "",
+    currency: "USD",
+    due_date: "",
+    description: "",
+  });
+  const [paymentForm, setPaymentForm] = useState({
+    amount: "",
+    paid_at: "",
+    method: "",
+    reference: "",
+    notes: "",
+  });
 
   useConversationSocket(id);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: conversation, isLoading: convLoading } = useQuery({
     queryKey: ["/api/conversations", id],
@@ -70,6 +111,18 @@ export default function ConversationPage() {
   const { data: members } = useQuery({
     queryKey: ["/api/workspaces/current/members"],
     queryFn: () => api.getMembers(),
+  });
+
+  const { data: contactsData } = useQuery({
+    queryKey: ["/api/contacts", "conversation-linker"],
+    queryFn: () => api.getContacts({ limit: "100" }),
+    enabled: showContactDialog,
+  });
+
+  const { data: invoicesData } = useQuery({
+    queryKey: ["/api/invoices", "conversation", id],
+    queryFn: () => api.getInvoices({ conversation_id: id, limit: "20" }),
+    enabled: !!id,
   });
 
   const sendMutation = useMutation({
@@ -113,20 +166,150 @@ export default function ConversationPage() {
     },
   });
 
+  const linkContactMutation = useMutation({
+    mutationFn: (contactId: string) => api.updateConversation(id, { contact_id: contactId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      setShowContactDialog(false);
+      setSelectedContactId("");
+      toast({ title: "Contacto vinculado" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error al vincular contacto", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const createAndLinkContactMutation = useMutation({
+    mutationFn: async () => {
+      const fullName = [newContact.firstName, newContact.lastName].filter(Boolean).join(" ").trim();
+      const created = await api.createContact({
+        type: newContact.type,
+        full_name: fullName || conversation?.contact?.full_name || conversation?.subject || "Sin nombre",
+        ...(newContact.email.trim() ? { email: newContact.email.trim() } : {}),
+        ...(newContact.phone.trim() ? { phone: newContact.phone.trim() } : {}),
+        ...(newContact.company.trim() ? { company_name: newContact.company.trim() } : {}),
+      });
+      await api.updateConversation(id, { contact_id: created.id });
+      return created;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      setShowContactDialog(false);
+      setSelectedContactId("");
+      setNewContact({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        company: "",
+        type: "CUSTOMER",
+      });
+      toast({ title: "Contacto creado y vinculado" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error al crear contacto", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const createInvoiceMutation = useMutation({
+    mutationFn: () =>
+      api.createInvoice({
+        contact_id: conversation.contact.id,
+        conversation_id: id,
+        number: invoiceForm.number,
+        amount: Number(invoiceForm.amount),
+        currency: invoiceForm.currency,
+        due_date: invoiceForm.due_date,
+        description: invoiceForm.description,
+        notes: [],
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", "conversation", id] });
+      setShowCreateInvoiceDialog(false);
+      setInvoiceForm({
+        number: "",
+        amount: "",
+        currency: "USD",
+        due_date: "",
+        description: "",
+      });
+      toast({ title: "Factura creada y guardada" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error al crear factura", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const registerPaymentMutation = useMutation({
+    mutationFn: () =>
+      api.registerInvoicePayment(selectedInvoice.id, {
+        amount: Number(paymentForm.amount),
+        paid_at: paymentForm.paid_at || undefined,
+        method: paymentForm.method || undefined,
+        reference: paymentForm.reference || undefined,
+        notes: paymentForm.notes || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", "conversation", id] });
+      setShowPaymentDialog(false);
+      setSelectedInvoice(null);
+      setPaymentForm({
+        amount: "",
+        paid_at: "",
+        method: "",
+        reference: "",
+        notes: "",
+      });
+      toast({ title: "Pago registrado" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error al registrar pago", description: err.message, variant: "destructive" });
+    },
+  });
+
   const msgList = Array.isArray(messages) ? messages : messages?.data || [];
   const memberList = Array.isArray(members) ? members : members?.data || [];
+  const contactList = Array.isArray(contactsData) ? contactsData : contactsData?.data || [];
+  const invoiceList = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
   const contact = conversation?.contact;
   const assignedMember = memberList.find(
-    (m: any) => (m.id || m.userId) === (conversation?.assignedTo?.id || conversation?.assigned_to_id)
+    (m: any) => (m.user?.id || m.userId || m.id) === (conversation?.assigned_user?.id || conversation?.assigned_to_id || conversation?.assigned_user_id)
   );
 
+  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    else messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  const prevLengthRef = useRef(0);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (msgList.length === 0) return;
+    const isInitial = prevLengthRef.current === 0;
+    scrollToBottom(isInitial ? "auto" : "smooth");
+    prevLengthRef.current = msgList.length;
   }, [msgList.length]);
 
   const handleSend = () => {
     if (!message.trim()) return;
     sendMutation.mutate({ body_text: message, direction: "OUTBOUND" });
+  };
+
+  const openPaymentDialog = (invoice: any) => {
+    setSelectedInvoice(invoice);
+    setPaymentForm({
+      amount: String(Number(invoice.balance_due ?? 0).toFixed(2)),
+      paid_at: new Date().toISOString().slice(0, 10),
+      method: "",
+      reference: "",
+      notes: "",
+    });
+    setShowPaymentDialog(true);
   };
 
   if (convLoading) return <PageLoader />;
@@ -135,13 +318,13 @@ export default function ConversationPage() {
   const contactName = contact
     ? (contact.name || `${contact.firstName || ""} ${contact.lastName || ""}`.trim() || contact.email || "?")
     : "Desconocido";
+  const inferredEmail = contact?.email || (msgList.find((msg: any) => typeof msg.sender_ref === "string" && msg.sender_ref.includes("@"))?.sender_ref ?? "");
+  const inferredPhone = contact?.phone || (msgList.find((msg: any) => typeof msg.sender_ref === "string" && !msg.sender_ref.includes("@"))?.sender_ref ?? "");
 
   return (
     <TooltipProvider>
       <div className="flex gap-4 h-[calc(100vh-80px)]">
-        {/* Main conversation area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Header */}
           <div className="flex items-center gap-3 pb-3 border-b border-border mb-3">
             <Link href="/inbox">
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid="button-back">
@@ -166,28 +349,27 @@ export default function ConversationPage() {
               {assignedMember && (
                 <div className="text-[11px] text-muted-foreground mt-0.5">
                   Asignado a{" "}
-                  {assignedMember.firstName || assignedMember.user?.firstName || assignedMember.email}
+                  {assignedMember.user?.name || assignedMember.name || assignedMember.email}
                 </div>
               )}
             </div>
 
             <div className="flex items-center gap-1">
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Select onValueChange={(val) => assignMutation.mutate(val)}>
+                <Select onValueChange={(val) => assignMutation.mutate(val)}>
+                  <TooltipTrigger asChild>
                     <SelectTrigger className="h-8 w-8 p-0 border-0 bg-transparent" data-testid="button-assign">
                       <UserPlus className="w-4 h-4 text-muted-foreground" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {memberList.map((m: any) => (
-                        <SelectItem key={m.id || m.userId} value={m.id || m.userId}>
-                          {m.firstName || m.user?.firstName || m.email}{" "}
-                          {m.lastName || m.user?.lastName || ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TooltipTrigger>
+                  </TooltipTrigger>
+                  <SelectContent>
+                    {memberList.map((m: any) => (
+                      <SelectItem key={m.user?.id || m.userId || m.id} value={m.user?.id || m.userId || m.id}>
+                        {m.user?.name || m.name || m.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <TooltipContent>Asignar agente</TooltipContent>
               </Tooltip>
 
@@ -241,8 +423,7 @@ export default function ConversationPage() {
             </div>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto pb-4 pr-1">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4 pr-1">
             {msgsLoading ? (
               <PageLoader />
             ) : msgList.length === 0 ? (
@@ -313,7 +494,6 @@ export default function ConversationPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input area */}
           <div className="border border-border rounded-xl bg-card overflow-hidden">
             <Textarea
               placeholder="Escribe un mensaje..."
@@ -346,19 +526,36 @@ export default function ConversationPage() {
           </div>
         </div>
 
-        {/* Right panel */}
-        <div className="w-[240px] shrink-0 flex flex-col gap-3 overflow-y-auto" data-testid="contact-info-panel">
-          {/* Contact card */}
+        <div className="w-[280px] shrink-0 flex flex-col gap-3 overflow-y-auto" data-testid="contact-info-panel">
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Contacto</h3>
-              {contact && (
-                <Link href={`/contacts/${contact.id}`}>
-                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground">
-                    <ExternalLink className="w-3 h-3" />
-                  </Button>
-                </Link>
-              )}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setSelectedContactId(contact?.id ?? "");
+                    setNewContact((prev) => ({
+                      ...prev,
+                      email: prev.email || inferredEmail,
+                      phone: prev.phone || inferredPhone,
+                    }));
+                    setShowContactDialog(true);
+                  }}
+                  data-testid="button-link-contact"
+                >
+                  <UserPlus2 className="w-3 h-3" />
+                </Button>
+                {contact && (
+                  <Link href={`/contacts/${contact.id}`}>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground">
+                      <ExternalLink className="w-3 h-3" />
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
             {contact ? (
               <div className="space-y-3">
@@ -389,11 +586,104 @@ export default function ConversationPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Sin contacto vinculado</p>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Sin contacto vinculado</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px]"
+                  onClick={() => {
+                    setSelectedContactId("");
+                    setNewContact((prev) => ({
+                      ...prev,
+                      email: inferredEmail,
+                      phone: inferredPhone,
+                    }));
+                    setShowContactDialog(true);
+                  }}
+                >
+                  <UserPlus2 className="w-3 h-3 mr-1.5" />
+                  Vincular o crear contacto
+                </Button>
+              </div>
             )}
           </div>
 
-          {/* Conversation details */}
+          <div className="bg-card border border-border rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Facturación</h3>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowCreateInvoiceDialog(true)}
+                  disabled={!contact}
+                >
+                  <Plus className="w-3 h-3" />
+                </Button>
+                <Link href="/invoices">
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground">
+                    <ExternalLink className="w-3 h-3" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            {!contact ? (
+              <p className="text-[11px] text-muted-foreground">Vincula primero un contacto para crear facturas desde este chat.</p>
+            ) : invoiceList.length === 0 ? (
+              <div className="space-y-2">
+                <p className="text-[11px] text-muted-foreground">Todavía no hay facturas ligadas a esta conversación.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px]"
+                  onClick={() => setShowCreateInvoiceDialog(true)}
+                >
+                  <Receipt className="w-3 h-3 mr-1.5" />
+                  Crear factura
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {invoiceList.map((invoice: any) => (
+                  <div key={invoice.id} className="rounded-lg border border-border bg-background px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-foreground truncate">{invoice.number}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {formatMoney(invoice.amount, invoice.currency)} total
+                        </div>
+                      </div>
+                      <StatusBadge status={invoice.status} type="invoice" className="text-[10px]" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2 text-[11px]">
+                      <div>
+                        <div className="text-muted-foreground">Pagado</div>
+                        <div className="text-foreground">{formatMoney(invoice.amount_paid, invoice.currency)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Saldo</div>
+                        <div className="text-foreground">{formatMoney(invoice.balance_due, invoice.currency)}</div>
+                      </div>
+                    </div>
+                    {Number(invoice.balance_due ?? 0) > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 mt-2 text-[11px] w-full"
+                        onClick={() => openPaymentDialog(invoice)}
+                      >
+                        <Coins className="w-3 h-3 mr-1.5" />
+                        Registrar pago
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="bg-card border border-border rounded-xl p-4">
             <h3 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-3">Detalles</h3>
             <div className="space-y-2">
@@ -417,15 +707,14 @@ export default function ConversationPage() {
               {assignedMember && (
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-muted-foreground">Asignada a</span>
-                  <span className="text-[11px] text-foreground truncate max-w-[110px]">
-                    {assignedMember.firstName || assignedMember.user?.firstName || assignedMember.email}
+                  <span className="text-[11px] text-foreground truncate max-w-[140px]">
+                    {assignedMember.user?.name || assignedMember.name || assignedMember.email}
                   </span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Tasks */}
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Tareas</h3>
@@ -453,7 +742,6 @@ export default function ConversationPage() {
           </div>
         </div>
 
-        {/* Delete Confirmation */}
         <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
           <AlertDialogContent className="bg-card border-border">
             <AlertDialogHeader>
@@ -474,6 +762,308 @@ export default function ConversationPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+          <DialogContent className="bg-card border-border sm:max-w-[460px]">
+            <DialogHeader>
+              <DialogTitle className="text-sm">
+                {contact ? "Cambiar contacto vinculado" : "Vincular contacto"}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Contacto existente</Label>
+                <Select value={selectedContactId} onValueChange={setSelectedContactId}>
+                  <SelectTrigger className="h-9 text-xs bg-background border-border">
+                    <SelectValue placeholder="Seleccioná un contacto existente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contactList.map((existing: any) => (
+                      <SelectItem key={existing.id} value={existing.id}>
+                        {existing.full_name}
+                        {existing.email ? ` · ${existing.email}` : existing.phone ? ` · ${existing.phone}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={!selectedContactId || linkContactMutation.isPending}
+                  onClick={() => linkContactMutation.mutate(selectedContactId)}
+                >
+                  {linkContactMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                  Vincular contacto existente
+                </Button>
+              </div>
+
+              <div className="border-t border-border pt-4 space-y-3">
+                <div className="text-xs text-muted-foreground">O crear un contacto nuevo</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Nombre</Label>
+                    <Input
+                      value={newContact.firstName}
+                      onChange={(e) => setNewContact({ ...newContact, firstName: e.target.value })}
+                      className="h-8 text-xs bg-background border-border"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Apellido</Label>
+                    <Input
+                      value={newContact.lastName}
+                      onChange={(e) => setNewContact({ ...newContact, lastName: e.target.value })}
+                      className="h-8 text-xs bg-background border-border"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Email</Label>
+                  <Input
+                    type="email"
+                    value={newContact.email}
+                    onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                    className="h-8 text-xs bg-background border-border"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Teléfono</Label>
+                  <Input
+                    value={newContact.phone}
+                    onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                    className="h-8 text-xs bg-background border-border"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Empresa</Label>
+                  <Input
+                    value={newContact.company}
+                    onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
+                    className="h-8 text-xs bg-background border-border"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Tipo</Label>
+                  <Select value={newContact.type} onValueChange={(value) => setNewContact({ ...newContact, type: value })}>
+                    <SelectTrigger className="h-8 text-xs bg-background border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["CUSTOMER", "VENDOR", "LEAD", "OTHER"].map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowContactDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs"
+                disabled={createAndLinkContactMutation.isPending}
+                onClick={() => createAndLinkContactMutation.mutate()}
+              >
+                {createAndLinkContactMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                Crear y vincular
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showCreateInvoiceDialog} onOpenChange={setShowCreateInvoiceDialog}>
+          <DialogContent className="bg-card border-border sm:max-w-[460px]">
+            <DialogHeader>
+              <DialogTitle className="text-sm">Crear factura desde este chat</DialogTitle>
+            </DialogHeader>
+            {!contact ? (
+              <p className="text-sm text-muted-foreground">Necesitas vincular un contacto antes de crear la factura.</p>
+            ) : (
+              <div className="space-y-3">
+                <div className="rounded-md border border-border bg-background px-3 py-2">
+                  <div className="text-xs text-muted-foreground">Cliente</div>
+                  <div className="text-sm text-foreground">{contact.full_name}</div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Número</Label>
+                    <Input
+                      value={invoiceForm.number}
+                      onChange={(e) => setInvoiceForm((prev) => ({ ...prev, number: e.target.value }))}
+                      className="h-8 text-xs bg-background border-border"
+                      placeholder="FAC-001"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Moneda</Label>
+                    <Input
+                      value={invoiceForm.currency}
+                      onChange={(e) => setInvoiceForm((prev) => ({ ...prev, currency: e.target.value.toUpperCase() }))}
+                      className="h-8 text-xs bg-background border-border"
+                      placeholder="USD"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Monto total</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={invoiceForm.amount}
+                      onChange={(e) => setInvoiceForm((prev) => ({ ...prev, amount: e.target.value }))}
+                      className="h-8 text-xs bg-background border-border"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Vencimiento</Label>
+                    <Input
+                      type="date"
+                      value={invoiceForm.due_date}
+                      onChange={(e) => setInvoiceForm((prev) => ({ ...prev, due_date: e.target.value }))}
+                      className="h-8 text-xs bg-background border-border"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Descripción</Label>
+                  <Textarea
+                    value={invoiceForm.description}
+                    onChange={(e) => setInvoiceForm((prev) => ({ ...prev, description: e.target.value }))}
+                    className="min-h-[90px] text-xs bg-background border-border"
+                    placeholder="Concepto o detalle de la factura"
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowCreateInvoiceDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => createInvoiceMutation.mutate()}
+                disabled={
+                  !contact ||
+                  createInvoiceMutation.isPending ||
+                  !invoiceForm.number.trim() ||
+                  !invoiceForm.amount ||
+                  !invoiceForm.due_date
+                }
+              >
+                {createInvoiceMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                Guardar factura
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+          <DialogContent className="bg-card border-border sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="text-sm">Registrar pago</DialogTitle>
+            </DialogHeader>
+            {!selectedInvoice ? null : (
+              <div className="space-y-3">
+                <div className="rounded-md border border-border bg-background px-3 py-2 space-y-1">
+                  <div className="text-xs text-muted-foreground">
+                    {selectedInvoice.number} · {selectedInvoice.contact?.full_name}
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <div className="text-muted-foreground">Total</div>
+                      <div className="text-foreground">{formatMoney(selectedInvoice.amount, selectedInvoice.currency)}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Pagado</div>
+                      <div className="text-foreground">{formatMoney(selectedInvoice.amount_paid, selectedInvoice.currency)}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Saldo</div>
+                      <div className="text-foreground">{formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Monto abonado</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={paymentForm.amount}
+                      onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))}
+                      className="h-8 text-xs bg-background border-border"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Fecha de pago</Label>
+                    <Input
+                      type="date"
+                      value={paymentForm.paid_at}
+                      onChange={(e) => setPaymentForm((prev) => ({ ...prev, paid_at: e.target.value }))}
+                      className="h-8 text-xs bg-background border-border"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Método</Label>
+                    <Input
+                      value={paymentForm.method}
+                      onChange={(e) => setPaymentForm((prev) => ({ ...prev, method: e.target.value }))}
+                      className="h-8 text-xs bg-background border-border"
+                      placeholder="Pago móvil, transferencia..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Referencia</Label>
+                    <Input
+                      value={paymentForm.reference}
+                      onChange={(e) => setPaymentForm((prev) => ({ ...prev, reference: e.target.value }))}
+                      className="h-8 text-xs bg-background border-border"
+                      placeholder="Comprobante"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Notas</Label>
+                  <Textarea
+                    value={paymentForm.notes}
+                    onChange={(e) => setPaymentForm((prev) => ({ ...prev, notes: e.target.value }))}
+                    className="min-h-[90px] text-xs bg-background border-border"
+                    placeholder="Detalle opcional del pago"
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowPaymentDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => registerPaymentMutation.mutate()}
+                disabled={!selectedInvoice || !paymentForm.amount || registerPaymentMutation.isPending}
+              >
+                {registerPaymentMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Coins className="w-3.5 h-3.5 mr-1.5" />}
+                Guardar pago
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );

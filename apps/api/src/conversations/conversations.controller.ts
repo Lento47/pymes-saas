@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Logger,
   Param,
@@ -91,6 +92,15 @@ export class ConversationsController {
     @Param('id') id: string,
   ) {
     return this.service.resolve(workspaceId, id);
+  }
+
+  @Delete(':id')
+  @Roles('ADMIN' as any)
+  remove(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+  ) {
+    return this.service.remove(workspaceId, id);
   }
 
   // ── Messages ───────────────────────────────────────────────────────────────

@@ -12,13 +12,14 @@ interface AutomationJobData {
 }
 
 interface AutomationAction {
-  type: 'set_priority' | 'set_status' | 'assign' | 'create_task' | 'notify';
+  type: 'set_priority' | 'set_status' | 'assign' | 'create_task' | 'notify' | 'notify_in_app';
   priority?: string;
   status?: string;
   user_id?: string;
   title?: string;
   body?: string;
   assigned_user_id?: string;
+  description?: string;
 }
 
 @Injectable()
@@ -66,11 +67,19 @@ export class AutomationProcessor extends WorkerHost {
       const conditionConfig = rule.condition_config_json as any;
       let conditionMet = true;
 
-      if (conditionConfig && conditionConfig.field && conditionConfig.operator) {
+      const conditions = Array.isArray(conditionConfig)
+        ? conditionConfig
+        : conditionConfig && conditionConfig.field && conditionConfig.operator
+          ? [conditionConfig]
+          : [];
+
+      if (conditions.length > 0) {
         try {
           const entity = await this.loadEntity(triggerEntityType, triggerEntityId);
           if (entity) {
-            conditionMet = this.evaluateCondition(entity, conditionConfig);
+            conditionMet = conditions.every((condition) =>
+              this.evaluateCondition(entity, condition),
+            );
           }
         } catch {
           // Si no puede evaluar, la condición pasa
@@ -89,9 +98,12 @@ export class AutomationProcessor extends WorkerHost {
       }
 
       // 6. Ejecutar acciones
-      const actions: AutomationAction[] = Array.isArray(rule.action_config_json)
-        ? (rule.action_config_json as unknown as AutomationAction[])
-        : [];
+      const rawActions = rule.action_config_json as any;
+      const actions: AutomationAction[] = Array.isArray(rawActions)
+        ? (rawActions as AutomationAction[])
+        : rawActions && typeof rawActions === 'object'
+          ? [rawActions as AutomationAction]
+          : [];
 
       for (const action of actions) {
         await this.executeAction(action, triggerEntityType, triggerEntityId, workspaceId);
@@ -140,6 +152,8 @@ export class AutomationProcessor extends WorkerHost {
         return this.prisma.task.findUnique({ where: { id: entityId } });
       case 'message':
         return this.prisma.message.findUnique({ where: { id: entityId } });
+      case 'document':
+        return this.prisma.document.findUnique({ where: { id: entityId } });
       default:
         return null;
     }
@@ -157,6 +171,22 @@ export class AutomationProcessor extends WorkerHost {
         return entityValue === value;
       case 'neq':
         return entityValue !== value;
+      case 'contains':
+        return String(entityValue ?? '').toLowerCase().includes(String(value ?? '').toLowerCase());
+      case 'not_contains':
+        return !String(entityValue ?? '').toLowerCase().includes(String(value ?? '').toLowerCase());
+      case 'gt':
+        return Number(entityValue) > Number(value);
+      case 'gte':
+        return Number(entityValue) >= Number(value);
+      case 'lt':
+        return Number(entityValue) < Number(value);
+      case 'lte':
+        return Number(entityValue) <= Number(value);
+      case 'exists':
+        return value === true
+          ? entityValue !== undefined && entityValue !== null && entityValue !== ''
+          : entityValue === undefined || entityValue === null || entityValue === '';
       default:
         // Operador desconocido → condición pasa
         return true;
@@ -169,29 +199,58 @@ export class AutomationProcessor extends WorkerHost {
     triggerEntityId: string,
     workspaceId: string,
   ): Promise<void> {
+    const conversationTargetId = await this.resolveConversationTargetId(
+      triggerEntityType,
+      triggerEntityId,
+    );
+
     switch (action.type) {
+      case 'notify_in_app':
+        {
+          const recipientId = await this.resolveNotificationRecipient(
+            workspaceId,
+            action.user_id,
+            conversationTargetId,
+          );
+
+          if (recipientId) {
+            await this.prisma.notification.create({
+              data: {
+                workspace_id: workspaceId,
+                user_id: recipientId,
+                type: 'automation',
+                title: action.title ?? 'Notificación automática',
+                body: action.body ?? 'Se ejecutó una automatización.',
+                related_entity_type: conversationTargetId ? 'conversation' : triggerEntityType,
+                related_entity_id: conversationTargetId ?? triggerEntityId,
+              },
+            });
+          }
+        }
+        break;
+
       case 'set_priority':
-        if (triggerEntityType === 'conversation') {
+        if (conversationTargetId) {
           await this.prisma.conversation.update({
-            where: { id: triggerEntityId },
+            where: { id: conversationTargetId },
             data: { priority: action.priority as any },
           });
         }
         break;
 
       case 'set_status':
-        if (triggerEntityType === 'conversation') {
+        if (conversationTargetId) {
           await this.prisma.conversation.update({
-            where: { id: triggerEntityId },
+            where: { id: conversationTargetId },
             data: { status: action.status as any },
           });
         }
         break;
 
       case 'assign':
-        if (triggerEntityType === 'conversation') {
+        if (conversationTargetId) {
           await this.prisma.conversation.update({
-            where: { id: triggerEntityId },
+            where: { id: conversationTargetId },
             data: { assigned_user_id: action.user_id ?? null },
           });
         }
@@ -202,30 +261,102 @@ export class AutomationProcessor extends WorkerHost {
           data: {
             workspace_id: workspaceId,
             title: action.title ?? 'Tarea automática',
+            description: action.description,
             priority: (action.priority as any) ?? 'MEDIUM',
             status: 'TODO',
             source: 'AUTOMATION',
-            conversation_id: triggerEntityType === 'conversation' ? triggerEntityId : undefined,
+            assigned_user_id: action.assigned_user_id ?? action.user_id,
+            conversation_id: conversationTargetId ?? undefined,
           },
         });
         break;
 
       case 'notify':
-        if (action.user_id) {
+        {
+          const recipientId = await this.resolveNotificationRecipient(
+            workspaceId,
+            action.user_id,
+            conversationTargetId,
+          );
+
+          if (recipientId) {
           await this.prisma.notification.create({
             data: {
               workspace_id: workspaceId,
-              user_id: action.user_id,
+              user_id: recipientId,
               type: 'automation',
               title: action.title ?? 'Notificación automática',
               body: action.body ?? '',
+              related_entity_type: conversationTargetId ? 'conversation' : triggerEntityType,
+              related_entity_id: conversationTargetId ?? triggerEntityId,
             },
           });
+        }
         }
         break;
 
       default:
         this.logger.warn(`Unknown action type: ${(action as any).type}`);
     }
+  }
+
+  private async resolveConversationTargetId(
+    triggerEntityType: string,
+    triggerEntityId: string,
+  ): Promise<string | null> {
+    if (triggerEntityType === 'conversation') {
+      return triggerEntityId;
+    }
+
+    if (triggerEntityType === 'message') {
+      const message = await this.prisma.message.findUnique({
+        where: { id: triggerEntityId },
+        select: { conversation_id: true },
+      });
+      return message?.conversation_id ?? null;
+    }
+
+    if (triggerEntityType === 'task') {
+      const task = await this.prisma.task.findUnique({
+        where: { id: triggerEntityId },
+        select: { conversation_id: true },
+      });
+      return task?.conversation_id ?? null;
+    }
+
+    if (triggerEntityType === 'document') {
+      const document = await this.prisma.document.findUnique({
+        where: { id: triggerEntityId },
+        select: { conversation_id: true },
+      });
+      return document?.conversation_id ?? null;
+    }
+
+    return null;
+  }
+
+  private async resolveNotificationRecipient(
+    workspaceId: string,
+    explicitUserId?: string,
+    conversationId?: string | null,
+  ): Promise<string | null> {
+    if (explicitUserId) return explicitUserId;
+
+    if (conversationId) {
+      const conversation = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { assigned_user_id: true },
+      });
+      if (conversation?.assigned_user_id) {
+        return conversation.assigned_user_id;
+      }
+    }
+
+    const ownerMembership = await this.prisma.workspaceUser.findFirst({
+      where: { workspace_id: workspaceId, is_owner: true },
+      select: { user_id: true },
+    });
+
+    return ownerMembership?.user_id ?? null;
   }
 }

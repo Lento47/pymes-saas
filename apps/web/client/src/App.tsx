@@ -5,6 +5,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/layout/sidebar";
+import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { useAuth } from "@/hooks/use-auth";
 
 import Login from "@/pages/login";
@@ -17,6 +18,7 @@ import Tasks from "@/pages/tasks";
 import Documents from "@/pages/documents";
 import Invoices from "@/pages/invoices";
 import Automations from "@/pages/automations";
+import Pipeline from "@/pages/pipeline";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
@@ -57,6 +59,9 @@ function AppRouter() {
       <Route path="/automations">
         {() => <ProtectedLayout><Automations /></ProtectedLayout>}
       </Route>
+      <Route path="/pipeline">
+        {() => <ProtectedLayout><Pipeline /></ProtectedLayout>}
+      </Route>
       <Route path="/settings">
         {() => <ProtectedLayout><Settings /></ProtectedLayout>}
       </Route>
@@ -67,13 +72,15 @@ function AppRouter() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router hook={useHashLocation}>
-          <AppRouter />
-        </Router>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <AppErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Router hook={useHashLocation}>
+            <AppRouter />
+          </Router>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </AppErrorBoundary>
   );
 }

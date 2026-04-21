@@ -8,6 +8,7 @@ import { StorageService } from '../common/storage/storage.service';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { FilterDocumentsDto } from './dto/filter-documents.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
+import { AutomationsService } from '../automations/automations.service';
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -29,6 +30,7 @@ export class DocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly automationsService: AutomationsService,
   ) {}
 
   // ── POST /documents/upload ─────────────────────────────────────────────────
@@ -90,6 +92,13 @@ export class DocumentsService {
 
     // TODO: encolar en BullMQ para OCR + clasificación
     // await this.documentQueue.add('process', { documentId: doc.id });
+
+    await this.automationsService.triggerRules(
+      workspaceId,
+      'DOCUMENT_UPLOADED',
+      'document',
+      updated.id,
+    );
 
     return updated;
   }

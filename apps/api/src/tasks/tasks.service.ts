@@ -8,10 +8,14 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { FilterTasksDto } from './dto/filter-tasks.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
+import { AutomationsService } from '../automations/automations.service';
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly automationsService: AutomationsService,
+  ) {}
 
   // ── GET /tasks ─────────────────────────────────────────────────────────────
 
@@ -84,7 +88,7 @@ export class TasksService {
       if (!contact) throw new NotFoundException('Contacto no encontrado.');
     }
 
-    return this.prisma.task.create({
+    const task = await this.prisma.task.create({
       data: {
         workspace_id:    workspaceId,
         title:           dto.title,
@@ -102,6 +106,15 @@ export class TasksService {
         contact:       { select: { id: true, full_name: true } },
       },
     });
+
+    await this.automationsService.triggerRules(
+      workspaceId,
+      'TASK_CREATED',
+      'task',
+      task.id,
+    );
+
+    return task;
   }
 
   // ── GET /tasks/:id ─────────────────────────────────────────────────────────

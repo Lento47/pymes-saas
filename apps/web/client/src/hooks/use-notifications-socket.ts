@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getSocket } from './use-socket';
+import { connectSocket, getSocket } from './use-socket';
 
 /**
  * Hook global para notificaciones en tiempo real.
@@ -11,7 +11,7 @@ export function useNotificationsSocket() {
   const qc = useQueryClient();
 
   useEffect(() => {
-    const socket = getSocket();
+    const socket = getSocket() ?? connectSocket();
     if (!socket) return;
 
     const handleNotification = (notification: any) => {

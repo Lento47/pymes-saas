@@ -1,3 +1,4 @@
+import { reportClientError } from "@/lib/error-reporting";
 const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 
 const LS_TOKEN_KEY = "pymes_token";
@@ -106,7 +107,26 @@ async function request<T>(
 
   const body = options?.isFormData ? (data as FormData) : data ? JSON.stringify(data) : undefined;
 
-  let res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body });
+  let res: Response;
+
+  try {
+    res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body });
+  } catch (error: any) {
+    if (!path.includes("/error-reports/client")) {
+      void reportClientError({
+        source: "FRONTEND",
+        category: "API_NETWORK",
+        severity: "ERROR",
+        title: "Network request failed",
+        message: error?.message ?? `Falló la llamada ${method} ${path}`,
+        stack: error?.stack,
+        method,
+        url: `${API_BASE}${path}`,
+        context_json: { path },
+      });
+    }
+    throw error;
+  }
 
   // On 401, attempt token refresh and retry once
   if (res.status === 401 && !path.includes("/auth/login") && !path.includes("/auth/refresh")) {
@@ -123,6 +143,19 @@ async function request<T>(
 
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
+    if (res.status >= 500 && !path.includes("/error-reports/client")) {
+      void reportClientError({
+        source: "FRONTEND",
+        category: "API_RESPONSE",
+        severity: "ERROR",
+        title: `API ${res.status}`,
+        message: text,
+        method,
+        status_code: res.status,
+        url: `${API_BASE}${path}`,
+        context_json: { path },
+      });
+    }
     throw new Error(`${res.status}: ${text}`);
   }
 
@@ -140,7 +173,23 @@ export const api = {
       headers: { "Content-Type": "application/json", "x-workspace-slug": workspaceSlug },
       body: JSON.stringify({ email, password }),
     });
-    if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+    if (!r.ok) {
+      const text = await r.text();
+      if (r.status >= 500) {
+        void reportClientError({
+          source: "FRONTEND",
+          category: "API_RESPONSE",
+          severity: "ERROR",
+          title: `API ${r.status}`,
+          message: text,
+          method: "POST",
+          status_code: r.status,
+          url: `${API_BASE}/api/auth/login`,
+          context_json: { workspace_slug: workspaceSlug },
+        });
+      }
+      throw new Error(`${r.status}: ${text}`);
+    }
     return r.json() as Promise<{ access_token: string; refresh_token: string; user: any }>;
   },
   logout: () => request<any>("POST", "/api/auth/logout"),
@@ -183,6 +232,12 @@ export const api = {
   updateInvoice: (id: string, data: any) => request<any>("PATCH", `/api/invoices/${id}`, data),
   deleteInvoice: (id: string) => request<any>("DELETE", `/api/invoices/${id}`),
   markInvoicePaid: (id: string) => request<any>("POST", `/api/invoices/${id}/paid`),
+  registerInvoicePayment: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/payments`, data),
+  submitInvoiceToHacienda: (id: string) => request<any>("POST", `/api/invoices/${id}/submit`),
+  syncInvoiceHaciendaStatus: (id: string) => request<any>("GET", `/api/invoices/${id}/hacienda-status`),
+  createCreditNote: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/credit-note`, data),
+  createDebitNote: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/debit-note`, data),
+  createReceiverMessage: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/receiver-message`, data),
   detectOverdueInvoices: () => request<any>("GET", "/api/invoices/overdue"),
   generateInvoiceReminder: (id: string) => request<any>("POST", `/api/invoices/${id}/reminder`),
   sendInvoiceReminder: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/reminder/send`, data),
@@ -205,6 +260,8 @@ export const api = {
   deleteAutomation: (id: string) => request<any>("DELETE", `/api/automations/${id}`),
   getWorkspace: () => request<any>("GET", "/api/workspaces/current"),
   updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
+  getApiKeys: () => request<any>("GET", "/api/workspaces/current/api-keys"),
+  updateApiKeys: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   getMembers: () => request<any>("GET", "/api/workspaces/current/members"),
   inviteUser: (data: any) => request<any>("POST", "/api/workspaces/current/members/invite", data),
   changeMemberRole: (userId: string, newRole: string) => request<any>("PATCH", `/api/workspaces/current/members/${userId}/role`, { role: newRole }),
@@ -246,4 +303,39 @@ export const api = {
   removeDepartmentMember: (id: string, userId: string) =>
     request<any>("DELETE", `/api/departments/${id}/members/${userId}`),
   getInsights: () => request<any>("GET", "/api/insights"),
+  validateTaxpayer: (identificacion: string) =>
+    request<any>("POST", "/api/hacienda/validate-taxpayer", { identificacion }),
+  searchCabys: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return request<any>("GET", `/api/hacienda/cabys${qs}`);
+  },
+  getExoneration: (authorization: string) => request<any>("GET", `/api/hacienda/exonerations/${authorization}`),
+  getExchangeRate: () => request<any>("GET", "/api/hacienda/exchange-rate"),
+  // Pipeline
+  getPipelineStages: () => request<any>("GET", "/api/pipeline/stages"),
+  createPipelineStage: (data: any) => request<any>("POST", "/api/pipeline/stages", data),
+  updatePipelineStage: (id: string, data: any) => request<any>("PATCH", `/api/pipeline/stages/${id}`, data),
+  deletePipelineStage: (id: string) => request<any>("DELETE", `/api/pipeline/stages/${id}`),
+  createDeal: (data: any) => request<any>("POST", "/api/pipeline/deals", data),
+  updateDeal: (id: string, data: any) => request<any>("PATCH", `/api/pipeline/deals/${id}`, data),
+  moveDeal: (id: string, stageId: string) => request<any>("PATCH", `/api/pipeline/deals/${id}/move`, { stage_id: stageId }),
+  winDeal: (id: string) => request<any>("POST", `/api/pipeline/deals/${id}/win`),
+  deleteDeal: (id: string) => request<any>("DELETE", `/api/pipeline/deals/${id}`),
+  // Auth extras
+  getMyWorkspaces: () => request<any>("GET", "/api/auth/my-workspaces"),
+  switchWorkspace: (workspace_slug: string) =>
+    request<any>("POST", "/api/auth/switch-workspace", { workspace_slug }),
+  // Platform admin
+  platformListWorkspaces: () => request<any>("GET", "/api/platform/workspaces"),
+  platformListMembers: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}/members`),
+  platformAssignMember: (slug: string, data: { email: string; role?: string }) =>
+    request<any>("POST", `/api/platform/workspaces/${slug}/members`, data),
+  platformUpdateMemberRole: (slug: string, userId: string, role: string) =>
+    request<any>("PATCH", `/api/platform/workspaces/${slug}/members/${userId}/role`, { role }),
+  platformRemoveMember: (slug: string, userId: string) =>
+    request<any>("DELETE", `/api/platform/workspaces/${slug}/members/${userId}`),
+  platformSearchUsers: (email?: string) => {
+    const qs = email ? `?email=${encodeURIComponent(email)}` : "";
+    return request<any>("GET", `/api/platform/users${qs}`);
+  },
 };

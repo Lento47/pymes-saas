@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
+import { useInboxSocket } from "@/hooks/use-inbox-socket";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PriorityDot } from "@/components/shared/priority-dot";
@@ -182,6 +183,7 @@ function NewConversationModal() {
 
 export default function InboxPage() {
   useRequireAuth();
+  useInboxSocket();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [channelTab, setChannelTab] = useState<ChannelTab>("ALL");
@@ -270,6 +272,12 @@ export default function InboxPage() {
                         <span className="ml-1 text-amber-500/70">· sin asignar</span>
                       )}
                     </div>
+                    {conv.messages?.[0]?.body_text && (
+                      <div className="text-[11px] text-muted-foreground/60 truncate mt-0.5">
+                        {conv.messages[0].direction === "OUTBOUND" && <span className="mr-1">↑</span>}
+                        {conv.messages[0].body_text}
+                      </div>
+                    )}
                   </div>
                   <div className="text-[10px] text-muted-foreground shrink-0">
                     {conv.last_message_at || conv.updated_at

@@ -77,4 +77,22 @@ export class AuthController {
     await this.refreshTokenService.revokeAll(user.id, user.workspace_id);
     return { message: 'Sesión cerrada.' };
   }
+
+  /** GET /auth/my-workspaces — list all workspaces the user belongs to */
+  @Get('my-workspaces')
+  @UseGuards(JwtAuthGuard)
+  getMyWorkspaces(@CurrentUser() user: AuthUser) {
+    return this.authService.getMyWorkspaces(user.id);
+  }
+
+  /** POST /auth/switch-workspace — get new JWT for a different workspace */
+  @Post('switch-workspace')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  switchWorkspace(
+    @CurrentUser() user: AuthUser,
+    @Body('workspace_slug') workspaceSlug: string,
+  ) {
+    return this.authService.switchWorkspace(user.id, workspaceSlug);
+  }
 }

@@ -8,6 +8,7 @@ export interface JwtPayload {
   email: string;
   workspace_id: string;
   role: string;
+  is_platform_admin: boolean;
   iat?: number;
   exp?: number;
 }
@@ -20,6 +21,7 @@ export interface AuthUser {
   workspace_id: string;
   role: string;
   is_owner: boolean;
+  is_platform_admin: boolean;
 }
 
 @Injectable()
@@ -54,6 +56,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       workspace_id: workspaceUser.workspace_id,
       role: workspaceUser.role,
       is_owner: workspaceUser.is_owner,
+      is_platform_admin: (workspaceUser.user as any).is_platform_admin ?? false,
     };
   }
 }
