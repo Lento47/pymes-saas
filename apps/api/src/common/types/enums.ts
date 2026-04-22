@@ -34,6 +34,7 @@ export enum ContactType {
   INDIVIDUAL = "INDIVIDUAL",
   COMPANY = "COMPANY",
   GOVERNMENT = "GOVERNMENT",
+  CUSTOMER = "CUSTOMER",
 }
 
 export enum ChannelType {
@@ -129,6 +130,7 @@ export enum InvoiceIssuanceMode {
   CONTINGENCY = "CONTINGENCY",
   ONLINE = "ONLINE",
   MANUAL_ONLY = "MANUAL_ONLY",
+  HACIENDA = "HACIENDA",
 }
 
 export enum HaciendaStatus {
@@ -137,6 +139,12 @@ export enum HaciendaStatus {
   REJECTED = "REJECTED",
   PARTIAL_REJECTION = "PARTIAL_REJECTION",
   DRAFT = "DRAFT",
+  ACEPTADO = "ACEPTADO",
+  RECHAZADO = "RECHAZADO",
+  SUBMITTED = "SUBMITTED",
+  RECIBIDO = "RECIBIDO",
+  PROCESANDO = "PROCESANDO",
+  ERROR = "ERROR",
 }
 
 export enum DealStatus {

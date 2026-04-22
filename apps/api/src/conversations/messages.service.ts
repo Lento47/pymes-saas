@@ -7,7 +7,7 @@ import { EventsGateway } from '../gateways/events.gateway';
 import { AiService } from '../ai/ai.service';
 import { TasksService } from '../tasks/tasks.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { Priority } from '../../src/common/types/enums';
+import { Priority, TaskSource, TriggerType, MessageDirection } from '../../src/common/types/enums';
 import { AutomationsService } from '../automations/automations.service';
 import { serializeJson } from '../common/prisma/enterprise-sqlite-json';
 
@@ -206,7 +206,7 @@ export class MessagesService {
 
     await this.automationsService.triggerRules(
       workspaceId,
-      'MESSAGE_RECEIVED',
+      TriggerType.MESSAGE_RECEIVED,
       'message',
       message.id,
     );
@@ -314,7 +314,7 @@ export class MessagesService {
         title: result.task_title,
         description: result.task_description ?? undefined,
         priority,
-        source: 'AUTOMATION',
+        source: TaskSource.AUTOMATION,
         conversation_id: conversationId,
         contact_id: contactId ?? undefined,
       });

@@ -11,6 +11,7 @@ import { UpdateDocumentDto } from './dto/update-document.dto';
 import { FilterDocumentsDto } from './dto/filter-documents.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AutomationsService } from '../automations/automations.service';
+import { TriggerType } from '../../src/common/types/enums';
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -127,7 +128,7 @@ export class DocumentsService {
 
     await this.automationsService.triggerRules(
       workspaceId,
-      'DOCUMENT_UPLOADED',
+      TriggerType.DOCUMENT_UPLOADED,
       'document',
       updated.id,
     );

@@ -13,9 +13,9 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { WorkspaceUserRole, UserStatus } from '../src/common/types/enums.ts';
+import { WorkspaceUserRole, UserStatus } from '../src/common/types/enums';
 import * as bcrypt from 'bcrypt';
-import { serializeJson } from '../src/common/prisma/enterprise-sqlite-json.ts';
+import { serializeJson } from '../src/common/prisma/enterprise-sqlite-json';
 
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 12;
