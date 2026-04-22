@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { QUEUE_NAMES } from '../queues.constants';
 
 interface NotificationJobData {
   workspaceId: string;
@@ -12,15 +15,28 @@ interface NotificationJobData {
 }
 
 @Injectable()
-export class NotificationProcessor {
+@Processor(QUEUE_NAMES.NOTIFICATION)
+export class NotificationProcessor extends WorkerHost {
   private readonly logger = new Logger(NotificationProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
 
-  async process(data: NotificationJobData): Promise<any> {
-    const { workspaceId, userId, type, title, body, relatedEntityType, relatedEntityId } = data;
+  async process(job: Job<NotificationJobData>): Promise<any> {
+    const {
+      workspaceId,
+      userId,
+      type,
+      title,
+      body,
+      relatedEntityType,
+      relatedEntityId,
+    } = job.data;
 
-    this.logger.log(`Processing notification for user ${userId} in workspace ${workspaceId}`);
+    this.logger.log(
+      `Processing notification job ${job.id} for user ${userId} in workspace ${workspaceId}`,
+    );
 
     const notification = await this.prisma.notification.create({
       data: {
@@ -34,7 +50,9 @@ export class NotificationProcessor {
       },
     });
 
-    this.logger.log(`Notification completed: notification=${notification.id}, type=${type}`);
+    this.logger.log(
+      `Notification job ${job.id} completed: notification=${notification.id}, type=${type}`,
+    );
 
     return { notificationId: notification.id };
   }

@@ -22,9 +22,9 @@ export class SearchService {
           where: {
             workspace_id: workspaceId,
             OR: [
-              { full_name: { contains: q } },
-              { company_name: { contains: q } },
-              { email: { contains: q } },
+              { full_name: { contains: q, mode: 'insensitive' } },
+              { company_name: { contains: q, mode: 'insensitive' } },
+              { email: { contains: q, mode: 'insensitive' } },
             ],
           },
         }),
@@ -39,8 +39,8 @@ export class SearchService {
           where: {
             workspace_id: workspaceId,
             OR: [
-              { subject: { contains: q } },
-              { category: { contains: q } },
+              { subject: { contains: q, mode: 'insensitive' } },
+              { category: { contains: q, mode: 'insensitive' } },
             ],
           },
         }),
@@ -55,8 +55,8 @@ export class SearchService {
           where: {
             workspace_id: workspaceId,
             OR: [
-              { title: { contains: q } },
-              { description: { contains: q } },
+              { title: { contains: q, mode: 'insensitive' } },
+              { description: { contains: q, mode: 'insensitive' } },
             ],
           },
         }),
@@ -71,7 +71,7 @@ export class SearchService {
           where: {
             workspace_id: workspaceId,
             OR: [
-              { file_name: { contains: q } },
+              { file_name: { contains: q, mode: 'insensitive' } },
             ],
           },
         }),

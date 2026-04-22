@@ -1,24 +1,44 @@
 import { Injectable } from '@nestjs/common';
-import { ClassifierProcessor } from './processors/classifier.processor';
-import { DocumentProcessor } from './processors/document.processor';
-import { AutomationProcessor } from './processors/automation.processor';
-import { NotificationProcessor } from './processors/notification.processor';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { QUEUE_NAMES } from './queues.constants';
 
 @Injectable()
 export class QueueService {
   constructor(
-    private readonly classifier: ClassifierProcessor,
-    private readonly document: DocumentProcessor,
-    private readonly automation: AutomationProcessor,
-    private readonly notification: NotificationProcessor,
+    @InjectQueue(QUEUE_NAMES.CLASSIFIER)
+    private readonly classifierQueue: Queue,
+
+    @InjectQueue(QUEUE_NAMES.DOCUMENT)
+    private readonly documentQueue: Queue,
+
+    @InjectQueue(QUEUE_NAMES.AUTOMATION)
+    private readonly automationQueue: Queue,
+
+    @InjectQueue(QUEUE_NAMES.FOLLOWUP)
+    private readonly followupQueue: Queue,
+
+    @InjectQueue(QUEUE_NAMES.SUMMARY)
+    private readonly summaryQueue: Queue,
+
+    @InjectQueue(QUEUE_NAMES.NOTIFICATION)
+    private readonly notificationQueue: Queue,
   ) {}
 
   async enqueueClassifier(messageId: string, workspaceId: string): Promise<void> {
-    setImmediate(() => this.classifier.process({ messageId, workspaceId }));
+    await this.classifierQueue.add(
+      'classify-message',
+      { messageId, workspaceId },
+      { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
+    );
   }
 
   async enqueueDocument(documentId: string, workspaceId: string): Promise<void> {
-    setImmediate(() => this.document.process({ documentId, workspaceId }));
+    await this.documentQueue.add(
+      'process-document',
+      { documentId, workspaceId },
+      { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
+    );
   }
 
   async enqueueAutomation(
@@ -27,8 +47,10 @@ export class QueueService {
     triggerEntityType: string,
     triggerEntityId: string,
   ): Promise<void> {
-    setImmediate(() =>
-      this.automation.process({ ruleId, workspaceId, triggerEntityType, triggerEntityId }),
+    await this.automationQueue.add(
+      'run-automation',
+      { ruleId, workspaceId, triggerEntityType, triggerEntityId },
+      { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
     );
   }
 
@@ -41,16 +63,10 @@ export class QueueService {
     relatedEntityType?: string,
     relatedEntityId?: string,
   ): Promise<void> {
-    setImmediate(() =>
-      this.notification.process({
-        workspaceId,
-        userId,
-        type,
-        title,
-        body,
-        relatedEntityType,
-        relatedEntityId,
-      }),
+    await this.notificationQueue.add(
+      'send-notification',
+      { workspaceId, userId, type, title, body, relatedEntityType, relatedEntityId },
+      { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
     );
   }
 }

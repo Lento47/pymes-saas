@@ -1,10 +1,5 @@
 import { reportClientError } from "@/lib/error-reporting";
-// In Tauri desktop mode, the WebView is served from http://tauri.localhost
-// and the NestJS sidecar runs locally on port 4000.
-const _isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
-const API_BASE = _isTauri
-  ? 'http://localhost:4000'
-  : ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
+const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 
 const LS_TOKEN_KEY = "pymes_token";
 const LS_SLUG_KEY = "pymes_slug";
@@ -193,44 +188,6 @@ async function request<T>(
   return {} as T;
 }
 
-async function requestBlob(
-  path: string,
-): Promise<{ blob: Blob; contentDisposition: string | null }> {
-  const buildHeaders = (): Record<string, string> => {
-    const h: Record<string, string> = {};
-    if (_token) h["Authorization"] = `Bearer ${_token}`;
-    if (_workspaceSlug) h["x-workspace-slug"] = _workspaceSlug;
-    return h;
-  };
-
-  let res = await fetch(`${API_BASE}${path}`, {
-    method: "GET",
-    headers: buildHeaders(),
-  });
-
-  if (res.status === 401 && !path.includes("/auth/refresh")) {
-    const refreshed = await _tryRefresh();
-    if (refreshed) {
-      res = await fetch(`${API_BASE}${path}`, { method: "GET", headers: buildHeaders() });
-    }
-    if (!refreshed || res.status === 401) {
-      clearAuthState();
-      window.location.hash = "#/login";
-      throw new Error("401: Sesión expirada.");
-    }
-  }
-
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
-  }
-
-  return {
-    blob: await res.blob(),
-    contentDisposition: res.headers.get("content-disposition"),
-  };
-}
-
 export const api = {
   login: async (email: string, password: string, workspaceSlug: string) => {
     const r = await fetch(`${API_BASE}/api/auth/login`, {
@@ -316,7 +273,6 @@ export const api = {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return request<any>("GET", `/api/documents${qs}`);
   },
-  downloadDocument: (id: string) => requestBlob(`/api/documents/${id}/download`),
   uploadDocument: (formData: FormData) => request<any>("POST", "/api/documents/upload", formData, { isFormData: true }),
   deleteDocument: (id: string) => request<any>("DELETE", `/api/documents/${id}`),
   getAutomations: () => request<any>("GET", "/api/automations"),

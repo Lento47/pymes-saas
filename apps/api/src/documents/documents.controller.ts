@@ -7,8 +7,6 @@ import {
   Patch,
   Post,
   Query,
-  Res,
-  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -45,7 +43,7 @@ export class DocumentsController {
   @Roles('AGENT' as any)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: memoryStorage(), // buffer en memoria → luego al storage configurado
+      storage: memoryStorage(), // buffer en memoria → luego a S3
       limits: { fileSize: 25 * 1024 * 1024 },
     }),
   )
@@ -82,22 +80,6 @@ export class DocumentsController {
     @Param('id') id: string,
   ) {
     return this.service.findOne(workspaceId, id);
-  }
-
-  @Get(':id/download')
-  async download(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
-    @Res({ passthrough: true }) res: any,
-  ) {
-    const { doc, file } = await this.service.download(workspaceId, id);
-    const downloadName = (doc.original_file_name || doc.file_name || 'documento').replace(/"/g, '');
-    res.setHeader('Content-Type', file.contentType || doc.mime_type || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
-    if (file.contentLength) {
-      res.setHeader('Content-Length', file.contentLength.toString());
-    }
-    return new StreamableFile(file.stream);
   }
 
   @Patch(':id')

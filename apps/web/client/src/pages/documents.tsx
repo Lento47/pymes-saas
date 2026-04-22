@@ -105,17 +105,19 @@ export default function DocumentsPage() {
   const handleDownload = async (doc: any) => {
     try {
       setDownloadingId(doc.id);
-      const { blob, contentDisposition } = await api.downloadDocument(doc.id);
-      const match = contentDisposition?.match(/filename="?(.*?)"?$/i);
-      const fileName = match?.[1] || doc.file_name || doc.filename || doc.name || "archivo";
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(objectUrl);
+      const full = await api.getDocument(doc.id);
+      if (full?.download_url) {
+        const a = document.createElement("a");
+        a.href = full.download_url;
+        a.download = doc.file_name || doc.filename || doc.name || "archivo";
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        toast({ title: "No se pudo obtener la URL de descarga", variant: "destructive" });
+      }
     } catch (err: any) {
       toast({ title: "Error al descargar", description: err.message, variant: "destructive" });
     } finally {

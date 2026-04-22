@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { QUEUE_NAMES } from '../queues.constants';
 
 interface AutomationJobData {
   ruleId: string;
@@ -20,16 +23,19 @@ interface AutomationAction {
 }
 
 @Injectable()
-export class AutomationProcessor {
+@Processor(QUEUE_NAMES.AUTOMATION)
+export class AutomationProcessor extends WorkerHost {
   private readonly logger = new Logger(AutomationProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
 
-  async process(data: AutomationJobData): Promise<any> {
-    const { ruleId, workspaceId, triggerEntityType, triggerEntityId } = data;
+  async process(job: Job<AutomationJobData>): Promise<any> {
+    const { ruleId, workspaceId, triggerEntityType, triggerEntityId } = job.data;
 
     this.logger.log(
-      `Processing automation job for rule ${ruleId}, entity ${triggerEntityType}:${triggerEntityId}`,
+      `Processing automation job ${job.id} for rule ${ruleId}, entity ${triggerEntityType}:${triggerEntityId}`,
     );
 
     // 1. Cargar regla
@@ -114,7 +120,7 @@ export class AutomationProcessor {
       });
 
       this.logger.log(
-        `Automation completed: execution=${execution.id}, actions=${actions.length}`,
+        `Automation job ${job.id} completed: execution=${execution.id}, actions=${actions.length}`,
       );
 
       return { executionId: execution.id, actionsExecuted: actions.length };
@@ -130,7 +136,7 @@ export class AutomationProcessor {
       });
 
       this.logger.error(
-        `Automation failed: execution=${execution.id}, error=${error?.message}`,
+        `Automation job ${job.id} failed: execution=${execution.id}, error=${error?.message}`,
         error?.stack,
       );
 

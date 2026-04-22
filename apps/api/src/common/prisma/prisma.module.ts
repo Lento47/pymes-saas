@@ -1,10 +1,9 @@
 import { Global, Module } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
-import { DbInitService } from './db-init.service';
 
-@Global()
+@Global() // disponible en toda la app sin re-importar
 @Module({
-  providers: [PrismaService, DbInitService],
+  providers: [PrismaService],
   exports: [PrismaService],
 })
 export class PrismaModule {}

@@ -4,13 +4,8 @@
   "scripts": {
     "dev:api": "pnpm --filter saas-api dev",
     "dev:web": "pnpm --filter rest-express dev",
-    "dev:desktop:enterprise": "pnpm --filter @pymeshub/desktop tauri:dev:enterprise",
-    "dev:desktop": "pnpm --filter @pymeshub/desktop tauri:dev:enterprise",
     "build:api": "pnpm --filter saas-api build",
     "build:web": "pnpm --filter rest-express build",
-    "build:desktop:enterprise": "pnpm --filter @pymeshub/desktop tauri:build:enterprise",
-    "build:desktop": "pnpm --filter @pymeshub/desktop tauri:build:enterprise",
-    "build:enterprise": "pnpm --filter saas-api build && pnpm --filter rest-express build && pnpm --filter @pymeshub/desktop tauri:build:enterprise",
     "test:api": "pnpm --filter saas-api test",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r check"
