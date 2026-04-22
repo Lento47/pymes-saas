@@ -3,8 +3,10 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
@@ -13,13 +15,18 @@ import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AiProvider, AiService } from '../ai/ai.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class WorkspacesService {
+  private readonly logger = new Logger(WorkspacesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
     private readonly aiService: AiService,
+    private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
@@ -484,12 +491,87 @@ export class WorkspacesService {
       },
     });
 
-    // TODO: enviar email de invitación con link firmado
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { id: true, name: true, slug: true },
+    });
+
+    const inviteToken = this.jwtService.sign(
+      {
+        type: 'workspace-invite',
+        email: user.email,
+        workspace_id: workspace.id,
+        workspace_slug: workspace.slug,
+      },
+      { expiresIn: '7d' },
+    );
+
+    const desktopUrl = `pymeshub://accept-invite?token=${encodeURIComponent(inviteToken)}`;
+    const browserUrl = `https://app.pymeshub.lat/#/accept-invite?token=${encodeURIComponent(inviteToken)}`;
+
+    await this.sendInviteEmail({
+      workspaceId,
+      to: user.email,
+      workspaceName: workspace.name,
+      role: dto.role,
+      desktopUrl,
+      browserUrl,
+    });
 
     return {
       message: `Invitación enviada a ${dto.email}`,
       membership_id: membership.id,
+      invite_links: {
+        desktop: desktopUrl,
+        browser: browserUrl,
+      },
     };
+  }
+
+  private async sendInviteEmail(params: {
+    workspaceId: string;
+    to: string;
+    workspaceName: string;
+    role: string;
+    desktopUrl: string;
+    browserUrl: string;
+  }) {
+    const channel = await this.prisma.channel.findFirst({
+      where: {
+        workspace_id: params.workspaceId,
+        type: 'EMAIL',
+        status: 'ACTIVE',
+      },
+    });
+
+    if (!channel) {
+      this.logger.warn(
+        `Invitación generada para ${params.to} pero no hay canal EMAIL activo en workspace ${params.workspaceId}.`,
+      );
+      return;
+    }
+
+    const subject = `Te invitaron a ${params.workspaceName} en Pymeshub`;
+    const bodyHtml = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+        <h2 style="margin-bottom: 12px;">Invitación a ${params.workspaceName}</h2>
+        <p>Te agregaron al workspace con rol <strong>${params.role}</strong>.</p>
+        <p>Si ya tienes la app de escritorio, ábrela desde aquí:</p>
+        <p><a href="${params.desktopUrl}">Abrir en la app</a></p>
+        <p>Si no, usa el navegador:</p>
+        <p><a href="${params.browserUrl}">Abrir en navegador</a></p>
+        <p style="margin-top: 20px; color: #6b7280;">Este enlace vence en 7 días.</p>
+      </div>
+    `.trim();
+    const bodyText = [
+      `Te invitaron a ${params.workspaceName} en Pymeshub.`,
+      `Rol: ${params.role}`,
+      `Abrir en la app: ${params.desktopUrl}`,
+      `Abrir en navegador: ${params.browserUrl}`,
+      'Este enlace vence en 7 días.',
+    ].join('\n');
+
+    await this.emailService.sendOutbound(channel, params.to, subject, bodyHtml, bodyText);
   }
 
   // ── PATCH /workspaces/current/members/:userId/role ────────────────────────

@@ -1,44 +1,69 @@
 {
-  "productName": "PyMeHub",
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Pymeshub",
   "version": "0.1.0",
-  "identifier": "com.pymehub.desktop",
+  "identifier": "com.pymeshub.desktop",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:5000",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "PyMeHub",
+        "label": "main",
+        "title": "Pymeshub",
         "width": 1280,
         "height": 800,
-        "minWidth": 900,
+        "minWidth": 1024,
         "minHeight": 600,
         "resizable": true,
         "fullscreen": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": ["default"]
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["msi", "nsis"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
+      "icons/icon.png",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "wix": {
+        "language": ["es-ES"]
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Spanish"],
+        "displayLanguageSelector": false
+      }
+    }
   },
   "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["pymeshub"]
+      }
+    },
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/Lento47/pymes-saas/releases/latest/download/latest.json"
+      ],
+      "pubkey": "REPLACE_WITH_TAURI_SIGNING_PUBKEY"
+    },
     "shell": {
-      "all": false,
       "open": true
     }
   }

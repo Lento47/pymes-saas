@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 
@@ -9,6 +10,8 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { InviteTokenPayload } from './invite-token.types';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
@@ -91,9 +94,15 @@ export class AuthService {
   // ── Register (primer usuario = owner del nuevo workspace) ─────────────────
 
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
+    if (dto.invite_token) {
+      return this.acceptInvite({
+        token: dto.invite_token,
+        name: dto.name,
+        password: dto.password,
+      });
+    }
+
+    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('El email ya está registrado.');
 
     const password_hash = await bcrypt.hash(dto.password, 12);
@@ -106,12 +115,6 @@ export class AuthService {
         ...(password_hash && { password_hash } as any),
       },
     });
-
-    if (dto.invite_token) {
-      throw new BadRequestException(
-        'Invite token: implementar en WorkspacesService.acceptInvite()',
-      );
-    }
 
     const slug = dto.email
       .split('@')[0]
@@ -145,6 +148,123 @@ export class AuthService {
     const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
 
     return { access_token, refresh_token };
+  }
+
+  async getInvitePreview(rawToken?: string) {
+    const payload = this.verifyInviteToken(rawToken);
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: payload.workspace_id },
+      select: { id: true, name: true, slug: true },
+    });
+    if (!workspace) throw new NotFoundException('Workspace de invitación no encontrado.');
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: payload.email },
+      select: { id: true, email: true, name: true, status: true, password_hash: true },
+    });
+    if (!user) throw new NotFoundException('Usuario invitado no encontrado.');
+
+    const membership = await this.prisma.workspaceUser.findUnique({
+      where: {
+        workspace_id_user_id: {
+          workspace_id: workspace.id,
+          user_id: user.id,
+        },
+      },
+    });
+    if (!membership) throw new NotFoundException('La invitación ya no es válida.');
+
+    return {
+      email: user.email,
+      name: user.name,
+      requires_account_setup: user.status === 'INVITED' || !user.password_hash,
+      workspace: {
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+      },
+      role: membership.role,
+    };
+  }
+
+  async acceptInvite(dto: AcceptInviteDto) {
+    const payload = this.verifyInviteToken(dto.token);
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: payload.email },
+    });
+    if (!user) throw new NotFoundException('Usuario invitado no encontrado.');
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: payload.workspace_id },
+    });
+    if (!workspace || workspace.slug !== payload.workspace_slug) {
+      throw new NotFoundException('Workspace de invitación no encontrado.');
+    }
+
+    const membership = await this.prisma.workspaceUser.findUnique({
+      where: {
+        workspace_id_user_id: {
+          workspace_id: workspace.id,
+          user_id: user.id,
+        },
+      },
+    });
+    if (!membership) throw new BadRequestException('La invitación ya no es válida.');
+
+    let resolvedUser = user;
+    const requiresAccountSetup = user.status === 'INVITED' || !(user as any).password_hash;
+
+    if (requiresAccountSetup) {
+      if (!dto.name?.trim()) {
+        throw new BadRequestException('El nombre es requerido para activar la invitación.');
+      }
+      if (!dto.password) {
+        throw new BadRequestException('La contraseña es requerida para activar la invitación.');
+      }
+
+      const password_hash = await bcrypt.hash(dto.password, 12);
+      resolvedUser = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: dto.name.trim(),
+          status: 'ACTIVE',
+          password_hash,
+        },
+      });
+    } else if (user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Usuario inactivo o suspendido.');
+    }
+
+    const access_token = this.signToken({
+      sub: resolvedUser.id,
+      email: resolvedUser.email,
+      workspace_id: workspace.id,
+      role: membership.role,
+      is_platform_admin: (resolvedUser as any).is_platform_admin ?? false,
+    });
+
+    const refresh_token = await this.refreshTokenService.create(resolvedUser.id, workspace.id);
+
+    return {
+      access_token,
+      refresh_token,
+      user: {
+        id: resolvedUser.id,
+        email: resolvedUser.email,
+        name: resolvedUser.name,
+        avatar_url: resolvedUser.avatar_url,
+        role: membership.role,
+        is_owner: membership.is_owner,
+        is_platform_admin: (resolvedUser as any).is_platform_admin ?? false,
+        workspace: {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          plan: workspace.plan,
+        },
+      },
+    };
   }
 
   // ── Me ─────────────────────────────────────────────────────────────────────
@@ -230,5 +350,19 @@ export class AuthService {
 
   private signToken(payload: JwtPayload): string {
     return this.jwtService.sign(payload);
+  }
+
+  private verifyInviteToken(rawToken?: string): InviteTokenPayload {
+    if (!rawToken) throw new BadRequestException('Invite token requerido.');
+
+    try {
+      const payload = this.jwtService.verify<InviteTokenPayload>(rawToken);
+      if (payload.type !== 'workspace-invite') {
+        throw new BadRequestException('Invite token inválido.');
+      }
+      return payload;
+    } catch {
+      throw new BadRequestException('Invite token inválido o expirado.');
+    }
   }
 }

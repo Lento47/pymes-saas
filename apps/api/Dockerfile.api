@@ -37,9 +37,7 @@ WORKDIR /app
 COPY --from=builder --chown=appuser:appgroup /app/dist       ./dist
 COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:appgroup /app/package.json ./package.json
-
-# (Optional) copy Prisma schema so migrations can run inside the container
-# COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
+COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
 
 USER appuser
 

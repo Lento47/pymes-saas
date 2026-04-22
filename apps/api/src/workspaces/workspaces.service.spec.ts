@@ -5,6 +5,8 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { AiService } from '../ai/ai.service';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
+import { JwtModule } from '@nestjs/jwt';
+import { EmailService } from '../email/email.service';
 
 const ownerUser: AuthUser = { id: 'u1', email: 'owner@test.com', name: 'Owner', workspace_id: 'w1', role: 'OWNER', is_owner: true, is_platform_admin: false };
 const agentUser: AuthUser = { id: 'u2', email: 'agent@test.com', name: 'Agent', workspace_id: 'w1', role: 'AGENT', is_owner: false, is_platform_admin: false };
@@ -13,6 +15,7 @@ const mockPrisma = {
   workspace: {
     findUniqueOrThrow: jest.fn(),
     update: jest.fn(),
+    findUnique: jest.fn(),
   },
   workspaceUser: {
     findMany: jest.fn(),
@@ -26,6 +29,9 @@ const mockPrisma = {
     findUnique: jest.fn(),
     create: jest.fn(),
   },
+  channel: {
+    findFirst: jest.fn(),
+  },
   contact: { count: jest.fn() },
   conversation: { count: jest.fn() },
   task: { count: jest.fn() },
@@ -36,6 +42,7 @@ const mockPrisma = {
 
 const mockCrypto = { encrypt: jest.fn((v: string) => `enc:${v}`), decrypt: jest.fn() };
 const mockAiService = { getWorkspaceConfig: jest.fn(), getDefaultModel: jest.fn(), testConnection: jest.fn() };
+const mockEmailService = { sendOutbound: jest.fn() };
 
 describe('WorkspacesService', () => {
   let service: WorkspacesService;
@@ -44,11 +51,13 @@ describe('WorkspacesService', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
+      imports: [JwtModule.register({ secret: 'test-secret' })],
       providers: [
         WorkspacesService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: CryptoService, useValue: mockCrypto },
         { provide: AiService, useValue: mockAiService },
+        { provide: EmailService, useValue: mockEmailService },
       ],
     }).compile();
 
@@ -110,12 +119,16 @@ describe('WorkspacesService', () => {
       mockPrisma.user.create.mockResolvedValue({ id: 'u4', email: 'brand-new@test.com' });
       mockPrisma.workspaceUser.findUnique.mockResolvedValue(null);
       mockPrisma.workspaceUser.create.mockResolvedValue({ id: 'wu2' });
+      mockPrisma.workspace.findUniqueOrThrow.mockResolvedValue({ id: 'w1', name: 'Acme', slug: 'acme' });
+      mockPrisma.channel.findFirst.mockResolvedValue(null);
 
       const result = await service.inviteUser('w1', ownerUser, { email: 'brand-new@test.com', role: 'AGENT' });
 
       expect(mockPrisma.user.create).toHaveBeenCalledTimes(1);
       expect(mockPrisma.workspaceUser.create).toHaveBeenCalledTimes(1);
       expect(result.message).toContain('brand-new@test.com');
+      expect(result.invite_links.desktop).toContain('pymeshub://accept-invite?token=');
+      expect(result.invite_links.browser).toContain('https://app.pymeshub.lat/#/accept-invite?token=');
     });
   });
 

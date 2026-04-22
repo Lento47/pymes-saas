@@ -1,0 +1,51 @@
+name: Desktop Release Enterprise
+
+on:
+  push:
+    tags:
+      - "desktop-enterprise-v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Desktop Enterprise Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and publish enterprise installers
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYMESHUB_EDITION: enterprise
+          PYMESHUB_UPDATER_ACTIVE: false
+          PYMESHUB_REMOTE_URL: ${{ vars.PYMESHUB_ENTERPRISE_URL }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: Pymeshub Desktop Enterprise ${{ github.ref_name }}
+          releaseBody: |
+            Release automática del shell desktop enterprise de Pymeshub.
+          args: --config src-tauri/tauri.enterprise.conf.json

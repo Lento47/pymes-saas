@@ -1,0 +1,55 @@
+name: Desktop Release Cloud
+
+on:
+  push:
+    tags:
+      - "desktop-cloud-v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Desktop Cloud Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and publish cloud installers
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          PYMESHUB_EDITION: cloud
+          PYMESHUB_UPDATER_ACTIVE: true
+          PYMESHUB_REMOTE_URL: ${{ vars.PYMESHUB_CLOUD_URL }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: Pymeshub Desktop Cloud ${{ github.ref_name }}
+          releaseBody: |
+            Release automática del shell desktop cloud de Pymeshub.
+          args: --config src-tauri/tauri.cloud.conf.json
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true

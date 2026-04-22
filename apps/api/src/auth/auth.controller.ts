@@ -7,11 +7,13 @@ import {
   HttpStatus,
   MethodNotAllowedException,
   Post,
+  Query,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -47,6 +49,20 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  /** GET /auth/invite-preview?token=... */
+  @Get('invite-preview')
+  invitePreview(@Query('token') queryToken?: string, @Headers('x-invite-token') headerToken?: string) {
+    const token = queryToken ?? headerToken;
+    return this.authService.getInvitePreview(token);
+  }
+
+  /** POST /auth/accept-invite */
+  @Post('accept-invite')
+  @HttpCode(HttpStatus.OK)
+  acceptInvite(@Body() dto: AcceptInviteDto) {
+    return this.authService.acceptInvite(dto);
   }
 
   /** GET /auth/me */
