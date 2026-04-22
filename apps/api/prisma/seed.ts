@@ -14,6 +14,7 @@
 
 import { PrismaClient, WorkspaceUserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { serializeJson } from '../src/common/prisma/enterprise-sqlite-json';
 
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 12;
@@ -123,7 +124,7 @@ async function main() {
       type: 'EMAIL',
       name: 'Correo Principal',
       status: 'ACTIVE',
-      config_json: { address: 'soporte@demo.com' },
+      config_json: serializeJson({ address: 'soporte@demo.com' }) ?? '{}',
     },
   });
   console.log(`\n✅ Channel: ${channel.name} (${channel.type})`);
@@ -141,7 +142,7 @@ async function main() {
       company_name: 'Demo Corp',
       email: 'cliente@demo.com',
       phone: '+50688887777',
-      tags_json: ['vip', 'demo'],
+      tags_json: serializeJson(['vip', 'demo']) ?? '[]',
     },
   });
   console.log(`✅ Contacto: ${contact.full_name}`);

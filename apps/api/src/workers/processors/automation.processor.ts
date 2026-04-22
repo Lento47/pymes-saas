@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { parseJsonValue, serializeJson } from '../../common/prisma/enterprise-sqlite-json';
 
 interface AutomationJobData {
   ruleId: string;
@@ -51,14 +52,14 @@ export class AutomationProcessor {
         trigger_entity_type: triggerEntityType,
         trigger_entity_id: triggerEntityId,
         status: 'RUNNING',
-        input_json: { ruleId, triggerEntityType, triggerEntityId },
+        input_json: serializeJson({ ruleId, triggerEntityType, triggerEntityId }),
         started_at: new Date(),
       },
     });
 
     try {
       // 4. Evaluar condiciones
-      const conditionConfig = rule.condition_config_json as any;
+      const conditionConfig = parseJsonValue<any>(rule.condition_config_json, null);
       let conditionMet = true;
 
       const conditions = Array.isArray(conditionConfig)
@@ -92,7 +93,7 @@ export class AutomationProcessor {
       }
 
       // 6. Ejecutar acciones
-      const rawActions = rule.action_config_json as any;
+      const rawActions = parseJsonValue<any>(rule.action_config_json, null);
       const actions: AutomationAction[] = Array.isArray(rawActions)
         ? (rawActions as AutomationAction[])
         : rawActions && typeof rawActions === 'object'
@@ -109,7 +110,7 @@ export class AutomationProcessor {
         data: {
           status: 'SUCCESS',
           finished_at: new Date(),
-          output_json: { actions_executed: actions.length },
+          output_json: serializeJson({ actions_executed: actions.length }),
         },
       });
 

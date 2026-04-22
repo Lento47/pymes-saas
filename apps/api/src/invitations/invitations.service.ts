@@ -19,6 +19,7 @@ import { RefreshTokenService } from '../auth/refresh-token.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { parseJsonStringArray, serializeJson } from '../common/prisma/enterprise-sqlite-json';
 
 const INVITATION_TTL_DAYS = 7;
 
@@ -237,7 +238,7 @@ export class InvitationsService {
         workspace_id: workspaceId,
         email,
         role: dto.role,
-        department_ids: dto.department_ids ?? [],
+        department_ids: serializeJson(dto.department_ids ?? []) ?? '[]',
         token_hash: tokenHash,
         invited_by_id: requestingUser.id,
         expires_at: expiresAt,

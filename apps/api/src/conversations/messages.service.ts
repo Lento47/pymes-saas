@@ -9,6 +9,7 @@ import { TasksService } from '../tasks/tasks.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Priority } from '@prisma/client';
 import { AutomationsService } from '../automations/automations.service';
+import { serializeJson } from '../common/prisma/enterprise-sqlite-json';
 
 @Injectable()
 export class MessagesService {
@@ -167,7 +168,7 @@ export class MessagesService {
         sender_ref: senderRef,
         body_text: bodyText,
         body_html: payload.body_html ?? payload.html ?? null,
-        raw_payload_json: payload,
+        raw_payload_json: serializeJson(payload),
         sent_at: new Date(),
       },
     });

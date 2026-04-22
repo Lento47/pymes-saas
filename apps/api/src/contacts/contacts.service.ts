@@ -7,6 +7,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { FilterContactsDto } from './dto/filter-contacts.dto';
+import { serializeJson } from '../common/prisma/enterprise-sqlite-json';
 
 @Injectable()
 export class ContactsService {
@@ -111,7 +112,7 @@ export class ContactsService {
         address_detail: dto.address_detail,
         foreign_identification: dto.foreign_identification,
         external_ref:  dto.external_ref,
-        tags_json:     dto.tags ?? [],
+        tags_json:     serializeJson(dto.tags ?? []) ?? '[]',
       },
     });
   }
@@ -175,7 +176,7 @@ export class ContactsService {
         ...(dto.address_detail !== undefined && { address_detail: dto.address_detail }),
         ...(dto.foreign_identification !== undefined && { foreign_identification: dto.foreign_identification }),
         ...(dto.external_ref !== undefined && { external_ref: dto.external_ref }),
-        ...(dto.tags         !== undefined && { tags_json: dto.tags }),
+        ...(dto.tags         !== undefined && { tags_json: serializeJson(dto.tags) }),
         updated_at: new Date(),
       },
     });

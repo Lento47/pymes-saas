@@ -13,12 +13,14 @@ const webSourceRoot = path.join(repoRoot, "apps", "web");
 const envTemplateSource = path.join(repoRoot, "apps", "api", ".env.enterprise.example");
 const apiDistSource = path.join(repoRoot, "apps", "api", "dist");
 const webDistSource = path.join(repoRoot, "apps", "web", "dist");
+const enterpriseSchemaSqlSource = path.join(repoRoot, "apps", "api", "prisma", "schema.enterprise.sqlite.sql");
 
 mkdirSync(outputRoot, { recursive: true });
 for (const entry of readdirSync(outputRoot)) {
   safeRemove(path.join(outputRoot, entry));
 }
 
+runPnpm(["--dir", repoRoot, "--filter", "saas-api", "db:generate:enterprise"]);
 ensureBuildArtifacts("saas-api", apiDistSource, ["--dir", repoRoot, "--filter", "saas-api", "build"]);
 ensureBuildArtifacts("rest-express", webDistSource, ["--dir", repoRoot, "--filter", "rest-express", "build"]);
 copyRuntimeSkeleton(apiSourceRoot, apiOutput, [".env.enterprise.example", "node_modules", "package.json", "prisma"]);
@@ -37,6 +39,10 @@ copyBundledNodeRuntime();
 
 if (existsSync(envTemplateSource)) {
   copyFileSync(envTemplateSource, path.join(outputRoot, ".env.enterprise.example"));
+}
+
+if (existsSync(enterpriseSchemaSqlSource)) {
+  copyFileSync(enterpriseSchemaSqlSource, path.join(apiOutput, "schema.sql"));
 }
 
 const prismaSource = path.join(repoRoot, "apps", "api", "prisma");
@@ -162,9 +168,27 @@ function materializeNodeModules(root) {
   walk(root);
 
   function walk(currentPath) {
-    for (const entry of readdirSync(currentPath, { withFileTypes: true })) {
+    let entries;
+    try {
+      entries = readdirSync(currentPath, { withFileTypes: true });
+    } catch (error) {
+      if (isIgnorableMissingPathError(error)) {
+        return;
+      }
+      throw error;
+    }
+
+    for (const entry of entries) {
       const fullPath = path.join(currentPath, entry.name);
-      const stats = lstatSync(fullPath);
+      let stats;
+      try {
+        stats = lstatSync(fullPath);
+      } catch (error) {
+        if (isIgnorableMissingPathError(error)) {
+          continue;
+        }
+        throw error;
+      }
 
       if (stats.isSymbolicLink()) {
         const realTarget = realpathSync(fullPath);
@@ -232,4 +256,13 @@ function safeRemove(targetPath) {
 
 function shouldUseWindowsRemoveFallback(error) {
   return process.platform === "win32" && error && typeof error === "object" && error.code === "EPERM";
+}
+
+function isIgnorableMissingPathError(error) {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      ("code" in error) &&
+      (error.code === "ENOENT" || error.code === "ENOTDIR")
+  );
 }
