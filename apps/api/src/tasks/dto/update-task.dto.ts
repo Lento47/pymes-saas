@@ -5,7 +5,7 @@ import {
   IsString,
   Length,
 } from 'class-validator';
-import { Priority, TaskStatus } from '@prisma/client';
+import { Priority, TaskStatus } from '../../../src/common/types/enums';
 
 export class UpdateTaskDto {
   @IsOptional()

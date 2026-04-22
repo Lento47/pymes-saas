@@ -53,7 +53,7 @@ export class SetupService {
         name: companyName || 'Default Workspace',
         slug: 'default',
         plan: 'ENTERPRISE',
-        settings_json: {},
+        settings_json: JSON.stringify({}),
       },
     });
 

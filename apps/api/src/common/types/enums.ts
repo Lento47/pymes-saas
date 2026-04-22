@@ -1,0 +1,200 @@
+// ============================================================
+// Enum Aliases for SQLite Compatibility
+// SQLite doesn't support native enums, so we define them here
+// ============================================================
+
+export enum WorkspaceStatus {
+  ACTIVE = "ACTIVE",
+  PAUSED = "PAUSED",
+  ARCHIVED = "ARCHIVED",
+}
+
+export enum WorkspacePlan {
+  FREE = "FREE",
+  STARTER = "STARTER",
+  PROFESSIONAL = "PROFESSIONAL",
+  ENTERPRISE = "ENTERPRISE",
+}
+
+export enum UserStatus {
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
+  SUSPENDED = "SUSPENDED",
+}
+
+export enum WorkspaceUserRole {
+  OWNER = "OWNER",
+  ADMIN = "ADMIN",
+  MANAGER = "MANAGER",
+  AGENT = "AGENT",
+  VIEWER = "VIEWER",
+}
+
+export enum ContactType {
+  INDIVIDUAL = "INDIVIDUAL",
+  COMPANY = "COMPANY",
+  GOVERNMENT = "GOVERNMENT",
+}
+
+export enum ChannelType {
+  EMAIL = "EMAIL",
+  PHONE = "PHONE",
+  WHATSAPP = "WHATSAPP",
+  TELEGRAM = "TELEGRAM",
+  WEBSITE = "WEBSITE",
+  SOCIAL_MEDIA = "SOCIAL_MEDIA",
+}
+
+export enum ChannelStatus {
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
+  PAUSED = "PAUSED",
+}
+
+export enum ConversationStatus {
+  NEW = "NEW",
+  OPEN = "OPEN",
+  ASSIGNED = "ASSIGNED",
+  IN_PROGRESS = "IN_PROGRESS",
+  WAITING = "WAITING",
+  PENDING = "PENDING",
+  RESOLVED = "RESOLVED",
+  CLOSED = "CLOSED",
+}
+
+export enum Priority {
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+  CRITICAL = "CRITICAL",
+}
+
+export enum MessageDirection {
+  INBOUND = "INBOUND",
+  OUTBOUND = "OUTBOUND",
+}
+
+export enum DocumentStatus {
+  PENDING = "PENDING",
+  PROCESSING = "PROCESSING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
+}
+
+export enum DocumentStorageMode {
+  LOCAL = "LOCAL",
+  S3 = "S3",
+  GOOGLE_CLOUD = "GOOGLE_CLOUD",
+}
+
+export enum TaskStatus {
+  TODO = "TODO",
+  IN_PROGRESS = "IN_PROGRESS",
+  REVIEW = "REVIEW",
+  DONE = "DONE",
+  ARCHIVED = "ARCHIVED",
+}
+
+export enum TaskSource {
+  MANUAL = "MANUAL",
+  EMAIL = "EMAIL",
+  AI = "AI",
+  AUTOMATION = "AUTOMATION",
+  SCHEDULED = "SCHEDULED",
+}
+
+export enum InvoiceStatus {
+  DRAFT = "DRAFT",
+  SENT = "SENT",
+  VIEWED = "VIEWED",
+  PARTIALLY_PAID = "PARTIALLY_PAID",
+  PAID = "PAID",
+  OVERDUE = "OVERDUE",
+  CANCELED = "CANCELED",
+  CANCELLED = "CANCELLED",
+}
+
+export enum InvoiceDocumentType {
+  INVOICE = "INVOICE",
+  CREDIT_NOTE = "CREDIT_NOTE",
+  DEBIT_NOTE = "DEBIT_NOTE",
+  FACTURA_ELECTRONICA = "FACTURA_ELECTRONICA",
+  NOTA_CREDITO = "NOTA_CREDITO",
+  NOTA_DEBITO = "NOTA_DEBITO",
+  TIQUETE_ELECTRONICO = "TIQUETE_ELECTRONICO",
+  MENSAJE_RECEPTOR = "MENSAJE_RECEPTOR",
+}
+
+export enum InvoiceIssuanceMode {
+  CONTINGENCY = "CONTINGENCY",
+  ONLINE = "ONLINE",
+  MANUAL_ONLY = "MANUAL_ONLY",
+}
+
+export enum HaciendaStatus {
+  PENDING = "PENDING",
+  ACCEPTED = "ACCEPTED",
+  REJECTED = "REJECTED",
+  PARTIAL_REJECTION = "PARTIAL_REJECTION",
+  DRAFT = "DRAFT",
+}
+
+export enum DealStatus {
+  PROSPECTING = "PROSPECTING",
+  QUALIFICATION = "QUALIFICATION",
+  PROPOSAL = "PROPOSAL",
+  NEGOTIATION = "NEGOTIATION",
+  CLOSED_WON = "CLOSED_WON",
+  CLOSED_LOST = "CLOSED_LOST",
+}
+
+export enum AutomationExecutionStatus {
+  PENDING = "PENDING",
+  RUNNING = "RUNNING",
+  SUCCESS = "SUCCESS",
+  FAILED = "FAILED",
+}
+
+export enum TriggerType {
+  CONVERSATION_CREATED = "CONVERSATION_CREATED",
+  MESSAGE_RECEIVED = "MESSAGE_RECEIVED",
+  CONVERSATION_STATUS_CHANGED = "CONVERSATION_STATUS_CHANGED",
+  TASK_CREATED = "TASK_CREATED",
+  TASK_OVERDUE = "TASK_OVERDUE",
+  DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED",
+  DOCUMENT_PROCESSED = "DOCUMENT_PROCESSED",
+  SCHEDULED = "SCHEDULED",
+  MANUAL = "MANUAL",
+}
+
+export enum BillingProvider {
+  STRIPE = "STRIPE",
+  PAYPAL = "PAYPAL",
+  MANUAL = "MANUAL",
+}
+
+export enum BillingInterval {
+  MONTHLY = "MONTHLY",
+  ANNUAL = "ANNUAL",
+}
+
+export enum WorkspaceSubscriptionStatus {
+  ACTIVE = "ACTIVE",
+  PAST_DUE = "PAST_DUE",
+  CANCELED = "CANCELED",
+  PAUSED = "PAUSED",
+  DRAFT = "DRAFT",
+  MANUAL = "MANUAL",
+}
+
+export enum NotificationType {
+  MESSAGE_RECEIVED = "MESSAGE_RECEIVED",
+  CONVERSATION_CREATED = "CONVERSATION_CREATED",
+  CONVERSATION_STATUS_CHANGED = "CONVERSATION_STATUS_CHANGED",
+  TASK_CREATED = "TASK_CREATED",
+  TASK_OVERDUE = "TASK_OVERDUE",
+  DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED",
+  DOCUMENT_PROCESSED = "DOCUMENT_PROCESSED",
+  SCHEDULED = "SCHEDULED",
+  MANUAL = "MANUAL",
+}

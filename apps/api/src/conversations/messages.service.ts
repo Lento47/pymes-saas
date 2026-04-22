@@ -7,7 +7,7 @@ import { EventsGateway } from '../gateways/events.gateway';
 import { AiService } from '../ai/ai.service';
 import { TasksService } from '../tasks/tasks.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { Priority } from '@prisma/client';
+import { Priority } from '../../src/common/types/enums';
 import { AutomationsService } from '../automations/automations.service';
 import { serializeJson } from '../common/prisma/enterprise-sqlite-json';
 

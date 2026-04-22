@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsNumber, IsEnum } from 'class-validator';
-import { Priority } from '@prisma/client';
+import { Priority } from '../../../src/common/types/enums';
 
 export class CreateDealDto {
   @IsString()

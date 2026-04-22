@@ -1,6 +1,6 @@
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ContactType } from '@prisma/client';
+import { ContactType } from '../../../src/common/types/enums';
 
 export class FilterContactsDto {
   @IsOptional()

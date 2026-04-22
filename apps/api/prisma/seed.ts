@@ -12,9 +12,10 @@
  * antes de correr este seed.
  */
 
-import { PrismaClient, WorkspaceUserRole, UserStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { WorkspaceUserRole, UserStatus } from '../src/common/types/enums.ts';
 import * as bcrypt from 'bcrypt';
-import { serializeJson } from '../src/common/prisma/enterprise-sqlite-json';
+import { serializeJson } from '../src/common/prisma/enterprise-sqlite-json.ts';
 
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 12;

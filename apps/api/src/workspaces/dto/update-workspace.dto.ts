@@ -10,7 +10,7 @@ import {
   IsTimeZone,
   Length,
 } from 'class-validator';
-import { WorkspaceStatus } from '@prisma/client';
+import { WorkspaceStatus } from '../../../src/common/types/enums';
 import { Type } from 'class-transformer';
 import { WorkspaceTaxProfileDto } from './workspace-tax-profile.dto';
 
