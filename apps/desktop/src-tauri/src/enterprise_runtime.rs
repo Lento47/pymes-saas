@@ -246,63 +246,80 @@ fn ensure_runtime_paths() -> Result<RuntimePaths> {
     })
 }
 
+fn validate_path_length(path: &std::path::Path) -> Result<()> {
+    let path_str = path.to_string_lossy();
+    if path_str.len() > 260 {
+        return Err(format!(
+            "Path exceeds 260 characters ({}): {}. Use long path support (\\\\?\\) or shorten path.",
+            path_str.len(),
+            path_str
+        )
+        .into());
+    }
+    Ok(())
+}
+
 fn runtime_root() -> PathBuf {
     // Try PROGRAMDATA first (requires admin on some systems)
     if let Some(program_data) = env::var_os("PROGRAMDATA") {
         let program_data_root = PathBuf::from(program_data).join("Pymeshub");
-        match fs::create_dir_all(&program_data_root) {
-            Ok(_) => {
-                eprintln!("Using PROGRAMDATA: {}", program_data_root.display());
-                return program_data_root;
+        if validate_path_length(&program_data_root).is_ok() {
+            match fs::create_dir_all(&program_data_root) {
+                Ok(_) => {
+                    eprintln!("Using PROGRAMDATA: {}", program_data_root.display());
+                    return program_data_root;
+                }
+                Err(e) => {
+                    eprintln!("Warning: Cannot write to PROGRAMDATA: {}", e);
+                }
             }
-            Err(e) => {
-                eprintln!("Warning: Cannot write to PROGRAMDATA: {}", e);
-            }
+        } else {
+            eprintln!("Warning: PROGRAMDATA path too long, skipping");
         }
     }
 
     // Try LOCALAPPDATA (user-writable, always available on Windows)
     if let Some(local_app_data) = env::var_os("LOCALAPPDATA") {
         let local_root = PathBuf::from(local_app_data).join("Pymeshub");
-        match fs::create_dir_all(&local_root) {
-            Ok(_) => {
-                eprintln!("Using LOCALAPPDATA: {}", local_root.display());
-                return local_root;
+        if validate_path_length(&local_root).is_ok() {
+            match fs::create_dir_all(&local_root) {
+                Ok(_) => {
+                    eprintln!("Using LOCALAPPDATA: {}", local_root.display());
+                    return local_root;
+                }
+                Err(e) => {
+                    eprintln!("Warning: Cannot write to LOCALAPPDATA: {}", e);
+                }
             }
-            Err(e) => {
-                eprintln!("Warning: Cannot write to LOCALAPPDATA: {}", e);
-            }
+        } else {
+            eprintln!("Warning: LOCALAPPDATA path too long, skipping");
         }
     }
 
-    // Try USERPROFILE as last resort
+    // Try USERPROFILE as fallback
     if let Ok(user_profile) = env::var("USERPROFILE") {
         let user_root = PathBuf::from(user_profile)
             .join("AppData")
             .join("Local")
             .join("Pymeshub");
-        match fs::create_dir_all(&user_root) {
-            Ok(_) => {
-                eprintln!("Using USERPROFILE: {}", user_root.display());
-                return user_root;
+        if validate_path_length(&user_root).is_ok() {
+            match fs::create_dir_all(&user_root) {
+                Ok(_) => {
+                    eprintln!("Using USERPROFILE: {}", user_root.display());
+                    return user_root;
+                }
+                Err(e) => {
+                    eprintln!("Warning: Cannot write to USERPROFILE: {}", e);
+                }
             }
-            Err(e) => {
-                eprintln!("Warning: Cannot write to USERPROFILE: {}", e);
-            }
+        } else {
+            eprintln!("Warning: USERPROFILE path too long, skipping");
         }
     }
 
-    // Last resort: use temp directory (NOT IDEAL)
-    if let Ok(temp) = env::var("TEMP") {
-        let temp_root = PathBuf::from(temp).join("Pymeshub-runtime");
-        eprintln!("Warning: Using TEMP directory as fallback: {}", temp_root.display());
-        let _ = fs::create_dir_all(&temp_root);
-        return temp_root;
-    }
-
-    // Absolute last resort
-    eprintln!("Warning: All environment variables failed, using C:\\Pymeshub");
-    PathBuf::from(r"C:\Pymeshub")
+    eprintln!("ERROR: No suitable runtime directory found. PROGRAMDATA, LOCALAPPDATA, and USERPROFILE all failed or path is too long.");
+    eprintln!("Please set PYMESHUB_RUNTIME_DIR environment variable or ensure LOCALAPPDATA is accessible.");
+    panic!("Cannot find suitable runtime directory. Installation may be corrupted.");
 }
 
 fn write_env_files(runtime_root: &Path, paths: &RuntimePaths, api_port: u16, web_port: u16) -> Result<()> {
@@ -506,10 +523,16 @@ fn spawn_web(node_path: &Path, web_dir: &Path, paths: &RuntimePaths) -> Result<(
 }
 
 fn open_log(path: PathBuf) -> Result<File> {
-    OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&path)
+    let mut opts = OpenOptions::new();
+    opts.create(true).append(true);
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        opts.share_mode(3); // FILE_SHARE_READ | FILE_SHARE_WRITE = 0x03
+    }
+
+    opts.open(&path)
         .with_context(|| format!("No se pudo abrir el log {}", path.display()))
 }
 
@@ -568,14 +591,18 @@ fn hide_console(command: &mut Command) {
 }
 
 fn generate_secret() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use rand::RngCore;
 
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
+    let mut rng = rand::thread_rng();
+    let mut bytes = [0u8; 32];
+    rng.fill_bytes(&mut bytes);
 
-    format!("pymeshub-enterprise-{ts:x}")
+    format!("{}",
+        bytes
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>()
+    )
 }
 
 fn is_first_setup(paths: &RuntimePaths) -> Result<bool> {

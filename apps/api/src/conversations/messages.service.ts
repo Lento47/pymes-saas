@@ -25,6 +25,29 @@ export class MessagesService {
     private readonly automationsService: AutomationsService,
   ) { }
 
+  private async withRetry<T>(
+    fn: () => Promise<T>,
+    maxAttempts = 3,
+    delayMs = 1000,
+  ): Promise<T> {
+    let lastError: Error | null = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error as Error;
+        if (attempt < maxAttempts) {
+          this.logger.warn(
+            `Attempt ${attempt} failed, retrying in ${delayMs}ms...`,
+            lastError.message,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+    throw lastError;
+  }
+
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 50) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
@@ -192,9 +215,15 @@ export class MessagesService {
     const conversationId = conversation.id;
     const contactId = conversation.contact_id;
 
-    this.triggerAiAnalysis(workspaceId, conversationId, contactId).catch(
-      (err) => this.logger.error('Error en análisis de IA', err?.stack ?? err),
-    );
+    this.withRetry(
+      () => this.triggerAiAnalysis(workspaceId, conversationId, contactId),
+      2,
+      500,
+    ).catch((err) => {
+      this.logger.error(
+        `Failed to complete AI analysis after retries: ${err?.message ?? err}`,
+      );
+    });
 
     return { ok: true, message_id: message.id, conversation_id: conversation.id };
   }
