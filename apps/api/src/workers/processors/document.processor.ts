@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { QUEUE_NAMES } from '../queues.constants';
 
 interface DocumentJobData {
   documentId: string;
@@ -10,25 +7,20 @@ interface DocumentJobData {
 }
 
 @Injectable()
-@Processor(QUEUE_NAMES.DOCUMENT)
-export class DocumentProcessor extends WorkerHost {
+export class DocumentProcessor {
   private readonly logger = new Logger(DocumentProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {
-    super();
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
-  async process(job: Job<DocumentJobData>): Promise<any> {
-    const { documentId, workspaceId } = job.data;
+  async process(data: DocumentJobData): Promise<any> {
+    const { documentId, workspaceId } = data;
 
-    this.logger.log(`Processing document job ${job.id} for document ${documentId}`);
+    this.logger.log(`Processing document job for document ${documentId}`);
 
-    // 1. Cargar documento
     const doc = await this.prisma.document.findFirst({
       where: { id: documentId, workspace_id: workspaceId },
     });
 
-    // 2. Si no existe o ya está procesado, return
     if (!doc) {
       this.logger.warn(`Document ${documentId} not found in workspace ${workspaceId}, skipping.`);
       return;
@@ -39,13 +31,11 @@ export class DocumentProcessor extends WorkerHost {
       return;
     }
 
-    // 3. Actualizar status a PROCESSING
     await this.prisma.document.update({
       where: { id: documentId },
       data: { status: 'PROCESSING' },
     });
 
-    // 4. Simular OCR
     const ocr_text = `[OCR simulado para ${doc.file_name}] Texto extraído pendiente de integración con motor OCR.`;
 
     const isInvoice = /factura|invoice/i.test(doc.file_name);
@@ -54,7 +44,6 @@ export class DocumentProcessor extends WorkerHost {
 
     const summary_text = `Documento tipo ${docType}: ${doc.file_name}. Procesado el ${new Date().toLocaleDateString('es-CR')}.`;
 
-    // 5. Actualizar documento con resultados
     await this.prisma.document.update({
       where: { id: documentId },
       data: {
@@ -69,9 +58,7 @@ export class DocumentProcessor extends WorkerHost {
       },
     });
 
-    this.logger.log(
-      `Document job ${job.id} completed: document=${documentId}, docType=${docType}`,
-    );
+    this.logger.log(`Document completed: document=${documentId}, docType=${docType}`);
 
     return { documentId, docType, status: 'PROCESSED' };
   }

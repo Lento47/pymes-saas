@@ -1,97 +1,79 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  S3Client,
-  PutObjectCommand,
-  DeleteObjectCommand,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-
-// ─── Nota ────────────────────────────────────────────────────────────────────
-// Esta abstracción funciona tanto con AWS S3 como con MinIO (misma API).
-// Variables de entorno requeridas (.env):
-//
-//   STORAGE_ENDPOINT=http://localhost:9000    ← solo MinIO/custom; omitir para AWS
-//   STORAGE_REGION=us-east-1
-//   STORAGE_ACCESS_KEY=minio_user
-//   STORAGE_SECRET_KEY=minio_password
-//   STORAGE_BUCKET=pymes-documents
-//   STORAGE_PUBLIC_URL=http://localhost:9000  ← base URL para links públicos
-// ─────────────────────────────────────────────────────────────────────────────
+import * as path from 'path';
+import { LocalDiskStorageService } from './local-disk-storage.service';
+import { RemoteObjectStorageService } from './remote-object-storage.service';
+import { StorageMode, StorageProvider, StorageReadResult, StorageUploadResult } from './storage.types';
 
 @Injectable()
 export class StorageService {
-  private readonly client: S3Client;
-  private readonly bucket: string;
-  private readonly logger = new Logger(StorageService.name);
+  constructor(
+    private readonly config: ConfigService,
+    private readonly localStorage: LocalDiskStorageService,
+    private readonly remoteStorage: RemoteObjectStorageService,
+  ) {}
 
-  constructor(private readonly config: ConfigService) {
-    const endpoint = this.config.get<string>('STORAGE_ENDPOINT');
-
-    this.client = new S3Client({
-      region:      this.config.get<string>('STORAGE_REGION') ?? 'us-east-1',
-      credentials: {
-        accessKeyId:     this.config.get<string>('STORAGE_ACCESS_KEY')!,
-        secretAccessKey: this.config.get<string>('STORAGE_SECRET_KEY')!,
-      },
-      // Solo para MinIO o S3-compatible:
-      ...(endpoint && {
-        endpoint,
-        forcePathStyle: true, // requerido para MinIO
-      }),
-    });
-
-    this.bucket = this.config.get<string>('STORAGE_BUCKET') ?? 'pymes-documents';
+  get mode(): StorageMode {
+    return this.resolveProvider().mode;
   }
-
-  // ── Subir archivo ──────────────────────────────────────────────────────────
 
   async upload(
     key: string,
     buffer: Buffer,
     mimeType: string,
-  ): Promise<{ key: string; size: number }> {
-    try {
-      await this.client.send(
-        new PutObjectCommand({
-          Bucket:      this.bucket,
-          Key:         key,
-          Body:        buffer,
-          ContentType: mimeType,
-        }),
-      );
-      return { key, size: buffer.length };
-    } catch (err) {
-      this.logger.error(`Error subiendo archivo ${key}:`, err);
-      throw new InternalServerErrorException('Error al subir el archivo al storage.');
-    }
+  ): Promise<StorageUploadResult> {
+    return this.resolveProvider().upload(key, buffer, mimeType);
   }
 
-  // ── URL firmada para descarga (expira en N segundos) ──────────────────────
-
-  async getPresignedUrl(key: string, expiresInSeconds = 3600): Promise<string> {
-    const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
-    return getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
+  async read(key: string): Promise<StorageReadResult> {
+    return this.resolveProvider().read(key);
   }
-
-  // ── Eliminar archivo ───────────────────────────────────────────────────────
 
   async delete(key: string): Promise<void> {
-    try {
-      await this.client.send(
-        new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
-      );
-    } catch (err) {
-      this.logger.error(`Error eliminando archivo ${key}:`, err);
-    }
+    return this.resolveProvider().delete(key);
   }
 
-  // ── Generar storage key normalizado ───────────────────────────────────────
-  // Formato: {workspaceId}/documents/{documentId}/{filename}
+  async exists(key: string): Promise<boolean> {
+    return this.resolveProvider().exists(key);
+  }
 
-  buildKey(workspaceId: string, documentId: string, filename: string): string {
-    const safe = filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    return `${workspaceId}/documents/${documentId}/${safe}`;
+  async healthCheck(): Promise<{ ok: boolean; detail?: string }> {
+    return this.resolveProvider().healthCheck();
+  }
+
+  buildKey(
+    workspaceId: string,
+    documentId: string,
+    filename: string,
+    createdAt = new Date(),
+    category = 'documents',
+  ): string {
+    const extension = this.sanitizeExtension(path.extname(filename));
+    const year = createdAt.getUTCFullYear();
+    const month = `${createdAt.getUTCMonth() + 1}`.padStart(2, '0');
+    return `${category}/${workspaceId}/${year}/${month}/${documentId}${extension}`;
+  }
+
+  getDownloadPath(documentId: string): string {
+    return `/api/documents/${documentId}/download`;
+  }
+
+  private resolveProvider(): StorageProvider {
+    return this.resolveMode() === 'local' ? this.localStorage : this.remoteStorage;
+  }
+
+  private resolveMode(): StorageMode {
+    const explicitMode = this.config.get<string>('PYMESHUB_STORAGE_MODE')?.toLowerCase();
+    if (explicitMode === 'local' || explicitMode === 'remote') {
+      return explicitMode;
+    }
+
+    const edition = this.config.get<string>('PYMESHUB_EDITION')?.toLowerCase();
+    return edition === 'enterprise' ? 'local' : 'remote';
+  }
+
+  private sanitizeExtension(extension: string): string {
+    const clean = extension.replace(/[^a-zA-Z0-9.]/g, '').toLowerCase();
+    return clean.startsWith('.') ? clean : clean ? `.${clean}` : '';
   }
 }
