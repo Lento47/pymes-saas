@@ -4,14 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.pymeshub.desktop.enterprise",
   "build": {
-<<<<<<< Updated upstream
-    "frontendDist": "../../web/dist/public",
-    "devUrl": "http://127.0.0.1:5000"
-=======
     "frontendDist": "../dist",
     "devUrl": "http://127.0.0.1:5000",
     "beforeBuildCommand": "npm run prepare:enterprise-runtime && npm run build"
->>>>>>> Stashed changes
   },
   "app": {
     "withGlobalTauri": true,
@@ -44,10 +39,6 @@
       "icons/icon.png",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/api"],
-    "resources": {
-      "binaries/libquery_engine-windows.dll.node": "./"
-    },
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
