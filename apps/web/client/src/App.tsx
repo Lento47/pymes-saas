@@ -9,6 +9,7 @@ import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { useAuth } from "@/hooks/use-auth";
 
 import Login from "@/pages/login";
+import Setup from "@/pages/setup";
 import AcceptInvite from "@/pages/accept-invite";
 import Dashboard from "@/pages/dashboard";
 import Inbox from "@/pages/inbox";
@@ -35,6 +36,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 function AppRouter() {
   return (
     <Switch>
+      <Route path="/setup" component={Setup} />
       <Route path="/login" component={Login} />
       <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/legal">

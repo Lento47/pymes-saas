@@ -124,7 +124,15 @@ fn boot_inner(app: AppHandle) -> Result<()> {
 
     wait_for_port(WEB_PORT, "frontend local")?;
 
-    let target = Url::parse(crate::app_url::base_url())
+    // Check if setup is complete
+    let setup_url = if is_first_setup(&paths)? {
+        eprintln!("First setup detected, redirecting to setup wizard");
+        "http://localhost:5000/#/setup".to_string()
+    } else {
+        crate::app_url::base_url().to_string()
+    };
+
+    let target = Url::parse(&setup_url)
         .map_err(|error| anyhow!("La URL base de Enterprise no es valida: {error}"))?;
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.navigate(target);
@@ -563,6 +571,12 @@ fn generate_secret() -> String {
         .unwrap_or(0);
 
     format!("pymeshub-enterprise-{ts:x}")
+}
+
+fn is_first_setup(paths: &RuntimePaths) -> Result<bool> {
+    // Check if a setup flag file exists
+    let setup_flag = paths.config_dir.join(".setup-complete");
+    Ok(!setup_flag.exists())
 }
 
 fn normalized_runtime_path(path: &Path) -> String {
