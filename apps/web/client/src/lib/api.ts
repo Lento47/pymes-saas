@@ -96,6 +96,28 @@ async function _tryRefresh(): Promise<boolean> {
   return _refreshPromise;
 }
 
+/** Public request — no auth headers. Used for invitation verify/accept. */
+async function requestPublic<T>(
+  method: string,
+  path: string,
+  data?: unknown
+): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (data) headers["Content-Type"] = "application/json";
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers,
+    body: data ? JSON.stringify(data) : undefined,
+  });
+  if (!res.ok) {
+    const text = (await res.text()) || res.statusText;
+    throw new Error(`${res.status}: ${text}`);
+  }
+  const ct = res.headers.get("content-type");
+  if (ct && ct.includes("application/json")) return res.json();
+  return {} as T;
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -311,6 +333,23 @@ export const api = {
   inviteUser: (data: any) => request<any>("POST", "/api/workspaces/current/members/invite", data),
   changeMemberRole: (userId: string, newRole: string) => request<any>("PATCH", `/api/workspaces/current/members/${userId}/role`, { role: newRole }),
   removeMember: (userId: string) => request<any>("DELETE", `/api/workspaces/current/members/${userId}`),
+  // Invitations (real signed-token flow)
+  listInvitations: () => request<any>("GET", "/api/invitations"),
+  createInvitation: (data: { email: string; role: string; department_ids?: string[] }) =>
+    request<any>("POST", "/api/invitations", data),
+  resendInvitation: (id: string) => request<any>("POST", `/api/invitations/${id}/resend`),
+  revokeInvitation: (id: string) => request<any>("DELETE", `/api/invitations/${id}`),
+  verifyInvitationToken: (token: string) =>
+    requestPublic<any>("GET", `/api/invitations/verify?token=${encodeURIComponent(token)}`),
+  acceptInvitation: (data: { token: string; password: string; name?: string }) =>
+    requestPublic<any>("POST", "/api/invitations/accept", data),
+  // Granular permissions
+  getPermissionsCatalog: () =>
+    request<any>("GET", "/api/workspaces/current/permissions/catalog"),
+  getMemberPermissions: (userId: string) =>
+    request<any>("GET", `/api/workspaces/current/members/${userId}/permissions`),
+  updateMemberPermissions: (userId: string, permissions: Record<string, boolean | null>) =>
+    request<any>("PATCH", `/api/workspaces/current/members/${userId}/permissions`, { permissions }),
   updateUser: (userId: string, data: any) => request<any>("PATCH", `/api/users/${userId}`, data),
   getChannels: () => request<any>("GET", "/api/channels"),
   createChannel: (data: any) => request<any>("POST", "/api/channels", data),

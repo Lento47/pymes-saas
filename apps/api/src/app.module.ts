@@ -26,6 +26,7 @@ import { EmailModule } from './email/email.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { PlanLimitsModule } from './common/plan-limits/plan-limits.module';
 import { DepartmentsModule } from './departments/departments.module';
+import { InvitationsModule } from './invitations/invitations.module';
 import { InsightsModule } from './insights/insights.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { ErrorReportsModule } from './error-reports/error-reports.module';
@@ -63,6 +64,7 @@ import { PipelineModule } from './pipeline/pipeline.module';
     AuditModule,
 
     DepartmentsModule,
+    InvitationsModule,
     InsightsModule,
     InvoicesModule,
     HaciendaModule,

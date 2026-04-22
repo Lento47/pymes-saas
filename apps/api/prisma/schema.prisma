@@ -284,13 +284,19 @@ model User {
 }
 
 model WorkspaceUser {
-  id           String            @id @default(cuid())
-  workspace_id String
-  user_id      String
-  role         WorkspaceUserRole @default(AGENT)
-  is_owner     Boolean           @default(false)
+  id               String            @id @default(cuid())
+  workspace_id     String
+  user_id          String
+  role             WorkspaceUserRole @default(AGENT)
+  is_owner         Boolean           @default(false)
+  // Granular permission flags layered on top of role. Null = use role defaults.
+  // Keys: can_delete_contacts, can_export_data, can_send_bulk_email,
+  //       can_manage_invoices, can_manage_automations, can_view_audit_log,
+  //       can_manage_billing, can_manage_integrations
+  permissions_json Json?             @db.JsonB
 
   created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -318,6 +324,32 @@ model RefreshToken {
   @@index([user_id, workspace_id])
   @@index([expires_at])
   @@map("refresh_tokens")
+}
+
+model Invitation {
+  id             String            @id @default(cuid())
+  workspace_id   String
+  email          String
+  role           WorkspaceUserRole
+  token_hash     String            @unique  // SHA-256 of raw token sent in email
+  department_ids String[]          @default([])
+  invited_by_id  String?
+  expires_at     DateTime
+  accepted_at    DateTime?
+  revoked_at     DateTime?
+  last_sent_at   DateTime          @default(now())
+  send_count     Int               @default(1)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace  Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  invited_by User?     @relation("InvitationInviter", fields: [invited_by_id], references: [id])
+
+  @@index([token_hash])
+  @@index([workspace_id, email])
+  @@index([expires_at])
+  @@map("invitations")
 }
 
 model WorkspaceSubscription {
