@@ -222,7 +222,7 @@ fn write_env_files(runtime_root: &Path, paths: &RuntimePaths) -> Result<()> {
         .join("engines");
     api_env.insert(
         "PRISMA_SCHEMA_ENGINE_BINARY".into(),
-        normalized_runtime_path(&prisma_engines_dir.join(if cfg!(windows) {
+        normalized_prisma_engine_path(&prisma_engines_dir.join(if cfg!(windows) {
             "schema-engine-windows.exe"
         } else {
             "schema-engine"
@@ -230,7 +230,7 @@ fn write_env_files(runtime_root: &Path, paths: &RuntimePaths) -> Result<()> {
     );
     api_env.insert(
         "PRISMA_QUERY_ENGINE_LIBRARY".into(),
-        normalized_runtime_path(&prisma_engines_dir.join(if cfg!(windows) {
+        normalized_prisma_engine_path(&prisma_engines_dir.join(if cfg!(windows) {
             "query_engine-windows.dll.node"
         } else {
             "libquery_engine.so.node"
@@ -245,7 +245,7 @@ fn write_env_files(runtime_root: &Path, paths: &RuntimePaths) -> Result<()> {
     }
     api_env.insert(
         "CORS_ORIGIN".into(),
-        "http://127.0.0.1:5000,http://localhost:5000".into(),
+        "http://127.0.0.1:5000,http://localhost:5000,http://[::1]:5000".into(),
     );
     write_env_file(&paths.config_file, &api_env)?;
 
@@ -449,9 +449,20 @@ fn generate_secret() -> String {
 }
 
 fn normalized_runtime_path(path: &Path) -> String {
-    path.to_string_lossy().replace("\\\\?\\", "")
+    let s = path.to_string_lossy().to_string();
+    // Remove Windows long path prefix if present
+    if s.starts_with("\\\\?\\") {
+        s[4..].to_string()
+    } else {
+        s
+    }
+}
+
+fn normalized_prisma_engine_path(path: &Path) -> String {
+    // Prisma engines require forward slashes and absolute paths
+    normalized_runtime_path(path).replace('\\', "/")
 }
 
 fn sqlite_database_url(path: &Path) -> String {
-    format!("file:{}", normalized_runtime_path(path).replace('\\', "/"))
+    format!("file:{}", normalized_prisma_engine_path(path))
 }

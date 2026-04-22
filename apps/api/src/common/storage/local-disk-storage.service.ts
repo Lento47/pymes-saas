@@ -16,7 +16,13 @@ import {
 
 function defaultStorageRoot(): string {
   if (process.platform === 'win32') {
-    return 'C:\\ProgramData\\Pymeshub\\data';
+    const programData = process.env.PROGRAMDATA || 'C:\\ProgramData';
+    return path.join(programData, 'Pymeshub', 'data');
+  }
+
+  const xdgDataHome = process.env.XDG_DATA_HOME;
+  if (xdgDataHome) {
+    return path.join(xdgDataHome, 'pymeshub', 'data');
   }
 
   return path.resolve(process.cwd(), '.pymeshub', 'data');
