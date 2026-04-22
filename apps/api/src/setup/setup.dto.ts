@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsNumber, Min } from 'class-validator';
 
 export class CreateAdminDto {
   @IsEmail()
@@ -19,4 +19,14 @@ export class CreateAdminDto {
 
 export class SetupStatusDto {
   setupComplete: boolean;
+}
+
+export class SavePortsDto {
+  @IsNumber()
+  @Min(1024, { message: 'Port must be greater than 1024' })
+  apiPort: number;
+
+  @IsNumber()
+  @Min(1024, { message: 'Port must be greater than 1024' })
+  webPort: number;
 }

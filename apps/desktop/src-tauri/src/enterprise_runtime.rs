@@ -18,8 +18,9 @@ use url::Url;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
-const API_PORT: u16 = 4000;
-const WEB_PORT: u16 = 5000;
+const DEFAULT_API_PORT: u16 = 4000;
+const DEFAULT_WEB_PORT: u16 = 5000;
+
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
@@ -76,6 +77,10 @@ fn boot_inner(app: AppHandle) -> Result<()> {
     }
 
     let paths = ensure_runtime_paths()?;
+
+    // Load custom port configuration if available
+    let (api_port, web_port) = load_port_configuration(&paths);
+
     emit_status(
         &app,
         "starting",
@@ -83,9 +88,9 @@ fn boot_inner(app: AppHandle) -> Result<()> {
         &paths,
     );
 
-    write_env_files(&runtime_root, &paths)?;
+    write_env_files(&runtime_root, &paths, api_port, web_port)?;
 
-    if !port_is_open(API_PORT) {
+    if !port_is_open(api_port) {
         emit_status(
             &app,
             "starting",
@@ -103,9 +108,9 @@ fn boot_inner(app: AppHandle) -> Result<()> {
         );
     }
 
-    wait_for_port(API_PORT, "API local")?;
+    wait_for_port(api_port, "API local")?;
 
-    if !port_is_open(WEB_PORT) {
+    if !port_is_open(web_port) {
         emit_status(
             &app,
             "starting",
@@ -122,7 +127,7 @@ fn boot_inner(app: AppHandle) -> Result<()> {
         );
     }
 
-    wait_for_port(WEB_PORT, "frontend local")?;
+    wait_for_port(web_port, "frontend local")?;
 
     // Check if setup is complete
     let setup_url = if is_first_setup(&paths)? {
@@ -300,7 +305,7 @@ fn runtime_root() -> PathBuf {
     PathBuf::from(r"C:\Pymeshub")
 }
 
-fn write_env_files(runtime_root: &Path, paths: &RuntimePaths) -> Result<()> {
+fn write_env_files(runtime_root: &Path, paths: &RuntimePaths, api_port: u16, web_port: u16) -> Result<()> {
     let template_path = runtime_root.join(".env.enterprise.example");
     let mut api_env = if paths.config_file.exists() {
         read_env_file(&paths.config_file)?
@@ -311,7 +316,7 @@ fn write_env_files(runtime_root: &Path, paths: &RuntimePaths) -> Result<()> {
     };
 
     api_env.insert("NODE_ENV".into(), "production".into());
-    api_env.insert("PORT".into(), API_PORT.to_string());
+    api_env.insert("PORT".into(), api_port.to_string());
     api_env.insert("PYMESHUB_EDITION".into(), "enterprise".into());
     api_env.insert("PYMESHUB_STORAGE_MODE".into(), "local".into());
     api_env.insert(
@@ -364,8 +369,8 @@ fn write_env_files(runtime_root: &Path, paths: &RuntimePaths) -> Result<()> {
         BTreeMap::new()
     };
     web_env.insert("NODE_ENV".into(), "production".into());
-    web_env.insert("PORT".into(), WEB_PORT.to_string());
-    web_env.insert("API_PROXY_TARGET".into(), format!("http://127.0.0.1:{API_PORT}"));
+    web_env.insert("PORT".into(), web_port.to_string());
+    web_env.insert("API_PROXY_TARGET".into(), format!("http://127.0.0.1:{}", api_port));
     write_env_file(&paths.web_env_file, &web_env)?;
 
     Ok(())
@@ -577,6 +582,35 @@ fn is_first_setup(paths: &RuntimePaths) -> Result<bool> {
     // Check if a setup flag file exists
     let setup_flag = paths.config_dir.join(".setup-complete");
     Ok(!setup_flag.exists())
+}
+
+fn load_port_configuration(paths: &RuntimePaths) -> (u16, u16) {
+    let ports_env_path = paths.config_dir.join("ports.env");
+
+    if !ports_env_path.exists() {
+        return (DEFAULT_API_PORT, DEFAULT_WEB_PORT);
+    }
+
+    let mut api_port = DEFAULT_API_PORT;
+    let mut web_port = DEFAULT_WEB_PORT;
+
+    if let Ok(content) = fs::read_to_string(&ports_env_path) {
+        for line in content.lines() {
+            let line = line.trim();
+            if line.starts_with("CUSTOM_API_PORT=") {
+                if let Ok(port) = line.replace("CUSTOM_API_PORT=", "").parse::<u16>() {
+                    api_port = port;
+                }
+            } else if line.starts_with("CUSTOM_WEB_PORT=") {
+                if let Ok(port) = line.replace("CUSTOM_WEB_PORT=", "").parse::<u16>() {
+                    web_port = port;
+                }
+            }
+        }
+    }
+
+    eprintln!("Loaded port configuration: API={}, WEB={}", api_port, web_port);
+    (api_port, web_port)
 }
 
 fn normalized_runtime_path(path: &Path) -> String {

@@ -1,6 +1,6 @@
 import { Controller, Post, Body, HttpCode, Logger, Get } from '@nestjs/common';
 import { SetupService } from './setup.service';
-import { CreateAdminDto, SetupStatusDto } from './setup.dto';
+import { CreateAdminDto, SetupStatusDto, SavePortsDto } from './setup.dto';
 
 @Controller('api/setup')
 export class SetupController {
@@ -28,6 +28,34 @@ export class SetupController {
         id: admin.id,
         email: admin.email,
         name: admin.name,
+      },
+    };
+  }
+
+  @Post('complete')
+  @HttpCode(200)
+  async completeSetup() {
+    this.logger.log('Marking setup as complete');
+    await this.setupService.markSetupComplete();
+    return { success: true, message: 'Setup marked as complete' };
+  }
+
+  @Post('ports')
+  @HttpCode(201)
+  async savePorts(@Body() savePortsDto: SavePortsDto) {
+    this.logger.log(
+      `Saving port configuration: API=${savePortsDto.apiPort}, Web=${savePortsDto.webPort}`
+    );
+    await this.setupService.savePortConfiguration(
+      savePortsDto.apiPort,
+      savePortsDto.webPort
+    );
+    return {
+      success: true,
+      message: 'Port configuration saved successfully',
+      ports: {
+        api: savePortsDto.apiPort,
+        web: savePortsDto.webPort,
       },
     };
   }

@@ -114,6 +114,26 @@ export default function SetupPage() {
     setLoading(true);
 
     try {
+      // 1. Save port configuration if custom
+      if (useCustomPorts) {
+        const portResponse = await fetch("/api/setup/ports", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            apiPort: ports.apiPort,
+            webPort: ports.webPort,
+          }),
+        });
+
+        if (!portResponse.ok) {
+          const errorData = await portResponse.json();
+          throw new Error(
+            errorData.message || "Error al guardar configuración de puertos"
+          );
+        }
+      }
+
+      // 2. Create admin user
       const response = await fetch("/api/setup/initialize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,23 +150,18 @@ export default function SetupPage() {
         throw new Error(errorData.message || "Error al crear administrador");
       }
 
-      // Save port config if custom
-      if (useCustomPorts) {
-        localStorage.setItem(
-          "portConfig",
-          JSON.stringify({
-            apiPort: ports.apiPort,
-            webPort: ports.webPort,
-          })
-        );
-      }
+      // 3. Mark setup as complete
+      await fetch("/api/setup/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
 
       // Setup complete, redirect to login
       navigate("/auth/login", {
         state: { setupComplete: true, email: formData.email },
       });
     } catch (err: any) {
-      setError(err.message || "Error al crear administrador");
+      setError(err.message || "Error durante la configuración");
     } finally {
       setLoading(false);
     }
