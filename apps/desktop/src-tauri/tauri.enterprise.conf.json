@@ -31,7 +31,7 @@
     "active": true,
     "targets": ["msi", "nsis"],
     "resources": {
-      "../../.enterprise-runtime-release/": "enterprise-runtime/"
+      "../../../.enterprise-runtime-release/": "enterprise-runtime/"
     },
     "icon": [
       "icons/32x32.png",
