@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 
 interface SetupFormData {
   email: string;
@@ -15,7 +15,7 @@ interface PortConfig {
 }
 
 export default function SetupPage() {
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"ports" | "admin">("ports");
@@ -47,7 +47,7 @@ export default function SetupPage() {
       const response = await fetch("/api/setup/status");
       const data = await response.json();
       if (data.setupComplete) {
-        navigate("/auth/login");
+        navigate("/login");
       }
     } catch (err) {
       console.error("Error checking setup status:", err);
@@ -157,9 +157,7 @@ export default function SetupPage() {
       });
 
       // Setup complete, redirect to login
-      navigate("/auth/login", {
-        state: { setupComplete: true, email: formData.email },
-      });
+      navigate("/login");
     } catch (err: any) {
       setError(err.message || "Error durante la configuración");
     } finally {

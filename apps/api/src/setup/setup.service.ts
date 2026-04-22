@@ -13,11 +13,10 @@ export class SetupService {
 
   async isSetupComplete(): Promise<boolean> {
     try {
-      // Check if there are any admin users
-      const adminCount = await this.prisma.user.count({
-        where: { role: 'ADMIN' },
+      const workspaceUsers = await this.prisma.workspaceUser.count({
+        where: { is_owner: true },
       });
-      return adminCount > 0;
+      return workspaceUsers > 0;
     } catch (e) {
       this.logger.warn('Error checking setup status:', e);
       return false;
@@ -27,17 +26,26 @@ export class SetupService {
   async createAdminUser(createAdminDto: CreateAdminDto) {
     const { email, password, name, companyName } = createAdminDto;
 
-    // Check if admin already exists
-    const existingAdmin = await this.prisma.user.findFirst({
-      where: { role: 'ADMIN' },
+    // Check if any workspace owners exist (meaning setup already done)
+    const existingOwner = await this.prisma.workspaceUser.findFirst({
+      where: { is_owner: true },
     });
 
-    if (existingAdmin) {
+    if (existingOwner) {
       throw new BadRequestException('Admin user already exists. Setup is already complete.');
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        name,
+        password_hash: hashedPassword,
+      },
+    });
 
     // Create default workspace
     const workspace = await this.prisma.workspace.create({
@@ -45,31 +53,25 @@ export class SetupService {
         name: companyName || 'Default Workspace',
         slug: 'default',
         plan: 'ENTERPRISE',
-        settings: {},
+        settings_json: {},
       },
     });
 
     this.logger.log(`Created workspace: ${workspace.id}`);
 
-    // Create admin user
-    const adminUser = await this.prisma.user.create({
+    // Create workspace user relationship with owner role
+    const workspaceUser = await this.prisma.workspaceUser.create({
       data: {
-        email,
-        password: hashedPassword,
-        name,
+        workspace_id: workspace.id,
+        user_id: user.id,
         role: 'ADMIN',
-        workspaceId: workspace.id,
-        verified: true,
-        settings: {
-          language: 'es',
-          timezone: 'America/Mexico_City',
-        },
+        is_owner: true,
       },
     });
 
-    this.logger.log(`Created admin user: ${adminUser.email}`);
+    this.logger.log(`Created admin user: ${user.email} in workspace: ${workspace.id}`);
 
-    return adminUser;
+    return user;
   }
 
   async markSetupComplete(): Promise<void> {

@@ -132,7 +132,7 @@ fn boot_inner(app: AppHandle) -> Result<()> {
     // Check if setup is complete
     let setup_url = if is_first_setup(&paths)? {
         eprintln!("First setup detected, redirecting to setup wizard");
-        "http://localhost:5000/#/setup".to_string()
+        format!("http://localhost:{}/#/setup", web_port)
     } else {
         crate::app_url::base_url().to_string()
     };
