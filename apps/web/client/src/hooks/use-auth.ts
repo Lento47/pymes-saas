@@ -81,11 +81,13 @@ export function useAuth() {
 
   const login = async (email: string, password: string, workspaceSlug: string) => {
     const res = await api.login(email, password, workspaceSlug);
-    setAuthState(res.access_token, workspaceSlug, res.refresh_token);
-    _user = res.user;
-    try { localStorage.setItem(LS_USER_KEY, JSON.stringify(res.user)); } catch { /* ignore */ }
-    connectSocket(); // ← WebSocket conecta al hacer login
-    notifyListeners();
+    applyAuthResult(res);
+    return res;
+  };
+
+  const acceptInvite = async (token: string, name?: string, password?: string) => {
+    const res = await api.acceptInvite({ token, name, password });
+    applyAuthResult(res);
     return res;
   };
 
@@ -114,6 +116,7 @@ export function useAuth() {
     user: _user,
     isAuthenticated: isLoggedIn(),
     login,
+    acceptInvite,
     logout,
     switchWorkspace,
     refreshUser: hydrateUser,
@@ -137,4 +140,12 @@ export function getSessionTtlDays(): number {
 
 export function setSessionTtlDays(days: number): void {
   _sessionTtlDays = days;
+}
+
+function applyAuthResult(res: { access_token: string; refresh_token?: string; user: AuthUser }) {
+  setAuthState(res.access_token, res.user.workspace.slug, res.refresh_token);
+  _user = res.user;
+  try { localStorage.setItem(LS_USER_KEY, JSON.stringify(res.user)); } catch { /* ignore */ }
+  connectSocket();
+  notifyListeners();
 }

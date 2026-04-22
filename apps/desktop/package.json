@@ -1,5 +1,5 @@
 {
-  "name": "pymes-saas-desktop",
+  "name": "@pymeshub/desktop",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,13 +8,17 @@
     "build": "tsc && vite build",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "tauri:dev:cloud": "cross-env PYMESHUB_EDITION=cloud PYMESHUB_UPDATER_ACTIVE=true tauri dev --config src-tauri/tauri.cloud.conf.json",
+    "tauri:build:cloud": "cross-env PYMESHUB_EDITION=cloud PYMESHUB_UPDATER_ACTIVE=true tauri build --config src-tauri/tauri.cloud.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-deep-link": "^2.0.0",
     "@tauri-apps/plugin-shell": "^2.0.0",
     "@tauri-apps/plugin-notification": "^2.0.0",
     "@tauri-apps/plugin-store": "^2.0.0",
+    "@tauri-apps/plugin-updater": "^2.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "wouter": "^3.3.5",
@@ -25,6 +29,7 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.0",
+    "cross-env": "^10.1.0",
     "typescript": "^5.0.0",
     "vite": "^6.0.0"
   }

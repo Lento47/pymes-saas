@@ -13,6 +13,7 @@ const mockPrisma = {
     findUnique: jest.fn(),
     create: jest.fn(),
     findUniqueOrThrow: jest.fn(),
+    update: jest.fn(),
   },
   workspace: {
     findUnique: jest.fn(),
@@ -146,6 +147,54 @@ describe('AuthService', () => {
 
       await expect(service.register({ email: 'existing@example.com', name: 'X', password: 'pass1234' }))
         .rejects.toThrow(ConflictException);
+    });
+
+    it('accepts invite token by activating invited user instead of creating a workspace', async () => {
+      const inviteToken = (service as any).jwtService.sign({
+        type: 'workspace-invite',
+        email: 'invited@example.com',
+        workspace_id: 'w1',
+        workspace_slug: 'acme',
+      });
+
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'u3',
+        email: 'invited@example.com',
+        name: 'invited',
+        status: 'INVITED',
+      });
+      mockPrisma.workspace.findUnique.mockResolvedValue({
+        id: 'w1',
+        name: 'Acme',
+        slug: 'acme',
+        plan: 'FREE',
+      });
+      mockPrisma.workspaceUser.findUnique.mockResolvedValue({
+        workspace_id: 'w1',
+        user_id: 'u3',
+        role: 'AGENT',
+        is_owner: false,
+      });
+      mockPrisma.user.update.mockResolvedValue({
+        id: 'u3',
+        email: 'invited@example.com',
+        name: 'Invited User',
+        avatar_url: null,
+        status: 'ACTIVE',
+      });
+      mockPrisma.refreshToken.create.mockResolvedValue({});
+
+      const result = await service.register({
+        email: 'ignored@example.com',
+        name: 'Invited User',
+        password: 'password123',
+        invite_token: inviteToken,
+      });
+
+      expect(result.access_token).toBeDefined();
+      expect(result.refresh_token).toBeDefined();
+      expect(mockPrisma.user.create).not.toHaveBeenCalled();
+      expect(mockPrisma.workspace.create).not.toHaveBeenCalled();
     });
   });
 });
