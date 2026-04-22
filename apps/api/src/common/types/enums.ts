@@ -1,8 +1,3 @@
-// ============================================================
-// Enum Aliases for SQLite Compatibility
-// SQLite doesn't support native enums, so we define them here
-// ============================================================
-
 export enum WorkspaceStatus {
   ACTIVE = "ACTIVE",
   PAUSED = "PAUSED",
@@ -80,12 +75,14 @@ export enum DocumentStatus {
   PROCESSING = "PROCESSING",
   COMPLETED = "COMPLETED",
   FAILED = "FAILED",
+  UPLOADED = "UPLOADED",
 }
 
 export enum DocumentStorageMode {
   LOCAL = "LOCAL",
   S3 = "S3",
   GOOGLE_CLOUD = "GOOGLE_CLOUD",
+  REMOTE = "REMOTE",
 }
 
 export enum TaskStatus {
@@ -205,4 +202,5 @@ export enum NotificationType {
   DOCUMENT_PROCESSED = "DOCUMENT_PROCESSED",
   SCHEDULED = "SCHEDULED",
   MANUAL = "MANUAL",
+  AI_TASK_CREATED = "AI_TASK_CREATED",
 }

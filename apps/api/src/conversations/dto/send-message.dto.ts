@@ -1,5 +1,5 @@
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { MessageDirection } from '../../../src/common/types/enums';
+import { MessageDirection } from '../../common/types/enums';
 
 export class SendMessageDto {
   @IsOptional()

@@ -1,5 +1,5 @@
 import { IsEnum } from 'class-validator';
-import { WorkspaceUserRole } from '../../../src/common/types/enums';
+import { WorkspaceUserRole } from '../../common/types/enums';
 
 export class UpdateMemberRoleDto {
   @IsEnum(WorkspaceUserRole)

@@ -1,5 +1,9 @@
-import {  } from '@prisma/client'
-import { BillingInterval, BillingProvider, WorkspacePlan, WorkspaceSubscriptionStatus } from '../../../src/common/types/enums';
+import {
+  BillingInterval,
+  BillingProvider,
+  WorkspacePlan,
+  WorkspaceSubscriptionStatus,
+} from '../../common/types/enums';
 import {
   IsBoolean,
   IsDateString,

@@ -1,6 +1,6 @@
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { DocumentStatus } from '../../../src/common/types/enums';
+import { DocumentStatus } from '../../common/types/enums';
 
 export class FilterDocumentsDto {
   @IsOptional()

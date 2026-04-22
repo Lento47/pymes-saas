@@ -1,6 +1,6 @@
 import { IsEnum, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Priority, TaskStatus, TaskSource } from '../../../src/common/types/enums';
+import { Priority, TaskStatus, TaskSource } from '../../common/types/enums';
 
 export class FilterTasksDto {
   @IsOptional()

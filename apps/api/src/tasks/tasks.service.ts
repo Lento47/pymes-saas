@@ -9,7 +9,7 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { FilterTasksDto } from './dto/filter-tasks.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AutomationsService } from '../automations/automations.service';
-import { TriggerType } from '../../src/common/types/enums';
+import { TriggerType } from '../common/types/enums';
 
 @Injectable()
 export class TasksService {

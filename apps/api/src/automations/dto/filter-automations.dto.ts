@@ -1,5 +1,5 @@
 import { IsOptional, IsEnum, IsNumberString } from 'class-validator';
-import { TriggerType } from '../../../src/common/types/enums';
+import { TriggerType } from '../../common/types/enums';
 
 export class FilterAutomationsDto {
   @IsOptional()

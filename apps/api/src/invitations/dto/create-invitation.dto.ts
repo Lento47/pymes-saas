@@ -1,4 +1,4 @@
-import { WorkspaceUserRole } from '../../../src/common/types/enums';
+import { WorkspaceUserRole } from '../../common/types/enums';
 import {
   ArrayUnique,
   IsArray,

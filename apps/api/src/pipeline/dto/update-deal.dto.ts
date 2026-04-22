@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsNumber, IsEnum } from 'class-validator';
-import { Priority, DealStatus } from '../../../src/common/types/enums';
+import { Priority, DealStatus } from '../../common/types/enums';
 
 export class UpdateDealDto {
   @IsOptional()

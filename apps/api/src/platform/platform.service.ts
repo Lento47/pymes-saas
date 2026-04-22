@@ -7,8 +7,13 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { AssignMemberDto } from './dto/assign-member.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateWorkspaceBillingDto } from './dto/update-workspace-billing.dto';
-import { BillingEvent, WorkspaceSubscription,  } from '@prisma/client'
-import { BillingInterval, BillingProvider, WorkspacePlan, WorkspaceSubscriptionStatus } from '../../src/common/types/enums';
+import { BillingEvent, WorkspaceSubscription } from '@prisma/client';
+import {
+  BillingInterval,
+  BillingProvider,
+  WorkspacePlan,
+  WorkspaceSubscriptionStatus,
+} from '../common/types/enums';
 import { serializeJson } from '../common/prisma/enterprise-sqlite-json';
 
 @Injectable()

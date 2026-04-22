@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ChannelType, ConversationStatus, InvoiceStatus, MessageDirection } from '../../src/common/types/enums';
+import { ChannelType, ConversationStatus, InvoiceStatus, MessageDirection } from '../common/types/enums';
 import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthUser } from '../auth/strategies/jwt.strategy';

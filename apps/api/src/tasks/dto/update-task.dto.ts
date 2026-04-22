@@ -5,7 +5,7 @@ import {
   IsString,
   Length,
 } from 'class-validator';
-import { Priority, TaskStatus } from '../../../src/common/types/enums';
+import { Priority, TaskStatus } from '../../common/types/enums';
 
 export class UpdateTaskDto {
   @IsOptional()

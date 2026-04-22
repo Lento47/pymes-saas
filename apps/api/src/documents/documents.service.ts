@@ -11,7 +11,7 @@ import { UpdateDocumentDto } from './dto/update-document.dto';
 import { FilterDocumentsDto } from './dto/filter-documents.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AutomationsService } from '../automations/automations.service';
-import { TriggerType } from '../../src/common/types/enums';
+import { TriggerType } from '../common/types/enums';
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',

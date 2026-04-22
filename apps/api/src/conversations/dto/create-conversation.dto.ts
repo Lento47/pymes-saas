@@ -4,7 +4,7 @@ import {
   IsString,
   Length,
 } from 'class-validator';
-import { Priority } from '../../../src/common/types/enums';
+import { Priority } from '../../common/types/enums';
 
 export class CreateConversationDto {
   @IsString()

@@ -8,8 +8,11 @@ import {
   ValidateNested,
   Length,
 } from 'class-validator';
-import {  } from '@prisma/client'
-import { HaciendaStatus, InvoiceDocumentType, InvoiceIssuanceMode } from '../../../src/common/types/enums';
+import {
+  HaciendaStatus,
+  InvoiceDocumentType,
+  InvoiceIssuanceMode,
+} from '../../common/types/enums';
 import { InvoiceLineDto } from './invoice-line.dto';
 
 export class CreateInvoiceDto {

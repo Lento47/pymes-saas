@@ -4,8 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import {  } from '@prisma/client'
-import { HaciendaStatus, InvoiceDocumentType, InvoiceIssuanceMode, InvoiceStatus } from '../../src/common/types/enums';
+import {
+  HaciendaStatus,
+  InvoiceDocumentType,
+  InvoiceIssuanceMode,
+  InvoiceStatus,
+} from '../common/types/enums';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { StorageService } from '../common/storage/storage.service';
 import { HaciendaRecepcionService } from '../hacienda/hacienda-recepcion.service';

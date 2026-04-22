@@ -1,5 +1,5 @@
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { ConversationStatus, Priority } from '../../../src/common/types/enums';
+import { ConversationStatus, Priority } from '../../common/types/enums';
 
 export class UpdateConversationDto {
   @IsOptional()

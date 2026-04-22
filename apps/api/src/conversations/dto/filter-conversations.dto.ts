@@ -1,6 +1,6 @@
 import { IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
-import { ChannelType, ConversationStatus, Priority } from '../../../src/common/types/enums';
+import { ChannelType, ConversationStatus, Priority } from '../../common/types/enums';
 
 export class FilterConversationsDto {
   @IsOptional()
