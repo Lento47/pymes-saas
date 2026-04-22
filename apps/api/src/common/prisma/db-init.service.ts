@@ -79,32 +79,63 @@ export class DbInitService implements OnModuleInit {
   }
 
   private findSchemaSql(): string | null {
-    const candidates = [
-      // Next to the compiled main.js (in dist/)
+    const candidates: (string | null)[] = [
+      // 1. Next to the compiled main.js (in dist/)
       path.join(__dirname, 'schema.sql'),
-      // In the root dist directory
+
+      // 2. In the root dist directory
       path.join(__dirname, '..', '..', '..', 'schema.sql'),
-      // In the current working directory
-      path.join(process.cwd(), 'schema.sql'),
-      path.join(process.cwd(), 'dist', 'schema.sql'),
-      // In application data directory (Windows)
+
+      // 3. In Tauri resource directory (MSI installation)
+      process.env.TAURI_RESOURCE_DIR
+        ? path.join(
+            process.env.TAURI_RESOURCE_DIR,
+            'enterprise-runtime',
+            'a',
+            'schema.sql'
+          )
+        : null,
+
+      // 4. In application data directory (Windows)
       process.env.APPDATA
         ? path.join(process.env.APPDATA, 'Pymeshub', 'schema.sql')
         : null,
-      // Next to pkg executable (only if execPath is a valid file)
+
+      // 5. In PROGRAMDATA (Windows system-wide)
+      process.env.PROGRAMDATA
+        ? path.join(
+            process.env.PROGRAMDATA,
+            'Pymeshub',
+            'data',
+            'schema.sql'
+          )
+        : null,
+
+      // 6. Next to pkg executable (only if execPath is a valid .exe)
       process.execPath && process.execPath.endsWith('.exe')
         ? path.join(path.dirname(process.execPath), 'schema.sql')
         : null,
+
+      // 7. Current working directory (last resort for dev)
+      path.join(process.cwd(), 'schema.sql'),
+      path.join(process.cwd(), 'dist', 'schema.sql'),
     ].filter((p): p is string => Boolean(p) && typeof p === 'string');
 
     for (const p of candidates) {
       try {
-        if (fs.existsSync(p)) return p;
+        if (fs.existsSync(p)) {
+          this.logger.log(`Found schema.sql at: ${p}`);
+          return p;
+        }
       } catch {
-        // Ignore paths that cause errors
+        // Ignore paths that cause errors (e.g., invalid characters)
         continue;
       }
     }
+
+    this.logger.error(
+      `schema.sql not found in any expected location. Checked: ${candidates.join(', ')}`
+    );
     return null;
   }
 }

@@ -68,6 +68,9 @@ fn boot_inner(app: AppHandle) -> Result<()> {
     let api_dir = runtime_root.join("a");
     let web_dir = runtime_root.join("w");
 
+    // Pre-flight validation
+    validate_runtime_bundle(&runtime_root, &node_path, &api_dir, &web_dir)?;
+
     if !node_path.exists() {
         return Err(anyhow!("Falta node.exe dentro del runtime empaquetado"));
     }
@@ -137,6 +140,60 @@ fn boot_inner(app: AppHandle) -> Result<()> {
     Ok(())
 }
 
+fn validate_runtime_bundle(
+    runtime_root: &Path,
+    node_path: &Path,
+    api_dir: &Path,
+    web_dir: &Path,
+) -> Result<()> {
+    let required_files = [
+        (node_path, "Node.js executable"),
+        (&api_dir.join("dist").join("src").join("main.js"), "API entrypoint"),
+        (&api_dir.join("schema.sql"), "Database schema"),
+        (&api_dir.join("prisma").join("schema.prisma"), "Prisma schema"),
+        (&web_dir.join("dist").join("index.cjs"), "Web server entrypoint"),
+    ];
+
+    let mut missing = Vec::new();
+
+    for (path, description) in required_files.iter() {
+        if !path.exists() {
+            missing.push(format!("{}: {}", description, path.display()));
+            eprintln!("✗ Missing: {} ({})", description, path.display());
+        } else {
+            eprintln!("✓ Found: {} ({})", description, path.display());
+        }
+    }
+
+    // Check Prisma engines
+    let prisma_engines_dir = api_dir
+        .join("node_modules")
+        .join("prisma")
+        .join("node_modules")
+        .join("@prisma")
+        .join("engines");
+
+    if !prisma_engines_dir.exists() {
+        missing.push(format!(
+            "Prisma engines directory: {}",
+            prisma_engines_dir.display()
+        ));
+        eprintln!("✗ Missing Prisma engines directory: {}", prisma_engines_dir.display());
+    } else {
+        eprintln!("✓ Found Prisma engines directory");
+    }
+
+    if !missing.is_empty() {
+        return Err(anyhow!(
+            "Runtime bundle validation failed. Missing files:\n{}\n\nEnsure you ran: ./scripts/build-enterprise-bundle.sh && cp -r .enterprise-runtime-bundle/* apps/desktop/src-tauri/resources/enterprise-runtime/",
+            missing.join("\n")
+        ));
+    }
+
+    eprintln!("✓ All required files validated");
+    Ok(())
+}
+
 fn ensure_runtime_paths() -> Result<RuntimePaths> {
     let root = runtime_root();
     let config_dir = root.join("config");
@@ -177,18 +234,62 @@ fn ensure_runtime_paths() -> Result<RuntimePaths> {
 }
 
 fn runtime_root() -> PathBuf {
+    // Try PROGRAMDATA first (requires admin on some systems)
     if let Some(program_data) = env::var_os("PROGRAMDATA") {
         let program_data_root = PathBuf::from(program_data).join("Pymeshub");
-        if fs::create_dir_all(&program_data_root).is_ok() {
-            return program_data_root;
+        match fs::create_dir_all(&program_data_root) {
+            Ok(_) => {
+                eprintln!("Using PROGRAMDATA: {}", program_data_root.display());
+                return program_data_root;
+            }
+            Err(e) => {
+                eprintln!("Warning: Cannot write to PROGRAMDATA: {}", e);
+            }
         }
     }
 
+    // Try LOCALAPPDATA (user-writable, always available on Windows)
     if let Some(local_app_data) = env::var_os("LOCALAPPDATA") {
-        return PathBuf::from(local_app_data).join("Pymeshub");
+        let local_root = PathBuf::from(local_app_data).join("Pymeshub");
+        match fs::create_dir_all(&local_root) {
+            Ok(_) => {
+                eprintln!("Using LOCALAPPDATA: {}", local_root.display());
+                return local_root;
+            }
+            Err(e) => {
+                eprintln!("Warning: Cannot write to LOCALAPPDATA: {}", e);
+            }
+        }
     }
 
-    PathBuf::from(r"C:\ProgramData\Pymeshub")
+    // Try USERPROFILE as last resort
+    if let Ok(user_profile) = env::var("USERPROFILE") {
+        let user_root = PathBuf::from(user_profile)
+            .join("AppData")
+            .join("Local")
+            .join("Pymeshub");
+        match fs::create_dir_all(&user_root) {
+            Ok(_) => {
+                eprintln!("Using USERPROFILE: {}", user_root.display());
+                return user_root;
+            }
+            Err(e) => {
+                eprintln!("Warning: Cannot write to USERPROFILE: {}", e);
+            }
+        }
+    }
+
+    // Last resort: use temp directory (NOT IDEAL)
+    if let Ok(temp) = env::var("TEMP") {
+        let temp_root = PathBuf::from(temp).join("Pymeshub-runtime");
+        eprintln!("Warning: Using TEMP directory as fallback: {}", temp_root.display());
+        let _ = fs::create_dir_all(&temp_root);
+        return temp_root;
+    }
+
+    // Absolute last resort
+    eprintln!("Warning: All environment variables failed, using C:\\Pymeshub");
+    PathBuf::from(r"C:\Pymeshub")
 }
 
 fn write_env_files(runtime_root: &Path, paths: &RuntimePaths) -> Result<()> {
@@ -400,15 +501,31 @@ fn open_log(path: PathBuf) -> Result<File> {
 }
 
 fn wait_for_port(port: u16, label: &str) -> Result<()> {
-    for _ in 0..50 {
+    const MAX_ATTEMPTS: usize = 100; // ~50 seconds
+    const INTERVAL_MS: u64 = 500;
+
+    for attempt in 1..=MAX_ATTEMPTS {
         if port_is_open(port) {
+            if attempt > 1 {
+                eprintln!("✓ {label} available on port {port} (attempt {attempt})");
+            }
             return Ok(());
         }
-        thread::sleep(Duration::from_millis(500));
+
+        if attempt == 10 {
+            eprintln!("⏳ Waiting for {label} to start... (this may take a moment)");
+        }
+
+        if attempt == 50 {
+            eprintln!("⚠ Still waiting for {label}... (attempt {attempt}/{MAX_ATTEMPTS})");
+        }
+
+        thread::sleep(Duration::from_millis(INTERVAL_MS));
     }
 
     Err(anyhow!(
-        "El {label} no quedo disponible en localhost:{port}. Revisa los logs del runtime local."
+        "El {label} no quedo disponible en localhost:{port} despues de {MAX_ATTEMPTS} intentos (~50s). \
+         Revisa los logs del runtime local en C:\\ProgramData\\Pymeshub\\logs\\ o %APPDATA%\\Pymeshub\\logs\\"
     ))
 }
 

@@ -86,8 +86,13 @@
     "assets": [
       "dist/schema.sql",
       "prisma/schema.prisma",
-      "node_modules/.prisma/client/**"
+      "prisma/schema.enterprise.sqlite.prisma",
+      "prisma/schema.enterprise.sqlite.sql",
+      "node_modules/.prisma/client/**",
+      "node_modules/prisma/node_modules/@prisma/engines/schema-engine-windows.exe",
+      "node_modules/prisma/node_modules/@prisma/engines/query_engine-windows.dll.node"
     ],
-    "targets": ["node20-win-x64"]
+    "targets": ["node20-win-x64"],
+    "outputPath": "./dist/bin"
   }
 }
