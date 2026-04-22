@@ -5,6 +5,10 @@ pub fn edition() -> &'static str {
     }
 }
 
+pub fn is_offline() -> bool {
+    edition() == "enterprise"
+}
+
 pub fn updater_enabled() -> bool {
     match option_env!("PYMESHUB_UPDATER_ACTIVE") {
         Some("false") | Some("0") => false,

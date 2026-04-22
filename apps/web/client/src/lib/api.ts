@@ -1,5 +1,10 @@
 import { reportClientError } from "@/lib/error-reporting";
-const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
+// In Tauri desktop mode, the WebView is served from http://tauri.localhost
+// and the NestJS sidecar runs locally on port 4000.
+const _isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+const API_BASE = _isTauri
+  ? 'http://localhost:4000'
+  : ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
 const LS_TOKEN_KEY = "pymes_token";
 const LS_SLUG_KEY = "pymes_slug";

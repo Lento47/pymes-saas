@@ -4,9 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.pymeshub.desktop.enterprise",
   "build": {
-    "frontendDist": "../dist",
-    "devUrl": "http://127.0.0.1:5000",
-    "beforeBuildCommand": "npm run build"
+    "frontendDist": "../../web/dist/public",
+    "devUrl": "http://127.0.0.1:5000"
   },
   "app": {
     "withGlobalTauri": true,
@@ -24,7 +23,7 @@
     ],
     "security": {
       "csp": null,
-      "capabilities": ["default"]
+      "capabilities": ["default", "enterprise"]
     }
   },
   "bundle": {
@@ -36,6 +35,10 @@
       "icons/icon.png",
       "icons/icon.ico"
     ],
+    "externalBin": ["binaries/api"],
+    "resources": {
+      "binaries/libquery_engine-windows.dll.node": "./"
+    },
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper"

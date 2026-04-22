@@ -5,6 +5,15 @@ pub fn base_url() -> &'static str {
     }
 }
 
+pub fn is_offline() -> bool {
+    matches!(option_env!("PYMESHUB_EDITION"), Some("enterprise"))
+}
+
 pub fn accept_invite_url(token: &str) -> String {
-    format!("{}/#/accept-invite?token={token}", base_url().trim_end_matches('/'))
+    if is_offline() {
+        // Tauri serves frontend locally; use hash route only
+        format!("/#/accept-invite?token={token}")
+    } else {
+        format!("{}/#/accept-invite?token={token}", base_url().trim_end_matches('/'))
+    }
 }
