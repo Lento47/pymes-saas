@@ -29,7 +29,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msi", "nsis"],
+    "targets": ["msi"],
     "resources": {
       "../../../.enterprise-runtime-release/": "enterprise-runtime/"
     },
