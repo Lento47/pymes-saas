@@ -80,17 +80,30 @@ export class DbInitService implements OnModuleInit {
 
   private findSchemaSql(): string | null {
     const candidates = [
-      // Next to the pkg executable
-      process.execPath ? path.join(path.dirname(process.execPath), 'schema.sql') : null,
-      // Next to the compiled main.js
+      // Next to the compiled main.js (in dist/)
       path.join(__dirname, 'schema.sql'),
+      // In the root dist directory
       path.join(__dirname, '..', '..', '..', 'schema.sql'),
+      // In the current working directory
       path.join(process.cwd(), 'schema.sql'),
       path.join(process.cwd(), 'dist', 'schema.sql'),
-    ].filter(Boolean) as string[];
+      // In application data directory (Windows)
+      process.env.APPDATA
+        ? path.join(process.env.APPDATA, 'Pymeshub', 'schema.sql')
+        : null,
+      // Next to pkg executable (only if execPath is a valid file)
+      process.execPath && process.execPath.endsWith('.exe')
+        ? path.join(path.dirname(process.execPath), 'schema.sql')
+        : null,
+    ].filter((p): p is string => Boolean(p) && typeof p === 'string');
 
     for (const p of candidates) {
-      if (fs.existsSync(p)) return p;
+      try {
+        if (fs.existsSync(p)) return p;
+      } catch {
+        // Ignore paths that cause errors
+        continue;
+      }
     }
     return null;
   }
