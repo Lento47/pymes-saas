@@ -1,0 +1,87 @@
+version: '3.9'
+
+# Production override — use together with docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Key differences from development:
+#   - No exposed ports for postgres / redis / minio (internal traffic only)
+#   - restart: always on every service
+#   - Secrets loaded from Docker secrets instead of plain env vars
+#   - Volumes declared as external (managed by the platform / cloud provider)
+
+services:
+  postgres:
+    # Remove host-visible port; only reachable within pymes-net
+    ports: []
+    restart: always
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/db_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: ${DB_NAME:-saas_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    secrets:
+      - db_user
+      - db_password
+
+  redis:
+    ports: []
+    restart: always
+    volumes:
+      - redis_data:/data
+
+  minio:
+    ports: []
+    restart: always
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/storage_access_key
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/storage_secret_key
+    volumes:
+      - minio_data:/data
+    secrets:
+      - storage_access_key
+      - storage_secret_key
+
+  api:
+    restart: always
+    # In production, env_file is replaced by Docker secrets / platform env injection.
+    # Remove the env_file declaration and pass variables via your orchestrator
+    # (e.g. ECS task definition, Kubernetes secret, Fly.io secrets).
+    env_file: []
+    environment:
+      NODE_ENV: production
+    secrets:
+      - jwt_secret
+      - db_url
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+# Declare volumes as external so they are managed by your cloud provider
+# (e.g. AWS EBS, Google Persistent Disk, DigitalOcean Volumes).
+# Create them beforehand:  docker volume create --name=postgres_data
+volumes:
+  postgres_data:
+    external: true
+  redis_data:
+    external: true
+  minio_data:
+    external: true
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+# Each secret must be created before deploying:
+#   echo "value" | docker secret create db_user -
+# In non-Swarm environments (e.g. Compose on a single host), replace the
+# `external: true` block below with `file: ./secrets/<name>.txt` pointing
+# to files that are NOT committed to version control.
+secrets:
+  db_user:
+    external: true
+  db_password:
+    external: true
+  db_url:
+    external: true
+  jwt_secret:
+    external: true
+  storage_access_key:
+    external: true
+  storage_secret_key:
+    external: true

@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pymes-pg
+    environment:
+      POSTGRES_USER: ${DB_USER:-pymes}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pymes123}
+      POSTGRES_DB: ${DB_NAME:-saas_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pymes} -d ${DB_NAME:-saas_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pymes-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: pymes-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pymes-net
+
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: pymes-minio
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:-minio}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:-minio123}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pymes-net
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: pymes-api
+    env_file: .env
+    environment:
+      # Red Docker: sustituye localhost/127.0.0.1 del .env local
+      DATABASE_URL: postgresql://${DB_USER:-pymes}:${DB_PASSWORD:-pymes123}@postgres:5432/${DB_NAME:-saas_db}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      STORAGE_ENDPOINT: http://minio:9000
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - pymes-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  pymes-net:
+    driver: bridge
