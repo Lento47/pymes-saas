@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { serializeJson } from '../../common/prisma/enterprise-sqlite-json';
 
 interface ClassifierJobData {
   messageId: string;
@@ -40,13 +41,13 @@ export class ClassifierProcessor {
     await this.prisma.message.update({
       where: { id: messageId },
       data: {
-        ai_classification_json: {
+        ai_classification_json: serializeJson({
           isUrgent,
           hasDate,
           category,
           sentiment,
           processed_at: new Date().toISOString(),
-        },
+        }),
       },
     });
 

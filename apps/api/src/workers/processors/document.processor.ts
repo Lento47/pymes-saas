@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { serializeJson } from '../../common/prisma/enterprise-sqlite-json';
 
 interface DocumentJobData {
   documentId: string;
@@ -50,10 +51,10 @@ export class DocumentProcessor {
         ocr_text,
         summary_text,
         status: 'PROCESSED',
-        extracted_data_json: {
+        extracted_data_json: serializeJson({
           docType,
           processed_at: new Date().toISOString(),
-        },
+        }),
         updated_at: new Date(),
       },
     });

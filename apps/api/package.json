@@ -13,6 +13,7 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force && npm run db:seed",
     "db:generate": "prisma generate",
+    "db:generate:enterprise": "node ./scripts/prepare-enterprise-prisma.mjs",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",

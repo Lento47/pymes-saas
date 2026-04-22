@@ -14,6 +14,7 @@ import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AiProvider, AiService } from '../ai/ai.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 import { AuditService } from '../audit/audit.service';
+import { parseJsonRecord, serializeJson } from '../common/prisma/enterprise-sqlite-json';
 import {
   PERMISSION_KEYS,
   PERMISSION_LABELS,
@@ -616,7 +617,9 @@ export class WorkspacesService {
     });
     if (!membership) throw new NotFoundException('Miembro no encontrado.');
 
-    const overrides = (membership.permissions_json as Record<string, boolean> | null) ?? null;
+    const overrides = membership.permissions_json
+      ? (parseJsonRecord(membership.permissions_json) as Record<string, boolean>)
+      : null;
     const resolved = resolvePermissions(membership.role, overrides);
 
     return {
@@ -662,7 +665,9 @@ export class WorkspacesService {
       );
     }
 
-    const current = (membership.permissions_json as Record<string, boolean> | null) ?? {};
+    const current = membership.permissions_json
+      ? (parseJsonRecord(membership.permissions_json) as Record<string, boolean>)
+      : {};
     const next: Record<string, boolean> = { ...current };
     const validKeys = new Set<string>(PERMISSION_KEYS);
 
@@ -687,7 +692,7 @@ export class WorkspacesService {
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
       },
-      data: { permissions_json: finalOverrides as any },
+      data: { permissions_json: serializeJson(finalOverrides) },
     });
 
     await this.audit.log(workspaceId, {
@@ -695,7 +700,11 @@ export class WorkspacesService {
       action: 'member.permissions_updated',
       entity_type: 'workspace_user',
       entity_id: updated.id,
-      before: { overrides: (membership.permissions_json as Record<string, boolean> | null) ?? {} },
+      before: {
+        overrides: membership.permissions_json
+          ? (parseJsonRecord(membership.permissions_json) as Record<string, boolean>)
+          : {},
+      },
       after: { overrides: finalOverrides ?? {} },
     });
 

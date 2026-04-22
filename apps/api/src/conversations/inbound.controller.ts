@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MessagesService } from './messages.service';
+import { parseJsonRecord } from '../common/prisma/enterprise-sqlite-json';
 
 /**
  * Webhook público — sin JWT, accesible por proveedores externos.
@@ -179,16 +180,16 @@ export class InboundController {
     wabaId: string,
   ): Promise<string | null> {
     // config_json is stored as JSON — use Prisma's JSON filter
-    const channel = await this.prisma.channel.findFirst({
+    const channels = await this.prisma.channel.findMany({
       where: {
         type: 'WHATSAPP',
         status: 'ACTIVE',
-        OR: [
-          { config_json: { path: ['phone_number_id'], equals: phoneNumberId } },
-          { config_json: { path: ['waba_id'], equals: wabaId } },
-        ],
       },
-      select: { workspace_id: true },
+      select: { workspace_id: true, config_json: true },
+    });
+    const channel = channels.find((candidate) => {
+      const config = parseJsonRecord(candidate.config_json);
+      return config.phone_number_id === phoneNumberId || config.waba_id === wabaId;
     });
     return channel?.workspace_id ?? null;
   }

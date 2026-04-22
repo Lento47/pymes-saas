@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { parseJsonRecord } from '../../common/prisma/enterprise-sqlite-json';
 import { PERMISSIONS_METADATA_KEY } from '../decorators/require-permission.decorator';
 import {
   PermissionKey,
@@ -46,7 +47,9 @@ export class PermissionsGuard implements CanActivate {
 
     if (!membership) throw new ForbiddenException('Sin acceso a este workspace.');
 
-    const overrides = (membership.permissions_json as Record<string, boolean> | null) ?? null;
+    const overrides = membership.permissions_json
+      ? (parseJsonRecord(membership.permissions_json) as Record<string, boolean>)
+      : null;
 
     for (const key of required) {
       if (!hasPermission(membership.role, overrides, key)) {

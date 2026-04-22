@@ -19,6 +19,7 @@ import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { CreateInvoicePaymentDto } from './dto/create-invoice-payment.dto';
+import { parseJsonRecord } from '../common/prisma/enterprise-sqlite-json';
 
 @Injectable()
 export class InvoicesService {
@@ -240,7 +241,12 @@ export class InvoicesService {
     const finalStatus =
       dto.status !== undefined
         ? dto.status
-        : this.computeInvoiceStatus(invoice.status, this.getAmountPaid(invoice), Number(invoice.amount), invoice.due_date);
+        : this.computeInvoiceStatus(
+            invoice.status as InvoiceStatus,
+            this.getAmountPaid(invoice),
+            Number(invoice.amount),
+            invoice.due_date,
+          );
 
     const normalized =
       finalStatus !== invoice.status
@@ -317,7 +323,7 @@ export class InvoicesService {
 
       const amountPaid = this.getAmountPaid(refreshed);
       const nextStatus = this.computeInvoiceStatus(
-        refreshed.status,
+        refreshed.status as InvoiceStatus,
         amountPaid,
         Number(refreshed.amount),
         refreshed.due_date,
@@ -387,9 +393,7 @@ export class InvoicesService {
     }
 
     const workspaceSettings =
-      settings?.settings_json && typeof settings.settings_json === 'object'
-        ? (settings.settings_json as Record<string, any>)
-        : {};
+      parseJsonRecord(settings?.settings_json);
     const missingWorkspaceSettings = this.getMissingWorkspaceHaciendaSettings(workspaceSettings);
     if (missingWorkspaceSettings.length) {
       throw new BadRequestException(
@@ -397,8 +401,14 @@ export class InvoicesService {
       );
     }
 
-    const preparedClave = invoice.clave ?? this.buildClave(workspaceTaxProfile.identification_number, invoice.document_type);
-    const preparedConsecutivo = invoice.consecutivo ?? this.buildConsecutivo(invoice.document_type);
+    const preparedClave =
+      invoice.clave ??
+      this.buildClave(
+        workspaceTaxProfile.identification_number,
+        invoice.document_type as InvoiceDocumentType,
+      );
+    const preparedConsecutivo =
+      invoice.consecutivo ?? this.buildConsecutivo(invoice.document_type as InvoiceDocumentType);
     const issueDate = invoice.issue_date ?? new Date();
 
     const xml = this.haciendaXmlBuilder.buildInvoiceXml({
