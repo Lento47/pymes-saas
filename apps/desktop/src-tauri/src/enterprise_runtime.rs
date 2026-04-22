@@ -86,10 +86,10 @@ fn boot_inner(app: AppHandle) -> Result<()> {
         emit_status(
             &app,
             "starting",
-            "Aplicando migraciones y arrancando el API local...",
+            "Inicializando la base local y arrancando el API...",
             &paths,
         );
-        run_prisma_migrate(&node_path, &api_dir, &paths)?;
+        initialize_local_database(&node_path, &api_dir, &paths)?;
         spawn_api(&node_path, &api_dir, &paths)?;
     } else {
         emit_status(
@@ -206,9 +206,43 @@ fn write_env_files(runtime_root: &Path, paths: &RuntimePaths) -> Result<()> {
     api_env.insert("PYMESHUB_EDITION".into(), "enterprise".into());
     api_env.insert("PYMESHUB_STORAGE_MODE".into(), "local".into());
     api_env.insert(
-        "PYMESHUB_STORAGE_ROOT".into(),
-        paths.data_dir.display().to_string(),
+        "DATABASE_URL".into(),
+        sqlite_database_url(&paths.data_dir.join("pymeshub.db")),
     );
+    api_env.insert(
+        "PYMESHUB_STORAGE_ROOT".into(),
+        normalized_runtime_path(&paths.data_dir),
+    );
+    let prisma_engines_dir = runtime_root
+        .join("a")
+        .join("node_modules")
+        .join("prisma")
+        .join("node_modules")
+        .join("@prisma")
+        .join("engines");
+    api_env.insert(
+        "PRISMA_SCHEMA_ENGINE_BINARY".into(),
+        normalized_runtime_path(&prisma_engines_dir.join(if cfg!(windows) {
+            "schema-engine-windows.exe"
+        } else {
+            "schema-engine"
+        })),
+    );
+    api_env.insert(
+        "PRISMA_QUERY_ENGINE_LIBRARY".into(),
+        normalized_runtime_path(&prisma_engines_dir.join(if cfg!(windows) {
+            "query_engine-windows.dll.node"
+        } else {
+            "libquery_engine.so.node"
+        })),
+    );
+    if api_env
+        .get("JWT_SECRET")
+        .map(|value| value.trim().is_empty() || value == "replace-with-a-long-random-secret")
+        .unwrap_or(true)
+    {
+        api_env.insert("JWT_SECRET".into(), generate_secret());
+    }
     api_env.insert(
         "CORS_ORIGIN".into(),
         "http://127.0.0.1:5000,http://localhost:5000".into(),
@@ -258,7 +292,12 @@ fn write_env_file(path: &Path, values: &BTreeMap<String, String>) -> Result<()> 
     Ok(())
 }
 
-fn run_prisma_migrate(node_path: &Path, api_dir: &Path, paths: &RuntimePaths) -> Result<()> {
+fn initialize_local_database(node_path: &Path, api_dir: &Path, paths: &RuntimePaths) -> Result<()> {
+    let database_path = paths.data_dir.join("pymeshub.db");
+    if database_path.exists() && fs::metadata(&database_path)?.len() > 0 {
+        return Ok(());
+    }
+
     let prisma_cli = api_dir
         .join("node_modules")
         .join("prisma")
@@ -269,6 +308,18 @@ fn run_prisma_migrate(node_path: &Path, api_dir: &Path, paths: &RuntimePaths) ->
             "No se encontro prisma CLI dentro del runtime enterprise empaquetado"
         ));
     }
+    let schema_file = api_dir.join("schema.sql");
+    if !schema_file.exists() {
+        return Err(anyhow!(
+            "No se encontro schema.sql dentro del runtime enterprise empaquetado"
+        ));
+    }
+    let prisma_schema = api_dir.join("prisma").join("schema.prisma");
+    if !prisma_schema.exists() {
+        return Err(anyhow!(
+            "No se encontro prisma/schema.prisma dentro del runtime enterprise empaquetado"
+        ));
+    }
 
     let log_file = open_log(paths.logs_dir.join("prisma.log"))?;
     let log_file_error = log_file.try_clone()?;
@@ -276,8 +327,12 @@ fn run_prisma_migrate(node_path: &Path, api_dir: &Path, paths: &RuntimePaths) ->
     let mut command = Command::new(node_path);
     command
         .arg(prisma_cli)
-        .arg("migrate")
-        .arg("deploy")
+        .arg("db")
+        .arg("execute")
+        .arg("--file")
+        .arg(schema_file)
+        .arg("--schema")
+        .arg(prisma_schema)
         .current_dir(api_dir)
         .envs(read_env_file(&paths.config_file)?)
         .stdout(Stdio::from(log_file))
@@ -286,11 +341,11 @@ fn run_prisma_migrate(node_path: &Path, api_dir: &Path, paths: &RuntimePaths) ->
 
     let status = command
         .status()
-        .context("No se pudieron ejecutar las migraciones de Prisma")?;
+        .context("No se pudo inicializar la base local de Prisma")?;
 
     if !status.success() {
         return Err(anyhow!(
-            "Las migraciones fallaron. Revisa prisma.log en {}",
+            "La inicializacion de la base local fallo. Revisa prisma.log en {}",
             paths.logs_dir.display()
         ));
     }
@@ -380,4 +435,23 @@ fn hide_console(command: &mut Command) {
     {
         command.creation_flags(CREATE_NO_WINDOW);
     }
+}
+
+fn generate_secret() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+
+    format!("pymeshub-enterprise-{ts:x}")
+}
+
+fn normalized_runtime_path(path: &Path) -> String {
+    path.to_string_lossy().replace("\\\\?\\", "")
+}
+
+fn sqlite_database_url(path: &Path) -> String {
+    format!("file:{}", normalized_runtime_path(path).replace('\\', "/"))
 }

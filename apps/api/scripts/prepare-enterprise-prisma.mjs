@@ -114,7 +114,21 @@ function transformLine(line, enums) {
 }
 
 function runPrisma(args, options = {}) {
-  const prismaBin = path.join(apiRoot, "node_modules", ".bin", process.platform === "win32" ? "prisma.cmd" : "prisma");
+  const localPrismaBin = path.join(
+    apiRoot,
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? "prisma.cmd" : "prisma"
+  );
+  const workspacePrismaBin = path.join(
+    apiRoot,
+    "..",
+    "..",
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? "prisma.cmd" : "prisma"
+  );
+  const prismaBin = existsSync(localPrismaBin) ? localPrismaBin : workspacePrismaBin;
   const execOptions = {
     cwd: apiRoot,
     encoding: options.captureOutput ? "utf8" : undefined,
