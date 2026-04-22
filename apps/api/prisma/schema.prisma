@@ -122,6 +122,11 @@ enum DocumentStatus {
   ARCHIVED
 }
 
+enum DocumentStorageMode {
+  REMOTE
+  LOCAL
+}
+
 enum TaskStatus {
   TODO
   IN_PROGRESS
@@ -560,8 +565,15 @@ model Document {
   conversation_id     String?
   task_id             String?
   file_name           String
+  original_file_name  String?
   mime_type           String
   storage_key         String         // S3/MinIO object key
+  storage_mode        DocumentStorageMode @default(REMOTE)
+  storage_relative_path String?
+  checksum            String?
+  category            String         @default("document")
+  entity_type         String?
+  entity_id           String?
   file_size           Int            // bytes
   ocr_text            String?        @db.Text
   extracted_data_json Json?          @db.JsonB
@@ -579,6 +591,7 @@ model Document {
 
   @@index([workspace_id])
   @@index([workspace_id, status])
+  @@index([workspace_id, storage_mode])
   @@index([workspace_id, contact_id])
   @@index([workspace_id, conversation_id])
   @@map("documents")

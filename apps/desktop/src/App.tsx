@@ -1,21 +1,16 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Route, Switch } from 'wouter';
-import { LoginPage } from './pages/Login';
-import { DashboardPage } from './pages/Dashboard';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1 },
-  },
-});
-
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Switch>
-        <Route path="/" component={DashboardPage} />
-        <Route path="/login" component={LoginPage} />
-      </Switch>
-    </QueryClientProvider>
+    <main className="shell-preview">
+      <div className="shell-card">
+        <p className="shell-kicker">Pymeshub Desktop</p>
+        <h1>Shell remoto listo para Tauri</h1>
+        <p>
+          Este frontend local solo existe para el empaquetado. La app de escritorio carga una
+          URL configurada en build con fallback a
+          <strong> http://127.0.0.1:5000 </strong>
+          dentro de WebView2.
+        </p>
+      </div>
+    </main>
   );
 }
