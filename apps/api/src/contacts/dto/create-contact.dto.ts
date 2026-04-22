@@ -6,7 +6,7 @@ import {
   IsString,
   Length,
 } from 'class-validator';
-import { ContactType } from '@prisma/client';
+import { ContactType } from '../../common/types/enums';
 
 export class CreateContactDto {
   @IsEnum(ContactType)

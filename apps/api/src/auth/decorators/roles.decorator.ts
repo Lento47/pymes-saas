@@ -1,5 +1,4 @@
 import { SetMetadata } from '@nestjs/common';
-import { WorkspaceUserRole } from '@prisma/client';
 
 export const ROLES_KEY = 'roles';
 
@@ -7,8 +6,8 @@ export const ROLES_KEY = 'roles';
  * Decora un endpoint con los roles mínimos requeridos.
  *
  * @example
- * @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
- * @Roles(WorkspaceUserRole.OWNER)
+ * @Roles('ADMIN', 'OWNER')
+ * @Roles('OWNER')
  */
-export const Roles = (...roles: WorkspaceUserRole[]) =>
+export const Roles = (...roles: string[]) =>
   SetMetadata(ROLES_KEY, roles);

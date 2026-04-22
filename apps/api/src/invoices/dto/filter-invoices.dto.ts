@@ -13,7 +13,7 @@ import {
   InvoiceDocumentType,
   InvoiceIssuanceMode,
   InvoiceStatus,
-} from '@prisma/client';
+} from '../../common/types/enums';
 
 export class FilterInvoicesDto {
   @IsOptional()

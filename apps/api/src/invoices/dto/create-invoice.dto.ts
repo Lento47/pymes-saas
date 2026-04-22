@@ -12,7 +12,7 @@ import {
   HaciendaStatus,
   InvoiceDocumentType,
   InvoiceIssuanceMode,
-} from '@prisma/client';
+} from '../../common/types/enums';
 import { InvoiceLineDto } from './invoice-line.dto';
 
 export class CreateInvoiceDto {

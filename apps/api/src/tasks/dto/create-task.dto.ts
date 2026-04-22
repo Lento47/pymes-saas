@@ -5,7 +5,7 @@ import {
   IsString,
   Length,
 } from 'class-validator';
-import { Priority, TaskSource } from '@prisma/client';
+import { Priority, TaskSource } from '../../common/types/enums';
 
 export class CreateTaskDto {
   @IsString()

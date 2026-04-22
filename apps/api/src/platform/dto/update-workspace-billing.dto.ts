@@ -3,7 +3,7 @@ import {
   BillingProvider,
   WorkspacePlan,
   WorkspaceSubscriptionStatus,
-} from '@prisma/client';
+} from '../../common/types/enums';
 import {
   IsBoolean,
   IsDateString,

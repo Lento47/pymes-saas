@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { WorkspaceUserRole } from '@prisma/client';
+import { WorkspaceUserRole } from '../common/types/enums';
 import * as bcrypt from 'bcrypt';
 import { randomBytes, createHash } from 'crypto';
 import { Resend } from 'resend';
