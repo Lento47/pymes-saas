@@ -168,6 +168,81 @@ Una sola base de datos PostgreSQL es la fuente de verdad para ambos clientes.
 
 ---
 
+## Recursos, licencias y cumplimiento etico open source
+
+PymeHub combina tres tipos de recursos:
+
+1. **Software open source** embebido o desplegado por el equipo.
+2. **Infraestructura self-hosted o de terceros** con obligaciones de licencia que dependen de la version o del modo de uso.
+3. **APIs y servicios propietarios** que **no** deben presentarse como open source, aunque se integren con el producto.
+
+### Resumen del inventario actual
+
+- El monorepo declara **143 dependencias directas** entre `apps/api`, `apps/web`, `apps/desktop` y `packages/shared-types`.
+- En esas dependencias directas predominan licencias permisivas: **114 MIT**, **18 Apache-2.0**, **5 MIT OR Apache-2.0**, **2 Apache-2.0 OR MIT**, **2 Unlicense**, **1 BSD-2-Clause** y **1 ISC**.
+- La capa desktop agrega dependencias Rust/Tauri bajo esquemas permisivos o duales MIT/Apache-2.0.
+- Los servicios de IA, correo y pagos deben tratarse como **proveedores externos bajo terminos comerciales**, no como componentes OSS del producto.
+
+### Recursos open source principales usados por el programa
+
+| Recurso | Uso en PymeHub | Licencia / modelo |
+| --- | --- | --- |
+| NestJS | Backend API | MIT |
+| React, Express, Vite, Socket.IO | Cliente web y shell de desarrollo | MIT |
+| Radix UI, TailwindCSS, React Hook Form, Zod, Framer Motion, BullMQ | UI y flujo de aplicacion | Mayoritariamente MIT |
+| TypeScript, Prisma, OpenTelemetry, AWS SDK JS | Tooling, ORM, observabilidad e integraciones | Apache-2.0 |
+| Tauri 2 + plugins oficiales | App desktop nativa | MIT o Apache-2.0 segun paquete |
+| PostgreSQL | Base de datos principal | PostgreSQL License |
+| MinIO | Storage S3-compatible local/self-hosted | GNU AGPLv3 |
+| Wouter | Routing ligero | Unlicense |
+| Lucide React | Iconografia | ISC |
+| dotenv | Variables de entorno | BSD-2-Clause |
+
+### Recursos que requieren lectura especial de cumplimiento
+
+| Recurso | Estado de cumplimiento etico/open source | Implicacion practica |
+| --- | --- | --- |
+| Redis | **Depende de la version**. Redis `<= 7.2` sigue bajo `BSD-3-Clause`; Redis Community Edition `7.4` a `7.8` usa `RSALv2` o `SSPLv1`; Redis `8+` agrega opcion `AGPLv3`. | Si el objetivo es permanecer en software OSI-only, conviene fijar `Redis 7.2.x` o evaluar una alternativa como Valkey antes de distribuir o vender una solucion administrada. |
+| MinIO | Open source bajo `AGPLv3`. | Antes de redistribuir, modificar o empaquetar MinIO con oferta comercial, revisar obligaciones AGPL con asesoria legal. |
+| Tauri desktop | El codigo base es open source, pero la **distribucion del instalador** exige conservar avisos, terminos y evidencia de aceptacion. | Ver `docs/product-compliance/windows-installer-license-requirements.md`. |
+| AI providers (`OpenAI`, `Anthropic`, `Gemini`, `Moonshot`) | **No son open source**; se consumen por API bajo terminos del proveedor. | Deben declararse como terceros, con disclosure al cliente y minimizacion de datos. |
+| Resend | Servicio externo propietario para correo transaccional/inbound. | Debe mantenerse en listas de subprocesadores, privacidad y vendor review. |
+| AWS S3 / hosting / pasarela de pago | Pueden involucrar software OSS debajo, pero para PymeHub operan como **servicios comerciales**. | El cumplimiento depende de contrato, DPA, privacidad, retencion y seguridad, no solo de licencia de codigo. |
+
+### Referencias oficiales recomendadas
+
+- Redis licensing: <https://redis.io/legal/licenses/>
+- PostgreSQL License: <https://www.postgresql.org/about/licence/>
+- MinIO licensing overview: <https://charts.min.io/>
+- Tauri repository licensing: <https://github.com/tauri-apps/tauri>
+- OpenAI legal/policies: <https://openai.com/policies/>
+- Resend legal: <https://resend.com/legal>
+
+### Criterios de cumplimiento etico que este repo ya reconoce
+
+- **No confundir OSS con SaaS propietario**: el mapa de servicios de terceros ya separa IA, correo, storage, hosting y pagos en [`docs/architecture/third-party-services-map.md`](./docs/architecture/third-party-services-map.md).
+- **Disclosure de IA y revision humana**: el producto ya documenta minimizacion, advertencias y supervision humana en [`docs/product-compliance/ai-usage-and-disclosure.md`](./docs/product-compliance/ai-usage-and-disclosure.md).
+- **Registro de subprocesadores**: los proveedores que traten datos del cliente deben reflejarse en [`docs/security/subprocessors-list.md`](./docs/security/subprocessors-list.md).
+- **Requisitos de instalacion Windows**: cualquier build desktop distribuida debe mostrar licencia, privacidad y avisos relevantes segun [`docs/product-compliance/windows-installer-license-requirements.md`](./docs/product-compliance/windows-installer-license-requirements.md).
+
+### Obligaciones minimas recomendadas antes de distribuir
+
+- Añadir un archivo `LICENSE` en la raiz para dejar claro bajo que terminos se publica **el codigo propio de este repositorio**.
+- Generar un `THIRD_PARTY_NOTICES.md` o equivalente para builds desktop/enterprise con avisos de dependencias y licencias aplicables.
+- Congelar y documentar la version exacta de Redis que se autoriza en despliegues para evitar caer accidentalmente en una licencia no alineada con la politica OSS deseada.
+- Revisar cualquier uso de MinIO en distribuciones comerciales o appliance/self-hosted con criterio AGPL, no solo tecnico.
+- Completar los campos pendientes (`[POR_CONFIRMAR]`, `[FECHA]`) en `subprocessors-list.md` antes de produccion con datos reales de region, estado y revision.
+- Mantener el principio de minimizacion de datos en prompts, OCR, email y observabilidad.
+
+### Estado actual y brechas visibles
+
+- Este repositorio **todavia no expone una licencia raiz visible** para el codigo propio.
+- No existe aun un archivo consolidado de `NOTICE`, SBOM o inventario legal versionado para distribucion.
+- El cumplimiento de proveedores externos esta documentado, pero varios registros siguen como plantilla y requieren cierre operativo.
+- Este README resume el estado tecnico/documental del repo, pero **no sustituye revision legal profesional** para una salida comercial o enterprise.
+
+---
+
 ## Getting Started
 
 ### Prerrequisitos

@@ -1,7 +1,11 @@
 mod app_profile;
 mod app_url;
 mod deep_link;
+<<<<<<< Updated upstream
 mod sidecar;
+=======
+mod enterprise_runtime;
+>>>>>>> Stashed changes
 mod updater;
 
 use tauri::Manager;
@@ -20,6 +24,7 @@ pub fn run() {
 
     builder
         .setup(|app| {
+<<<<<<< Updated upstream
             if app_profile::is_offline() {
                 setup_offline(app)?;
             } else {
@@ -28,6 +33,16 @@ pub fn run() {
 
             deep_link::configure(app)?;
 
+=======
+            deep_link::configure(app)?;
+            if app_profile::edition() == "enterprise" && app_url::is_local_target() {
+                enterprise_runtime::boot(app.handle().clone());
+            } else if let Some(window) = app.get_webview_window("main") {
+                let target = Url::parse(app_url::base_url())
+                    .map_err(|error| tauri::Error::Anyhow(anyhow::anyhow!(error.to_string())))?;
+                let _ = window.navigate(target);
+            }
+>>>>>>> Stashed changes
             if app_profile::updater_enabled() {
                 updater::check_for_updates(app.handle().clone());
             }

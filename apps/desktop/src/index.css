@@ -48,3 +48,60 @@ body {
   color: rgba(236, 254, 255, 0.84);
   line-height: 1.6;
 }
+
+.shell-message {
+  margin-bottom: 18px;
+}
+
+.shell-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  background: rgba(103, 232, 249, 0.12);
+  color: #a5f3fc;
+  margin-bottom: 20px;
+}
+
+.shell-badge[data-stage="error"] {
+  background: rgba(248, 113, 113, 0.16);
+  color: #fecaca;
+}
+
+.shell-badge[data-stage="ready"] {
+  background: rgba(74, 222, 128, 0.16);
+  color: #bbf7d0;
+}
+
+.shell-details {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(12, 34, 44, 0.7);
+  border: 1px solid rgba(125, 211, 252, 0.14);
+}
+
+.shell-details span {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  color: rgba(165, 243, 252, 0.72);
+  margin-bottom: 4px;
+}
+
+.shell-details strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.shell-note {
+  font-size: 0.92rem;
+  color: rgba(236, 254, 255, 0.68);
+}

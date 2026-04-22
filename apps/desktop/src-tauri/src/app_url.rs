@@ -1,3 +1,5 @@
+use url::Url;
+
 pub fn base_url() -> &'static str {
     match option_env!("PYMESHUB_REMOTE_URL") {
         Some(url) => url,
@@ -16,4 +18,12 @@ pub fn accept_invite_url(token: &str) -> String {
     } else {
         format!("{}/#/accept-invite?token={token}", base_url().trim_end_matches('/'))
     }
+}
+
+pub fn is_local_target() -> bool {
+    let Ok(url) = Url::parse(base_url()) else {
+        return false;
+    };
+
+    matches!(url.host_str(), Some("127.0.0.1") | Some("localhost"))
 }

@@ -1,0 +1,103 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { ChannelsService } from './channels.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthUser } from '../auth/strategies/jwt.strategy';
+import { ConfigureEmailDto } from './dto/configure-email.dto';
+import { ConfigureWhatsAppDto } from './dto/configure-whatsapp.dto';
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('channels')
+export class ChannelsController {
+  constructor(private readonly channelsService: ChannelsService) {}
+
+  @Post()
+  @Roles('ADMIN' as any)
+  create(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { type: string; name: string; provider?: string },
+  ) {
+    return this.channelsService.create(user.workspace_id, body);
+  }
+
+  @Get()
+  findAll(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.channelsService.findAll(workspaceId);
+  }
+
+  @Get(':id')
+  findOne(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+  ) {
+    return this.channelsService.findOne(workspaceId, id);
+  }
+
+  @Patch(':id')
+  @Roles('ADMIN' as any)
+  update(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+    @Body() body: { name?: string; status?: string },
+  ) {
+    return this.channelsService.update(workspaceId, id, body);
+  }
+
+  @Delete(':id')
+  @Roles('ADMIN' as any)
+  remove(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+  ) {
+    return this.channelsService.remove(workspaceId, id);
+  }
+
+  @Post(':id/connect')
+  @Roles('ADMIN' as any)
+  connect(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+  ) {
+    return this.channelsService.connect(workspaceId, id);
+  }
+
+  @Post(':id/disconnect')
+  @Roles('ADMIN' as any)
+  disconnect(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+  ) {
+    return this.channelsService.disconnect(workspaceId, id);
+  }
+
+  @Post(':id/configure-email')
+  @Roles('ADMIN' as any)
+  configureEmail(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+    @Body() dto: ConfigureEmailDto,
+  ) {
+    return this.channelsService.configureEmail(workspaceId, id, dto);
+  }
+
+  @Post(':id/configure-whatsapp')
+  @Roles('ADMIN' as any)
+  configureWhatsApp(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+    @Body() dto: ConfigureWhatsAppDto,
+  ) {
+    return this.channelsService.configureWhatsApp(workspaceId, id, dto);
+  }
+}
