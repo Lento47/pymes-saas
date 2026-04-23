@@ -1,0 +1,35 @@
+name = "pymeshub-web"
+main = "index.js"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "apps/web/dist/public"
+
+[env.production]
+name = "pymeshub-web-prod"
+routes = [
+  { pattern = "pymeshub.com", zone_name = "pymeshub.com" },
+  { pattern = "www.pymeshub.com", zone_name = "pymeshub.com" }
+]
+
+[[env.production.routes]]
+pattern = "api.pymeshub.com/*"
+zone_name = "pymeshub.com"
+custom_domain = true
+
+[build]
+command = "cd apps/web && pnpm install && pnpm run build"
+watch_paths = ["apps/web/**/*.{ts,tsx,css}"]
+
+[[build.upload.rules]]
+type = "CompiledContentType"
+globs = ["**/*.wasm"]
+fallthrough = true
+
+[[build.upload.rules]]
+type = "text/javascript"
+globs = ["**/*.js"]
+fallthrough = true
+
+[[build.upload.rules]]
+type = "application/typescript"
+globs = ["**/*.ts"]
+fallthrough = true
