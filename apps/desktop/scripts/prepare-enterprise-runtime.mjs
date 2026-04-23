@@ -28,8 +28,28 @@ for (const entry of readdirSync(outputRoot)) {
 runPnpm(["--dir", repoRoot, "--filter", "saas-api", "db:generate:enterprise"]);
 ensureBuildArtifacts("saas-api", apiDistSource, ["--dir", repoRoot, "--filter", "saas-api", "build"]);
 ensureBuildArtifacts("rest-express", webDistSource, ["--dir", repoRoot, "--filter", "rest-express", "build"]);
-prepareIsolatedProductionInstall(apiSourceRoot, apiInstallOutput);
-prepareIsolatedProductionInstall(webSourceRoot, webInstallOutput);
+prepareIsolatedProductionInstall(apiSourceRoot, apiInstallOutput, {
+  // OpenTelemetry is loaded behind an OTEL_ENABLED env check via dynamic
+  // require(), so the packages are never imported in the desktop runtime.
+  // @aws-sdk/* is kept because RemoteObjectStorageService imports it
+  // statically and removing it would crash NestJS at module init.
+  dropDepPatterns: [/^@opentelemetry\//],
+});
+// The web SERVER (apps/web/server/index.ts) only imports a tiny set of
+// modules at runtime — everything else in apps/web/package.json is build-time
+// only or client-only (React, Radix, recharts, react-icons, etc.).
+// Whitelist exactly what the server needs to keep node_modules minimal.
+prepareIsolatedProductionInstall(webSourceRoot, webInstallOutput, {
+  keepOnly: [
+    "express",
+    "http-proxy-middleware",
+    "nanoid",
+    "ws",
+    "zod",
+    "zod-validation-error",
+    "dotenv",
+  ],
+});
 copyRuntimeSkeleton(apiInstallOutput, apiOutput, ["node_modules", "package.json"]);
 copyRuntimeSkeleton(apiSourceRoot, apiOutput, [".env.enterprise.example", "prisma"]);
 copyRuntimeSkeleton(webInstallOutput, webOutput, ["node_modules", "package.json"]);
@@ -40,6 +60,7 @@ copyWorkspaceRuntimePackage("bcrypt", apiOutput);
 ensurePrismaCliDependencies(apiSourceRoot, apiOutput);
 stripPackagingNoise(apiOutput);
 stripPackagingNoise(webOutput);
+stripNonWindowsPrismaEngines(apiOutput);
 copyRuntimeBuildArtifacts(apiDistSource, path.join(apiOutput, "dist"));
 copyRuntimeBuildArtifacts(webDistSource, path.join(webOutput, "dist"));
 pruneRuntimePackage(apiOutput, new Set(["dist", "node_modules", "package.json", "prisma", ".env.enterprise.example"]));
@@ -152,27 +173,73 @@ function stripPackagingNoise(root) {
     ".map",
     ".ts",
     ".tsx",
+    ".flow",
+    ".html",
   ]);
   const removableDirectories = new Set([
-    ".bin",
     "__tests__",
     "__mocks__",
     "coverage",
     "docs",
+    "doc",
     "example",
     "examples",
     "test",
     "tests",
+    "spec",
+    "specs",
+    "demo",
+    ".github",
+    ".vscode",
+    ".idea",
+    "benchmark",
+    "benchmarks",
+    "fixtures",
+  ]);
+  const removableFileNames = new Set([
+    "license",
+    "license.txt",
+    "license-mit",
+    "changelog",
+    "changelog.md",
+    "history.md",
+    "authors",
+    "contributors",
+    "contributing.md",
+    "code_of_conduct.md",
+    ".npmignore",
+    ".gitignore",
+    ".eslintrc",
+    ".prettierrc",
+    ".babelrc",
+    ".travis.yml",
+    "appveyor.yml",
+    "yarn.lock",
+    "package-lock.json",
+    "tsconfig.json",
+    "rollup.config.js",
+    "webpack.config.js",
+    "gulpfile.js",
+    "karma.conf.js",
+    "jest.config.js",
   ]);
 
   walk(root);
 
   function walk(currentPath) {
-    for (const entry of readdirSync(currentPath, { withFileTypes: true })) {
+    let entries;
+    try {
+      entries = readdirSync(currentPath, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
       const fullPath = path.join(currentPath, entry.name);
+      const lowerName = entry.name.toLowerCase();
 
       if (entry.isDirectory()) {
-        if (removableDirectories.has(entry.name.toLowerCase())) {
+        if (removableDirectories.has(lowerName)) {
           safeRemove(fullPath);
           continue;
         }
@@ -181,10 +248,50 @@ function stripPackagingNoise(root) {
         continue;
       }
 
-      const lowerName = entry.name.toLowerCase();
       const extension = path.extname(lowerName);
-      if (removableExtensions.has(extension) || lowerName.endsWith(".tsbuildinfo")) {
+      if (
+        removableExtensions.has(extension) ||
+        lowerName.endsWith(".tsbuildinfo") ||
+        removableFileNames.has(lowerName)
+      ) {
         safeRemove(fullPath);
+      }
+    }
+  }
+}
+
+function stripNonWindowsPrismaEngines(apiRoot) {
+  const candidates = [
+    path.join(apiRoot, "node_modules", "@prisma", "engines"),
+    path.join(apiRoot, "node_modules", "prisma", "node_modules", "@prisma", "engines"),
+    path.join(apiRoot, "node_modules", ".prisma", "client"),
+  ];
+
+  const isUnwantedEngine = (name) => {
+    const lower = name.toLowerCase();
+    if (lower.startsWith("libquery_engine-debian")) return true;
+    if (lower.startsWith("libquery_engine-rhel")) return true;
+    if (lower.startsWith("libquery_engine-linux")) return true;
+    if (lower.startsWith("libquery_engine-darwin")) return true;
+    if (lower.startsWith("libquery_engine-freebsd")) return true;
+    if (lower.startsWith("libquery_engine-openbsd")) return true;
+    if (lower.startsWith("libquery_engine-musl")) return true;
+    if (lower.startsWith("schema-engine-debian")) return true;
+    if (lower.startsWith("schema-engine-linux")) return true;
+    if (lower.startsWith("schema-engine-darwin")) return true;
+    if (lower.startsWith("schema-engine-rhel")) return true;
+    if (lower.startsWith("schema-engine-musl")) return true;
+    if (lower.startsWith("migration-engine-debian")) return true;
+    if (lower.startsWith("migration-engine-linux")) return true;
+    if (lower.startsWith("migration-engine-darwin")) return true;
+    return false;
+  };
+
+  for (const dir of candidates) {
+    if (!existsSync(dir)) continue;
+    for (const entry of readdirSync(dir)) {
+      if (isUnwantedEngine(entry)) {
+        safeRemove(path.join(dir, entry));
       }
     }
   }
@@ -257,20 +364,63 @@ function pruneRuntimePackage(root, allowedEntries) {
   }
 }
 
-function prepareIsolatedProductionInstall(sourceRoot, destinationRoot) {
+function prepareIsolatedProductionInstall(sourceRoot, destinationRoot, options = {}) {
   safeRemove(destinationRoot);
   mkdirSync(destinationRoot, { recursive: true });
-  copyFileSync(path.join(sourceRoot, "package.json"), path.join(destinationRoot, "package.json"));
-  copyFileSync(path.join(repoRoot, "pnpm-lock.yaml"), path.join(destinationRoot, "pnpm-lock.yaml"));
+
+  const { dropDepPatterns = [], keepOnly = null } = options;
+  const sourcePackageJson = JSON.parse(
+    readFileSync(path.join(sourceRoot, "package.json"), "utf8")
+  );
+
+  if (sourcePackageJson.dependencies) {
+    if (keepOnly) {
+      // Whitelist mode: keep only the packages explicitly listed.
+      const filtered = {};
+      for (const dep of keepOnly) {
+        if (sourcePackageJson.dependencies[dep]) {
+          filtered[dep] = sourcePackageJson.dependencies[dep];
+        }
+      }
+      sourcePackageJson.dependencies = filtered;
+    } else if (dropDepPatterns.length > 0) {
+      // Blacklist mode: drop packages matching the given patterns.
+      for (const depName of Object.keys(sourcePackageJson.dependencies)) {
+        if (dropDepPatterns.some((pattern) => pattern.test(depName))) {
+          delete sourcePackageJson.dependencies[depName];
+        }
+      }
+    }
+  }
+
+  // Drop devDependencies and optionalDependencies entirely so pnpm doesn't
+  // waste time resolving them and doesn't fail on optional native modules
+  // (e.g. bufferutil) that aren't in any local lockfile.
+  delete sourcePackageJson.devDependencies;
+  delete sourcePackageJson.optionalDependencies;
+  writeFileSync(
+    path.join(destinationRoot, "package.json"),
+    JSON.stringify(sourcePackageJson, null, 2),
+    "utf8"
+  );
+
+  // Intentionally do NOT copy the workspace pnpm-lock.yaml and use --no-lockfile:
+  // with --node-linker=hoisted + the workspace lockfile, pnpm hoists every
+  // workspace dep (web/desktop frontend libs) into this package's node_modules.
+  // A fresh resolve from the local package.json alone keeps the install minimal
+  // (down from ~263MB to ~65MB for the API runtime).
   runPnpm(
     [
       "install",
       "--prod",
+      "--no-optional",
+      "--ignore-scripts",
       "--dir",
       destinationRoot,
       "--node-linker=hoisted",
       "--config.confirmModulesPurge=false",
-      "--no-frozen-lockfile",
+      "--no-lockfile",
+      "--ignore-workspace",
     ],
     {
       env: {

@@ -31,10 +31,16 @@ async function buildAll() {
     entryPoints: ["server/index.ts"],
     platform: "node",
     bundle: true,
-    format: "esm",
-    outfile: "dist/index.mjs",
+    format: "cjs",
+    outfile: "dist/index.cjs",
     define: {
       "process.env.NODE_ENV": '"production"',
+    },
+    // The CJS bundle uses Node's built-in __dirname at runtime; the
+    // import.meta.url branch in static.ts is dead code in CJS but esbuild
+    // still emits an empty-import-meta warning. Silence it.
+    logOverride: {
+      "empty-import-meta": "silent",
     },
     minify: true,
     external: externals,
