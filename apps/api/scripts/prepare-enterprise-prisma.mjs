@@ -52,19 +52,8 @@ function buildEnterpriseSchema(schema, enums) {
   const lines = nextSchema.split(/\r?\n/u).map((line) => transformLine(line, enums));
   nextSchema = lines.join("\n");
 
-  if (!nextSchema.includes("  invitations         Invitation[]")) {
-    nextSchema = nextSchema.replace(
-      "  billing_events        BillingEvent[]\n",
-      "  billing_events        BillingEvent[]\n  invitations           Invitation[]\n"
-    );
-  }
-
-  if (!nextSchema.includes('  sent_invitations        Invitation[]')) {
-    nextSchema = nextSchema.replace(
-      "  billing_events         BillingEvent[]\n",
-      '  billing_events         BillingEvent[]\n  sent_invitations      Invitation[]    @relation("InvitationInviter")\n'
-    );
-  }
+  // Invitation fields are already in the base schema from the Invitation model definition
+  // Skip injection to prevent duplicates
 
   return nextSchema;
 }
