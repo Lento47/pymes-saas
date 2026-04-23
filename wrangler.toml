@@ -6,17 +6,12 @@ pages_build_output_dir = "apps/web/dist/public"
 [env.production]
 name = "pymeshub-web-prod"
 routes = [
-  { pattern = "pymeshub.com", zone_name = "pymeshub.com" },
-  { pattern = "www.pymeshub.com", zone_name = "pymeshub.com" }
+  { pattern = "pymeshub.lat", zone_name = "pymeshub.lat" },
+  { pattern = "www.pymeshub.lat", zone_name = "pymeshub.lat" }
 ]
 
-[[env.production.routes]]
-pattern = "api.pymeshub.com/*"
-zone_name = "pymeshub.com"
-custom_domain = true
-
 [build]
-command = "cd apps/web && pnpm install && pnpm run build"
+command = "pnpm install --frozen-lockfile && cd apps/web && pnpm run build"
 watch_paths = ["apps/web/**/*.{ts,tsx,css}"]
 
 [[build.upload.rules]]
