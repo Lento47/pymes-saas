@@ -16,7 +16,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Build API
-RUN pnpm --filter saas-api build
+RUN pnpm --prefix apps/api build
 
 # Expose port
 EXPOSE 4000
