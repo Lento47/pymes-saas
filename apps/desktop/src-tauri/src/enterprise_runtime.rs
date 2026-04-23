@@ -249,12 +249,11 @@ fn ensure_runtime_paths() -> Result<RuntimePaths> {
 fn validate_path_length(path: &std::path::Path) -> Result<()> {
     let path_str = path.to_string_lossy();
     if path_str.len() > 260 {
-        return Err(format!(
+        return Err(anyhow::anyhow!(
             "Path exceeds 260 characters ({}): {}. Use long path support (\\\\?\\) or shorten path.",
             path_str.len(),
             path_str
-        )
-        .into());
+        ));
     }
     Ok(())
 }
