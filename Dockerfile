@@ -25,4 +25,4 @@ RUN pnpm --prefix apps/api build
 EXPOSE 4000
 
 # Run API
-CMD ["node", "apps/api/dist/main"]
+CMD ["node", "apps/api/dist/src/main"]
