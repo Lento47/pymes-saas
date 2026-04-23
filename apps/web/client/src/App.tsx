@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { useAuth } from "@/hooks/use-auth";
 
+import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import AcceptInvite from "@/pages/accept-invite";
 import Dashboard from "@/pages/dashboard";
@@ -32,6 +33,15 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return <AppSidebar>{children}</AppSidebar>;
 }
 
+function RootRoute() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? (
+    <ProtectedLayout><Dashboard /></ProtectedLayout>
+  ) : (
+    <Landing />
+  );
+}
+
 function AppRouter() {
   return (
     <Switch>
@@ -44,7 +54,7 @@ function AppRouter() {
         {(params) => <LegalDocumentPage slug={params.slug} />}
       </Route>
       <Route path="/">
-        {() => <ProtectedLayout><Dashboard /></ProtectedLayout>}
+        {() => <RootRoute />}
       </Route>
       <Route path="/inbox">
         {() => <ProtectedLayout><Inbox /></ProtectedLayout>}
