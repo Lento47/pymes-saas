@@ -10,6 +10,7 @@ import { Resend } from 'resend';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MessagesService } from '../conversations/messages.service';
+import { parseJsonValue } from '../common/prisma/json';
 
 /**
  * Shape of config_json stored in the EMAIL channel.
@@ -68,7 +69,7 @@ export class EmailService {
     bodyHtml: string,
     bodyText?: string,
   ): Promise<{ id: string }> {
-    const config = channel.config_json as EmailChannelConfig;
+    const config = parseJsonValue<EmailChannelConfig>(channel.config_json, {} as EmailChannelConfig);
 
     if (!config?.api_key_encrypted) {
       throw new BadGatewayException(
@@ -175,23 +176,23 @@ export class EmailService {
 
     const toAddress = this.extractPrimaryRecipient(payload.to);
     if (toAddress) {
-      const matchedInbound = await this.prisma.channel.findFirst({
+      const activeChannels = await this.prisma.channel.findMany({
         where: {
           workspace_id: workspaceId,
           type: 'EMAIL',
           status: 'ACTIVE',
-          config_json: { path: ['inbound_email'], equals: toAddress },
         },
+      });
+
+      const matchedInbound = activeChannels.find((channel) => {
+        const config = parseJsonValue<EmailChannelConfig>(channel.config_json, {} as EmailChannelConfig);
+        return config.inbound_email === toAddress;
       });
       if (matchedInbound) return matchedInbound;
 
-      const matched = await this.prisma.channel.findFirst({
-        where: {
-          workspace_id: workspaceId,
-          type: 'EMAIL',
-          status: 'ACTIVE',
-          config_json: { path: ['from_email'], equals: toAddress },
-        },
+      const matched = activeChannels.find((channel) => {
+        const config = parseJsonValue<EmailChannelConfig>(channel.config_json, {} as EmailChannelConfig);
+        return config.from_email === toAddress;
       });
       if (matched) return matched;
     }

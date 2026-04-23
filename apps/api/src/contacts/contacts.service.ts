@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { parseJsonValue, stringifyJson } from '../common/prisma/json';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { FilterContactsDto } from './dto/filter-contacts.dto';
@@ -24,17 +25,12 @@ export class ContactsService {
 
     if (q) {
       where.OR = [
-        { full_name:    { contains: q, mode: 'insensitive' } },
-        { company_name: { contains: q, mode: 'insensitive' } },
-        { email:        { contains: q, mode: 'insensitive' } },
-        { phone:        { contains: q, mode: 'insensitive' } },
-        { external_ref: { contains: q, mode: 'insensitive' } },
+        { full_name: { contains: q } },
+        { company_name: { contains: q } },
+        { email: { contains: q } },
+        { phone: { contains: q } },
+        { external_ref: { contains: q } },
       ];
-    }
-
-    if (tag) {
-      // Filtra sobre el array JSON de tags
-      where.tags_json = { array_contains: tag };
     }
 
     const [data, total] = await Promise.all([
@@ -68,13 +64,20 @@ export class ContactsService {
       this.prisma.contact.count({ where }),
     ]);
 
+    const normalizedData = data
+      .map((contact) => ({
+        ...contact,
+        tags_json: parseJsonValue<string[]>(contact.tags_json, []),
+      }))
+      .filter((contact) => !tag || contact.tags_json.includes(tag));
+
     return {
-      data,
+      data: normalizedData,
       meta: {
-        total,
+        total: tag ? normalizedData.length : total,
         page,
         limit,
-        pages: Math.ceil(total / limit),
+        pages: Math.ceil((tag ? normalizedData.length : total) / limit),
       },
     };
   }
@@ -111,7 +114,7 @@ export class ContactsService {
         address_detail: dto.address_detail,
         foreign_identification: dto.foreign_identification,
         external_ref:  dto.external_ref,
-        tags_json:     dto.tags ?? [],
+        tags_json:     stringifyJson(dto.tags ?? []),
       },
     });
   }
@@ -175,7 +178,7 @@ export class ContactsService {
         ...(dto.address_detail !== undefined && { address_detail: dto.address_detail }),
         ...(dto.foreign_identification !== undefined && { foreign_identification: dto.foreign_identification }),
         ...(dto.external_ref !== undefined && { external_ref: dto.external_ref }),
-        ...(dto.tags         !== undefined && { tags_json: dto.tags }),
+        ...(dto.tags         !== undefined && { tags_json: stringifyJson(dto.tags) }),
         updated_at: new Date(),
       },
     });

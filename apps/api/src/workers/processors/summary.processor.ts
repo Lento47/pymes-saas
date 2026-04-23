@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { stringifyJson } from '../../common/prisma/json';
 
 @Injectable()
 export class SummaryProcessor {
@@ -95,13 +96,13 @@ export class SummaryProcessor {
       },
       update: {
         generated_text,
-        metrics_json,
+        metrics_json: stringifyJson(metrics_json),
       },
       create: {
         workspace_id: workspaceId,
         summary_date: startOfDay,
         generated_text,
-        metrics_json,
+        metrics_json: stringifyJson(metrics_json),
       },
     });
 

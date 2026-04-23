@@ -15,6 +15,7 @@ import {
   WorkspaceSubscription,
   WorkspaceSubscriptionStatus,
 } from '@prisma/client';
+import { stringifyJson } from '../common/prisma/json';
 
 @Injectable()
 export class PlatformService {
@@ -135,7 +136,14 @@ export class PlatformService {
       }),
     ]);
 
-    return this.serializeBilling(workspace, subscription, events);
+    return this.serializeBilling(
+      {
+        ...workspace,
+        plan: workspace.plan as WorkspacePlan,
+      },
+      subscription,
+      events,
+    );
   }
 
   // ── POST /platform/workspaces/:slug/members ───────────────────────────────
@@ -251,7 +259,10 @@ export class PlatformService {
       cancel_at_period_end:
         dto.cancel_at_period_end ?? currentSubscription?.cancel_at_period_end ?? false,
       notes: dto.notes ?? currentSubscription?.notes ?? null,
-      metadata_json: dto.metadata_json ?? currentSubscription?.metadata_json ?? null,
+      metadata_json:
+        dto.metadata_json !== undefined
+          ? stringifyJson(dto.metadata_json)
+          : currentSubscription?.metadata_json ?? null,
     };
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -262,7 +273,7 @@ export class PlatformService {
           })
         : await tx.workspaceSubscription.create({
             data: {
-              workspace_id: workspace.id,
+              workspace: { connect: { id: workspace.id } },
               ...nextSubscriptionData,
             },
           });
@@ -283,7 +294,10 @@ export class PlatformService {
           event_type: dto.event_type ?? 'MANUAL_PLAN_UPDATE',
           actor_user_id: actorUserId,
           applied_plan: effectivePlan,
-          payload_json: dto.payload_json ?? dto.metadata_json ?? null,
+          payload_json:
+            dto.payload_json || dto.metadata_json
+              ? stringifyJson(dto.payload_json ?? dto.metadata_json ?? null)
+              : null,
           processed_at: new Date(),
           notes:
             dto.notes ??
@@ -301,7 +315,14 @@ export class PlatformService {
         take: 10,
       });
 
-      return this.serializeBilling(refreshedWorkspace, subscription, events);
+      return this.serializeBilling(
+        {
+          ...refreshedWorkspace,
+          plan: refreshedWorkspace.plan as WorkspacePlan,
+        },
+        subscription,
+        events,
+      );
     });
 
     return result;

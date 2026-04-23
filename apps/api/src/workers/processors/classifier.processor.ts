@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { stringifyJson } from '../../common/prisma/json';
 import { QUEUE_NAMES } from '../queues.constants';
 
 interface ClassifierJobData {
@@ -50,13 +51,13 @@ export class ClassifierProcessor extends WorkerHost {
     await this.prisma.message.update({
       where: { id: messageId },
       data: {
-        ai_classification_json: {
+        ai_classification_json: stringifyJson({
           isUrgent,
           hasDate,
           category,
           sentiment,
           processed_at: new Date().toISOString(),
-        },
+        }),
       },
     });
 

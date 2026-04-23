@@ -123,7 +123,7 @@ async function main() {
       type: 'EMAIL',
       name: 'Correo Principal',
       status: 'ACTIVE',
-      config_json: { address: 'soporte@demo.com' },
+      config_json: JSON.stringify({ address: 'soporte@demo.com' }),
     },
   });
   console.log(`\n✅ Channel: ${channel.name} (${channel.type})`);
@@ -141,7 +141,7 @@ async function main() {
       company_name: 'Demo Corp',
       email: 'cliente@demo.com',
       phone: '+50688887777',
-      tags_json: ['vip', 'demo'],
+      tags_json: JSON.stringify(['vip', 'demo']),
     },
   });
   console.log(`✅ Contacto: ${contact.full_name}`);

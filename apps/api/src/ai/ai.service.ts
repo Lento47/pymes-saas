@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
+import { parseJsonValue } from '../common/prisma/json';
 
 export type AiProvider = 'openai' | 'anthropic' | 'gemini' | 'moonshot';
 
@@ -52,7 +53,7 @@ export class AiService {
       select: { settings_json: true },
     });
 
-    const s = (ws?.settings_json as Record<string, any>) ?? {};
+    const s = parseJsonValue<Record<string, any>>(ws?.settings_json, {});
 
     if (s.ai_provider && s.ai_api_key_enc) {
       try {

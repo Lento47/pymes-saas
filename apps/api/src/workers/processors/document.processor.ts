@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { stringifyJson } from '../../common/prisma/json';
 import { QUEUE_NAMES } from '../queues.constants';
 
 interface DocumentJobData {
@@ -61,10 +62,10 @@ export class DocumentProcessor extends WorkerHost {
         ocr_text,
         summary_text,
         status: 'PROCESSED',
-        extracted_data_json: {
+        extracted_data_json: stringifyJson({
           docType,
           processed_at: new Date().toISOString(),
-        },
+        }),
         updated_at: new Date(),
       },
     });

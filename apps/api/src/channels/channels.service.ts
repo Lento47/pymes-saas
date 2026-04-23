@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
+import { parseJsonValue, stringifyJson } from '../common/prisma/json';
 import { ConfigureEmailDto } from './dto/configure-email.dto';
 import { ConfigureWhatsAppDto } from './dto/configure-whatsapp.dto';
 
@@ -38,7 +39,7 @@ export class ChannelsService {
         name:         dto.name,
         provider:     dto.provider ?? dto.type.toLowerCase(),
         status:       'PENDING_SETUP',
-        config_json:  {},
+        config_json:  stringifyJson({}),
       },
     });
   }
@@ -95,7 +96,7 @@ export class ChannelsService {
     if (channel.type !== 'EMAIL') throw new BadRequestException('El canal no es de tipo EMAIL.');
 
     // Keep existing encrypted key if no new one is provided
-    const existingConfig = (channel.config_json ?? {}) as Record<string, any>;
+    const existingConfig = parseJsonValue<Record<string, any>>(channel.config_json, {});
     const api_key_encrypted = dto.api_key
       ? this.crypto.encrypt(dto.api_key)
       : existingConfig.api_key_encrypted;
@@ -104,14 +105,14 @@ export class ChannelsService {
       where: { id },
       data: {
         status:      'ACTIVE',
-        config_json: {
+        config_json: stringifyJson({
           api_key_encrypted,
           from_email: dto.from_email.trim().toLowerCase(),
           from_name: dto.from_name.trim(),
           ...(dto.inbound_email?.trim()
             ? { inbound_email: dto.inbound_email.trim().toLowerCase() }
             : {}),
-        },
+        }),
       },
     });
 
@@ -127,7 +128,7 @@ export class ChannelsService {
     if (channel.type !== 'WHATSAPP') throw new BadRequestException('El canal no es de tipo WHATSAPP.');
 
     // Keep existing encrypted token if no new one is provided
-    const existingConfigWA = (channel.config_json ?? {}) as Record<string, any>;
+    const existingConfigWA = parseJsonValue<Record<string, any>>(channel.config_json, {});
     const access_token_encrypted = dto.access_token
       ? this.crypto.encrypt(dto.access_token)
       : existingConfigWA.access_token_encrypted;
@@ -136,7 +137,11 @@ export class ChannelsService {
       where: { id },
       data: {
         status:      'ACTIVE',
-        config_json: { access_token_encrypted, phone_number_id: dto.phone_number_id, waba_id: dto.waba_id },
+        config_json: stringifyJson({
+          access_token_encrypted,
+          phone_number_id: dto.phone_number_id,
+          waba_id: dto.waba_id,
+        }),
       },
     });
 
@@ -157,8 +162,9 @@ export class ChannelsService {
   private sanitise(channel: any) {
     const { config_json, ...rest } = channel;
     const safeConfig: Record<string, unknown> = {};
-    if (config_json && typeof config_json === 'object') {
-      for (const [k, v] of Object.entries(config_json as object)) {
+    const parsedConfig = parseJsonValue<Record<string, unknown>>(config_json, {});
+    if (parsedConfig && typeof parsedConfig === 'object') {
+      for (const [k, v] of Object.entries(parsedConfig)) {
         if (!k.includes('encrypted')) safeConfig[k] = v;
       }
     }

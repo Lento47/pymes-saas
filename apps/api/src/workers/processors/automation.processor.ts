@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { stringifyJson } from '../../common/prisma/json';
 import { QUEUE_NAMES } from '../queues.constants';
 
 interface AutomationJobData {
@@ -57,7 +58,7 @@ export class AutomationProcessor extends WorkerHost {
         trigger_entity_type: triggerEntityType,
         trigger_entity_id: triggerEntityId,
         status: 'RUNNING',
-        input_json: { ruleId, triggerEntityType, triggerEntityId },
+        input_json: stringifyJson({ ruleId, triggerEntityType, triggerEntityId }),
         started_at: new Date(),
       },
     });
@@ -115,7 +116,7 @@ export class AutomationProcessor extends WorkerHost {
         data: {
           status: 'SUCCESS',
           finished_at: new Date(),
-          output_json: { actions_executed: actions.length },
+          output_json: stringifyJson({ actions_executed: actions.length }),
         },
       });
 
