@@ -1,6 +1,9 @@
 import * as path from 'path';
 import * as fs from 'fs';
 
+// Load environment variables FIRST, before any other imports
+require('dotenv').config();
+
 // When bundled with pkg, set up Prisma engine path before any imports
 if ((process as any).pkg) {
   const execDir = path.dirname(process.execPath);
