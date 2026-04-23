@@ -1,10 +1,10 @@
-name = "pymeshub-web"
+name = "pymeshubsaas"
 main = "index.js"
 compatibility_date = "2024-01-01"
 pages_build_output_dir = "apps/web/dist/public"
 
 [env.production]
-name = "pymeshub-web-prod"
+name = "pymeshubsaas-prod"
 routes = [
   { pattern = "pymeshub.lat", zone_name = "pymeshub.lat" },
   { pattern = "www.pymeshub.lat", zone_name = "pymeshub.lat" }
