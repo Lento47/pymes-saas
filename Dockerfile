@@ -16,7 +16,7 @@ RUN pnpm install --frozen-lockfile --recursive
 COPY . .
 
 # Generate Prisma client
-RUN pnpm exec prisma generate
+RUN cd apps/api && npx prisma generate
 
 # Build API
 RUN pnpm --prefix apps/api build
