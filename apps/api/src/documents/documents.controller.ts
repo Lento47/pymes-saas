@@ -49,23 +49,20 @@ export class DocumentsController {
       limits: { fileSize: 25 * 1024 * 1024 },
     }),
   )
-  upload(
+  async upload(
     @CurrentUser() user: AuthUser,
     @UploadedFile() file: Express.Multer.File,
     @Body('contact_id')      contact_id?: string,
     @Body('conversation_id') conversation_id?: string,
     @Body('task_id')         task_id?: string,
   ) {
-    return this.planLimits
-      .enforceDocuments(user.workspace_id, file?.size ?? 0)
-      .then(() =>
-        this.service.upload(
-          user.workspace_id,
-          user,
-          file,
-          { contact_id, conversation_id, task_id },
-        )
-      );
+    await this.planLimits.enforceDocuments(user.workspace_id, file?.size ?? 0);
+    return this.service.upload(
+      user.workspace_id,
+      user,
+      file,
+      { contact_id, conversation_id, task_id },
+    );
   }
 
   @Get()

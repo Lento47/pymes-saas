@@ -1,5 +1,5 @@
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { ConversationStatus, Priority } from '@prisma/client';
+import { ConversationStatus, Priority } from '../../common/types/enums';
 
 export class UpdateConversationDto {
   @IsOptional()

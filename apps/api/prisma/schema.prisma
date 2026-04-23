@@ -17,189 +17,29 @@ datasource db {
 // ENUMS
 // ============================================================
 
-enum WorkspaceStatus {
-  ACTIVE
-  SUSPENDED
-  PENDING
-  DELETED
-}
 
-enum WorkspacePlan {
-  FREE
-  STARTER
-  GROWTH
-  ENTERPRISE
-}
 
-enum BillingProvider {
-  MANUAL
-  STRIPE
-  PAYPAL
-  BAC
-  CUSTOM
-}
 
-enum BillingInterval {
-  MONTHLY
-  YEARLY
-  ONE_TIME
-  CUSTOM
-}
 
-enum WorkspaceSubscriptionStatus {
-  TRIALING
-  ACTIVE
-  PAST_DUE
-  UNPAID
-  CANCELLED
-  EXPIRED
-  MANUAL
-}
 
-enum UserStatus {
-  ACTIVE
-  INACTIVE
-  INVITED
-  BANNED
-}
 
-enum WorkspaceUserRole {
-  OWNER
-  ADMIN
-  AGENT
-  VIEWER
-}
 
-enum ContactType {
-  CUSTOMER
-  VENDOR
-  LEAD
-  OTHER
-}
 
-enum ChannelType {
-  EMAIL
-  WHATSAPP
-  FORM
-  API
-  MANUAL
-}
 
-enum ChannelStatus {
-  ACTIVE
-  INACTIVE
-  ERROR
-  PENDING_SETUP
-}
 
-enum ConversationStatus {
-  NEW
-  OPEN
-  PENDING
-  RESOLVED
-  ARCHIVED
-}
 
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
 
-enum MessageDirection {
-  INBOUND
-  OUTBOUND
-  INTERNAL
-}
 
-enum DocumentStatus {
-  UPLOADED
-  PROCESSING
-  PROCESSED
-  FAILED
-  ARCHIVED
-}
 
-enum DocumentStorageMode {
-  REMOTE
-  LOCAL
-}
 
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  BLOCKED
-  DONE
-  ARCHIVED
-}
 
-enum TaskSource {
-  MANUAL
-  AUTOMATION
-  MESSAGE
-  DOCUMENT
-  SUMMARY
-}
 
-enum InvoiceStatus {
-  DRAFT
-  SENT
-  PARTIALLY_PAID
-  PAID
-  OVERDUE
-  CANCELLED
-}
 
-enum InvoiceDocumentType {
-  FACTURA_ELECTRONICA
-  TIQUETE_ELECTRONICO
-  NOTA_CREDITO
-  NOTA_DEBITO
-  MENSAJE_RECEPTOR
-}
 
-enum InvoiceIssuanceMode {
-  MANUAL_ONLY
-  HACIENDA
-}
 
-enum HaciendaStatus {
-  DRAFT
-  PENDING_SUBMISSION
-  SUBMITTED
-  RECIBIDO
-  PROCESANDO
-  ACEPTADO
-  RECHAZADO
-  ERROR
-}
 
-enum DealStatus {
-  OPEN
-  WON
-  LOST
-}
 
-enum AutomationExecutionStatus {
-  QUEUED
-  RUNNING
-  SUCCESS
-  FAILED
-  SKIPPED
-}
 
-enum TriggerType {
-  MESSAGE_RECEIVED
-  CONVERSATION_CREATED
-  CONVERSATION_STATUS_CHANGED
-  TASK_CREATED
-  TASK_OVERDUE
-  DOCUMENT_UPLOADED
-  DOCUMENT_PROCESSED
-  SCHEDULED
-  MANUAL
-}
 
 // ============================================================
 // CORE — Auth & Tenancy
@@ -212,9 +52,9 @@ model Workspace {
   country_code String?
   timezone     String          @default("UTC")
   locale       String          @default("en")
-  status       WorkspaceStatus @default(ACTIVE)
-  plan         WorkspacePlan   @default(FREE)
-  settings_json Json?
+  status String @default("ACTIVE")
+  plan String   @default("FREE")
+  settings_json String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -244,6 +84,7 @@ model Workspace {
   deals                 Deal[]
   subscriptions         WorkspaceSubscription[]
   billing_events        BillingEvent[]
+  invitations           Invitation[]
 
   @@index([slug])
   @@index([status])
@@ -256,7 +97,7 @@ model User {
   name              String
   avatar_url        String?
   password_hash     String?
-  status            UserStatus @default(ACTIVE)
+  status String @default("ACTIVE")
   is_platform_admin Boolean    @default(false)
 
   created_at DateTime @default(now())
@@ -277,6 +118,7 @@ model User {
   error_reports          ErrorReport[]
   assigned_deals         Deal[]           @relation("DealAssignee")
   billing_events         BillingEvent[]
+  sent_invitations      Invitation[]    @relation("InvitationInviter")
 
   @@index([email])
   @@index([status])
@@ -287,13 +129,13 @@ model WorkspaceUser {
   id               String            @id @default(cuid())
   workspace_id     String
   user_id          String
-  role             WorkspaceUserRole @default(AGENT)
+  role String @default("AGENT")
   is_owner         Boolean           @default(false)
   // Granular permission flags layered on top of role. Null = use role defaults.
   // Keys: can_delete_contacts, can_export_data, can_send_bulk_email,
   //       can_manage_invoices, can_manage_automations, can_view_audit_log,
   //       can_manage_billing, can_manage_integrations
-  permissions_json Json?             @db.JsonB
+  permissions_json String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -330,9 +172,9 @@ model Invitation {
   id             String            @id @default(cuid())
   workspace_id   String
   email          String
-  role           WorkspaceUserRole
+  role String
   token_hash     String            @unique  // SHA-256 of raw token sent in email
-  department_ids String[]          @default([])
+  department_ids String          @default("[]")
   invited_by_id  String?
   expires_at     DateTime
   accepted_at    DateTime?
@@ -355,10 +197,10 @@ model Invitation {
 model WorkspaceSubscription {
   id                       String                      @id @default(cuid())
   workspace_id             String
-  provider                 BillingProvider             @default(MANUAL)
-  status                   WorkspaceSubscriptionStatus @default(MANUAL)
-  plan                     WorkspacePlan
-  billing_interval         BillingInterval             @default(MONTHLY)
+  provider String             @default("MANUAL")
+  status String @default("MANUAL")
+  plan String
+  billing_interval String             @default("MONTHLY")
   provider_customer_id     String?
   provider_subscription_id String?
   external_reference       String?
@@ -367,7 +209,7 @@ model WorkspaceSubscription {
   cancel_at_period_end     Boolean                     @default(false)
   trial_ends_at            DateTime?
   notes                    String?
-  metadata_json            Json?
+  metadata_json String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -387,13 +229,13 @@ model BillingEvent {
   id                String          @id @default(cuid())
   workspace_id      String
   subscription_id   String?
-  provider          BillingProvider @default(MANUAL)
+  provider String @default("MANUAL")
   source            String          @default("MANUAL")
   event_type        String
   provider_event_id String?
   actor_user_id     String?
-  applied_plan      WorkspacePlan?
-  payload_json      Json?
+  applied_plan String?
+  payload_json String?
   processed_at      DateTime?
   notes             String?
 
@@ -418,7 +260,7 @@ model BillingEvent {
 model Contact {
   id                      String      @id @default(cuid())
   workspace_id            String
-  type                    ContactType @default(CUSTOMER)
+  type String @default("CUSTOMER")
   full_name               String
   company_name            String?
   email                   String?
@@ -431,9 +273,9 @@ model Contact {
   district                String?
   address_detail          String?
   foreign_identification  String?
-  receptor_validation_json Json?
+  receptor_validation_json String?
   external_ref            String?
-  tags_json               Json?
+  tags_json String?
   last_interaction_at     DateTime?
 
   created_at DateTime @default(now())
@@ -458,11 +300,11 @@ model Contact {
 model Channel {
   id           String        @id @default(cuid())
   workspace_id String
-  type         ChannelType
+  type String
   provider     String?
   name         String
-  status       ChannelStatus @default(PENDING_SETUP)
-  config_json  Json?
+  status String @default("PENDING_SETUP")
+  config_json String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -489,8 +331,8 @@ model Conversation {
   channel_id       String
   contact_id       String?
   subject          String?
-  status           ConversationStatus @default(NEW)
-  priority         Priority           @default(MEDIUM)
+  status String @default("NEW")
+  priority String           @default("MEDIUM")
   category         String?
   assigned_user_id String?
   last_message_at  DateTime?
@@ -525,14 +367,14 @@ model Message {
   id                   String           @id @default(cuid())
   workspace_id         String
   conversation_id      String
-  direction            MessageDirection
+  direction String
   sender_name          String?
   sender_ref           String?
   sender_user_id       String?
   body_text            String?
   body_html            String?
-  raw_payload_json     Json?
-  ai_classification_json Json?
+  raw_payload_json String?
+  ai_classification_json String?
   sent_at              DateTime?
 
   created_at DateTime @default(now())
@@ -557,15 +399,15 @@ model Task {
   workspace_id     String
   conversation_id  String?
   contact_id       String?
-  source           TaskSource @default(MANUAL)
+  source String @default("MANUAL")
   title            String
   description      String?
-  status           TaskStatus @default(TODO)
-  priority         Priority   @default(MEDIUM)
+  status String @default("TODO")
+  priority String   @default("MEDIUM")
   assigned_user_id String?
   due_at           DateTime?
   completed_at     DateTime?
-  metadata_json    Json?
+  metadata_json String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -598,7 +440,7 @@ model Document {
   original_file_name    String?
   mime_type             String
   storage_key           String
-  storage_mode          DocumentStorageMode @default(REMOTE)
+  storage_mode String @default("REMOTE")
   storage_relative_path String?
   checksum              String?
   category              String              @default("document")
@@ -606,9 +448,9 @@ model Document {
   entity_id             String?
   file_size             Int
   ocr_text              String?
-  extracted_data_json   Json?
+  extracted_data_json String?
   summary_text          String?
-  status                DocumentStatus      @default(UPLOADED)
+  status String      @default("UPLOADED")
   uploaded_by_user_id   String?
 
   created_at DateTime @default(now())
@@ -642,10 +484,10 @@ model Invoice {
   currency                 String              @default("USD")
   due_date                 DateTime
   paid_at                  DateTime?
-  status                   InvoiceStatus       @default(DRAFT)
-  document_type            InvoiceDocumentType @default(FACTURA_ELECTRONICA)
-  issuance_mode            InvoiceIssuanceMode @default(MANUAL_ONLY)
-  hacienda_status          HaciendaStatus      @default(DRAFT)
+  status String       @default("DRAFT")
+  document_type String @default("FACTURA_ELECTRONICA")
+  issuance_mode String @default("MANUAL_ONLY")
+  hacienda_status String      @default("DRAFT")
   clave                    String?
   consecutivo              String?
   activity_code            String?
@@ -660,7 +502,7 @@ model Invoice {
   hacienda_last_checked_at DateTime?
   hacienda_submitted_at    DateTime?
   description              String?
-  notes_json               Json?
+  notes_json String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -701,8 +543,8 @@ model InvoiceLine {
   unit_of_measure   String?
   tax_code          String?
   tax_rate          Decimal?
-  exoneration_json  Json?
-  metadata_json     Json?
+  exoneration_json String?
+  metadata_json String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -839,10 +681,10 @@ model AutomationRule {
   workspace_id          String
   name                  String
   description           String?
-  trigger_type          TriggerType
-  trigger_config_json   Json
-  condition_config_json Json?
-  action_config_json    Json
+  trigger_type String
+  trigger_config_json String
+  condition_config_json String?
+  action_config_json String
   enabled               Boolean     @default(true)
   created_by_user_id    String?
 
@@ -865,9 +707,9 @@ model AutomationExecution {
   rule_id             String
   trigger_entity_type String
   trigger_entity_id   String
-  status              AutomationExecutionStatus @default(QUEUED)
-  input_json          Json?
-  output_json         Json?
+  status String @default("QUEUED")
+  input_json String?
+  output_json String?
   error_message       String?
   started_at          DateTime?
   finished_at         DateTime?
@@ -893,7 +735,7 @@ model DailySummary {
   workspace_id   String
   summary_date   DateTime
   generated_text String
-  metrics_json   Json?
+  metrics_json String?
   generated_at   DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
@@ -941,8 +783,8 @@ model AuditLog {
   action       String
   entity_type  String
   entity_id    String
-  before_json  Json?
-  after_json   Json?
+  before_json String?
+  after_json String?
 
   created_at DateTime @default(now())
 
@@ -987,8 +829,8 @@ model Deal {
   title            String
   value            Decimal?
   currency         String     @default("CRC")
-  priority         Priority   @default(MEDIUM)
-  status           DealStatus @default(OPEN)
+  priority String   @default("MEDIUM")
+  status String @default("OPEN")
   closing_date     DateTime?
   notes            String?
 
@@ -1023,7 +865,7 @@ model ErrorReport {
   method       String?
   status_code  Int?
   user_agent   String?
-  context_json Json?
+  context_json String?
   occurred_at  DateTime @default(now())
   created_at   DateTime @default(now())
 

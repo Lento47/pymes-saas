@@ -33,6 +33,7 @@ import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
 import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
+import { SetupModule } from './setup/setup.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { PipelineModule } from './pipeline/pipeline.module';
     ScheduleModule.forRoot(),
 
     PrismaModule,
+    SetupModule,
     StorageModule,
     CryptoModule,
     PlanLimitsModule,

@@ -9,7 +9,7 @@ import {
   InvoiceDocumentType,
   InvoiceIssuanceMode,
   InvoiceStatus,
-} from '@prisma/client';
+} from '../common/types/enums';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { StorageService } from '../common/storage/storage.service';
 import { HaciendaRecepcionService } from '../hacienda/hacienda-recepcion.service';

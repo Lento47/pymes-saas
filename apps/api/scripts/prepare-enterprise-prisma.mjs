@@ -52,19 +52,8 @@ function buildEnterpriseSchema(schema, enums) {
   const lines = nextSchema.split(/\r?\n/u).map((line) => transformLine(line, enums));
   nextSchema = lines.join("\n");
 
-  if (!nextSchema.includes("  invitations         Invitation[]")) {
-    nextSchema = nextSchema.replace(
-      "  billing_events        BillingEvent[]\n",
-      "  billing_events        BillingEvent[]\n  invitations           Invitation[]\n"
-    );
-  }
-
-  if (!nextSchema.includes('  sent_invitations        Invitation[]')) {
-    nextSchema = nextSchema.replace(
-      "  billing_events         BillingEvent[]\n",
-      '  billing_events         BillingEvent[]\n  sent_invitations      Invitation[]    @relation("InvitationInviter")\n'
-    );
-  }
+  // Invitation fields are already in the base schema from the Invitation model definition
+  // Skip injection to prevent duplicates
 
   return nextSchema;
 }
@@ -118,7 +107,7 @@ function runPrisma(args, options = {}) {
     apiRoot,
     "node_modules",
     ".bin",
-    process.platform === "win32" ? "prisma.cmd" : "prisma"
+    process.platform === "win32" ? "prisma" : "prisma"
   );
   const workspacePrismaBin = path.join(
     apiRoot,
@@ -126,7 +115,7 @@ function runPrisma(args, options = {}) {
     "..",
     "node_modules",
     ".bin",
-    process.platform === "win32" ? "prisma.cmd" : "prisma"
+    process.platform === "win32" ? "prisma" : "prisma"
   );
   const prismaBin = existsSync(localPrismaBin) ? localPrismaBin : workspacePrismaBin;
   const execOptions = {
@@ -134,11 +123,6 @@ function runPrisma(args, options = {}) {
     encoding: options.captureOutput ? "utf8" : undefined,
     stdio: options.captureOutput ? ["ignore", "pipe", "inherit"] : "inherit",
   };
-
-  if (process.platform === "win32") {
-    const command = [prismaBin, ...args].map(quoteForCmd).join(" ");
-    return execFileSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", command], execOptions);
-  }
 
   return execFileSync(prismaBin, args, execOptions);
 }
@@ -214,6 +198,3 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
-function quoteForCmd(value) {
-  return /[\s"]/u.test(value) ? `"${value.replace(/"/gu, '\\"')}"` : value;
-}

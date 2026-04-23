@@ -9,6 +9,7 @@ import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { FilterConversationsDto } from './dto/filter-conversations.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AutomationsService } from '../automations/automations.service';
+import { TriggerType } from '../common/types/enums';
 
 @Injectable()
 export class ConversationsService {
@@ -101,7 +102,7 @@ export class ConversationsService {
 
     await this.automationsService.triggerRules(
       workspaceId,
-      'CONVERSATION_CREATED',
+      TriggerType.CONVERSATION_CREATED,
       'conversation',
       conversation.id,
     );
@@ -167,7 +168,7 @@ export class ConversationsService {
     if (dto.status !== undefined) {
       await this.automationsService.triggerRules(
         workspaceId,
-        'CONVERSATION_STATUS_CHANGED',
+        TriggerType.CONVERSATION_STATUS_CHANGED,
         'conversation',
         updated.id,
       );

@@ -5,7 +5,7 @@ import {
   IsEnum,
   IsBoolean,
 } from 'class-validator';
-import { TriggerType } from '@prisma/client';
+import { TriggerType } from '../../common/types/enums';
 
 export class CreateAutomationDto {
   @IsString()

@@ -119,6 +119,14 @@ export class ContactsService {
 
   // ── GET /contacts/:id ──────────────────────────────────────────────────────
 
+  private async validateContactExists(workspaceId: string, id: string) {
+    const exists = await this.prisma.contact.findFirst({
+      where: { id, workspace_id: workspaceId },
+      select: { id: true },
+    });
+    if (!exists) throw new NotFoundException('Contacto no encontrado.');
+  }
+
   async findOne(workspaceId: string, id: string) {
     const contact = await this.prisma.contact.findFirst({
       where: { id, workspace_id: workspaceId },
@@ -157,7 +165,7 @@ export class ContactsService {
   // ── PATCH /contacts/:id ────────────────────────────────────────────────────
 
   async update(workspaceId: string, id: string, dto: UpdateContactDto) {
-    await this.findOne(workspaceId, id); // valida existencia
+    await this.validateContactExists(workspaceId, id);
 
     return this.prisma.contact.update({
       where: { id },
@@ -186,7 +194,7 @@ export class ContactsService {
   // Soft-delete: no borramos, desasociamos del workspace (o puedes marcar con status)
 
   async remove(workspaceId: string, id: string) {
-    await this.findOne(workspaceId, id); // valida existencia
+    await this.validateContactExists(workspaceId, id);
     await this.prisma.contact.delete({ where: { id } });
     return { message: 'Contacto eliminado.' };
   }

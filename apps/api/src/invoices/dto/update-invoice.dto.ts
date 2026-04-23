@@ -13,7 +13,7 @@ import {
   InvoiceDocumentType,
   InvoiceIssuanceMode,
   InvoiceStatus,
-} from '@prisma/client';
+} from '../../common/types/enums';
 import { InvoiceLineDto } from './invoice-line.dto';
 
 export class UpdateInvoiceDto {

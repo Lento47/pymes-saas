@@ -1,6 +1,9 @@
 import * as path from 'path';
 import * as fs from 'fs';
 
+// Load environment variables FIRST, before any other imports
+require('dotenv').config();
+
 // When bundled with pkg, set up Prisma engine path before any imports
 if ((process as any).pkg) {
   const execDir = path.dirname(process.execPath);
@@ -10,10 +13,26 @@ if ((process as any).pkg) {
   }
   // Default SQLite DB to user AppData if not set
   if (!process.env.DATABASE_URL) {
-    const appData = process.env.APPDATA ?? path.join(process.env.HOME ?? '', '.config');
-    const dbDir = path.join(appData, 'PymeHub Enterprise');
-    fs.mkdirSync(dbDir, { recursive: true });
-    process.env.DATABASE_URL = `file:${path.join(dbDir, 'pymeshub.db')}`;
+    let appData = process.env.APPDATA;
+
+    if (!appData) {
+      if (process.platform === 'win32') {
+        appData = path.join(process.env.USERPROFILE || 'C:\\Users\\Default', 'AppData\\Roaming');
+      } else {
+        appData = path.join(process.env.HOME || '/tmp', '.config');
+      }
+    }
+
+    const dbDir = path.join(appData, 'Pymeshub Enterprise');
+    try {
+      fs.mkdirSync(dbDir, { recursive: true });
+    } catch (e) {
+      console.error('[Bootstrap] Failed to create DB directory:', e);
+      process.exit(1);
+    }
+
+    const dbPath = path.join(dbDir, 'pymeshub.db').replace(/\\/g, '/');
+    process.env.DATABASE_URL = `file:${dbPath}`;
   }
 }
 

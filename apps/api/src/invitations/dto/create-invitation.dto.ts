@@ -1,4 +1,4 @@
-import { WorkspaceUserRole } from '@prisma/client';
+import { WorkspaceUserRole } from '../../common/types/enums';
 import {
   ArrayUnique,
   IsArray,

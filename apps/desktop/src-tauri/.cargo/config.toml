@@ -1,0 +1,7 @@
+[build]
+# Use faster linker for release builds
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[profile.release]
+# Parallel code generation - speeds up compilation at slight cost to binary size
+codegen-units = 256
