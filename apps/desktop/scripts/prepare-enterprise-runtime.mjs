@@ -1,7 +1,8 @@
-import { cpSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, realpathSync, rmSync } from "node:fs";
+import { cpSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, realpathSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
+import { randomBytes } from "node:crypto";
 
 const desktopRoot = process.cwd();
 const repoRoot = path.resolve(desktopRoot, "..", "..");
@@ -49,6 +50,7 @@ copyBundledNodeRuntime();
 
 if (existsSync(envTemplateSource)) {
   copyFileSync(envTemplateSource, path.join(outputRoot, ".env.enterprise.example"));
+  generateProductionEnv(envTemplateSource, apiOutput);
 }
 
 if (existsSync(enterpriseSchemaSqlSource)) {
@@ -62,6 +64,29 @@ if (existsSync(prismaSource) && !existsSync(prismaTarget)) {
 }
 
 safeRemove(installWorkspaceRoot);
+
+function generateProductionEnv(templatePath, apiOutputPath) {
+  const template = readFileSync(templatePath, "utf8");
+  let envContent = template;
+
+  // Generate a random JWT secret
+  const jwtSecret = randomBytes(32).toString("hex");
+  envContent = envContent.replace("JWT_SECRET=replace-with-a-long-random-secret", `JWT_SECRET=${jwtSecret}`);
+
+  // Ensure DATABASE_URL uses a relative path for portability
+  envContent = envContent.replace(
+    /DATABASE_URL=file:.*/,
+    "DATABASE_URL=file:./pymeshub.db"
+  );
+
+  // Set production mode
+  envContent = envContent.replace("NODE_ENV=production", "NODE_ENV=production");
+
+  // Write the actual .env file
+  const envPath = path.join(apiOutputPath, ".env");
+  writeFileSync(envPath, envContent, "utf8");
+  console.log(`[enterprise-runtime] Generated production .env at ${envPath}`);
+}
 
 function ensureBuildArtifacts(label, distPath, args) {
   try {
