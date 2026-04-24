@@ -179,16 +179,18 @@ export default function Landing() {
   return (
     <div className="relative overflow-hidden bg-[#05091d] text-white">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-x-0 top-0 flex justify-center overflow-hidden">
-          <img
-            src="/images/hero-bg.png"
-            alt=""
-            aria-hidden="true"
-            loading="eager"
-            className="block h-auto w-full max-w-[1536px] opacity-[0.92]"
-          />
+        <div className="absolute left-1/2 top-0 -translate-x-1/2 overflow-hidden">
+          <div className="relative w-[max(1536px,100vw,calc(100vh*1.5))]">
+            <img
+              src="/images/hero-bg.png"
+              alt=""
+              aria-hidden="true"
+              loading="eager"
+              className="block h-auto w-full max-w-none opacity-[0.92]"
+            />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,28,88,0.10),transparent_44%),linear-gradient(180deg,rgba(4,8,26,0.04)_0%,rgba(5,9,29,0.18)_24%,rgba(5,9,29,0.64)_78%,#05091d_100%)]" />
+          </div>
         </div>
-        <div className="absolute inset-x-0 top-0 h-[min(64rem,78vw)] bg-[radial-gradient(circle_at_top,rgba(15,28,88,0.10),transparent_44%),linear-gradient(180deg,rgba(4,8,26,0.04)_0%,rgba(5,9,29,0.18)_24%,rgba(5,9,29,0.64)_78%,#05091d_100%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0.04)_0%,rgba(5,9,29,0.06)_22%,rgba(5,9,29,0.18)_44%,rgba(5,9,29,0.42)_64%,#05091d_86%)]" />
         <div className="animate-drift-x absolute left-[-10rem] top-[8rem] h-80 w-80 rounded-full bg-[#5771ff]/16 blur-[110px]" />
         <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#d5ff63]/12 blur-[130px]" />

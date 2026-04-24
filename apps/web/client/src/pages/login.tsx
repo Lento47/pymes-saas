@@ -108,14 +108,16 @@ export default function LoginPage() {
     <div className="relative min-h-screen overflow-hidden bg-[#05091d] px-4 py-10 text-white md:px-6">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute inset-x-0 top-0 flex justify-center">
-            <img
-              src="/images/login-bg.png"
-              alt=""
-              aria-hidden="true"
-              loading="eager"
-              className="block h-auto w-full max-w-[1536px] opacity-[0.88]"
-            />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="relative w-[max(1536px,100vw,calc(100vh*1.5))]">
+              <img
+                src="/images/login-bg.png"
+                alt=""
+                aria-hidden="true"
+                loading="eager"
+                className="block h-auto w-full max-w-none opacity-[0.88]"
+              />
+            </div>
           </div>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(42,60,180,0.12),transparent_36%),linear-gradient(180deg,rgba(3,8,24,0.06),rgba(5,9,29,0.48)_36%,#05091d_100%)]" />
         </div>
