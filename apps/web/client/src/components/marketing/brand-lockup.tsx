@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const ICON_CANDIDATES = [
+  "/images/pymesHub.png",
   "/images/pymeshub-icon.svg",
   "/images/pymeshub-icon.png",
 ];
@@ -26,17 +27,21 @@ export function BrandLockup({
   return (
     <div className={cn("inline-flex items-center gap-3", className)}>
       {!useFallbackMark ? (
-        <img
-          src={currentIcon}
-          alt=""
-          aria-hidden="true"
-          onError={() => setIconIndex((current) => current + 1)}
+        <span
           className={cn(
             compact ? "h-6 w-6" : "h-7 w-7",
-            "object-contain drop-shadow-[0_0_12px_rgba(231,255,90,0.35)]",
+            "inline-flex items-center justify-center overflow-hidden",
             markClassName
           )}
-        />
+        >
+          <img
+            src={currentIcon}
+            alt=""
+            aria-hidden="true"
+            onError={() => setIconIndex((current) => current + 1)}
+            className="h-full w-full scale-[1.8] object-contain drop-shadow-[0_0_12px_rgba(97,110,255,0.45)]"
+          />
+        </span>
       ) : (
         <svg
           viewBox="0 0 32 32"
