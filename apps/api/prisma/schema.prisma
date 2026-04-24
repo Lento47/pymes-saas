@@ -36,6 +36,7 @@ enum BillingProvider {
   MANUAL
   STRIPE
   PAYPAL
+  PADDLE
   BAC
   CUSTOM
 }

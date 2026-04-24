@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,24 +18,46 @@ async function fetchBillingPortalLink() {
   return response.json();
 }
 
+async function createCheckout(priceId: string): Promise<{ transactionId: string; checkoutUrl?: string }> {
+  const response = await fetch('/api/billing/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ priceId }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: 'Checkout failed' }));
+    throw new Error(err.message || 'Checkout failed');
+  }
+  return response.json();
+}
+
+const PRICE_IDS: Record<string, string> = {
+  STARTER: import.meta.env.VITE_PADDLE_PRICE_STARTER_MONTHLY || 'pri_starter_monthly',
+  GROWTH: import.meta.env.VITE_PADDLE_PRICE_GROWTH_MONTHLY || 'pri_growth_monthly',
+  ENTERPRISE: import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY || 'pri_enterprise_monthly',
+};
+
 const PRICING_TIERS = [
   {
     name: 'Starter',
+    planKey: 'STARTER' as const,
     monthlyUSD: 25,
     monthlyCRC: 12900,
     features: ['500 Contacts', '100 invoices/month', '5 Automations', '1 User'],
   },
   {
     name: 'Growth',
+    planKey: 'GROWTH' as const,
     monthlyUSD: 59,
     monthlyCRC: 29900,
     features: ['2,500 Contacts', '500 invoices/month', '25 Automations', '5 Users'],
   },
   {
-    name: 'Business',
+    name: 'Enterprise',
+    planKey: 'ENTERPRISE' as const,
     monthlyUSD: 119,
     monthlyCRC: 59900,
-    features: ['15,000 Contacts', '2,000 invoices/month', '100 Automations', '15 Users'],
+    features: ['Unlimited Contacts', 'Unlimited invoices', 'Unlimited Automations', 'Unlimited Users'],
   },
 ];
 
@@ -57,6 +79,37 @@ export default function BillingPage() {
     queryFn: fetchBillingPortalLink,
     enabled: isAuthenticated,
   });
+
+  const checkoutMutation = useMutation({
+    mutationFn: createCheckout,
+    onSuccess: async (data) => {
+      // Open Paddle checkout overlay
+      if (data.transactionId) {
+        try {
+          const { initializePaddle } = await import('@paddle/paddle-js');
+          const paddle = await initializePaddle({
+            environment: (import.meta.env.VITE_PADDLE_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
+            token: import.meta.env.VITE_PADDLE_CLIENT_TOKEN || 'test_token',
+          });
+          if (paddle) {
+            paddle.Checkout.open({ transactionId: data.transactionId });
+          }
+        } catch {
+          // Fallback: redirect to checkout URL if available
+          if (data.checkoutUrl) {
+            window.open(data.checkoutUrl, '_blank');
+          }
+        }
+      }
+    },
+  });
+
+  const handleUpgrade = (planKey: string) => {
+    const priceId = PRICE_IDS[planKey];
+    if (priceId) {
+      checkoutMutation.mutate(priceId);
+    }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -104,15 +157,14 @@ export default function BillingPage() {
           ) : subscription ? (
             <>
               <div className="flex justify-between items-center">
-                <span className="font-semibold capitalize">{subscription.plan || 'Starter'}</span>
-                <span className="text-sm text-gray-600">
-                  ${subscription.monthly_price || 0}/month
-                </span>
+                <span className="font-semibold capitalize">{subscription.plan || 'Free'}</span>
               </div>
-              <div className="text-sm text-gray-600">
-                Billing period: {new Date(subscription.current_period_start).toLocaleDateString()} -{' '}
-                {new Date(subscription.current_period_end).toLocaleDateString()}
-              </div>
+              {subscription.current_period_start && subscription.current_period_end && (
+                <div className="text-sm text-gray-600">
+                  Billing period: {new Date(subscription.current_period_start).toLocaleDateString()} -{' '}
+                  {new Date(subscription.current_period_end).toLocaleDateString()}
+                </div>
+              )}
               {subscription.trial_ends_at && (
                 <div className="text-sm text-blue-600">
                   Trial ends: {new Date(subscription.trial_ends_at).toLocaleDateString()}
@@ -134,7 +186,7 @@ export default function BillingPage() {
                         Manage Subscription
                       </Button>
                     )}
-                    <Button onClick={() => window.scrollTo(0, document.getElementById('upgrade-plans')?.offsetTop || 0)}>
+                    <Button onClick={() => window.scrollTo(0, (document.getElementById('upgrade-plans')?.offsetTop || 0) - 20)}>
                       View Plans
                     </Button>
                   </>
@@ -151,41 +203,62 @@ export default function BillingPage() {
       <div id="upgrade-plans" className="space-y-4">
         <h2 className="text-2xl font-bold">Available Plans</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {PRICING_TIERS.map((tier) => (
-            <Card key={tier.name}>
-              <CardHeader>
-                <CardTitle>{tier.name}</CardTitle>
-                <CardDescription>
-                  <div className="text-2xl font-bold text-gray-900 mt-2">
-                    ${tier.monthlyUSD}
-                    <span className="text-sm text-gray-600 font-normal">/month</span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    ₡{tier.monthlyCRC.toLocaleString()}/month
-                  </div>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-2">
-                  {tier.features.map((feature) => (
-                    <li key={feature} className="text-sm text-gray-600 flex items-start">
-                      <span className="text-green-600 mr-2">✓</span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className="w-full"
-                  variant={subscription?.plan?.toUpperCase() === tier.name.toUpperCase() ? 'outline' : 'default'}
-                  disabled={subscription?.plan?.toUpperCase() === tier.name.toUpperCase()}
-                >
-                  {subscription?.plan?.toUpperCase() === tier.name.toUpperCase() ? 'Current Plan' : 'Upgrade'}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {PRICING_TIERS.map((tier) => {
+            const isCurrentPlan = subscription?.plan?.toUpperCase() === tier.planKey;
+            return (
+              <Card key={tier.name}>
+                <CardHeader>
+                  <CardTitle>{tier.name}</CardTitle>
+                  <CardDescription>
+                    <div className="text-2xl font-bold text-gray-900 mt-2">
+                      ${tier.monthlyUSD}
+                      <span className="text-sm text-gray-600 font-normal">/month</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      ₡{tier.monthlyCRC.toLocaleString()}/month
+                    </div>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ul className="space-y-2">
+                    {tier.features.map((feature) => (
+                      <li key={feature} className="text-sm text-gray-600 flex items-start">
+                        <span className="text-green-600 mr-2">✓</span>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className="w-full"
+                    variant={isCurrentPlan ? 'outline' : 'default'}
+                    disabled={isCurrentPlan || checkoutMutation.isPending}
+                    onClick={() => handleUpgrade(tier.planKey)}
+                  >
+                    {checkoutMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : isCurrentPlan ? (
+                      'Current Plan'
+                    ) : (
+                      'Upgrade'
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
+
+      {checkoutMutation.isError && (
+        <Alert className="bg-red-50 border-red-200">
+          <AlertDescription className="text-red-800">
+            {(checkoutMutation.error as Error).message}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Billing History */}
       <Card>
