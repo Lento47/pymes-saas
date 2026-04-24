@@ -8,6 +8,8 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -45,27 +47,24 @@ export class DocumentsController {
   @Roles(WorkspaceUserRole.AGENT)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: memoryStorage(), // buffer en memoria → luego a S3
+      storage: memoryStorage(), // buffer en memoria → luego al storage configurado
       limits: { fileSize: 25 * 1024 * 1024 },
     }),
   )
-  upload(
+  async upload(
     @CurrentUser() user: AuthUser,
     @UploadedFile() file: Express.Multer.File,
     @Body('contact_id')      contact_id?: string,
     @Body('conversation_id') conversation_id?: string,
     @Body('task_id')         task_id?: string,
   ) {
-    return this.planLimits
-      .enforceDocuments(user.workspace_id, file?.size ?? 0)
-      .then(() =>
-        this.service.upload(
-          user.workspace_id,
-          user,
-          file,
-          { contact_id, conversation_id, task_id },
-        )
-      );
+    await this.planLimits.enforceDocuments(user.workspace_id, file?.size ?? 0);
+    return this.service.upload(
+      user.workspace_id,
+      user,
+      file,
+      { contact_id, conversation_id, task_id },
+    );
   }
 
   @Get()
@@ -82,6 +81,22 @@ export class DocumentsController {
     @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
+  }
+
+  @Get(':id/download')
+  async download(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: any,
+  ) {
+    const { doc, file } = await this.service.download(workspaceId, id);
+    const downloadName = (doc.original_file_name || doc.file_name || 'documento').replace(/"/g, '');
+    res.setHeader('Content-Type', file.contentType || doc.mime_type || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+    if (file.contentLength) {
+      res.setHeader('Content-Length', file.contentLength.toString());
+    }
+    return new StreamableFile(file.stream);
   }
 
   @Patch(':id')

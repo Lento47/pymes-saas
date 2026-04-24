@@ -1,5 +1,5 @@
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { MessageDirection } from '@prisma/client';
+import { MessageDirection } from '../../common/types/enums';
 
 export class SendMessageDto {
   @IsOptional()

@@ -2,7 +2,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { TriggerType } from '@prisma/client';
+import { TriggerType } from '../common/types/enums';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CreateAutomationDto } from './dto/create-automation.dto';
 import { UpdateAutomationDto } from './dto/update-automation.dto';

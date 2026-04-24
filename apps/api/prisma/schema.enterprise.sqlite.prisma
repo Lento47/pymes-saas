@@ -1,0 +1,883 @@
+// ============================================================
+// schema.prisma — SaaS Multi-tenant Blueprint (Enterprise/Offline Edition)
+// Stack: NestJS + SQLite + Prisma
+// ============================================================
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ============================================================
+// CORE — Auth & Tenancy
+// ============================================================
+
+model Workspace {
+  id           String          @id @default(cuid())
+  name         String
+  slug         String          @unique
+  country_code String?
+  timezone     String          @default("UTC")
+  locale       String          @default("en")
+  status String @default("ACTIVE")
+  plan String   @default("FREE")
+  settings_json String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  workspace_users       WorkspaceUser[]
+  contacts              Contact[]
+  channels              Channel[]
+  conversations         Conversation[]
+  messages              Message[]
+  tasks                 Task[]
+  documents             Document[]
+  invoices              Invoice[]
+  invoice_lines         InvoiceLine[]
+  workspace_tax_profile WorkspaceTaxProfile?
+  invoice_payments      InvoicePayment[]
+  automation_rules      AutomationRule[]
+  automation_executions AutomationExecution[]
+  daily_summaries       DailySummary[]
+  notifications         Notification[]
+  audit_logs            AuditLog[]
+  departments           Department[]
+  refresh_tokens        RefreshToken[]
+  payment_reminders     PaymentReminder[]
+  error_reports         ErrorReport[]
+  deal_stages           DealStage[]
+  deals                 Deal[]
+  subscriptions         WorkspaceSubscription[]
+  billing_events        BillingEvent[]
+  invitations           Invitation[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("workspaces")
+}
+
+model User {
+  id                String     @id @default(cuid())
+  email             String     @unique
+  name              String
+  avatar_url        String?
+  password_hash     String?
+  status String @default("ACTIVE")
+  is_platform_admin Boolean    @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  workspace_users        WorkspaceUser[]
+  assigned_conversations Conversation[]   @relation("ConversationAssignee")
+  assigned_tasks         Task[]           @relation("TaskAssignee")
+  uploaded_documents     Document[]       @relation("DocumentUploader")
+  automation_rules       AutomationRule[] @relation("RuleCreator")
+  notifications          Notification[]
+  audit_logs             AuditLog[]
+  outbound_messages      Message[]        @relation("MessageSender")
+  department_memberships DepartmentMember[]
+  refresh_tokens         RefreshToken[]
+  recorded_invoice_payments InvoicePayment[] @relation("InvoicePaymentRecorder")
+  error_reports          ErrorReport[]
+  assigned_deals         Deal[]           @relation("DealAssignee")
+  billing_events         BillingEvent[]
+  sent_invitations      Invitation[]    @relation("InvitationInviter")
+
+  @@index([email])
+  @@index([status])
+  @@map("users")
+}
+
+model WorkspaceUser {
+  id               String            @id @default(cuid())
+  workspace_id     String
+  user_id          String
+  role String @default("AGENT")
+  is_owner         Boolean           @default(false)
+  // Granular permission flags layered on top of role. Null = use role defaults.
+  // Keys: can_delete_contacts, can_export_data, can_send_bulk_email,
+  //       can_manage_invoices, can_manage_automations, can_view_audit_log,
+  //       can_manage_billing, can_manage_integrations
+  permissions_json String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, user_id])
+  @@index([workspace_id])
+  @@index([user_id])
+  @@map("workspace_users")
+}
+
+model RefreshToken {
+  id           String    @id @default(cuid())
+  token_hash   String    @unique
+  user_id      String
+  workspace_id String
+  family       String
+  expires_at   DateTime
+  revoked_at   DateTime?
+  created_at   DateTime  @default(now())
+
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([token_hash])
+  @@index([user_id, workspace_id])
+  @@index([expires_at])
+  @@map("refresh_tokens")
+}
+
+model Invitation {
+  id             String            @id @default(cuid())
+  workspace_id   String
+  email          String
+  role String
+  token_hash     String            @unique  // SHA-256 of raw token sent in email
+  department_ids String          @default("[]")
+  invited_by_id  String?
+  expires_at     DateTime
+  accepted_at    DateTime?
+  revoked_at     DateTime?
+  last_sent_at   DateTime          @default(now())
+  send_count     Int               @default(1)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace  Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  invited_by User?     @relation("InvitationInviter", fields: [invited_by_id], references: [id])
+
+  @@index([token_hash])
+  @@index([workspace_id, email])
+  @@index([expires_at])
+  @@map("invitations")
+}
+
+model WorkspaceSubscription {
+  id                       String                      @id @default(cuid())
+  workspace_id             String
+  provider String             @default("MANUAL")
+  status String @default("MANUAL")
+  plan String
+  billing_interval String             @default("MONTHLY")
+  provider_customer_id     String?
+  provider_subscription_id String?
+  external_reference       String?
+  current_period_start     DateTime?
+  current_period_end       DateTime?
+  cancel_at_period_end     Boolean                     @default(false)
+  trial_ends_at            DateTime?
+  notes                    String?
+  metadata_json String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  events    BillingEvent[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, plan])
+  @@index([provider, provider_customer_id])
+  @@index([provider, provider_subscription_id])
+  @@map("workspace_subscriptions")
+}
+
+model BillingEvent {
+  id                String          @id @default(cuid())
+  workspace_id      String
+  subscription_id   String?
+  provider String @default("MANUAL")
+  source            String          @default("MANUAL")
+  event_type        String
+  provider_event_id String?
+  actor_user_id     String?
+  applied_plan String?
+  payload_json String?
+  processed_at      DateTime?
+  notes             String?
+
+  created_at DateTime @default(now())
+
+  workspace    Workspace              @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  subscription WorkspaceSubscription? @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
+  actor_user   User?                  @relation(fields: [actor_user_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([subscription_id])
+  @@index([provider, event_type])
+  @@index([processed_at])
+  @@index([actor_user_id])
+  @@map("billing_events")
+}
+
+// ============================================================
+// CRM — Contacts & Channels
+// ============================================================
+
+model Contact {
+  id                      String      @id @default(cuid())
+  workspace_id            String
+  type String @default("CUSTOMER")
+  full_name               String
+  company_name            String?
+  email                   String?
+  phone                   String?
+  identification_type     String?
+  identification_number   String?
+  tax_email               String?
+  province                String?
+  canton                  String?
+  district                String?
+  address_detail          String?
+  foreign_identification  String?
+  receptor_validation_json String?
+  external_ref            String?
+  tags_json String?
+  last_interaction_at     DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace     Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  tasks         Task[]
+  documents     Document[]
+  invoices      Invoice[]
+  deals         Deal[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, email])
+  @@index([workspace_id, phone])
+  @@index([workspace_id, identification_number])
+  @@index([workspace_id, external_ref])
+  @@index([workspace_id, type])
+  @@map("contacts")
+}
+
+model Channel {
+  id           String        @id @default(cuid())
+  workspace_id String
+  type String
+  provider     String?
+  name         String
+  status String @default("PENDING_SETUP")
+  config_json String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  department_id String?
+
+  workspace     Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  department    Department?    @relation("ChannelDepartment", fields: [department_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([workspace_id, type])
+  @@index([workspace_id, status])
+  @@map("channels")
+}
+
+// ============================================================
+// CONVERSATIONS & MESSAGES
+// ============================================================
+
+model Conversation {
+  id               String             @id @default(cuid())
+  workspace_id     String
+  channel_id       String
+  contact_id       String?
+  subject          String?
+  status String @default("NEW")
+  priority String           @default("MEDIUM")
+  category         String?
+  assigned_user_id String?
+  last_message_at  DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  department_id String?
+
+  workspace     Workspace   @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  channel       Channel     @relation(fields: [channel_id], references: [id])
+  contact       Contact?    @relation(fields: [contact_id], references: [id])
+  assigned_user User?       @relation("ConversationAssignee", fields: [assigned_user_id], references: [id])
+  department    Department? @relation("ConversationDepartment", fields: [department_id], references: [id])
+
+  messages  Message[]
+  tasks     Task[]
+  documents Document[]
+  invoices  Invoice[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, priority])
+  @@index([workspace_id, assigned_user_id])
+  @@index([workspace_id, contact_id])
+  @@index([workspace_id, channel_id])
+  @@index([workspace_id, last_message_at])
+  @@map("conversations")
+}
+
+model Message {
+  id                   String           @id @default(cuid())
+  workspace_id         String
+  conversation_id      String
+  direction String
+  sender_name          String?
+  sender_ref           String?
+  sender_user_id       String?
+  body_text            String?
+  body_html            String?
+  raw_payload_json String?
+  ai_classification_json String?
+  sent_at              DateTime?
+
+  created_at DateTime @default(now())
+
+  workspace    Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  sender_user  User?        @relation("MessageSender", fields: [sender_user_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([conversation_id])
+  @@index([workspace_id, direction])
+  @@index([sent_at])
+  @@map("messages")
+}
+
+// ============================================================
+// TASKS
+// ============================================================
+
+model Task {
+  id               String     @id @default(cuid())
+  workspace_id     String
+  conversation_id  String?
+  contact_id       String?
+  source String @default("MANUAL")
+  title            String
+  description      String?
+  status String @default("TODO")
+  priority String   @default("MEDIUM")
+  assigned_user_id String?
+  due_at           DateTime?
+  completed_at     DateTime?
+  metadata_json String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace     Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversation  Conversation? @relation(fields: [conversation_id], references: [id])
+  contact       Contact?      @relation(fields: [contact_id], references: [id])
+  assigned_user User?         @relation("TaskAssignee", fields: [assigned_user_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, priority])
+  @@index([workspace_id, assigned_user_id])
+  @@index([workspace_id, due_at])
+  @@index([workspace_id, source])
+  @@map("tasks")
+}
+
+// ============================================================
+// DOCUMENTS
+// ============================================================
+
+model Document {
+  id                    String              @id @default(cuid())
+  workspace_id          String
+  contact_id            String?
+  conversation_id       String?
+  task_id               String?
+  file_name             String
+  original_file_name    String?
+  mime_type             String
+  storage_key           String
+  storage_mode String @default("REMOTE")
+  storage_relative_path String?
+  checksum              String?
+  category              String              @default("document")
+  entity_type           String?
+  entity_id             String?
+  file_size             Int
+  ocr_text              String?
+  extracted_data_json String?
+  summary_text          String?
+  status String      @default("UPLOADED")
+  uploaded_by_user_id   String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace    Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact      Contact?      @relation(fields: [contact_id], references: [id])
+  conversation Conversation? @relation(fields: [conversation_id], references: [id])
+  uploaded_by  User?         @relation("DocumentUploader", fields: [uploaded_by_user_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, storage_mode])
+  @@index([workspace_id, contact_id])
+  @@index([workspace_id, conversation_id])
+  @@map("documents")
+}
+
+// ============================================================
+// INVOICES
+// ============================================================
+
+model Invoice {
+  id                       String              @id @default(cuid())
+  workspace_id             String
+  contact_id               String
+  conversation_id          String?
+  reference_invoice_id     String?
+  number                   String
+  amount                   Decimal
+  currency                 String              @default("USD")
+  due_date                 DateTime
+  paid_at                  DateTime?
+  status String       @default("DRAFT")
+  document_type String @default("FACTURA_ELECTRONICA")
+  issuance_mode String @default("MANUAL_ONLY")
+  hacienda_status String      @default("DRAFT")
+  clave                    String?
+  consecutivo              String?
+  activity_code            String?
+  sale_condition           String?
+  payment_method           String?
+  issue_date               DateTime?
+  exchange_rate            Decimal?
+  hacienda_location_url    String?
+  signed_xml_storage_key   String?
+  response_xml_storage_key String?
+  hacienda_last_error      String?
+  hacienda_last_checked_at DateTime?
+  hacienda_submitted_at    DateTime?
+  description              String?
+  notes_json String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace         Workspace        @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact           Contact          @relation(fields: [contact_id], references: [id])
+  conversation      Conversation?    @relation(fields: [conversation_id], references: [id], onDelete: SetNull)
+  reference_invoice Invoice?         @relation("InvoiceReference", fields: [reference_invoice_id], references: [id], onDelete: SetNull)
+  referenced_by     Invoice[]        @relation("InvoiceReference")
+  reminders         PaymentReminder[]
+  payments          InvoicePayment[]
+  lines             InvoiceLine[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, hacienda_status])
+  @@index([workspace_id, contact_id])
+  @@index([workspace_id, conversation_id])
+  @@index([reference_invoice_id])
+  @@index([workspace_id, clave])
+  @@index([workspace_id, due_date])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id                String   @id @default(cuid())
+  workspace_id      String
+  invoice_id        String
+  line_number       Int
+  description       String
+  quantity          Decimal
+  unit_price        Decimal
+  discount_amount   Decimal  @default(0)
+  subtotal          Decimal
+  tax_amount        Decimal  @default(0)
+  total_line_amount Decimal
+  cabys_code        String?
+  unit_of_measure   String?
+  tax_code          String?
+  tax_rate          Decimal?
+  exoneration_json String?
+  metadata_json String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  invoice   Invoice   @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([invoice_id])
+  @@unique([invoice_id, line_number])
+  @@map("invoice_lines")
+}
+
+model InvoicePayment {
+  id                  String   @id @default(cuid())
+  workspace_id        String
+  invoice_id          String
+  recorded_by_user_id String?
+  amount              Decimal
+  currency            String   @default("USD")
+  method              String?
+  reference           String?
+  notes               String?
+  paid_at             DateTime
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace        Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  invoice          Invoice   @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  recorded_by_user User?     @relation("InvoicePaymentRecorder", fields: [recorded_by_user_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([invoice_id])
+  @@index([recorded_by_user_id])
+  @@index([workspace_id, paid_at])
+  @@map("invoice_payments")
+}
+
+model PaymentReminder {
+  id           String    @id @default(cuid())
+  workspace_id String
+  invoice_id   String
+  draft_text   String
+  sent_at      DateTime?
+  sent_via     String?
+  approved_by  String?
+  tokens_used  Int?
+
+  created_at DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  invoice   Invoice   @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([invoice_id])
+  @@map("payment_reminders")
+}
+
+model WorkspaceTaxProfile {
+  id                    String  @id @default(cuid())
+  workspace_id          String  @unique
+  identification_type   String
+  identification_number String
+  legal_name            String
+  trade_name            String?
+  activity_code         String
+  province              String?
+  canton                String?
+  district              String?
+  address_detail        String?
+  tax_email             String?
+  phone                 String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@map("workspace_tax_profiles")
+}
+
+// ============================================================
+// DEPARTMENTS
+// ============================================================
+
+model Department {
+  id           String  @id @default(cuid())
+  workspace_id String
+  name         String
+  description  String?
+  color        String?
+  is_active    Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace     Workspace          @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  members       DepartmentMember[]
+  channels      Channel[]          @relation("ChannelDepartment")
+  conversations Conversation[]     @relation("ConversationDepartment")
+
+  @@unique([workspace_id, name])
+  @@index([workspace_id])
+  @@index([workspace_id, is_active])
+  @@map("departments")
+}
+
+model DepartmentMember {
+  id            String  @id @default(cuid())
+  department_id String
+  user_id       String
+  workspace_id  String
+  is_lead       Boolean @default(false)
+
+  created_at DateTime @default(now())
+
+  department Department @relation(fields: [department_id], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([department_id, user_id])
+  @@index([workspace_id])
+  @@index([user_id])
+  @@map("department_members")
+}
+
+// ============================================================
+// AUTOMATIONS
+// ============================================================
+
+model AutomationRule {
+  id                    String      @id @default(cuid())
+  workspace_id          String
+  name                  String
+  description           String?
+  trigger_type String
+  trigger_config_json String
+  condition_config_json String?
+  action_config_json String
+  enabled               Boolean     @default(true)
+  created_by_user_id    String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace  Workspace             @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  created_by User?                 @relation("RuleCreator", fields: [created_by_user_id], references: [id])
+  executions AutomationExecution[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, enabled])
+  @@index([workspace_id, trigger_type])
+  @@map("automation_rules")
+}
+
+model AutomationExecution {
+  id                  String                    @id @default(cuid())
+  workspace_id        String
+  rule_id             String
+  trigger_entity_type String
+  trigger_entity_id   String
+  status String @default("QUEUED")
+  input_json String?
+  output_json String?
+  error_message       String?
+  started_at          DateTime?
+  finished_at         DateTime?
+
+  created_at DateTime @default(now())
+
+  workspace Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  rule      AutomationRule @relation(fields: [rule_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([rule_id])
+  @@index([workspace_id, status])
+  @@index([trigger_entity_type, trigger_entity_id])
+  @@map("automation_executions")
+}
+
+// ============================================================
+// SUMMARIES
+// ============================================================
+
+model DailySummary {
+  id             String   @id @default(cuid())
+  workspace_id   String
+  summary_date   DateTime
+  generated_text String
+  metrics_json String?
+  generated_at   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, summary_date])
+  @@index([workspace_id])
+  @@index([workspace_id, summary_date])
+  @@map("daily_summaries")
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+model Notification {
+  id                  String    @id @default(cuid())
+  workspace_id        String
+  user_id             String
+  type                String
+  title               String
+  body                String
+  read_at             DateTime?
+  related_entity_type String?
+  related_entity_id   String?
+
+  created_at DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, user_id])
+  @@index([workspace_id, user_id, read_at])
+  @@index([created_at])
+  @@map("notifications")
+}
+
+// ============================================================
+// AUDIT LOGS
+// ============================================================
+
+model AuditLog {
+  id           String  @id @default(cuid())
+  workspace_id String
+  user_id      String?
+  action       String
+  entity_type  String
+  entity_id    String
+  before_json String?
+  after_json String?
+
+  created_at DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [user_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([workspace_id, entity_type, entity_id])
+  @@index([workspace_id, user_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}
+
+// ============================================================
+// PIPELINE / DEALS
+// ============================================================
+
+model DealStage {
+  id           String @id @default(cuid())
+  workspace_id String
+  name         String
+  order        Int
+  color        String @default("#6366f1")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  deals     Deal[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, order])
+  @@map("deal_stages")
+}
+
+model Deal {
+  id               String     @id @default(cuid())
+  workspace_id     String
+  stage_id         String
+  contact_id       String?
+  assigned_user_id String?
+  title            String
+  value            Decimal?
+  currency         String     @default("CRC")
+  priority String   @default("MEDIUM")
+  status String @default("OPEN")
+  closing_date     DateTime?
+  notes            String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace     Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  stage         DealStage  @relation(fields: [stage_id], references: [id])
+  contact       Contact?   @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  assigned_user User?      @relation("DealAssignee", fields: [assigned_user_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([workspace_id, stage_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, contact_id])
+  @@index([workspace_id, assigned_user_id])
+  @@map("deals")
+}
+
+model ErrorReport {
+  id           String   @id @default(cuid())
+  workspace_id String?
+  user_id      String?
+  source       String
+  category     String
+  severity     String   @default("ERROR")
+  title        String?
+  message      String
+  stack        String?
+  route        String?
+  url          String?
+  method       String?
+  status_code  Int?
+  user_agent   String?
+  context_json String?
+  occurred_at  DateTime @default(now())
+  created_at   DateTime @default(now())
+
+  workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: SetNull)
+  user      User?      @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([user_id])
+  @@index([source])
+  @@index([category])
+  @@index([severity])
+  @@index([status_code])
+  @@index([occurred_at])
+  @@map("error_reports")
+}

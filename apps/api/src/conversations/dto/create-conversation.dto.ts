@@ -4,7 +4,7 @@ import {
   IsString,
   Length,
 } from 'class-validator';
-import { Priority } from '@prisma/client';
+import { Priority } from '../../common/types/enums';
 
 export class CreateConversationDto {
   @IsString()

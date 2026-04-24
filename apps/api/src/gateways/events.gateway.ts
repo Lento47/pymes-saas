@@ -10,6 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
+import { PrismaService } from '../common/prisma/prisma.service';
 
 // ─── Eventos emitidos al cliente ─────────────────────────────────────────────
 // message:new          → nuevo mensaje en una conversación
@@ -37,7 +38,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private readonly logger = new Logger(EventsGateway.name);
 
-  constructor(private readonly jwtService: JwtService) { }
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+  ) { }
 
   // ── Conexión ───────────────────────────────────────────────────────────────
 
@@ -84,8 +88,29 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() conversationId: string,
   ) {
-    await client.join(`conversation:${conversationId}`);
-    return { ok: true, room: `conversation:${conversationId}` };
+    const workspaceId = client.data.workspaceId;
+
+    try {
+      const conversation = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { workspace_id: true },
+      });
+
+      if (!conversation || conversation.workspace_id !== workspaceId) {
+        this.logger.warn(
+          `Unauthorized join attempt: user ${client.data.userId} tried to join conversation ${conversationId}`,
+        );
+        return { ok: false, error: 'Unauthorized' };
+      }
+
+      await client.join(`conversation:${conversationId}`);
+      return { ok: true, room: `conversation:${conversationId}` };
+    } catch (error) {
+      this.logger.error(
+        `Error joining conversation ${conversationId}: ${error}`,
+      );
+      return { ok: false, error: 'Error joining conversation' };
+    }
   }
 
   /** Cliente cierra una conversación → sale del room */
@@ -94,8 +119,29 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() conversationId: string,
   ) {
-    await client.leave(`conversation:${conversationId}`);
-    return { ok: true };
+    const workspaceId = client.data.workspaceId;
+
+    try {
+      const conversation = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { workspace_id: true },
+      });
+
+      if (!conversation || conversation.workspace_id !== workspaceId) {
+        this.logger.warn(
+          `Unauthorized leave attempt: user ${client.data.userId} tried to leave conversation ${conversationId}`,
+        );
+        return { ok: false, error: 'Unauthorized' };
+      }
+
+      await client.leave(`conversation:${conversationId}`);
+      return { ok: true };
+    } catch (error) {
+      this.logger.error(
+        `Error leaving conversation ${conversationId}: ${error}`,
+      );
+      return { ok: false, error: 'Error leaving conversation' };
+    }
   }
 
   /** Ping de keepalive */

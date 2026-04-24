@@ -16,6 +16,7 @@ import { InviteTokenPayload } from './invite-token.types';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
+import { resolvePermissions } from './permissions/permission.types';
 
 @Injectable()
 export class AuthService {
@@ -278,11 +279,16 @@ export class AuthService {
       },
     });
 
+    const overrides =
+      (membership.permissions_json as Record<string, boolean> | null) ?? null;
+    const permissions = resolvePermissions(membership.role, overrides);
+
     return {
       ...membership.user,
       role: membership.role,
       is_owner: membership.is_owner,
       workspace: membership.workspace,
+      permissions,
     };
   }
 

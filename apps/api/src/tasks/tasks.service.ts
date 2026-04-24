@@ -9,6 +9,7 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { FilterTasksDto } from './dto/filter-tasks.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AutomationsService } from '../automations/automations.service';
+import { TriggerType } from '../common/types/enums';
 
 @Injectable()
 export class TasksService {
@@ -109,7 +110,7 @@ export class TasksService {
 
     await this.automationsService.triggerRules(
       workspaceId,
-      'TASK_CREATED',
+      TriggerType.TASK_CREATED,
       'task',
       task.id,
     );

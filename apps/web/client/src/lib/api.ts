@@ -1,5 +1,10 @@
 import { reportClientError } from "@/lib/error-reporting";
-const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
+// In Tauri desktop mode, the WebView is served from http://tauri.localhost
+// and the NestJS sidecar runs locally on port 4000.
+const _isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+const API_BASE = _isTauri
+  ? 'http://localhost:4000'
+  : ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
 const LS_TOKEN_KEY = "pymes_token";
 const LS_SLUG_KEY = "pymes_slug";
@@ -91,6 +96,28 @@ async function _tryRefresh(): Promise<boolean> {
   return _refreshPromise;
 }
 
+/** Public request — no auth headers. Used for invitation verify/accept. */
+async function requestPublic<T>(
+  method: string,
+  path: string,
+  data?: unknown
+): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (data) headers["Content-Type"] = "application/json";
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers,
+    body: data ? JSON.stringify(data) : undefined,
+  });
+  if (!res.ok) {
+    const text = (await res.text()) || res.statusText;
+    throw new Error(`${res.status}: ${text}`);
+  }
+  const ct = res.headers.get("content-type");
+  if (ct && ct.includes("application/json")) return res.json();
+  return {} as T;
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -164,6 +191,44 @@ async function request<T>(
     return res.json();
   }
   return {} as T;
+}
+
+async function requestBlob(
+  path: string,
+): Promise<{ blob: Blob; contentDisposition: string | null }> {
+  const buildHeaders = (): Record<string, string> => {
+    const h: Record<string, string> = {};
+    if (_token) h["Authorization"] = `Bearer ${_token}`;
+    if (_workspaceSlug) h["x-workspace-slug"] = _workspaceSlug;
+    return h;
+  };
+
+  let res = await fetch(`${API_BASE}${path}`, {
+    method: "GET",
+    headers: buildHeaders(),
+  });
+
+  if (res.status === 401 && !path.includes("/auth/refresh")) {
+    const refreshed = await _tryRefresh();
+    if (refreshed) {
+      res = await fetch(`${API_BASE}${path}`, { method: "GET", headers: buildHeaders() });
+    }
+    if (!refreshed || res.status === 401) {
+      clearAuthState();
+      window.location.hash = "#/login";
+      throw new Error("401: Sesión expirada.");
+    }
+  }
+
+  if (!res.ok) {
+    const text = (await res.text()) || res.statusText;
+    throw new Error(`${res.status}: ${text}`);
+  }
+
+  return {
+    blob: await res.blob(),
+    contentDisposition: res.headers.get("content-disposition"),
+  };
 }
 
 export const api = {
@@ -255,6 +320,7 @@ export const api = {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return request<any>("GET", `/api/documents${qs}`);
   },
+  downloadDocument: (id: string) => requestBlob(`/api/documents/${id}/download`),
   uploadDocument: (formData: FormData) => request<any>("POST", "/api/documents/upload", formData, { isFormData: true }),
   deleteDocument: (id: string) => request<any>("DELETE", `/api/documents/${id}`),
   getAutomations: () => request<any>("GET", "/api/automations"),
@@ -271,6 +337,23 @@ export const api = {
   inviteUser: (data: any) => request<any>("POST", "/api/workspaces/current/members/invite", data),
   changeMemberRole: (userId: string, newRole: string) => request<any>("PATCH", `/api/workspaces/current/members/${userId}/role`, { role: newRole }),
   removeMember: (userId: string) => request<any>("DELETE", `/api/workspaces/current/members/${userId}`),
+  // Invitations (real signed-token flow)
+  listInvitations: () => request<any>("GET", "/api/invitations"),
+  createInvitation: (data: { email: string; role: string; department_ids?: string[] }) =>
+    request<any>("POST", "/api/invitations", data),
+  resendInvitation: (id: string) => request<any>("POST", `/api/invitations/${id}/resend`),
+  revokeInvitation: (id: string) => request<any>("DELETE", `/api/invitations/${id}`),
+  verifyInvitationToken: (token: string) =>
+    requestPublic<any>("GET", `/api/invitations/verify?token=${encodeURIComponent(token)}`),
+  acceptInvitation: (data: { token: string; password: string; name?: string }) =>
+    requestPublic<any>("POST", "/api/invitations/accept", data),
+  // Granular permissions
+  getPermissionsCatalog: () =>
+    request<any>("GET", "/api/workspaces/current/permissions/catalog"),
+  getMemberPermissions: (userId: string) =>
+    request<any>("GET", `/api/workspaces/current/members/${userId}/permissions`),
+  updateMemberPermissions: (userId: string, permissions: Record<string, boolean | null>) =>
+    request<any>("PATCH", `/api/workspaces/current/members/${userId}/permissions`, { permissions }),
   updateUser: (userId: string, data: any) => request<any>("PATCH", `/api/users/${userId}`, data),
   getChannels: () => request<any>("GET", "/api/channels"),
   createChannel: (data: any) => request<any>("POST", "/api/channels", data),

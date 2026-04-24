@@ -113,4 +113,37 @@ export class WorkspacesController {
   ) {
     return this.service.removeMember(user.workspace_id, user, targetUserId);
   }
+
+  // ── Granular permissions ──────────────────────────────────────────────────
+
+  /** GET /workspaces/current/permissions/catalog — list available permission keys. */
+  @Get('current/permissions/catalog')
+  getPermissionsCatalog() {
+    return this.service.getPermissionsCatalog();
+  }
+
+  /** GET /workspaces/current/members/:userId/permissions — resolved + overrides. */
+  @Get('current/members/:userId/permissions')
+  getMemberPermissions(
+    @CurrentUser() user: AuthUser,
+    @Param('userId') targetUserId: string,
+  ) {
+    return this.service.getMemberPermissions(user.workspace_id, targetUserId);
+  }
+
+  /** PATCH /workspaces/current/members/:userId/permissions — set overrides. */
+  @Patch('current/members/:userId/permissions')
+  @Roles('ADMIN' as any)
+  updateMemberPermissions(
+    @CurrentUser() user: AuthUser,
+    @Param('userId') targetUserId: string,
+    @Body() body: { permissions: Record<string, boolean | null> },
+  ) {
+    return this.service.updateMemberPermissions(
+      user.workspace_id,
+      user,
+      targetUserId,
+      body.permissions ?? {},
+    );
+  }
 }

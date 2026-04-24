@@ -1,5 +1,5 @@
 import { IsEmail, IsEnum } from 'class-validator';
-import { WorkspaceUserRole } from '@prisma/client';
+import { WorkspaceUserRole } from '../../common/types/enums';
 
 export class InviteUserDto {
   @IsEmail()
