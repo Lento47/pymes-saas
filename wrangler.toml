@@ -9,3 +9,8 @@ API_URL = "https://api.pymeshub.lat"
 directory = "./apps/web/dist/public"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
