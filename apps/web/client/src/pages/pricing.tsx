@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { ArrowRight, Check } from 'lucide-react';
 import { PRICING_TIERS, ADD_ONS, FAQS } from '@/data/pricing.data';
 import { PricingCard } from '@/components/pricing/PricingCard';
@@ -11,7 +11,7 @@ import { LanguageSwitcher } from '@/components/shared/language-switcher';
 import { cn } from '@/lib/utils';
 
 export default function PricingPage() {
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
   const [isAnnual, setIsAnnual] = useState(false);
   const { messages } = useI18n();
   const copy = messages.pricing || {};
@@ -31,22 +31,16 @@ export default function PricingPage() {
           <div className="mx-auto max-w-7xl">
             <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7">
               <Link href="/">
-                <a>
-                  <BrandLockup compact />
-                </a>
+                <BrandLockup compact />
               </Link>
               <div className="flex items-center gap-2 sm:gap-4">
                 <LanguageSwitcher variant="marketing" />
-                <Link href="/login">
-                  <a className="font-marketing whitespace-nowrap text-sm font-medium text-white/78 transition hover:text-white">
-                    Log in
-                  </a>
+                <Link href="/login" className="font-marketing whitespace-nowrap text-sm font-medium text-white/78 transition hover:text-white">
+                  Log in
                 </Link>
-                <Link href="/login">
-                  <a className="glow-button font-marketing inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
-                    Get Started
-                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
-                  </a>
+                <Link href="/login" className="glow-button font-marketing inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
+                  Get Started
+                  <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Link>
               </div>
             </nav>
