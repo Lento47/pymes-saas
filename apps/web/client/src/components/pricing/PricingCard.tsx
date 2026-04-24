@@ -1,103 +1,100 @@
-import { Button } from '@/components/ui/button';
 import { PricingTier } from '@/data/pricing.data';
-import { Check } from 'lucide-react';
+import { Check, ArrowRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface PricingCardProps {
   tier: PricingTier;
-  billingPeriod: 'monthly' | 'annual';
+  isAnnual: boolean;
 }
 
-export function PricingCard({ tier, billingPeriod }: PricingCardProps) {
-  const price = billingPeriod === 'monthly' ? tier.monthlyUSD : tier.annualUSD;
-  const priceCRC = billingPeriod === 'monthly' ? tier.monthlyCRC : tier.annualCRC;
+export function PricingCard({ tier, isAnnual }: PricingCardProps) {
+  const price = isAnnual ? tier.annualUSD : tier.monthlyUSD;
+  const priceCRC = isAnnual ? tier.annualCRC : tier.monthlyCRC;
   const isEnterprise = tier.name === 'Enterprise';
 
   return (
-    <div
-      className={`relative rounded-2xl border transition-all ${
-        tier.popular
-          ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-600'
-          : 'border-gray-200 bg-white hover:border-gray-300'
-      }`}
-    >
+    <div className={cn(
+      'relative rounded-2xl border transition-all backdrop-blur-sm p-8',
+      tier.popular
+        ? 'border-[#dfff4a]/30 bg-white/[0.08]'
+        : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.05] hover:border-white/20'
+    )}>
       {/* Popular Badge */}
       {tier.popular && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <span className="rounded-full bg-blue-600 px-4 py-1 text-sm font-semibold text-white">
-            Most popular
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+          <span className="rounded-full bg-[#dfff4a] px-3 py-1 text-xs font-semibold text-[#051127]">
+            Most Popular
           </span>
         </div>
       )}
 
-      <div className="p-8">
-        {/* Header */}
-        <h3 className="text-2xl font-bold text-gray-900">{tier.name}</h3>
-        <p className="mt-2 text-sm text-gray-600">{tier.description}</p>
+      {/* Header */}
+      <div>
+        <h3 className="text-2xl font-bold text-white">{tier.name}</h3>
+        <p className="mt-2 text-sm text-white/60">{tier.description}</p>
+      </div>
 
-        {/* Pricing */}
-        <div className="mt-6">
-          {isEnterprise ? (
-            <div className="text-3xl font-bold text-gray-900">Custom pricing</div>
-          ) : (
-            <>
-              <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-bold text-gray-900">${price}</span>
-                <span className="text-gray-600">/month</span>
-              </div>
-              <div className="mt-2 text-sm text-gray-600">
-                ₡{priceCRC.toLocaleString()} / mes
-              </div>
-              {billingPeriod === 'annual' && (
-                <div className="mt-2 text-xs text-blue-600 font-semibold">
-                  Save 2 months with annual billing
-                </div>
-              )}
-            </>
-          )}
+      {/* Pricing */}
+      <div className="mt-6">
+        {isEnterprise ? (
+          <div className="text-3xl font-bold text-white">Custom Pricing</div>
+        ) : (
+          <>
+            <div className="flex items-baseline gap-2">
+              <span className="text-5xl font-bold text-white">${price}</span>
+              <span className="text-white/60">/month</span>
+            </div>
+            <div className="mt-2 text-sm text-white/60">
+              ₡{priceCRC.toLocaleString()} / mes
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* CTA Button */}
+      <button className={cn(
+        'mt-8 w-full rounded-full px-4 py-3 font-semibold transition flex items-center justify-center gap-2 text-sm',
+        tier.popular
+          ? 'glow-button bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] text-[#051127] hover:translate-y-[-1px]'
+          : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/[0.08]'
+      )}>
+        {tier.cta}
+        {tier.popular && <ArrowRight className="h-4 w-4" />}
+      </button>
+
+      {/* Features List */}
+      <div className="mt-8 border-t border-white/10 pt-8">
+        <div className="text-xs font-semibold text-white/60 uppercase tracking-wide mb-4">
+          Features
         </div>
-
-        {/* CTA Button */}
-        <Button
-          className={`mt-8 w-full ${
-            tier.popular
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'border border-gray-300 text-gray-900 hover:bg-gray-50'
-          }`}
-          size="lg"
-        >
-          {tier.cta}
-        </Button>
-
-        {/* Users */}
-        <div className="mt-6 border-t border-gray-200 pt-6">
-          <div className="text-sm font-semibold text-gray-900 mb-2">
-            {tier.users === 999 ? 'Unlimited users' : `${tier.users} users included`}
-          </div>
-        </div>
-
-        {/* Features List */}
-        <div className="mt-6 space-y-4">
+        <div className="space-y-3">
           {tier.features.map((feature, index) => (
             <div key={index} className="flex gap-3">
-              <Check className="h-5 w-5 flex-shrink-0 text-blue-600" />
-              <span className="text-sm text-gray-700">{feature}</span>
+              <Check className="h-4 w-4 flex-shrink-0 text-[#dfff4a]" />
+              <span className="text-sm text-white/80">{feature}</span>
             </div>
           ))}
         </div>
+      </div>
 
-        {/* Limits */}
-        <div className="mt-8 border-t border-gray-200 pt-6">
-          <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-4">
-            Limits
-          </div>
-          <div className="space-y-2 text-sm text-gray-700">
-            <div>Contacts: {tier.limits.contacts.toLocaleString()}</div>
-            <div>Invoices/month: {tier.limits.invoicesPerMonth.toLocaleString()}</div>
-            <div>Automations: {tier.limits.automations}</div>
-            <div>Storage: {tier.limits.storageGB} GB</div>
-            <div>Locations: {tier.limits.locations}</div>
-          </div>
+      {/* Limits */}
+      <div className="mt-8 border-t border-white/10 pt-8">
+        <div className="text-xs font-semibold text-white/60 uppercase tracking-wide mb-4">
+          Limits
         </div>
+        {isEnterprise ? (
+          <div className="text-sm text-white/70 italic">
+            Contact Sales for custom limits tailored to your business needs
+          </div>
+        ) : (
+          <div className="space-y-2 text-sm text-white/70">
+            <div>Contacts: <span className="text-white font-semibold">{tier.limits.contacts.toLocaleString()}</span></div>
+            <div>Invoices/month: <span className="text-white font-semibold">{tier.limits.invoicesPerMonth.toLocaleString()}</span></div>
+            <div>Automations: <span className="text-white font-semibold">{tier.limits.automations}</span></div>
+            <div>Storage: <span className="text-white font-semibold">{tier.limits.storageGB} GB</span></div>
+            <div>Locations: <span className="text-white font-semibold">{tier.limits.locations}</span></div>
+          </div>
+        )}
       </div>
     </div>
   );
