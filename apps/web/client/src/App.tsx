@@ -22,6 +22,7 @@ import Invoices from "@/pages/invoices";
 import Automations from "@/pages/automations";
 import Pipeline from "@/pages/pipeline";
 import Settings from "@/pages/settings";
+import Billing from "@/pages/billing";
 import HelpPage from "@/pages/help";
 import HelpDocumentPage from "@/pages/help-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
@@ -85,6 +86,9 @@ function AppRouter() {
       </Route>
       <Route path="/settings">
         {() => <ProtectedLayout><Settings /></ProtectedLayout>}
+      </Route>
+      <Route path="/settings/billing">
+        {() => <ProtectedLayout><Billing /></ProtectedLayout>}
       </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}

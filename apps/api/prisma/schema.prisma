@@ -240,6 +240,7 @@ model Workspace {
   deals                Deal[]
   subscriptions        WorkspaceSubscription[]
   billing_events       BillingEvent[]
+  stripe_events        StripeEvent[]
 
   @@index([slug])
   @@index([status])
@@ -995,4 +996,24 @@ model ErrorReport {
   @@index([status_code])
   @@index([occurred_at(sort: Desc)])
   @@map("error_reports")
+}
+
+model StripeEvent {
+  id             String   @id @default(cuid())
+  workspace_id   String?
+  external_id    String   @unique
+  type           String
+  data           Json     @db.JsonB
+  processed      Boolean  @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([external_id])
+  @@index([type])
+  @@index([processed])
+  @@index([created_at(sort: Desc)])
+  @@map("stripe_events")
 }
