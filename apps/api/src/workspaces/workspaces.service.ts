@@ -17,6 +17,7 @@ import { AiProvider, AiService } from '../ai/ai.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 import { EmailService } from '../email/email.service';
 import { EventsGateway } from '../gateways/events.gateway';
+import { PlanLimitsService } from '../billing/plan-limits.service';
 
 @Injectable()
 export class WorkspacesService {
@@ -29,6 +30,7 @@ export class WorkspacesService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly events: EventsGateway,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
@@ -450,6 +452,9 @@ export class WorkspacesService {
     requestingUser: AuthUser,
     dto: InviteUserDto,
   ) {
+    // Check user limit for workspace plan
+    await this.planLimits.checkUserLimit(workspaceId);
+
     // Solo ADMIN u OWNER pueden invitar
     if (!['ADMIN', 'OWNER'].includes(requestingUser.role)) {
       throw new ForbiddenException('Solo ADMIN u OWNER pueden invitar usuarios.');

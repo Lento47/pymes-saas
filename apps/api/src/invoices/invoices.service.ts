@@ -20,6 +20,7 @@ import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { CreateInvoicePaymentDto } from './dto/create-invoice-payment.dto';
+import { PlanLimitsService } from '../billing/plan-limits.service';
 
 @Injectable()
 export class InvoicesService {
@@ -29,6 +30,7 @@ export class InvoicesService {
     private readonly haciendaRecepcion: HaciendaRecepcionService,
     private readonly haciendaSigning: HaciendaSigningService,
     private readonly haciendaXmlBuilder: HaciendaXmlBuilderService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   async findAll(workspaceId: string, filters: FilterInvoicesDto) {
@@ -98,6 +100,9 @@ export class InvoicesService {
   }
 
   async create(workspaceId: string, dto: CreateInvoiceDto) {
+    // Check invoice limit for workspace plan
+    await this.planLimits.checkInvoiceLimit(workspaceId);
+
     await this.assertContact(workspaceId, dto.contact_id);
     await this.ensureUniqueNumber(workspaceId, dto.number);
 
