@@ -17,7 +17,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate --schema ./prisma/schema.prisma || true"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1028.0",
