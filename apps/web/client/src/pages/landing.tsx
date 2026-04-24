@@ -872,8 +872,13 @@ export default function Landing() {
             <div className="mt-14 grid gap-6 md:grid-cols-3">
               {copy.security.cards.map((item) => (
                 <article key={item.title} className="glass-panel rounded-[28px] p-7">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(232,255,89,0.18),rgba(116,244,212,0.15))] text-[#eaff9d]">
-                    <ShieldCheck className="h-6 w-6" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(232,255,89,0.18),rgba(116,244,212,0.15))] p-2 text-[#eaff9d]">
+                    <img
+                      src="/landing-icons/security.png"
+                      alt=""
+                      className="h-full w-full object-contain"
+                      aria-hidden="true"
+                    />
                   </div>
                   <h3 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                     {item.title}

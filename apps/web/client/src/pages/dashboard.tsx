@@ -17,6 +17,18 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
+interface PipelineDealSummary {
+  value: string | null;
+  currency: string;
+}
+
+interface PipelineStageSummary {
+  id: string;
+  name: string;
+  color: string;
+  deals: PipelineDealSummary[];
+}
+
 // ── Metric Card with trend ────────────────────────────────────────────────────
 function MetricCard({
   label,
@@ -123,6 +135,21 @@ function SectionCard({
   );
 }
 
+function sumPipelineValue(deals: PipelineDealSummary[]) {
+  return deals.reduce((sum, deal) => {
+    const amount = deal.value ? Number.parseFloat(deal.value) : 0;
+    return Number.isFinite(amount) ? sum + amount : sum;
+  }, 0);
+}
+
+function formatPipelineMoney(amount: number, currency: string) {
+  return new Intl.NumberFormat("es-CR", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 // ── Quick Action Button ───────────────────────────────────────────────────────
 function QuickAction({
   icon: Icon,
@@ -176,12 +203,47 @@ export default function DashboardPage() {
     queryFn: () => api.getDailySummaries(),
   });
 
+  const { data: pipelineStagesData, isLoading: pipelineLoading } = useQuery({
+    queryKey: ["/api/pipeline/stages", "dash"],
+    queryFn: () => api.getPipelineStages(),
+    refetchInterval: 60000,
+  });
+
   // Parse data
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
   const overdueInvoiceList = Array.isArray(overdueInvoices)
     ? overdueInvoices
     : overdueInvoices?.data ?? [];
+  const pipelineStages: PipelineStageSummary[] = Array.isArray(pipelineStagesData)
+    ? pipelineStagesData
+    : pipelineStagesData?.data ?? [];
+  const pipelineStageRows = pipelineStages
+    .map((stage) => {
+      const dealCount = stage.deals?.length ?? 0;
+      const currency =
+        stage.deals?.find((deal) => deal.currency)?.currency ??
+        pipelineStages
+          .flatMap((pipelineStage) => pipelineStage.deals ?? [])
+          .find((deal) => deal.currency)?.currency ??
+        "CRC";
+      const totalValue = sumPipelineValue(stage.deals ?? []);
+      return {
+        id: stage.id,
+        name: stage.name,
+        color: stage.color || "#3b82f6",
+        dealCount,
+        totalValue,
+        currency,
+      };
+    })
+    .filter((stage) => stage.dealCount > 0)
+    .slice(0, 4);
+  const maxPipelineDeals = Math.max(...pipelineStageRows.map((stage) => stage.dealCount), 1);
+  const pipelineDealCount = pipelineStages.reduce(
+    (sum, stage) => sum + (stage.deals?.length ?? 0),
+    0
+  );
   const overdueCount = overdueInvoiceList.length;
   const overdueAmount = overdueInvoiceList.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
   const lastSummary = Array.isArray(summaries) ? summaries[0] : summaries?.data?.[0] ?? null;
@@ -255,10 +317,8 @@ export default function DashboardPage() {
           />
           <MetricCard
             label="Negocios en pipeline"
-            value={12}
-            currency="€"
-            trendLabel="en valor"
-            loading={statsLoading}
+            value={pipelineDealCount}
+            loading={pipelineLoading}
             color="green"
           />
         </div>
@@ -339,38 +399,39 @@ export default function DashboardPage() {
 
           {/* Right Column - Pipeline & AI Insights */}
           <div className="lg:col-span-1 space-y-6">
-            <SectionCard title="Pipeline de ventas">
+            <SectionCard
+              title="Pipeline de ventas"
+              linkTo="/pipeline"
+              linkLabel="Ver pipeline"
+              loading={pipelineLoading}
+              empty={!pipelineLoading && pipelineStageRows.length === 0}
+            >
               <div className="px-6 py-4 space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Lead</span>
-                    <span className="text-xs font-semibold text-gray-900">4 negocios</span>
-                  </div>
-                  <div className="w-full h-2 bg-blue-200 rounded-full overflow-hidden">
-                    <div className="h-full w-2/3 bg-blue-500"></div>
-                  </div>
-                  <span className="text-xs text-gray-500">€850,000</span>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Calificado</span>
-                    <span className="text-xs font-semibold text-gray-900">3 negocios</span>
-                  </div>
-                  <div className="w-full h-2 bg-purple-200 rounded-full overflow-hidden">
-                    <div className="h-full w-1/2 bg-purple-500"></div>
-                  </div>
-                  <span className="text-xs text-gray-500">€1,250,000</span>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Propuesta</span>
-                    <span className="text-xs font-semibold text-gray-900">2 negocios</span>
-                  </div>
-                  <div className="w-full h-2 bg-yellow-200 rounded-full overflow-hidden">
-                    <div className="h-full w-3/5 bg-yellow-500"></div>
-                  </div>
-                  <span className="text-xs text-gray-500">€1,800,000</span>
-                </div>
+                {pipelineStageRows.map((stage) => {
+                  const width = `${Math.max((stage.dealCount / maxPipelineDeals) * 100, 12)}%`;
+
+                  return (
+                    <div key={stage.id}>
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">{stage.name}</span>
+                        <span className="text-xs font-semibold text-gray-900">
+                          {stage.dealCount} {stage.dealCount === 1 ? "negocio" : "negocios"}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                        <div
+                          className="h-full rounded-full transition-[width]"
+                          style={{ width, backgroundColor: stage.color }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {stage.totalValue > 0
+                          ? formatPipelineMoney(stage.totalValue, stage.currency)
+                          : "Sin valor registrado"}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </SectionCard>
 
