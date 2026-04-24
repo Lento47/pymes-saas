@@ -510,8 +510,13 @@ export default function Landing() {
 
             <div className="mt-16 grid gap-6 xl:grid-cols-[0.95fr_1.7fr_0.95fr]">
               <article className="glass-panel animate-float-y rounded-[30px] p-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] text-[#dfe6ff]">
-                  <Globe2 className="h-6 w-6" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
+                  <img
+                    src="/landing-icons/world.png"
+                    alt=""
+                    className="h-full w-full object-contain"
+                    aria-hidden="true"
+                  />
                 </div>
                 <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                   {copy.overview.inbox.title}
