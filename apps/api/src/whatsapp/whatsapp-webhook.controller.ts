@@ -38,16 +38,11 @@ export class WhatsAppWebhookController {
   @HttpCode(HttpStatus.OK)
   async receiveWebhook(
     @Headers('x-hub-signature-256') signature: string | undefined,
-    @Headers('x-workspace-id') workspaceId: string,
     @Body() payload: any,
   ) {
-    if (!workspaceId) {
-      this.logger.warn('Missing X-Workspace-Id header — ignoring webhook');
-      return { ok: true };
-    }
-
     try {
-      await this.whatsappService.processInbound(workspaceId, payload);
+      // SECURITY: Workspace is resolved from WhatsApp phone_number_id, not from client headers
+      await this.whatsappService.processInbound(payload);
     } catch (err: any) {
       this.logger.error(`Error processing WhatsApp webhook: ${err?.message}`);
     }
