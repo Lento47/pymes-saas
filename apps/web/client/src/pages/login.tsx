@@ -107,8 +107,18 @@ export default function LoginPage() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#05091d] px-4 py-10 text-white md:px-6">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[url('/images/login-bg.png')] bg-cover bg-center opacity-[0.68]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(42,60,180,0.2),transparent_36%),linear-gradient(180deg,rgba(3,8,24,0.08),rgba(5,9,29,0.72)_35%,#05091d_100%)]" />
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-x-0 top-0 flex justify-center">
+            <img
+              src="/images/login-bg.png"
+              alt=""
+              aria-hidden="true"
+              loading="eager"
+              className="block h-auto w-full max-w-[1536px] opacity-[0.88]"
+            />
+          </div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(42,60,180,0.12),transparent_36%),linear-gradient(180deg,rgba(3,8,24,0.06),rgba(5,9,29,0.48)_36%,#05091d_100%)]" />
+        </div>
         <div className="animate-pulse-halo absolute -left-[23rem] top-[-3rem] h-[48rem] w-[48rem] rounded-full border border-[#dfff4a]/22 shadow-[0_0_120px_rgba(223,255,74,0.18)]" />
         <div className="absolute -left-[17rem] top-[3rem] h-[38rem] w-[38rem] rounded-full border border-[#6c7eff]/18" />
         <div className="absolute bottom-[10%] right-[6%] h-48 w-48 rounded-full bg-[#dfff4a]/12 blur-[110px]" />
