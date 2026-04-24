@@ -85,7 +85,7 @@ export function BrandLockup({
           textClassName
         )}
       >
-        PymeHub
+        PymesHub
       </span>
     </div>
   );

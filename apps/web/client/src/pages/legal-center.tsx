@@ -20,7 +20,7 @@ export function LegalCenterPage() {
               <ShieldCheck className="h-5 w-5 text-sky-300" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white">Centro legal de PymeHub</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Centro legal de PymesHub</h1>
               <p className="text-sm text-muted-foreground">
                 Acceso rápido a los documentos externos y operativos que deben estar visibles para clientes.
               </p>

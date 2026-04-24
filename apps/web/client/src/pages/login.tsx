@@ -243,7 +243,7 @@ export default function LoginPage() {
               </p>
 
               <p className="text-xs uppercase tracking-[0.22em] text-white/34">
-                © {new Date().getFullYear()} PymeHub
+                © {new Date().getFullYear()} PymesHub
               </p>
             </div>
           </div>

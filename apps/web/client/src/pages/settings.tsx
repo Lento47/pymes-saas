@@ -684,7 +684,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           className="mt-1 bg-[hsl(var(--elevated))] border-border"
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Si lo dejás vacío, PymeHub enruta por <span className="font-mono">{fromEmail || "from_email"}</span>. Si usás un buzón distinto para recibir, ponelo aquí.
+                        Si lo dejás vacío, PymesHub enruta por <span className="font-mono">{fromEmail || "from_email"}</span>. Si usás un buzón distinto para recibir, ponelo aquí.
         </p>
       </div>
 
@@ -696,7 +696,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
 
       <div className="space-y-3 rounded-lg border border-border bg-[hsl(var(--elevated))] p-3 text-xs">
         <div>
-          <p className="font-medium text-foreground">Recepción de correos en PymeHub</p>
+                      <p className="font-medium text-foreground">Recepción de correos en PymesHub</p>
           <p className="mt-1 text-muted-foreground">
             Resend debe mandar los correos entrantes a este webhook para que aparezcan en el inbox del workspace.
           </p>
@@ -1918,7 +1918,7 @@ function AiTab() {
     <div className="space-y-6 max-w-lg">
       <div>
         <p style={{ fontSize: "13px", color: "hsl(var(--fg-2))", lineHeight: 1.6 }}>
-          PymeHub usa tu propia API key — tú controlas el costo. La clave se guarda encriptada y nunca se expone.
+                          PymesHub usa tu propia API key — tú controlas el costo. La clave se guarda encriptada y nunca se expone.
         </p>
       </div>
 

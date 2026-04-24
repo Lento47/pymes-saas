@@ -55,7 +55,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     slug: "terms-and-conditions",
     title: "Términos y Condiciones",
     summary: "Reglas generales de acceso, uso, licenciamiento, pagos, suspensión y responsabilidad.",
-    purpose: "Explicar al cliente qué compra, bajo qué reglas usa PymeHub y cuáles son los límites del servicio.",
+    purpose: "Explicar al cliente qué compra, bajo qué reglas usa PymesHub y cuáles son los límites del servicio.",
     category: "legal",
     visibility: "public",
     audience: "Cliente",
@@ -69,7 +69,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "privacy-policy",
     title: "Política de Privacidad",
-    summary: "Cómo PymeHub recopila, usa, conserva y protege datos personales.",
+    summary: "Cómo PymesHub recopila, usa, conserva y protege datos personales.",
     purpose: "Dar transparencia sobre categorías de datos, finalidades, subprocesadores, derechos y seguridad.",
     category: "legal",
     visibility: "public",
@@ -78,7 +78,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     highlights: [
       "Datos de cuenta, workspace, documentos, OCR, IA y soporte",
       "Bases de tratamiento, retención, transferencias y derechos",
-      "Relación entre cliente responsable y PymeHub como encargado",
+      "Relación entre cliente responsable y PymesHub como encargado",
     ],
   },
   {
@@ -99,7 +99,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "data-processing-addendum",
     title: "Data Processing Addendum (DPA)",
-    summary: "Reglas de tratamiento de datos cuando el cliente es responsable y PymeHub es encargado.",
+    summary: "Reglas de tratamiento de datos cuando el cliente es responsable y PymesHub es encargado.",
     purpose: "Aterrizar roles, instrucciones, subprocesadores, medidas de seguridad e incidentes de datos.",
     category: "legal",
     visibility: "public",
@@ -129,7 +129,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "acceptable-use-policy",
     title: "Uso Aceptable",
-    summary: "Conductas permitidas y prohibidas al usar PymeHub e integraciones asociadas.",
+    summary: "Conductas permitidas y prohibidas al usar PymesHub e integraciones asociadas.",
     purpose: "Restringir usos abusivos, ilegales o inseguros del servicio.",
     category: "legal",
     visibility: "public",
@@ -144,7 +144,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "costa-rica-tax-invoicing-guide",
     title: "Guía Fiscal y de Facturación CR",
-    summary: "Marco operativo para facturar PymeHub en Costa Rica con trazabilidad comercial y fiscal.",
+    summary: "Marco operativo para facturar PymesHub en Costa Rica con trazabilidad comercial y fiscal.",
     purpose: "Alinear producto, pricing, comprobantes, ajustes y coordinación con contador.",
     category: "business",
     visibility: "internal",
@@ -174,7 +174,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "security-policy",
     title: "Política de Seguridad",
-    summary: "Marco general de seguridad de la información de PymeHub.",
+    summary: "Marco general de seguridad de la información de PymesHub.",
     purpose: "Definir controles preventivos, detectivos y correctivos sobre servicio, datos y operación.",
     category: "security",
     visibility: "internal",
@@ -250,7 +250,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     slug: "sla",
     title: "SLA Base",
     summary: "Objetivo de disponibilidad y criterio operativo para incidentes severos.",
-    purpose: "Comunicar cómo PymeHub entiende disponibilidad, mantenimiento e incidentes.",
+    purpose: "Comunicar cómo PymesHub entiende disponibilidad, mantenimiento e incidentes.",
     category: "operations",
     visibility: "public",
     audience: "Cliente e interno",
@@ -324,7 +324,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "ai-usage-and-disclosure",
     title: "Uso de IA y Disclosure",
-    summary: "Qué debe informar PymeHub al usar IA y qué controles mínimos debe sostener.",
+    summary: "Qué debe informar PymesHub al usar IA y qué controles mínimos debe sostener.",
     purpose: "Reducir sobreuso de datos y confusión sobre outputs automatizados.",
     category: "product-compliance",
     visibility: "internal",

@@ -251,7 +251,7 @@ export default function Landing() {
               </p>
 
               <p className="mx-auto mt-8 max-w-3xl text-lg leading-8 text-[#c9d0f5]/78 md:text-xl">
-                PymeHub brings conversations, invoicing, workflows, and pipeline visibility into one operating system so your team can respond faster, follow through, and grow with confidence.
+                PymesHub brings conversations, invoicing, workflows, and pipeline visibility into one operating system so your team can respond faster, follow through, and grow with confidence.
               </p>
 
               <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -478,7 +478,7 @@ export default function Landing() {
                 A workspace that mirrors how your team already works.
               </h2>
               <p className="mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
-                Instead of bouncing between inboxes, spreadsheets, invoicing tools, and follow-up lists, PymeHub keeps the operational thread intact from the first message to final payment.
+                Instead of bouncing between inboxes, spreadsheets, invoicing tools, and follow-up lists, PymesHub keeps the operational thread intact from the first message to final payment.
               </p>
 
               <div className="mt-10 grid gap-5 md:grid-cols-2">
@@ -606,7 +606,7 @@ export default function Landing() {
                     Know where momentum is building and where it is leaking.
                   </h2>
                   <p className="mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
-                    PymeHub highlights reply speed, invoice progress, and pipeline health in one place so leaders can act before slowdowns show up in revenue.
+                    PymesHub highlights reply speed, invoice progress, and pipeline health in one place so leaders can act before slowdowns show up in revenue.
                   </p>
                 </div>
 

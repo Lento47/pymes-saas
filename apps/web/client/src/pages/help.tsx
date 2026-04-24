@@ -13,7 +13,7 @@ export default function HelpPage() {
     <div className="p-6 space-y-6">
       <PageHeader
         title="Ayuda y documentación"
-        description="Centro de ayuda interno con enlaces a la documentación maestra de PymeHub."
+        description="Centro de ayuda interno con enlaces a la documentación maestra de PymesHub."
       />
 
       <Card className="bg-card border-border">

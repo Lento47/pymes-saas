@@ -206,7 +206,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Buscar en PymeHub..."
+                placeholder="Buscar en PymesHub..."
                 className="px-4 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <Button variant="outline" size="sm">
