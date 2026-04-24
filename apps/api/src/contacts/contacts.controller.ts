@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -36,7 +37,7 @@ export class ContactsController {
   }
 
   @Post()
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   async create(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateContactDto,
@@ -54,7 +55,7 @@ export class ContactsController {
   }
 
   @Patch(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -64,7 +65,7 @@ export class ContactsController {
   }
 
   @Delete(':id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,

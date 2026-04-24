@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Controller,
   Get,
@@ -19,7 +20,7 @@ export class SummariesController {
   constructor(private readonly summariesService: SummariesService) {}
 
   @Get('daily')
-  @Roles('AGENT', 'ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findAll(
     @CurrentUser() user: any,
     @Query() filters: FilterSummariesDto,
@@ -28,7 +29,7 @@ export class SummariesController {
   }
 
   @Get('daily/:date')
-  @Roles('AGENT', 'ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findByDate(
     @CurrentUser() user: any,
     @Param('date') date: string,
@@ -37,7 +38,7 @@ export class SummariesController {
   }
 
   @Post('generate')
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   generate(@CurrentUser() user: any) {
     return this.summariesService.generate(user.workspace_id);
   }

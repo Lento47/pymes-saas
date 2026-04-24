@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { InsightsService } from './insights.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -11,7 +12,7 @@ export class InsightsController {
   constructor(private readonly insightsService: InsightsService) {}
 
   @Get()
-  @Roles('AGENT', 'ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   getInsights(@CurrentUser() user: any) {
     return this.insightsService.getInsights(user.workspace_id);
   }

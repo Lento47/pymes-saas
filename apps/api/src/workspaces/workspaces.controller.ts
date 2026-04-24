@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -47,19 +48,19 @@ export class WorkspacesController {
   }
 
   @Get('current/api-keys')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   getApiKeys(@CurrentUser('workspace_id') workspaceId: string) {
     return this.service.getApiKeys(workspaceId);
   }
 
   @Get('current/export')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   exportData(@CurrentUser('workspace_id') workspaceId: string, @Query('type') type: string) {
     return this.service.exportData(workspaceId, type);
   }
 
   @Patch('current')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   updateCurrent(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: UpdateWorkspaceDto,
@@ -68,7 +69,7 @@ export class WorkspacesController {
   }
 
   @Post('current/ai/test')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   testAiConnection(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: TestAiConnectionDto,
@@ -84,7 +85,7 @@ export class WorkspacesController {
   }
 
   @Post('current/members/invite')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   async inviteUser(
     @CurrentUser() user: AuthUser,
     @Body() dto: InviteUserDto,
@@ -94,7 +95,7 @@ export class WorkspacesController {
   }
 
   @Patch('current/members/:userId/role')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   changeMemberRole(
     @CurrentUser() user: AuthUser,
     @Param('userId') targetUserId: string,
@@ -104,7 +105,7 @@ export class WorkspacesController {
   }
 
   @Delete('current/members/:userId')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   removeMember(
     @CurrentUser() user: AuthUser,
     @Param('userId') targetUserId: string,

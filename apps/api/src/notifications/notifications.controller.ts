@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Controller,
   Get,
@@ -21,7 +22,7 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get()
-  @Roles('VIEWER', 'AGENT', 'ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findAll(
     @CurrentUser() user: any,
     @Query() filters: FilterNotificationsDto,
@@ -34,7 +35,7 @@ export class NotificationsController {
   }
 
   @Get('unread-count')
-  @Roles('VIEWER', 'AGENT', 'ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   getUnreadCount(@CurrentUser() user: any) {
     return this.notificationsService.getUnreadCount(
       user.workspaceId,
@@ -43,7 +44,7 @@ export class NotificationsController {
   }
 
   @Post('mark-read')
-  @Roles('VIEWER', 'AGENT', 'ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   markRead(
     @CurrentUser() user: any,
     @Body() dto: MarkReadDto,
@@ -56,7 +57,7 @@ export class NotificationsController {
   }
 
   @Delete('old')
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   deleteOld(@CurrentUser() user: any) {
     return this.notificationsService.deleteOld(user.workspaceId);
   }

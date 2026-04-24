@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -39,7 +40,7 @@ export class TasksController {
   }
 
   @Post()
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   create(
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateTaskDto,
@@ -56,7 +57,7 @@ export class TasksController {
   }
 
   @Patch(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -66,7 +67,7 @@ export class TasksController {
   }
 
   @Post(':id/complete')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   complete(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -75,7 +76,7 @@ export class TasksController {
   }
 
   @Delete(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,

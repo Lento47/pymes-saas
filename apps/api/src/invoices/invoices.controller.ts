@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -31,7 +32,7 @@ export class InvoicesController {
   ) {}
 
   @Get()
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   findAll(
     @CurrentUser('workspace_id') workspaceId: string,
     @Query() filters: FilterInvoicesDto,
@@ -40,7 +41,7 @@ export class InvoicesController {
   }
 
   @Post()
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   create(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateInvoiceDto,
@@ -49,13 +50,13 @@ export class InvoicesController {
   }
 
   @Get('overdue')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   detectOverdue(@CurrentUser('workspace_id') workspaceId: string) {
     return this.remindersService.detectOverdue(workspaceId);
   }
 
   @Get(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -64,7 +65,7 @@ export class InvoicesController {
   }
 
   @Patch(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -74,7 +75,7 @@ export class InvoicesController {
   }
 
   @Post(':id/paid')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   markPaid(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -83,7 +84,7 @@ export class InvoicesController {
   }
 
   @Post(':id/payments')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   registerPayment(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -93,7 +94,7 @@ export class InvoicesController {
   }
 
   @Post(':id/submit')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   submitToHacienda(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -102,7 +103,7 @@ export class InvoicesController {
   }
 
   @Get(':id/hacienda-status')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   syncHaciendaStatus(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -111,7 +112,7 @@ export class InvoicesController {
   }
 
   @Delete(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -120,7 +121,7 @@ export class InvoicesController {
   }
 
   @Post(':id/reminder')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   generateReminder(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -129,7 +130,7 @@ export class InvoicesController {
   }
 
   @Post(':id/reminder/send')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   sendReminder(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -139,7 +140,7 @@ export class InvoicesController {
   }
 
   @Post(':id/credit-note')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   createCreditNote(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -149,7 +150,7 @@ export class InvoicesController {
   }
 
   @Post(':id/debit-note')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   createDebitNote(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -159,7 +160,7 @@ export class InvoicesController {
   }
 
   @Post(':id/receiver-message')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   createReceiverMessage(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,

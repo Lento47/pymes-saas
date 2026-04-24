@@ -117,7 +117,11 @@ export class AiService {
       }),
     });
 
-    if (!res.ok) throw new Error(`${config.provider} API error ${res.status}: ${await res.text()}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      this.logger.error(`${config.provider} API error ${res.status}:`, errorText);
+      throw new Error('Failed to process with AI. Please try again later.');
+    }
     const d = await res.json() as any;
     return { text: d.choices[0].message.content?.trim() ?? '', tokens: d.usage?.total_tokens ?? 0 };
   }
@@ -145,7 +149,11 @@ export class AiService {
       }),
     });
 
-    if (!res.ok) throw new Error(`Anthropic API error ${res.status}: ${await res.text()}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      this.logger.error(`Anthropic API error ${res.status}:`, errorText);
+      throw new Error('Failed to process with AI. Please try again later.');
+    }
     const d = await res.json() as any;
     return {
       text: d.content?.[0]?.text?.trim() ?? '',
@@ -176,7 +184,11 @@ export class AiService {
       }),
     });
 
-    if (!res.ok) throw new Error(`Gemini API error ${res.status}: ${await res.text()}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      this.logger.error(`Gemini API error ${res.status}:`, errorText);
+      throw new Error('Failed to process with AI. Please try again later.');
+    }
     const d = await res.json() as any;
     return {
       text: d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '',

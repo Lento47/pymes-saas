@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Controller,
   Get,
@@ -28,7 +29,7 @@ export class AutomationsController {
   ) {}
 
   @Get()
-  @Roles('VIEWER', 'AGENT', 'ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findAll(
     @CurrentUser() user: any,
     @Query() filters: FilterAutomationsDto,
@@ -37,7 +38,7 @@ export class AutomationsController {
   }
 
   @Post()
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   async create(
     @CurrentUser() user: any,
     @Body() dto: CreateAutomationDto,
@@ -47,7 +48,7 @@ export class AutomationsController {
   }
 
   @Get(':id')
-  @Roles('VIEWER', 'AGENT', 'ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findOne(
     @CurrentUser() user: any,
     @Param('id') id: string,
@@ -56,7 +57,7 @@ export class AutomationsController {
   }
 
   @Patch(':id')
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   update(
     @CurrentUser() user: any,
     @Param('id') id: string,
@@ -66,7 +67,7 @@ export class AutomationsController {
   }
 
   @Post(':id/toggle')
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   toggle(
     @CurrentUser() user: any,
     @Param('id') id: string,
@@ -75,7 +76,7 @@ export class AutomationsController {
   }
 
   @Get(':id/executions')
-  @Roles('AGENT', 'ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   getExecutions(
     @CurrentUser() user: any,
     @Param('id') id: string,
@@ -90,7 +91,7 @@ export class AutomationsController {
     );
   }
   @Delete(':id')
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   remove(
     @CurrentUser() user: any,
     @Param('id') id: string,

@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -16,13 +17,13 @@ export class PipelineController {
   constructor(private readonly pipelineService: PipelineService) {}
 
   @Get('stages')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   getStages(@CurrentUser('workspace_id') workspaceId: string) {
     return this.pipelineService.getStages(workspaceId);
   }
 
   @Post('stages')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   createStage(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateStageDto,
@@ -31,7 +32,7 @@ export class PipelineController {
   }
 
   @Patch('stages/:id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   updateStage(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -41,7 +42,7 @@ export class PipelineController {
   }
 
   @Delete('stages/:id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   deleteStage(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -50,13 +51,13 @@ export class PipelineController {
   }
 
   @Get('deals')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   getDeals(@CurrentUser('workspace_id') workspaceId: string) {
     return this.pipelineService.getStages(workspaceId);
   }
 
   @Post('deals')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   createDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateDealDto,
@@ -65,7 +66,7 @@ export class PipelineController {
   }
 
   @Patch('deals/:id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   updateDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -75,7 +76,7 @@ export class PipelineController {
   }
 
   @Patch('deals/:id/move')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   moveDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -85,7 +86,7 @@ export class PipelineController {
   }
 
   @Post('deals/:id/win')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   winDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -94,7 +95,7 @@ export class PipelineController {
   }
 
   @Delete('deals/:id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   deleteDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,

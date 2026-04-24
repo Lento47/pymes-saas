@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ErrorReportsService } from './error-reports.service';
 import { CreateErrorReportDto } from './dto/create-error-report.dto';
@@ -18,7 +19,7 @@ export class ErrorReportsController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   findAll(
     @CurrentUser('workspace_id') workspaceId: string,
     @Query() filters: FilterErrorReportsDto,

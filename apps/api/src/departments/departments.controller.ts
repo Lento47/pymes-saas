@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -37,14 +38,14 @@ export class DepartmentsController {
 
   /** POST /departments — ADMIN+ only */
   @Post()
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateDepartmentDto) {
     return this.deptService.create(user.workspace_id, dto);
   }
 
   /** PATCH /departments/:id — ADMIN+ only */
   @Patch(':id')
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   update(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -55,7 +56,7 @@ export class DepartmentsController {
 
   /** DELETE /departments/:id — OWNER only */
   @Delete(':id')
-  @Roles('OWNER')
+  @Roles(WorkspaceUserRole.OWNER)
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.deptService.remove(user.workspace_id, id);
   }
@@ -70,7 +71,7 @@ export class DepartmentsController {
 
   /** POST /departments/:id/members — ADMIN+ only */
   @Post(':id/members')
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   addMember(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -81,7 +82,7 @@ export class DepartmentsController {
 
   /** DELETE /departments/:id/members/:userId — ADMIN+ only */
   @Delete(':id/members/:userId')
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   removeMember(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,

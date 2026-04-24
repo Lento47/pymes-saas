@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -49,7 +50,7 @@ export class ConversationsController {
   }
 
   @Post()
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   create(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateConversationDto,
@@ -66,7 +67,7 @@ export class ConversationsController {
   }
 
   @Patch(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -76,7 +77,7 @@ export class ConversationsController {
   }
 
   @Post(':id/assign')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   assign(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -86,7 +87,7 @@ export class ConversationsController {
   }
 
   @Post(':id/resolve')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   resolve(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -95,7 +96,7 @@ export class ConversationsController {
   }
 
   @Delete(':id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -116,7 +117,7 @@ export class ConversationsController {
   }
 
   @Post(':id/messages')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   async sendMessage(
     @CurrentUser() user: AuthUser,
     @Param('id') conversationId: string,

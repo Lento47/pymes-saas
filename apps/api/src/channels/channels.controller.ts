@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -23,7 +24,7 @@ export class ChannelsController {
   constructor(private readonly channelsService: ChannelsService) {}
 
   @Post()
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   create(
     @CurrentUser() user: AuthUser,
     @Body() body: { type: string; name: string; provider?: string },
@@ -45,7 +46,7 @@ export class ChannelsController {
   }
 
   @Patch(':id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -55,7 +56,7 @@ export class ChannelsController {
   }
 
   @Delete(':id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -64,7 +65,7 @@ export class ChannelsController {
   }
 
   @Post(':id/connect')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   connect(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -73,7 +74,7 @@ export class ChannelsController {
   }
 
   @Post(':id/disconnect')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   disconnect(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -82,7 +83,7 @@ export class ChannelsController {
   }
 
   @Post(':id/configure-email')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   configureEmail(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -92,7 +93,7 @@ export class ChannelsController {
   }
 
   @Post(':id/configure-whatsapp')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   configureWhatsApp(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,

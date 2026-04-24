@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -40,7 +41,7 @@ export class DocumentsController {
    *   - task_id?: string (opcional)
    */
   @Post('upload')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(), // buffer en memoria → luego a S3
@@ -83,7 +84,7 @@ export class DocumentsController {
   }
 
   @Patch(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -93,7 +94,7 @@ export class DocumentsController {
   }
 
   @Post(':id/reprocess')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   reprocess(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
@@ -102,7 +103,7 @@ export class DocumentsController {
   }
 
   @Delete(':id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id') id: string,
