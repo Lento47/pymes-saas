@@ -10,6 +10,7 @@ import {
   UseGuards,
   Delete,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -51,7 +52,7 @@ export class TasksController {
   @Get(':id')
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
   }
@@ -60,7 +61,7 @@ export class TasksController {
   @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateTaskDto,
   ) {
     return this.service.update(workspaceId, id, dto);
@@ -70,7 +71,7 @@ export class TasksController {
   @Roles(WorkspaceUserRole.AGENT)
   complete(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.complete(workspaceId, id);
   }
@@ -79,7 +80,7 @@ export class TasksController {
   @Roles(WorkspaceUserRole.AGENT)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.remove(workspaceId, id);
   }

@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { NotificationsService } from './notifications.service';
 import { FilterNotificationsDto } from './dto/filter-notifications.dto';
 import { MarkReadDto } from './dto/mark-read.dto';

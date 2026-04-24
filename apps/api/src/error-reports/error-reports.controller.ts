@@ -1,5 +1,6 @@
 import { WorkspaceUserRole } from '@prisma/client';
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { ErrorReportsService } from './error-reports.service';
 import { CreateErrorReportDto } from './dto/create-error-report.dto';
 import { FilterErrorReportsDto } from './dto/filter-error-reports.dto';

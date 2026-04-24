@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { SummariesService } from './summaries.service';
 import { FilterSummariesDto } from './dto/filter-summaries.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';

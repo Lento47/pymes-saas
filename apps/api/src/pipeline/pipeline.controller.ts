@@ -1,5 +1,6 @@
 import { WorkspaceUserRole } from '@prisma/client';
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -35,7 +36,7 @@ export class PipelineController {
   @Roles(WorkspaceUserRole.ADMIN)
   updateStage(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateStageDto,
   ) {
     return this.pipelineService.updateStage(workspaceId, id, dto);
@@ -45,7 +46,7 @@ export class PipelineController {
   @Roles(WorkspaceUserRole.ADMIN)
   deleteStage(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.pipelineService.deleteStage(workspaceId, id);
   }
@@ -69,7 +70,7 @@ export class PipelineController {
   @Roles(WorkspaceUserRole.AGENT)
   updateDeal(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateDealDto,
   ) {
     return this.pipelineService.updateDeal(workspaceId, id, dto);
@@ -79,7 +80,7 @@ export class PipelineController {
   @Roles(WorkspaceUserRole.AGENT)
   moveDeal(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: MoveDealDto,
   ) {
     return this.pipelineService.moveDeal(workspaceId, id, dto);
@@ -89,7 +90,7 @@ export class PipelineController {
   @Roles(WorkspaceUserRole.AGENT)
   winDeal(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.pipelineService.winDeal(workspaceId, id);
   }
@@ -98,7 +99,7 @@ export class PipelineController {
   @Roles(WorkspaceUserRole.AGENT)
   deleteDeal(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.pipelineService.deleteDeal(workspaceId, id);
   }

@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { ContactsService } from './contacts.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
@@ -49,7 +50,7 @@ export class ContactsController {
   @Get(':id')
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
   }
@@ -58,7 +59,7 @@ export class ContactsController {
   @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateContactDto,
   ) {
     return this.service.update(workspaceId, id, dto);
@@ -68,7 +69,7 @@ export class ContactsController {
   @Roles(WorkspaceUserRole.ADMIN)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.remove(workspaceId, id);
   }

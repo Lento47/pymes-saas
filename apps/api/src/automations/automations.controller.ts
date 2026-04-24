@@ -10,6 +10,8 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { AutomationsService } from './automations.service';
 import { CreateAutomationDto } from './dto/create-automation.dto';
 import { UpdateAutomationDto } from './dto/update-automation.dto';
@@ -51,7 +53,7 @@ export class AutomationsController {
   @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findOne(
     @CurrentUser() user: any,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.automationsService.findOne(user.workspace_id, id);
   }
@@ -60,7 +62,7 @@ export class AutomationsController {
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   update(
     @CurrentUser() user: any,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateAutomationDto,
   ) {
     return this.automationsService.update(user.workspace_id, id, dto);
@@ -70,7 +72,7 @@ export class AutomationsController {
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   toggle(
     @CurrentUser() user: any,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.automationsService.toggle(user.workspace_id, id);
   }
@@ -79,22 +81,21 @@ export class AutomationsController {
   @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   getExecutions(
     @CurrentUser() user: any,
-    @Param('id') id: string,
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 20,
+    @Param('id', ValidateUUIDPipe) id: string,
+    @Query() pagination: PaginationDto,
   ) {
     return this.automationsService.getExecutions(
       user.workspace_id,
       id,
-      page,
-      limit,
+      pagination.page,
+      pagination.limit,
     );
   }
   @Delete(':id')
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   remove(
     @CurrentUser() user: any,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.automationsService.remove(user.workspace_id, id);
   }

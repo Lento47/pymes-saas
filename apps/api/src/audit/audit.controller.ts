@@ -1,5 +1,6 @@
 import { WorkspaceUserRole } from '@prisma/client';
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';

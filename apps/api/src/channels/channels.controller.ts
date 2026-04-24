@@ -9,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { ChannelsService } from './channels.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -40,7 +41,7 @@ export class ChannelsController {
   @Get(':id')
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.channelsService.findOne(workspaceId, id);
   }
@@ -49,7 +50,7 @@ export class ChannelsController {
   @Roles(WorkspaceUserRole.ADMIN)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() body: { name?: string; status?: string },
   ) {
     return this.channelsService.update(workspaceId, id, body);
@@ -59,7 +60,7 @@ export class ChannelsController {
   @Roles(WorkspaceUserRole.ADMIN)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.channelsService.remove(workspaceId, id);
   }
@@ -68,7 +69,7 @@ export class ChannelsController {
   @Roles(WorkspaceUserRole.ADMIN)
   connect(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.channelsService.connect(workspaceId, id);
   }
@@ -77,7 +78,7 @@ export class ChannelsController {
   @Roles(WorkspaceUserRole.ADMIN)
   disconnect(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.channelsService.disconnect(workspaceId, id);
   }
@@ -86,7 +87,7 @@ export class ChannelsController {
   @Roles(WorkspaceUserRole.ADMIN)
   configureEmail(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: ConfigureEmailDto,
   ) {
     return this.channelsService.configureEmail(workspaceId, id, dto);
@@ -96,7 +97,7 @@ export class ChannelsController {
   @Roles(WorkspaceUserRole.ADMIN)
   configureWhatsApp(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: ConfigureWhatsAppDto,
   ) {
     return this.channelsService.configureWhatsApp(workspaceId, id, dto);

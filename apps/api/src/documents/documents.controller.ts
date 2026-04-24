@@ -12,6 +12,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { DocumentsService } from './documents.service';
@@ -78,7 +79,7 @@ export class DocumentsController {
   @Get(':id')
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
   }
@@ -87,7 +88,7 @@ export class DocumentsController {
   @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateDocumentDto,
   ) {
     return this.service.update(workspaceId, id, dto);
@@ -97,7 +98,7 @@ export class DocumentsController {
   @Roles(WorkspaceUserRole.ADMIN)
   reprocess(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.reprocess(workspaceId, id);
   }
@@ -106,7 +107,7 @@ export class DocumentsController {
   @Roles(WorkspaceUserRole.ADMIN)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.remove(workspaceId, id);
   }
