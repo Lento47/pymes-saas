@@ -37,7 +37,10 @@ import { HealthModule } from './health/health.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    ThrottlerModule.forRoot([
+      { ttl: 60_000, limit: 100 }, // Global: 100 req/min
+      { ttl: 60_000, limit: 10, name: 'webhook' }, // Webhook: 10 req/min (stricter)
+    ]),
     ScheduleModule.forRoot(),
 
     PrismaModule,

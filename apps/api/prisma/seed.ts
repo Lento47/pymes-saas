@@ -147,11 +147,9 @@ async function main() {
   console.log(`✅ Contacto: ${contact.full_name}`);
 
   console.log('\n🎉 Seed completado exitosamente.\n');
-  console.log('Credenciales de acceso:');
-  console.log('  Workspace slug : demo-workspace');
-  for (const u of usersData) {
-    console.log(`  ${u.email.padEnd(22)} → ${u.password}`);
-  }
+  console.log('Workspace slug: demo-workspace');
+  console.log('Note: Default demo passwords are NOT logged for security.');
+  console.log('Contact the database admin to reset user passwords.');
 }
 
 main()
