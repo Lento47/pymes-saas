@@ -16,6 +16,7 @@ import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AiProvider, AiService } from '../ai/ai.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 import { EmailService } from '../email/email.service';
+import { EventsGateway } from '../gateways/events.gateway';
 
 @Injectable()
 export class WorkspacesService {
@@ -27,6 +28,7 @@ export class WorkspacesService {
     private readonly aiService: AiService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly events: EventsGateway,
   ) {}
 
   private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
@@ -234,7 +236,9 @@ export class WorkspacesService {
       },
     });
 
-    return this.serializeWorkspace(refreshed);
+    const serialized = this.serializeWorkspace(refreshed);
+    this.events.emitWorkspaceUpdated(workspaceId, serialized);
+    return serialized;
   }
 
   async getAiFinanceMessageConsent(workspaceId: string): Promise<boolean> {
