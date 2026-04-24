@@ -395,10 +395,22 @@ export default function Landing() {
           <div className="mx-auto max-w-7xl">
             <div
               className="relative"
-              onMouseLeave={() => setActiveMenu(null)}
               onClick={handleNavClick}
+              onTouchEnd={(e) => {
+                const target = e.target as HTMLElement;
+                if (target.closest('[data-nav-dropdown]')) {
+                  return;
+                }
+                if (target.closest('[data-nav-button]')) {
+                  return;
+                }
+              }}
             >
-              <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7" data-nav-item>
+              <nav
+                className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7"
+                data-nav-item
+                onMouseLeave={() => activeMenu && setActiveMenu(null)}
+              >
                 <BrandLockup compact />
 
                 <div className="hidden items-center gap-8 lg:flex">
@@ -447,7 +459,11 @@ export default function Landing() {
               </nav>
 
               {activeMenu && (
-                <div className="absolute inset-x-0 top-full z-20 pt-4 pointer-events-auto" data-nav-dropdown>
+                <div
+                  className="absolute inset-x-0 top-full z-20 pt-4 pointer-events-auto"
+                  data-nav-dropdown
+                  onMouseLeave={() => setActiveMenu(null)}
+                >
                   <div className="glass-panel luminous-border grid gap-6 rounded-[32px] p-6 lg:grid-cols-[1.05fr_1.25fr]">
                     <div className="space-y-4">
                       <p className="font-marketing text-xs font-semibold uppercase tracking-[0.34em] text-[#dfff4a]/72">
