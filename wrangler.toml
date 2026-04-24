@@ -1,6 +1,11 @@
 name = "pymeshubsaas"
+main = "worker/index.js"
 compatibility_date = "2024-01-01"
+
+[vars]
+API_URL = "https://api.pymeshub.lat"
 
 [assets]
 directory = "./apps/web/dist/public"
+binding = "ASSETS"
 not_found_handling = "single-page-application"
