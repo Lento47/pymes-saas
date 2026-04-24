@@ -45,7 +45,12 @@ jobs:
       - name: Build web app
         run: cd apps/web && pnpm run build
 
+      - name: Install Wrangler CLI
+        if: ${{ github.event_name == 'push' && secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: pnpm add -w --save-dev wrangler@3.90.0
+
       - name: Deploy to Cloudflare Pages
+        if: ${{ github.event_name == 'push' && secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

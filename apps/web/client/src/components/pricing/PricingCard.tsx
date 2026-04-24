@@ -1,4 +1,4 @@
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 import { PricingTier } from '@/data/pricing.data';
 import { Check, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -9,7 +9,7 @@ interface PricingCardProps {
 }
 
 export function PricingCard({ tier, isAnnual }: PricingCardProps) {
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
   const price = isAnnual ? tier.annualUSD : tier.monthlyUSD;
   const priceCRC = isAnnual ? tier.annualCRC : tier.monthlyCRC;
   const isEnterprise = tier.name === 'Business+';
