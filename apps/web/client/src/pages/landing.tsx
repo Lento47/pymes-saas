@@ -1,12 +1,15 @@
+import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
+  BookOpen,
   BrainCircuit,
   ChartSpline,
   ChevronDown,
+  FileText,
   Globe2,
-  MessageSquareText,
-  ReceiptText,
+  LifeBuoy,
+  LockKeyhole,
   ShieldCheck,
   Sparkles,
   Workflow,
@@ -15,13 +18,77 @@ import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { cn } from "@/lib/utils";
 
 const navItems = [
-  { id: "platform", key: "platform" as const, chevron: true },
-  { id: "workflows", key: "workflows" as const, chevron: false },
-  { id: "insights", key: "insights" as const, chevron: true },
-  { id: "security", key: "security" as const, chevron: false },
-];
+  { id: "platform", key: "platform" },
+  { id: "workflows", key: "workflows" },
+  { id: "insights", key: "insights" },
+  { id: "security", key: "security" },
+] as const;
+
+type NavKey = (typeof navItems)[number]["key"];
+
+interface MarketingMenuLink {
+  description: string;
+  href: string;
+  icon: LucideIcon;
+  title: string;
+}
+
+function MarketingMenuAction({
+  description,
+  featured = false,
+  href,
+  icon: Icon,
+  onNavigate,
+  title,
+}: MarketingMenuLink & {
+  featured?: boolean;
+  onNavigate: (href: string) => void;
+}) {
+  const classes = cn(
+    "group block rounded-[26px] border p-5 text-left transition hover:-translate-y-[2px]",
+    featured
+      ? "border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]"
+      : "border-white/8 bg-white/[0.03] hover:border-white/16 hover:bg-white/[0.05]"
+  );
+
+  const content = (
+    <>
+      <div
+        className={cn(
+          "flex h-11 w-11 items-center justify-center rounded-2xl",
+          featured
+            ? "bg-[linear-gradient(135deg,rgba(232,255,89,0.24),rgba(127,244,210,0.18))] text-[#f1ff9a]"
+            : "bg-[linear-gradient(135deg,rgba(108,126,255,0.22),rgba(232,255,89,0.10))] text-white/88"
+        )}
+      >
+        <Icon className="h-5 w-5" />
+      </div>
+      <h3 className="font-marketing mt-5 text-xl font-semibold tracking-[-0.03em] text-white">
+        {title}
+      </h3>
+      <p className="mt-3 text-sm leading-7 text-[#bcc5ee]/68">{description}</p>
+    </>
+  );
+
+  if (href.startsWith("#")) {
+    return (
+      <button type="button" onClick={() => onNavigate(href)} className={classes}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link href={href}>
+      <a onClick={() => onNavigate(href)} className={classes}>
+        {content}
+      </a>
+    </Link>
+  );
+}
 
 function PerformanceChart({ labels }: { labels: readonly string[] }) {
   return (
@@ -119,6 +186,7 @@ function OrbitGraphic() {
 export default function Landing() {
   const { messages } = useI18n();
   const copy = messages.landing;
+  const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
 
   const productCards: Array<{
     icon: LucideIcon;
@@ -126,13 +194,157 @@ export default function Landing() {
     description: string;
     bullets: readonly string[];
   }> = [
-    { icon: MessageSquareText, ...copy.platform.cards[0] },
-    { icon: ReceiptText, ...copy.platform.cards[1] },
-    { icon: Workflow, ...copy.platform.cards[2] },
+    { icon: ShieldCheck, ...copy.platform.cards[0] },
+    { icon: Workflow, ...copy.platform.cards[1] },
+    { icon: BookOpen, ...copy.platform.cards[2] },
   ];
+
+  const dropdownMenus: Record<
+    NavKey,
+    {
+      description: string;
+      eyebrow: string;
+      featured: MarketingMenuLink;
+      links: MarketingMenuLink[];
+      title: string;
+    }
+  > = {
+    platform: {
+      eyebrow: copy.menus.platform.eyebrow,
+      title: copy.menus.platform.title,
+      description: copy.menus.platform.description,
+      featured: {
+        title: copy.menus.platform.featuredTitle,
+        description: copy.menus.platform.featuredDescription,
+        href: "#platform",
+        icon: ShieldCheck,
+      },
+      links: [
+        {
+          title: copy.menus.platform.links[0].title,
+          description: copy.menus.platform.links[0].description,
+          href: "#security",
+          icon: LockKeyhole,
+        },
+        {
+          title: copy.menus.platform.links[1].title,
+          description: copy.menus.platform.links[1].description,
+          href: "/documentation/trust-center-overview",
+          icon: ShieldCheck,
+        },
+        {
+          title: copy.menus.platform.links[2].title,
+          description: copy.menus.platform.links[2].description,
+          href: "/documentation",
+          icon: BookOpen,
+        },
+      ],
+    },
+    workflows: {
+      eyebrow: copy.menus.workflows.eyebrow,
+      title: copy.menus.workflows.title,
+      description: copy.menus.workflows.description,
+      featured: {
+        title: copy.menus.workflows.featuredTitle,
+        description: copy.menus.workflows.featuredDescription,
+        href: "#workflows",
+        icon: Workflow,
+      },
+      links: [
+        {
+          title: copy.menus.workflows.links[0].title,
+          description: copy.menus.workflows.links[0].description,
+          href: "#workflows",
+          icon: Workflow,
+        },
+        {
+          title: copy.menus.workflows.links[1].title,
+          description: copy.menus.workflows.links[1].description,
+          href: "/documentation/workspace-launch-guide",
+          icon: FileText,
+        },
+        {
+          title: copy.menus.workflows.links[2].title,
+          description: copy.menus.workflows.links[2].description,
+          href: "/documentation/support-policy",
+          icon: LifeBuoy,
+        },
+      ],
+    },
+    insights: {
+      eyebrow: copy.menus.insights.eyebrow,
+      title: copy.menus.insights.title,
+      description: copy.menus.insights.description,
+      featured: {
+        title: copy.menus.insights.featuredTitle,
+        description: copy.menus.insights.featuredDescription,
+        href: "#insights",
+        icon: ChartSpline,
+      },
+      links: [
+        {
+          title: copy.menus.insights.links[0].title,
+          description: copy.menus.insights.links[0].description,
+          href: "#insights",
+          icon: ChartSpline,
+        },
+        {
+          title: copy.menus.insights.links[1].title,
+          description: copy.menus.insights.links[1].description,
+          href: "/documentation/sla",
+          icon: BookOpen,
+        },
+        {
+          title: copy.menus.insights.links[2].title,
+          description: copy.menus.insights.links[2].description,
+          href: "/documentation/support-policy",
+          icon: LifeBuoy,
+        },
+      ],
+    },
+    security: {
+      eyebrow: copy.menus.security.eyebrow,
+      title: copy.menus.security.title,
+      description: copy.menus.security.description,
+      featured: {
+        title: copy.menus.security.featuredTitle,
+        description: copy.menus.security.featuredDescription,
+        href: "#security",
+        icon: ShieldCheck,
+      },
+      links: [
+        {
+          title: copy.menus.security.links[0].title,
+          description: copy.menus.security.links[0].description,
+          href: "#security",
+          icon: LockKeyhole,
+        },
+        {
+          title: copy.menus.security.links[1].title,
+          description: copy.menus.security.links[1].description,
+          href: "/legal",
+          icon: FileText,
+        },
+        {
+          title: copy.menus.security.links[2].title,
+          description: copy.menus.security.links[2].description,
+          href: "/documentation/trust-center-overview",
+          icon: BookOpen,
+        },
+      ],
+    },
+  };
 
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleMenuNavigate = (href: string) => {
+    setActiveMenu(null);
+
+    if (href.startsWith("#")) {
+      scrollToSection(href.slice(1));
+    }
   };
 
   return (
@@ -159,40 +371,95 @@ export default function Landing() {
       <main className="relative z-10">
         <section className="px-4 pb-16 pt-6 md:px-8 md:pb-24">
           <div className="mx-auto max-w-7xl">
-            <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7">
-              <BrandLockup compact />
+            <div className="relative" onMouseLeave={() => setActiveMenu(null)}>
+              <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7">
+                <BrandLockup compact />
 
-              <div className="hidden items-center gap-8 lg:flex">
-                {navItems.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => scrollToSection(item.id)}
-                    className="font-marketing text-sm font-medium text-white/78 transition hover:text-white"
-                  >
-                    {copy.nav[item.key]}
-                    {item.chevron && (
-                      <ChevronDown className="ml-1 inline h-4 w-4 text-white/55" />
-                    )}
-                  </button>
-                ))}
-              </div>
+                <div className="hidden items-center gap-8 lg:flex">
+                  {navItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onMouseEnter={() => setActiveMenu(item.key)}
+                      onFocus={() => setActiveMenu(item.key)}
+                      onClick={() =>
+                        setActiveMenu((current) => (current === item.key ? null : item.key))
+                      }
+                      className="font-marketing text-sm font-medium text-white/78 transition hover:text-white"
+                    >
+                      {copy.nav[item.key]}
+                      <ChevronDown
+                        className={cn(
+                          "ml-1 inline h-4 w-4 text-white/55 transition",
+                          activeMenu === item.key && "rotate-180 text-white"
+                        )}
+                      />
+                    </button>
+                  ))}
+                </div>
 
-              <div className="flex items-center gap-2 md:gap-4">
-                <LanguageSwitcher variant="marketing" />
-                <Link href="/login">
-                  <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
-                    {copy.nav.logIn}
-                  </a>
-                </Link>
-                <Link href="/login">
-                  <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-4 py-3 text-sm font-semibold text-[#071126] transition hover:translate-y-[-1px] md:px-6">
-                    {copy.nav.getStarted}
-                    <ArrowRight className="h-4 w-4" />
-                  </a>
-                </Link>
-              </div>
-            </nav>
+                <div className="flex items-center gap-2 md:gap-4">
+                  <LanguageSwitcher variant="marketing" />
+                  <Link href="/documentation">
+                    <a className="font-marketing hidden text-sm font-medium text-white/78 transition hover:text-white md:inline-flex">
+                      {copy.nav.documentation}
+                    </a>
+                  </Link>
+                  <Link href="/login">
+                    <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                      {copy.nav.logIn}
+                    </a>
+                  </Link>
+                  <Link href="/login">
+                    <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-4 py-3 text-sm font-semibold text-[#071126] transition hover:translate-y-[-1px] md:px-6">
+                      {copy.nav.getStarted}
+                      <ArrowRight className="h-4 w-4" />
+                    </a>
+                  </Link>
+                </div>
+              </nav>
+
+              {activeMenu && (
+                <div className="absolute inset-x-0 top-full z-20 pt-4">
+                  <div className="glass-panel luminous-border grid gap-6 rounded-[32px] p-6 lg:grid-cols-[1.05fr_1.25fr]">
+                    <div className="space-y-4">
+                      <p className="font-marketing text-xs font-semibold uppercase tracking-[0.34em] text-[#dfff4a]/72">
+                        {dropdownMenus[activeMenu].eyebrow}
+                      </p>
+                      <h2 className="font-marketing text-3xl font-semibold tracking-[-0.04em] text-white">
+                        {dropdownMenus[activeMenu].title}
+                      </h2>
+                      <p className="max-w-lg text-sm leading-7 text-[#bcc5ee]/70">
+                        {dropdownMenus[activeMenu].description}
+                      </p>
+
+                      <div className="space-y-3">
+                        <p className="font-marketing text-xs font-semibold uppercase tracking-[0.28em] text-white/42">
+                          {
+                            copy.menus[activeMenu].featuredLabel
+                          }
+                        </p>
+                        <MarketingMenuAction
+                          {...dropdownMenus[activeMenu].featured}
+                          featured
+                          onNavigate={handleMenuNavigate}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {dropdownMenus[activeMenu].links.map((item) => (
+                        <MarketingMenuAction
+                          key={`${activeMenu}-${item.title}`}
+                          {...item}
+                          onNavigate={handleMenuNavigate}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="mx-auto max-w-4xl pt-16 text-center md:pt-20">
               <div className="glass-panel-soft inline-flex items-center gap-3 rounded-full px-5 py-2.5 text-sm text-white/84">

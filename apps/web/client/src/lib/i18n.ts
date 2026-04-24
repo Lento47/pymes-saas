@@ -55,8 +55,123 @@ export const translations = {
         workflows: "Workflows",
         insights: "Insights",
         security: "Security",
+        documentation: "Documentation",
         logIn: "Log in",
         getStarted: "Get Started",
+      },
+      menus: {
+        platform: {
+          eyebrow: "Enterprise platform",
+          title: "Govern the workspace like a modern operations org.",
+          description:
+            "Permissions, auditability, documentation, and rollout readiness for teams that need structure without slowing down.",
+          featuredLabel: "Enterprise readiness",
+          featuredTitle: "See how the platform fits together",
+          featuredDescription:
+            "Understand how customer operations, finance, documentation, and governance connect before rollout.",
+          featuredCta: "Open platform section",
+          links: [
+            {
+              title: "Permissions and controls",
+              description:
+                "Separate leadership, ops, finance, and support visibility with clear workspace roles.",
+            },
+            {
+              title: "Trust center",
+              description:
+                "Review public security, SLA, and customer-facing governance material.",
+            },
+            {
+              title: "Documentation",
+              description:
+                "Access platform overviews, launch guides, and operating policies in one place.",
+            },
+          ],
+        },
+        workflows: {
+          eyebrow: "Operational flows",
+          title: "Move handoffs forward without losing context.",
+          description:
+            "Guide teams from inbound message to invoice, onboarding, and support with one shared thread.",
+          featuredLabel: "Launch guide",
+          featuredTitle: "Document the motion before the scale-up",
+          featuredDescription:
+            "Support policy, onboarding steps, and workflow guidance stay close to the product.",
+          featuredCta: "Jump to workflows",
+          links: [
+            {
+              title: "Shared execution",
+              description:
+                "Coordinate sales, service, finance, and operations without broken handoffs.",
+            },
+            {
+              title: "Launch documentation",
+              description:
+                "Use onboarding and rollout guidance to bring new teams live with less friction.",
+            },
+            {
+              title: "Service operations",
+              description:
+                "Keep support expectations, ownership, and response paths visible to everyone.",
+            },
+          ],
+        },
+        insights: {
+          eyebrow: "Operational intelligence",
+          title: "Give leaders visibility before issues become revenue drag.",
+          description:
+            "Pair performance signals with service commitments, documentation, and weekly decision-making cues.",
+          featuredLabel: "Documentation",
+          featuredTitle: "Review the SLA and service expectations",
+          featuredDescription:
+            "Public operating commitments are available before teams even sign in.",
+          featuredCta: "Open insights section",
+          links: [
+            {
+              title: "Revenue visibility",
+              description:
+                "Track throughput, reply speed, and invoice follow-through in one operating view.",
+            },
+            {
+              title: "SLA base",
+              description:
+                "Share uptime expectations and incident treatment with buyers and stakeholders.",
+            },
+            {
+              title: "Support policy",
+              description:
+                "Document priorities, channels, and escalation rules before launch.",
+            },
+          ],
+        },
+        security: {
+          eyebrow: "Trust and governance",
+          title: "Surface the controls enterprise buyers expect.",
+          description:
+            "Access control, audit logging, incident readiness, and public legal documentation stay within reach.",
+          featuredLabel: "Trust center",
+          featuredTitle: "Open the customer trust center",
+          featuredDescription:
+            "Bring legal, support, privacy, and continuity references together for procurement and IT.",
+          featuredCta: "Open security section",
+          links: [
+            {
+              title: "Audit and access",
+              description:
+                "Show how roles, traceability, and governed activity fit into daily operations.",
+            },
+            {
+              title: "Legal center",
+              description:
+                "Keep privacy, terms, DPA, and contractual references one click away.",
+            },
+            {
+              title: "Trust documentation",
+              description:
+                "Expose support, SLA, and security overviews without hiding them behind login.",
+            },
+          ],
+        },
       },
       intro: "Introducing smarter customer operations for growing teams",
       title: ["Customer operations", "that keep moving."],
@@ -103,38 +218,38 @@ export const translations = {
       trustSignals: ["WhatsApp", "Email", "Documents", "Invoices", "Pipeline", "Automations"],
       platform: {
         eyebrow: "Platform",
-        title: "Built for the whole customer journey, not just one slice of it.",
+        title: "Enterprise control for fast-moving revenue teams.",
         description:
-          "Sales, service, billing, and follow-through all live in one calm workspace. That means fewer blind spots and faster handoffs between teams.",
+          "Customer operations, approvals, documentation, and billing orchestration run in one governed workspace built for multi-team execution.",
         cards: [
           {
-            title: "Conversations that stay organized",
+            title: "Enterprise workspace control",
             description:
-              "Bring channels into one workspace so your team always sees context, owner, and next action.",
+              "Structure access across leadership, operations, finance, and frontline teams without losing a shared operating view.",
             bullets: [
-              "Centralize WhatsApp, email, and internal notes",
-              "Assign conversations without losing accountability",
-              "Surface urgent customers before they slip",
+              "Role-aware permissions for owners, admins, agents, and viewers",
+              "Approval paths and accountable handoffs across the workspace",
+              "Audit-ready visibility on changes across workflows and billing",
             ],
           },
           {
-            title: "Billing that keeps momentum",
+            title: "Revenue operations spine",
             description:
-              "Send invoices, follow payment status, and keep financial operations aligned with the sales team.",
+              "Connect conversations, invoices, follow-ups, and pipeline stages in one operational thread.",
             bullets: [
-              "Issue invoices from the same operational flow",
-              "Track approvals, documents, and payment reminders",
-              "Support local compliance-heavy processes with clarity",
+              "Move from inbound inquiry to payment without tool sprawl",
+              "Keep documents, reminders, and collections attached to the same account",
+              "Coordinate sales, service, and finance from one system of record",
             ],
           },
           {
-            title: "Pipeline visibility your team can use",
+            title: "Trust and continuity",
             description:
-              "See deal movement, stalled opportunities, and activity trends without stitching multiple tools together.",
+              "Bring enterprise expectations into day-to-day operations with clearer controls and documentation.",
             bullets: [
-              "Watch stage movement in real time",
-              "Coordinate follow-ups across sales and ops",
-              "Measure throughput with live dashboards",
+              "Support policy, SLA, and trust documentation within reach",
+              "Data isolation, access control, and incident-readiness references",
+              "Roll out across teams with repeatable onboarding and support motions",
             ],
           },
         ],
@@ -263,6 +378,23 @@ export const translations = {
         error: "Could not update the workspace language",
       },
     },
+    documentation: {
+      eyebrow: "Documentation center",
+      title: "Public references for rollout, trust, and procurement.",
+      description:
+        "Review platform overviews, security posture, support expectations, and customer-facing legal documents before your team signs in.",
+      back: "Back to landing",
+      openWorkspace: "Log in",
+      openLegal: "Legal center",
+      publicBadge: "Public",
+      purpose: "Purpose",
+      coverage: "What this document covers",
+      source: "Source in repository",
+      sourceBody:
+        "This screen exposes the public summary. The maintained source lives in the repository documentation package.",
+      notFoundTitle: "Document not available",
+      notFoundBack: "Back to documentation",
+    },
   },
   es: {
     language: {
@@ -292,8 +424,123 @@ export const translations = {
         workflows: "Flujos",
         insights: "Insights",
         security: "Seguridad",
+        documentation: "Documentación",
         logIn: "Entrar",
         getStarted: "Empezar",
+      },
+      menus: {
+        platform: {
+          eyebrow: "Plataforma enterprise",
+          title: "Gobierna el workspace como una operación moderna.",
+          description:
+            "Permisos, trazabilidad, documentación y preparación de rollout para equipos que necesitan estructura sin frenar la ejecución.",
+          featuredLabel: "Preparación enterprise",
+          featuredTitle: "Entiende cómo encaja toda la plataforma",
+          featuredDescription:
+            "Visualiza cómo se conectan customer ops, finanzas, documentación y gobernanza antes de lanzar.",
+          featuredCta: "Abrir sección de plataforma",
+          links: [
+            {
+              title: "Permisos y controles",
+              description:
+                "Separa visibilidad para liderazgo, operaciones, finanzas y soporte con roles claros.",
+            },
+            {
+              title: "Trust center",
+              description:
+                "Revisa material público de seguridad, SLA y gobernanza orientado al cliente.",
+            },
+            {
+              title: "Documentación",
+              description:
+                "Accede a vistas generales de plataforma, guías de lanzamiento y políticas operativas.",
+            },
+          ],
+        },
+        workflows: {
+          eyebrow: "Flujos operativos",
+          title: "Mueve handoffs sin perder el contexto.",
+          description:
+            "Guía al equipo desde el mensaje inicial hasta la factura, onboarding y soporte con un solo hilo compartido.",
+          featuredLabel: "Guía de lanzamiento",
+          featuredTitle: "Documenta el movimiento antes de escalar",
+          featuredDescription:
+            "La política de soporte, los pasos de onboarding y la guía operativa quedan cerca del producto.",
+          featuredCta: "Ir a flujos",
+          links: [
+            {
+              title: "Ejecución compartida",
+              description:
+                "Coordina ventas, servicio, finanzas y operaciones sin handoffs rotos.",
+            },
+            {
+              title: "Documentación de lanzamiento",
+              description:
+                "Usa guías de onboarding y rollout para activar equipos con menos fricción.",
+            },
+            {
+              title: "Operación de soporte",
+              description:
+                "Mantén visibles las expectativas, prioridades y rutas de escalamiento.",
+            },
+          ],
+        },
+        insights: {
+          eyebrow: "Inteligencia operativa",
+          title: "Dale visibilidad al liderazgo antes de que el problema pegue en ingresos.",
+          description:
+            "Combina señales de rendimiento con compromisos de servicio, documentación y contexto semanal para decidir mejor.",
+          featuredLabel: "Documentación",
+          featuredTitle: "Revisa el SLA y las expectativas de servicio",
+          featuredDescription:
+            "Los compromisos operativos públicos están disponibles incluso antes de iniciar sesión.",
+          featuredCta: "Abrir sección de insights",
+          links: [
+            {
+              title: "Visibilidad de ingresos",
+              description:
+                "Sigue throughput, velocidad de respuesta y cobro en una sola vista operativa.",
+            },
+            {
+              title: "SLA base",
+              description:
+                "Comparte expectativas de disponibilidad y tratamiento de incidentes con stakeholders.",
+            },
+            {
+              title: "Política de soporte",
+              description:
+                "Documenta prioridades, canales y reglas de escalamiento antes del lanzamiento.",
+            },
+          ],
+        },
+        security: {
+          eyebrow: "Confianza y gobernanza",
+          title: "Muestra los controles que espera un comprador enterprise.",
+          description:
+            "Control de acceso, logging, preparación ante incidentes y documentación legal pública siempre a mano.",
+          featuredLabel: "Trust center",
+          featuredTitle: "Abre el centro de confianza para clientes",
+          featuredDescription:
+            "Agrupa referencias legales, de soporte, privacidad y continuidad para procurement e IT.",
+          featuredCta: "Abrir sección de seguridad",
+          links: [
+            {
+              title: "Auditoría y acceso",
+              description:
+                "Explica cómo encajan roles, trazabilidad y actividad gobernada en la operación diaria.",
+            },
+            {
+              title: "Centro legal",
+              description:
+                "Mantén términos, privacidad, DPA y referencias contractuales a un clic.",
+            },
+            {
+              title: "Documentación de confianza",
+              description:
+                "Expón soporte, SLA y resúmenes de seguridad sin esconderlos detrás del login.",
+            },
+          ],
+        },
       },
       intro: "Presentando operaciones de cliente más inteligentes para equipos en crecimiento",
       title: ["Operaciones de cliente", "que no se detienen."],
@@ -340,38 +587,38 @@ export const translations = {
       trustSignals: ["WhatsApp", "Correo", "Documentos", "Facturas", "Pipeline", "Automatizaciones"],
       platform: {
         eyebrow: "Plataforma",
-        title: "Hecho para todo el recorrido del cliente, no solo para una parte.",
+        title: "Control enterprise para equipos de ingresos que se mueven rápido.",
         description:
-          "Ventas, servicio, facturación y seguimiento viven en un solo workspace sereno. Eso significa menos puntos ciegos y handoffs más rápidos entre equipos.",
+          "Customer ops, aprobaciones, documentación y coordinación de facturación viven en un solo workspace gobernado para ejecución multiárea.",
         cards: [
           {
-            title: "Conversaciones que se mantienen ordenadas",
+            title: "Control enterprise del workspace",
             description:
-              "Reúne los canales en un solo workspace para que tu equipo siempre vea contexto, responsable y siguiente paso.",
+              "Estructura el acceso entre liderazgo, operaciones, finanzas y frontline sin perder una vista operativa compartida.",
             bullets: [
-              "Centraliza WhatsApp, correo y notas internas",
-              "Asigna conversaciones sin perder responsabilidad",
-              "Detecta clientes urgentes antes de que se escapen",
+              "Permisos por rol para owners, admins, agents y viewers",
+              "Rutas de aprobación y handoffs con responsables claros",
+              "Visibilidad lista para auditoría sobre cambios y operación",
             ],
           },
           {
-            title: "Facturación que mantiene el ritmo",
+            title: "Columna vertebral de revenue ops",
             description:
-              "Envía facturas, sigue su estado de pago y alinea la operación financiera con el equipo comercial.",
+              "Conecta conversaciones, facturas, seguimientos y etapas del pipeline dentro del mismo hilo operativo.",
             bullets: [
-              "Emite facturas dentro del mismo flujo operativo",
-              "Sigue aprobaciones, documentos y recordatorios de cobro",
-              "Acompaña procesos locales con más claridad",
+              "Pasa del mensaje entrante al pago sin sprawl de herramientas",
+              "Mantén documentos, recordatorios y cobro ligados a la misma cuenta",
+              "Coordina ventas, servicio y finanzas desde un solo sistema de registro",
             ],
           },
           {
-            title: "Visibilidad del pipeline que sí se usa",
+            title: "Confianza y continuidad",
             description:
-              "Observa el movimiento de oportunidades y las tendencias de actividad sin pegar herramientas entre sí.",
+              "Aterriza expectativas enterprise en la operación diaria con controles más claros y documentación visible.",
             bullets: [
-              "Ve el avance por etapas en tiempo real",
-              "Coordina seguimientos entre ventas y operaciones",
-              "Mide el ritmo con dashboards vivos",
+              "Política de soporte, SLA y trust docs siempre al alcance",
+              "Referencias sobre aislamiento de datos, acceso e incidentes",
+              "Rollouts repetibles con onboarding y soporte mejor documentados",
             ],
           },
         ],
@@ -499,6 +746,23 @@ export const translations = {
         saved: "Idioma actualizado",
         error: "No se pudo actualizar el idioma del workspace",
       },
+    },
+    documentation: {
+      eyebrow: "Centro de documentación",
+      title: "Referencias públicas para rollout, confianza y procurement.",
+      description:
+        "Revisa vistas de plataforma, postura de seguridad, expectativas de soporte y documentos legales antes de que tu equipo entre al workspace.",
+      back: "Volver al landing",
+      openWorkspace: "Entrar",
+      openLegal: "Centro legal",
+      publicBadge: "Público",
+      purpose: "Propósito",
+      coverage: "Qué cubre este documento",
+      source: "Fuente en el repositorio",
+      sourceBody:
+        "Esta pantalla muestra el resumen público. La fuente mantenible vive dentro del paquete documental del repositorio.",
+      notFoundTitle: "Documento no disponible",
+      notFoundBack: "Volver a documentación",
     },
   },
 } as const;

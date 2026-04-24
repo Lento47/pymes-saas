@@ -52,6 +52,21 @@ export const DOCUMENTATION_CATEGORIES: Record<
 
 export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
+    slug: "platform-overview",
+    title: "Platform Overview",
+    summary: "Resumen público de cómo PymesHub organiza customer ops, facturación, documentación y gobernanza para equipos multiárea.",
+    purpose: "Explicar a prospectos, clientes y procurement cómo se conecta la plataforma antes de una implementación.",
+    category: "architecture",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "docs/architecture/platform-overview.md",
+    highlights: [
+      "Customer operations, revenue workflows y documentación en un solo sistema",
+      "Gobernanza por roles, handoffs y visibilidad operativa compartida",
+      "Preparación para rollout, soporte y revisión de stakeholders enterprise",
+    ],
+  },
+  {
     slug: "terms-and-conditions",
     title: "Términos y Condiciones",
     summary: "Reglas generales de acceso, uso, licenciamiento, pagos, suspensión y responsabilidad.",
@@ -172,6 +187,21 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     ],
   },
   {
+    slug: "trust-center-overview",
+    title: "Trust Center Overview",
+    summary: "Resumen público de controles de acceso, continuidad operativa, documentación legal y postura general de seguridad.",
+    purpose: "Acelerar revisiones de IT, seguridad y compras sin depender de explicaciones ad hoc en cada proceso.",
+    category: "security",
+    visibility: "public",
+    audience: "Cliente",
+    repoPath: "docs/security/trust-center-overview.md",
+    highlights: [
+      "Acceso estructurado, trazabilidad operativa y referencias de soporte",
+      "SLA, privacidad, DPA y material legal público al alcance",
+      "Puente entre evaluación comercial, seguridad y procurement",
+    ],
+  },
+  {
     slug: "security-policy",
     title: "Política de Seguridad",
     summary: "Marco general de seguridad de la información de PymesHub.",
@@ -229,6 +259,21 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
       "Usuarios, conversaciones, documentos, OCR, logs e IA",
       "Borrado físico, supresión lógica y anonimización",
       "Diferencia entre datos activos y copias residuales",
+    ],
+  },
+  {
+    slug: "workspace-launch-guide",
+    title: "Workspace Launch Guide",
+    summary: "Guía pública para arrancar un workspace con roles, canales, documentación y seguimiento inicial.",
+    purpose: "Dar a equipos nuevos una referencia clara para activar el workspace con menos fricción y más orden.",
+    category: "operations",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "docs/operations/workspace-launch-guide.md",
+    highlights: [
+      "Checklist de preparación antes del go-live",
+      "Roles, canales y handoffs mínimos para operar con claridad",
+      "Referencias rápidas a soporte, SLA y documentos de confianza",
     ],
   },
   {

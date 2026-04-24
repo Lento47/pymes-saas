@@ -25,6 +25,8 @@ import Pipeline from "@/pages/pipeline";
 import Settings from "@/pages/settings";
 import HelpPage from "@/pages/help";
 import HelpDocumentPage from "@/pages/help-document";
+import DocumentationCenterPage from "@/pages/documentation";
+import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import NotFound from "@/pages/not-found";
 
@@ -48,6 +50,12 @@ function AppRouter() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/accept-invite" component={AcceptInvite} />
+      <Route path="/documentation">
+        {() => <DocumentationCenterPage />}
+      </Route>
+      <Route path="/documentation/:slug">
+        {(params) => <DocumentationDocumentPage slug={params.slug} />}
+      </Route>
       <Route path="/legal">
         {() => <LegalCenterPage />}
       </Route>
