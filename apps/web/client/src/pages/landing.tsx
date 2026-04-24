@@ -187,6 +187,7 @@ export default function Landing() {
   const { messages } = useI18n();
   const copy = messages.landing;
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
+  const [isTouch, setIsTouch] = useState(false);
 
   const productCards: Array<{
     assetSrc?: string;
@@ -367,6 +368,26 @@ export default function Landing() {
     if (target.closest('[data-nav-button]')) {
       return;
     }
+    // Close menu if clicking outside nav area
+    if (activeMenu) {
+      setActiveMenu(null);
+    }
+  };
+
+  const handleNavTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    // Don't close if touching inside the dropdown menu
+    if (target.closest('[data-nav-dropdown]')) {
+      return;
+    }
+    // Don't close if touching on nav buttons - they handle their own state
+    if (target.closest('[data-nav-button]')) {
+      return;
+    }
+    // Close menu if touching outside nav area
+    if (activeMenu) {
+      setActiveMenu(null);
+    }
   };
 
   return (
@@ -396,20 +417,14 @@ export default function Landing() {
             <div
               className="relative"
               onClick={handleNavClick}
-              onTouchEnd={(e) => {
-                const target = e.target as HTMLElement;
-                if (target.closest('[data-nav-dropdown]')) {
-                  return;
-                }
-                if (target.closest('[data-nav-button]')) {
-                  return;
-                }
-              }}
+              onTouchEnd={handleNavTouchEnd}
             >
               <nav
                 className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7"
                 data-nav-item
-                onMouseLeave={() => activeMenu && setActiveMenu(null)}
+                onMouseLeave={() => !isTouch && activeMenu && setActiveMenu(null)}
+                onTouchStart={() => setIsTouch(true)}
+                onMouseEnter={() => setIsTouch(false)}
               >
                 <BrandLockup compact />
 
@@ -462,7 +477,8 @@ export default function Landing() {
                 <div
                   className="absolute inset-x-0 top-full z-20 pt-4 pointer-events-auto"
                   data-nav-dropdown
-                  onMouseLeave={() => setActiveMenu(null)}
+                  onMouseLeave={() => !isTouch && setActiveMenu(null)}
+                  onTouchStart={() => setIsTouch(true)}
                 >
                   <div className="glass-panel luminous-border grid gap-6 rounded-[32px] p-6 lg:grid-cols-[1.05fr_1.25fr]">
                     <div className="space-y-4">
