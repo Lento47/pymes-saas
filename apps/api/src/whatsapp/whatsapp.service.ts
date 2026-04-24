@@ -67,7 +67,7 @@ export class WhatsAppService {
       // Fetch all WhatsApp channels and match by phone_number_id
       const channels = await this.prisma.channel.findMany({
         where: {
-          type: 'whatsapp',
+          type: 'WHATSAPP',
           status: 'ACTIVE',
         },
       });

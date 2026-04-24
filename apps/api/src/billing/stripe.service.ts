@@ -22,11 +22,16 @@ export class StripeService {
   async createOrGetCustomer(workspaceId: string, email: string): Promise<string> {
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
-      select: { stripe_customer_id: true, name: true },
+      select: { name: true },
     });
 
-    if (workspace?.stripe_customer_id) {
-      return workspace.stripe_customer_id;
+    const subscription = await this.prisma.workspaceSubscription.findFirst({
+      where: { workspace_id: workspaceId },
+      select: { id: true, provider_customer_id: true },
+    });
+
+    if (subscription?.provider_customer_id) {
+      return subscription.provider_customer_id;
     }
 
     const customer = await this.stripe.customers.create({
@@ -35,10 +40,21 @@ export class StripeService {
       name: workspace?.name,
     });
 
-    await this.prisma.workspace.update({
-      where: { id: workspaceId },
-      data: { stripe_customer_id: customer.id },
-    });
+    if (subscription) {
+      await this.prisma.workspaceSubscription.update({
+        where: { id: subscription.id },
+        data: { provider_customer_id: customer.id },
+      });
+    } else {
+      await this.prisma.workspaceSubscription.create({
+        data: {
+          workspace_id: workspaceId,
+          provider_customer_id: customer.id,
+          status: 'MANUAL',
+          plan: 'STARTER',
+        },
+      });
+    }
 
     return customer.id;
   }
@@ -55,14 +71,14 @@ export class StripeService {
       where: {
         workspace_id: workspaceId,
         type: 'checkout.session.created',
-        data: { path: ['idempotency_key'], equals: idempotencyKey },
       },
     });
 
-    if (existingSession?.data?.session_id) {
+    const existingData = existingSession?.data as any;
+    if (existingData?.idempotency_key === idempotencyKey && existingData?.session_id) {
       return {
-        sessionId: existingSession.data.session_id,
-        url: existingSession.data.url,
+        sessionId: existingData.session_id,
+        url: existingData.url,
       };
     }
 
@@ -163,26 +179,40 @@ export class StripeService {
       return;
     }
 
-    const plan = this.mapStripePriceToWorkspacePlan(subscription.items.data[0]?.price?.id || '');
+    const planStr = this.mapStripePriceToWorkspacePlan(subscription.items.data[0]?.price?.id || '');
+    const plan = planStr as 'FREE' | 'STARTER' | 'GROWTH' | 'ENTERPRISE';
+    const mappedStatus = subscription.status.toUpperCase() as any;
 
-    await this.prisma.workspaceSubscription.upsert({
+    const existing = await this.prisma.workspaceSubscription.findFirst({
       where: { workspace_id: workspaceId },
-      create: {
-        workspace_id: workspaceId,
-        stripe_subscription_id: subscription.id,
-        status: subscription.status,
-        current_period_start: new Date(subscription.current_period_start * 1000),
-        current_period_end: new Date(subscription.current_period_end * 1000),
-        trial_ends_at: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
-      },
-      update: {
-        stripe_subscription_id: subscription.id,
-        status: subscription.status,
-        current_period_start: new Date(subscription.current_period_start * 1000),
-        current_period_end: new Date(subscription.current_period_end * 1000),
-        trial_ends_at: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
-      },
+      select: { id: true },
     });
+
+    if (existing) {
+      await this.prisma.workspaceSubscription.update({
+        where: { id: existing.id },
+        data: {
+          provider_subscription_id: subscription.id,
+          status: mappedStatus,
+          plan,
+          current_period_start: new Date(subscription.current_period_start * 1000),
+          current_period_end: new Date(subscription.current_period_end * 1000),
+          trial_ends_at: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
+        },
+      });
+    } else {
+      await this.prisma.workspaceSubscription.create({
+        data: {
+          workspace_id: workspaceId,
+          provider_subscription_id: subscription.id,
+          status: mappedStatus,
+          plan,
+          current_period_start: new Date(subscription.current_period_start * 1000),
+          current_period_end: new Date(subscription.current_period_end * 1000),
+          trial_ends_at: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
+        },
+      });
+    }
 
     await this.prisma.workspace.update({
       where: { id: workspaceId },
@@ -204,21 +234,28 @@ export class StripeService {
 
     await this.prisma.workspace.update({
       where: { id: workspaceId },
-      data: { plan: 'STARTER' },
+      data: { plan: 'FREE' },
     });
 
-    await this.prisma.workspaceSubscription.update({
+    const existing = await this.prisma.workspaceSubscription.findFirst({
       where: { workspace_id: workspaceId },
-      data: { status: 'cancelled' },
+      select: { id: true },
     });
+
+    if (existing) {
+      await this.prisma.workspaceSubscription.update({
+        where: { id: existing.id },
+        data: { status: 'CANCELLED' },
+      });
+    }
   }
 
-  private mapStripePriceToWorkspacePlan(priceId: string): string {
-    const priceMap: Record<string, string> = {
+  private mapStripePriceToWorkspacePlan(priceId: string): 'FREE' | 'STARTER' | 'GROWTH' | 'ENTERPRISE' {
+    const priceMap: Record<string, 'FREE' | 'STARTER' | 'GROWTH' | 'ENTERPRISE'> = {
       [process.env.STRIPE_PRICE_GROWTH_MONTHLY || '']: 'GROWTH',
       [process.env.STRIPE_PRICE_GROWTH_ANNUAL || '']: 'GROWTH',
-      [process.env.STRIPE_PRICE_BUSINESS_MONTHLY || '']: 'BUSINESS',
-      [process.env.STRIPE_PRICE_BUSINESS_ANNUAL || '']: 'BUSINESS',
+      [process.env.STRIPE_PRICE_BUSINESS_MONTHLY || '']: 'GROWTH',
+      [process.env.STRIPE_PRICE_BUSINESS_ANNUAL || '']: 'GROWTH',
       [process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || '']: 'ENTERPRISE',
       [process.env.STRIPE_PRICE_ENTERPRISE_ANNUAL || '']: 'ENTERPRISE',
     };
@@ -227,17 +264,17 @@ export class StripeService {
   }
 
   async getBillingPortalLink(workspaceId: string): Promise<string> {
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { stripe_customer_id: true },
+    const subscription = await this.prisma.workspaceSubscription.findFirst({
+      where: { workspace_id: workspaceId },
+      select: { provider_customer_id: true },
     });
 
-    if (!workspace?.stripe_customer_id) {
+    if (!subscription?.provider_customer_id) {
       throw new Error('No Stripe customer found for workspace');
     }
 
     const session = await this.stripe.billingPortal.sessions.create({
-      customer: workspace.stripe_customer_id,
+      customer: subscription.provider_customer_id,
     });
 
     return session.url;

@@ -24,9 +24,9 @@ export class BillingController {
       throw new BadRequestException('priceId and idempotencyKey are required');
     }
 
-    const workspace = await this.getWorkspace(user.workspaceId);
+    const workspace = await this.getWorkspace(user.workspace_id);
     const customerId = await this.stripeService.createOrGetCustomer(
-      user.workspaceId,
+      user.workspace_id,
       user.email,
     );
 
@@ -34,7 +34,7 @@ export class BillingController {
     const cancelUrl = `${this.configService.get('APP_URL')}/settings/billing?canceled=true`;
 
     const session = await this.stripeService.createCheckoutSession(
-      user.workspaceId,
+      user.workspace_id,
       customerId,
       dto.priceId,
       dto.idempotencyKey,
@@ -76,12 +76,12 @@ export class BillingController {
   @Get('portal')
   @UseGuards(JwtAuthGuard)
   async getBillingPortal(@CurrentUser() user: AuthUser) {
-    const url = await this.stripeService.getBillingPortalLink(user.workspaceId);
+    const url = await this.stripeService.getBillingPortalLink(user.workspace_id);
     return { url };
   }
 
-  private async getWorkspace(workspaceId: string) {
+  private async getWorkspace(workspace_id: string) {
     // This would be injected in real implementation
-    return { id: workspaceId };
+    return { id: workspace_id };
   }
 }
