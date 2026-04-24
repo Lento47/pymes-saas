@@ -890,7 +890,13 @@ export default function Landing() {
               ))}
             </div>
 
-            <div className="glass-panel mt-12 rounded-[34px] px-8 py-10 text-center md:px-12 md:py-14">
+            <div
+              className="glass-panel mt-12 rounded-[34px] bg-cover bg-center bg-no-repeat px-8 py-10 text-center md:px-12 md:py-14"
+              style={{
+                backgroundImage:
+                  "linear-gradient(180deg, rgba(6, 11, 33, 0.58) 0%, rgba(6, 11, 33, 0.76) 100%), url('/landing-icons/readytolunch.png')",
+              }}
+            >
               <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
                 {copy.security.ctaEyebrow}
               </p>
