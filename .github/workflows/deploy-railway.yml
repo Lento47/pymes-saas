@@ -63,10 +63,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build API
-        run: cd apps/api && npm run build
+        run: cd apps/api && pnpm run build
 
       - name: Lint API
-        run: cd apps/api && npm run lint
+        run: cd apps/api && pnpm run lint
         continue-on-error: true
 
   deploy:
