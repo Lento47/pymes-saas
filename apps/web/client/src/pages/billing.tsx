@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 
-async function fetchWorkspaceSubscription(workspaceSlug: string) {
-  const response = await fetch(`/api/workspaces/${workspaceSlug}/subscription`);
+async function fetchWorkspaceSubscription() {
+  const response = await fetch('/api/workspaces/current/subscription');
   if (!response.ok) throw new Error('Failed to fetch subscription');
   return response.json();
 }
@@ -40,16 +40,16 @@ const PRICING_TIERS = [
 ];
 
 export default function BillingPage() {
-  const { workspaceSlug, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [location] = useLocation();
   const params = new URLSearchParams(location.split('?')[1]);
   const success = params.get('success');
   const canceled = params.get('canceled');
 
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
-    queryKey: ['subscription', workspaceSlug],
-    queryFn: () => fetchWorkspaceSubscription(workspaceSlug || ''),
-    enabled: !!workspaceSlug && isAuthenticated,
+    queryKey: ['subscription'],
+    queryFn: fetchWorkspaceSubscription,
+    enabled: isAuthenticated,
   });
 
   const { data: portalLink, isLoading: portalLoading } = useQuery({

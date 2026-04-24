@@ -20,7 +20,7 @@ import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { CreateInvoicePaymentDto } from './dto/create-invoice-payment.dto';
-import { PlanLimitsService } from '../billing/plan-limits.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 @Injectable()
 export class InvoicesService {

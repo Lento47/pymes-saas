@@ -17,7 +17,7 @@ import { AiProvider, AiService } from '../ai/ai.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 import { EmailService } from '../email/email.service';
 import { EventsGateway } from '../gateways/events.gateway';
-import { PlanLimitsService } from '../billing/plan-limits.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 @Injectable()
 export class WorkspacesService {
@@ -81,6 +81,33 @@ export class WorkspacesService {
     });
 
     return this.serializeWorkspace(workspace);
+  }
+
+  // ── GET /workspaces/current/subscription ─────────────────────────────────
+
+  async getSubscription(workspaceId: string) {
+    const sub = await this.prisma.workspaceSubscription.findFirst({
+      where: { workspace_id: workspaceId },
+      select: {
+        id: true,
+        plan: true,
+        status: true,
+        provider: true,
+        provider_customer_id: true,
+        provider_subscription_id: true,
+        current_period_start: true,
+        current_period_end: true,
+        trial_ends_at: true,
+        cancel_at_period_end: true,
+      },
+    });
+
+    if (!sub) {
+      return null;
+    }
+
+    const limits = this.planLimits.getLimits(sub.plan);
+    return { ...sub, limits };
   }
 
   // ── PATCH /workspaces/current ─────────────────────────────────────────────

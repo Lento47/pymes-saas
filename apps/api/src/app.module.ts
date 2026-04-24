@@ -33,6 +33,7 @@ import { PlatformModule } from './platform/platform.module';
 import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { HealthModule } from './health/health.module';
+import { BillingModule } from './billing/billing.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { HealthModule } from './health/health.module';
     EmailModule,
     WhatsAppModule,
     HealthModule,
+    BillingModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

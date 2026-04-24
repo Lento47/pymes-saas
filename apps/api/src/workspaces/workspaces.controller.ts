@@ -38,6 +38,11 @@ export class WorkspacesController {
     return this.service.getCurrent(workspaceId);
   }
 
+  @Get('current/subscription')
+  getSubscription(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.service.getSubscription(workspaceId);
+  }
+
   @Get('current/stats')
   getStats(@CurrentUser('workspace_id') workspaceId: string) {
     return this.service.getStats(workspaceId);
