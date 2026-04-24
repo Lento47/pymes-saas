@@ -4,7 +4,7 @@ import { reportClientError } from "@/lib/error-reporting";
 const _isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
 const API_BASE = _isTauri
   ? 'http://localhost:4000'
-  : ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
+  : ("__PORT_5000__".startsWith("__") ? "https://api.pymeshub.lat" : "__PORT_5000__");
 
 const LS_TOKEN_KEY = "pymes_token";
 const LS_SLUG_KEY = "pymes_slug";

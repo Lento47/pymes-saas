@@ -15,13 +15,13 @@ export function getSocket(): Socket | null {
  */
 // Tauri desktop: NestJS sidecar always on localhost:4000
 // Dev: connect directly to NestJS to avoid Vite proxy WS issues
-// Production web: co-located, use origin
+// Production web: use api.pymeshub.lat
 const _isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
 const WS_URL = _isTauri
   ? 'http://localhost:4000'
   : import.meta.env.DEV
   ? `${window.location.protocol}//${window.location.hostname}:4000`
-  : window.location.origin;
+  : 'https://api.pymeshub.lat';
 
 export function connectSocket() {
   if (_socket?.connected) return _socket;
