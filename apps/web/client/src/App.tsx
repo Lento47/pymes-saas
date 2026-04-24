@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import AcceptInvite from "@/pages/accept-invite";
+import Pricing from "@/pages/pricing";
 import Dashboard from "@/pages/dashboard";
 import Inbox from "@/pages/inbox";
 import Conversation from "@/pages/conversation";
@@ -50,6 +51,7 @@ function AppRouter() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/accept-invite" component={AcceptInvite} />
+      <Route path="/pricing" component={Pricing} />
       <Route path="/documentation">
         {() => <DocumentationCenterPage />}
       </Route>
