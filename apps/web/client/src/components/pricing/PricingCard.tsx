@@ -1,3 +1,4 @@
+import { useNavigate } from 'wouter';
 import { PricingTier } from '@/data/pricing.data';
 import { Check, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -8,9 +9,18 @@ interface PricingCardProps {
 }
 
 export function PricingCard({ tier, isAnnual }: PricingCardProps) {
+  const navigate = useNavigate();
   const price = isAnnual ? tier.annualUSD : tier.monthlyUSD;
   const priceCRC = isAnnual ? tier.annualCRC : tier.monthlyCRC;
   const isEnterprise = tier.name === 'Business+';
+
+  const handleCTA = () => {
+    if (isEnterprise) {
+      navigate('/contact-sales');
+    } else {
+      navigate(`/login?plan=${tier.name.toLowerCase().replace('+', 'plus')}`);
+    }
+  };
 
   return (
     <div className={cn(
@@ -52,12 +62,14 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
       </div>
 
       {/* CTA Button */}
-      <button className={cn(
-        'mt-8 w-full rounded-full px-4 py-3 font-semibold transition flex items-center justify-center gap-2 text-sm',
-        tier.popular
-          ? 'glow-button bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] text-[#051127] hover:translate-y-[-1px]'
-          : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/[0.08]'
-      )}>
+      <button
+        onClick={handleCTA}
+        className={cn(
+          'mt-8 w-full rounded-full px-4 py-3 font-semibold transition flex items-center justify-center gap-2 text-sm',
+          tier.popular
+            ? 'glow-button bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] text-[#051127] hover:translate-y-[-1px]'
+            : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/[0.08]'
+        )}>
         {tier.cta}
         {tier.popular && <ArrowRight className="h-4 w-4" />}
       </button>

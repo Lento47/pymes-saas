@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'wouter';
+import { Link, useNavigate } from 'wouter';
 import { ArrowRight, Check } from 'lucide-react';
 import { PRICING_TIERS, ADD_ONS, FAQS } from '@/data/pricing.data';
 import { PricingCard } from '@/components/pricing/PricingCard';
@@ -11,6 +11,7 @@ import { LanguageSwitcher } from '@/components/shared/language-switcher';
 import { cn } from '@/lib/utils';
 
 export default function PricingPage() {
+  const navigate = useNavigate();
   const [isAnnual, setIsAnnual] = useState(false);
   const { messages } = useI18n();
   const copy = messages.pricing || {};
@@ -209,13 +210,15 @@ export default function PricingPage() {
                 'Join hundreds of businesses using PymeHub to manage customer operations.'}
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/login">
-                <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#dfff4a] to-[#7ff4d2] px-8 py-3 text-[#051127] font-semibold transition hover:translate-y-[-1px]">
-                  {copy.cta?.primary || 'Start Free Trial'}
-                  <ArrowRight className="h-4 w-4" />
-                </a>
-              </Link>
-              <button className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.04] px-8 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/[0.08]">
+              <button
+                onClick={() => navigate('/login?plan=growth')}
+                className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#dfff4a] to-[#7ff4d2] px-8 py-3 text-[#051127] font-semibold transition hover:translate-y-[-1px]">
+                {copy.cta?.primary || 'Start Free Trial'}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => navigate('/contact-sales')}
+                className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.04] px-8 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/[0.08]">
                 {copy.cta?.secondary || 'Schedule a Demo'}
               </button>
             </div>
