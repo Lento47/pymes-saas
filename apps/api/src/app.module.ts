@@ -26,23 +26,24 @@ import { EmailModule } from './email/email.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { PlanLimitsModule } from './common/plan-limits/plan-limits.module';
 import { DepartmentsModule } from './departments/departments.module';
-import { InvitationsModule } from './invitations/invitations.module';
 import { InsightsModule } from './insights/insights.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
 import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
-import { SetupModule } from './setup/setup.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    ThrottlerModule.forRoot([
+      { ttl: 60_000, limit: 100 }, // Global: 100 req/min
+      { ttl: 60_000, limit: 10, name: 'webhook' }, // Webhook: 10 req/min (stricter)
+    ]),
     ScheduleModule.forRoot(),
 
     PrismaModule,
-    SetupModule,
     StorageModule,
     CryptoModule,
     PlanLimitsModule,
@@ -66,7 +67,6 @@ import { SetupModule } from './setup/setup.module';
     AuditModule,
 
     DepartmentsModule,
-    InvitationsModule,
     InsightsModule,
     InvoicesModule,
     HaciendaModule,
@@ -78,6 +78,7 @@ import { SetupModule } from './setup/setup.module';
     EventsModule,
     EmailModule,
     WhatsAppModule,
+    HealthModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

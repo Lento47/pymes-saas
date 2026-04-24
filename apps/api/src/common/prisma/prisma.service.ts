@@ -6,12 +6,12 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
+  [key: string]: any;
+
   constructor() {
     super({
-      log:
-        process.env.NODE_ENV === 'development'
-          ? ['query', 'info', 'warn', 'error']
-          : ['error'],
+      // SECURITY: Only log errors to prevent sensitive data exposure in logs
+      log: ['error', 'warn'],
     });
   }
 

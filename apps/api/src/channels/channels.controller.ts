@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -8,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { ChannelsService } from './channels.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -23,7 +25,7 @@ export class ChannelsController {
   constructor(private readonly channelsService: ChannelsService) {}
 
   @Post()
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   create(
     @CurrentUser() user: AuthUser,
     @Body() body: { type: string; name: string; provider?: string },
@@ -39,63 +41,63 @@ export class ChannelsController {
   @Get(':id')
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.channelsService.findOne(workspaceId, id);
   }
 
   @Patch(':id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() body: { name?: string; status?: string },
   ) {
     return this.channelsService.update(workspaceId, id, body);
   }
 
   @Delete(':id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.channelsService.remove(workspaceId, id);
   }
 
   @Post(':id/connect')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   connect(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.channelsService.connect(workspaceId, id);
   }
 
   @Post(':id/disconnect')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   disconnect(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.channelsService.disconnect(workspaceId, id);
   }
 
   @Post(':id/configure-email')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   configureEmail(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: ConfigureEmailDto,
   ) {
     return this.channelsService.configureEmail(workspaceId, id, dto);
   }
 
   @Post(':id/configure-whatsapp')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   configureWhatsApp(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: ConfigureWhatsAppDto,
   ) {
     return this.channelsService.configureWhatsApp(workspaceId, id, dto);

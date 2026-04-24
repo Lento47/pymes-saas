@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -9,20 +10,19 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { ContactsService } from './contacts.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { FilterContactsDto } from './dto/filter-contacts.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 @Controller('contacts')
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ContactsController {
   constructor(
     private readonly service: ContactsService,
@@ -38,7 +38,7 @@ export class ContactsController {
   }
 
   @Post()
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   async create(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateContactDto,
@@ -50,27 +50,26 @@ export class ContactsController {
   @Get(':id')
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
   }
 
   @Patch(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateContactDto,
   ) {
     return this.service.update(workspaceId, id, dto);
   }
 
   @Delete(':id')
-  @Roles('AGENT' as any)
-  @RequirePermission('can_delete_contacts')
+  @Roles(WorkspaceUserRole.ADMIN)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.remove(workspaceId, id);
   }

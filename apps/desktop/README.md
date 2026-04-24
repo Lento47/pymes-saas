@@ -1,6 +1,6 @@
-# Pymeshub Desktop Enterprise
+# Pymeshub Desktop Cloud
 
-Cliente opcional para la edición `Enterprise Windows Native` de PymeHub. Este build no aloja servicios dentro de Tauri: el desktop se conecta al servidor local o LAN donde corren `web` y `api`.
+Shell de escritorio para Windows basado en Tauri 2 + WebView2 para el SaaS de PymeHub.
 
 La URL la determina `PYMESHUB_REMOTE_URL`. Si no se define, usa `http://127.0.0.1:5000`.
 
@@ -16,22 +16,25 @@ La URL la determina `PYMESHUB_REMOTE_URL`. Si no se define, usa `http://127.0.0.
 
 ```bash
 pnpm install
-pnpm --filter @pymeshub/desktop tauri:dev:enterprise
+pnpm --filter @pymeshub/desktop tauri:dev:cloud
 ```
 
 ## Build local
 
 ```bash
-set PYMESHUB_REMOTE_URL=https://cliente.interno
-pnpm --filter @pymeshub/desktop tauri:build:enterprise
+set PYMESHUB_REMOTE_URL=https://tu-saas
+pnpm --filter @pymeshub/desktop tauri:build:cloud
 ```
 
 Esto genera instaladores Windows (`.msi` y `.exe`/NSIS) en `src-tauri/target/release/bundle/`.
 
 ## Updater y firma
 
-- El updater se deja desactivado por defecto.
-- La distribución enterprise puede publicarse por canal privado, instalador manual o proceso controlado por soporte.
+- El shell cloud usa updater con GitHub Releases.
+- Antes de habilitar releases firmados hay que reemplazar `REPLACE_WITH_TAURI_SIGNING_PUBKEY` en `src-tauri/tauri.cloud.conf.json`.
+- Secrets esperados en GitHub Actions:
+  - `TAURI_SIGNING_PRIVATE_KEY`
+  - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
 
 ## SmartScreen en MVP
 

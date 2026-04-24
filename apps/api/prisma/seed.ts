@@ -12,10 +12,8 @@
  * antes de correr este seed.
  */
 
-import { PrismaClient } from '@prisma/client';
-import { WorkspaceUserRole, UserStatus } from '../src/common/types/enums';
+import { PrismaClient, WorkspaceUserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { serializeJson } from '../src/common/prisma/enterprise-sqlite-json';
 
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 12;
@@ -125,7 +123,7 @@ async function main() {
       type: 'EMAIL',
       name: 'Correo Principal',
       status: 'ACTIVE',
-      config_json: serializeJson({ address: 'soporte@demo.com' }) ?? '{}',
+      config_json: JSON.stringify({ address: 'soporte@demo.com' }),
     },
   });
   console.log(`\n✅ Channel: ${channel.name} (${channel.type})`);
@@ -143,17 +141,15 @@ async function main() {
       company_name: 'Demo Corp',
       email: 'cliente@demo.com',
       phone: '+50688887777',
-      tags_json: serializeJson(['vip', 'demo']) ?? '[]',
+      tags_json: JSON.stringify(['vip', 'demo']),
     },
   });
   console.log(`✅ Contacto: ${contact.full_name}`);
 
   console.log('\n🎉 Seed completado exitosamente.\n');
-  console.log('Credenciales de acceso:');
-  console.log('  Workspace slug : demo-workspace');
-  for (const u of usersData) {
-    console.log(`  ${u.email.padEnd(22)} → ${u.password}`);
-  }
+  console.log('Workspace slug: demo-workspace');
+  console.log('Note: Default demo passwords are NOT logged for security.');
+  console.log('Contact the database admin to reset user passwords.');
 }
 
 main()

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "nest build && node ./scripts/copy-schema-sql.mjs",
+    "build": "nest build",
     "start": "node dist/main",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -13,15 +13,16 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force && npm run db:seed",
     "db:generate": "prisma generate",
-    "db:generate:enterprise": "node ./scripts/prepare-enterprise-prisma.mjs",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "postinstall": "prisma generate --schema ./prisma/schema.prisma || true"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1028.0",
     "@aws-sdk/s3-request-presigner": "^3.1028.0",
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
@@ -30,7 +31,7 @@
     "@nestjs/passport": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/platform-socket.io": "^11.1.19",
-    "@nestjs/schedule": "^6.1.0",
+    "@nestjs/schedule": "^6.1.1",
     "@nestjs/throttler": "^6.0.0",
     "@nestjs/websockets": "^11.1.19",
     "@opentelemetry/auto-instrumentations-node": "^0.72.0",
@@ -42,8 +43,10 @@
     "@opentelemetry/semantic-conventions": "^1.40.0",
     "@prisma/client": "^5.0.0",
     "bcrypt": "^5.1.0",
+    "bullmq": "^5.73.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
+    "helmet": "^8.1.0",
     "multer": "^2.1.1",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
@@ -51,7 +54,8 @@
     "resend": "^6.11.0",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "stripe": "^14.25.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
@@ -68,31 +72,23 @@
     "typescript": "^5.0.0"
   },
   "jest": {
-    "moduleFileExtensions": ["js", "json", "ts"],
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
-    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
-  },
-  "pkg": {
-    "scripts": "dist/**/*.js",
-    "assets": [
-      "dist/schema.sql",
-      "prisma/schema.prisma",
-      "prisma/schema.enterprise.sqlite.prisma",
-      "prisma/schema.enterprise.sqlite.sql",
-      "node_modules/.prisma/client/**",
-      "node_modules/prisma/node_modules/@prisma/engines/schema-engine-windows.exe",
-      "node_modules/prisma/node_modules/@prisma/engines/query_engine-windows.dll.node"
-    ],
-    "targets": ["node20-win-x64"],
-    "outputPath": "./dist/bin"
   }
 }

@@ -22,19 +22,12 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ["react", "react-dom", "wouter"],
-          ui: [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-dropdown-menu",
-            "@radix-ui/react-alert-dialog",
-            "@radix-ui/react-tabs",
-            "@radix-ui/react-select",
-          ],
+          ui: ["@radix-ui/react-dialog", "@radix-ui/react-dropdown-menu", "@radix-ui/react-popover"],
           charts: ["recharts"],
           query: ["@tanstack/react-query"],
         },
       },
     },
-    chunkSizeWarningLimit: 1000,
   },
   server: {
     proxy: {

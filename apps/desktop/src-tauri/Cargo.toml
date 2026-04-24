@@ -23,11 +23,3 @@ tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 url = "2"
-rand = { version = "0.8", features = ["getrandom"] }
-
-[profile.release]
-opt-level = 3
-lto = "thin"
-codegen-units = 256
-strip = true
-panic = "abort"

@@ -7,9 +7,9 @@ import { EventsGateway } from '../gateways/events.gateway';
 import { AiService } from '../ai/ai.service';
 import { TasksService } from '../tasks/tasks.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { Priority, TriggerType, TaskSource } from '../common/types/enums';
+import { Priority } from '@prisma/client';
 import { AutomationsService } from '../automations/automations.service';
-import { serializeJson } from '../common/prisma/enterprise-sqlite-json';
+import { stringifyJson } from '../common/prisma/json';
 
 @Injectable()
 export class MessagesService {
@@ -168,7 +168,7 @@ export class MessagesService {
         sender_ref: senderRef,
         body_text: bodyText,
         body_html: payload.body_html ?? payload.html ?? null,
-        raw_payload_json: serializeJson(payload),
+        raw_payload_json: stringifyJson(payload),
         sent_at: new Date(),
       },
     });
@@ -183,7 +183,7 @@ export class MessagesService {
 
     await this.automationsService.triggerRules(
       workspaceId,
-      TriggerType.MESSAGE_RECEIVED,
+      'MESSAGE_RECEIVED',
       'message',
       message.id,
     );
@@ -285,7 +285,7 @@ export class MessagesService {
         title: result.task_title,
         description: result.task_description ?? undefined,
         priority,
-        source: TaskSource.AUTOMATION,
+        source: 'AUTOMATION',
         conversation_id: conversationId,
         contact_id: contactId ?? undefined,
       });

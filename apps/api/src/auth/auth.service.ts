@@ -2,13 +2,17 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { LoginDto } from './dto/login.dto';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { InviteTokenPayload } from './invite-token.types';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
@@ -29,13 +33,13 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (!user || !(user as any).password_hash) {
+    if (!user || !user.password_hash) {
       throw new UnauthorizedException('Credenciales inválidas.');
     }
 
     const passwordMatch = await bcrypt.compare(
       dto.password,
-      (user as any).password_hash,
+      user.password_hash,
     );
     if (!passwordMatch) throw new UnauthorizedException('Credenciales inválidas.');
 
@@ -63,7 +67,7 @@ export class AuthService {
       email: user.email,
       workspace_id: workspace.id,
       role: membership.role,
-      is_platform_admin: (user as any).is_platform_admin ?? false,
+      is_platform_admin: user.is_platform_admin,
     });
 
     const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
@@ -78,7 +82,7 @@ export class AuthService {
         avatar_url: user.avatar_url,
         role: membership.role,
         is_owner: membership.is_owner,
-        is_platform_admin: (user as any).is_platform_admin ?? false,
+        is_platform_admin: user.is_platform_admin,
         workspace: {
           id: workspace.id,
           name: workspace.name,
@@ -92,9 +96,15 @@ export class AuthService {
   // ── Register (primer usuario = owner del nuevo workspace) ─────────────────
 
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
+    if (dto.invite_token) {
+      return this.acceptInvite({
+        token: dto.invite_token,
+        name: dto.name,
+        password: dto.password,
+      });
+    }
+
+    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('El email ya está registrado.');
 
     const password_hash = await bcrypt.hash(dto.password, 12);
@@ -104,25 +114,16 @@ export class AuthService {
         email: dto.email,
         name: dto.name,
         status: 'ACTIVE',
-        ...(password_hash && { password_hash } as any),
+        ...(password_hash && { password_hash }),
       },
     });
 
-    if (dto.invite_token) {
-      throw new BadRequestException(
-        'Invite token: implementar en WorkspacesService.acceptInvite()',
-      );
-    }
-
-    const slug = dto.email
-      .split('@')[0]
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-');
+    const slug = await this.generateUniqueWorkspaceSlug();
 
     const workspace = await this.prisma.workspace.create({
       data: {
         name: `${dto.name}'s Workspace`,
-        slug: `${slug}-${Date.now()}`,
+        slug,
         status: 'ACTIVE',
         plan: 'FREE',
         workspace_users: {
@@ -148,10 +149,127 @@ export class AuthService {
     return { access_token, refresh_token };
   }
 
+  async getInvitePreview(rawToken?: string) {
+    const payload = this.verifyInviteToken(rawToken);
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: payload.workspace_id },
+      select: { id: true, name: true, slug: true },
+    });
+    if (!workspace) throw new NotFoundException('Workspace de invitación no encontrado.');
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: payload.email },
+      select: { id: true, email: true, name: true, status: true, password_hash: true },
+    });
+    if (!user) throw new NotFoundException('Usuario invitado no encontrado.');
+
+    const membership = await this.prisma.workspaceUser.findUnique({
+      where: {
+        workspace_id_user_id: {
+          workspace_id: workspace.id,
+          user_id: user.id,
+        },
+      },
+    });
+    if (!membership) throw new NotFoundException('La invitación ya no es válida.');
+
+    return {
+      email: user.email,
+      name: user.name,
+      requires_account_setup: user.status === 'INVITED' || !user.password_hash,
+      workspace: {
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+      },
+      role: membership.role,
+    };
+  }
+
+  async acceptInvite(dto: AcceptInviteDto) {
+    const payload = this.verifyInviteToken(dto.token);
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: payload.email },
+    });
+    if (!user) throw new NotFoundException('Usuario invitado no encontrado.');
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: payload.workspace_id },
+    });
+    if (!workspace || workspace.slug !== payload.workspace_slug) {
+      throw new NotFoundException('Workspace de invitación no encontrado.');
+    }
+
+    const membership = await this.prisma.workspaceUser.findUnique({
+      where: {
+        workspace_id_user_id: {
+          workspace_id: workspace.id,
+          user_id: user.id,
+        },
+      },
+    });
+    if (!membership) throw new BadRequestException('La invitación ya no es válida.');
+
+    let resolvedUser = user;
+    const requiresAccountSetup = user.status === 'INVITED' || !user.password_hash;
+
+    if (requiresAccountSetup) {
+      if (!dto.name?.trim()) {
+        throw new BadRequestException('El nombre es requerido para activar la invitación.');
+      }
+      if (!dto.password) {
+        throw new BadRequestException('La contraseña es requerida para activar la invitación.');
+      }
+
+      const password_hash = await bcrypt.hash(dto.password, 12);
+      resolvedUser = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: dto.name.trim(),
+          status: 'ACTIVE',
+          password_hash,
+        },
+      });
+    } else if (user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Usuario inactivo o suspendido.');
+    }
+
+    const access_token = this.signToken({
+      sub: resolvedUser.id,
+      email: resolvedUser.email,
+      workspace_id: workspace.id,
+      role: membership.role,
+      is_platform_admin: resolvedUser.is_platform_admin,
+    });
+
+    const refresh_token = await this.refreshTokenService.create(resolvedUser.id, workspace.id);
+
+    return {
+      access_token,
+      refresh_token,
+      user: {
+        id: resolvedUser.id,
+        email: resolvedUser.email,
+        name: resolvedUser.name,
+        avatar_url: resolvedUser.avatar_url,
+        role: membership.role,
+        is_owner: membership.is_owner,
+        is_platform_admin: resolvedUser.is_platform_admin,
+        workspace: {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          plan: workspace.plan,
+        },
+      },
+    };
+  }
+
   // ── Me ─────────────────────────────────────────────────────────────────────
 
   async getMe(userId: string, workspaceId: string) {
-    const membership = await (this.prisma.workspaceUser as any).findUniqueOrThrow({
+    const membership = await this.prisma.workspaceUser.findUniqueOrThrow({
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: userId },
       },
@@ -159,7 +277,7 @@ export class AuthService {
         user: { select: { id: true, email: true, name: true, avatar_url: true, status: true, created_at: true, is_platform_admin: true } },
         workspace: { select: { id: true, name: true, slug: true, plan: true, timezone: true, locale: true } },
       },
-    }) as any;
+    });
 
     const overrides =
       (membership.permissions_json as Record<string, boolean> | null) ?? null;
@@ -200,12 +318,12 @@ export class AuthService {
     });
     if (!workspace) throw new UnauthorizedException('Workspace no encontrado.');
 
-    const membership = await (this.prisma.workspaceUser as any).findUnique({
+    const membership = await this.prisma.workspaceUser.findUnique({
       where: {
         workspace_id_user_id: { workspace_id: workspace.id, user_id: userId },
       },
       include: { user: { select: { is_platform_admin: true } } },
-    }) as any;
+    });
     if (!membership) throw new UnauthorizedException('Sin acceso a este workspace.');
 
     const access_token = this.signToken({
@@ -213,7 +331,7 @@ export class AuthService {
       email: (await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } })).email,
       workspace_id: workspace.id,
       role: membership.role,
-      is_platform_admin: membership.user?.is_platform_admin ?? false,
+      is_platform_admin: membership.user.is_platform_admin,
     });
 
     const refresh_token = await this.refreshTokenService.create(userId, workspace.id);
@@ -236,5 +354,35 @@ export class AuthService {
 
   private signToken(payload: JwtPayload): string {
     return this.jwtService.sign(payload);
+  }
+
+  /**
+   * Generates a random, URL-safe workspace slug (base64url, ~72 bits of entropy)
+   * and retries on the astronomically rare collision.
+   */
+  private async generateUniqueWorkspaceSlug(): Promise<string> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = randomBytes(9).toString('base64url');
+      const exists = await this.prisma.workspace.findUnique({
+        where: { slug: candidate },
+        select: { id: true },
+      });
+      if (!exists) return candidate;
+    }
+    throw new Error('Could not generate unique workspace slug.');
+  }
+
+  private verifyInviteToken(rawToken?: string): InviteTokenPayload {
+    if (!rawToken) throw new BadRequestException('Invite token requerido.');
+
+    try {
+      const payload = this.jwtService.verify<InviteTokenPayload>(rawToken);
+      if (payload.type !== 'workspace-invite') {
+        throw new BadRequestException('Invite token inválido.');
+      }
+      return payload;
+    } catch {
+      throw new BadRequestException('Invite token inválido o expirado.');
+    }
   }
 }

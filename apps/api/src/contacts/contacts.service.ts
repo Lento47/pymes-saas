@@ -4,14 +4,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { parseJsonValue, stringifyJson } from '../common/prisma/json';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { FilterContactsDto } from './dto/filter-contacts.dto';
-import { serializeJson } from '../common/prisma/enterprise-sqlite-json';
+import { PlanLimitsService } from '../billing/plan-limits.service';
 
 @Injectable()
 export class ContactsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly planLimits: PlanLimitsService,
+  ) {}
 
   // ── GET /contacts ──────────────────────────────────────────────────────────
 
@@ -25,17 +29,12 @@ export class ContactsService {
 
     if (q) {
       where.OR = [
-        { full_name:    { contains: q, mode: 'insensitive' } },
-        { company_name: { contains: q, mode: 'insensitive' } },
-        { email:        { contains: q, mode: 'insensitive' } },
-        { phone:        { contains: q, mode: 'insensitive' } },
-        { external_ref: { contains: q, mode: 'insensitive' } },
+        { full_name: { contains: q } },
+        { company_name: { contains: q } },
+        { email: { contains: q } },
+        { phone: { contains: q } },
+        { external_ref: { contains: q } },
       ];
-    }
-
-    if (tag) {
-      // Filtra sobre el array JSON de tags
-      where.tags_json = { array_contains: tag };
     }
 
     const [data, total] = await Promise.all([
@@ -69,13 +68,20 @@ export class ContactsService {
       this.prisma.contact.count({ where }),
     ]);
 
+    const normalizedData = data
+      .map((contact) => ({
+        ...contact,
+        tags_json: parseJsonValue<string[]>(contact.tags_json, []),
+      }))
+      .filter((contact) => !tag || contact.tags_json.includes(tag));
+
     return {
-      data,
+      data: normalizedData,
       meta: {
-        total,
+        total: tag ? normalizedData.length : total,
         page,
         limit,
-        pages: Math.ceil(total / limit),
+        pages: Math.ceil((tag ? normalizedData.length : total) / limit),
       },
     };
   }
@@ -83,6 +89,8 @@ export class ContactsService {
   // ── POST /contacts ─────────────────────────────────────────────────────────
 
   async create(workspaceId: string, dto: CreateContactDto) {
+    await this.planLimits.checkContactLimit(workspaceId);
+
     // Evitar duplicados por email dentro del mismo workspace
     if (dto.email) {
       const existing = await this.prisma.contact.findFirst({
@@ -112,20 +120,12 @@ export class ContactsService {
         address_detail: dto.address_detail,
         foreign_identification: dto.foreign_identification,
         external_ref:  dto.external_ref,
-        tags_json:     serializeJson(dto.tags ?? []) ?? '[]',
+        tags_json:     stringifyJson(dto.tags ?? []),
       },
     });
   }
 
   // ── GET /contacts/:id ──────────────────────────────────────────────────────
-
-  private async validateContactExists(workspaceId: string, id: string) {
-    const exists = await this.prisma.contact.findFirst({
-      where: { id, workspace_id: workspaceId },
-      select: { id: true },
-    });
-    if (!exists) throw new NotFoundException('Contacto no encontrado.');
-  }
 
   async findOne(workspaceId: string, id: string) {
     const contact = await this.prisma.contact.findFirst({
@@ -165,7 +165,7 @@ export class ContactsService {
   // ── PATCH /contacts/:id ────────────────────────────────────────────────────
 
   async update(workspaceId: string, id: string, dto: UpdateContactDto) {
-    await this.validateContactExists(workspaceId, id);
+    await this.findOne(workspaceId, id); // valida existencia
 
     return this.prisma.contact.update({
       where: { id },
@@ -184,7 +184,7 @@ export class ContactsService {
         ...(dto.address_detail !== undefined && { address_detail: dto.address_detail }),
         ...(dto.foreign_identification !== undefined && { foreign_identification: dto.foreign_identification }),
         ...(dto.external_ref !== undefined && { external_ref: dto.external_ref }),
-        ...(dto.tags         !== undefined && { tags_json: serializeJson(dto.tags) }),
+        ...(dto.tags         !== undefined && { tags_json: stringifyJson(dto.tags) }),
         updated_at: new Date(),
       },
     });
@@ -194,7 +194,7 @@ export class ContactsService {
   // Soft-delete: no borramos, desasociamos del workspace (o puedes marcar con status)
 
   async remove(workspaceId: string, id: string) {
-    await this.validateContactExists(workspaceId, id);
+    await this.findOne(workspaceId, id); // valida existencia
     await this.prisma.contact.delete({ where: { id } });
     return { message: 'Contacto eliminado.' };
   }

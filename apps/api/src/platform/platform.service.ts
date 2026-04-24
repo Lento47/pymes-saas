@@ -13,8 +13,13 @@ import {
   BillingProvider,
   WorkspacePlan,
   WorkspaceSubscriptionStatus,
+<<<<<<< HEAD
+} from '@prisma/client';
+import { stringifyJson } from '../common/prisma/json';
+=======
 } from '../common/types/enums';
 import { serializeJson } from '../common/prisma/enterprise-sqlite-json';
+>>>>>>> origin/main
 
 @Injectable()
 export class PlatformService {
@@ -136,7 +141,14 @@ export class PlatformService {
     ]);
 
     return this.serializeBilling(
+<<<<<<< HEAD
+      {
+        ...workspace,
+        plan: workspace.plan as WorkspacePlan,
+      },
+=======
       { ...workspace, plan: workspace.plan as WorkspacePlan },
+>>>>>>> origin/main
       subscription,
       events,
     );
@@ -255,7 +267,14 @@ export class PlatformService {
       cancel_at_period_end:
         dto.cancel_at_period_end ?? currentSubscription?.cancel_at_period_end ?? false,
       notes: dto.notes ?? currentSubscription?.notes ?? null,
+<<<<<<< HEAD
+      metadata_json:
+        dto.metadata_json !== undefined
+          ? stringifyJson(dto.metadata_json)
+          : currentSubscription?.metadata_json ?? null,
+=======
       metadata_json: serializeJson(dto.metadata_json ?? currentSubscription?.metadata_json ?? null),
+>>>>>>> origin/main
     };
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -287,7 +306,14 @@ export class PlatformService {
           event_type: dto.event_type ?? 'MANUAL_PLAN_UPDATE',
           actor_user_id: actorUserId,
           applied_plan: effectivePlan,
+<<<<<<< HEAD
+          payload_json:
+            dto.payload_json || dto.metadata_json
+              ? stringifyJson(dto.payload_json ?? dto.metadata_json ?? null)
+              : null,
+=======
           payload_json: serializeJson(dto.payload_json ?? dto.metadata_json ?? null),
+>>>>>>> origin/main
           processed_at: new Date(),
           notes:
             dto.notes ??
@@ -306,7 +332,14 @@ export class PlatformService {
       });
 
       return this.serializeBilling(
+<<<<<<< HEAD
+        {
+          ...refreshedWorkspace,
+          plan: refreshedWorkspace.plan as WorkspacePlan,
+        },
+=======
         { ...refreshedWorkspace, plan: refreshedWorkspace.plan as WorkspacePlan },
+>>>>>>> origin/main
         subscription,
         events,
       );

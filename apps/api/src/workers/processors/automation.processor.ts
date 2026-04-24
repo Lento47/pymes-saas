@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { parseJsonValue, serializeJson } from '../../common/prisma/enterprise-sqlite-json';
+import { stringifyJson } from '../../common/prisma/json';
+import { QUEUE_NAMES } from '../queues.constants';
 
 interface AutomationJobData {
   ruleId: string;
@@ -21,16 +24,19 @@ interface AutomationAction {
 }
 
 @Injectable()
-export class AutomationProcessor {
+@Processor(QUEUE_NAMES.AUTOMATION)
+export class AutomationProcessor extends WorkerHost {
   private readonly logger = new Logger(AutomationProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
 
-  async process(data: AutomationJobData): Promise<any> {
-    const { ruleId, workspaceId, triggerEntityType, triggerEntityId } = data;
+  async process(job: Job<AutomationJobData>): Promise<any> {
+    const { ruleId, workspaceId, triggerEntityType, triggerEntityId } = job.data;
 
     this.logger.log(
-      `Processing automation job for rule ${ruleId}, entity ${triggerEntityType}:${triggerEntityId}`,
+      `Processing automation job ${job.id} for rule ${ruleId}, entity ${triggerEntityType}:${triggerEntityId}`,
     );
 
     // 1. Cargar regla
@@ -52,14 +58,14 @@ export class AutomationProcessor {
         trigger_entity_type: triggerEntityType,
         trigger_entity_id: triggerEntityId,
         status: 'RUNNING',
-        input_json: serializeJson({ ruleId, triggerEntityType, triggerEntityId }),
+        input_json: stringifyJson({ ruleId, triggerEntityType, triggerEntityId }),
         started_at: new Date(),
       },
     });
 
     try {
       // 4. Evaluar condiciones
-      const conditionConfig = parseJsonValue<any>(rule.condition_config_json, null);
+      const conditionConfig = rule.condition_config_json as any;
       let conditionMet = true;
 
       const conditions = Array.isArray(conditionConfig)
@@ -93,7 +99,7 @@ export class AutomationProcessor {
       }
 
       // 6. Ejecutar acciones
-      const rawActions = parseJsonValue<any>(rule.action_config_json, null);
+      const rawActions = rule.action_config_json as any;
       const actions: AutomationAction[] = Array.isArray(rawActions)
         ? (rawActions as AutomationAction[])
         : rawActions && typeof rawActions === 'object'
@@ -110,12 +116,12 @@ export class AutomationProcessor {
         data: {
           status: 'SUCCESS',
           finished_at: new Date(),
-          output_json: serializeJson({ actions_executed: actions.length }),
+          output_json: stringifyJson({ actions_executed: actions.length }),
         },
       });
 
       this.logger.log(
-        `Automation completed: execution=${execution.id}, actions=${actions.length}`,
+        `Automation job ${job.id} completed: execution=${execution.id}, actions=${actions.length}`,
       );
 
       return { executionId: execution.id, actionsExecuted: actions.length };
@@ -131,7 +137,7 @@ export class AutomationProcessor {
       });
 
       this.logger.error(
-        `Automation failed: execution=${execution.id}, error=${error?.message}`,
+        `Automation job ${job.id} failed: execution=${execution.id}, error=${error?.message}`,
         error?.stack,
       );
 

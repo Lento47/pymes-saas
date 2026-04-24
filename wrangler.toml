@@ -1,0 +1,30 @@
+name = "pymeshubsaas"
+main = "index.js"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "apps/web/dist/public"
+
+[env.production]
+name = "pymeshubsaas-prod"
+routes = [
+  { pattern = "pymeshub.lat", zone_name = "pymeshub.lat" },
+  { pattern = "www.pymeshub.lat", zone_name = "pymeshub.lat" }
+]
+
+[build]
+command = "pnpm install --frozen-lockfile && cd apps/web && pnpm run build"
+watch_paths = ["apps/web/**/*.{ts,tsx,css}"]
+
+[[build.upload.rules]]
+type = "CompiledContentType"
+globs = ["**/*.wasm"]
+fallthrough = true
+
+[[build.upload.rules]]
+type = "text/javascript"
+globs = ["**/*.js"]
+fallthrough = true
+
+[[build.upload.rules]]
+type = "application/typescript"
+globs = ["**/*.ts"]
+fallthrough = true

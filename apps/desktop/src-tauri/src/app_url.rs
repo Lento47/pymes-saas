@@ -1,5 +1,3 @@
-use url::Url;
-
 pub fn base_url() -> &'static str {
     match option_env!("PYMESHUB_REMOTE_URL") {
         Some(url) => url,
@@ -7,23 +5,6 @@ pub fn base_url() -> &'static str {
     }
 }
 
-pub fn is_offline() -> bool {
-    matches!(option_env!("PYMESHUB_EDITION"), Some("enterprise"))
-}
-
 pub fn accept_invite_url(token: &str) -> String {
-    if is_offline() {
-        // Tauri serves frontend locally; use hash route only
-        format!("/#/accept-invite?token={token}")
-    } else {
-        format!("{}/#/accept-invite?token={token}", base_url().trim_end_matches('/'))
-    }
-}
-
-pub fn is_local_target() -> bool {
-    let Ok(url) = Url::parse(base_url()) else {
-        return false;
-    };
-
-    matches!(url.host_str(), Some("127.0.0.1") | Some("localhost"))
+    format!("{}/#/accept-invite?token={token}", base_url().trim_end_matches('/'))
 }

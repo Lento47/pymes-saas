@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { openExternal } from "@/lib/platform";
 import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -898,7 +899,16 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
     <div className="space-y-4 pt-2">
       <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
         Obtené tu API key en{" "}
-        <a href="https://resend.com/api-keys" target="_blank" rel="noreferrer" className="underline inline-flex items-center gap-1">
+        <a
+          href="https://resend.com/api-keys"
+          target="_blank"
+          rel="noreferrer"
+          className="underline inline-flex items-center gap-1"
+          onClick={(event) => {
+            event.preventDefault();
+            void openExternal("https://resend.com/api-keys");
+          }}
+        >
           resend.com/api-keys <ExternalLink className="h-3 w-3" />
         </a>
       </div>
@@ -1017,7 +1027,16 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
     <div className="space-y-4 pt-2">
       <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-300">
         Obtené los datos en{" "}
-        <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer" className="underline inline-flex items-center gap-1">
+        <a
+          href="https://developers.facebook.com/apps"
+          target="_blank"
+          rel="noreferrer"
+          className="underline inline-flex items-center gap-1"
+          onClick={(event) => {
+            event.preventDefault();
+            void openExternal("https://developers.facebook.com/apps");
+          }}
+        >
           Meta Developers <ExternalLink className="h-3 w-3" />
         </a>
         {" "}→ Tu App → WhatsApp → Configuración de API

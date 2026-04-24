@@ -9,8 +9,9 @@ import {
   InvoiceDocumentType,
   InvoiceIssuanceMode,
   InvoiceStatus,
-} from '../common/types/enums';
+} from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { parseJsonValue } from '../common/prisma/json';
 import { StorageService } from '../common/storage/storage.service';
 import { HaciendaRecepcionService } from '../hacienda/hacienda-recepcion.service';
 import { HaciendaSigningService } from '../hacienda/hacienda-signing.service';
@@ -19,7 +20,7 @@ import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { CreateInvoicePaymentDto } from './dto/create-invoice-payment.dto';
-import { parseJsonRecord } from '../common/prisma/enterprise-sqlite-json';
+import { PlanLimitsService } from '../billing/plan-limits.service';
 
 @Injectable()
 export class InvoicesService {
@@ -29,6 +30,7 @@ export class InvoicesService {
     private readonly haciendaRecepcion: HaciendaRecepcionService,
     private readonly haciendaSigning: HaciendaSigningService,
     private readonly haciendaXmlBuilder: HaciendaXmlBuilderService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   async findAll(workspaceId: string, filters: FilterInvoicesDto) {
@@ -98,6 +100,7 @@ export class InvoicesService {
   }
 
   async create(workspaceId: string, dto: CreateInvoiceDto) {
+    await this.planLimits.checkInvoiceLimit(workspaceId);
     await this.assertContact(workspaceId, dto.contact_id);
     await this.ensureUniqueNumber(workspaceId, dto.number);
 
@@ -241,12 +244,7 @@ export class InvoicesService {
     const finalStatus =
       dto.status !== undefined
         ? dto.status
-        : this.computeInvoiceStatus(
-            invoice.status as InvoiceStatus,
-            this.getAmountPaid(invoice),
-            Number(invoice.amount),
-            invoice.due_date,
-          );
+        : this.computeInvoiceStatus(invoice.status as InvoiceStatus, this.getAmountPaid(invoice), Number(invoice.amount), invoice.due_date);
 
     const normalized =
       finalStatus !== invoice.status
@@ -393,7 +391,7 @@ export class InvoicesService {
     }
 
     const workspaceSettings =
-      parseJsonRecord(settings?.settings_json);
+      parseJsonValue<Record<string, any>>(settings?.settings_json, {});
     const missingWorkspaceSettings = this.getMissingWorkspaceHaciendaSettings(workspaceSettings);
     if (missingWorkspaceSettings.length) {
       throw new BadRequestException(
@@ -403,10 +401,7 @@ export class InvoicesService {
 
     const preparedClave =
       invoice.clave ??
-      this.buildClave(
-        workspaceTaxProfile.identification_number,
-        invoice.document_type as InvoiceDocumentType,
-      );
+      this.buildClave(workspaceTaxProfile.identification_number, invoice.document_type as InvoiceDocumentType);
     const preparedConsecutivo =
       invoice.consecutivo ?? this.buildConsecutivo(invoice.document_type as InvoiceDocumentType);
     const issueDate = invoice.issue_date ?? new Date();

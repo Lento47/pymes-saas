@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Headers,
@@ -10,6 +9,7 @@ import {
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import * as crypto from 'crypto';
 import { EmailService } from './email.service';
 
@@ -21,37 +21,30 @@ export class InboundController {
 
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ webhook: { limit: 10, ttl: 60_000 } }) // SECURITY: Strict rate limit for webhooks
   async handleWebhook(
-    @Headers('x-workspace-id') workspaceId: string,
-    @Headers('x-channel-id') channelId: string | undefined,
     @Headers('svix-signature') svixSignature: string | undefined,
     @Headers('svix-id') svixId: string | undefined,
     @Headers('svix-timestamp') svixTimestamp: string | undefined,
     @Body() body: any,
     @Req() req: any,
   ) {
-    if (!workspaceId) {
-      throw new BadRequestException('Missing required header: X-Workspace-Id');
-    }
-
     const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      if (!svixSignature || !svixId || !svixTimestamp) {
-        throw new UnauthorizedException('Missing Svix webhook signature headers.');
-      }
-      const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(body));
-      const isValid = this.verifySvixSignature(webhookSecret, svixId, svixTimestamp, rawBody, svixSignature);
-      if (!isValid) {
-        throw new UnauthorizedException('Invalid webhook signature.');
-      }
-    } else {
-      this.logger.warn('RESEND_WEBHOOK_SECRET not set — skipping signature validation (dev mode).');
+    if (!webhookSecret) {
+      throw new UnauthorizedException('RESEND_WEBHOOK_SECRET environment variable is required');
     }
 
-    await this.emailService.processInbound(workspaceId, {
-      ...body,
-      ...(channelId ? { channel_id: channelId } : {}),
-    });
+    if (!svixSignature || !svixId || !svixTimestamp) {
+      throw new UnauthorizedException('Missing Svix webhook signature headers.');
+    }
+    const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(body));
+    const isValid = this.verifySvixSignature(webhookSecret, svixId, svixTimestamp, rawBody, svixSignature);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid webhook signature.');
+    }
+
+    // SECURITY: Workspace is resolved from email address in the payload, not from client headers
+    await this.emailService.processInbound(body);
     return { received: true };
   }
 

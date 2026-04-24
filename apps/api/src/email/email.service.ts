@@ -10,7 +10,7 @@ import { Resend } from 'resend';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MessagesService } from '../conversations/messages.service';
-import { parseJsonRecord } from '../common/prisma/enterprise-sqlite-json';
+import { parseJsonValue } from '../common/prisma/json';
 
 /**
  * Shape of config_json stored in the EMAIL channel.
@@ -69,7 +69,7 @@ export class EmailService {
     bodyHtml: string,
     bodyText?: string,
   ): Promise<{ id: string }> {
-    const config = channel.config_json as EmailChannelConfig;
+    const config = parseJsonValue<EmailChannelConfig>(channel.config_json, {} as EmailChannelConfig);
 
     if (!config?.api_key_encrypted) {
       throw new BadGatewayException(
@@ -120,22 +120,24 @@ export class EmailService {
 
   /**
    * Process an inbound email webhook from Resend.
+   * SECURITY: Resolves workspace from email address in the payload, not from client headers.
    * Finds the active EMAIL channel for the workspace, normalises the payload,
    * and delegates to MessagesService.receiveInbound.
    *
    * NOTE: MessagesService is injected dynamically to avoid circular dependencies.
    * It must expose: receiveInbound(provider: string, workspaceId: string, payload: NormalisedInbound)
    *
-   * @param workspaceId  Taken from the X-Workspace-Id header.
-   * @param payload      Raw Resend webhook body.
+   * @param payload      Raw Resend webhook body (contains 'to' email address).
    */
-  async processInbound(workspaceId: string, payload: any): Promise<void> {
-    const channel = await this.resolveInboundChannel(workspaceId, payload);
+  async processInbound(payload: any): Promise<void> {
+    // SECURITY: Resolve workspace from the email address in the payload, not from client headers
+    const { workspaceId, channel } = await this.resolveWorkspaceAndChannel(payload);
 
-    if (!channel) {
-      throw new NotFoundException(
-        `No active EMAIL channel found for workspace ${workspaceId}.`,
+    if (!workspaceId || !channel) {
+      this.logger.warn(
+        `Could not resolve workspace from email payload (to: ${this.extractPrimaryRecipient(payload.to)})`,
       );
+      return; // Silently ignore if we can't match the email to a workspace
     }
 
     // Normalise the Resend inbound event payload
@@ -156,54 +158,37 @@ export class EmailService {
     await this.messagesService.receiveInbound(channel.provider ?? 'email', workspaceId, normalised);
   }
 
-  private async resolveInboundChannel(workspaceId: string, payload: any) {
-    const explicitChannelId =
-      payload.channel_id ??
-      payload.channelId ??
-      payload?.headers?.['x-channel-id'];
-
-    if (explicitChannelId && typeof explicitChannelId === 'string') {
-      const explicit = await this.prisma.channel.findFirst({
-        where: {
-          id: explicitChannelId,
-          workspace_id: workspaceId,
-          type: 'EMAIL',
-          status: 'ACTIVE',
-        },
-      });
-      if (explicit) return explicit;
-    }
-
+  /**
+   * SECURITY: Resolve workspace and channel from email address in payload,
+   * not from client-provided headers.
+   */
+  private async resolveWorkspaceAndChannel(payload: any): Promise<{
+    workspaceId: string | null;
+    channel: any | null;
+  }> {
     const toAddress = this.extractPrimaryRecipient(payload.to);
-    if (toAddress) {
-      const activeChannels = await this.prisma.channel.findMany({
-        where: {
-          workspace_id: workspaceId,
-          type: 'EMAIL',
-          status: 'ACTIVE',
-        },
-      });
-      const matchedInbound = activeChannels.find((channel) => {
-        const config = parseJsonRecord(channel.config_json);
-        return config.inbound_email === toAddress;
-      });
-      if (matchedInbound) return matchedInbound;
 
-      const matched = activeChannels.find((channel) => {
-        const config = parseJsonRecord(channel.config_json);
-        return config.from_email === toAddress;
-      });
-      if (matched) return matched;
+    if (!toAddress) {
+      return { workspaceId: null, channel: null };
     }
 
-    return this.prisma.channel.findFirst({
+    // Find all channels with this email address
+    const allChannels = await this.prisma.channel.findMany({
       where: {
-        workspace_id: workspaceId,
         type: 'EMAIL',
         status: 'ACTIVE',
       },
-      orderBy: { created_at: 'asc' },
     });
+
+    // Match by inbound_email or from_email
+    for (const channel of allChannels) {
+      const config = parseJsonValue<EmailChannelConfig>(channel.config_json, {} as EmailChannelConfig);
+      if (config.inbound_email === toAddress || config.from_email === toAddress) {
+        return { workspaceId: channel.workspace_id, channel };
+      }
+    }
+
+    return { workspaceId: null, channel: null };
   }
 
   private extractPrimaryRecipient(value: unknown): string {

@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -9,6 +10,7 @@ import {
   UseGuards,
   Delete,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -39,7 +41,7 @@ export class TasksController {
   }
 
   @Post()
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   create(
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateTaskDto,
@@ -50,35 +52,35 @@ export class TasksController {
   @Get(':id')
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
   }
 
   @Patch(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateTaskDto,
   ) {
     return this.service.update(workspaceId, id, dto);
   }
 
   @Post(':id/complete')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   complete(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.complete(workspaceId, id);
   }
 
   @Delete(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.remove(workspaceId, id);
   }

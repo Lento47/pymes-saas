@@ -8,8 +8,8 @@ import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { useAuth } from "@/hooks/use-auth";
 
+import Landing from "@/pages/landing";
 import Login from "@/pages/login";
-import Setup from "@/pages/setup";
 import AcceptInvite from "@/pages/accept-invite";
 import Dashboard from "@/pages/dashboard";
 import Inbox from "@/pages/inbox";
@@ -22,6 +22,7 @@ import Invoices from "@/pages/invoices";
 import Automations from "@/pages/automations";
 import Pipeline from "@/pages/pipeline";
 import Settings from "@/pages/settings";
+import Billing from "@/pages/billing";
 import HelpPage from "@/pages/help";
 import HelpDocumentPage from "@/pages/help-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
@@ -33,10 +34,18 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return <AppSidebar>{children}</AppSidebar>;
 }
 
+function RootRoute() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? (
+    <ProtectedLayout><Dashboard /></ProtectedLayout>
+  ) : (
+    <Landing />
+  );
+}
+
 function AppRouter() {
   return (
     <Switch>
-      <Route path="/setup" component={Setup} />
       <Route path="/login" component={Login} />
       <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/legal">
@@ -46,7 +55,7 @@ function AppRouter() {
         {(params) => <LegalDocumentPage slug={params.slug} />}
       </Route>
       <Route path="/">
-        {() => <ProtectedLayout><Dashboard /></ProtectedLayout>}
+        {() => <RootRoute />}
       </Route>
       <Route path="/inbox">
         {() => <ProtectedLayout><Inbox /></ProtectedLayout>}
@@ -77,6 +86,9 @@ function AppRouter() {
       </Route>
       <Route path="/settings">
         {() => <ProtectedLayout><Settings /></ProtectedLayout>}
+      </Route>
+      <Route path="/settings/billing">
+        {() => <ProtectedLayout><Billing /></ProtectedLayout>}
       </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}

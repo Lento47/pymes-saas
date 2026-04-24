@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -8,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { DepartmentsService } from './departments.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
@@ -31,23 +33,23 @@ export class DepartmentsController {
 
   /** GET /departments/:id */
   @Get(':id')
-  findOne(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+  findOne(@CurrentUser() user: AuthUser, @Param('id', ValidateUUIDPipe) id: string) {
     return this.deptService.findOne(user.workspace_id, id);
   }
 
   /** POST /departments — ADMIN+ only */
   @Post()
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateDepartmentDto) {
     return this.deptService.create(user.workspace_id, dto);
   }
 
   /** PATCH /departments/:id — ADMIN+ only */
   @Patch(':id')
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   update(
     @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateDepartmentDto,
   ) {
     return this.deptService.update(user.workspace_id, id, dto);
@@ -55,8 +57,8 @@ export class DepartmentsController {
 
   /** DELETE /departments/:id — OWNER only */
   @Delete(':id')
-  @Roles('OWNER')
-  remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+  @Roles(WorkspaceUserRole.OWNER)
+  remove(@CurrentUser() user: AuthUser, @Param('id', ValidateUUIDPipe) id: string) {
     return this.deptService.remove(user.workspace_id, id);
   }
 
@@ -64,16 +66,16 @@ export class DepartmentsController {
 
   /** GET /departments/:id/members */
   @Get(':id/members')
-  getMembers(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+  getMembers(@CurrentUser() user: AuthUser, @Param('id', ValidateUUIDPipe) id: string) {
     return this.deptService.getMembers(user.workspace_id, id);
   }
 
   /** POST /departments/:id/members — ADMIN+ only */
   @Post(':id/members')
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   addMember(
     @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: AddMemberDto,
   ) {
     return this.deptService.addMember(user.workspace_id, id, dto);
@@ -81,10 +83,10 @@ export class DepartmentsController {
 
   /** DELETE /departments/:id/members/:userId — ADMIN+ only */
   @Delete(':id/members/:userId')
-  @Roles('ADMIN', 'OWNER')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   removeMember(
     @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Param('userId') userId: string,
   ) {
     return this.deptService.removeMember(user.workspace_id, id, userId);

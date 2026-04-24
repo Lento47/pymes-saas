@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -13,6 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { DocumentsService } from './documents.service';
@@ -42,7 +44,7 @@ export class DocumentsController {
    *   - task_id?: string (opcional)
    */
   @Post('upload')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(), // buffer en memoria → luego al storage configurado
@@ -76,7 +78,7 @@ export class DocumentsController {
   @Get(':id')
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
   }
@@ -98,29 +100,29 @@ export class DocumentsController {
   }
 
   @Patch(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateDocumentDto,
   ) {
     return this.service.update(workspaceId, id, dto);
   }
 
   @Post(':id/reprocess')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   reprocess(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.reprocess(workspaceId, id);
   }
 
   @Delete(':id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.remove(workspaceId, id);
   }
