@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -9,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -31,7 +33,7 @@ export class InvoicesController {
   ) {}
 
   @Get()
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   findAll(
     @CurrentUser('workspace_id') workspaceId: string,
     @Query() filters: FilterInvoicesDto,
@@ -40,7 +42,7 @@ export class InvoicesController {
   }
 
   @Post()
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   create(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateInvoiceDto,
@@ -49,120 +51,120 @@ export class InvoicesController {
   }
 
   @Get('overdue')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   detectOverdue(@CurrentUser('workspace_id') workspaceId: string) {
     return this.remindersService.detectOverdue(workspaceId);
   }
 
   @Get(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.invoicesService.findOne(workspaceId, id);
   }
 
   @Patch(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateInvoiceDto,
   ) {
     return this.invoicesService.update(workspaceId, id, dto);
   }
 
   @Post(':id/paid')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   markPaid(
     @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.invoicesService.markPaid(user.workspace_id, user.id, id);
   }
 
   @Post(':id/payments')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   registerPayment(
     @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: CreateInvoicePaymentDto,
   ) {
     return this.invoicesService.registerPayment(user.workspace_id, user.id, id, dto);
   }
 
   @Post(':id/submit')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   submitToHacienda(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.invoicesService.submitToHacienda(workspaceId, id);
   }
 
   @Get(':id/hacienda-status')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   syncHaciendaStatus(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.invoicesService.syncHaciendaStatus(workspaceId, id);
   }
 
   @Delete(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.invoicesService.remove(workspaceId, id);
   }
 
   @Post(':id/reminder')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   generateReminder(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.remindersService.generateReminder(workspaceId, id);
   }
 
   @Post(':id/reminder/send')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   sendReminder(
     @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: SendReminderDto,
   ) {
     return this.remindersService.sendReminder(user.workspace_id, id, dto, user);
   }
 
   @Post(':id/credit-note')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   createCreditNote(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: CreateInvoiceDto,
   ) {
     return this.invoicesService.createCreditNote(workspaceId, id, dto);
   }
 
   @Post(':id/debit-note')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   createDebitNote(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: CreateInvoiceDto,
   ) {
     return this.invoicesService.createDebitNote(workspaceId, id, dto);
   }
 
   @Post(':id/receiver-message')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   createReceiverMessage(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: { number?: string; description?: string; notes?: unknown[] },
   ) {
     return this.invoicesService.createReceiverMessage(workspaceId, id, dto);

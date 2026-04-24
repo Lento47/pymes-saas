@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, Matches } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
@@ -6,10 +6,19 @@ export class RegisterDto {
 
   @IsString()
   @MinLength(2)
+  @Matches(/^[\w\s-]{2,100}$/, {
+    message: 'Name contains invalid characters',
+  })
   name: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(12, { message: 'Password must be at least 12 characters' })
+  @Matches(
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$/,
+    {
+      message: 'Password must contain uppercase, lowercase, number, and special character',
+    },
+  )
   password: string;
 
   /** Si se pasa un invite token, el usuario se une al workspace correspondiente */

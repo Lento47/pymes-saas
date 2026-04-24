@@ -1,3 +1,4 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -10,6 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { ConversationsService } from './conversations.service';
 import { MessagesService } from './messages.service';
@@ -49,7 +51,7 @@ export class ConversationsController {
   }
 
   @Post()
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   create(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateConversationDto,
@@ -60,45 +62,45 @@ export class ConversationsController {
   @Get(':id')
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
   }
 
   @Patch(':id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateConversationDto,
   ) {
     return this.service.update(workspaceId, id, dto);
   }
 
   @Post(':id/assign')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   assign(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body('user_id') userId: string,
   ) {
     return this.service.assign(workspaceId, id, userId);
   }
 
   @Post(':id/resolve')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   resolve(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.resolve(workspaceId, id);
   }
 
   @Delete(':id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.remove(workspaceId, id);
   }
@@ -108,7 +110,7 @@ export class ConversationsController {
   @Get(':id/messages')
   getMessages(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') conversationId: string,
+    @Param('id', ValidateUUIDPipe) conversationId: string,
     @Query('page') page = 1,
     @Query('limit') limit = 50,
   ) {
@@ -116,10 +118,10 @@ export class ConversationsController {
   }
 
   @Post(':id/messages')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   async sendMessage(
     @CurrentUser() user: AuthUser,
-    @Param('id') conversationId: string,
+    @Param('id', ValidateUUIDPipe) conversationId: string,
     @Body() dto: SendMessageDto,
   ) {
     // 1. Guardar mensaje en DB

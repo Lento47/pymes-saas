@@ -9,6 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { InviteTokenPayload } from './invite-token.types';
@@ -31,13 +32,13 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (!user || !(user as any).password_hash) {
+    if (!user || !user.password_hash) {
       throw new UnauthorizedException('Credenciales inválidas.');
     }
 
     const passwordMatch = await bcrypt.compare(
       dto.password,
-      (user as any).password_hash,
+      user.password_hash,
     );
     if (!passwordMatch) throw new UnauthorizedException('Credenciales inválidas.');
 
@@ -65,7 +66,7 @@ export class AuthService {
       email: user.email,
       workspace_id: workspace.id,
       role: membership.role,
-      is_platform_admin: (user as any).is_platform_admin ?? false,
+      is_platform_admin: user.is_platform_admin,
     });
 
     const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
@@ -80,7 +81,7 @@ export class AuthService {
         avatar_url: user.avatar_url,
         role: membership.role,
         is_owner: membership.is_owner,
-        is_platform_admin: (user as any).is_platform_admin ?? false,
+        is_platform_admin: user.is_platform_admin,
         workspace: {
           id: workspace.id,
           name: workspace.name,
@@ -112,19 +113,16 @@ export class AuthService {
         email: dto.email,
         name: dto.name,
         status: 'ACTIVE',
-        ...(password_hash && { password_hash } as any),
+        ...(password_hash && { password_hash }),
       },
     });
 
-    const slug = dto.email
-      .split('@')[0]
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-');
+    const slug = await this.generateUniqueWorkspaceSlug();
 
     const workspace = await this.prisma.workspace.create({
       data: {
         name: `${dto.name}'s Workspace`,
-        slug: `${slug}-${Date.now()}`,
+        slug,
         status: 'ACTIVE',
         plan: 'FREE',
         workspace_users: {
@@ -213,7 +211,7 @@ export class AuthService {
     if (!membership) throw new BadRequestException('La invitación ya no es válida.');
 
     let resolvedUser = user;
-    const requiresAccountSetup = user.status === 'INVITED' || !(user as any).password_hash;
+    const requiresAccountSetup = user.status === 'INVITED' || !user.password_hash;
 
     if (requiresAccountSetup) {
       if (!dto.name?.trim()) {
@@ -241,7 +239,7 @@ export class AuthService {
       email: resolvedUser.email,
       workspace_id: workspace.id,
       role: membership.role,
-      is_platform_admin: (resolvedUser as any).is_platform_admin ?? false,
+      is_platform_admin: resolvedUser.is_platform_admin,
     });
 
     const refresh_token = await this.refreshTokenService.create(resolvedUser.id, workspace.id);
@@ -256,7 +254,7 @@ export class AuthService {
         avatar_url: resolvedUser.avatar_url,
         role: membership.role,
         is_owner: membership.is_owner,
-        is_platform_admin: (resolvedUser as any).is_platform_admin ?? false,
+        is_platform_admin: resolvedUser.is_platform_admin,
         workspace: {
           id: workspace.id,
           name: workspace.name,
@@ -270,7 +268,7 @@ export class AuthService {
   // ── Me ─────────────────────────────────────────────────────────────────────
 
   async getMe(userId: string, workspaceId: string) {
-    const membership = await (this.prisma.workspaceUser as any).findUniqueOrThrow({
+    const membership = await this.prisma.workspaceUser.findUniqueOrThrow({
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: userId },
       },
@@ -278,7 +276,7 @@ export class AuthService {
         user: { select: { id: true, email: true, name: true, avatar_url: true, status: true, created_at: true, is_platform_admin: true } },
         workspace: { select: { id: true, name: true, slug: true, plan: true, timezone: true, locale: true } },
       },
-    }) as any;
+    });
 
     return {
       ...membership.user,
@@ -314,12 +312,12 @@ export class AuthService {
     });
     if (!workspace) throw new UnauthorizedException('Workspace no encontrado.');
 
-    const membership = await (this.prisma.workspaceUser as any).findUnique({
+    const membership = await this.prisma.workspaceUser.findUnique({
       where: {
         workspace_id_user_id: { workspace_id: workspace.id, user_id: userId },
       },
       include: { user: { select: { is_platform_admin: true } } },
-    }) as any;
+    });
     if (!membership) throw new UnauthorizedException('Sin acceso a este workspace.');
 
     const access_token = this.signToken({
@@ -327,7 +325,7 @@ export class AuthService {
       email: (await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } })).email,
       workspace_id: workspace.id,
       role: membership.role,
-      is_platform_admin: membership.user?.is_platform_admin ?? false,
+      is_platform_admin: membership.user.is_platform_admin,
     });
 
     const refresh_token = await this.refreshTokenService.create(userId, workspace.id);
@@ -350,6 +348,22 @@ export class AuthService {
 
   private signToken(payload: JwtPayload): string {
     return this.jwtService.sign(payload);
+  }
+
+  /**
+   * Generates a random, URL-safe workspace slug (base64url, ~72 bits of entropy)
+   * and retries on the astronomically rare collision.
+   */
+  private async generateUniqueWorkspaceSlug(): Promise<string> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = randomBytes(9).toString('base64url');
+      const exists = await this.prisma.workspace.findUnique({
+        where: { slug: candidate },
+        select: { id: true },
+      });
+      if (!exists) return candidate;
+    }
+    throw new Error('Could not generate unique workspace slug.');
   }
 
   private verifyInviteToken(rawToken?: string): InviteTokenPayload {

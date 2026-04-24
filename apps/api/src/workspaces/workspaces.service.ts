@@ -16,6 +16,8 @@ import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AiProvider, AiService } from '../ai/ai.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 import { EmailService } from '../email/email.service';
+import { EventsGateway } from '../gateways/events.gateway';
+import { PlanLimitsService } from '../billing/plan-limits.service';
 
 @Injectable()
 export class WorkspacesService {
@@ -27,6 +29,8 @@ export class WorkspacesService {
     private readonly aiService: AiService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly events: EventsGateway,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
@@ -234,7 +238,9 @@ export class WorkspacesService {
       },
     });
 
-    return this.serializeWorkspace(refreshed);
+    const serialized = this.serializeWorkspace(refreshed);
+    this.events.emitWorkspaceUpdated(workspaceId, serialized);
+    return serialized;
   }
 
   async getAiFinanceMessageConsent(workspaceId: string): Promise<boolean> {
@@ -457,6 +463,8 @@ export class WorkspacesService {
         'No se puede invitar con rol OWNER. Transfiere la propiedad explícitamente.',
       );
     }
+
+    await this.planLimits.checkUserLimit(workspaceId);
 
     let user = await this.prisma.user.findUnique({
       where: { email: dto.email },

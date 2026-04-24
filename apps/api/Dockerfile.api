@@ -17,6 +17,9 @@ RUN pnpm install --frozen-lockfile
 # Copy the rest of the source
 COPY . .
 
+# Generate Prisma client (schema wasn't available during postinstall)
+RUN pnpm exec prisma generate
+
 # Compile TypeScript → dist/
 RUN pnpm run build
 
@@ -38,8 +41,8 @@ COPY --from=builder --chown=appuser:appgroup /app/dist       ./dist
 COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:appgroup /app/package.json ./package.json
 
-# (Optional) copy Prisma schema so migrations can run inside the container
-# COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
+# Copy Prisma schema so migrations can run inside the container
+COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
 
 USER appuser
 
@@ -48,4 +51,4 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD wget -qO- http://localhost:4000/api/health || exit 1
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]

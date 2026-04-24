@@ -32,11 +32,15 @@ import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
 import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    ThrottlerModule.forRoot([
+      { ttl: 60_000, limit: 100 }, // Global: 100 req/min
+      { ttl: 60_000, limit: 10, name: 'webhook' }, // Webhook: 10 req/min (stricter)
+    ]),
     ScheduleModule.forRoot(),
 
     PrismaModule,
@@ -74,6 +78,7 @@ import { PipelineModule } from './pipeline/pipeline.module';
     EventsModule,
     EmailModule,
     WhatsAppModule,
+    HealthModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

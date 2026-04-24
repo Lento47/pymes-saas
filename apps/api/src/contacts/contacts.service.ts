@@ -8,10 +8,14 @@ import { parseJsonValue, stringifyJson } from '../common/prisma/json';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { FilterContactsDto } from './dto/filter-contacts.dto';
+import { PlanLimitsService } from '../billing/plan-limits.service';
 
 @Injectable()
 export class ContactsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly planLimits: PlanLimitsService,
+  ) {}
 
   // ── GET /contacts ──────────────────────────────────────────────────────────
 
@@ -85,6 +89,8 @@ export class ContactsService {
   // ── POST /contacts ─────────────────────────────────────────────────────────
 
   async create(workspaceId: string, dto: CreateContactDto) {
+    await this.planLimits.checkContactLimit(workspaceId);
+
     // Evitar duplicados por email dentro del mismo workspace
     if (dto.email) {
       const existing = await this.prisma.contact.findFirst({

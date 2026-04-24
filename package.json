@@ -17,5 +17,8 @@
   "engines": {
     "node": ">=20",
     "pnpm": ">=10"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6"
   }
 }

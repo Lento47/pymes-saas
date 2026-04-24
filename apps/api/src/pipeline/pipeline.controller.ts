@@ -1,4 +1,6 @@
+import { WorkspaceUserRole } from '@prisma/client';
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -16,13 +18,13 @@ export class PipelineController {
   constructor(private readonly pipelineService: PipelineService) {}
 
   @Get('stages')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   getStages(@CurrentUser('workspace_id') workspaceId: string) {
     return this.pipelineService.getStages(workspaceId);
   }
 
   @Post('stages')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   createStage(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateStageDto,
@@ -31,32 +33,32 @@ export class PipelineController {
   }
 
   @Patch('stages/:id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   updateStage(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateStageDto,
   ) {
     return this.pipelineService.updateStage(workspaceId, id, dto);
   }
 
   @Delete('stages/:id')
-  @Roles('ADMIN' as any)
+  @Roles(WorkspaceUserRole.ADMIN)
   deleteStage(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.pipelineService.deleteStage(workspaceId, id);
   }
 
   @Get('deals')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   getDeals(@CurrentUser('workspace_id') workspaceId: string) {
     return this.pipelineService.getStages(workspaceId);
   }
 
   @Post('deals')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   createDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateDealDto,
@@ -65,39 +67,39 @@ export class PipelineController {
   }
 
   @Patch('deals/:id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   updateDeal(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateDealDto,
   ) {
     return this.pipelineService.updateDeal(workspaceId, id, dto);
   }
 
   @Patch('deals/:id/move')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   moveDeal(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: MoveDealDto,
   ) {
     return this.pipelineService.moveDeal(workspaceId, id, dto);
   }
 
   @Post('deals/:id/win')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   winDeal(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.pipelineService.winDeal(workspaceId, id);
   }
 
   @Delete('deals/:id')
-  @Roles('AGENT' as any)
+  @Roles(WorkspaceUserRole.AGENT)
   deleteDeal(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.pipelineService.deleteDeal(workspaceId, id);
   }

@@ -70,17 +70,8 @@ export class AiService {
   }
 
   async getConfig(workspaceId: string): Promise<AiProviderConfig | null> {
-    const workspaceConfig = await this.getWorkspaceConfig(workspaceId);
-    if (workspaceConfig) {
-      return workspaceConfig;
-    }
-
-    // Fallback: env var OpenAI
-    if (process.env.OPENAI_API_KEY) {
-      return { provider: 'openai', api_key: process.env.OPENAI_API_KEY, model: 'gpt-4o-mini' };
-    }
-
-    return null;
+    // SECURITY: Require workspace-specific configuration, never use shared env var API keys
+    return await this.getWorkspaceConfig(workspaceId);
   }
 
   // ── Unified chat call — all providers ─────────────────────────────────────
@@ -126,7 +117,11 @@ export class AiService {
       }),
     });
 
-    if (!res.ok) throw new Error(`${config.provider} API error ${res.status}: ${await res.text()}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      this.logger.error(`${config.provider} API error ${res.status}:`, errorText);
+      throw new Error('Failed to process with AI. Please try again later.');
+    }
     const d = await res.json() as any;
     return { text: d.choices[0].message.content?.trim() ?? '', tokens: d.usage?.total_tokens ?? 0 };
   }
@@ -154,7 +149,11 @@ export class AiService {
       }),
     });
 
-    if (!res.ok) throw new Error(`Anthropic API error ${res.status}: ${await res.text()}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      this.logger.error(`Anthropic API error ${res.status}:`, errorText);
+      throw new Error('Failed to process with AI. Please try again later.');
+    }
     const d = await res.json() as any;
     return {
       text: d.content?.[0]?.text?.trim() ?? '',
@@ -170,10 +169,14 @@ export class AiService {
     maxTokens: number,
     temperature: number,
   ) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.api_key}`;
+    // SECURITY: Use header for API key instead of URL query parameter to avoid logging
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent`;
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': config.api_key,
+      },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: system }] },
         contents: [{ role: 'user', parts: [{ text: user }] }],
@@ -181,7 +184,11 @@ export class AiService {
       }),
     });
 
-    if (!res.ok) throw new Error(`Gemini API error ${res.status}: ${await res.text()}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      this.logger.error(`Gemini API error ${res.status}:`, errorText);
+      throw new Error('Failed to process with AI. Please try again later.');
+    }
     const d = await res.json() as any;
     return {
       text: d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '',

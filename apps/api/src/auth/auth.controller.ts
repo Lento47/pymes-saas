@@ -11,9 +11,11 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { InvitePreviewDto } from './dto/invite-preview.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -36,6 +38,7 @@ export class AuthController {
 
   /** POST /auth/login */
   @Post('login')
+  @Throttle({ auth: { limit: 5, ttl: 900_000 } })
   @HttpCode(HttpStatus.OK)
   login(
     @Body() dto: LoginDto,
@@ -46,20 +49,22 @@ export class AuthController {
 
   /** POST /auth/register */
   @Post('register')
+  @Throttle({ auth: { limit: 3, ttl: 3600_000 } })
   @HttpCode(HttpStatus.CREATED)
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
-  /** GET /auth/invite-preview?token=... */
-  @Get('invite-preview')
-  invitePreview(@Query('token') queryToken?: string, @Headers('x-invite-token') headerToken?: string) {
-    const token = queryToken ?? headerToken;
-    return this.authService.getInvitePreview(token);
+  /** POST /auth/invite-preview */
+  @Post('invite-preview')
+  @HttpCode(HttpStatus.OK)
+  invitePreview(@Body() dto: InvitePreviewDto) {
+    return this.authService.getInvitePreview(dto.token);
   }
 
   /** POST /auth/accept-invite */
   @Post('accept-invite')
+  @Throttle({ auth: { limit: 10, ttl: 600_000 } })
   @HttpCode(HttpStatus.OK)
   acceptInvite(@Body() dto: AcceptInviteDto) {
     return this.authService.acceptInvite(dto);
@@ -78,6 +83,7 @@ export class AuthController {
    * Returns new access_token + refresh_token (rotation).
    */
   @Post('refresh')
+  @Throttle({ auth: { limit: 20, ttl: 3600_000 } })
   @HttpCode(HttpStatus.OK)
   async refresh(@Body('refresh_token') rawToken: string) {
     if (!rawToken) throw new UnauthorizedException('refresh_token requerido.');
