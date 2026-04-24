@@ -378,6 +378,23 @@ export const translations = {
         error: "Could not update the workspace language",
       },
     },
+    pricing: {
+      hero: {
+        title: "Simple, transparent pricing",
+        subtitle: "Choose the perfect plan for your business",
+      },
+      comparison: {
+        title: "Compare All Features",
+        subtitle: "See what features are included in each plan",
+      },
+      cta: {
+        title: "Ready to get started?",
+        subtitle: "Join hundreds of businesses using PymeHub",
+        primary: "Start Free Trial",
+        secondary: "Schedule a Demo",
+        note: "No credit card required. Try free for 14 days.",
+      },
+    },
     documentation: {
       eyebrow: "Documentation center",
       title: "Public references for rollout, trust, and procurement.",
@@ -745,6 +762,23 @@ export const translations = {
         saving: "Guardando...",
         saved: "Idioma actualizado",
         error: "No se pudo actualizar el idioma del workspace",
+      },
+    },
+    pricing: {
+      hero: {
+        title: "Precios simples y transparentes",
+        subtitle: "Elige el plan perfecto para tu negocio",
+      },
+      comparison: {
+        title: "Compara Todas las Características",
+        subtitle: "Ve qué características incluye cada plan",
+      },
+      cta: {
+        title: "¿Listo para empezar?",
+        subtitle: "Únete a cientos de negocios usando PymeHub",
+        primary: "Comenzar Prueba Gratuita",
+        secondary: "Programar Demostración",
+        note: "Sin tarjeta de crédito requerida. Prueba gratis por 14 días.",
       },
     },
     documentation: {
