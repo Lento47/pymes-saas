@@ -514,7 +514,7 @@ export default function Landing() {
             </div>
 
             <div className="mt-16 grid gap-6 xl:grid-cols-[0.95fr_1.7fr_0.95fr]">
-              <article className="glass-panel animate-float-y rounded-[30px] p-6">
+              <article className="glass-panel rounded-[30px] p-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
                   <img
                     src="/landing-icons/world.png"
@@ -534,12 +534,12 @@ export default function Landing() {
                   {copy.overview.inbox.signals.map((signal) => (
                     <div
                       key={signal.label}
-                      className="glass-panel-soft flex items-center justify-between rounded-2xl px-4 py-3"
+                      className="glass-panel-soft grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
                     >
-                      <span className="font-marketing text-sm font-semibold text-white/88">
+                      <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
                         {signal.label}
                       </span>
-                      <span className="text-xs uppercase tracking-[0.18em] text-[#dfff4a]/74">
+                      <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
                         {signal.value}
                       </span>
                     </div>
@@ -890,29 +890,29 @@ export default function Landing() {
               ))}
             </div>
 
-            <div className="glass-panel relative mt-12 overflow-hidden rounded-[34px] px-8 py-10 text-center md:px-12 md:py-14">
+            <div className="relative mt-12 overflow-hidden rounded-[34px] border border-[#2f3f93]/55 bg-[#060b21] px-8 py-10 text-center shadow-[0_28px_90px_rgba(4,8,28,0.4)] md:px-12 md:py-14">
               <img
                 src="/landing-icons/readytolunch.png"
                 alt=""
-                className="absolute inset-0 h-full w-full scale-[1.04] object-cover object-center opacity-60"
+                className="absolute left-1/2 top-1/2 h-[124%] w-[124%] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover object-center opacity-[0.98] [filter:brightness(1.2)_saturate(1.14)_contrast(1.06)]"
                 aria-hidden="true"
               />
               <div
                 className="absolute inset-0"
                 style={{
                   background:
-                    "linear-gradient(180deg, rgba(7, 12, 34, 0.32) 0%, rgba(7, 12, 34, 0.56) 54%, rgba(7, 12, 34, 0.78) 100%)",
+                    "linear-gradient(180deg, rgba(6, 11, 33, 0.08) 0%, rgba(6, 11, 33, 0.18) 55%, rgba(6, 11, 33, 0.34) 100%)",
                 }}
               />
-              <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(223,255,74,0.12),transparent_68%)]" />
-              <div className="relative z-10">
+              <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(223,255,74,0.08),transparent_68%)]" />
+              <div className="relative z-10 mx-auto max-w-4xl [text-shadow:0_2px_18px_rgba(4,8,28,0.55)]">
                 <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
                   {copy.security.ctaEyebrow}
                 </p>
                 <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
                   {copy.security.ctaTitle}
                 </h2>
-                <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
+                <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#d4daf8]/84">
                   {copy.security.ctaDescription}
                 </p>
                 <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
