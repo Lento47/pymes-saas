@@ -13,72 +13,17 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { useI18n } from "@/components/providers/i18n-provider";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 const navItems = [
-  { label: "Platform", id: "platform" },
-  { label: "Workflows", id: "workflows" },
-  { label: "Insights", id: "insights" },
-  { label: "Security", id: "security" },
+  { id: "platform", key: "platform" as const, chevron: true },
+  { id: "workflows", key: "workflows" as const, chevron: false },
+  { id: "insights", key: "insights" as const, chevron: true },
+  { id: "security", key: "security" as const, chevron: false },
 ];
 
-const workflowSignals = [
-  { label: "WhatsApp", value: "Always on" },
-  { label: "Email", value: "Unified queue" },
-  { label: "Invoices", value: "Faster collection" },
-  { label: "Pipeline", value: "Shared visibility" },
-];
-
-const productCards: Array<{
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  bullets: string[];
-}> = [
-  {
-    icon: MessageSquareText,
-    title: "Conversations that stay organized",
-    description:
-      "Bring channels into one workspace so your team always sees context, owner, and next action.",
-    bullets: [
-      "Centralize WhatsApp, email, and internal notes",
-      "Assign conversations without losing accountability",
-      "Surface urgent customers before they slip",
-    ],
-  },
-  {
-    icon: ReceiptText,
-    title: "Billing that keeps momentum",
-    description:
-      "Send invoices, follow payment status, and keep financial operations aligned with the sales team.",
-    bullets: [
-      "Issue invoices from the same operational flow",
-      "Track approvals, documents, and payment reminders",
-      "Support local compliance-heavy processes with clarity",
-    ],
-  },
-  {
-    icon: Workflow,
-    title: "Pipeline visibility your team can use",
-    description:
-      "See deal movement, stalled opportunities, and activity trends without stitching multiple tools together.",
-    bullets: [
-      "Watch stage movement in real time",
-      "Coordinate follow-ups across sales and ops",
-      "Measure throughput with live dashboards",
-    ],
-  },
-];
-
-const trustSignals = [
-  "WhatsApp",
-  "Email",
-  "Documents",
-  "Invoices",
-  "Pipeline",
-  "Automations",
-];
-
-function PerformanceChart() {
+function PerformanceChart({ labels }: { labels: readonly string[] }) {
   return (
     <svg viewBox="0 0 460 260" className="h-full w-full" aria-hidden="true">
       <defs>
@@ -136,7 +81,7 @@ function PerformanceChart() {
         filter="url(#request-glow)"
       />
 
-      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label, index) => (
+      {labels.map((label, index) => (
         <text
           key={label}
           x={48 + index * 74}
@@ -172,6 +117,20 @@ function OrbitGraphic() {
 }
 
 export default function Landing() {
+  const { messages } = useI18n();
+  const copy = messages.landing;
+
+  const productCards: Array<{
+    icon: LucideIcon;
+    title: string;
+    description: string;
+    bullets: readonly string[];
+  }> = [
+    { icon: MessageSquareText, ...copy.platform.cards[0] },
+    { icon: ReceiptText, ...copy.platform.cards[1] },
+    { icon: Workflow, ...copy.platform.cards[2] },
+  ];
+
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -211,8 +170,8 @@ export default function Landing() {
                     onClick={() => scrollToSection(item.id)}
                     className="font-marketing text-sm font-medium text-white/78 transition hover:text-white"
                   >
-                    {item.label}
-                    {(item.label === "Platform" || item.label === "Insights") && (
+                    {copy.nav[item.key]}
+                    {item.chevron && (
                       <ChevronDown className="ml-1 inline h-4 w-4 text-white/55" />
                     )}
                   </button>
@@ -220,14 +179,15 @@ export default function Landing() {
               </div>
 
               <div className="flex items-center gap-2 md:gap-4">
+                <LanguageSwitcher variant="marketing" />
                 <Link href="/login">
                   <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
-                    Log in
+                    {copy.nav.logIn}
                   </a>
                 </Link>
                 <Link href="/login">
                   <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-4 py-3 text-sm font-semibold text-[#071126] transition hover:translate-y-[-1px] md:px-6">
-                    Get Started
+                    {copy.nav.getStarted}
                     <ArrowRight className="h-4 w-4" />
                   </a>
                 </Link>
@@ -237,27 +197,27 @@ export default function Landing() {
             <div className="mx-auto max-w-4xl pt-16 text-center md:pt-20">
               <div className="glass-panel-soft inline-flex items-center gap-3 rounded-full px-5 py-2.5 text-sm text-white/84">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_14px_rgba(223,255,74,0.85)]" />
-                Introducing smarter customer operations for growing teams
+                {copy.intro}
               </div>
 
               <h1 className="font-marketing mt-8 text-5xl font-extrabold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl md:text-[6.8rem]">
-                Customer operations
+                {copy.title[0]}
                 <br />
-                that keep moving.
+                {copy.title[1]}
               </h1>
 
               <p className="font-editorial soft-glow mt-4 text-[3rem] font-semibold italic leading-none text-[#e7ff5a] sm:text-[3.6rem] md:text-[4.65rem]">
-                Clarity that converts.
+                {copy.subtitle}
               </p>
 
               <p className="mx-auto mt-8 max-w-3xl text-lg leading-8 text-[#c9d0f5]/78 md:text-xl">
-                PymesHub brings conversations, invoicing, workflows, and pipeline visibility into one operating system so your team can respond faster, follow through, and grow with confidence.
+                {copy.description}
               </p>
 
               <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <Link href="/login">
                   <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
-                    Start Free Today
+                    {copy.primaryCta}
                     <ArrowRight className="h-5 w-5" />
                   </a>
                 </Link>
@@ -266,12 +226,12 @@ export default function Landing() {
                   onClick={() => scrollToSection("platform")}
                   className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]"
                 >
-                  Explore the platform
+                  {copy.secondaryCta}
                 </button>
               </div>
 
               <p className="mt-5 text-sm text-[#c9d0f5]/52">
-                No credit card required. Launch your workspace in minutes.
+                {copy.note}
               </p>
             </div>
 
@@ -281,14 +241,14 @@ export default function Landing() {
                   <Globe2 className="h-6 w-6" />
                 </div>
                 <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
-                  Omnichannel inbox
+                  {copy.overview.inbox.title}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
-                  Route every conversation through the same workspace so your team knows what happened, who owns it, and what should happen next.
+                  {copy.overview.inbox.description}
                 </p>
 
                 <div className="mt-8 space-y-3">
-                  {workflowSignals.map((signal) => (
+                  {copy.overview.inbox.signals.map((signal) => (
                     <div
                       key={signal.label}
                       className="glass-panel-soft flex items-center justify-between rounded-2xl px-4 py-3"
@@ -320,7 +280,7 @@ export default function Landing() {
                 </div>
 
                 <div className="glass-panel-soft mt-8 rounded-full px-4 py-3 text-sm text-white/70">
-                  Avg. first response under 6 minutes
+                  {copy.overview.inbox.footer}
                 </div>
               </article>
 
@@ -333,17 +293,17 @@ export default function Landing() {
                       </div>
                       <div>
                         <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
-                          Performance overview
+                          {copy.overview.performance.title}
                         </h2>
                         <p className="text-sm text-[#bcc5ee]/64">
-                          One view for activity, revenue movement, and team momentum
+                          {copy.overview.performance.description}
                         </p>
                       </div>
                     </div>
 
                     <div className="mt-8">
                       <p className="text-sm uppercase tracking-[0.25em] text-[#aeb6df]/42">
-                        Total conversations handled
+                        {copy.overview.performance.metricLabel}
                       </p>
                       <div className="mt-2 flex items-end gap-3">
                         <span className="font-marketing text-5xl font-semibold tracking-[-0.04em]">
@@ -354,23 +314,19 @@ export default function Landing() {
                         </span>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="glass-panel-soft rounded-2xl px-4 py-3 text-sm text-white/72">
-                    Last 7 days
-                  </div>
                 </div>
 
+                <div className="glass-panel-soft rounded-2xl px-4 py-3 text-sm text-white/72">
+                    {copy.overview.performance.timeframe}
+                </div>
+              </div>
+
                 <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
-                  <PerformanceChart />
+                  <PerformanceChart labels={copy.overview.performance.chartDays} />
                 </div>
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                  {[
-                    ["Response SLA", "94%"],
-                    ["Invoices sent", "1.2K"],
-                    ["Pipeline velocity", "Fast"],
-                  ].map(([label, value]) => (
+                  {copy.overview.performance.stats.map(({ label, value }) => (
                     <div key={label} className="glass-panel-soft rounded-2xl px-4 py-4">
                       <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
                         {label}
@@ -388,10 +344,10 @@ export default function Landing() {
                   <BrainCircuit className="h-6 w-6" />
                 </div>
                 <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
-                  Smart automations
+                  {copy.overview.automations.title}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
-                  Trigger reminders, handoffs, and follow-ups based on the live state of your workspace instead of manual checklists.
+                  {copy.overview.automations.description}
                 </p>
 
                 <OrbitGraphic />
@@ -399,11 +355,11 @@ export default function Landing() {
                 <div className="glass-panel-soft mt-3 rounded-2xl px-4 py-4">
                   <div className="flex items-center justify-between">
                     <span className="font-marketing text-sm font-semibold text-white/84">
-                      Optimization status
+                      {copy.overview.automations.statusLabel}
                     </span>
                     <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
                       <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_12px_rgba(223,255,74,0.8)]" />
-                      Active
+                      {copy.overview.automations.statusValue}
                     </span>
                   </div>
                 </div>
@@ -412,10 +368,10 @@ export default function Landing() {
 
             <div className="mt-16 border-t border-white/10 pt-10">
               <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-[#95a0cc]/44">
-                Trusted across customer, finance, and operations workflows
+                {copy.trustTitle}
               </p>
               <div className="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-5 text-lg font-semibold text-white/42">
-                {trustSignals.map((signal) => (
+                {copy.trustSignals.map((signal) => (
                   <span key={signal} className="font-marketing tracking-[-0.02em]">
                     {signal}
                   </span>
@@ -429,13 +385,13 @@ export default function Landing() {
           <div className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-3xl text-center">
               <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
-                Platform
+                {copy.platform.eyebrow}
               </p>
               <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-white md:text-6xl">
-                Built for the whole customer journey, not just one slice of it.
+                {copy.platform.title}
               </h2>
               <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70 md:text-lg">
-                Sales, service, billing, and follow-through all live in one calm workspace. That means fewer blind spots and faster handoffs between teams.
+                {copy.platform.description}
               </p>
             </div>
 
@@ -472,37 +428,21 @@ export default function Landing() {
           <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.08fr_0.92fr]">
             <article className="glass-panel rounded-[34px] p-8 md:p-10">
               <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
-                Workflows
+                {copy.workflows.eyebrow}
               </p>
               <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
-                A workspace that mirrors how your team already works.
+                {copy.workflows.title}
               </h2>
               <p className="mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
-                Instead of bouncing between inboxes, spreadsheets, invoicing tools, and follow-up lists, PymesHub keeps the operational thread intact from the first message to final payment.
+                {copy.workflows.description}
               </p>
 
               <div className="mt-10 grid gap-5 md:grid-cols-2">
                 {[
-                  {
-                    icon: Workflow,
-                    title: "Shared handoffs",
-                    body: "Assign, escalate, or reopen work without losing the original customer context.",
-                  },
-                  {
-                    icon: Sparkles,
-                    title: "Smarter follow-ups",
-                    body: "Surface stalled deals and overdue replies before they become revenue leaks.",
-                  },
-                  {
-                    icon: ChartSpline,
-                    title: "Live team pulse",
-                    body: "See what is moving, what is blocked, and which metrics need attention this week.",
-                  },
-                  {
-                    icon: Globe2,
-                    title: "Regional-ready operations",
-                    body: "Stay ready for compliance-heavy, multi-channel work common across Latin American teams.",
-                  },
+                  { icon: Workflow, ...copy.workflows.features[0] },
+                  { icon: Sparkles, ...copy.workflows.features[1] },
+                  { icon: ChartSpline, ...copy.workflows.features[2] },
+                  { icon: Globe2, ...copy.workflows.features[3] },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
@@ -527,25 +467,20 @@ export default function Landing() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-[#aeb6df]/52">
-                      Workspace flow
+                      {copy.workflows.flowTitle}
                     </p>
                     <h3 className="font-marketing mt-3 text-2xl font-semibold tracking-[-0.03em]">
-                      From conversation to collection
+                      {copy.workflows.flowHeadline}
                     </h3>
                   </div>
                   <div className="flex items-center gap-2 rounded-full border border-[#dfff4a]/28 bg-[#dfff4a]/10 px-3 py-1.5 text-sm text-[#dfff4a]">
                     <span className="h-2 w-2 rounded-full bg-[#dfff4a]" />
-                    Live
+                    {copy.workflows.flowLive}
                   </div>
                 </div>
 
                 <div className="mt-8 space-y-4">
-                  {[
-                    ["New inquiry", "WhatsApp assigned to Andrea"],
-                    ["Qualified lead", "Proposal sent and reminder scheduled"],
-                    ["Invoice issued", "Payment follow-up set for Friday"],
-                    ["Won account", "Operations onboarding activated"],
-                  ].map(([title, detail], index) => (
+                  {copy.workflows.flowSteps.map(([title, detail], index) => (
                     <div key={title} className="flex gap-4 rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4">
                       <div className="flex flex-col items-center">
                         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#efff53,#7ff4d2)] text-sm font-bold text-[#051127]">
@@ -567,28 +502,19 @@ export default function Landing() {
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div className="glass-panel-soft rounded-[24px] p-5">
-                  <p className="font-marketing text-sm font-semibold uppercase tracking-[0.26em] text-[#aeb6df]/44">
-                    Inbox health
-                  </p>
-                  <p className="font-marketing mt-3 text-3xl font-semibold tracking-[-0.04em] text-white/92">
-                    91%
-                  </p>
-                  <p className="mt-2 text-sm leading-7 text-[#bcc5ee]/66">
-                    of customer threads have an owner, next step, and due date.
-                  </p>
-                </div>
-                <div className="glass-panel-soft rounded-[24px] p-5">
-                  <p className="font-marketing text-sm font-semibold uppercase tracking-[0.26em] text-[#aeb6df]/44">
-                    Team signal
-                  </p>
-                  <p className="font-marketing mt-3 text-3xl font-semibold tracking-[-0.04em] text-white/92">
-                    4.7x
-                  </p>
-                  <p className="mt-2 text-sm leading-7 text-[#bcc5ee]/66">
-                    more clarity on what is stalled, overdue, or ready to close.
-                  </p>
-                </div>
+                {copy.workflows.metrics.map(([label, value, detail]) => (
+                  <div key={label} className="glass-panel-soft rounded-[24px] p-5">
+                    <p className="font-marketing text-sm font-semibold uppercase tracking-[0.26em] text-[#aeb6df]/44">
+                      {label}
+                    </p>
+                    <p className="font-marketing mt-3 text-3xl font-semibold tracking-[-0.04em] text-white/92">
+                      {value}
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-[#bcc5ee]/66">
+                      {detail}
+                    </p>
+                  </div>
+                ))}
               </div>
             </article>
           </div>
@@ -600,23 +526,18 @@ export default function Landing() {
               <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
                 <div>
                   <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
-                    Insights
+                    {copy.insights.eyebrow}
                   </p>
                   <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
-                    Know where momentum is building and where it is leaking.
+                    {copy.insights.title}
                   </h2>
                   <p className="mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
-                    PymesHub highlights reply speed, invoice progress, and pipeline health in one place so leaders can act before slowdowns show up in revenue.
+                    {copy.insights.description}
                   </p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {[
-                    ["14 min", "median first reply"],
-                    ["82%", "invoice follow-through"],
-                    ["3.2x", "faster team handoff"],
-                    ["99.9%", "workspace availability"],
-                  ].map(([value, label]) => (
+                  {copy.insights.stats.map(([value, label]) => (
                     <div key={label} className="glass-panel-soft rounded-[24px] p-5">
                       <p className="font-marketing text-3xl font-semibold tracking-[-0.04em] text-white">
                         {value}
@@ -636,31 +557,18 @@ export default function Landing() {
           <div className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-3xl text-center">
               <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
-                Security
+                {copy.security.eyebrow}
               </p>
               <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">
-                Operational confidence at every layer.
+                {copy.security.title}
               </h2>
               <p className="mt-6 text-base leading-8 text-[#c9d0f5]/70">
-                Keep workspace access structured, audit activity when needed, and give teams a surface they can rely on day after day.
+                {copy.security.description}
               </p>
             </div>
 
             <div className="mt-14 grid gap-6 md:grid-cols-3">
-              {[
-                {
-                  title: "Workspace permissions",
-                  body: "Separate responsibilities across teams while keeping a single shared source of truth.",
-                },
-                {
-                  title: "Traceable activity",
-                  body: "See how conversations, billing, and operational tasks evolve across the lifecycle.",
-                },
-                {
-                  title: "Always-on experience",
-                  body: "Fast, stable surfaces for the daily work your revenue engine depends on.",
-                },
-              ].map((item) => (
+              {copy.security.cards.map((item) => (
                 <article key={item.title} className="glass-panel rounded-[28px] p-7">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(232,255,89,0.18),rgba(116,244,212,0.15))] text-[#eaff9d]">
                     <ShieldCheck className="h-6 w-6" />
@@ -677,18 +585,18 @@ export default function Landing() {
 
             <div className="glass-panel mt-12 rounded-[34px] px-8 py-10 text-center md:px-12 md:py-14">
               <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
-                Ready to launch
+                {copy.security.ctaEyebrow}
               </p>
               <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
-                Start with the same workspace your team will actually use.
+                {copy.security.ctaTitle}
               </h2>
               <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
-                Make the first click feel confident, give your team a single operating rhythm, and move from customer message to paid invoice without patching tools together.
+                {copy.security.ctaDescription}
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <Link href="/login">
                   <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
-                    Open your workspace
+                    {copy.security.ctaPrimary}
                     <ArrowRight className="h-5 w-5" />
                   </a>
                 </Link>
@@ -697,7 +605,7 @@ export default function Landing() {
                   onClick={() => scrollToSection("platform")}
                   className="font-marketing rounded-full border border-white/12 bg-white/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]"
                 >
-                  Review the platform
+                  {copy.security.ctaSecondary}
                 </button>
               </div>
             </div>

@@ -8,7 +8,15 @@ export interface AuthUser {
   name: string;
   role: string;
   is_platform_admin?: boolean;
-  workspace: { id: string; name: string; slug: string; plan: string };
+  workspace: {
+    id: string;
+    name: string;
+    slug: string;
+    plan: string;
+    timezone?: string;
+    locale?: string;
+    status?: string;
+  };
 }
 
 // Estado global en módulo (compartido entre llamadas a useAuth)

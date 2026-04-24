@@ -13,9 +13,11 @@ import {
   Mail,
 } from "lucide-react";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { useI18n } from "@/components/providers/i18n-provider";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
-function parseError(err: unknown): string {
-  if (!(err instanceof Error)) return "Error desconocido";
+function parseError(err: unknown, fallback: string): string {
+  if (!(err instanceof Error)) return fallback;
   const m = err.message;
   const after = m.indexOf(": ");
   if (after < 0) return m;
@@ -81,6 +83,8 @@ function Field({
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const { messages } = useI18n();
+  const copy = messages.login;
   const [slug, setSlug]     = useState("");
   const [email, setEmail]   = useState("");
   const [pass, setPass]     = useState("");
@@ -98,7 +102,11 @@ export default function LoginPage() {
       await login(email, pass, slug);
       window.location.hash = "#/";
     } catch (err) {
-      toast({ title: "Error al iniciar sesión", description: parseError(err), variant: "destructive" });
+      toast({
+        title: copy.loginErrorTitle,
+        description: parseError(err, copy.unknownError),
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -128,41 +136,45 @@ export default function LoginPage() {
 
       <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
         <div className="w-full max-w-[34rem]">
-          <Link href="/">
-            <a className="font-marketing mb-8 inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
-              <ArrowLeft className="h-4 w-4" />
-              Back to landing
-            </a>
-          </Link>
+          <div className="mb-8 flex items-center justify-between gap-4">
+            <Link href="/">
+              <a className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
+                <ArrowLeft className="h-4 w-4" />
+                {copy.back}
+              </a>
+            </Link>
+
+            <LanguageSwitcher variant="marketing" />
+          </div>
 
           <div className="glass-panel rounded-[34px] px-6 py-8 md:px-10 md:py-10">
             <BrandLockup className="justify-center" textClassName="text-xl tracking-[0.32em]" />
 
             <div className="mt-10 text-center">
               <h1 className="font-marketing text-4xl font-semibold tracking-[-0.04em] text-white md:text-[3.45rem]">
-                Welcome back
+                {copy.welcome}
               </h1>
               <p className="mx-auto mt-4 max-w-md text-base leading-8 text-[#c9d0f5]/72">
-                Log in to continue managing conversations, invoices, and team workflows from one workspace.
+                {copy.description}
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-10 space-y-6">
               <Field
                 id="workspace-slug"
-                label="Workspace slug"
-                placeholder="mi-empresa"
+                label={copy.workspaceSlug}
+                placeholder={copy.placeholders.workspace}
                 value={slug}
                 onChange={setSlug}
                 required
                 icon={<Building2 className="h-5 w-5" />}
-                hint="Use the workspace identifier you were invited to."
+                hint={copy.workspaceHint}
               />
               <Field
                 id="email"
-                label="Email address"
+                label={copy.email}
                 type="email"
-                placeholder="you@company.com"
+                placeholder={copy.placeholders.email}
                 value={email}
                 onChange={setEmail}
                 required
@@ -170,9 +182,9 @@ export default function LoginPage() {
               />
               <Field
                 id="password"
-                label="Password"
+                label={copy.password}
                 type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
+                placeholder={copy.placeholders.password}
                 value={pass}
                 onChange={setPass}
                 required
@@ -182,7 +194,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword((current) => !current)}
                     className="text-white/55 transition hover:text-white/85"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={showPassword ? copy.hidePassword : copy.showPassword}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -196,7 +208,7 @@ export default function LoginPage() {
                 className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading && <Loader2 className="h-5 w-5 animate-spin" />}
-                Log in
+                {copy.logIn}
                 <ArrowRight className="h-5 w-5" />
               </button>
             </form>
@@ -204,19 +216,19 @@ export default function LoginPage() {
             <div className="mt-8">
               <div className="flex items-center gap-4">
                 <div className="h-px flex-1 bg-white/10" />
-                <span className="text-sm text-white/46">Need another route?</span>
+                <span className="text-sm text-white/46">{copy.forgot}</span>
                 <div className="h-px flex-1 bg-white/10" />
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <Link href="/accept-invite">
                   <a className="glass-panel-soft font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/86 transition hover:border-white/18 hover:text-white">
-                    Accept an invite
+                    {copy.acceptInvite}
                   </a>
                 </Link>
                 <Link href="/legal">
                   <a className="glass-panel-soft font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/86 transition hover:border-white/18 hover:text-white">
-                    Legal center
+                    {copy.legalCenter}
                   </a>
                 </Link>
               </div>
@@ -225,19 +237,19 @@ export default function LoginPage() {
             <div className="mt-10 flex flex-col items-center gap-4 text-center">
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/58">
                 <Link href="/legal/terms-and-conditions">
-                  <a className="transition hover:text-white/82">Terms</a>
+                  <a className="transition hover:text-white/82">{copy.terms}</a>
                 </Link>
                 <span className="h-1 w-1 rounded-full bg-white/24" />
                 <Link href="/legal/privacy-policy">
-                  <a className="transition hover:text-white/82">Privacy</a>
+                  <a className="transition hover:text-white/82">{copy.privacy}</a>
                 </Link>
               </div>
 
               <p className="text-sm text-[#b3bcdf]/58">
-                Don&apos;t have a workspace yet?{" "}
+                {copy.noWorkspace}{" "}
                 <Link href="/">
                   <a className="font-medium text-[#dfff4a] transition hover:text-[#efff8a]">
-                    Explore the platform
+                    {copy.explore}
                   </a>
                 </Link>
               </p>

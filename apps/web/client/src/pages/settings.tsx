@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { openExternal } from "@/lib/platform";
+import { useI18n } from "@/components/providers/i18n-provider";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { SUPPORTED_LOCALES, normalizeLocale, type SupportedLocale } from "@/lib/i18n";
 import {
   Building2, Users, PlugZap, UserPlus, Plus, Plug,
   Mail, MessageCircle, Radio, Eye, EyeOff, ExternalLink,
@@ -77,11 +80,15 @@ function SecretInput({ value, onChange, placeholder }: { value: string; onChange
 function WorkspaceTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { setLocale, messages } = useI18n();
+  const { refreshUser } = useAuth();
+  const localeCopy = messages.settings.locale;
   const { data, isLoading } = useQuery({
     queryKey: ["/api/workspaces/current"],
     queryFn: () => api.getWorkspace(),
   });
   const [financeOptIn, setFinanceOptIn] = useState(false);
+  const [workspaceLocale, setWorkspaceLocale] = useState<SupportedLocale>(() => normalizeLocale());
   const [taxStep, setTaxStep] = useState(0);
   const [taxConfig, setTaxConfig] = useState({
     legal_name: "",
@@ -116,6 +123,20 @@ function WorkspaceTab() {
     },
     onError: (e: any) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const saveWorkspaceLocale = useMutation({
+    mutationFn: (locale: SupportedLocale) => api.updateWorkspace({ locale }),
+    onSuccess: async (workspace) => {
+      const nextLocale = normalizeLocale(workspace?.locale);
+      qc.setQueryData(["/api/workspaces/current"], workspace);
+      setWorkspaceLocale(nextLocale);
+      setLocale(nextLocale);
+      toast({ title: localeCopy.saved });
+      await refreshUser();
+    },
+    onError: (e: any) =>
+      toast({ title: localeCopy.error, description: e.message, variant: "destructive" }),
   });
 
   const workspace = data;
@@ -199,9 +220,14 @@ function WorkspaceTab() {
     });
   }, [workspace?.ai_message_finance_opt_in, workspace?.workspace_tax_profile, workspace?.hacienda_environment, workspace?.hacienda_callback_url, workspace?.hacienda_signing_enabled]);
 
+  useEffect(() => {
+    setWorkspaceLocale(normalizeLocale(workspace?.locale));
+  }, [workspace?.locale]);
+
   if (isLoading) return <div className="text-muted-foreground text-sm">Cargando...</div>;
   const ws = workspace;
   const hasFinanceOptInChanges = financeOptIn !== (ws?.ai_message_finance_opt_in === true);
+  const hasLocaleChanges = workspaceLocale !== normalizeLocale(ws?.locale);
   const saveTaxConfig = () => saveWorkspace.mutate({
     hacienda_environment: taxConfig.hacienda_environment,
     hacienda_callback_url: taxConfig.hacienda_callback_url,
@@ -257,29 +283,74 @@ function WorkspaceTab() {
             </div>
           </div>
 
-          <div className="space-y-3 lg:pl-4 lg:border-l lg:border-border">
-            <div>
-              <div className="text-sm font-medium text-foreground">Cobros con IA</div>
-              <div className="mt-1 text-xs leading-5 text-muted-foreground">
-                Permite leer mensajes para detectar promesas o pendientes de pago. La detección por facturas vencidas sigue funcionando aunque esto esté apagado.
+          <div className="space-y-4 lg:border-l lg:border-border lg:pl-4">
+            <div className="rounded-lg border border-border bg-[hsl(var(--elevated))] p-4">
+              <div>
+                <div className="text-sm font-medium text-foreground">{localeCopy.title}</div>
+                <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {localeCopy.description}
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="workspace-language" className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  {localeCopy.label}
+                </Label>
+                <Select
+                  value={workspaceLocale}
+                  onValueChange={(value) => setWorkspaceLocale(value as SupportedLocale)}
+                >
+                  <SelectTrigger
+                    id="workspace-language"
+                    className="bg-[hsl(var(--elevated))] border-border"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {SUPPORTED_LOCALES.map((locale) => (
+                      <SelectItem key={locale} value={locale}>
+                        {locale === "en" ? messages.language.english : messages.language.spanish}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={() => saveWorkspaceLocale.mutate(workspaceLocale)}
+                  disabled={!hasLocaleChanges || saveWorkspaceLocale.isPending}
+                >
+                  {saveWorkspaceLocale.isPending ? localeCopy.saving : localeCopy.save}
+                </Button>
               </div>
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-[hsl(var(--elevated))] px-3 py-3">
-              <div className="text-sm text-foreground">{financeOptIn ? "Activo" : "Inactivo"}</div>
-              <Switch
-                checked={financeOptIn}
-                onCheckedChange={setFinanceOptIn}
-                aria-label="Permitir lectura de mensajes para cobros"
-              />
-            </div>
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                onClick={() => saveWorkspace.mutate({ ai_message_finance_opt_in: financeOptIn })}
-                disabled={!hasFinanceOptInChanges || saveWorkspace.isPending}
-              >
-                {saveWorkspace.isPending ? "Guardando..." : "Guardar cambio"}
-              </Button>
+
+            <div className="space-y-3">
+              <div>
+                <div className="text-sm font-medium text-foreground">Cobros con IA</div>
+                <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Permite leer mensajes para detectar promesas o pendientes de pago. La detección por facturas vencidas sigue funcionando aunque esto esté apagado.
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-[hsl(var(--elevated))] px-3 py-3">
+                <div className="text-sm text-foreground">{financeOptIn ? "Activo" : "Inactivo"}</div>
+                <Switch
+                  checked={financeOptIn}
+                  onCheckedChange={setFinanceOptIn}
+                  aria-label="Permitir lectura de mensajes para cobros"
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={() => saveWorkspace.mutate({ ai_message_finance_opt_in: financeOptIn })}
+                  disabled={!hasFinanceOptInChanges || saveWorkspace.isPending}
+                >
+                  {saveWorkspace.isPending ? "Guardando..." : "Guardar cambio"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -2026,34 +2097,38 @@ function AiTab() {
 
 export default function Settings() {
   const { user } = useAuth();
+  const { messages } = useI18n();
+  const copy = messages.settings;
   const isPlatformAdmin = user?.is_platform_admin === true;
 
   return (
     <div className="p-6 space-y-6">
-      <PageHeader title="Configuración" />
+      <PageHeader title={copy.pageTitle}>
+        <LanguageSwitcher />
+      </PageHeader>
       <Tabs defaultValue="workspace">
         <TabsList className="bg-card border border-border">
           <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">
-            <Building2 className="h-4 w-4 mr-2" />Workspace
+            <Building2 className="h-4 w-4 mr-2" />{copy.tabs.workspace}
           </TabsTrigger>
           <TabsTrigger value="members" className="data-[state=active]:bg-elevated">
-            <Users className="h-4 w-4 mr-2" />Miembros
+            <Users className="h-4 w-4 mr-2" />{copy.tabs.members}
           </TabsTrigger>
           <TabsTrigger value="channels" className="data-[state=active]:bg-elevated">
-            <PlugZap className="h-4 w-4 mr-2" />Canales
+            <PlugZap className="h-4 w-4 mr-2" />{copy.tabs.channels}
           </TabsTrigger>
           <TabsTrigger value="departments" className="data-[state=active]:bg-elevated">
-            <Layers className="h-4 w-4 mr-2" />Departamentos
+            <Layers className="h-4 w-4 mr-2" />{copy.tabs.departments}
           </TabsTrigger>
           <TabsTrigger value="integrations" className="data-[state=active]:bg-elevated">
-            <Plug className="h-4 w-4 mr-2" />Integraciones
+            <Plug className="h-4 w-4 mr-2" />{copy.tabs.integrations}
           </TabsTrigger>
           <TabsTrigger value="ai" className="data-[state=active]:bg-elevated">
-            <BrainCircuit className="h-4 w-4 mr-2" />Inteligencia Artificial
+            <BrainCircuit className="h-4 w-4 mr-2" />{copy.tabs.ai}
           </TabsTrigger>
           {isPlatformAdmin && (
             <TabsTrigger value="platform" className="data-[state=active]:bg-elevated">
-              <ShieldCheck className="h-4 w-4 mr-2" />Plataforma
+              <ShieldCheck className="h-4 w-4 mr-2" />{copy.tabs.platform}
             </TabsTrigger>
           )}
         </TabsList>
