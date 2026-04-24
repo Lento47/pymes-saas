@@ -473,7 +473,13 @@ export default function Landing() {
                 {copy.title[1]}
               </h1>
 
-              <p className="font-editorial soft-glow mt-4 text-[3rem] font-semibold italic leading-none text-[#e7ff5a] sm:text-[3.6rem] md:text-[4.65rem]">
+              <p
+                className="soft-glow mt-5 text-[2.8rem] font-medium leading-[0.95] tracking-[-0.045em] text-[#e7ff5a] sm:text-[3.25rem] md:text-[4.1rem]"
+                style={{
+                  fontFamily:
+                    'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                }}
+              >
                 {copy.subtitle}
               </p>
 
