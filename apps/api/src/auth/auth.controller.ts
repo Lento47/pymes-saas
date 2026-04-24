@@ -58,6 +58,14 @@ export class AuthController {
     return this.authService.getInvitePreview(token);
   }
 
+  /** POST /auth/invite-preview */
+  @Post('invite-preview')
+  @HttpCode(HttpStatus.OK)
+  invitePreviewPost(@Body('token') bodyToken?: string, @Headers('x-invite-token') headerToken?: string) {
+    const token = bodyToken ?? headerToken;
+    return this.authService.getInvitePreview(token);
+  }
+
   /** POST /auth/accept-invite */
   @Post('accept-invite')
   @HttpCode(HttpStatus.OK)
