@@ -9,7 +9,13 @@ import { createProxyMiddleware, fixRequestBody } from "http-proxy-middleware";
  * - `fixRequestBody`: `express.json()` ya leyó el body; hay que reinyectarlo en la petición al upstream.
  */
 export async function registerRoutes(_httpServer: unknown, app: import("express").Express) {
-  const target = process.env.API_PROXY_TARGET ?? "http://127.0.0.1:4000";
+  const defaultTarget = process.env.NODE_ENV === 'production' ? undefined : "http://127.0.0.1:4000";
+  const target = process.env.API_PROXY_TARGET ?? defaultTarget;
+
+  if (!target) {
+    throw new Error('API_PROXY_TARGET environment variable must be set in production.');
+  }
+
   app.use(
     createProxyMiddleware({
       target,

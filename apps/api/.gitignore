@@ -16,3 +16,6 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+.env.development
+.env.staging
+.env.test

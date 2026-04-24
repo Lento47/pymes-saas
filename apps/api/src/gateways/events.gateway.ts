@@ -18,15 +18,16 @@ import { Server, Socket } from 'socket.io';
 // task:updated         → tarea actualizada
 // ─────────────────────────────────────────────────────────────────────────────
 
+const getWsCorsOrigins = () => {
+  const origins = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean);
+  if (origins?.length) return origins;
+  if (process.env.NODE_ENV === 'production') return [];
+  return ['http://localhost:5000', 'http://127.0.0.1:5000', 'http://localhost:5173', 'http://127.0.0.1:5173'];
+};
+
 @WebSocketGateway({
   cors: {
-    origin:
-      process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) ?? [
-        'http://localhost:5000',
-        'http://127.0.0.1:5000',
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-      ],
+    origin: getWsCorsOrigins(),
     credentials: true,
   },
   namespace: '/ws',
@@ -56,10 +57,11 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         role: string;
       }>(token);
 
-      // Guardar contexto en el socket
+      // Guardar contexto en el socket (incluyendo el token para re-validación)
       client.data.userId = payload.sub;
       client.data.workspaceId = payload.workspace_id;
       client.data.role = payload.role;
+      client.data.token = token;
 
       // Unirse a rooms automáticas
       await client.join(`workspace:${payload.workspace_id}`);
@@ -76,6 +78,19 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`Disconnected: ${client.id}`);
   }
 
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  private revalidateToken(client: Socket): boolean {
+    try {
+      const token = client.data.token as string | undefined;
+      if (!token) return false;
+      this.jwtService.verify(token);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // ── Eventos del cliente ────────────────────────────────────────────────────
 
   /** Cliente abre una conversación → entra al room */
@@ -84,6 +99,11 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() conversationId: string,
   ) {
+    if (!this.revalidateToken(client)) {
+      client.emit('error', 'Session expired');
+      client.disconnect();
+      return;
+    }
     await client.join(`conversation:${conversationId}`);
     return { ok: true, room: `conversation:${conversationId}` };
   }
@@ -100,23 +120,22 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   /** Ping de keepalive */
   @SubscribeMessage('ping')
-  handlePing() {
+  handlePing(@ConnectedSocket() client: Socket) {
+    if (!this.revalidateToken(client)) {
+      client.emit('error', 'Session expired');
+      client.disconnect();
+      return;
+    }
     return { pong: true, ts: Date.now() };
   }
 
   // ── Métodos para emitir desde servicios ───────────────────────────────────
 
-  /**
-   * Emitir nuevo mensaje a todos los que están viendo la conversación
-   * y actualizar el inbox del workspace.
-   */
   emitNewMessage(conversationId: string, workspaceId: string, message: unknown) {
-    // Todos en la conversación reciben el mensaje completo
     this.server
       .to(`conversation:${conversationId}`)
       .emit('message:new', message);
 
-    // Todo el workspace recibe un update del inbox (solo metadata)
     this.server
       .to(`workspace:${workspaceId}`)
       .emit('conversation:updated', {
@@ -125,36 +144,24 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
   }
 
-  /**
-   * Emitir cambio de estado/prioridad/asignación de una conversación.
-   */
   emitConversationUpdated(workspaceId: string, conversation: unknown) {
     this.server
       .to(`workspace:${workspaceId}`)
       .emit('conversation:updated', conversation);
   }
 
-  /**
-   * Emitir notificación personal a un usuario específico.
-   */
   emitNotification(userId: string, notification: unknown) {
     this.server
       .to(`user:${userId}`)
       .emit('notification:new', notification);
   }
 
-  /**
-   * Emitir actualización de tarea al workspace.
-   */
   emitTaskUpdated(workspaceId: string, task: unknown) {
     this.server
       .to(`workspace:${workspaceId}`)
       .emit('task:updated', task);
   }
 
-  /**
-   * Emitir actualización del workspace (rename, locale, plan, etc.) a todos los miembros.
-   */
   emitWorkspaceUpdated(workspaceId: string, workspace: unknown) {
     this.server
       .to(`workspace:${workspaceId}`)

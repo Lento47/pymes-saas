@@ -117,6 +117,10 @@ export class InvoicesService {
     const preparedLines = this.prepareLines(dto.lines, dto.amount);
     const computedAmount = preparedLines.totalAmount;
 
+    if (computedAmount <= 0 && preparedLines.lines.length === 0) {
+      throw new BadRequestException('La factura debe tener al menos una línea de detalle o un monto mayor a cero.');
+    }
+
     const invoice = await this.prisma.invoice.create({
       data: {
         workspace_id: workspaceId,
@@ -243,6 +247,10 @@ export class InvoicesService {
       });
     });
 
+    if (dto.status !== undefined) {
+      this.validateStateTransition(existing.status as InvoiceStatus, dto.status as InvoiceStatus);
+    }
+
     const finalStatus =
       dto.status !== undefined
         ? dto.status
@@ -300,6 +308,13 @@ export class InvoicesService {
 
     const paidAt = dto.paid_at ? new Date(dto.paid_at) : new Date();
     const paymentCurrency = dto.currency ?? invoice.currency;
+
+    // Reject payments with mismatched currency to prevent silent exchange rate issues
+    if (dto.currency && dto.currency !== invoice.currency) {
+      throw new BadRequestException(
+        `La moneda del pago (${dto.currency}) no coincide con la moneda de la factura (${invoice.currency}).`,
+      );
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       const payment = await tx.invoicePayment.create({
@@ -669,6 +684,24 @@ export class InvoicesService {
     return Math.max(0, Number(invoice.amount ?? 0) - this.getAmountPaid(invoice));
   }
 
+  private validateStateTransition(current: InvoiceStatus, next: InvoiceStatus): void {
+    const ALLOWED_TRANSITIONS: Partial<Record<InvoiceStatus, InvoiceStatus[]>> = {
+      [InvoiceStatus.DRAFT]: [InvoiceStatus.SENT, InvoiceStatus.CANCELLED],
+      [InvoiceStatus.SENT]: [InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID, InvoiceStatus.OVERDUE, InvoiceStatus.CANCELLED],
+      [InvoiceStatus.PARTIALLY_PAID]: [InvoiceStatus.PAID, InvoiceStatus.OVERDUE, InvoiceStatus.CANCELLED],
+      [InvoiceStatus.OVERDUE]: [InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID, InvoiceStatus.CANCELLED],
+      [InvoiceStatus.PAID]: [],
+      [InvoiceStatus.CANCELLED]: [],
+    };
+
+    const allowed = ALLOWED_TRANSITIONS[current] ?? [];
+    if (current !== next && !allowed.includes(next)) {
+      throw new BadRequestException(
+        `Transición de estado inválida: ${current} → ${next}.`,
+      );
+    }
+  }
+
   private computeInvoiceStatus(
     currentStatus: InvoiceStatus,
     amountPaid: number,
@@ -769,6 +802,8 @@ export class InvoicesService {
 
   private prepareLines(lines: any[] | undefined, fallbackAmount: number) {
     if (!lines?.length) {
+      // Allow empty lines only for manual invoices where amount is directly set
+      // Amount is always from fallbackAmount when no lines provided
       return {
         totalAmount: Number(fallbackAmount ?? 0),
         lines: [],

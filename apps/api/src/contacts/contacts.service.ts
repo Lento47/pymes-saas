@@ -27,7 +27,8 @@ export class ContactsService {
 
     if (type) where.type = type;
 
-    if (q) {
+    // Require minimum query length to prevent enumeration via single-char searches
+    if (q && q.length >= 3) {
       where.OR = [
         { full_name: { contains: q } },
         { company_name: { contains: q } },
