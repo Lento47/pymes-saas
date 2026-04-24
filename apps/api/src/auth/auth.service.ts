@@ -9,6 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { InviteTokenPayload } from './invite-token.types';
@@ -116,15 +117,12 @@ export class AuthService {
       },
     });
 
-    const slug = dto.email
-      .split('@')[0]
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-');
+    const slug = await this.generateUniqueWorkspaceSlug();
 
     const workspace = await this.prisma.workspace.create({
       data: {
         name: `${dto.name}'s Workspace`,
-        slug: `${slug}-${Date.now()}`,
+        slug,
         status: 'ACTIVE',
         plan: 'FREE',
         workspace_users: {
@@ -350,6 +348,22 @@ export class AuthService {
 
   private signToken(payload: JwtPayload): string {
     return this.jwtService.sign(payload);
+  }
+
+  /**
+   * Generates a random, URL-safe workspace slug (base64url, ~72 bits of entropy)
+   * and retries on the astronomically rare collision.
+   */
+  private async generateUniqueWorkspaceSlug(): Promise<string> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = randomBytes(9).toString('base64url');
+      const exists = await this.prisma.workspace.findUnique({
+        where: { slug: candidate },
+        select: { id: true },
+      });
+      if (!exists) return candidate;
+    }
+    throw new Error('Could not generate unique workspace slug.');
   }
 
   private verifyInviteToken(rawToken?: string): InviteTokenPayload {
