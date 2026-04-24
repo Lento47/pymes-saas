@@ -890,36 +890,46 @@ export default function Landing() {
               ))}
             </div>
 
-            <div
-              className="glass-panel mt-12 rounded-[34px] bg-cover bg-center bg-no-repeat px-8 py-10 text-center md:px-12 md:py-14"
-              style={{
-                backgroundImage:
-                  "linear-gradient(180deg, rgba(6, 11, 33, 0.58) 0%, rgba(6, 11, 33, 0.76) 100%), url('/landing-icons/readytolunch.png')",
-              }}
-            >
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
-                {copy.security.ctaEyebrow}
-              </p>
-              <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
-                {copy.security.ctaTitle}
-              </h2>
-              <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
-                {copy.security.ctaDescription}
-              </p>
-              <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <Link href="/login">
-                  <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
-                    {copy.security.ctaPrimary}
-                    <ArrowRight className="h-5 w-5" />
-                  </a>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection("platform")}
-                  className="font-marketing rounded-full border border-white/12 bg-white/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]"
-                >
-                  {copy.security.ctaSecondary}
-                </button>
+            <div className="glass-panel relative mt-12 overflow-hidden rounded-[34px] px-8 py-10 text-center md:px-12 md:py-14">
+              <img
+                src="/landing-icons/readytolunch.png"
+                alt=""
+                className="absolute inset-0 h-full w-full scale-[1.04] object-cover object-center opacity-60"
+                aria-hidden="true"
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(7, 12, 34, 0.32) 0%, rgba(7, 12, 34, 0.56) 54%, rgba(7, 12, 34, 0.78) 100%)",
+                }}
+              />
+              <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(223,255,74,0.12),transparent_68%)]" />
+              <div className="relative z-10">
+                <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+                  {copy.security.ctaEyebrow}
+                </p>
+                <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
+                  {copy.security.ctaTitle}
+                </h2>
+                <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
+                  {copy.security.ctaDescription}
+                </p>
+                <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                  <Link href="/login">
+                    <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
+                      {copy.security.ctaPrimary}
+                      <ArrowRight className="h-5 w-5" />
+                    </a>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection("platform")}
+                    className="font-marketing rounded-full border border-white/12 bg-white/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]"
+                  >
+                    {copy.security.ctaSecondary}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
