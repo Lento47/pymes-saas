@@ -35,10 +35,10 @@ export default function PricingPage() {
                   <BrandLockup compact />
                 </a>
               </Link>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <LanguageSwitcher variant="marketing" />
                 <Link href="/login">
-                  <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                  <a className="font-marketing whitespace-nowrap text-sm font-medium text-white/78 transition hover:text-white">
                     Log in
                   </a>
                 </Link>
