@@ -8,12 +8,14 @@ import { CreateAutomationDto } from './dto/create-automation.dto';
 import { UpdateAutomationDto } from './dto/update-automation.dto';
 import { FilterAutomationsDto } from './dto/filter-automations.dto';
 import { QueueService } from '../workers/queue.service';
+import { PlanLimitsService } from '../billing/plan-limits.service';
 
 @Injectable()
 export class AutomationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   async findAll(workspaceId: string, filters: FilterAutomationsDto) {
@@ -65,6 +67,8 @@ export class AutomationsService {
     userId: string,
     dto: CreateAutomationDto,
   ) {
+    await this.planLimits.checkAutomationLimit(workspaceId);
+
     return this.prisma.automationRule.create({
       data: {
         workspace_id: workspaceId,
