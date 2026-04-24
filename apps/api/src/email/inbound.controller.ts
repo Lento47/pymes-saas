@@ -22,18 +22,12 @@ export class InboundController {
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   async handleWebhook(
-    @Headers('x-workspace-id') workspaceId: string,
-    @Headers('x-channel-id') channelId: string | undefined,
     @Headers('svix-signature') svixSignature: string | undefined,
     @Headers('svix-id') svixId: string | undefined,
     @Headers('svix-timestamp') svixTimestamp: string | undefined,
     @Body() body: any,
     @Req() req: any,
   ) {
-    if (!workspaceId) {
-      throw new BadRequestException('Missing required header: X-Workspace-Id');
-    }
-
     const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
     if (webhookSecret) {
       if (!svixSignature || !svixId || !svixTimestamp) {
@@ -48,10 +42,8 @@ export class InboundController {
       this.logger.warn('RESEND_WEBHOOK_SECRET not set — skipping signature validation (dev mode).');
     }
 
-    await this.emailService.processInbound(workspaceId, {
-      ...body,
-      ...(channelId ? { channel_id: channelId } : {}),
-    });
+    // SECURITY: Workspace is resolved from email address in the payload, not from client headers
+    await this.emailService.processInbound(body);
     return { received: true };
   }
 

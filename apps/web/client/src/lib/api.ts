@@ -1,44 +1,21 @@
 import { reportClientError } from "@/lib/error-reporting";
 const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 
-const LS_TOKEN_KEY = "pymes_token";
-const LS_SLUG_KEY = "pymes_slug";
-const LS_EXPIRY_KEY = "pymes_token_expiry";
-const LS_REFRESH_KEY = "pymes_refresh_token";
-
-// ── In-memory state (hydrated from localStorage on load) ─────────────────────
+// ── In-memory state only (tokens NOT stored in localStorage for security) ──────
 let _token: string | null = null;
 let _workspaceSlug: string | null = null;
-
-function _loadFromStorage() {
-  try {
-    _token = localStorage.getItem(LS_TOKEN_KEY);
-    _workspaceSlug = localStorage.getItem(LS_SLUG_KEY);
-  } catch { /* localStorage may be unavailable in some environments */ }
-}
-
-// Hydrate on module load
-_loadFromStorage();
+let _refreshToken: string | null = null;
 
 export function setAuthState(token: string, slug: string, refreshToken?: string) {
   _token = token;
   _workspaceSlug = slug;
-  try {
-    localStorage.setItem(LS_TOKEN_KEY, token);
-    localStorage.setItem(LS_SLUG_KEY, slug);
-    if (refreshToken) localStorage.setItem(LS_REFRESH_KEY, refreshToken);
-  } catch { /* ignore */ }
+  if (refreshToken) _refreshToken = refreshToken;
 }
 
 export function clearAuthState() {
   _token = null;
   _workspaceSlug = null;
-  try {
-    localStorage.removeItem(LS_TOKEN_KEY);
-    localStorage.removeItem(LS_SLUG_KEY);
-    localStorage.removeItem(LS_EXPIRY_KEY);
-    localStorage.removeItem(LS_REFRESH_KEY);
-  } catch { /* ignore */ }
+  _refreshToken = null;
 }
 
 export function getAuthToken() { return _token; }
@@ -63,23 +40,19 @@ async function _tryRefresh(): Promise<boolean> {
 
   _refreshPromise = (async () => {
     try {
-      const stored = localStorage.getItem(LS_REFRESH_KEY);
-      if (!stored) return false;
+      if (!_refreshToken) return false;
 
       const res = await fetch(`${API_BASE}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: stored }),
+        body: JSON.stringify({ refresh_token: _refreshToken }),
       });
 
       if (!res.ok) return false;
 
       const data = await res.json();
       _token = data.access_token;
-      try {
-        localStorage.setItem(LS_TOKEN_KEY, data.access_token);
-        if (data.refresh_token) localStorage.setItem(LS_REFRESH_KEY, data.refresh_token);
-      } catch { }
+      if (data.refresh_token) _refreshToken = data.refresh_token;
       return true;
     } catch {
       return false;

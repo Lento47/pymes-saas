@@ -21,17 +21,10 @@ export interface AuthUser {
 }
 
 // Estado global en módulo (compartido entre llamadas a useAuth)
+// Tokens and user data are stored in memory only (not persisted to localStorage for security)
 let _user: AuthUser | null = null;
 let _listeners: Array<() => void> = [];
-const LS_USER_KEY = "pymes_user";
 let _hydratePromise: Promise<AuthUser | null> | null = null;
-
-try {
-  const storedUser = localStorage.getItem(LS_USER_KEY);
-  _user = storedUser ? JSON.parse(storedUser) : null;
-} catch {
-  _user = null;
-}
 
 function notifyListeners() {
   _listeners.forEach(fn => fn());
@@ -60,7 +53,6 @@ function attachWorkspaceUpdateListener() {
         status: workspace.status ?? _user.workspace.status,
       },
     };
-    try { localStorage.setItem(LS_USER_KEY, JSON.stringify(_user)); } catch { /* ignore */ }
     notifyListeners();
   });
 }
@@ -80,12 +72,10 @@ async function hydrateUser() {
     try {
       const me = await api.getMe();
       _user = me;
-      try { localStorage.setItem(LS_USER_KEY, JSON.stringify(me)); } catch { /* ignore */ }
       notifyListeners();
       return me;
     } catch {
       _user = null;
-      try { localStorage.removeItem(LS_USER_KEY); } catch { /* ignore */ }
       notifyListeners();
       return null;
     } finally {
@@ -135,7 +125,6 @@ export function useAuth() {
     _wsUpdatedAttached = false; // permitir re-attach en el próximo login
     clearAuthState();
     _user = null;
-    try { localStorage.removeItem(LS_USER_KEY); } catch { /* ignore */ }
     notifyListeners();
     window.location.hash = "#/login";
   };
@@ -144,7 +133,6 @@ export function useAuth() {
     const res = await api.switchWorkspace(workspaceSlug);
     setAuthState(res.access_token, workspaceSlug, res.refresh_token);
     _user = { ..._user!, role: res.role, workspace: res.workspace };
-    try { localStorage.setItem(LS_USER_KEY, JSON.stringify(_user)); } catch { /* ignore */ }
     notifyListeners();
     // Reload to re-fetch all queries with new workspace context
     window.location.hash = "#/";
@@ -184,7 +172,6 @@ export function setSessionTtlDays(days: number): void {
 function applyAuthResult(res: { access_token: string; refresh_token?: string; user: AuthUser }) {
   setAuthState(res.access_token, res.user.workspace.slug, res.refresh_token);
   _user = res.user;
-  try { localStorage.setItem(LS_USER_KEY, JSON.stringify(res.user)); } catch { /* ignore */ }
   connectSocket();
   attachWorkspaceUpdateListener();
   notifyListeners();

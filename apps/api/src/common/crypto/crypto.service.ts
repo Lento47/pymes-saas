@@ -7,7 +7,10 @@ const KEY_LENGTH = 32;
 @Injectable()
 export class CryptoService {
   private getKey(): Buffer {
-    const key = process.env.ENCRYPTION_KEY ?? 'default-dev-key-change-in-prod!!';
+    const key = process.env.ENCRYPTION_KEY;
+    if (!key) {
+      throw new Error('ENCRYPTION_KEY environment variable is required but not set');
+    }
     return Buffer.from(key.padEnd(KEY_LENGTH).slice(0, KEY_LENGTH));
   }
 

@@ -59,11 +59,48 @@ export class WhatsAppService {
 
   // ── Procesar webhook entrante ──────────────────────────────────────────────
 
-  async processInbound(workspaceId: string, payload: any): Promise<void> {
+  /**
+   * Resolve workspace from WhatsApp phone_number_id instead of trusting client headers
+   */
+  private async resolveWorkspaceFromPhoneNumberId(phoneNumberId: string): Promise<string | null> {
+    try {
+      // Query channels table to find workspace with this phone_number_id
+      const channel = await this.prisma.channel.findFirst({
+        where: {
+          type: 'whatsapp',
+          config_json: {
+            path: ['phone_number_id'],
+            equals: phoneNumberId,
+          },
+        },
+        select: { workspace_id: true },
+      });
+
+      return channel?.workspace_id ?? null;
+    } catch (err) {
+      this.logger.error(`Error resolving workspace from phone_number_id: ${err}`);
+      return null;
+    }
+  }
+
+  async processInbound(payload: any): Promise<void> {
     try {
       const entry = payload?.entry?.[0];
       const change = entry?.changes?.[0];
       const value = change?.value;
+      const phoneNumberId = value?.metadata?.phone_number_id;
+
+      if (!phoneNumberId) {
+        this.logger.warn('Missing phone_number_id in WhatsApp webhook');
+        return;
+      }
+
+      // SECURITY: Resolve workspace from phone_number_id, not from client header
+      const workspaceId = await this.resolveWorkspaceFromPhoneNumberId(phoneNumberId);
+      if (!workspaceId) {
+        this.logger.warn(`No workspace found for phone_number_id: ${phoneNumberId}`);
+        return;
+      }
 
       if (!value?.messages?.length) {
         // Status update o delivery receipt — ignorar silenciosamente
