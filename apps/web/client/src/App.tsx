@@ -1,5 +1,5 @@
 import { Switch, Route, Router, Redirect } from "wouter";
-import { useHashLocation } from "wouter/use-hash-location";
+import { useWorkspaceHashLocation } from "@/hooks/use-workspace-location";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
@@ -105,7 +105,7 @@ export default function App() {
         <I18nProvider>
           <TooltipProvider>
             <Toaster />
-            <Router hook={useHashLocation}>
+            <Router hook={useWorkspaceHashLocation}>
               <AppRouter />
             </Router>
           </TooltipProvider>
