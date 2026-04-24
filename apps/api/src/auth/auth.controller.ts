@@ -14,6 +14,7 @@ import {
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { InvitePreviewDto } from './dto/invite-preview.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -51,11 +52,11 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
-  /** GET /auth/invite-preview?token=... */
-  @Get('invite-preview')
-  invitePreview(@Query('token') queryToken?: string, @Headers('x-invite-token') headerToken?: string) {
-    const token = queryToken ?? headerToken;
-    return this.authService.getInvitePreview(token);
+  /** POST /auth/invite-preview */
+  @Post('invite-preview')
+  @HttpCode(HttpStatus.OK)
+  invitePreview(@Body() dto: InvitePreviewDto) {
+    return this.authService.getInvitePreview(dto.token);
   }
 
   /** POST /auth/accept-invite */
