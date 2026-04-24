@@ -88,6 +88,9 @@ importers:
       class-validator:
         specifier: ^0.14.0
         version: 0.14.4
+      helmet:
+        specifier: ^8.1.0
+        version: 8.1.0
       multer:
         specifier: ^2.1.1
         version: 2.1.1
@@ -112,6 +115,9 @@ importers:
       socket.io-client:
         specifier: ^4.8.3
         version: 4.8.3(bufferutil@4.1.0)
+      stripe:
+        specifier: ^14.25.0
+        version: 14.25.0
     devDependencies:
       '@nestjs/cli':
         specifier: ^11.0.0
@@ -4601,6 +4607,10 @@ packages:
     resolution: {integrity: sha512-ej4AhfhfL2Q2zpMmLo7U1Uv9+PyhIZpgQLGT1F9miIGmiCJIoCgSmczFdrc97mWT4kVY72KA+WnnhJ5pghSvSg==}
     engines: {node: '>= 0.4'}
 
+  helmet@8.1.0:
+    resolution: {integrity: sha512-jOiHyAZsmnr8LqoPGmCjYAaiuWwjAPLgY8ZX2XrmHawt99/u1y6RgrZMTeoPfpUbV96HOalYgz1qzkRbw54Pmg==}
+    engines: {node: '>=18.0.0'}
+
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
 
@@ -5956,6 +5966,10 @@ packages:
   strip-json-comments@3.1.1:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
+
+  stripe@14.25.0:
+    resolution: {integrity: sha512-wQS3GNMofCXwH8TSje8E1SE8zr6ODiGtHQgPtO95p9Mb4FhKC9jvXR2NUTpZ9ZINlckJcFidCmaTFV4P6vsb9g==}
+    engines: {node: '>=12.*'}
 
   strnum@2.2.3:
     resolution: {integrity: sha512-oKx6RUCuHfT3oyVjtnrmn19H1SiCqgJSg+54XqURKp5aCMbrXrhLjRN9TjuwMjiYstZ0MzDrHqkGZ5dFTKd+zg==}
@@ -11341,6 +11355,8 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
+  helmet@8.1.0: {}
+
   html-escaper@2.0.2: {}
 
   http-errors@2.0.1:
@@ -12854,6 +12870,11 @@ snapshots:
   strip-final-newline@2.0.0: {}
 
   strip-json-comments@3.1.1: {}
+
+  stripe@14.25.0:
+    dependencies:
+      '@types/node': 20.19.27
+      qs: 6.15.1
 
   strnum@2.2.3: {}
 
