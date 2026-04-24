@@ -149,52 +149,29 @@ export default function PricingPage() {
                   ].map((row) => (
                     <tr key={row.key} className="hover:bg-white/[0.02] transition">
                       <td className="px-6 py-4 text-sm text-white/80">{row.label}</td>
-                      {PRICING_TIERS.map((tier) => (
-                        <td key={tier.name} className="px-6 py-4 text-center">
-                          <div className="flex items-center justify-center">
-                            {row.key === 'users' && (
-                              <>
-                                <Check className="h-4 w-4 text-[#dfff4a]" />
-                                <span className="ml-2 font-semibold text-white">
-                                  {tier.limits.users}
-                                </span>
-                              </>
-                            )}
-                            {row.key === 'contacts' && (
-                              <>
-                                <Check className="h-4 w-4 text-[#dfff4a]" />
-                                <span className="ml-2 font-semibold text-white">
-                                  {tier.limits.contacts.toLocaleString()}
-                                </span>
-                              </>
-                            )}
-                            {row.key === 'invoicesPerMonth' && (
-                              <>
-                                <Check className="h-4 w-4 text-[#dfff4a]" />
-                                <span className="ml-2 font-semibold text-white">
-                                  {tier.limits.invoicesPerMonth.toLocaleString()}
-                                </span>
-                              </>
-                            )}
-                            {row.key === 'automations' && (
-                              <>
-                                <Check className="h-4 w-4 text-[#dfff4a]" />
-                                <span className="ml-2 font-semibold text-white">
-                                  {tier.limits.automations}
-                                </span>
-                              </>
-                            )}
-                            {row.key === 'storageGB' && (
-                              <>
-                                <Check className="h-4 w-4 text-[#dfff4a]" />
-                                <span className="ml-2 font-semibold text-white">
-                                  {tier.limits.storageGB} GB
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      ))}
+                      {PRICING_TIERS.map((tier) => {
+                        const isBusinessPlus = tier.name === 'Business+';
+                        return (
+                          <td key={tier.name} className="px-6 py-4 text-center">
+                            <div className="flex items-center justify-center">
+                              {isBusinessPlus ? (
+                                <span className="font-semibold text-white/60 italic">Custom</span>
+                              ) : (
+                                <>
+                                  <Check className="h-4 w-4 text-[#dfff4a]" />
+                                  <span className="ml-2 font-semibold text-white">
+                                    {row.key === 'users' && tier.limits.users}
+                                    {row.key === 'contacts' && tier.limits.contacts.toLocaleString()}
+                                    {row.key === 'invoicesPerMonth' && tier.limits.invoicesPerMonth.toLocaleString()}
+                                    {row.key === 'automations' && tier.limits.automations}
+                                    {row.key === 'storageGB' && `${tier.limits.storageGB} GB`}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
