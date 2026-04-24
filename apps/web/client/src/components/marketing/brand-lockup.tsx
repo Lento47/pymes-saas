@@ -29,7 +29,7 @@ export function BrandLockup({
       {!useFallbackMark ? (
         <span
           className={cn(
-            compact ? "h-6 w-6" : "h-7 w-7",
+            compact ? "h-8 w-8" : "h-9 w-9",
             "inline-flex shrink-0 items-center justify-center overflow-visible",
             markClassName
           )}
@@ -47,7 +47,7 @@ export function BrandLockup({
           viewBox="0 0 32 32"
           aria-hidden="true"
           className={cn(
-            compact ? "h-6 w-6" : "h-7 w-7",
+            compact ? "h-8 w-8" : "h-9 w-9",
             "text-[#e7ff5a] drop-shadow-[0_0_12px_rgba(231,255,90,0.4)]",
             markClassName
           )}
