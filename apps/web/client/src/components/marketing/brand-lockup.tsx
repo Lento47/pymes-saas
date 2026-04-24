@@ -30,7 +30,7 @@ export function BrandLockup({
         <span
           className={cn(
             compact ? "h-6 w-6" : "h-7 w-7",
-            "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[8px]",
+            "inline-flex shrink-0 items-center justify-center overflow-visible",
             markClassName
           )}
         >
@@ -39,7 +39,7 @@ export function BrandLockup({
             alt=""
             aria-hidden="true"
             onError={() => setIconIndex((current) => current + 1)}
-            className="h-full w-full scale-[2.35] object-cover drop-shadow-[0_0_12px_rgba(97,110,255,0.45)]"
+            className="h-full w-full object-contain"
           />
         </span>
       ) : (

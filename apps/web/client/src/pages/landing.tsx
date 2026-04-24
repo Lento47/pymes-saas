@@ -341,7 +341,12 @@ export default function Landing() {
   };
 
   const scrollToSection = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const element = document.getElementById(id);
+    if (element) {
+      setTimeout(() => {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
   };
 
   const handleMenuNavigate = (href: string) => {
@@ -349,6 +354,14 @@ export default function Landing() {
 
     if (href.startsWith("#")) {
       scrollToSection(href.slice(1));
+    }
+  };
+
+  const handleNavClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    // Check if click is outside the nav dropdown
+    if (target.closest('[data-nav-dropdown]') === null && target.closest('button') === null) {
+      setActiveMenu(null);
     }
   };
 
@@ -376,8 +389,8 @@ export default function Landing() {
       <main className="relative z-10">
         <section className="px-4 pb-16 pt-6 md:px-8 md:pb-24">
           <div className="mx-auto max-w-7xl">
-            <div className="relative" onMouseLeave={() => setActiveMenu(null)}>
-              <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7">
+            <div className="relative" onMouseLeave={() => setActiveMenu(null)} onClick={handleNavClick}>
+              <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7" data-nav-item>
                 <BrandLockup compact />
 
                 <div className="hidden items-center gap-8 lg:flex">
@@ -416,16 +429,16 @@ export default function Landing() {
                     </a>
                   </Link>
                   <Link href="/login">
-                    <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-4 py-3 text-sm font-semibold text-[#071126] transition hover:translate-y-[-1px] md:px-6">
+                    <a className="glow-button font-marketing inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
                       {copy.nav.getStarted}
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                     </a>
                   </Link>
                 </div>
               </nav>
 
               {activeMenu && (
-                <div className="absolute inset-x-0 top-full z-20 pt-4">
+                <div className="absolute inset-x-0 top-full z-20 pt-4" data-nav-dropdown>
                   <div className="glass-panel luminous-border grid gap-6 rounded-[32px] p-6 lg:grid-cols-[1.05fr_1.25fr]">
                     <div className="space-y-4">
                       <p className="font-marketing text-xs font-semibold uppercase tracking-[0.34em] text-[#dfff4a]/72">
