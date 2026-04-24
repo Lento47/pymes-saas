@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { ArrowRight, Check } from 'lucide-react';
 import { PRICING_TIERS, ADD_ONS, FAQS } from '@/data/pricing.data';
 import { PricingCard } from '@/components/pricing/PricingCard';
@@ -11,7 +11,7 @@ import { LanguageSwitcher } from '@/components/shared/language-switcher';
 import { cn } from '@/lib/utils';
 
 export default function PricingPage() {
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
   const [isAnnual, setIsAnnual] = useState(false);
   const { messages } = useI18n();
   const copy = messages.pricing || {};
