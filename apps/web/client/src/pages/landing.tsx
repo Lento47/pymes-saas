@@ -359,9 +359,13 @@ export default function Landing() {
 
   const handleNavClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    // Check if click is outside the nav dropdown
-    if (target.closest('[data-nav-dropdown]') === null && target.closest('button') === null) {
-      setActiveMenu(null);
+    // Don't close if clicking inside the dropdown menu
+    if (target.closest('[data-nav-dropdown]')) {
+      return;
+    }
+    // Don't close if clicking on nav buttons - they handle their own state
+    if (target.closest('[data-nav-button]')) {
+      return;
     }
   };
 
@@ -389,8 +393,24 @@ export default function Landing() {
       <main className="relative z-10">
         <section className="px-4 pb-16 pt-6 md:px-8 md:pb-24">
           <div className="mx-auto max-w-7xl">
-            <div className="relative" onMouseLeave={() => setActiveMenu(null)} onClick={handleNavClick}>
-              <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7" data-nav-item>
+            <div
+              className="relative"
+              onClick={handleNavClick}
+              onTouchEnd={(e) => {
+                const target = e.target as HTMLElement;
+                if (target.closest('[data-nav-dropdown]')) {
+                  return;
+                }
+                if (target.closest('[data-nav-button]')) {
+                  return;
+                }
+              }}
+            >
+              <nav
+                className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7"
+                data-nav-item
+                onMouseLeave={() => activeMenu && setActiveMenu(null)}
+              >
                 <BrandLockup compact />
 
                 <div className="hidden items-center gap-8 lg:flex">
@@ -398,6 +418,7 @@ export default function Landing() {
                     <button
                       key={item.id}
                       type="button"
+                      data-nav-button
                       onMouseEnter={() => setActiveMenu(item.key)}
                       onFocus={() => setActiveMenu(item.key)}
                       onClick={() =>
@@ -438,7 +459,11 @@ export default function Landing() {
               </nav>
 
               {activeMenu && (
-                <div className="absolute inset-x-0 top-full z-20 pt-4" data-nav-dropdown>
+                <div
+                  className="absolute inset-x-0 top-full z-20 pt-4 pointer-events-auto"
+                  data-nav-dropdown
+                  onMouseLeave={() => setActiveMenu(null)}
+                >
                   <div className="glass-panel luminous-border grid gap-6 rounded-[32px] p-6 lg:grid-cols-[1.05fr_1.25fr]">
                     <div className="space-y-4">
                       <p className="font-marketing text-xs font-semibold uppercase tracking-[0.34em] text-[#dfff4a]/72">
