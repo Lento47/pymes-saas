@@ -189,12 +189,17 @@ export default function Landing() {
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
 
   const productCards: Array<{
+    assetSrc?: string;
     icon: LucideIcon;
     title: string;
     description: string;
     bullets: readonly string[];
   }> = [
-    { icon: ShieldCheck, ...copy.platform.cards[0] },
+    {
+      icon: ShieldCheck,
+      assetSrc: "/landing-icons/enterprise-workspace-control.png",
+      ...copy.platform.cards[0],
+    },
     { icon: Workflow, ...copy.platform.cards[1] },
     { icon: BookOpen, ...copy.platform.cards[2] },
   ];
@@ -566,8 +571,13 @@ export default function Landing() {
                 <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(98,118,255,0.34),rgba(82,97,241,0.16))] text-[#dfe6ff]">
-                        <ChartSpline className="h-6 w-6" />
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(98,118,255,0.34),rgba(82,97,241,0.16))] p-2 text-[#dfe6ff]">
+                        <img
+                          src="/landing-icons/performance.png"
+                          alt=""
+                          className="h-full w-full object-contain"
+                          aria-hidden="true"
+                        />
                       </div>
                       <div>
                         <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
@@ -618,8 +628,13 @@ export default function Landing() {
               </article>
 
               <article className="glass-panel rounded-[30px] p-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] text-[#f4ffb1]">
-                  <BrainCircuit className="h-6 w-6" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
+                  <img
+                    src="/landing-icons/Smart-automations.png"
+                    alt=""
+                    className="h-full w-full object-contain"
+                    aria-hidden="true"
+                  />
                 </div>
                 <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                   {copy.overview.automations.title}
@@ -678,8 +693,17 @@ export default function Landing() {
                 const Icon = card.icon;
                 return (
                   <article key={card.title} className="glass-panel rounded-[28px] p-7">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))] text-white/90">
-                      <Icon className="h-6 w-6" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))] p-2 text-white/90">
+                      {card.assetSrc ? (
+                        <img
+                          src={card.assetSrc}
+                          alt=""
+                          className="h-full w-full object-contain"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Icon className="h-6 w-6" />
+                      )}
                     </div>
                     <h3 className="font-marketing mt-7 text-2xl font-semibold tracking-[-0.03em]">
                       {card.title}
