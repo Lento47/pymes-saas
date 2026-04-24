@@ -121,12 +121,12 @@ export const PRICING_TIERS: PricingTier[] = [
     cta: 'Upgrade to Business',
   },
   {
-    name: 'Enterprise',
+    name: 'Business+',
     monthlyUSD: 0, // Custom pricing
     monthlyCRC: 0,
     annualUSD: 0,
     annualCRC: 0,
-    description: 'Custom operations platform',
+    description: 'Para pymes con operaciones avanzadas',
     users: 999,
     features: [
       'All Business features',
@@ -203,7 +203,7 @@ export const FAQS: FAQ[] = [
   {
     question: 'Is onboarding included?',
     answer:
-      'Starter is self-serve. Growth may include basic onboarding during launch promotions. Business and Enterprise plans include paid onboarding and implementation services.',
+      'Starter is self-serve. Growth may include basic onboarding during launch promotions. Business and Business+ plans include paid onboarding and implementation services.',
   },
   {
     question: 'Can you migrate my Excel files?',
@@ -216,31 +216,31 @@ export const FAQS: FAQ[] = [
       'Yes. Annual plans include approximately two months free compared to monthly billing.',
   },
   {
-    question: 'Do you support custom enterprise needs?',
+    question: 'Do you support custom needs?',
     answer:
-      'Yes. Enterprise plans support custom workflows, limits, contracts, and dedicated implementation support.',
+      'Yes. Business+ plans support custom workflows, limits, contracts, and dedicated implementation support.',
   },
   {
     question: 'What payment methods do you accept?',
     answer:
-      'We accept all major credit cards (Visa, Mastercard, American Express) via Stripe. Bank transfers available for Enterprise plans.',
+      'We accept all major credit cards (Visa, Mastercard, American Express) via Stripe. Bank transfers available for Business+ plans.',
   },
 ];
 
 export const FEATURE_COMPARISON = [
-  { feature: 'Users included', starter: '1', growth: '5', business: '15', enterprise: 'Custom' },
-  { feature: 'Contacts', starter: '500', growth: '2,500', business: '15,000', enterprise: 'Custom' },
-  { feature: 'Invoices/month', starter: '100', growth: '500', business: '2,000', enterprise: 'Custom' },
-  { feature: 'Automations', starter: '5', growth: '25', business: '100', enterprise: 'Custom' },
-  { feature: 'Storage', starter: '5 GB', growth: '10 GB', business: '50 GB', enterprise: 'Custom' },
-  { feature: 'Locations', starter: '1', growth: '1', business: '3', enterprise: 'Custom' },
-  { feature: 'CRM', starter: '✓', growth: '✓', business: '✓', enterprise: '✓' },
-  { feature: 'Invoicing', starter: '✓', growth: '✓', business: '✓', enterprise: '✓' },
-  { feature: 'Sales Pipeline', starter: '—', growth: '✓', business: '✓', enterprise: '✓' },
-  { feature: 'WhatsApp Inbox', starter: '—', growth: '✓', business: '✓', enterprise: '✓' },
-  { feature: 'Automations', starter: 'Basic', growth: 'Basic', business: 'Advanced', enterprise: 'Custom' },
-  { feature: 'API Access', starter: '—', growth: '—', business: '✓', enterprise: '✓' },
-  { feature: 'Multi-location', starter: '—', growth: '—', business: '✓', enterprise: '✓' },
-  { feature: 'Audit logs', starter: '—', growth: '—', business: '✓', enterprise: '✓' },
-  { feature: 'Support', starter: 'Email', growth: 'Priority', business: 'Priority+', enterprise: 'Dedicated' },
+  { feature: 'Users included', starter: '1', growth: '5', business: '15', businessPlus: 'Custom' },
+  { feature: 'Contacts', starter: '500', growth: '2,500', business: '15,000', businessPlus: 'Custom' },
+  { feature: 'Invoices/month', starter: '100', growth: '500', business: '2,000', businessPlus: 'Custom' },
+  { feature: 'Automations', starter: '5', growth: '25', business: '100', businessPlus: 'Custom' },
+  { feature: 'Storage', starter: '5 GB', growth: '10 GB', business: '50 GB', businessPlus: 'Custom' },
+  { feature: 'Locations', starter: '1', growth: '1', business: '3', businessPlus: 'Custom' },
+  { feature: 'CRM', starter: '✓', growth: '✓', business: '✓', businessPlus: '✓' },
+  { feature: 'Invoicing', starter: '✓', growth: '✓', business: '✓', businessPlus: '✓' },
+  { feature: 'Sales Pipeline', starter: '—', growth: '✓', business: '✓', businessPlus: '✓' },
+  { feature: 'WhatsApp Inbox', starter: '—', growth: '✓', business: '✓', businessPlus: '✓' },
+  { feature: 'Automations', starter: 'Basic', growth: 'Basic', business: 'Advanced', businessPlus: 'Custom' },
+  { feature: 'API Access', starter: '—', growth: '—', business: '✓', businessPlus: '✓' },
+  { feature: 'Multi-location', starter: '—', growth: '—', business: '✓', businessPlus: '✓' },
+  { feature: 'Audit logs', starter: '—', growth: '—', business: '✓', businessPlus: '✓' },
+  { feature: 'Support', starter: 'Email', growth: 'Priority', business: 'Priority+', businessPlus: 'Dedicated' },
 ];

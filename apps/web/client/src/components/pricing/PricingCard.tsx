@@ -10,7 +10,7 @@ interface PricingCardProps {
 export function PricingCard({ tier, isAnnual }: PricingCardProps) {
   const price = isAnnual ? tier.annualUSD : tier.monthlyUSD;
   const priceCRC = isAnnual ? tier.annualCRC : tier.monthlyCRC;
-  const isEnterprise = tier.name === 'Enterprise';
+  const isEnterprise = tier.name === 'Business+';
 
   return (
     <div className={cn(
