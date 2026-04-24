@@ -141,7 +141,7 @@ async function request<T>(
 
 export const api = {
   getInvitePreview: (token: string) =>
-    request<any>("GET", `/api/auth/invite-preview?token=${encodeURIComponent(token)}`),
+    request<any>("POST", "/api/auth/invite-preview", { token }),
   acceptInvite: (data: { token: string; name?: string; password?: string }) =>
     request<any>("POST", "/api/auth/accept-invite", data),
   login: async (email: string, password: string, workspaceSlug: string) => {

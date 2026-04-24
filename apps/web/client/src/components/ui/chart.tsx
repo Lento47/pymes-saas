@@ -67,6 +67,24 @@ const ChartContainer = React.forwardRef<
 })
 ChartContainer.displayName = "Chart"
 
+const isValidColor = (color: string): boolean => {
+  if (!color || typeof color !== 'string') return false
+  const trimmed = color.trim()
+
+  // Valid CSS color formats: hex, rgb, rgba, hsl, hsla, named colors
+  const hexRegex = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i
+  const rgbRegex = /^rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*[\d.]+)?\s*\)$/
+  const hslRegex = /^hsla?\s*\(\s*(\d+)\s*,\s*(\d+%)\s*,\s*(\d+%)\s*(,\s*[\d.]+)?\s*\)$/
+  const namedColors = /^(transparent|inherit|currentColor|black|white|red|green|blue|yellow|cyan|magenta|gray|grey|orange|purple|pink|brown|navy|teal|lime|olive|maroon|aqua|silver|fuchsia|coral|gold|indigo|khaki|salmon|tan|tomato|turquoise|violet)$/i
+
+  return (
+    hexRegex.test(trimmed) ||
+    rgbRegex.test(trimmed) ||
+    hslRegex.test(trimmed) ||
+    namedColors.test(trimmed)
+  )
+}
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([, config]) => config.theme || config.color
@@ -88,7 +106,8 @@ ${colorConfig
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    if (!color || !isValidColor(color)) return null
+    return `  --color-${key}: ${color};`
   })
   .join("\n")}
 }
