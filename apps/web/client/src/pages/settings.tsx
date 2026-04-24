@@ -89,6 +89,7 @@ function WorkspaceTab() {
   });
   const [financeOptIn, setFinanceOptIn] = useState(false);
   const [workspaceLocale, setWorkspaceLocale] = useState<SupportedLocale>(() => normalizeLocale());
+  const [workspaceName, setWorkspaceName] = useState("");
   const [taxStep, setTaxStep] = useState(0);
   const [taxConfig, setTaxConfig] = useState({
     legal_name: "",
@@ -137,6 +138,18 @@ function WorkspaceTab() {
     },
     onError: (e: any) =>
       toast({ title: localeCopy.error, description: e.message, variant: "destructive" }),
+  });
+
+  const saveWorkspaceName = useMutation({
+    mutationFn: (name: string) => api.updateWorkspace({ name: name.trim() }),
+    onSuccess: async (workspace) => {
+      qc.setQueryData(["/api/workspaces/current"], workspace);
+      setWorkspaceName(workspace?.name ?? "");
+      toast({ title: "Nombre actualizado" });
+      await refreshUser();
+    },
+    onError: (e: any) =>
+      toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const workspace = data;
@@ -196,6 +209,7 @@ function WorkspaceTab() {
 
   useEffect(() => {
     setFinanceOptIn(workspace?.ai_message_finance_opt_in === true);
+    setWorkspaceName(workspace?.name ?? "");
     setTaxConfig({
       legal_name: workspace?.workspace_tax_profile?.legal_name ?? "",
       trade_name: workspace?.workspace_tax_profile?.trade_name ?? "",
@@ -267,6 +281,35 @@ function WorkspaceTab() {
             <p className="max-w-2xl text-sm text-muted-foreground">
               Configuración general del espacio, permisos rápidos de operación y preparación para facturación electrónica en Costa Rica.
             </p>
+
+            <div className="max-w-xl space-y-2">
+              <Label htmlFor="workspace-name" className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                Nombre del workspace
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="workspace-name"
+                  value={workspaceName}
+                  onChange={(e) => setWorkspaceName(e.target.value)}
+                  placeholder="Mi empresa S.A."
+                  maxLength={80}
+                  className="bg-[hsl(var(--elevated))] border-border"
+                />
+                <Button
+                  onClick={() => saveWorkspaceName.mutate(workspaceName)}
+                  disabled={
+                    saveWorkspaceName.isPending ||
+                    workspaceName.trim().length < 2 ||
+                    workspaceName.trim() === (ws?.name ?? "")
+                  }
+                >
+                  {saveWorkspaceName.isPending ? "Guardando…" : "Guardar"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Los miembros verán este nombre en tiempo real cuando lo cambies.
+              </p>
+            </div>
 
             <div className="grid gap-x-10 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
               {[

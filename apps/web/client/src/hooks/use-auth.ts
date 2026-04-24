@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug } from "@/lib/api";
-import { connectSocket, disconnectSocket } from "./use-socket";
+import { connectSocket, disconnectSocket, getSocket } from "./use-socket";
+import { queryClient } from "@/lib/queryClient";
 
 export interface AuthUser {
   id: string;
@@ -32,14 +33,43 @@ try {
   _user = null;
 }
 
+function notifyListeners() {
+  _listeners.forEach(fn => fn());
+}
+
+// Mantener el usuario en memoria sincronizado cuando otros miembros del workspace
+// cambian algo (p. ej. el nombre del workspace). El servidor emite 'workspace:updated'
+// al room `workspace:<id>`.
+let _wsUpdatedAttached = false;
+function attachWorkspaceUpdateListener() {
+  const socket = getSocket();
+  if (!socket || _wsUpdatedAttached) return;
+  _wsUpdatedAttached = true;
+  socket.on("workspace:updated", (workspace: any) => {
+    queryClient.setQueryData(["/api/workspaces/current"], workspace);
+    if (!_user || !workspace?.id || _user.workspace?.id !== workspace.id) return;
+    _user = {
+      ..._user,
+      workspace: {
+        ..._user.workspace,
+        name: workspace.name ?? _user.workspace.name,
+        slug: workspace.slug ?? _user.workspace.slug,
+        plan: workspace.plan ?? _user.workspace.plan,
+        timezone: workspace.timezone ?? _user.workspace.timezone,
+        locale: workspace.locale ?? _user.workspace.locale,
+        status: workspace.status ?? _user.workspace.status,
+      },
+    };
+    try { localStorage.setItem(LS_USER_KEY, JSON.stringify(_user)); } catch { /* ignore */ }
+    notifyListeners();
+  });
+}
+
 // Auto-reconnect WebSocket when the page reloads with an existing session
 // (login() only runs on explicit login, not on refresh)
 if (isLoggedIn()) {
   connectSocket();
-}
-
-function notifyListeners() {
-  _listeners.forEach(fn => fn());
+  attachWorkspaceUpdateListener();
 }
 
 async function hydrateUser() {
@@ -102,6 +132,7 @@ export function useAuth() {
   const logout = async () => {
     try { await api.logout(); } catch { /* best-effort */ }
     disconnectSocket(); // ← WebSocket se corta al hacer logout
+    _wsUpdatedAttached = false; // permitir re-attach en el próximo login
     clearAuthState();
     _user = null;
     try { localStorage.removeItem(LS_USER_KEY); } catch { /* ignore */ }
@@ -155,5 +186,6 @@ function applyAuthResult(res: { access_token: string; refresh_token?: string; us
   _user = res.user;
   try { localStorage.setItem(LS_USER_KEY, JSON.stringify(res.user)); } catch { /* ignore */ }
   connectSocket();
+  attachWorkspaceUpdateListener();
   notifyListeners();
 }
