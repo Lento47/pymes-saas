@@ -1,16 +1,18 @@
 import { Switch, Route, Router, Redirect } from "wouter";
-import { useHashLocation } from "wouter/use-hash-location";
+import { useWorkspaceHashLocation } from "@/hooks/use-workspace-location";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
+import { I18nProvider } from "@/components/providers/i18n-provider";
 import { useAuth } from "@/hooks/use-auth";
 
+import Landing from "@/pages/landing";
 import Login from "@/pages/login";
-import Setup from "@/pages/setup";
 import AcceptInvite from "@/pages/accept-invite";
+import Pricing from "@/pages/pricing";
 import Dashboard from "@/pages/dashboard";
 import Inbox from "@/pages/inbox";
 import Conversation from "@/pages/conversation";
@@ -22,8 +24,11 @@ import Invoices from "@/pages/invoices";
 import Automations from "@/pages/automations";
 import Pipeline from "@/pages/pipeline";
 import Settings from "@/pages/settings";
+import Billing from "@/pages/billing";
 import HelpPage from "@/pages/help";
 import HelpDocumentPage from "@/pages/help-document";
+import DocumentationCenterPage from "@/pages/documentation";
+import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import NotFound from "@/pages/not-found";
 
@@ -33,12 +38,27 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return <AppSidebar>{children}</AppSidebar>;
 }
 
+function RootRoute() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? (
+    <ProtectedLayout><Dashboard /></ProtectedLayout>
+  ) : (
+    <Landing />
+  );
+}
+
 function AppRouter() {
   return (
     <Switch>
-      <Route path="/setup" component={Setup} />
       <Route path="/login" component={Login} />
       <Route path="/accept-invite" component={AcceptInvite} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/documentation">
+        {() => <DocumentationCenterPage />}
+      </Route>
+      <Route path="/documentation/:slug">
+        {(params) => <DocumentationDocumentPage slug={params.slug} />}
+      </Route>
       <Route path="/legal">
         {() => <LegalCenterPage />}
       </Route>
@@ -46,7 +66,7 @@ function AppRouter() {
         {(params) => <LegalDocumentPage slug={params.slug} />}
       </Route>
       <Route path="/">
-        {() => <ProtectedLayout><Dashboard /></ProtectedLayout>}
+        {() => <RootRoute />}
       </Route>
       <Route path="/inbox">
         {() => <ProtectedLayout><Inbox /></ProtectedLayout>}
@@ -78,6 +98,9 @@ function AppRouter() {
       <Route path="/settings">
         {() => <ProtectedLayout><Settings /></ProtectedLayout>}
       </Route>
+      <Route path="/settings/billing">
+        {() => <ProtectedLayout><Billing /></ProtectedLayout>}
+      </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}
       </Route>
@@ -93,12 +116,14 @@ export default function App() {
   return (
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Router hook={useHashLocation}>
-            <AppRouter />
-          </Router>
-        </TooltipProvider>
+        <I18nProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router hook={useWorkspaceHashLocation}>
+              <AppRouter />
+            </Router>
+          </TooltipProvider>
+        </I18nProvider>
       </QueryClientProvider>
     </AppErrorBoundary>
   );
