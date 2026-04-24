@@ -10,7 +10,9 @@ import {
   Post,
   Query,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MessagesService } from './messages.service';
 import { parseJsonValue } from '../common/prisma/json';
@@ -23,7 +25,7 @@ import { parseJsonValue } from '../common/prisma/json';
  *   POST /inbound/whatsapp/webhook  → mensajes / estados entrantes
  *
  * Genérico (otros proveedores):
- *   POST /inbound/webhooks/:provider  → requiere header X-Workspace-Id
+ *   POST /inbound/webhooks/:provider  → requiere header X-Workspace-Id + X-Webhook-Secret
  */
 @Controller('inbound')
 export class InboundController {
@@ -64,22 +66,6 @@ export class InboundController {
   /**
    * POST /inbound/whatsapp/webhook
    * Meta envía aquí los mensajes, estados de entrega y demás eventos.
-   *
-   * Payload de ejemplo (mensaje de texto):
-   * {
-   *   "object": "whatsapp_business_account",
-   *   "entry": [{
-   *     "id": "<WABA_ID>",
-   *     "changes": [{
-   *       "value": {
-   *         "messaging_product": "whatsapp",
-   *         "metadata": { "phone_number_id": "..." },
-   *         "messages": [{ "from": "...", "text": { "body": "..." }, ... }],
-   *         "contacts": [{ "profile": { "name": "..." }, "wa_id": "..." }]
-   *       }
-   *     }]
-   *   }]
-   * }
    */
   @Post('whatsapp/webhook')
   @HttpCode(HttpStatus.OK)
@@ -156,20 +142,70 @@ export class InboundController {
 
   @Post('webhooks/:provider')
   @HttpCode(HttpStatus.OK)
-  receiveWebhook(
+  async receiveWebhook(
     @Param('provider') provider: string,
     @Headers('x-workspace-id') workspaceId: string,
+    @Headers('x-webhook-secret') webhookSecret: string,
     @Body() payload: Record<string, any>,
   ) {
     if (!workspaceId) {
       return { ok: false, reason: 'Missing X-Workspace-Id header' };
     }
+
+    await this.validateWebhookSecret(workspaceId, provider, webhookSecret, payload);
+
     return this.messagesService.receiveInbound(provider, workspaceId, payload);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // HELPERS
   // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Validates the webhook secret for a given workspace and provider.
+   * Looks up the channel config for a HMAC secret or plain token.
+   */
+  private async validateWebhookSecret(
+    workspaceId: string,
+    provider: string,
+    providedSecret: string,
+    payload: Record<string, any>,
+  ): Promise<void> {
+    const channel = await this.prisma.channel.findFirst({
+      where: { workspace_id: workspaceId, type: provider.toUpperCase() as any, status: 'ACTIVE' },
+      select: { config_json: true },
+    });
+
+    if (!channel) {
+      throw new UnauthorizedException('Workspace or provider not found.');
+    }
+
+    const config = parseJsonValue<Record<string, any>>(channel.config_json, {});
+    const storedSecret = config.webhook_secret as string | undefined;
+
+    if (!storedSecret) {
+      this.logger.warn(`No webhook_secret configured for workspace ${workspaceId} provider ${provider}`);
+      return;
+    }
+
+    if (!providedSecret) {
+      throw new UnauthorizedException('Missing X-Webhook-Secret header.');
+    }
+
+    const rawBody = JSON.stringify(payload);
+    const expected = createHmac('sha256', storedSecret).update(rawBody).digest('hex');
+
+    try {
+      const sigBuf = Buffer.from(providedSecret, 'hex');
+      const expBuf = Buffer.from(expected, 'hex');
+      if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+        throw new UnauthorizedException('Invalid webhook secret.');
+      }
+    } catch (e: any) {
+      if (e instanceof UnauthorizedException) throw e;
+      throw new UnauthorizedException('Invalid webhook secret.');
+    }
+  }
 
   /**
    * Busca el workspace_id que tiene un canal WHATSAPP activo con el

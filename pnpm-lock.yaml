@@ -76,6 +76,9 @@ importers:
       '@prisma/client':
         specifier: ^5.0.0
         version: 5.22.0(prisma@5.22.0)
+      '@types/helmet':
+        specifier: ^4.0.0
+        version: 4.0.0
       bcrypt:
         specifier: ^5.1.0
         version: 5.1.1
@@ -88,6 +91,12 @@ importers:
       class-validator:
         specifier: ^0.14.0
         version: 0.14.4
+      file-type:
+        specifier: ^22.0.1
+        version: 22.0.1
+      helmet:
+        specifier: ^8.1.0
+        version: 8.1.0
       multer:
         specifier: ^2.1.1
         version: 2.1.1
@@ -303,6 +312,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.60.5
         version: 5.99.2(react@18.3.1)
+      '@types/helmet':
+        specifier: ^4.0.0
+        version: 4.0.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -327,6 +339,9 @@ importers:
       framer-motion:
         specifier: ^11.13.1
         version: 11.18.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      helmet:
+        specifier: ^8.1.0
+        version: 8.1.0
       http-proxy-middleware:
         specifier: ^3.0.5
         version: 3.0.5
@@ -3473,6 +3488,10 @@ packages:
   '@types/graceful-fs@4.1.9':
     resolution: {integrity: sha512-olP3sd1qOEe5dXTSaFvQG+02VdRXcdytWLAZsAq1PecU8uqQAhkrnbli7DagjtXKW/Bl7YJbUsa8MPcuc8LHEQ==}
 
+  '@types/helmet@4.0.0':
+    resolution: {integrity: sha512-ONIn/nSNQA57yRge3oaMQESef/6QhoeX7llWeDli0UZIfz8TQMkfNPTXA8VnnyeA1WUjG2pGqdjEIueYonMdfQ==}
+    deprecated: This is a stub types definition. helmet provides its own type definitions, so you do not need this installed.
+
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
@@ -4425,6 +4444,10 @@ packages:
     resolution: {integrity: sha512-Ievi/yy8DS3ygGvT47PjSfdFoX+2isQueoYP1cntFW1JLYAuS4GD7NUPGg4zv2iZfV52uDyk5w5Z0TdpRS6Q1g==}
     engines: {node: '>=20'}
 
+  file-type@22.0.1:
+    resolution: {integrity: sha512-ww5Mhre0EE+jmBvOXTmXAbEMuZE7uX4a3+oRCQFNj8w++g3ev913N6tXQz0XTXbueQ5TWQfm6BdaViEHHn8bhA==}
+    engines: {node: '>=22'}
+
   fill-range@7.1.1:
     resolution: {integrity: sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==}
     engines: {node: '>=8'}
@@ -4600,6 +4623,10 @@ packages:
   hasown@2.0.3:
     resolution: {integrity: sha512-ej4AhfhfL2Q2zpMmLo7U1Uv9+PyhIZpgQLGT1F9miIGmiCJIoCgSmczFdrc97mWT4kVY72KA+WnnhJ5pghSvSg==}
     engines: {node: '>= 0.4'}
+
+  helmet@8.1.0:
+    resolution: {integrity: sha512-jOiHyAZsmnr8LqoPGmCjYAaiuWwjAPLgY8ZX2XrmHawt99/u1y6RgrZMTeoPfpUbV96HOalYgz1qzkRbw54Pmg==}
+    engines: {node: '>=18.0.0'}
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
@@ -10072,6 +10099,10 @@ snapshots:
     dependencies:
       '@types/node': 20.19.27
 
+  '@types/helmet@4.0.0':
+    dependencies:
+      helmet: 8.1.0
+
   '@types/http-errors@2.0.5': {}
 
   '@types/http-proxy@1.17.17':
@@ -11150,6 +11181,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  file-type@22.0.1:
+    dependencies:
+      '@tokenizer/inflate': 0.4.1
+      strtok3: 10.3.5
+      token-types: 6.1.2
+      uint8array-extras: 1.5.0
+    transitivePeerDependencies:
+      - supports-color
+
   fill-range@7.1.1:
     dependencies:
       to-regex-range: 5.0.1
@@ -11340,6 +11380,8 @@ snapshots:
   hasown@2.0.3:
     dependencies:
       function-bind: 1.1.2
+
+  helmet@8.1.0: {}
 
   html-escaper@2.0.2: {}
 

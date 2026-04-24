@@ -36,7 +36,11 @@ import { PipelineModule } from './pipeline/pipeline.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    // Multiple throttle tiers: default (100/min) and strict auth tier (10/15min)
+    ThrottlerModule.forRoot([
+      { name: 'default', ttl: 60_000, limit: 100 },
+      { name: 'auth', ttl: 15 * 60_000, limit: 10 },
+    ]),
     ScheduleModule.forRoot(),
 
     PrismaModule,

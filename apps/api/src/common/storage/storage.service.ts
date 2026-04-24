@@ -1,4 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
+import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -91,7 +93,8 @@ export class StorageService {
   // Formato: {workspaceId}/documents/{documentId}/{filename}
 
   buildKey(workspaceId: string, documentId: string, filename: string): string {
-    const safe = filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    return `${workspaceId}/documents/${documentId}/${safe}`;
+    const ext = path.extname(filename).toLowerCase().replace(/[^a-z0-9.]/g, '');
+    const randomName = randomUUID().replace(/-/g, '');
+    return `${workspaceId}/documents/${documentId}/${randomName}${ext}`;
   }
 }

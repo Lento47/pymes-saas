@@ -1,17 +1,51 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Headers,
+  Logger,
+  Post,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
 
 @Controller('hacienda/webhook')
 export class HaciendaWebhookController {
+  private readonly logger = new Logger(HaciendaWebhookController.name);
+
   constructor(private readonly prisma: PrismaService) {}
+
+  private verifySignature(rawBody: string, signature?: string): void {
+    const secret = process.env.HACIENDA_WEBHOOK_SECRET;
+    if (!secret) {
+      this.logger.warn('HACIENDA_WEBHOOK_SECRET not set — skipping signature check');
+      return;
+    }
+    if (!signature) throw new UnauthorizedException('Missing X-Hacienda-Signature header.');
+    const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
+    try {
+      const sigBuf = Buffer.from(signature, 'hex');
+      const expBuf = Buffer.from(expected, 'hex');
+      if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+        throw new UnauthorizedException('Invalid webhook signature.');
+      }
+    } catch (e: any) {
+      if (e instanceof UnauthorizedException) throw e;
+      throw new UnauthorizedException('Invalid webhook signature.');
+    }
+  }
 
   @Post()
   async receiveCallback(
     @Body() payload: any,
+    @Headers('x-hacienda-signature') signature?: string,
     @Headers('user-agent') userAgent?: string,
   ) {
+    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    this.verifySignature(rawBody, signature);
+
     const clave = payload?.clave;
-    if (!clave) {
+    if (!clave || typeof clave !== 'string' || clave.length > 60) {
       return { received: false, reason: 'missing-clave' };
     }
 

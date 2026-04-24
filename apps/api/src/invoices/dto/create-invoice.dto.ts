@@ -1,10 +1,12 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsEnum,
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   ValidateNested,
   Length,
 } from 'class-validator';
@@ -91,5 +93,8 @@ export class CreateInvoiceDto {
 
   @IsOptional()
   @IsArray()
-  notes?: unknown[];
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  @MaxLength(500, { each: true })
+  notes?: string[];
 }

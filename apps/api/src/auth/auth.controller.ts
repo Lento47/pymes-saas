@@ -11,6 +11,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
@@ -35,6 +36,7 @@ export class AuthController {
   }
 
   /** POST /auth/login */
+  @Throttle({ auth: { ttl: 15 * 60_000, limit: 10 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   login(
@@ -45,6 +47,7 @@ export class AuthController {
   }
 
   /** POST /auth/register */
+  @Throttle({ auth: { ttl: 15 * 60_000, limit: 10 } })
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   register(@Body() dto: RegisterDto) {
@@ -59,6 +62,7 @@ export class AuthController {
   }
 
   /** POST /auth/accept-invite */
+  @Throttle({ auth: { ttl: 15 * 60_000, limit: 10 } })
   @Post('accept-invite')
   @HttpCode(HttpStatus.OK)
   acceptInvite(@Body() dto: AcceptInviteDto) {

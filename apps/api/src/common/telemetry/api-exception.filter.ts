@@ -8,6 +8,16 @@ import {
 } from '@nestjs/common';
 import { ErrorReportsService } from '../../error-reports/error-reports.service';
 
+const SENSITIVE_QUERY_PARAMS = new Set(['token', 'password', 'api_key', 'secret', 'access_token', 'refresh_token', 'key', 'auth']);
+
+function sanitizeQuery(query: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(query)) {
+    result[k] = SENSITIVE_QUERY_PARAMS.has(k.toLowerCase()) ? '[REDACTED]' : v;
+  }
+  return result;
+}
+
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(ApiExceptionFilter.name);
@@ -25,7 +35,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const exceptionResponse = isHttpException ? exception.getResponse() : null;
-    const message =
+    const internalMessage =
       typeof exceptionResponse === 'string'
         ? exceptionResponse
         : (exceptionResponse as any)?.message ??
@@ -36,6 +46,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
         ? (exceptionResponse as any).error
         : undefined;
 
+    // Return generic messages for 5xx in production to avoid leaking internals
+    const isProduction = process.env.NODE_ENV === 'production';
+    const clientMessage = isProduction && status >= 500
+      ? 'Internal Server Error'
+      : internalMessage;
+
     if (status >= 500) {
       await this.errorReports.createServerReport({
         workspace_id: request.user?.workspace_id ?? null,
@@ -44,7 +60,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         category: 'HTTP_EXCEPTION',
         severity: 'ERROR',
         title: errorName ?? 'Unhandled server exception',
-        message: Array.isArray(message) ? message.join(' | ') : String(message),
+        message: Array.isArray(internalMessage) ? internalMessage.join(' | ') : String(internalMessage),
         stack: exception instanceof Error ? exception.stack : null,
         route: request.path,
         url: request.originalUrl,
@@ -53,20 +69,20 @@ export class ApiExceptionFilter implements ExceptionFilter {
         user_agent: request.headers['user-agent'] ?? null,
         context_json: {
           params: request.params,
-          query: request.query,
+          query: sanitizeQuery(request.query ?? {}),
           workspace_slug: request.headers['x-workspace-slug'] ?? null,
         },
       });
     }
 
     this.logger.error(
-      `${request.method} ${request.originalUrl} -> ${status}: ${Array.isArray(message) ? message.join(' | ') : message}`,
+      `${request.method} ${request.originalUrl} -> ${status}: ${Array.isArray(internalMessage) ? internalMessage.join(' | ') : internalMessage}`,
       exception instanceof Error ? exception.stack : undefined,
     );
 
     response.status(status).json({
       statusCode: status,
-      message,
+      message: clientMessage,
       error: errorName ?? (status >= 500 ? 'Internal Server Error' : 'Request Error'),
     });
   }

@@ -18,6 +18,7 @@ import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 import { EmailService } from '../email/email.service';
 import { EventsGateway } from '../gateways/events.gateway';
 import { PlanLimitsService } from '../billing/plan-limits.service';
+import { RefreshTokenService } from '../auth/refresh-token.service';
 
 @Injectable()
 export class WorkspacesService {
@@ -31,7 +32,17 @@ export class WorkspacesService {
     private readonly emailService: EmailService,
     private readonly events: EventsGateway,
     private readonly planLimits: PlanLimitsService,
+    private readonly refreshTokenService: RefreshTokenService,
   ) {}
+
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;');
+  }
 
   private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
     const settings =
@@ -560,11 +571,13 @@ export class WorkspacesService {
       return;
     }
 
+    const safeName = this.escapeHtml(params.workspaceName);
+    const safeRole = this.escapeHtml(params.role);
     const subject = `Te invitaron a ${params.workspaceName} en Pymeshub`;
     const bodyHtml = `
       <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
-        <h2 style="margin-bottom: 12px;">Invitación a ${params.workspaceName}</h2>
-        <p>Te agregaron al workspace con rol <strong>${params.role}</strong>.</p>
+        <h2 style="margin-bottom: 12px;">Invitación a ${safeName}</h2>
+        <p>Te agregaron al workspace con rol <strong>${safeRole}</strong>.</p>
         <p>Si ya tienes la app de escritorio, ábrela desde aquí:</p>
         <p><a href="${params.desktopUrl}">Abrir en la app</a></p>
         <p>Si no, usa el navegador:</p>
@@ -612,12 +625,22 @@ export class WorkspacesService {
       throw new BadRequestException('Usa la ruta de transferencia de propiedad.');
     }
 
-    return this.prisma.workspaceUser.update({
+    // ADMIN can only change roles below their own level (AGENT, VIEWER)
+    if (requestingUser.role === 'ADMIN' && membership.role === 'ADMIN') {
+      throw new ForbiddenException('Un ADMIN no puede modificar el rol de otro ADMIN.');
+    }
+
+    const updated = await this.prisma.workspaceUser.update({
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
       },
       data: { role: dto.role },
     });
+
+    // Invalidate all sessions for the affected user so the role change takes effect immediately
+    await this.refreshTokenService.revokeAll(targetUserId, workspaceId);
+
+    return updated;
   }
 
   // ── DELETE /workspaces/current/members/:userId ────────────────────────────

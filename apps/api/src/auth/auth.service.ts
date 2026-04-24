@@ -213,6 +213,11 @@ export class AuthService {
     let resolvedUser = user;
     const requiresAccountSetup = user.status === 'INVITED' || !(user as any).password_hash;
 
+    // Prevent re-use of invite token after the user has already set up their account
+    if (!requiresAccountSetup && user.status === 'ACTIVE' && (user as any).password_hash && !dto.password) {
+      throw new BadRequestException('Esta invitación ya fue aceptada. Inicia sesión normalmente.');
+    }
+
     if (requiresAccountSetup) {
       if (!dto.name?.trim()) {
         throw new BadRequestException('El nombre es requerido para activar la invitación.');
@@ -328,6 +333,9 @@ export class AuthService {
       is_platform_admin: membership.user?.is_platform_admin ?? false,
     });
 
+    // Revoke all existing tokens for the user in the new workspace context
+    // (tokens from all workspaces for this user are revoked to prevent session bleed)
+    await this.refreshTokenService.revokeAll(userId, workspace.id);
     const refresh_token = await this.refreshTokenService.create(userId, workspace.id);
 
     return {
