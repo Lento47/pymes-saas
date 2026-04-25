@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Building2, Users, TrendingUp, ArrowRight } from 'lucide-react';
+import { Loader2, Building2, Users, TrendingUp, ArrowRight, Shield } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { data: stats, isLoading } = useQuery({
@@ -27,6 +27,21 @@ export default function AdminDashboard() {
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold">Platform Admin</h1>
+
+      <div className="flex flex-wrap gap-3">
+        <Link href="/admin/workspaces">
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium hover:bg-blue-100 cursor-pointer transition">
+            <Building2 className="h-4 w-4" />
+            Workspaces
+          </span>
+        </Link>
+        <Link href="/admin/users">
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-50 text-purple-700 text-sm font-medium hover:bg-purple-100 cursor-pointer transition">
+            <Shield className="h-4 w-4" />
+            Users
+          </span>
+        </Link>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

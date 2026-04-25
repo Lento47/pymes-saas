@@ -35,6 +35,7 @@ import NotFound from "@/pages/not-found";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminWorkspaces from "@/pages/admin/workspaces";
 import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
+import AdminUsers from "@/pages/admin/users";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -118,6 +119,9 @@ function AppRouter() {
       </Route>
       <Route path="/admin/workspaces/:slug">
         {(params) => <PlatformAdminLayout><AdminWorkspaceDetail slug={params.slug} /></PlatformAdminLayout>}
+      </Route>
+      <Route path="/admin/users">
+        {() => <PlatformAdminLayout><AdminUsers /></PlatformAdminLayout>}
       </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}
