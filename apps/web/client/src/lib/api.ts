@@ -144,6 +144,8 @@ export const api = {
     request<any>("POST", "/api/auth/invite-preview", { token }),
   acceptInvite: (data: { token: string; name?: string; password?: string }) =>
     request<any>("POST", "/api/auth/accept-invite", data),
+  register: (data: { name: string; email: string; password: string }) =>
+    request<any>("POST", "/api/auth/register", data),
   login: async (email: string, password: string, workspaceSlug: string) => {
     const r = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",

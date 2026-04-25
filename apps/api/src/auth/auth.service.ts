@@ -145,7 +145,25 @@ export class AuthService {
 
     const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
 
-    return { access_token, refresh_token };
+    return {
+      access_token,
+      refresh_token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar_url: null,
+        role: 'OWNER',
+        is_owner: true,
+        is_platform_admin: false,
+        workspace: {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          plan: workspace.plan,
+        },
+      },
+    };
   }
 
   async getInvitePreview(rawToken?: string) {

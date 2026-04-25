@@ -113,6 +113,12 @@ export function useAuth() {
     return res;
   };
 
+  const register = async (data: { name: string; email: string; password: string }) => {
+    const res = await api.register(data);
+    applyAuthResult(res);
+    return res;
+  };
+
   const acceptInvite = async (token: string, name?: string, password?: string) => {
     const res = await api.acceptInvite({ token, name, password });
     applyAuthResult(res);
@@ -143,6 +149,7 @@ export function useAuth() {
     user: _user,
     isAuthenticated: isLoggedIn(),
     login,
+    register,
     acceptInvite,
     logout,
     switchWorkspace,
