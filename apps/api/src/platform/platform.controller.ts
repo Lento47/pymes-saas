@@ -70,4 +70,14 @@ export class PlatformController {
   searchUsers(@Query('email') email?: string) {
     return this.service.searchUsers(email);
   }
+
+  @Patch('users/:id/toggle-admin')
+  togglePlatformAdmin(@Param('id') id: string) {
+    return this.service.togglePlatformAdmin(id);
+  }
+
+  @Get('stats')
+  getStats() {
+    return this.service.getStats();
+  }
 }

@@ -351,4 +351,74 @@ export class PlatformService {
       orderBy: { created_at: 'desc' },
     });
   }
+
+  // ── PATCH /platform/users/:id/toggle-admin ──────────────────────────────
+
+  async togglePlatformAdmin(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, is_platform_admin: true, email: true },
+    });
+
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { is_platform_admin: !user.is_platform_admin },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        is_platform_admin: true,
+      },
+    });
+
+    return updated;
+  }
+
+  // ── GET /platform/stats ─────────────────────────────────────────────────
+
+  async getStats() {
+    const [
+      totalWorkspaces,
+      totalUsers,
+      workspacesByPlan,
+      workspacesByStatus,
+      recentWorkspaces,
+    ] = await Promise.all([
+      this.prisma.workspace.count(),
+      this.prisma.user.count(),
+      this.prisma.workspace.groupBy({
+        by: ['plan'],
+        _count: true,
+      }),
+      this.prisma.workspace.groupBy({
+        by: ['status'],
+        _count: true,
+      }),
+      this.prisma.workspace.findMany({
+        select: { id: true, name: true, slug: true, plan: true, status: true, created_at: true },
+        orderBy: { created_at: 'desc' },
+        take: 10,
+      }),
+    ]);
+
+    const planDistribution = workspacesByPlan.reduce(
+      (acc, { plan, _count }) => ({ ...acc, [plan]: _count }),
+      {} as Record<string, number>,
+    );
+
+    const statusDistribution = workspacesByStatus.reduce(
+      (acc, { status, _count }) => ({ ...acc, [status]: _count }),
+      {} as Record<string, number>,
+    );
+
+    return {
+      totalWorkspaces,
+      totalUsers,
+      planDistribution,
+      statusDistribution,
+      recentWorkspaces,
+    };
+  }
 }
