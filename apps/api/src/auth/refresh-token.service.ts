@@ -85,6 +85,7 @@ export class RefreshTokenService {
       email: stored.user.email,
       workspace_id: stored.workspace_id,
       role: membership.role,
+      is_platform_admin: stored.user.is_platform_admin,
     });
 
     return { accessToken, refreshToken: newRefreshToken };

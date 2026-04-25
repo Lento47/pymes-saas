@@ -49,12 +49,12 @@ export class WorkspacesService {
       hacienda_environment: settings.hacienda_environment ?? 'staging',
       hacienda_callback_url: settings.hacienda_callback_url ?? null,
       hacienda_username_set: !!(settings.hacienda_username),
-      hacienda_password_set: !!(settings.hacienda_password),
+      hacienda_password_set: !!(settings.hacienda_password_enc || settings.hacienda_password),
       hacienda_client_id_set: !!(settings.hacienda_client_id),
       hacienda_token_url_set: !!(settings.hacienda_token_url),
-      hacienda_access_token_set: !!(settings.hacienda_access_token),
+      hacienda_access_token_set: !!(settings.hacienda_access_token_enc || settings.hacienda_access_token),
       hacienda_certificate_path_set: !!(settings.hacienda_certificate_path),
-      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin),
+      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin_enc || settings.hacienda_certificate_pin),
       hacienda_signing_enabled: settings.hacienda_signing_enabled === true,
     };
   }
@@ -159,15 +159,27 @@ export class WorkspacesService {
       }
     };
 
+    // Encrypt sensitive fields; non-sensitive fields stored as plain text.
+    const setOrUnsetEnc = (plainKey: string, encKey: string, value: string | undefined) => {
+      if (value === undefined) return;
+      if (value === '') {
+        delete nextSettings[plainKey];
+        delete nextSettings[encKey];
+      } else {
+        nextSettings[encKey] = this.crypto.encrypt(value);
+        delete nextSettings[plainKey]; // remove legacy plaintext key if present
+      }
+    };
+
     setOrUnset('hacienda_environment', hacienda_environment);
     setOrUnset('hacienda_username', hacienda_username);
-    setOrUnset('hacienda_password', hacienda_password);
+    setOrUnsetEnc('hacienda_password', 'hacienda_password_enc', hacienda_password);
     setOrUnset('hacienda_client_id', hacienda_client_id);
     setOrUnset('hacienda_token_url', hacienda_token_url);
-    setOrUnset('hacienda_access_token', hacienda_access_token);
+    setOrUnsetEnc('hacienda_access_token', 'hacienda_access_token_enc', hacienda_access_token);
     setOrUnset('hacienda_callback_url', hacienda_callback_url);
     setOrUnset('hacienda_certificate_path', hacienda_certificate_path);
-    setOrUnset('hacienda_certificate_pin', hacienda_certificate_pin);
+    setOrUnsetEnc('hacienda_certificate_pin', 'hacienda_certificate_pin_enc', hacienda_certificate_pin);
 
     if (hacienda_signing_enabled !== undefined) {
       nextSettings.hacienda_signing_enabled = hacienda_signing_enabled === 'true';

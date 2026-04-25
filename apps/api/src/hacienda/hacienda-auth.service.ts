@@ -4,10 +4,22 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { CryptoService } from '../common/crypto/crypto.service';
 
 @Injectable()
 export class HaciendaAuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly crypto: CryptoService,
+  ) {}
+
+  /** Decrypt a sensitive setting; falls back to plaintext for legacy data. */
+  private decryptSetting(settings: Record<string, any>, encKey: string, plainKey: string): string | undefined {
+    if (settings[encKey]) {
+      try { return this.crypto.decrypt(settings[encKey]); } catch { /* fall through */ }
+    }
+    return settings[plainKey] ?? undefined;
+  }
 
   async getAccessToken(workspaceId: string): Promise<string> {
     const workspace = await this.prisma.workspace.findUnique({
@@ -19,11 +31,14 @@ export class HaciendaAuthService {
     }
 
     const settings = this.readSettings(workspace.settings_json);
-    if (settings.hacienda_access_token) {
-      return settings.hacienda_access_token;
+
+    const accessToken = this.decryptSetting(settings, 'hacienda_access_token_enc', 'hacienda_access_token');
+    if (accessToken) {
+      return accessToken;
     }
 
-    if (!settings.hacienda_token_url || !settings.hacienda_username || !settings.hacienda_password) {
+    const password = this.decryptSetting(settings, 'hacienda_password_enc', 'hacienda_password');
+    if (!settings.hacienda_token_url || !settings.hacienda_username || !password) {
       throw new ServiceUnavailableException(
         'Falta configuración de autenticación Hacienda en el workspace.',
       );
@@ -33,7 +48,7 @@ export class HaciendaAuthService {
     body.set('grant_type', 'password');
     body.set('client_id', settings.hacienda_client_id ?? 'api-stag');
     body.set('username', settings.hacienda_username);
-    body.set('password', settings.hacienda_password);
+    body.set('password', password);
 
     const response = await fetch(settings.hacienda_token_url, {
       method: 'POST',

@@ -64,6 +64,12 @@ export class DocumentsService {
       });
       if (!c) throw new NotFoundException('Conversación no encontrada.');
     }
+    if (metadata.task_id) {
+      const t = await this.prisma.task.findFirst({
+        where: { id: metadata.task_id, workspace_id: workspaceId },
+      });
+      if (!t) throw new NotFoundException('Tarea no encontrada.');
+    }
 
     // Crear registro en DB con status UPLOADED
     const doc = await this.prisma.document.create({
