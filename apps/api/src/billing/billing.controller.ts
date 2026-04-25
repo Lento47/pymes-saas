@@ -69,6 +69,12 @@ export class BillingController {
     return { received: true };
   }
 
+  @Get('prices')
+  @UseGuards(JwtAuthGuard)
+  getAvailablePrices() {
+    return this.paddleService.getAvailablePrices();
+  }
+
   @Get('portal')
   @UseGuards(JwtAuthGuard)
   async getBillingPortal(@CurrentUser() user: AuthUser) {

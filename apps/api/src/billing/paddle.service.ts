@@ -374,6 +374,19 @@ export class PaddleService {
     }
   }
 
+  // ── Plan prices ──────────────────────────────────────────────────────────
+
+  getAvailablePrices(): Record<string, string | null> {
+    return {
+      starter_monthly: this.configService.get<string>('PADDLE_PRICE_STARTER_MONTHLY') ?? null,
+      starter_annual: this.configService.get<string>('PADDLE_PRICE_STARTER_ANNUAL') ?? null,
+      growth_monthly: this.configService.get<string>('PADDLE_PRICE_GROWTH_MONTHLY') ?? null,
+      growth_annual: this.configService.get<string>('PADDLE_PRICE_GROWTH_ANNUAL') ?? null,
+      enterprise_monthly: this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_MONTHLY') ?? null,
+      enterprise_annual: this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_ANNUAL') ?? null,
+    };
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   private mapPaddleStatus(status: string): string {

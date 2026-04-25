@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
@@ -5,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
+import { api } from '@/lib/api';
 
 async function fetchWorkspaceSubscription(workspaceSlug: string) {
   const response = await fetch(`/api/workspaces/${workspaceSlug}/subscription`);
@@ -21,18 +23,21 @@ async function fetchBillingPortalLink() {
 const PRICING_TIERS = [
   {
     name: 'Starter',
+    planKey: 'starter',
     monthlyUSD: 25,
     monthlyCRC: 12900,
     features: ['500 Contacts', '100 invoices/month', '5 Automations', '1 User'],
   },
   {
     name: 'Growth',
+    planKey: 'growth',
     monthlyUSD: 59,
     monthlyCRC: 29900,
     features: ['2,500 Contacts', '500 invoices/month', '25 Automations', '5 Users'],
   },
   {
     name: 'Business',
+    planKey: 'enterprise',
     monthlyUSD: 119,
     monthlyCRC: 59900,
     features: ['15,000 Contacts', '2,000 invoices/month', '100 Automations', '15 Users'],
@@ -46,6 +51,9 @@ export default function BillingPage() {
   const success = params.get('success');
   const canceled = params.get('canceled');
 
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
     queryKey: ['subscription', workspaceSlug],
     queryFn: () => fetchWorkspaceSubscription(workspaceSlug || ''),
@@ -57,6 +65,36 @@ export default function BillingPage() {
     queryFn: fetchBillingPortalLink,
     enabled: isAuthenticated,
   });
+
+  const { data: prices } = useQuery({
+    queryKey: ['billingPrices'],
+    queryFn: () => api.getBillingPrices(),
+    enabled: isAuthenticated,
+  });
+
+  async function handleUpgrade(tier: (typeof PRICING_TIERS)[number]) {
+    const priceId = prices?.[`${tier.planKey}_monthly`];
+    if (!priceId) {
+      setCheckoutError('Plan pricing is not configured yet. Please contact support.');
+      return;
+    }
+
+    setCheckoutLoading(tier.planKey);
+    setCheckoutError(null);
+
+    try {
+      const result = await api.createCheckout(priceId);
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+      } else {
+        setCheckoutError('Could not create checkout session. Please try again.');
+      }
+    } catch (err: any) {
+      setCheckoutError(err?.message ?? 'Checkout failed. Please try again.');
+    } finally {
+      setCheckoutLoading(null);
+    }
+  }
 
   if (!isAuthenticated) {
     return (
@@ -86,6 +124,12 @@ export default function BillingPage() {
           <AlertDescription className="text-yellow-800">
             Payment was canceled. Your subscription remains unchanged.
           </AlertDescription>
+        </Alert>
+      )}
+
+      {checkoutError && (
+        <Alert className="bg-red-50 border-red-200">
+          <AlertDescription className="text-red-800">{checkoutError}</AlertDescription>
         </Alert>
       )}
 
@@ -151,39 +195,58 @@ export default function BillingPage() {
       <div id="upgrade-plans" className="space-y-4">
         <h2 className="text-2xl font-bold">Available Plans</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {PRICING_TIERS.map((tier) => (
-            <Card key={tier.name}>
-              <CardHeader>
-                <CardTitle>{tier.name}</CardTitle>
-                <CardDescription>
-                  <div className="text-2xl font-bold text-gray-900 mt-2">
-                    ${tier.monthlyUSD}
-                    <span className="text-sm text-gray-600 font-normal">/month</span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    ₡{tier.monthlyCRC.toLocaleString()}/month
-                  </div>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-2">
-                  {tier.features.map((feature) => (
-                    <li key={feature} className="text-sm text-gray-600 flex items-start">
-                      <span className="text-green-600 mr-2">✓</span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className="w-full"
-                  variant={subscription?.plan?.toUpperCase() === tier.name.toUpperCase() ? 'outline' : 'default'}
-                  disabled={subscription?.plan?.toUpperCase() === tier.name.toUpperCase()}
-                >
-                  {subscription?.plan?.toUpperCase() === tier.name.toUpperCase() ? 'Current Plan' : 'Upgrade'}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {PRICING_TIERS.map((tier) => {
+            const isCurrentPlan =
+              subscription?.plan?.toUpperCase() === tier.name.toUpperCase() ||
+              subscription?.plan?.toUpperCase() === tier.planKey.toUpperCase();
+            const isLoading = checkoutLoading === tier.planKey;
+            const hasPriceId = !!prices?.[`${tier.planKey}_monthly`];
+
+            return (
+              <Card key={tier.name}>
+                <CardHeader>
+                  <CardTitle>{tier.name}</CardTitle>
+                  <CardDescription>
+                    <div className="text-2xl font-bold text-gray-900 mt-2">
+                      ${tier.monthlyUSD}
+                      <span className="text-sm text-gray-600 font-normal">/month</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      ₡{tier.monthlyCRC.toLocaleString()}/month
+                    </div>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ul className="space-y-2">
+                    {tier.features.map((feature) => (
+                      <li key={feature} className="text-sm text-gray-600 flex items-start">
+                        <span className="text-green-600 mr-2">✓</span>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className="w-full"
+                    variant={isCurrentPlan ? 'outline' : 'default'}
+                    disabled={isCurrentPlan || isLoading || !hasPriceId}
+                    onClick={() => handleUpgrade(tier)}
+                    title={!hasPriceId ? 'Pricing not configured' : undefined}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Redirecting...
+                      </>
+                    ) : isCurrentPlan ? (
+                      'Current Plan'
+                    ) : (
+                      'Upgrade'
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
 
