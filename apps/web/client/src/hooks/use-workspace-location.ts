@@ -4,7 +4,8 @@ import { getWorkspaceSlug } from "@/lib/api";
 const PUBLIC_PATHS = ["/login", "/accept-invite", "/legal"];
 
 function isPublicPath(path: string): boolean {
-  return PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
+  const cleanPath = path.split("?")[0];
+  return PUBLIC_PATHS.some((p) => cleanPath === p || cleanPath.startsWith(p + "/"));
 }
 
 function readRawHash(): string {
@@ -13,10 +14,12 @@ function readRawHash(): string {
 
 function stripSlug(hash: string, slug: string | null): string {
   if (!slug) return hash;
+  const [pathPart, queryPart] = hash.split("?");
   const prefix = `/${slug}`;
-  if (hash === prefix) return "/";
-  if (hash.startsWith(prefix + "/")) return hash.slice(prefix.length);
-  return hash;
+  let stripped = pathPart;
+  if (pathPart === prefix) stripped = "/";
+  else if (pathPart.startsWith(prefix + "/")) stripped = pathPart.slice(prefix.length);
+  return queryPart ? `${stripped}?${queryPart}` : stripped;
 }
 
 function addSlug(path: string, slug: string | null): string {
@@ -31,10 +34,12 @@ function maybeNormalizeHash(): void {
   const slug = getWorkspaceSlug();
   if (!slug) return;
   const hash = readRawHash();
-  if (isPublicPath(hash)) return;
-  const expected = addSlug(hash, slug);
-  if (expected !== hash) {
-    history.replaceState(null, "", `#${expected}`);
+  const cleanPath = hash.split("?")[0];
+  if (isPublicPath(cleanPath)) return;
+  const expected = addSlug(cleanPath, slug);
+  if (expected !== cleanPath) {
+    const queryPart = hash.includes("?") ? hash.slice(hash.indexOf("?")) : "";
+    history.replaceState(null, "", `#${expected}${queryPart}`);
   }
 }
 
