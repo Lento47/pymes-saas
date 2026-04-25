@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug } from "@/lib/api";
+import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug, restoreSession } from "@/lib/api";
 import { connectSocket, disconnectSocket, getSocket } from "./use-socket";
 import { queryClient } from "@/lib/queryClient";
 
@@ -98,13 +98,26 @@ export function useAuth() {
   useEffect(() => subscribe(), [subscribe]);
 
   useEffect(() => {
-    const workspaceSlug = getWorkspaceSlug();
-    const hasWorkspaceMismatch =
-      !!_user?.workspace?.slug && !!workspaceSlug && _user.workspace.slug !== workspaceSlug;
+    async function init() {
+      // Try to restore session from sessionStorage on page reload
+      if (!isLoggedIn()) {
+        const restored = await restoreSession();
+        if (restored) {
+          connectSocket();
+          attachWorkspaceUpdateListener();
+        }
+        notifyListeners();
+      }
 
-    if (isLoggedIn() && (!_user || hasWorkspaceMismatch)) {
-      void hydrateUser();
+      const workspaceSlug = getWorkspaceSlug();
+      const hasWorkspaceMismatch =
+        !!_user?.workspace?.slug && !!workspaceSlug && _user.workspace.slug !== workspaceSlug;
+
+      if (isLoggedIn() && (!_user || hasWorkspaceMismatch)) {
+        void hydrateUser();
+      }
     }
+    void init();
   }, []);
 
   const login = async (email: string, password: string, workspaceSlug: string) => {

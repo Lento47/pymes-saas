@@ -129,9 +129,6 @@ function AppRouter() {
       <Route path="/help/:slug">
         {(params) => <ProtectedLayout><HelpDocumentPage slug={params.slug} /></ProtectedLayout>}
       </Route>
-      <Route path="/:slug*">
-        {() => <Redirect to="/" />}
-      </Route>
       <Route component={NotFound} />
     </Switch>
   );

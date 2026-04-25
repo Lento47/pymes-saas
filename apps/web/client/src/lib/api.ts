@@ -3,7 +3,7 @@ import { reportClientError } from "@/lib/error-reporting";
 const API_BASE = import.meta.env.VITE_API_URL ?? 
   ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
-// ── In-memory state only (tokens NOT stored in localStorage for security) ──────
+// ── Auth state (tokens in-memory only; slug in sessionStorage for reload support) ──
 let _token: string | null = null;
 let _workspaceSlug: string | null = null;
 let _refreshToken: string | null = null;
@@ -12,16 +12,31 @@ export function setAuthState(token: string, slug: string, refreshToken?: string)
   _token = token;
   _workspaceSlug = slug;
   if (refreshToken) _refreshToken = refreshToken;
+  try {
+    sessionStorage.setItem('pymes_slug', slug);
+    if (refreshToken) sessionStorage.setItem('pymes_refresh', refreshToken);
+  } catch { /* ignore */ }
 }
 
 export function clearAuthState() {
   _token = null;
   _workspaceSlug = null;
   _refreshToken = null;
+  try {
+    sessionStorage.removeItem('pymes_slug');
+    sessionStorage.removeItem('pymes_refresh');
+  } catch { /* ignore */ }
 }
 
 export function getAuthToken() { return _token; }
-export function getWorkspaceSlug() { return _workspaceSlug; }
+export function getWorkspaceSlug() {
+  if (_workspaceSlug) return _workspaceSlug;
+  try { return sessionStorage.getItem('pymes_slug') || null; } catch { return null; }
+}
+export function getRefreshToken() {
+  if (_refreshToken) return _refreshToken;
+  try { return sessionStorage.getItem('pymes_refresh') || null; } catch { return null; }
+}
 export function isLoggedIn() { return !!_token; }
 
 /**
@@ -42,16 +57,16 @@ async function _tryRefresh(): Promise<boolean> {
 
   _refreshPromise = (async () => {
     try {
-      if (!_refreshToken) return false;
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) return false;
 
       const res = await fetch(`${API_BASE}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: _refreshToken }),
+        body: JSON.stringify({ refresh_token: refreshToken }),
       });
 
       if (!res.ok) return false;
-
       const data = await res.json();
       _token = data.access_token;
       if (data.refresh_token) _refreshToken = data.refresh_token;
@@ -64,6 +79,18 @@ async function _tryRefresh(): Promise<boolean> {
   })();
 
   return _refreshPromise;
+}
+
+export async function restoreSession(): Promise<boolean> {
+  const slug = getWorkspaceSlug();
+  if (slug) _workspaceSlug = slug;
+
+  const refreshToken = getRefreshToken();
+  if (refreshToken) {
+    _refreshToken = refreshToken;
+    return _tryRefresh();
+  }
+  return false;
 }
 
 async function request<T>(
