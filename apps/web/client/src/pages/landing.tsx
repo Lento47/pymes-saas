@@ -454,6 +454,11 @@ export default function Landing() {
 
                 <div className="flex items-center gap-2 md:gap-4">
                   <LanguageSwitcher variant="marketing" />
+                  <Link href="/pricing">
+                    <a className="font-marketing hidden text-sm font-medium text-white/78 transition hover:text-white md:inline-flex">
+                      {copy.nav.pricing}
+                    </a>
+                  </Link>
                   <Link href="/documentation">
                     <a className="font-marketing hidden text-sm font-medium text-white/78 transition hover:text-white md:inline-flex">
                       {copy.nav.documentation}
