@@ -52,10 +52,10 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
           <>
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-bold text-white">${price}</span>
-              <span className="text-white/60">/month</span>
+              <span className="text-white/60">/{isAnnual ? 'year' : 'month'}</span>
             </div>
             <div className="mt-2 text-sm text-white/60">
-              ₡{priceCRC.toLocaleString()} / mes
+              ₡{priceCRC.toLocaleString()} / {isAnnual ? 'año' : 'mes'}
             </div>
           </>
         )}
