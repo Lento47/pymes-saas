@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
+import { usePaddle } from '@/hooks/use-paddle';
 import { useLocation } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ const PRICING_TIERS = [
     monthlyUSD: 25,
     monthlyCRC: 12900,
     features: ['500 Contacts', '100 invoices/month', '5 Automations', '1 User'],
+    priceId: import.meta.env.VITE_PADDLE_PRICE_STARTER_MONTHLY as string | undefined,
   },
   {
     name: 'Growth',
@@ -32,12 +34,14 @@ const PRICING_TIERS = [
     monthlyCRC: 29900,
     features: ['2,500 Contacts', '500 invoices/month', '25 Automations', '5 Users'],
     popular: true,
+    priceId: import.meta.env.VITE_PADDLE_PRICE_GROWTH_MONTHLY as string | undefined,
   },
   {
     name: 'Business',
     monthlyUSD: 119,
     monthlyCRC: 59900,
     features: ['15,000 Contacts', '2,000 invoices/month', '100 Automations', '15 Users'],
+    priceId: import.meta.env.VITE_PADDLE_PRICE_BUSINESS_MONTHLY as string | undefined,
   },
 ];
 
@@ -52,6 +56,7 @@ const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secon
 
 export default function BillingPage() {
   const { user, isAuthenticated } = useAuth();
+  const paddle = usePaddle();
   const workspaceSlug = user?.workspace?.slug;
   const [location] = useLocation();
   const params = new URLSearchParams(location.split('?')[1]);
@@ -237,7 +242,23 @@ export default function BillingPage() {
                   <Button
                     className="w-full"
                     variant={isCurrent ? 'outline' : 'default'}
-                    disabled={isCurrent}
+                    disabled={isCurrent || !tier.priceId || !paddle}
+                    onClick={() => {
+                      if (!tier.priceId || !paddle) return;
+                      paddle.Checkout.open({
+                        items: [{ priceId: tier.priceId, quantity: 1 }],
+                        customData: {
+                          workspaceSlug: workspaceSlug ?? null,
+                          plan: tier.name.toLowerCase(),
+                        },
+                        settings: {
+                          displayMode: 'overlay',
+                          theme: 'dark',
+                          locale: 'en',
+                          successUrl: `${window.location.origin}/#/settings/billing?success=true`,
+                        },
+                      });
+                    }}
                   >
                     {isCurrent ? 'Current Plan' : 'Upgrade'}
                   </Button>
