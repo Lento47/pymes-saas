@@ -50,12 +50,10 @@ function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
 }
 
 function RootRoute() {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? (
-    <ProtectedLayout><Dashboard /></ProtectedLayout>
-  ) : (
-    <Landing />
-  );
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated) return <Landing />;
+  if (user?.is_platform_admin) return <Redirect to="/admin" />;
+  return <ProtectedLayout><Dashboard /></ProtectedLayout>;
 }
 
 function AppRouter() {
