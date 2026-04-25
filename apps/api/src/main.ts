@@ -7,7 +7,7 @@ import { ApiExceptionFilter } from './common/telemetry/api-exception.filter';
 import { ErrorReportsService } from './error-reports/error-reports.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,

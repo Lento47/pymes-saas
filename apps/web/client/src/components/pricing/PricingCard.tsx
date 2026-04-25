@@ -3,6 +3,7 @@ import { PricingTier } from '@/data/pricing.data';
 import { Check, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePaddle } from '@/hooks/use-paddle';
+import { useAuth } from '@/hooks/use-auth';
 import { useState } from 'react';
 
 interface PricingCardProps {
@@ -13,6 +14,7 @@ interface PricingCardProps {
 export function PricingCard({ tier, isAnnual }: PricingCardProps) {
   const [, navigate] = useLocation();
   const paddle = usePaddle();
+  const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const price = isAnnual ? tier.annualUSD : tier.monthlyUSD;
@@ -23,14 +25,24 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
 
   const handleCTA = async () => {
     if (priceId && paddle) {
+      const origin = window.location.origin;
+      const successUrl = isAuthenticated
+        ? `${origin}/billing?paddle=success`
+        : `${origin}/register?plan=${tier.name.toLowerCase().replace('+', 'plus')}`;
+
       setLoading(true);
       try {
         await paddle.Checkout.open({
           items: [{ priceId, quantity: 1 }],
+          customData: {
+            workspaceSlug: user?.workspace?.slug ?? null,
+            plan: tier.name.toLowerCase().replace('+', 'plus'),
+          },
           settings: {
             displayMode: 'overlay',
             theme: 'dark',
             locale: 'en',
+            successUrl,
           },
         });
       } finally {

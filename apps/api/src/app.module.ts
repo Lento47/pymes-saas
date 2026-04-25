@@ -31,6 +31,7 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
 import { HaciendaModule } from './hacienda/hacienda.module';
+import { PaddleModule } from './paddle/paddle.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 
 @Module({
@@ -73,6 +74,7 @@ import { PipelineModule } from './pipeline/pipeline.module';
     PipelineModule,
     ErrorReportsModule,
     PlatformModule,
+    PaddleModule,
 
     WorkersModule,
     EventsModule,

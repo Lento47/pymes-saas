@@ -38,6 +38,7 @@ enum BillingProvider {
   PAYPAL
   BAC
   CUSTOM
+  PADDLE
 }
 
 enum BillingInterval {
