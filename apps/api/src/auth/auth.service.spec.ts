@@ -139,6 +139,10 @@ describe('AuthService', () => {
 
       expect(result.access_token).toBeDefined();
       expect(result.refresh_token).toBeDefined();
+      expect(result.user.email).toBe(dto.email);
+      expect(result.user.role).toBe('OWNER');
+      expect(result.user.workspace.slug).toBe(workspace.slug);
+      expect((result as any).workspace.slug).toBe(workspace.slug);
       expect(mockPrisma.user.create).toHaveBeenCalledTimes(1);
       expect(mockPrisma.workspace.create).toHaveBeenCalledTimes(1);
     });
@@ -157,6 +161,11 @@ describe('AuthService', () => {
       await expect(service.register(dto)).resolves.toEqual({
         access_token: expect.any(String),
         refresh_token: expect.anything(),
+        user: expect.objectContaining({
+          email: dto.email,
+          workspace: expect.objectContaining({ slug: workspace.slug }),
+        }),
+        workspace: expect.objectContaining({ slug: workspace.slug }),
       });
       expect(mockPrisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
