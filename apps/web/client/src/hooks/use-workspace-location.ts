@@ -44,7 +44,8 @@ function maybeNormalizeHash(): void {
 }
 
 function getLocation(): string {
-  return stripSlug(readRawHash(), getWorkspaceSlug());
+  const hash = stripSlug(readRawHash(), getWorkspaceSlug());
+  return hash.split("?")[0];
 }
 
 function subscribe(onChange: () => void): () => void {
