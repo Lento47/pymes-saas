@@ -1,5 +1,5 @@
 import { Switch, Route, Router, Redirect } from "wouter";
-import { useWorkspaceHashLocation } from "@/hooks/use-workspace-location";
+import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
@@ -129,12 +129,17 @@ function AppRouter() {
       <Route path="/help/:slug">
         {(params) => <ProtectedLayout><HelpDocumentPage slug={params.slug} /></ProtectedLayout>}
       </Route>
+      <Route path="/:slug*">
+        {() => <Redirect to="/" />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
 }
 
 export default function App() {
+  normalizeInitialLocation();
+
   return (
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
