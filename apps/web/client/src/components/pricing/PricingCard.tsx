@@ -1,7 +1,9 @@
 import { useLocation } from 'wouter';
 import { PricingTier } from '@/data/pricing.data';
-import { Check, ArrowRight } from 'lucide-react';
+import { Check, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePaddle } from '@/hooks/use-paddle';
+import { useState } from 'react';
 
 interface PricingCardProps {
   tier: PricingTier;
@@ -10,16 +12,40 @@ interface PricingCardProps {
 
 export function PricingCard({ tier, isAnnual }: PricingCardProps) {
   const [, navigate] = useLocation();
+  const paddle = usePaddle();
+  const [loading, setLoading] = useState(false);
+
   const price = isAnnual ? tier.annualUSD : tier.monthlyUSD;
   const priceCRC = isAnnual ? tier.annualCRC : tier.monthlyCRC;
   const isEnterprise = tier.name === 'Business+';
 
-  const handleCTA = () => {
+  const priceId = isAnnual ? tier.paddlePriceIdAnnual : tier.paddlePriceIdMonthly;
+
+  const handleCTA = async () => {
     if (isEnterprise) {
       navigate('/contact-sales');
-    } else {
-      navigate(`/login?plan=${tier.name.toLowerCase().replace('+', 'plus')}`);
+      return;
     }
+
+    if (priceId && paddle) {
+      setLoading(true);
+      try {
+        await paddle.Checkout.open({
+          items: [{ priceId, quantity: 1 }],
+          settings: {
+            displayMode: 'overlay',
+            theme: 'dark',
+            locale: 'en',
+          },
+        });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Fallback: no Paddle price ID configured yet
+    navigate(`/login?plan=${tier.name.toLowerCase().replace('+', 'plus')}`);
   };
 
   return (
@@ -64,14 +90,21 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
       {/* CTA Button */}
       <button
         onClick={handleCTA}
+        disabled={loading}
         className={cn(
-          'mt-8 w-full rounded-full px-4 py-3 font-semibold transition flex items-center justify-center gap-2 text-sm',
+          'mt-8 w-full rounded-full px-4 py-3 font-semibold transition flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed',
           tier.popular
             ? 'glow-button bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] text-[#051127] hover:translate-y-[-1px]'
             : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/[0.08]'
         )}>
-        {tier.cta}
-        {tier.popular && <ArrowRight className="h-4 w-4" />}
+        {loading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <>
+            {tier.cta}
+            {tier.popular && <ArrowRight className="h-4 w-4" />}
+          </>
+        )}
       </button>
 
       {/* Features List */}

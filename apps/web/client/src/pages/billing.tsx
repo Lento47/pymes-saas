@@ -51,7 +51,8 @@ const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secon
 };
 
 export default function BillingPage() {
-  const { workspaceSlug, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const workspaceSlug = user?.workspace?.slug;
   const [location] = useLocation();
   const params = new URLSearchParams(location.split('?')[1]);
   const success = params.get('success');

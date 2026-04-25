@@ -155,7 +155,7 @@ export default function PricingPage() {
                                 <>
                                   <Check className="h-4 w-4 text-[#dfff4a]" />
                                   <span className="ml-2 font-semibold text-white">
-                                    {row.key === 'users' && tier.limits.users}
+                                    {row.key === 'users' && tier.users}
                                     {row.key === 'contacts' && tier.limits.contacts.toLocaleString()}
                                     {row.key === 'invoicesPerMonth' && tier.limits.invoicesPerMonth.toLocaleString()}
                                     {row.key === 'automations' && tier.limits.automations}

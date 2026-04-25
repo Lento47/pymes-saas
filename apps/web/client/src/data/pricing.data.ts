@@ -16,6 +16,9 @@ export interface PricingTier {
   };
   popular: boolean;
   cta: string;
+  /** Paddle sandbox/production price IDs — replace with IDs from your Paddle dashboard */
+  paddlePriceIdMonthly?: string;
+  paddlePriceIdAnnual?: string;
 }
 
 export interface AddOn {
@@ -56,6 +59,8 @@ export const PRICING_TIERS: PricingTier[] = [
     },
     popular: false,
     cta: 'Start free trial',
+    paddlePriceIdMonthly: import.meta.env.VITE_PADDLE_PRICE_STARTER_MONTHLY,
+    paddlePriceIdAnnual: import.meta.env.VITE_PADDLE_PRICE_STARTER_ANNUAL,
   },
   {
     name: 'Growth',
@@ -87,6 +92,8 @@ export const PRICING_TIERS: PricingTier[] = [
     },
     popular: true,
     cta: 'Start with Growth',
+    paddlePriceIdMonthly: import.meta.env.VITE_PADDLE_PRICE_GROWTH_MONTHLY,
+    paddlePriceIdAnnual: import.meta.env.VITE_PADDLE_PRICE_GROWTH_ANNUAL,
   },
   {
     name: 'Business',
@@ -119,6 +126,8 @@ export const PRICING_TIERS: PricingTier[] = [
     },
     popular: false,
     cta: 'Upgrade to Business',
+    paddlePriceIdMonthly: import.meta.env.VITE_PADDLE_PRICE_BUSINESS_MONTHLY,
+    paddlePriceIdAnnual: import.meta.env.VITE_PADDLE_PRICE_BUSINESS_ANNUAL,
   },
   {
     name: 'Business+',
