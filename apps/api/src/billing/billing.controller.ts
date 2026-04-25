@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, RawBodyRequest, Req, UseGuards, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Get, Post, RawBodyRequest, Req, UseGuards, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { PaddleService } from './paddle.service';
@@ -23,18 +23,25 @@ export class BillingController {
       throw new BadRequestException('priceId is required');
     }
 
-    const customerId = await this.paddleService.createOrGetCustomer(
-      user.workspace_id,
-      user.email,
-    );
+    try {
+      const customerId = await this.paddleService.createOrGetCustomer(
+        user.workspace_id,
+        user.email,
+      );
 
-    const result = await this.paddleService.createTransaction(
-      user.workspace_id,
-      customerId,
-      dto.priceId,
-    );
+      const result = await this.paddleService.createTransaction(
+        user.workspace_id,
+        customerId,
+        dto.priceId,
+      );
 
-    return result;
+      return result;
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException(
+        `Checkout failed: ${(error as Error).message}`,
+      );
+    }
   }
 
   @Post('webhook')

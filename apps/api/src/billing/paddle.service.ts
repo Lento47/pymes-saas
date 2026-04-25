@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { Paddle, Environment, LogLevel } from '@paddle/paddle-node-sdk';
+import { Paddle, Environment, LogLevel, type EventEntity } from '@paddle/paddle-node-sdk';
 
 @Injectable()
 export class PaddleService {
@@ -9,11 +9,11 @@ export class PaddleService {
   private readonly logger = new Logger(PaddleService.name);
 
   constructor(
-    configService: ConfigService,
+    private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    const apiKey = configService.get<string>('PADDLE_API_KEY');
-    const environment = configService.get<string>('PADDLE_ENVIRONMENT', 'sandbox');
+    const apiKey = this.configService.get<string>('PADDLE_API_KEY');
+    const environment = this.configService.get<string>('PADDLE_ENVIRONMENT', 'sandbox');
 
     if (apiKey) {
       this.paddle = new Paddle(apiKey, {
@@ -22,7 +22,12 @@ export class PaddleService {
       });
       this.logger.log(`Paddle initialized in ${environment} mode`);
     } else {
-      this.logger.warn('PADDLE_API_KEY not set — billing disabled');
+      const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+      if (nodeEnv === 'production') {
+        this.logger.error('PADDLE_API_KEY is required in production — billing disabled, startup may be impacted');
+      } else {
+        this.logger.warn('PADDLE_API_KEY not set — billing disabled (non-production environment)');
+      }
     }
   }
 
@@ -98,7 +103,7 @@ export class PaddleService {
 
     return {
       transactionId: transaction.id,
-      checkoutUrl: (transaction as any).checkout?.url ?? null,
+      checkoutUrl: transaction.checkout?.url ?? null,
     };
   }
 
@@ -125,7 +130,7 @@ export class PaddleService {
       subscriptionIds,
     );
 
-    return (session.urls as any).general as string;
+    return session.urls.general.overview;
   }
 
   // ── Subscription management ──────────────────────────────────────────────
@@ -168,9 +173,9 @@ export class PaddleService {
     return paddle.webhooks.unmarshal(body, secret, signatureHeader);
   }
 
-  async handleWebhookEvent(event: any): Promise<void> {
-    const eventId = event.eventId || event.event_id;
-    const eventType = event.eventType || event.event_type;
+  async handleWebhookEvent(event: EventEntity): Promise<void> {
+    const eventId = event.eventId;
+    const eventType = event.eventType;
 
     const existing = await this.prisma.stripeEvent.findUnique({
       where: { external_id: eventId },
@@ -206,7 +211,7 @@ export class PaddleService {
         create: {
           external_id: eventId,
           type: eventType,
-          data: event as any,
+          data: event as unknown as Record<string, unknown> as any,
           processed: true,
         },
         update: { processed: true },
@@ -221,7 +226,7 @@ export class PaddleService {
         create: {
           external_id: eventId,
           type: eventType,
-          data: event as any,
+          data: event as unknown as Record<string, unknown> as any,
           processed: false,
         },
         update: { processed: false },
@@ -352,14 +357,23 @@ export class PaddleService {
   }
 
   private mapPaddlePriceToPlan(priceId: string): 'FREE' | 'STARTER' | 'GROWTH' | 'ENTERPRISE' {
-    const map: Record<string, 'FREE' | 'STARTER' | 'GROWTH' | 'ENTERPRISE'> = {
-      [process.env.PADDLE_PRICE_STARTER_MONTHLY || '']: 'STARTER',
-      [process.env.PADDLE_PRICE_STARTER_ANNUAL || '']: 'STARTER',
-      [process.env.PADDLE_PRICE_GROWTH_MONTHLY || '']: 'GROWTH',
-      [process.env.PADDLE_PRICE_GROWTH_ANNUAL || '']: 'GROWTH',
-      [process.env.PADDLE_PRICE_ENTERPRISE_MONTHLY || '']: 'ENTERPRISE',
-      [process.env.PADDLE_PRICE_ENTERPRISE_ANNUAL || '']: 'ENTERPRISE',
-    };
-    return map[priceId] ?? 'STARTER';
+    if (!priceId) return 'FREE';
+
+    const priceVars: Record<string, 'FREE' | 'STARTER' | 'GROWTH' | 'ENTERPRISE'> = {};
+    const starterMonthly = process.env.PADDLE_PRICE_STARTER_MONTHLY;
+    const starterAnnual = process.env.PADDLE_PRICE_STARTER_ANNUAL;
+    const growthMonthly = process.env.PADDLE_PRICE_GROWTH_MONTHLY;
+    const growthAnnual = process.env.PADDLE_PRICE_GROWTH_ANNUAL;
+    const enterpriseMonthly = process.env.PADDLE_PRICE_ENTERPRISE_MONTHLY;
+    const enterpriseAnnual = process.env.PADDLE_PRICE_ENTERPRISE_ANNUAL;
+
+    if (starterMonthly) priceVars[starterMonthly] = 'STARTER';
+    if (starterAnnual) priceVars[starterAnnual] = 'STARTER';
+    if (growthMonthly) priceVars[growthMonthly] = 'GROWTH';
+    if (growthAnnual) priceVars[growthAnnual] = 'GROWTH';
+    if (enterpriseMonthly) priceVars[enterpriseMonthly] = 'ENTERPRISE';
+    if (enterpriseAnnual) priceVars[enterpriseAnnual] = 'ENTERPRISE';
+
+    return priceVars[priceId] ?? 'FREE';
   }
 }

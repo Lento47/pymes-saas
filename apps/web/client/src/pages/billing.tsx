@@ -83,19 +83,23 @@ export default function BillingPage() {
   const checkoutMutation = useMutation({
     mutationFn: createCheckout,
     onSuccess: async (data) => {
-      // Open Paddle checkout overlay
       if (data.transactionId) {
+        const clientToken = import.meta.env.VITE_PADDLE_CLIENT_TOKEN;
+        if (!clientToken) {
+          console.error('VITE_PADDLE_CLIENT_TOKEN is not configured');
+          window.open('https://paddle.com', '_blank');
+          return;
+        }
         try {
           const { initializePaddle } = await import('@paddle/paddle-js');
           const paddle = await initializePaddle({
             environment: (import.meta.env.VITE_PADDLE_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
-            token: import.meta.env.VITE_PADDLE_CLIENT_TOKEN || 'test_token',
+            token: clientToken,
           });
           if (paddle) {
             paddle.Checkout.open({ transactionId: data.transactionId });
           }
         } catch {
-          // Fallback: redirect to checkout URL if available
           if (data.checkoutUrl) {
             window.open(data.checkoutUrl, '_blank');
           }
