@@ -5,6 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
   ArrowRight,
+  CheckCircle2,
+  Copy,
   Eye,
   EyeOff,
   Loader2,
@@ -14,6 +16,11 @@ import {
 } from "lucide-react";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+
+type RegistrationSuccess = {
+  workspaceName: string;
+  workspaceSlug: string;
+};
 
 function parseError(err: unknown, fallback: string): string {
   if (!(err instanceof Error)) return fallback;
@@ -80,26 +87,31 @@ export default function RegisterPage() {
   const { toast } = useToast();
 
   const planParam = new URLSearchParams(
-    window.location.hash.replace("#", "").split("?")[1] || ""
+    window.location.hash.replace("#", "").split("?")[1] || "",
   ).get("plan");
 
-  const [name, setName]   = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [pass, setPass]   = useState("");
+  const [pass, setPass] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<RegistrationSuccess | null>(null);
+
+  const workspaceUrl = success ? `${window.location.origin}/#/${success.workspaceSlug}` : "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await register({ name, email, password: pass });
-
-      if (planParam) {
-        window.location.hash = `#/billing?paddle=success&plan=${planParam}`;
-      } else {
-        window.location.hash = "#/";
+      const res = await register({ name, email, password: pass });
+      const workspace = res.workspace ?? res.user?.workspace;
+      if (!workspace?.slug) {
+        throw new Error("Registration completed, but the workspace slug was not returned.");
       }
+      setSuccess({
+        workspaceName: workspace.name ?? `${name}'s Workspace`,
+        workspaceSlug: workspace.slug,
+      });
     } catch (err) {
       toast({
         title: "Registration failed",
@@ -111,9 +123,35 @@ export default function RegisterPage() {
     }
   };
 
+  const copyWorkspace = async () => {
+    if (!success) return;
+    const value = `Workspace slug: ${success.workspaceSlug}\nLogin URL: ${workspaceUrl}`;
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({ title: "Workspace details copied" });
+    } catch {
+      toast({ title: "Copy failed", description: success.workspaceSlug });
+    }
+  };
+
+  const continueToWorkspace = () => {
+    if (planParam) {
+      window.location.hash = `#/billing?paddle=success&plan=${planParam}`;
+    } else {
+      window.location.hash = "#/";
+    }
+  };
+
+  const passwordRules = [
+    { label: "At least 12 characters", met: pass.length >= 12 },
+    { label: "One uppercase letter", met: /[A-Z]/.test(pass) },
+    { label: "One lowercase letter", met: /[a-z]/.test(pass) },
+    { label: "One number", met: /\d/.test(pass) },
+    { label: "One special character", met: /[^\w\s]/.test(pass) },
+  ];
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#05091d] px-4 py-10 text-white md:px-6">
-      {/* Background */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -149,69 +187,128 @@ export default function RegisterPage() {
           <div className="glass-panel rounded-[34px] px-6 py-8 md:px-10 md:py-10">
             <BrandLockup className="justify-center" textClassName="text-xl tracking-[0.32em]" />
 
-            <div className="mt-10 text-center">
-              <h1 className="font-marketing text-4xl font-semibold tracking-[-0.04em] text-white md:text-[3.1rem]">
-                Create account
-              </h1>
-              <p className="mx-auto mt-4 max-w-md text-base leading-8 text-[#c9d0f5]/72">
-                {planParam
-                  ? `You're signing up for the ${planParam} plan. Fill in your details to get started.`
-                  : "Start your free workspace in seconds. No credit card required."}
-              </p>
-            </div>
+            {success ? (
+              <div className="mt-10 space-y-7">
+                <div className="text-center">
+                  <CheckCircle2 className="mx-auto h-12 w-12 text-[#dfff4a]" />
+                  <h1 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-white md:text-[3.1rem]">
+                    Workspace created
+                  </h1>
+                  <p className="mx-auto mt-4 max-w-md text-base leading-8 text-[#c9d0f5]/72">
+                    Save this workspace slug. You will need it when logging in.
+                  </p>
+                </div>
 
-            <form onSubmit={handleSubmit} className="mt-10 space-y-6">
-              <Field
-                id="name"
-                label="Full name"
-                placeholder="Maria González"
-                value={name}
-                onChange={setName}
-                required
-                icon={<User className="h-5 w-5" />}
-              />
-              <Field
-                id="email"
-                label="Email address"
-                type="email"
-                placeholder="maria@empresa.com"
-                value={email}
-                onChange={setEmail}
-                required
-                icon={<Mail className="h-5 w-5" />}
-              />
-              <Field
-                id="password"
-                label="Password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Min. 8 characters"
-                value={pass}
-                onChange={setPass}
-                required
-                icon={<LockKeyhole className="h-5 w-5" />}
-                hint="Must contain uppercase, lowercase, and a number."
-                rightAdornment={
+                <div className="space-y-4 rounded-[24px] border border-white/12 bg-[#09102b]/82 p-5">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">Workspace</p>
+                    <p className="mt-1 text-sm font-medium text-white">{success.workspaceName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">Slug</p>
+                    <p className="mt-1 break-all font-mono text-lg font-semibold text-[#dfff4a]">
+                      {success.workspaceSlug}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">Login URL</p>
+                    <p className="mt-1 break-all text-sm text-white/78">{workspaceUrl}</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={copyWorkspace}
+                  className="font-marketing flex w-full items-center justify-center gap-2 rounded-full border border-white/14 px-6 py-4 text-sm font-semibold text-white/86 transition hover:border-white/24 hover:text-white"
+                >
+                  <Copy className="h-4 w-4" />
+                  Copy workspace details
+                </button>
+
+                <button
+                  type="button"
+                  onClick={continueToWorkspace}
+                  className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px]"
+                >
+                  Continue to workspace
+                  <ArrowRight className="h-5 w-5" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="mt-10 text-center">
+                  <h1 className="font-marketing text-4xl font-semibold tracking-[-0.04em] text-white md:text-[3.1rem]">
+                    Create account
+                  </h1>
+                  <p className="mx-auto mt-4 max-w-md text-base leading-8 text-[#c9d0f5]/72">
+                    {planParam
+                      ? `You're signing up for the ${planParam} plan. Fill in your details to get started.`
+                      : "Start your free workspace in seconds. No credit card required."}
+                  </p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="mt-10 space-y-6">
+                  <Field
+                    id="name"
+                    label="Full name"
+                    placeholder="Maria Gonzalez"
+                    value={name}
+                    onChange={setName}
+                    required
+                    icon={<User className="h-5 w-5" />}
+                  />
+                  <Field
+                    id="email"
+                    label="Email address"
+                    type="email"
+                    placeholder="maria@empresa.com"
+                    value={email}
+                    onChange={setEmail}
+                    required
+                    icon={<Mail className="h-5 w-5" />}
+                  />
+                  <Field
+                    id="password"
+                    label="Password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="12+ characters"
+                    value={pass}
+                    onChange={setPass}
+                    required
+                    icon={<LockKeyhole className="h-5 w-5" />}
+                    hint="Must contain uppercase, lowercase, a number, and a special character."
+                    rightAdornment={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="text-white/55 transition hover:text-white/85"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    }
+                  />
+
+                  <div className="grid gap-2">
+                    {passwordRules.map((rule) => (
+                      <span key={rule.label} className={`text-xs ${rule.met ? "text-green-400" : "text-white/40"}`}>
+                        {rule.met ? "✓" : "○"} {rule.label}
+                      </span>
+                    ))}
+                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="text-white/55 transition hover:text-white/85"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    type="submit"
+                    disabled={loading || pass.length < 12}
+                    className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {loading && <Loader2 className="h-5 w-5 animate-spin" />}
+                    Create account
+                    <ArrowRight className="h-5 w-5" />
                   </button>
-                }
-              />
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {loading && <Loader2 className="h-5 w-5 animate-spin" />}
-                Create account
-                <ArrowRight className="h-5 w-5" />
-              </button>
-            </form>
+                </form>
+              </>
+            )}
 
             <div className="mt-8 flex flex-col items-center gap-4 text-center">
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/58">

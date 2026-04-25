@@ -148,6 +148,7 @@ export function useAuth() {
   return {
     user: _user,
     isAuthenticated: isLoggedIn(),
+    workspaceSlug: getWorkspaceSlug(),
     login,
     register,
     acceptInvite,
