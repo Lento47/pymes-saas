@@ -1,6 +1,6 @@
 import { reportClientError } from "@/lib/error-reporting";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 
+const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ??
   ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
 // ── Auth state (tokens in-memory only; slug in sessionStorage for reload support) ──
@@ -69,7 +69,10 @@ async function _tryRefresh(): Promise<boolean> {
       if (!res.ok) return false;
       const data = await res.json();
       _token = data.access_token;
-      if (data.refresh_token) _refreshToken = data.refresh_token;
+      if (data.refresh_token) {
+        _refreshToken = data.refresh_token;
+        try { sessionStorage.setItem('pymes_refresh', data.refresh_token); } catch { /* ignore */ }
+      }
       return true;
     } catch {
       return false;
