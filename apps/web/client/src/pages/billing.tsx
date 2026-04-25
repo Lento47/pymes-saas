@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
@@ -19,6 +19,14 @@ async function fetchBillingPortalLink() {
   if (!response.ok) throw new Error('Failed to fetch billing portal link');
   return response.json();
 }
+
+// Maps the ?plan= URL param value to a tier planKey
+const PLAN_PARAM_MAP: Record<string, string> = {
+  starter: 'starter',
+  growth: 'growth',
+  business: 'enterprise',
+  enterprise: 'enterprise',
+};
 
 const PRICING_TIERS = [
   {
@@ -50,9 +58,11 @@ export default function BillingPage() {
   const params = new URLSearchParams(location.split('?')[1]);
   const success = params.get('success');
   const canceled = params.get('canceled');
+  const planParam = params.get('plan'); // e.g. 'starter', 'growth', 'business'
 
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const autoCheckoutFired = useRef(false);
 
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
     queryKey: ['subscription', workspaceSlug],
@@ -66,11 +76,30 @@ export default function BillingPage() {
     enabled: isAuthenticated,
   });
 
-  const { data: prices } = useQuery({
+  const { data: prices, isLoading: pricesLoading } = useQuery({
     queryKey: ['billingPrices'],
     queryFn: () => api.getBillingPrices(),
     enabled: isAuthenticated,
   });
+
+  // Auto-trigger checkout when arriving from a ?plan= link (e.g. login?plan=starter)
+  useEffect(() => {
+    if (autoCheckoutFired.current) return;
+    if (!planParam || pricesLoading || subscriptionLoading) return;
+
+    const targetPlanKey = PLAN_PARAM_MAP[planParam.toLowerCase()];
+    const tier = PRICING_TIERS.find(t => t.planKey === targetPlanKey);
+    if (!tier) return;
+
+    const isCurrentPlan =
+      subscription?.plan?.toUpperCase() === tier.name.toUpperCase() ||
+      subscription?.plan?.toUpperCase() === tier.planKey.toUpperCase();
+    if (isCurrentPlan) return;
+
+    autoCheckoutFired.current = true;
+    handleUpgrade(tier);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planParam, prices, pricesLoading, subscriptionLoading, subscription]);
 
   async function handleUpgrade(tier: (typeof PRICING_TIERS)[number]) {
     const priceId = prices?.[`${tier.planKey}_monthly`];

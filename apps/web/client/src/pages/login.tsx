@@ -55,6 +55,18 @@ function Field({ id, label, type = "text", placeholder, value, onChange, require
   );
 }
 
+function getPlanFromHash(): string | null {
+  const hash = window.location.hash; // e.g. "#/login?plan=starter"
+  const qi = hash.indexOf('?');
+  if (qi < 0) return null;
+  return new URLSearchParams(hash.slice(qi + 1)).get('plan');
+}
+
+function postLoginHash(): string {
+  const plan = getPlanFromHash();
+  return plan ? `#/billing?plan=${encodeURIComponent(plan)}` : '#/';
+}
+
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -64,7 +76,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) window.location.hash = "#/";
+    if (isAuthenticated) window.location.hash = postLoginHash();
   }, [isAuthenticated]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,7 +84,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, pass, slug);
-      window.location.hash = "#/";
+      window.location.hash = postLoginHash();
     } catch (err) {
       toast({ title: "Error al iniciar sesión", description: parseError(err), variant: "destructive" });
     } finally {
