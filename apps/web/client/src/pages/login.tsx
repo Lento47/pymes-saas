@@ -91,16 +91,24 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const planParam = new URLSearchParams(window.location.hash.replace('#', '').split('?')[1] || '').get('plan');
+
   useEffect(() => {
-    // redirect handled in handleSubmit instead
-  }, []);
+    if (isAuthenticated) {
+      window.location.hash = planParam ? `#/settings/billing?plan=${planParam}` : "#/";
+    }
+  }, [isAuthenticated]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       const res = await login(email, pass, slug);
-      window.location.hash = res.user?.is_platform_admin ? "#/admin" : "#/";
+      if (planParam) {
+        window.location.hash = `#/settings/billing?plan=${planParam}`;
+      } else {
+        window.location.hash = res.user?.is_platform_admin ? "#/admin" : "#/";
+      }
     } catch (err) {
       toast({
         title: copy.loginErrorTitle,
