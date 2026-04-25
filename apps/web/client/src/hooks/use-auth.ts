@@ -20,19 +20,36 @@ export interface AuthUser {
   };
 }
 
-// Estado global en módulo (compartido entre llamadas a useAuth)
-// Tokens and user data are stored in memory only (not persisted to localStorage for security)
 let _user: AuthUser | null = null;
 let _listeners: Array<() => void> = [];
 let _hydratePromise: Promise<AuthUser | null> | null = null;
+let _initialized = false;
+let _restoringPromise: Promise<boolean> | null = null;
 
 function notifyListeners() {
   _listeners.forEach(fn => fn());
 }
 
-// Mantener el usuario en memoria sincronizado cuando otros miembros del workspace
-// cambian algo (p. ej. el nombre del workspace). El servidor emite 'workspace:updated'
-// al room `workspace:<id>`.
+async function maybeRestoreSession(): Promise<boolean> {
+  if (_initialized) return isLoggedIn();
+  if (_restoringPromise) return _restoringPromise;
+
+  _restoringPromise = (async () => {
+    if (!isLoggedIn()) {
+      const restored = await restoreSession();
+      if (restored) {
+        connectSocket();
+        attachWorkspaceUpdateListener();
+      }
+    }
+    _initialized = true;
+    notifyListeners();
+    return isLoggedIn();
+  })();
+
+  return _restoringPromise;
+}
+
 let _wsUpdatedAttached = false;
 function attachWorkspaceUpdateListener() {
   const socket = getSocket();
@@ -57,8 +74,6 @@ function attachWorkspaceUpdateListener() {
   });
 }
 
-// Auto-reconnect WebSocket when the page reloads with an existing session
-// (login() only runs on explicit login, not on refresh)
 if (isLoggedIn()) {
   connectSocket();
   attachWorkspaceUpdateListener();
@@ -98,26 +113,11 @@ export function useAuth() {
   useEffect(() => subscribe(), [subscribe]);
 
   useEffect(() => {
-    async function init() {
-      // Try to restore session from sessionStorage on page reload
-      if (!isLoggedIn()) {
-        const restored = await restoreSession();
-        if (restored) {
-          connectSocket();
-          attachWorkspaceUpdateListener();
-        }
-        notifyListeners();
-      }
-
-      const workspaceSlug = getWorkspaceSlug();
-      const hasWorkspaceMismatch =
-        !!_user?.workspace?.slug && !!workspaceSlug && _user.workspace.slug !== workspaceSlug;
-
-      if (isLoggedIn() && (!_user || hasWorkspaceMismatch)) {
+    void maybeRestoreSession().then(() => {
+      if (isLoggedIn() && !_user) {
         void hydrateUser();
       }
-    }
-    void init();
+    });
   }, []);
 
   const login = async (email: string, password: string, workspaceSlug: string) => {
@@ -134,10 +134,11 @@ export function useAuth() {
 
   const logout = async () => {
     try { await api.logout(); } catch { /* best-effort */ }
-    disconnectSocket(); // ← WebSocket se corta al hacer logout
-    _wsUpdatedAttached = false; // permitir re-attach en el próximo login
+    disconnectSocket();
+    _wsUpdatedAttached = false;
     clearAuthState();
     _user = null;
+    _initialized = false;
     notifyListeners();
     window.location.hash = "#/login";
   };
@@ -147,7 +148,6 @@ export function useAuth() {
     setAuthState(res.access_token, workspaceSlug, res.refresh_token);
     _user = { ..._user!, role: res.role, workspace: res.workspace };
     notifyListeners();
-    // Reload to re-fetch all queries with new workspace context
     window.location.hash = "#/";
     window.location.reload();
   };
@@ -155,6 +155,7 @@ export function useAuth() {
   return {
     user: _user,
     isAuthenticated: isLoggedIn(),
+    initialized: _initialized,
     login,
     acceptInvite,
     logout,
@@ -171,7 +172,6 @@ export function useRequireAuth() {
   return { isAuthenticated };
 }
 
-// ── Session TTL (días que dura la sesión) ──────────────────────────────────
 let _sessionTtlDays = 7;
 
 export function getSessionTtlDays(): number {
@@ -185,6 +185,7 @@ export function setSessionTtlDays(days: number): void {
 function applyAuthResult(res: { access_token: string; refresh_token?: string; user: AuthUser }) {
   setAuthState(res.access_token, res.user.workspace.slug, res.refresh_token);
   _user = res.user;
+  _initialized = true;
   connectSocket();
   attachWorkspaceUpdateListener();
   notifyListeners();

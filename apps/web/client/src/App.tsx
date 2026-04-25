@@ -38,20 +38,23 @@ import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
 import AdminUsers from "@/pages/admin/users";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isRestoringSession } = useAuth();
+  if (isRestoringSession) return null;
   if (!isAuthenticated) return <Redirect to="/login" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
 
 function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, initialized } = useAuth();
+  if (!initialized) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
   if (!isAuthenticated) return <Redirect to="/login" />;
   if (!user?.is_platform_admin) return <Redirect to="/" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
 
 function RootRoute() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, initialized } = useAuth();
+  if (!initialized) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
   if (!isAuthenticated) return <Landing />;
   return <ProtectedLayout><Dashboard /></ProtectedLayout>;
 }
