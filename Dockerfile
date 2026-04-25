@@ -27,5 +27,5 @@ RUN pnpm --prefix apps/api build
 # Expose port
 EXPOSE 4000
 
-# Run API
-CMD ["node", "apps/api/dist/src/main"]
+# Run migrations then start API
+CMD sh -c "cd apps/api && npx prisma migrate deploy && node dist/src/main"
