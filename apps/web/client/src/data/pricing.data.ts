@@ -157,6 +157,7 @@ export const PRICING_TIERS: PricingTier[] = [
     },
     popular: false,
     cta: 'Contact sales',
+    paddlePriceIdMonthly: import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY,
   },
 ];
 

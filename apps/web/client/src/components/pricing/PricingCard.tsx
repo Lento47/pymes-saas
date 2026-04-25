@@ -22,11 +22,6 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
   const priceId = isAnnual ? tier.paddlePriceIdAnnual : tier.paddlePriceIdMonthly;
 
   const handleCTA = async () => {
-    if (isEnterprise) {
-      navigate('/contact-sales');
-      return;
-    }
-
     if (priceId && paddle) {
       setLoading(true);
       try {
@@ -44,7 +39,13 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
       return;
     }
 
-    // Fallback: no Paddle price ID configured yet
+    // Enterprise with no price ID → contact sales
+    if (isEnterprise) {
+      navigate('/contact-sales');
+      return;
+    }
+
+    // Fallback: price ID not configured yet
     navigate(`/login?plan=${tier.name.toLowerCase().replace('+', 'plus')}`);
   };
 
