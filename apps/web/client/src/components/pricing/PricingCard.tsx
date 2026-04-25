@@ -28,7 +28,7 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
       const origin = window.location.origin;
       const successUrl = isAuthenticated
         ? `${origin}/billing?paddle=success`
-        : `${origin}/register?plan=${tier.name.toLowerCase().replace('+', 'plus')}`;
+        : `${origin}/login?plan=${tier.name.toLowerCase().replace('+', 'plus')}`;
 
       setLoading(true);
       try {
