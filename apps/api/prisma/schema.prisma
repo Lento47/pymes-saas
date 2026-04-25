@@ -1018,3 +1018,50 @@ model StripeEvent {
   @@index([created_at(sort: Desc)])
   @@map("stripe_events")
 }
+
+// ============================================================
+// Billing Invoice — PDF generation for subscription payments
+// ============================================================
+
+enum BillingInvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  VOID
+}
+
+model BillingInvoice {
+  id              String               @id @default(cuid())
+  number          String               @unique
+  workspace_id    String
+  subscription_id String?
+  status          BillingInvoiceStatus @default(DRAFT)
+  client_name     String
+  client_email    String
+  client_company  String?
+  client_address  String?
+  client_tax_id   String?
+  plan_name       String
+  plan_interval   String
+  seats           Int
+  subtotal        Float
+  tax_rate        Float                @default(0)
+  tax_amount      Float                @default(0)
+  total           Float
+  currency        String               @default("USD")
+  notes           String?              @db.Text
+  pdf_url         String?
+  line_items      Json                 @db.JsonB
+  issued_at       DateTime             @default(now())
+  due_date        DateTime?
+  paid_at         DateTime?
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @updatedAt
+
+  @@index([workspace_id])
+  @@index([subscription_id])
+  @@index([status])
+  @@index([issued_at(sort: Desc)])
+  @@map("billing_invoices")
+}

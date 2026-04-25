@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { Paddle, Environment, LogLevel, type EventEntity } from '@paddle/paddle-node-sdk';
+import { BillingInvoiceService } from './billing-invoice.service';
 
 @Injectable()
 export class PaddleService {
@@ -11,6 +12,7 @@ export class PaddleService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly billingInvoice: BillingInvoiceService,
   ) {
     const apiKey = this.configService.get<string>('PADDLE_API_KEY');
     const environment = this.configService.get<string>('PADDLE_ENVIRONMENT', 'sandbox');
@@ -331,14 +333,44 @@ export class PaddleService {
 
     const sub = await this.prisma.workspaceSubscription.findFirst({
       where: { provider_subscription_id: subscriptionId },
-      select: { id: true, workspace_id: true, plan: true },
+      select: {
+        id: true,
+        workspace_id: true,
+        plan: true,
+        status: true,
+        workspace: { select: { name: true, slug: true } },
+      },
     });
 
-    if (sub) {
-      await this.prisma.workspaceSubscription.update({
-        where: { id: sub.id },
-        data: { status: 'ACTIVE' },
-      });
+    if (!sub) return;
+
+    await this.prisma.workspaceSubscription.update({
+      where: { id: sub.id },
+      data: { status: 'ACTIVE' },
+    });
+
+    // Auto-generate billing invoice PDF
+    const amount = data.details?.totals?.total || data.totals?.total || data.amount || 0;
+    const currency = data.currencyCode || data.currency_code || 'USD';
+    const interval = data.billingPeriod?.interval || 'MONTHLY';
+
+    try {
+      await this.billingInvoice.generateForSubscription(
+        sub.workspace_id,
+        sub.id,
+        {
+          clientName: sub.workspace?.name || 'Cliente',
+          clientEmail: '',
+          planName: sub.plan,
+          planInterval: interval === 'month' ? 'MONTHLY' : interval === 'year' ? 'ANNUAL' : 'MONTHLY',
+          seats: 1,
+          amount: parseFloat(String(amount)),
+          currency,
+          notes: `Pago procesado — ${new Date().toISOString()}`,
+        },
+      );
+    } catch (err) {
+      this.logger.error(`Failed to generate billing invoice for workspace ${sub.workspace_id}: ${(err as Error).message}`);
     }
   }
 
