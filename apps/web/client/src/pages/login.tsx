@@ -92,15 +92,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) window.location.hash = "#/";
-  }, [isAuthenticated]);
+    // redirect handled in handleSubmit instead
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, pass, slug);
-      window.location.hash = "#/";
+      const res = await login(email, pass, slug);
+      window.location.hash = res.user?.is_platform_admin ? "#/admin" : "#/";
     } catch (err) {
       toast({
         title: copy.loginErrorTitle,
