@@ -91,16 +91,24 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const planParam = new URLSearchParams(window.location.hash.replace('#', '').split('?')[1] || '').get('plan');
+
   useEffect(() => {
-    if (isAuthenticated) window.location.hash = "#/";
+    if (isAuthenticated) {
+      window.location.hash = planParam ? `#/settings/billing?plan=${planParam}` : "#/";
+    }
   }, [isAuthenticated]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, pass, slug);
-      window.location.hash = "#/";
+      const res = await login(email, pass, slug);
+      if (planParam) {
+        window.location.hash = `#/settings/billing?plan=${planParam}`;
+      } else {
+        window.location.hash = res.user?.is_platform_admin ? "#/admin" : "#/";
+      }
     } catch (err) {
       toast({
         title: copy.loginErrorTitle,
@@ -250,6 +258,14 @@ export default function LoginPage() {
                 <Link href="/">
                   <a className="font-medium text-[#dfff4a] transition hover:text-[#efff8a]">
                     {copy.explore}
+                  </a>
+                </Link>
+              </p>
+
+              <p className="text-sm text-[#b3bcdf]/58">
+                <Link href="/register">
+                  <a className="font-medium text-[#dfff4a] transition hover:text-[#efff8a]">
+                    Create account →
                   </a>
                 </Link>
               </p>
