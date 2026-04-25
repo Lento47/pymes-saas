@@ -1,5 +1,3 @@
-const GA_ID = import.meta.env.VITE_GA_MEASUREMENT_ID as string | undefined;
-
 declare global {
   interface Window {
     dataLayer: any[];
@@ -7,19 +5,29 @@ declare global {
   }
 }
 
-export function loadAnalytics() {
-  if (!GA_ID || document.getElementById('ga-script')) return;
-
+function gtag(...args: any[]) {
   window.dataLayer = window.dataLayer || [];
-  window.gtag = function (...args: any[]) { window.dataLayer.push(args); };
-  window.gtag('js', new Date());
-  window.gtag('config', GA_ID, { anonymize_ip: true });
+  window.dataLayer.push(args);
+}
 
-  const script = document.createElement('script');
-  script.id = 'ga-script';
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
-  document.head.appendChild(script);
+/** Call when user accepts cookies — grants GA collection */
+export function grantAnalyticsConsent() {
+  gtag('consent', 'update', {
+    analytics_storage: 'granted',
+    ad_storage: 'denied',        // keep ads denied unless you run ad campaigns
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+  });
+}
+
+/** Call when user rejects cookies — already denied by default, this is a no-op */
+export function revokeAnalyticsConsent() {
+  gtag('consent', 'update', {
+    analytics_storage: 'denied',
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+  });
 }
 
 export function trackPageView(path: string) {

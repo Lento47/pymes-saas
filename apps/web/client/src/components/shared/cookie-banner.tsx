@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { loadAnalytics } from "@/lib/analytics";
+import { grantAnalyticsConsent, revokeAnalyticsConsent } from "@/lib/analytics";
 
 const STORAGE_KEY = "cookie_consent";
 
@@ -22,13 +22,14 @@ export function CookieBanner() {
     if (!stored) {
       setVisible(true);
     } else if (stored === "accepted") {
-      loadAnalytics();
+      grantAnalyticsConsent();
     }
   }, []);
 
   const respond = (choice: Consent) => {
     try { localStorage.setItem(STORAGE_KEY, choice); } catch { /* ignore */ }
-    if (choice === "accepted") loadAnalytics();
+    if (choice === "accepted") grantAnalyticsConsent();
+    else revokeAnalyticsConsent();
     setVisible(false);
   };
 
