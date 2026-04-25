@@ -319,4 +319,6 @@ export const api = {
     const qs = email ? `?email=${encodeURIComponent(email)}` : "";
     return request<any>("GET", `/api/platform/users${qs}`);
   },
+  platformGetStats: () => request<any>("GET", "/api/platform/stats"),
+  platformToggleAdmin: (userId: string) => request<any>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
 };

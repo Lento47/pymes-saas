@@ -31,10 +31,20 @@ import DocumentationCenterPage from "@/pages/documentation";
 import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import NotFound from "@/pages/not-found";
+import AdminDashboard from "@/pages/admin/dashboard";
+import AdminWorkspaces from "@/pages/admin/workspaces";
+import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Redirect to="/login" />;
+  return <AppSidebar>{children}</AppSidebar>;
+}
+
+function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Redirect to="/login" />;
+  if (!user?.is_platform_admin) return <Redirect to="/" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
 
@@ -100,6 +110,15 @@ function AppRouter() {
       </Route>
       <Route path="/settings/billing">
         {() => <ProtectedLayout><Billing /></ProtectedLayout>}
+      </Route>
+      <Route path="/admin">
+        {() => <PlatformAdminLayout><AdminDashboard /></PlatformAdminLayout>}
+      </Route>
+      <Route path="/admin/workspaces">
+        {() => <PlatformAdminLayout><AdminWorkspaces /></PlatformAdminLayout>}
+      </Route>
+      <Route path="/admin/workspaces/:slug">
+        {(params) => <PlatformAdminLayout><AdminWorkspaceDetail slug={params.slug} /></PlatformAdminLayout>}
       </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}
