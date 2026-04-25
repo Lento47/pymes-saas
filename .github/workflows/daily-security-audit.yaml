@@ -1,0 +1,48 @@
+name: Daily Security Audit (Codex Agent)
+
+on:
+  schedule:
+    # Runs every day at 03:00 UTC – adjust as needed
+    - cron: "0 3 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  security-audit-agent:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write        # allow creating branches and commits
+      pull-requests: write   # allow opening PRs
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run autonomous daily security audit agent
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          # This script is responsible for:
+          # - creating a branch chore/security-audit-YYYYMMDD
+          # - running pnpm audit / tests
+          # - applying minimal fixes
+          # - pushing the branch and opening a PR
+          #
+          # The logic is driven by your Codex/agent prompt.
+          node scripts/run-security-audit-agent.cjs
