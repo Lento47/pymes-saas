@@ -4,4 +4,8 @@ dist/
 *.log
 .DS_Store
 .enterprise-runtime-release/
+.enterprise-runtime-release.zip
 .enterprise-runtime-bundle/
+.codex-edge-profile/
+.codex-start*
+package-lock.json

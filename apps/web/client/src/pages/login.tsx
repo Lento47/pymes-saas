@@ -254,6 +254,14 @@ export default function LoginPage() {
                 </Link>
               </p>
 
+              <p className="text-sm text-[#b3bcdf]/58">
+                <Link href="/register">
+                  <a className="font-medium text-[#dfff4a] transition hover:text-[#efff8a]">
+                    Create account →
+                  </a>
+                </Link>
+              </p>
+
               <p className="text-xs uppercase tracking-[0.22em] text-white/34">
                 © {new Date().getFullYear()} PymesHub
               </p>

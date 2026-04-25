@@ -1,5 +1,7 @@
 import { reportClientError } from "@/lib/error-reporting";
-const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
+
+const API_BASE = import.meta.env.VITE_API_URL ?? 
+  ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
 // ── In-memory state only (tokens NOT stored in localStorage for security) ──────
 let _token: string | null = null;
