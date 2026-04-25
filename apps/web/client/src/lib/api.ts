@@ -353,6 +353,15 @@ export const api = {
     const qs = email ? `?email=${encodeURIComponent(email)}` : "";
     return request<any>("GET", `/api/platform/users${qs}`);
   },
+  platformCreateUser: (data: { email: string; name: string; password: string; is_platform_admin?: boolean }) =>
+    request<any>("POST", "/api/platform/users", data),
+  platformUpdateUserPassword: (userId: string, password: string) =>
+    request<any>("PATCH", `/api/platform/users/${userId}/password`, { password }),
+  platformResetUserPassword: (userId: string) =>
+    request<any>("POST", `/api/platform/users/${userId}/reset-password`),
+  platformUpdateUserStatus: (userId: string, status: string) =>
+    request<any>("PATCH", `/api/platform/users/${userId}/status`, { status }),
+  platformDeleteUser: (userId: string) => request<any>("DELETE", `/api/platform/users/${userId}`),
   platformGetStats: () => request<any>("GET", "/api/platform/stats"),
   platformToggleAdmin: (userId: string) => request<any>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
 };
