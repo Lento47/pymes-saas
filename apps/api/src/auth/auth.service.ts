@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -106,15 +105,6 @@ export class AuthService {
 
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('El email ya está registrado.');
-
-    // Only allow pymeshub.lat domain for open registration
-    const allowedDomain = process.env.REGISTRATION_ALLOWED_DOMAIN || 'pymeshub.lat';
-    const emailDomain = dto.email.split('@')[1]?.toLowerCase();
-    if (!emailDomain || emailDomain !== allowedDomain) {
-      throw new ForbiddenException(
-        `Registration is restricted to @${allowedDomain} emails.`,
-      );
-    }
 
     const password_hash = await bcrypt.hash(dto.password, 12);
 
