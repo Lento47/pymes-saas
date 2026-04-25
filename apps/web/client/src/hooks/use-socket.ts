@@ -19,7 +19,7 @@ export function getSocket(): Socket | null {
 const WS_URL =
   import.meta.env.DEV
     ? `${window.location.protocol}//${window.location.hostname}:4000`
-    : window.location.origin;
+    : import.meta.env.VITE_API_URL || window.location.origin;
 
 export function connectSocket() {
   if (_socket?.connected) return _socket;
