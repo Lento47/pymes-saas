@@ -52,14 +52,6 @@ function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
   return <AppSidebar>{children}</AppSidebar>;
 }
 
-function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, isRestoring } = useAuth();
-  if (!isRestoring || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
-  if (!isAuthenticated) return <Redirect to="/login" />;
-  if (!user?.is_platform_admin) return <Redirect to="/" />;
-  return <AppSidebar>{children}</AppSidebar>;
-}
-
 function RootRoute() {
   const { isAuthenticated, user, isRestoring } = useAuth();
   if (isRestoring) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
