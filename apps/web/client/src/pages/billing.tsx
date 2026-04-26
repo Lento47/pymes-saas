@@ -87,8 +87,13 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
     },
   });
 
-  const handleSync = () => {
-    const id = prompt('Paddle Subscription ID (starts with sub_) or Customer ID (starts with ctm_):');
+  const handleSync = async () => {
+    // First try automatic sync using stored subscription
+    const result = await api.syncSubscription();
+    if (result?.synced) return;
+
+    // Fallback: prompt for manual ID
+    const id = prompt('Sync failed. Enter Subscription ID (sub_) or Customer ID (ctm_):');
     if (!id) return;
     if (id.startsWith('sub_')) {
       syncSubscription({ subscriptionId: id });
