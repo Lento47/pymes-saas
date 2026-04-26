@@ -112,14 +112,6 @@ export default function DocumentationDocumentPage({
                     ))}
                   </ul>
                 </section>
-
-                <section className="rounded-[24px] border border-white/10 bg-white/[0.03] px-5 py-5">
-                  <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-[#dfff4a]/72">
-                    {copy.source}
-                  </p>
-                  <p className="mt-3 font-mono text-sm text-white/84">{doc.repoPath}</p>
-                  <p className="mt-3 text-sm leading-7 text-[#bcc5ee]/66">{copy.sourceBody}</p>
-                </section>
               </div>
             </div>
           </div>
