@@ -159,6 +159,11 @@ export default function DashboardPage() {
     queryFn: () => api.getPipelineStages(),
     refetchInterval: 60000,
   });
+  const { data: insights } = useQuery({
+    queryKey: ["/api/insights"],
+    queryFn: api.getInsights,
+    staleTime: 3 * 60 * 1000,
+  });
 
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
@@ -179,6 +184,21 @@ export default function DashboardPage() {
   const overdueCount = overdueInvoiceList.length;
   const overdueAmount = overdueInvoiceList.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
   const urgentTasks = taskList.filter((t: any) => t.priority === "HIGH").length;
+
+  // AI-powered banner message derived from insights
+  const insightList = Array.isArray(insights) ? insights : [];
+  const hasDanger  = insightList.some((i: any) => i.severity === "danger");
+  const hasWarning = insightList.some((i: any) => i.severity === "warning");
+  const bannerTitle = hasDanger
+    ? "Action required today"
+    : hasWarning
+    ? "A few things need your attention"
+    : "Everything looks good today";
+  const bannerSubtitle = hasDanger
+    ? insightList.find((i: any) => i.severity === "danger")?.title ?? "Check your alerts below."
+    : hasWarning
+    ? insightList.find((i: any) => i.severity === "warning")?.title ?? "Review your pending items."
+    : "Your business is on track. Keep going! ✨";
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -217,7 +237,7 @@ export default function DashboardPage() {
 
         {/* ── Status banner ───────────────────────────────────────────────── */}
         <div
-          className="rounded-2xl overflow-hidden"
+          className="rounded-2xl overflow-hidden border border-gray-100"
           style={{
             backgroundImage: `url('${STATUS_BG}')`,
             backgroundSize: "cover",
@@ -225,44 +245,66 @@ export default function DashboardPage() {
             minHeight: 96,
           }}
         >
-          <div className="flex items-center gap-5 px-7 py-5">
-            {/* Icon */}
-            <div className="w-12 h-12 rounded-xl bg-white/70 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
-              <Activity className="w-6 h-6 text-indigo-600" />
+          <div className="flex items-center gap-6 px-7 py-5">
+            {/* Pulse icon box */}
+            <div className="w-14 h-14 rounded-2xl bg-white/75 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
+              <Activity className="w-7 h-7 text-indigo-500" />
             </div>
 
-            {/* Title + subtitle */}
-            <div className="flex-shrink-0 min-w-[240px]">
-              <h2 className="text-lg font-bold text-gray-900">Everything looks good today</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Your business is on track. Keep going! ✨</p>
+            {/* AI-powered title + subtitle */}
+            <div className="flex-shrink-0 min-w-[220px]">
+              <h2 className="text-[17px] font-bold text-gray-900 leading-snug">{bannerTitle}</h2>
+              <p className="text-sm text-gray-500 mt-0.5">{bannerSubtitle}</p>
             </div>
 
             {/* Vertical divider */}
-            <div className="h-10 w-px bg-gray-300/70 mx-1 flex-shrink-0" />
+            <div className="h-12 w-px bg-gray-300/60 mx-2 flex-shrink-0" />
 
-            {/* Inline mini-metrics */}
-            <div className="flex items-center gap-8 flex-1">
-              <div>
-                <p className="text-xs text-gray-500 font-medium">Revenue</p>
-                <p className="text-sm font-bold text-gray-900 flex items-center gap-1">
-                  <span className="text-green-500">↑ 18%</span>
-                </p>
-                <p className="text-xs text-gray-400">vs last month</p>
+            {/* Mini-metrics row */}
+            <div className="flex items-center gap-6 flex-1 overflow-x-auto">
+              {/* Revenue */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg,#6366f1,#818cf8)" }}>
+                  <TrendingUp className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Revenue</p>
+                  <p className="text-sm font-bold text-green-500">↑ 18%</p>
+                  <p className="text-xs text-gray-400">vs last month</p>
+                </div>
               </div>
-              <div className="h-8 w-px bg-gray-200/80" />
-              <div>
-                <p className="text-sm font-semibold text-gray-800">{overdueCount} Invoices</p>
-                <p className="text-xs text-gray-400">Pending payment</p>
+              <div className="h-10 w-px bg-gray-200/70 flex-shrink-0" />
+              {/* Invoices */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg,#0ea5e9,#38bdf8)" }}>
+                  <Receipt className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-800">{overdueCount} Invoices</p>
+                  <p className="text-xs text-gray-400">Pending payment</p>
+                </div>
               </div>
-              <div className="h-8 w-px bg-gray-200/80" />
-              <div>
-                <p className="text-sm font-semibold text-gray-800">{urgentTasks} Tasks</p>
-                <p className="text-xs text-gray-400">Urgent</p>
+              <div className="h-10 w-px bg-gray-200/70 flex-shrink-0" />
+              {/* Tasks */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg,#64748b,#94a3b8)" }}>
+                  <CheckSquare className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-800">{urgentTasks} Tasks</p>
+                  <p className="text-xs text-gray-400">Urgent</p>
+                </div>
               </div>
-              <div className="h-8 w-px bg-gray-200/80" />
-              <div>
-                <p className="text-xs text-gray-500 font-medium">Pipeline</p>
-                <p className="text-sm font-semibold text-green-600">Healthy</p>
+              <div className="h-10 w-px bg-gray-200/70 flex-shrink-0" />
+              {/* Pipeline */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg,#7c3aed,#a78bfa)" }}>
+                  <BarChart2 className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Pipeline</p>
+                  <p className="text-sm font-bold text-green-500">Healthy</p>
+                </div>
               </div>
             </div>
           </div>
