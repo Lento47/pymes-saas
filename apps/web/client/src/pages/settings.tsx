@@ -22,8 +22,9 @@ import { SUPPORTED_LOCALES, normalizeLocale, type SupportedLocale } from "@/lib/
 import {
   Building2, Users, PlugZap, UserPlus, Plus, Plug,
   Mail, MessageCircle, Radio, Eye, EyeOff, ExternalLink,
-  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen,
+  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard,
 } from "lucide-react";
+import BillingPage from "@/pages/billing";
 
 // ─── Paletas ──────────────────────────────────────────────────────────────────
 
@@ -2169,6 +2170,9 @@ export default function Settings() {
           <TabsTrigger value="ai" className="data-[state=active]:bg-elevated">
             <BrainCircuit className="h-4 w-4 mr-2" />{copy.tabs.ai}
           </TabsTrigger>
+          <TabsTrigger value="billing" className="data-[state=active]:bg-elevated">
+            <CreditCard className="h-4 w-4 mr-2" />{copy.tabs.billing}
+          </TabsTrigger>
           {isPlatformAdmin && (
             <TabsTrigger value="platform" className="data-[state=active]:bg-elevated">
               <ShieldCheck className="h-4 w-4 mr-2" />{copy.tabs.platform}
@@ -2183,6 +2187,7 @@ export default function Settings() {
             <TabsContent value="departments"><DepartmentsTab /></TabsContent>
             <TabsContent value="integrations"><IntegrationsTab /></TabsContent>
             <TabsContent value="ai"><AiTab /></TabsContent>
+            <TabsContent value="billing"><BillingPage /></TabsContent>
             {isPlatformAdmin && (
               <TabsContent value="platform"><PlatformTab /></TabsContent>
             )}

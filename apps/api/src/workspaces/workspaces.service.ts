@@ -676,4 +676,27 @@ export class WorkspacesService {
 
     return { message: 'Miembro removido del workspace.' };
   }
+
+  async getSubscription(workspaceId: string) {
+    const sub = await this.prisma.workspaceSubscription.findFirst({
+      where: { workspace_id: workspaceId },
+      orderBy: { created_at: 'desc' },
+      select: {
+        plan: true,
+        status: true,
+        billing_interval: true,
+        current_period_start: true,
+        current_period_end: true,
+        cancel_at_period_end: true,
+        trial_ends_at: true,
+      },
+    });
+
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { plan: true },
+    });
+
+    return sub ?? { plan: ws?.plan ?? 'FREE', status: 'MANUAL' };
+  }
 }

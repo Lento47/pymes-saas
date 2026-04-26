@@ -1,23 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
+import { usePaddle } from '@/hooks/use-paddle';
 import { useLocation } from 'wouter';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
-
-async function fetchWorkspaceSubscription(workspaceSlug: string) {
-  const response = await fetch(`/api/workspaces/${workspaceSlug}/subscription`);
-  if (!response.ok) throw new Error('Failed to fetch subscription');
-  return response.json();
-}
-
-async function fetchBillingPortalLink() {
-  const response = await fetch('/api/billing/portal');
-  if (!response.ok) throw new Error('Failed to fetch billing portal link');
-  return response.json();
-}
 
 const PRICING_TIERS = [
   {
@@ -25,6 +15,7 @@ const PRICING_TIERS = [
     monthlyUSD: 25,
     monthlyCRC: 12900,
     features: ['500 Contacts', '100 invoices/month', '5 Automations', '1 User'],
+    priceId: import.meta.env.VITE_PADDLE_PRICE_STARTER_MONTHLY as string | undefined,
   },
   {
     name: 'Growth',
@@ -32,12 +23,14 @@ const PRICING_TIERS = [
     monthlyCRC: 29900,
     features: ['2,500 Contacts', '500 invoices/month', '25 Automations', '5 Users'],
     popular: true,
+    priceId: import.meta.env.VITE_PADDLE_PRICE_GROWTH_MONTHLY as string | undefined,
   },
   {
     name: 'Business',
     monthlyUSD: 119,
     monthlyCRC: 59900,
     features: ['15,000 Contacts', '2,000 invoices/month', '100 Automations', '15 Users'],
+    priceId: import.meta.env.VITE_PADDLE_PRICE_BUSINESS_MONTHLY as string | undefined,
   },
 ];
 
@@ -48,24 +41,27 @@ const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secon
   UNPAID: { label: 'Unpaid', variant: 'destructive' },
   CANCELLED: { label: 'Cancelled', variant: 'outline' },
   EXPIRED: { label: 'Expired', variant: 'outline' },
+  MANUAL: { label: 'Active', variant: 'default' },
 };
 
 export default function BillingPage() {
-  const { workspaceSlug, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const paddle = usePaddle();
   const [location] = useLocation();
   const params = new URLSearchParams(location.split('?')[1]);
   const success = params.get('success');
   const canceled = params.get('canceled');
 
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
-    queryKey: ['subscription', workspaceSlug],
-    queryFn: () => fetchWorkspaceSubscription(workspaceSlug || ''),
-    enabled: !!workspaceSlug && isAuthenticated,
+    queryKey: ['subscription'],
+    queryFn: api.getSubscription,
+    enabled: isAuthenticated,
+    retry: false,
   });
 
   const { data: portalLink, isLoading: portalLoading } = useQuery({
     queryKey: ['billingPortal'],
-    queryFn: fetchBillingPortalLink,
+    queryFn: api.getBillingPortal,
     enabled: isAuthenticated,
     retry: false,
   });
@@ -79,6 +75,7 @@ export default function BillingPage() {
   }
 
   const statusInfo = subscription?.status ? STATUS_LABELS[subscription.status] : null;
+  const workspaceSlug = user?.workspace?.slug;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -123,20 +120,18 @@ export default function BillingPage() {
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Loading subscription info...</span>
             </div>
-          ) : subscription ? (
+          ) : (
             <>
               <div className="rounded-lg border border-border bg-[hsl(var(--elevated))] px-4 py-3 flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Plan</p>
-                  <p className="text-lg font-semibold text-foreground capitalize">{subscription.plan || 'Starter'}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Price</p>
-                  <p className="text-lg font-semibold text-foreground">${subscription.monthly_price || 0}<span className="text-sm font-normal text-muted-foreground">/month</span></p>
+                  <p className="text-lg font-semibold text-foreground capitalize">
+                    {(subscription?.plan ?? 'Free').toLowerCase()}
+                  </p>
                 </div>
               </div>
 
-              {(subscription.current_period_start || subscription.current_period_end) && (
+              {subscription?.current_period_start && subscription?.current_period_end && (
                 <div className="text-sm text-muted-foreground">
                   Billing period:{' '}
                   <span className="text-foreground">
@@ -146,7 +141,7 @@ export default function BillingPage() {
                 </div>
               )}
 
-              {subscription.trial_ends_at && (
+              {subscription?.trial_ends_at && (
                 <div className="text-sm text-blue-400">
                   Trial ends: {new Date(subscription.trial_ends_at).toLocaleDateString()}
                 </div>
@@ -177,18 +172,6 @@ export default function BillingPage() {
                 </Button>
               </div>
             </>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">No active subscription. Choose a plan below to get started.</p>
-              <Button
-                onClick={() => {
-                  const el = document.getElementById('upgrade-plans');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-              >
-                View Plans
-              </Button>
-            </div>
           )}
         </CardContent>
       </Card>
@@ -199,6 +182,7 @@ export default function BillingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {PRICING_TIERS.map((tier) => {
             const isCurrent = subscription?.plan?.toUpperCase() === tier.name.toUpperCase();
+            const canUpgrade = !!tier.priceId && !!paddle && !isCurrent;
             return (
               <Card
                 key={tier.name}
@@ -233,7 +217,20 @@ export default function BillingPage() {
                   <Button
                     className="w-full"
                     variant={isCurrent ? 'outline' : 'default'}
-                    disabled={isCurrent}
+                    disabled={isCurrent || !canUpgrade}
+                    onClick={() => {
+                      if (!canUpgrade) return;
+                      paddle!.Checkout.open({
+                        items: [{ priceId: tier.priceId!, quantity: 1 }],
+                        customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
+                        settings: {
+                          displayMode: 'overlay',
+                          theme: 'dark',
+                          locale: 'en',
+                          successUrl: `${window.location.origin}/#/settings/billing?success=true`,
+                        },
+                      });
+                    }}
                   >
                     {isCurrent ? 'Current Plan' : 'Upgrade'}
                   </Button>
