@@ -235,9 +235,6 @@ importers:
       '@nestjs/websockets':
         specifier: ^11.1.19
         version: 11.1.19(@nestjs/common@11.1.19(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.1.14)(rxjs@7.8.2))(@nestjs/core@11.1.19)(@nestjs/platform-socket.io@11.1.19)(reflect-metadata@0.1.14)(rxjs@7.8.2)
-      '@paddle/paddle-js':
-        specifier: ^1.6.4
-        version: 1.6.4
       '@radix-ui/react-accordion':
         specifier: ^1.2.4
         version: 1.2.12(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -322,6 +319,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.60.5
         version: 5.99.2(react@18.3.1)
+      '@types/helmet':
+        specifier: ^4.0.0
+        version: 4.0.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -346,6 +346,9 @@ importers:
       framer-motion:
         specifier: ^11.13.1
         version: 11.18.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      helmet:
+        specifier: ^8.1.0
+        version: 8.1.0
       http-proxy-middleware:
         specifier: ^3.0.5
         version: 3.0.5
@@ -2127,9 +2130,6 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
 
-  '@paddle/paddle-js@1.6.4':
-    resolution: {integrity: sha512-ncfnS6I8mCX6krZ3Sgz2iAYivGmhdI81yt9mT6prtPj4Ipd9J3M12LCJRUFL4FB7BYeeuV04c33RSEnbZUBCaA==}
-
   '@paddle/paddle-node-sdk@3.8.0':
     resolution: {integrity: sha512-4RS6AhZisloYaT2jiFgx9hwm22qwLRUx4EgIVb1gS3bS96lhDBQWq8BC1/Zow2i3CuxMkehXQUc3qKSBS77ozA==}
     engines: {node: '>=20'}
@@ -3509,6 +3509,10 @@ packages:
 
   '@types/graceful-fs@4.1.9':
     resolution: {integrity: sha512-olP3sd1qOEe5dXTSaFvQG+02VdRXcdytWLAZsAq1PecU8uqQAhkrnbli7DagjtXKW/Bl7YJbUsa8MPcuc8LHEQ==}
+
+  '@types/helmet@4.0.0':
+    resolution: {integrity: sha512-ONIn/nSNQA57yRge3oaMQESef/6QhoeX7llWeDli0UZIfz8TQMkfNPTXA8VnnyeA1WUjG2pGqdjEIueYonMdfQ==}
+    deprecated: This is a stub types definition. helmet provides its own type definitions, so you do not need this installed.
 
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
@@ -8740,8 +8744,6 @@ snapshots:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.7.0(@opentelemetry/api@1.9.1)
 
-  '@paddle/paddle-js@1.6.4': {}
-
   '@paddle/paddle-node-sdk@3.8.0': {}
 
   '@prisma/client@5.22.0(prisma@5.22.0)':
@@ -10177,6 +10179,10 @@ snapshots:
   '@types/graceful-fs@4.1.9':
     dependencies:
       '@types/node': 20.19.27
+
+  '@types/helmet@4.0.0':
+    dependencies:
+      helmet: 8.1.0
 
   '@types/http-errors@2.0.5': {}
 
