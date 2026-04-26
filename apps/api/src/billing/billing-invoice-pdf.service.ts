@@ -72,126 +72,126 @@ export async function generateBillingInvoicePdf(invoice: BillingInvoicePdfData):
     doc.on('end', () => resolve(Buffer.concat(buffers)));
     doc.on('error', reject);
 
-    // A4 = 595pt wide, margins 48+48=96, content = 499pt
     const M = 48;
     const W = 499;
     const fmt = (n: number) => {
       if (invoice.currency === 'CRC') {
-        return `₡${n.toLocaleString('es-CR', { minimumFractionDigits: 2 })}`;
+        return `CRC ${n.toLocaleString('es-CR', { minimumFractionDigits: 2 })}`;
       }
-      return n.toLocaleString('en-US', { style: 'currency', currency: invoice.currency, minimumFractionDigits: 2 });
+      return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
     };
     const statusColor: Record<string, string> = { PAID: BRAND.success, SENT: BRAND.primary, DRAFT: BRAND.gray, OVERDUE: BRAND.danger, VOID: BRAND.grayLight };
 
     // ═══════ HEADER ═══════
-    doc.rect(M, 30, W, 80).fill(BRAND.primary);
+    doc.rect(M, 28, W, 80).fill(BRAND.primary);
 
-    // Logo
-    drawLogo(doc, logo, M + 16, 42, 32, 32);
+    drawLogo(doc, logo, M + 16, 40, 32, 32);
 
-    // Company name
-    doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(18).text('PymeHub', M + 58, 44);
+    doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(18).text('PymeHub', M + 58, 42);
     doc.fillColor(BRAND.primaryLight).font('Helvetica').fontSize(6.5)
-      .text('Plataforma SaaS para PYMES · Costa Rica', M + 58, 65)
-      .text('support@pymeshub.com  ·  pymeshub.lat', M + 58, 76);
+      .text('Plataforma SaaS para PYMES · Costa Rica', M + 58, 63)
+      .text('support@pymeshub.com  ·  pymeshub.lat', M + 58, 74);
 
-    // Invoice title — right-aligned, padded from edge
-    const rightX = M + W - 140;
-    doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(24).text('FACTURA', rightX, 38, { width: 140, align: 'right' });
-    doc.font('Helvetica').fontSize(7.5);
-    let ry = 66;
-    doc.text(`N° ${invoice.number}`, rightX, ry, { width: 140, align: 'right' }); ry += 11;
-    doc.text(`Emitida: ${invoice.issuedAt.toLocaleDateString('es-CR', { year: 'numeric', month: 'long', day: 'numeric' })}`, rightX, ry, { width: 140, align: 'right' }); ry += 11;
+    // Invoice title — right side, within safe zone
+    const rightW = 170;
+    const rightX = M + W - rightW - 8;
+    doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(22).text('FACTURA', rightX, 36, { width: rightW, align: 'right' });
+    doc.font('Helvetica').fontSize(7);
+    let ry = 64;
+    doc.text(`N° ${invoice.number}`, rightX, ry, { width: rightW, align: 'right', lineBreak: false }); ry += 10;
+    doc.text(`Emitida: ${invoice.issuedAt.toLocaleDateString('es-CR', { year: 'numeric', month: 'long', day: 'numeric' })}`, rightX, ry, { width: rightW, align: 'right', lineBreak: false }); ry += 10;
     if (invoice.dueDate) {
-      doc.text(`Vence: ${invoice.dueDate.toLocaleDateString('es-CR', { year: 'numeric', month: 'long', day: 'numeric' })}`, rightX, ry, { width: 140, align: 'right' });
+      doc.text(`Vence: ${invoice.dueDate.toLocaleDateString('es-CR', { year: 'numeric', month: 'long', day: 'numeric' })}`, rightX, ry, { width: rightW, align: 'right', lineBreak: false });
     }
 
-    // Header bottom accent
-    doc.rect(M, 110, W, 1.5).fill(BRAND.primaryLight);
+    doc.rect(M, 108, W, 1.5).fill(BRAND.primaryLight);
 
-    // ═══════ CLIENT + STATUS ═══════
-    let y = 128;
+    // ═══════ CLIENT + PLAN (side by side) ═══════
+    let y = 124;
+    const cardW = W / 2 - 6;
 
-    // Client block
-    doc.roundedRect(M, y, 280, 44, 4).fill(BRAND.light);
+    // Client
+    doc.roundedRect(M, y, cardW, 46, 4).fill(BRAND.light);
     doc.fillColor(BRAND.gray).font('Helvetica-Bold').fontSize(6.5).text('FACTURAR A', M + 12, y + 8);
-    doc.fillColor(BRAND.dark).font('Helvetica-Bold').fontSize(10.5).text(invoice.clientName, M + 12, y + 20);
-    if (invoice.clientCompany) {
-      doc.fillColor(BRAND.gray).font('Helvetica').fontSize(7.5).text(invoice.clientCompany, M + 12, y + 34);
-    }
+    doc.fillColor(BRAND.dark).font('Helvetica-Bold').fontSize(10).text(invoice.clientName || 'Cliente', M + 12, y + 20);
     if (invoice.clientEmail) {
-      doc.fillColor(BRAND.grayLight).font('Helvetica').fontSize(7).text(invoice.clientEmail, 330, y + 28, { width: 210, align: 'right' });
+      doc.fillColor(BRAND.grayLight).font('Helvetica').fontSize(7).text(invoice.clientEmail, M + 12, y + 34);
+    }
+    if (invoice.clientAddress) {
+      doc.fillColor(BRAND.grayLight).font('Helvetica').fontSize(7).text(invoice.clientAddress, M + 12, y + 42);
     }
 
-    // Status badge — positioned in the top-right of client area
-    doc.roundedRect(M + W - 78, y + 4, 72, 20, 3).fill(statusColor[invoice.status] ?? BRAND.gray);
-    doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(8).text(invoice.status, M + W - 78, y + 9, { width: 72, align: 'center' });
+    // Status badge — inline with client card, at right edge of card
+    doc.roundedRect(M + cardW - 70, y + 6, 62, 18, 3).fill(statusColor[invoice.status] ?? BRAND.gray);
+    doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(7.5).text(invoice.status, M + cardW - 70, y + 10, { width: 62, align: 'center' });
 
-    y += 56;
-
-    // Plan details
-    doc.roundedRect(M, y, W, 40, 4).fill(BRAND.primaryLight);
-    doc.fillColor(BRAND.primary).font('Helvetica-Bold').fontSize(7).text('PLAN', M + 14, y + 8);
-    doc.fillColor(BRAND.dark).font('Helvetica-Bold').fontSize(11).text(invoice.planName, M + 14, y + 19);
-    doc.fillColor(BRAND.gray).font('Helvetica').fontSize(7.5)
-      .text(`${invoice.planInterval === 'MONTHLY' ? 'Facturación Mensual' : 'Facturación Anual'} · ${invoice.seats} usuario(s)`, M + 14, y + 33);
+    // Plan (right side)
+    const planX = M + cardW + 12;
+    doc.roundedRect(planX, y, cardW, 46, 4).fill(BRAND.primaryLight);
+    doc.fillColor(BRAND.primary).font('Helvetica-Bold').fontSize(6.5).text('PLAN', planX + 12, y + 8);
+    doc.fillColor(BRAND.dark).font('Helvetica-Bold').fontSize(10).text(invoice.planName, planX + 12, y + 20);
+    doc.fillColor(BRAND.gray).font('Helvetica').fontSize(7)
+      .text(`${invoice.planInterval === 'MONTHLY' ? 'Facturación Mensual' : 'Facturación Anual'} · ${invoice.seats} usuario(s)`, planX + 12, y + 34);
 
     // ═══════ TABLE ═══════
-    y += 56;
-    const cols = { desc: M, qty: 300, price: 365, totalRight: M + W - 10 };
+    y += 62;
+    const cols = {
+      desc: M,
+      qty: 290,
+      price: 350,
+      total: M + W - 10,
+    };
 
-    // Table header
-    doc.rect(M, y, W, 22).fill(BRAND.dark);
-    doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(7.5)
-      .text('DESCRIPCIÓN', cols.desc + 8, y + 6)
-      .text('CANT.', cols.qty, y + 6, { width: 40, align: 'center' })
-      .text('PRECIO UNIT.', cols.price, y + 6, { width: 80, align: 'right' })
-      .text('TOTAL', cols.totalRight - 70, y + 6, { width: 70, align: 'right' });
+    // Header
+    doc.rect(M, y, W, 20).fill(BRAND.dark);
+    doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(7)
+      .text('DESCRIPCIÓN', cols.desc + 10, y + 5)
+      .text('CANT.', cols.qty, y + 5, { width: 40, align: 'center' })
+      .text('PRECIO UNIT.', cols.price, y + 5, { width: 80, align: 'right' })
+      .text('TOTAL', cols.total - 74, y + 5, { width: 74, align: 'right' });
 
-    y += 24;
+    y += 22;
 
-    // Table rows
+    // Rows
     invoice.lineItems.forEach((item, idx) => {
       const bg = idx % 2 === 0 ? BRAND.white : BRAND.light;
-      doc.rect(M, y, W, 24).fill(bg);
-      doc.rect(M, y, 3, 24).fill(BRAND.primary);
-
-      doc.fillColor(BRAND.dark).font('Helvetica').fontSize(8)
-        .text(item.description, cols.desc + 12, y + 6, { width: 210 })
-        .text(String(item.quantity), cols.qty, y + 6, { width: 40, align: 'center' })
-        .text(fmt(item.unitPrice), cols.price, y + 6, { width: 90, align: 'right' })
-        .font('Helvetica-Bold').text(fmt(item.total), cols.totalRight - 78, y + 6, { width: 78, align: 'right' });
-
-      y += 26;
+      doc.rect(M, y, W, 22).fill(bg);
+      doc.rect(M, y, 2.5, 22).fill(BRAND.primary);
+      doc.fillColor(BRAND.dark).font('Helvetica').fontSize(7.5)
+        .text(item.description, cols.desc + 14, y + 5, { width: 210 })
+        .text(String(item.quantity), cols.qty, y + 5, { width: 40, align: 'center' })
+        .text(fmt(item.unitPrice), cols.price, y + 5, { width: 88, align: 'right' })
+        .font('Helvetica-Bold').text(fmt(item.total), cols.total - 82, y + 5, { width: 82, align: 'right' });
+      y += 24;
     });
 
-    // Table border bottom
+    y += 4;
     doc.rect(M, y, W, 0.5).fill(BRAND.border);
-    y += 8;
+    y += 6;
 
     // ═══════ TOTALS ═══════
     const totX = 340;
-    const totW = M + W - totX;
+    const totW = M + W - totX - 6;
 
-    doc.fillColor(BRAND.gray).font('Helvetica').fontSize(9)
-      .text('Subtotal', totX, y, { width: 80 })
-      .text(fmt(invoice.subtotal), totX + 80, y, { width: totW - 80, align: 'right' });
+    doc.fillColor(BRAND.gray).font('Helvetica').fontSize(8.5)
+      .text('Subtotal', totX + 6, y, { width: 70 })
+      .text(fmt(invoice.subtotal), totX + 70, y, { width: totW - 70, align: 'right' });
 
     if (invoice.taxRate > 0) {
-      y += 20;
-      doc.text(`IVA (${invoice.taxRate}%)`, totX, y, { width: 80 })
-        .text(fmt(invoice.taxAmount), totX + 80, y, { width: totW - 80, align: 'right' });
+      y += 18;
+      doc.text(`IVA (${invoice.taxRate}%)`, totX + 6, y, { width: 70 })
+        .text(fmt(invoice.taxAmount), totX + 70, y, { width: totW - 70, align: 'right' });
     }
 
     y += 22;
-    doc.rect(totX - 4, y - 3, totW + 4, 30).fill(BRAND.primary);
-    doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(12)
-      .text('TOTAL', totX + 4, y + 4, { width: 80 })
-      .text(fmt(invoice.total), totX + 80, y + 4, { width: totW - 84, align: 'right' });
+    doc.rect(totX, y - 3, totW + 6, 28).fill(BRAND.primary);
+    doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(11)
+      .text('TOTAL', totX + 8, y + 4, { width: 70 })
+      .text(fmt(invoice.total), totX + 70, y + 4, { width: totW - 78, align: 'right' });
 
     // ═══════ NOTES ═══════
     if (invoice.notes) {
-      y += 50;
+      y += 48;
       doc.rect(M, y, W, 0.5).fill(BRAND.border);
       y += 12;
       doc.fillColor(BRAND.gray).font('Helvetica-Bold').fontSize(7).text('NOTAS', M, y);
@@ -199,14 +199,14 @@ export async function generateBillingInvoicePdf(invoice: BillingInvoicePdfData):
     }
 
     // ═══════ FOOTER ═══════
-    const footerY = 740;
-    doc.rect(M, footerY, W, 1).fill(BRAND.primary);
-    doc.rect(M, footerY + 1, W, 0.5).fill(BRAND.primaryLight);
+    const footerY = 742;
+    doc.rect(M, footerY, W, 0.8).fill(BRAND.primary);
+    doc.rect(M, footerY + 1, W, 0.4).fill(BRAND.primaryLight);
 
-    drawLogo(doc, logo, M, footerY + 10, 20, 20);
-    doc.fillColor(BRAND.grayLight).font('Helvetica').fontSize(6.5)
-      .text('PymeHub — Automatización para PYMES en Costa Rica y LATAM', M + 28, footerY + 7, { width: W - 28, align: 'center' })
-      .text('support@pymeshub.com  ·  pymeshub.lat  ·  Factura generada electrónicamente', M + 28, footerY + 18, { width: W - 28, align: 'center' });
+    drawLogo(doc, logo, M, footerY + 8, 18, 18);
+    doc.fillColor(BRAND.grayLight).font('Helvetica').fontSize(6)
+      .text('PymeHub — Automatización para PYMES en Costa Rica y LATAM', M + 26, footerY + 6, { width: W - 26, align: 'center' })
+      .text('support@pymeshub.com  ·  pymeshub.lat  ·  Factura electrónica', M + 26, footerY + 16, { width: W - 26, align: 'center' });
 
     doc.end();
   });
