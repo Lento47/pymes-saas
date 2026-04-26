@@ -21,6 +21,7 @@ export class BillingInvoiceService {
       amount: number;
       currency?: string;
       notes?: string;
+      status?: string;
     },
   ) {
     const currency = params.currency || 'USD';
@@ -42,7 +43,7 @@ export class BillingInvoiceService {
         number,
         workspace_id: workspaceId,
         subscription_id: subscriptionId,
-        status: 'DRAFT',
+        status: (params.status as any) || 'PAID',
         client_name: params.clientName,
         client_email: params.clientEmail,
         plan_name: params.planName,
