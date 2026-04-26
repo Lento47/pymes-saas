@@ -76,6 +76,11 @@ export class WorkspacesController {
     return this.service.testAiConnection(workspaceId, dto);
   }
 
+  @Get('current/subscription')
+  getSubscription(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.service.getSubscription(workspaceId);
+  }
+
   // ── Members ────────────────────────────────────────────────────────────────
 
   @Get('current/members')

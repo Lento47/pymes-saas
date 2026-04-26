@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { usePaddle } from '@/hooks/use-paddle';
 import { useLocation } from 'wouter';
 import { api } from '@/lib/api';
+import { ModuleHero } from '@/components/shared/module-hero';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -44,7 +45,7 @@ const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secon
   MANUAL: { label: 'Active', variant: 'default' },
 };
 
-export default function BillingPage() {
+export default function BillingPage({ standalone = false }: { standalone?: boolean }) {
   const { user, isAuthenticated } = useAuth();
   const paddle = usePaddle();
   const [location] = useLocation();
@@ -79,10 +80,20 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Billing & Subscription</h1>
-        <p className="text-muted-foreground mt-1">Manage your plan and payment method</p>
-      </div>
+      {standalone && (
+        <ModuleHero module="billing">
+          <div className="px-6 py-5">
+            <h1 className="text-xl font-bold text-gray-900">Billing & Subscription</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Manage your plan and payment method</p>
+          </div>
+        </ModuleHero>
+      )}
+      {!standalone && (
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Billing & Subscription</h1>
+          <p className="text-muted-foreground mt-1">Manage your plan and payment method</p>
+        </div>
+      )}
 
       {success && (
         <Alert className="border-green-500/30 bg-green-500/10">

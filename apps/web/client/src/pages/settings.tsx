@@ -25,6 +25,7 @@ import {
   PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard,
 } from "lucide-react";
 import BillingPage from "@/pages/billing";
+import { ModuleHero } from "@/components/shared/module-hero";
 
 // ─── Paletas ──────────────────────────────────────────────────────────────────
 
@@ -2147,9 +2148,15 @@ export default function Settings() {
 
   return (
     <div className="p-6 space-y-6">
-      <PageHeader title={copy.pageTitle}>
-        <LanguageSwitcher />
-      </PageHeader>
+      <ModuleHero module="settings">
+        <div className="px-6 py-5 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{copy.pageTitle}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Gestiona tu workspace, equipo e integraciones</p>
+          </div>
+          <LanguageSwitcher />
+        </div>
+      </ModuleHero>
       <Tabs defaultValue="workspace">
         <TabsList className="bg-card border border-border">
           <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">

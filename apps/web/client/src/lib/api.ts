@@ -300,6 +300,7 @@ export const api = {
   removeDepartmentMember: (id: string, userId: string) =>
     request<any>("DELETE", `/api/departments/${id}/members/${userId}`),
   getInsights: () => request<any>("GET", "/api/insights"),
+  askAssistant: (question: string) => request<any>("POST", "/api/ai/assistant", { question }),
   validateTaxpayer: (identificacion: string) =>
     request<any>("POST", "/api/hacienda/validate-taxpayer", { identificacion }),
   searchCabys: (params?: Record<string, string>) => {

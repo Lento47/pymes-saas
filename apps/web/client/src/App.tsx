@@ -114,7 +114,7 @@ function AppRouter() {
         {() => <ProtectedLayout><Settings /></ProtectedLayout>}
       </Route>
       <Route path="/settings/billing">
-        {() => <ProtectedLayout><Billing /></ProtectedLayout>}
+        {() => <ProtectedLayout><Billing standalone /></ProtectedLayout>}
       </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}
