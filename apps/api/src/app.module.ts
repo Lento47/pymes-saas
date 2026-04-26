@@ -32,16 +32,15 @@ import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
 import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
-import { HealthModule } from './health/health.module';
-import { BillingModule } from './billing/billing.module';
-import { RoutingModule } from './routing/routing.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    // Multiple throttle tiers: default (100/min) and strict auth tier (10/15min)
     ThrottlerModule.forRoot([
-      { ttl: 60_000, limit: 100 }, // Global: 100 req/min
-      { ttl: 60_000, limit: 10, name: 'webhook' }, // Webhook: 10 req/min (stricter)
+      { name: 'default', ttl: 60_000, limit: 100 },
+      { name: 'auth', ttl: 15 * 60_000, limit: 10 },
     ]),
     ScheduleModule.forRoot(),
 
@@ -73,6 +72,7 @@ import { RoutingModule } from './routing/routing.module';
     InvoicesModule,
     HaciendaModule,
     PipelineModule,
+    AiModule,
     ErrorReportsModule,
     PlatformModule,
 
@@ -80,9 +80,6 @@ import { RoutingModule } from './routing/routing.module';
     EventsModule,
     EmailModule,
     WhatsAppModule,
-    HealthModule,
-    BillingModule,
-    RoutingModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
