@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { usePaddle } from '@/hooks/use-paddle';
@@ -52,6 +52,7 @@ export default function BillingPage() {
   const params = new URLSearchParams(location.split('?')[1]);
   const success = params.get('success') || params.get('paddle');
   const canceled = params.get('canceled');
+  const planParam = params.get('plan');
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
@@ -67,6 +68,36 @@ export default function BillingPage() {
     enabled: isAuthenticated,
     retry: false,
   });
+
+  // Auto-trigger upgrade when ?plan=growth|starter|business is in the URL
+  const autoUpgradeTier = planParam
+    ? PRICING_TIERS.find((t) => t.name.toLowerCase() === planParam.toLowerCase())
+    : null;
+
+  const handleOpenCheckout = async (tier: typeof PRICING_TIERS[number]) => {
+    setCheckoutLoading(tier.name);
+    try {
+      await paddle!.Checkout.open({
+        items: [{ priceId: tier.priceId!, quantity: 1 }],
+        customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
+        settings: {
+          displayMode: 'overlay',
+          theme: 'dark',
+          locale: 'en',
+          successUrl: `${window.location.origin}/#/settings/billing?success=true`,
+        },
+      });
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
+  useEffect(() => {
+    if (autoUpgradeTier && paddle && autoUpgradeTier.priceId) {
+      handleOpenCheckout(autoUpgradeTier);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!autoUpgradeTier, !!paddle]);
 
   if (!isAuthenticated) {
     return (
@@ -184,7 +215,6 @@ export default function BillingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {PRICING_TIERS.map((tier) => {
             const isCurrent = subscription?.plan?.toUpperCase() === tier.name.toUpperCase();
-            const canUpgrade = !!tier.priceId && !!paddle && !isCurrent;
             return (
               <Card
                 key={tier.name}
@@ -219,24 +249,30 @@ export default function BillingPage() {
                   <Button
                     className="w-full"
                     variant={isCurrent ? 'outline' : 'default'}
-                    disabled={isCurrent || !canUpgrade || checkoutLoading === tier.name}
+                    disabled={isCurrent || checkoutLoading === tier.name}
                     onClick={async () => {
-                      if (!canUpgrade) return;
-                      setCheckoutLoading(tier.name);
-                      try {
-                        await paddle!.Checkout.open({
-                          items: [{ priceId: tier.priceId!, quantity: 1 }],
-                          customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
-                          settings: {
-                            displayMode: 'overlay',
-                            theme: 'dark',
-                            locale: 'en',
-                            successUrl: `${window.location.origin}/#/settings/billing?success=true`,
-                          },
-                        });
-                      } finally {
-                        setCheckoutLoading(null);
+                      if (isCurrent) return;
+
+                      if (tier.priceId && paddle) {
+                        setCheckoutLoading(tier.name);
+                        try {
+                          await paddle.Checkout.open({
+                            items: [{ priceId: tier.priceId, quantity: 1 }],
+                            customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
+                            settings: {
+                              displayMode: 'overlay',
+                              theme: 'dark',
+                              locale: 'en',
+                              successUrl: `${window.location.origin}/#/settings/billing?success=true`,
+                            },
+                          });
+                        } finally {
+                          setCheckoutLoading(null);
+                        }
+                        return;
                       }
+
+                      window.location.href = '/#/pricing';
                     }}
                   >
                     {checkoutLoading === tier.name ? (
