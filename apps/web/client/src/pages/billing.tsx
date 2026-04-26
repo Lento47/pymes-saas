@@ -138,6 +138,12 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
   const statusInfo = subscription?.status ? STATUS_LABELS[subscription.status] : null;
   const workspaceSlug = user?.workspace?.slug;
 
+  // Map backend plan names to PRICING_TIERS display names
+  const planDisplayName = (plan: string | undefined) => {
+    if (plan?.toUpperCase() === 'ENTERPRISE') return 'Business';
+    return plan?.toLowerCase() || 'free';
+  };
+
   return (
     <div className="space-y-6 max-w-4xl">
       {standalone && (
@@ -197,11 +203,12 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
                 <div>
                   <p className="text-sm text-muted-foreground">Plan</p>
                   <p className="text-lg font-semibold text-foreground capitalize">
-                    {(subscription?.plan ?? 'Free').toLowerCase()}
+                    {planDisplayName(subscription?.plan)}
                   </p>
                 </div>
                 {(() => {
-                  const planPrice = PRICING_TIERS.find((t) => t.name.toUpperCase() === subscription?.plan?.toUpperCase())?.monthlyUSD;
+                  const displayPlan = planDisplayName(subscription?.plan);
+                  const planPrice = PRICING_TIERS.find((t) => t.name.toUpperCase() === displayPlan.toUpperCase())?.monthlyUSD;
                   if (planPrice) {
                     return (
                       <div className="text-right">
@@ -278,7 +285,7 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
         <h2 className="text-xl font-semibold text-foreground">Available Plans</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {PRICING_TIERS.map((tier) => {
-            const isCurrent = subscription?.plan?.toUpperCase() === tier.name.toUpperCase();
+            const isCurrent = planDisplayName(subscription?.plan).toUpperCase() === tier.name.toUpperCase();
             return (
               <Card
                 key={tier.name}
