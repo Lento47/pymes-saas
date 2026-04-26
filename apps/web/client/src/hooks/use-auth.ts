@@ -128,7 +128,7 @@ export function useAuth() {
     }
   }, []);
 
-  const login = async (email: string, password: string, workspaceSlug: string) => {
+  const login = async (email: string, password: string, workspaceSlug?: string) => {
     const res = await api.login(email, password, workspaceSlug);
     applyAuthResult(res);
     return res;

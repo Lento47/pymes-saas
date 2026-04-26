@@ -85,7 +85,6 @@ export default function LoginPage() {
   const { toast } = useToast();
   const { messages } = useI18n();
   const copy = messages.login;
-  const [slug, setSlug]     = useState("");
   const [email, setEmail]   = useState("");
   const [pass, setPass]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -105,18 +104,20 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await login(email, pass, slug);
-      if (planParam) {
-        window.location.hash = `#/settings/billing?plan=${planParam}`;
+      const res = await login(email, pass);
+      const target = planParam ? `/settings/billing?plan=${planParam}` : "/";
+      history.replaceState(null, "", target);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.startsWith('MULTIPLE_WORKSPACES:')) {
+        try {
+          const workspaces = JSON.parse(msg.slice('MULTIPLE_WORKSPACES:'.length));
+          toast({ title: 'Seleccioná un workspace', description: 'Tenés acceso a múltiples workspaces. Contactá a soporte si necesitás ayuda.' });
+        } catch {}
       } else {
-        window.location.hash = res.user?.is_platform_admin ? "#/admin" : "#/";
+        toast({ title: 'Error', description: msg, variant: 'destructive' });
       }
-    } catch (err) {
-      toast({
-        title: copy.loginErrorTitle,
-        description: parseError(err, copy.unknownError),
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
@@ -170,16 +171,6 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-10 space-y-6">
-              <Field
-                id="workspace-slug"
-                label={copy.workspaceSlug}
-                placeholder={copy.placeholders.workspace}
-                value={slug}
-                onChange={setSlug}
-                required
-                icon={<Building2 className="h-5 w-5" />}
-                hint={copy.workspaceHint}
-              />
               <Field
                 id="email"
                 label={copy.email}

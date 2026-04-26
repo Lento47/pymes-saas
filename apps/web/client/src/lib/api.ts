@@ -187,10 +187,12 @@ export const api = {
     request<any>("POST", "/api/auth/invite-preview", { token }),
   acceptInvite: (data: { token: string; name?: string; password?: string }) =>
     request<any>("POST", "/api/auth/accept-invite", data),
-  login: async (email: string, password: string, workspaceSlug: string) => {
+  login: async (email: string, password: string, workspaceSlug?: string) => {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (workspaceSlug) headers["x-workspace-slug"] = workspaceSlug;
     const r = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-slug": workspaceSlug },
+      headers,
       body: JSON.stringify({ email, password }),
     });
     if (!r.ok) {
