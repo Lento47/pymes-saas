@@ -19,6 +19,7 @@ import {
   CircleHelp,
   LogOut,
   ChevronDown,
+  ChevronRight,
   Check,
   CreditCard,
   Crown,
@@ -77,19 +78,29 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       <aside className="w-[220px] shrink-0 flex flex-col bg-[#0D1B2A] border-r border-white/8">
         {/* ── Workspace Header ── */}
         <div className="relative shrink-0 px-4 py-4 border-b border-white/8">
+          {/* Brand lockup */}
+          <div className="flex items-center gap-2 mb-3">
+            <img
+              src="https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/pymesHubic.png"
+              alt="PymesHub"
+              className="w-7 h-7 object-contain flex-shrink-0"
+            />
+            <span className="text-sm font-bold text-white tracking-tight">
+              Pymes<span className="font-normal text-white/70">hub</span>
+            </span>
+          </div>
+
+          {/* Workspace switcher */}
           <button
-            className="w-full flex items-center gap-2 hover:opacity-80 transition-opacity"
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
             onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
             style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
           >
-            <div className="w-5 h-5 rounded bg-indigo-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-xs">P</span>
-            </div>
             <div className="min-w-0 flex-1 text-left">
-              <div className="text-sm font-semibold text-white truncate">{ws}</div>
+              <div className="text-xs text-white/50 truncate">{ws}</div>
             </div>
             {multipleWorkspaces && (
-              <ChevronDown className="w-3.5 h-3.5 text-white/50 flex-shrink-0" />
+              <ChevronDown className="w-3.5 h-3.5 text-white/40 flex-shrink-0" />
             )}
           </button>
 
@@ -123,9 +134,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               <Link key={path} href={path}>
                 <a
                   className={cn(
-                    "flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors",
+                    "flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
                     active
-                      ? "bg-indigo-600/20 text-white"
+                      ? "bg-indigo-600 text-white"
                       : "text-white/60 hover:text-white hover:bg-white/5"
                   )}
                 >
@@ -152,42 +163,24 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           {/* ── Lower Section ── */}
           <Link href="/settings">
-            <a
-              className={cn(
-                "flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors",
-                isActive("/settings") && !isActive("/settings/billing")
-                  ? "bg-indigo-600/20 text-white"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
-              )}
-            >
+            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+              isActive("/settings") && !isActive("/settings/billing") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
               <Settings className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
               <span className="flex-1 text-sm font-medium truncate">{copy.settings}</span>
             </a>
           </Link>
 
           <Link href="/settings/billing">
-            <a
-              className={cn(
-                "flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors",
-                isActive("/settings/billing")
-                  ? "bg-indigo-600/20 text-white"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
-              )}
-            >
+            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+              isActive("/settings/billing") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
               <CreditCard className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
               <span className="flex-1 text-sm font-medium truncate">Billing</span>
             </a>
           </Link>
 
           <Link href="/help">
-            <a
-              className={cn(
-                "flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors",
-                isActive("/help")
-                  ? "bg-indigo-600/20 text-white"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
-              )}
-            >
+            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+              isActive("/help") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
               <CircleHelp className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
               <span className="flex-1 text-sm font-medium truncate">{copy.help}</span>
             </a>
@@ -196,11 +189,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
         {/* ── Upgrade Card ── */}
         <div className="px-3 py-3 border-t border-white/8">
-          <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-lg px-3 py-3 text-center">
-            <Crown className="w-5 h-5 text-indigo-400 mx-auto mb-2" />
-            <div className="text-sm font-semibold text-white">Upgrade to Business+</div>
-            <div className="text-xs text-white/60 mt-1">Unlock more power</div>
-          </div>
+          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600/20 transition-colors group">
+            <Crown className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+            <div className="flex-1 text-left min-w-0">
+              <div className="text-xs font-semibold text-white truncate">Upgrade to Business+</div>
+              <div className="text-xs text-white/50 truncate">Unlock more power</div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/40 flex-shrink-0 group-hover:text-white/70 transition-colors" />
+          </button>
         </div>
 
         {/* ── Language Switcher ── */}
