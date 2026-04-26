@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { usePaddle, getPaddle } from '@/hooks/use-paddle';
 import { useLocation } from 'wouter';
-import { api } from '@/lib/api';
+import { api, getAuthToken } from '@/lib/api';
 import { ModuleHero } from '@/components/shared/module-hero';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -424,7 +424,19 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => window.open(`/api/billing/invoices/${inv.id}/pdf`, '_blank')}
+                      onClick={async () => {
+                        try {
+                          const token = getAuthToken();
+                          const res = await fetch(`/api/billing/invoices/${inv.id}/pdf`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                          });
+                          const blob = await res.blob();
+                          const url = URL.createObjectURL(blob);
+                          window.open(url, '_blank');
+                        } catch {
+                          // fallback
+                        }
+                      }}
                     >
                       PDF
                     </Button>
