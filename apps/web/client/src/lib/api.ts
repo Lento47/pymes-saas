@@ -1,5 +1,11 @@
 import { reportClientError } from "@/lib/error-reporting";
 
+const FILE = "lib/api.ts";
+
+function logError(context: string, err: unknown) {
+  console.error(`[${FILE}] ${context}:`, err instanceof Error ? err.message : err);
+}
+
 const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ??
   ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
@@ -85,15 +91,20 @@ async function _tryRefresh(): Promise<boolean> {
 }
 
 export async function restoreSession(): Promise<boolean> {
-  const slug = getWorkspaceSlug();
-  if (slug) _workspaceSlug = slug;
+  try {
+    const slug = getWorkspaceSlug();
+    if (slug) _workspaceSlug = slug;
 
-  const refreshToken = getRefreshToken();
-  if (refreshToken) {
-    _refreshToken = refreshToken;
-    return _tryRefresh();
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      _refreshToken = refreshToken;
+      return _tryRefresh();
+    }
+    return false;
+  } catch (err) {
+    logError("restoreSession failed", err);
+    return false;
   }
-  return false;
 }
 
 async function request<T>(
