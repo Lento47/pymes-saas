@@ -1,6 +1,6 @@
 <div align="center">
 
-# PymeHub
+# PymesHub
 
 **La plataforma de operaciones todo-en-uno para pequeñas y medianas empresas.**  
 Gestiona conversaciones, tareas, documentos y clientes — con Insights Automáticos que te dicen exactamente qué está pasando en tu negocio.
