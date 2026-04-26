@@ -24,6 +24,7 @@ import {
   CreditCard,
   Crown,
   MessageCircle,
+  Bot,
 } from "lucide-react";
 
 const NAV = [
@@ -177,6 +178,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               isActive("/chat") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
               <MessageCircle className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
               <span className="flex-1 text-sm font-medium truncate">AI Chat</span>
+            </a>
+          </Link>
+
+          <Link href="/agent">
+            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+              isActive("/agent") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
+              <Bot className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
+              <span className="flex-1 text-sm font-medium truncate">AI Agent</span>
             </a>
           </Link>
 

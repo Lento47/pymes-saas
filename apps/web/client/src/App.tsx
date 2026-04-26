@@ -33,6 +33,8 @@ import DocumentationCenterPage from "@/pages/documentation";
 import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import NotFound from "@/pages/not-found";
+import ChatPageView from "@/pages/chat";
+import AgentPage from "@/pages/agent";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminWorkspaces from "@/pages/admin/workspaces";
 import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
@@ -134,6 +136,12 @@ function AppRouter() {
       </Route>
       <Route path="/help/:slug">
         {(params) => <ProtectedLayout><HelpDocumentPage slug={params.slug} /></ProtectedLayout>}
+      </Route>
+      <Route path="/chat">
+        {() => <ProtectedLayout><ChatPageView /></ProtectedLayout>}
+      </Route>
+      <Route path="/agent">
+        {() => <ProtectedLayout><AgentPage /></ProtectedLayout>}
       </Route>
       <Route component={NotFound} />
     </Switch>
