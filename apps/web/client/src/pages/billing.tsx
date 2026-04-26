@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { usePaddle, getPaddle } from '@/hooks/use-paddle';
 import { useLocation } from 'wouter';
@@ -67,6 +67,22 @@ export default function BillingPage() {
     queryFn: api.getBillingPortal,
     enabled: isAuthenticated,
     retry: false,
+  });
+
+  const { data: invoices, isLoading: invoicesLoading } = useQuery({
+    queryKey: ['billingInvoices'],
+    queryFn: api.getBillingInvoices,
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  const queryClient = useQueryClient();
+  const { mutate: syncSubscription, isPending: syncPending } = useMutation({
+    mutationFn: api.syncSubscription,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['billingInvoices'] });
+    },
   });
 
   // Auto-trigger upgrade when ?plan=growth|starter|business is in the URL
@@ -211,6 +227,17 @@ export default function BillingPage() {
                 </Button>
                 <Button
                   variant="ghost"
+                  onClick={() => syncSubscription()}
+                  disabled={syncPending}
+                >
+                  {syncPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Sync'
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
                   onClick={() => {
                     const el = document.getElementById('upgrade-plans');
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -335,7 +362,50 @@ export default function BillingPage() {
           <CardDescription className="text-muted-foreground">Your recent invoices and payments</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No invoices yet. Your first invoice will appear after your first payment.</p>
+          {invoicesLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground py-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading invoices...</span>
+            </div>
+          ) : invoices?.length > 0 ? (
+            <div className="space-y-3">
+              {invoices.map((inv: any) => (
+                <div
+                  key={inv.id}
+                  className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--elevated))] px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{inv.number}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {inv.plan_name} — {inv.plan_interval === 'MONTHLY' ? 'Monthly' : 'Annual'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(inv.issued_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-foreground">
+                        {inv.currency === 'CRC' ? '₡' : '$'}{inv.total.toLocaleString()}
+                      </p>
+                      <Badge variant={inv.status === 'PAID' ? 'default' : inv.status === 'DRAFT' ? 'secondary' : 'outline'}>
+                        {inv.status}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open(`/api/billing/invoices/${inv.id}/pdf`, '_blank')}
+                    >
+                      PDF
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No invoices yet. Your first invoice will appear after your first payment.</p>
+          )}
         </CardContent>
       </Card>
     </div>
