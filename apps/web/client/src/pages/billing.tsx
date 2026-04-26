@@ -162,6 +162,21 @@ export default function BillingPage() {
                     {(subscription?.plan ?? 'Free').toLowerCase()}
                   </p>
                 </div>
+                {(() => {
+                  const planPrice = PRICING_TIERS.find((t) => t.name.toUpperCase() === subscription?.plan?.toUpperCase())?.monthlyUSD;
+                  if (planPrice) {
+                    return (
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Price</p>
+                        <p className="text-lg font-semibold text-foreground">
+                          ${planPrice}
+                          <span className="text-sm font-normal text-muted-foreground">/month</span>
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {subscription?.current_period_start && subscription?.current_period_end && (
