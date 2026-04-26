@@ -175,16 +175,7 @@ export class PaddleService {
       return this.syncByCustomerId(workspaceId, customerId);
     }
 
-    let sub = await this.prisma.workspaceSubscription.findFirst({
-      where: { workspace_id: workspaceId },
-      select: { id: true, provider_customer_id: true, provider_subscription_id: true },
-    });
-
-    if (sub?.provider_subscription_id) {
-      return this.syncExistingSubscription(sub.id, workspaceId, sub.provider_subscription_id);
-    }
-
-    // Auto-lookup: try to find Paddle customer by workspace owner email via raw API
+    // Always try email lookup first to get the latest subscription from Paddle
     const info = await this.getWorkspaceInfo(workspaceId);
     this.logger.log(`Auto-sync: looking up Paddle customer for email=${info.email}, workspace=${info.name}`);
     if (info.email) {
@@ -209,6 +200,16 @@ export class PaddleService {
       } catch (err) {
         this.logger.error(`Email customer lookup HTTP failed for ${info.email}:`, err);
       }
+    }
+
+    // Fallback: try stored subscription
+    const sub = await this.prisma.workspaceSubscription.findFirst({
+      where: { workspace_id: workspaceId },
+      select: { id: true, provider_customer_id: true, provider_subscription_id: true },
+    });
+
+    if (sub?.provider_subscription_id) {
+      return this.syncExistingSubscription(sub.id, workspaceId, sub.provider_subscription_id);
     }
 
     return { synced: false, reason: 'No subscription found. Provide a Paddle customer ID.' };
