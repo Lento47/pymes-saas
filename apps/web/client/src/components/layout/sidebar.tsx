@@ -15,13 +15,15 @@ import {
   Receipt,
   Zap,
   KanbanSquare,
-  Sparkles,
   Settings,
   CircleHelp,
   LogOut,
   ChevronDown,
+  ChevronRight,
   Check,
-  Shield,
+  CreditCard,
+  Crown,
+  MessageCircle,
 } from "lucide-react";
 
 const NAV = [
@@ -33,7 +35,6 @@ const NAV = [
   { path: "/invoices", icon: Receipt, key: "invoices" as const },
   { path: "/pipeline", icon: KanbanSquare, key: "pipeline" as const },
   { path: "/automations", icon: Zap, key: "automations" as const },
-  { path: "/agent", icon: Sparkles, key: "agent" as const },
 ];
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
@@ -74,49 +75,46 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* ── Sidebar ── */}
-      <aside
-        style={{ background: "hsl(var(--bg-sidebar))", borderRight: "1px solid hsl(var(--border))" }}
-        className="w-[200px] shrink-0 flex flex-col"
-      >
-        {/* Workspace header / switcher */}
-        <div className="relative shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+      <aside className="w-[220px] shrink-0 flex flex-col bg-[#0D1B2A]">
+        <div className="relative shrink-0 px-4 py-4">
+          <div className="flex items-center gap-2 mb-3">
+            <img
+              src="https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/pymesHubic.png"
+              alt="PymesHub"
+              className="w-7 h-7 object-contain flex-shrink-0"
+            />
+            <span className="text-sm font-bold text-white tracking-tight">
+              Pymes<span className="font-normal text-white/70">hub</span>
+            </span>
+          </div>
+
           <button
-            className="w-full px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
             onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
             style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
           >
-            <div
-              style={{ background: "hsl(var(--accent))", borderRadius: "4px" }}
-              className="w-6 h-6 flex items-center justify-center shrink-0"
-            >
-              <span className="text-white font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
-            </div>
             <div className="min-w-0 flex-1 text-left">
-              <div className="text-sm font-semibold text-white leading-none truncate">{ws}</div>
+              <div className="text-xs text-white/50 truncate">{ws}</div>
             </div>
             {multipleWorkspaces && (
-              <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
+              <ChevronDown className="w-3.5 h-3.5 text-white/40 flex-shrink-0" />
             )}
           </button>
 
           {wsMenuOpen && multipleWorkspaces && (
-            <div
-              className="absolute left-0 right-0 top-full z-50 py-1"
-              style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))", borderTop: "none" }}
-            >
+            <div className="absolute left-0 right-0 top-full z-50 bg-[#0D1B2A] border border-white/8 border-t-0">
               {(myWorkspaces as any[]).map((m: any) => {
                 const isCurrent = m.workspace.id === user?.workspace?.id;
                 return (
                   <button
                     key={m.workspace.id}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-white/5 transition-colors"
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-white/5 transition-colors border-b border-white/8 last:border-b-0"
                     onClick={() => { setWsMenuOpen(false); if (!isCurrent) switchWorkspace(m.workspace.slug); }}
                   >
-                    <span className="flex-1 text-left text-sm truncate" style={{ color: isCurrent ? "white" : "hsl(var(--fg-2))" }}>
+                    <span className="flex-1 text-left text-sm truncate text-white/70">
                       {m.workspace.name}
                     </span>
-                    {isCurrent && <Check style={{ width: 12, height: 12, color: "hsl(var(--accent))" }} />}
+                    {isCurrent && <Check className="w-3.5 h-3.5 text-indigo-400" />}
                   </button>
                 );
               })}
@@ -124,131 +122,108 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 py-2 overflow-y-auto">
+        <nav className="flex-1 py-3 px-2 overflow-y-auto space-y-1">
           {NAV.map(({ path, icon: Icon, key, badge: bk }) => {
             const active = isActive(path);
             const b = badge(bk);
             return (
               <Link key={path} href={path}>
-                <div
+                <a
                   className={cn(
-                    "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
+                    "flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
                     active
-                      ? "text-white"
-                      : "text-[hsl(var(--fg-2))] hover:text-white"
+                      ? "bg-indigo-600 text-white"
+                      : "text-white/60 hover:text-white hover:bg-white/5"
                   )}
-                  style={active ? { background: "hsl(var(--bg-active))" } : undefined}
                 >
-                  <Icon
-                    className="shrink-0"
-                    style={{ width: 14, height: 14 }}
-                    strokeWidth={active ? 2.2 : 1.8}
-                  />
-                  <span className="flex-1 truncate" style={{ fontSize: "13px" }}>{copy.nav[key]}</span>
+                  <Icon className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
+                  <span className="flex-1 text-sm font-medium truncate">{copy.nav[key]}</span>
                   {b > 0 && (
                     <span
+                      className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
                       style={{
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        lineHeight: 1,
-                        padding: "2px 5px",
-                        borderRadius: "10px",
-                        background: bk === "overdue" ? "hsl(var(--danger) / 0.15)" : "hsl(var(--accent) / 0.15)",
-                        color: bk === "overdue" ? "hsl(var(--danger))" : "hsl(var(--accent))",
+                        background: bk === "overdue" ? "rgba(239, 68, 68, 0.2)" : "rgba(99, 102, 241, 0.2)",
+                        color: bk === "overdue" ? "#fca5a5" : "#a5b4fc",
                       }}
                     >
                       {b}
                     </span>
                   )}
-                </div>
+                </a>
               </Link>
             );
           })}
 
-          {/* Divider */}
-          <div className="my-2 mx-3" style={{ height: 1, background: "hsl(var(--border))" }} />
-
-          {user?.is_platform_admin && (
-            <Link href="/admin">
-              <div
-                className={cn(
-                  "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                  isActive("/admin") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
-                )}
-                style={isActive("/admin") ? { background: "hsl(var(--bg-active))" } : undefined}
-              >
-                <Shield style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-                <span style={{ fontSize: "13px" }}>Platform Admin</span>
-              </div>
-            </Link>
-          )}
+          <div className="my-2 h-px bg-white/6" />
 
           <Link href="/settings">
-            <div
-              className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/settings") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
-              )}
-              style={isActive("/settings") ? { background: "hsl(var(--bg-active))" } : undefined}
-            >
-              <Settings style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>{copy.settings}</span>
-            </div>
+            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+              isActive("/settings") && !isActive("/settings/billing") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
+              <Settings className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
+              <span className="flex-1 text-sm font-medium truncate">{copy.settings}</span>
+            </a>
+          </Link>
+
+          <Link href="/settings/billing">
+            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+              isActive("/settings/billing") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
+              <CreditCard className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
+              <span className="flex-1 text-sm font-medium truncate">Billing</span>
+            </a>
+          </Link>
+
+          <Link href="/chat">
+            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+              isActive("/chat") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
+              <MessageCircle className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
+              <span className="flex-1 text-sm font-medium truncate">AI Chat</span>
+            </a>
           </Link>
 
           <Link href="/help">
-            <div
-              className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/help") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
-              )}
-              style={isActive("/help") ? { background: "hsl(var(--bg-active))" } : undefined}
-            >
-              <CircleHelp style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>{copy.help}</span>
-            </div>
+            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+              isActive("/help") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
+              <CircleHelp className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
+              <span className="flex-1 text-sm font-medium truncate">{copy.help}</span>
+            </a>
           </Link>
         </nav>
 
-        <div className="px-3 pb-3">
-          <LanguageSwitcher className="w-full justify-between" />
+        <div className="px-3 pb-2">
+          <Link href="/pricing">
+            <a className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600/20 transition-colors group">
+              <Crown className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+              <div className="flex-1 text-left min-w-0">
+                <div className="text-xs font-semibold text-white truncate">Upgrade to Business+</div>
+                <div className="text-xs text-white/50 truncate">Unlock more power</div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/40 flex-shrink-0 group-hover:text-white/70 transition-colors" />
+            </a>
+          </Link>
         </div>
 
-        {/* User row */}
-        <div
-          className="px-3 py-3 flex items-center gap-2"
-          style={{ borderTop: "1px solid hsl(var(--border))" }}
-        >
-          <div
-            style={{
-              width: 24, height: 24,
-              borderRadius: "50%",
-              background: "hsl(var(--bg-active))",
-              border: "1px solid hsl(var(--border))",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "10px", fontWeight: 600, color: "hsl(var(--fg-2))",
-              flexShrink: 0,
-            }}
-          >
-            {initials}
+        <div className="px-3 pb-2">
+          <LanguageSwitcher className="w-full" />
+        </div>
+
+        <div className="px-3 py-3 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-xs font-semibold">{initials}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="truncate font-medium text-white" style={{ fontSize: "12px", lineHeight: "1.3" }}>{name}</div>
-            <div className="truncate" style={{ fontSize: "11px", color: "hsl(var(--fg-3))" }}>{user?.role ?? ""}</div>
+            <div className="text-sm font-medium text-white truncate">{name}</div>
+            <div className="text-xs text-white/60 truncate">{user?.role ?? ""}</div>
           </div>
           <button
             onClick={logout}
-            style={{ color: "hsl(var(--fg-3))", padding: "4px" }}
-            className="hover:text-white transition-colors shrink-0 rounded"
+            className="p-1 text-white/50 hover:text-white transition-colors flex-shrink-0 rounded hover:bg-white/5"
             title={copy.logout}
           >
-            <LogOut style={{ width: 13, height: 13 }} />
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </aside>
 
-      {/* ── Main ── */}
       <main className="flex-1 overflow-y-auto" style={{ background: "hsl(var(--bg))" }}>
         {children}
       </main>
