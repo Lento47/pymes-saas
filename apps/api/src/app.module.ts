@@ -34,6 +34,7 @@ import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { AiModule } from './ai/ai.module';
 import { HealthModule } from './health/health.module';
+import { ApiTokensModule } from './api-tokens/api-tokens.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { HealthModule } from './health/health.module';
     AiModule,
     ErrorReportsModule,
     HealthModule,
+    ApiTokensModule,
     PlatformModule,
 
     WorkersModule,
