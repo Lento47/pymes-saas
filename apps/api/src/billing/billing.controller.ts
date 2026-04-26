@@ -112,7 +112,10 @@ export class BillingController {
 
   @Post('sync')
   @UseGuards(JwtAuthGuard)
-  async syncSubscription(@CurrentUser() user: AuthUser) {
-    return this.paddleService.syncSubscription(user.workspace_id);
+  async syncSubscription(
+    @CurrentUser() user: AuthUser,
+    @Body() dto?: { customerId?: string },
+  ) {
+    return this.paddleService.syncSubscription(user.workspace_id, dto?.customerId);
   }
 }
