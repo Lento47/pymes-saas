@@ -89,6 +89,7 @@ export default function LoginPage() {
   const [pass, setPass]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [workspaceOptions, setWorkspaceOptions] = useState<{ slug: string; name: string }[]>([]);
 
   const planParam = new URLSearchParams(window.location.search).get('plan');
 
@@ -100,11 +101,11 @@ export default function LoginPage() {
     }
   }, [isAuthenticated]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, preselectedSlug?: string) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await login(email, pass);
+      const res = await login(email, pass, preselectedSlug);
       const target = planParam ? `/settings/billing?plan=${planParam}` : "/";
       history.replaceState(null, "", target);
       window.dispatchEvent(new PopStateEvent("popstate"));
@@ -113,9 +114,10 @@ export default function LoginPage() {
       if (msg.startsWith('MULTIPLE_WORKSPACES:')) {
         try {
           const workspaces = JSON.parse(msg.slice('MULTIPLE_WORKSPACES:'.length));
-          toast({ title: 'Seleccioná un workspace', description: 'Tenés acceso a múltiples workspaces. Contactá a soporte si necesitás ayuda.' });
+          setWorkspaceOptions(workspaces);
         } catch {}
       } else {
+        setWorkspaceOptions([]);
         toast({ title: 'Error', description: msg, variant: 'destructive' });
       }
     } finally {
@@ -161,6 +163,32 @@ export default function LoginPage() {
           <div className="glass-panel rounded-[34px] px-6 py-8 md:px-10 md:py-10">
             <BrandLockup className="justify-center" textClassName="text-xl tracking-[0.32em]" />
 
+            {workspaceOptions.length > 0 ? (
+              <div className="mt-10">
+                <h2 className="text-center font-marketing text-xl font-semibold text-white">Seleccioná tu workspace</h2>
+                <p className="mt-2 text-center text-sm text-white/60">Tenés acceso a múltiples workspaces</p>
+                <div className="mt-6 space-y-3">
+                  {workspaceOptions.map((ws) => (
+                    <button
+                      key={ws.slug}
+                      onClick={(e) => { setWorkspaceOptions([]); handleSubmit(e, ws.slug); }}
+                      disabled={loading}
+                      className="w-full rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:border-white/20 hover:bg-white/[0.08]"
+                    >
+                      <p className="text-sm font-semibold text-white">{ws.name}</p>
+                      <p className="text-xs text-white/40">{ws.slug}</p>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setWorkspaceOptions([])}
+                  className="mt-4 w-full text-center text-xs text-white/40 hover:text-white/60"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <>
             <div className="mt-10 text-center">
               <h1 className="font-marketing text-4xl font-semibold tracking-[-0.04em] text-white md:text-[3.45rem]">
                 {copy.welcome}
@@ -234,6 +262,8 @@ export default function LoginPage() {
                 </Link>
               </div>
             </div>
+            </>
+            )}
 
             <div className="mt-10 flex flex-col items-center gap-4 text-center">
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/58">
