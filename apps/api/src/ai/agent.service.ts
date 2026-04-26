@@ -48,19 +48,13 @@ export class AgentService {
       return { error: 'API Key de OpenAI no configurada. Ve a Ajustes → IA.' };
     }
 
-    const workflowId = process.env.OPENAI_AGENT_WORKFLOW_ID || 'wf_69ee50a4431881908f0c86097bc88c0b0e1d93fe68eecbd2';
-    if (!workflowId) {
-      return { error: 'Workflow ID del agente no configurado en el servidor.' };
-    }
-
-    const model = process.env.OPENAI_AGENT_MODEL || 'gpt-5.4';
+    const model = process.env.OPENAI_AGENT_MODEL || 'gpt-4.1';
 
     const previousResponseId = conversationId || undefined;
 
     const body: Record<string, any> = {
       model,
       input,
-      workflow_id: workflowId,
       stream: true,
     };
 
