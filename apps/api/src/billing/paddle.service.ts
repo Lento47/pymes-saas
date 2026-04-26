@@ -186,15 +186,18 @@ export class PaddleService {
 
     // Auto-lookup: try to find Paddle customer by workspace owner email
     const info = await this.getWorkspaceInfo(workspaceId);
+    this.logger.log(`Auto-sync: looking up Paddle customer for email=${info.email}, workspace=${info.name}`);
     if (info.email) {
       try {
         const result = await (paddle as any).customers.list({ email: [info.email] });
         const customers = Array.isArray(result) ? result : result?.data || [];
+        this.logger.log(`Auto-sync: found ${customers.length} Paddle customer(s) for email ${info.email}`);
         if (customers.length > 0) {
           return this.syncByCustomerId(workspaceId, customers[0].id);
         }
+        this.logger.warn(`Auto-sync: no Paddle customer found for email ${info.email}`);
       } catch (err) {
-        this.logger.warn(`Email customer lookup failed for ${info.email}: ${(err as Error).message}`);
+        this.logger.error(`Email customer lookup failed for ${info.email}:`, err);
       }
     }
 
