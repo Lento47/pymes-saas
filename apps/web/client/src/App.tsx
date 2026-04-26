@@ -16,6 +16,7 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import AcceptInvite from "@/pages/accept-invite";
 import Pricing from "@/pages/pricing";
+import Product from "@/pages/product";
 import Dashboard from "@/pages/dashboard";
 import Inbox from "@/pages/inbox";
 import Conversation from "@/pages/conversation";
@@ -69,6 +70,7 @@ function AppRouter() {
       <Route path="/register" component={Register} />
       <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/product" component={Product} />
       <Route path="/documentation">
         {() => <DocumentationCenterPage />}
       </Route>

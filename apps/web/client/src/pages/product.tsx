@@ -491,11 +491,6 @@ export default function Landing() {
                         {copy.nav.documentation}
                       </a>
                     </Link>
-                    <Link href="/product">
-                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
-                        {copy.nav.platform}
-                      </a>
-                    </Link>
                   </div>
                   <Link href="/login">
                     <a className="font-marketing hidden sm:block text-sm font-medium text-white/78 transition hover:text-white">
@@ -593,206 +588,73 @@ export default function Landing() {
               )}
             </div>
 
-            <div className="mx-auto max-w-4xl pt-16 text-center md:pt-20">
-              <div className="glass-panel-soft inline-flex items-center gap-3 rounded-full px-5 py-2.5 text-sm text-white/84">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_14px_rgba(223,255,74,0.85)]" />
-                {copy.intro}
-              </div>
-
-              <h1 className="font-marketing mt-8 text-5xl font-extrabold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl md:text-[6.8rem]">
-                {copy.title[0]}
-                <br />
-                {copy.title[1]}
+            <div className="mx-auto max-w-4xl pt-16 text-center md:pt-16">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+                {copy.platform.eyebrow}
+              </p>
+              <h1 className="font-marketing mt-5 text-5xl font-extrabold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl md:text-[5rem]">
+                {copy.platform.title}
               </h1>
-
-              <p
-                className="soft-glow mt-5 text-[2.8rem] font-medium leading-[0.95] tracking-[-0.045em] text-[#e7ff5a] sm:text-[3.25rem] md:text-[4.1rem]"
-                style={{
-                  fontFamily:
-                    'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                }}
-              >
-                {copy.subtitle}
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70 md:text-lg">
+                {copy.platform.description}
               </p>
+            </div>
+          </div>
+        </section>
 
-              <p className="mx-auto mt-8 max-w-3xl text-lg leading-8 text-[#c9d0f5]/78 md:text-xl">
-                {copy.description}
+        <section id="platform" className="px-4 py-16 md:px-8 md:py-24">
+          <div className="mx-auto max-w-7xl">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+                {copy.platform.eyebrow}
               </p>
-
-              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <Link href="/login">
-                  <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
-                    {copy.primaryCta}
-                    <ArrowRight className="h-5 w-5" />
-                  </a>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection("platform")}
-                  className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]"
-                >
-                  {copy.secondaryCta}
-                </button>
-              </div>
-
-              <p className="mt-5 text-sm text-[#c9d0f5]/52">
-                {copy.note}
+              <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-white md:text-6xl">
+                {copy.platform.title}
+              </h2>
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70 md:text-lg">
+                {copy.platform.description}
               </p>
             </div>
 
             {/* Mobile Carousel */}
-            <div className="md:hidden mt-16">
+            <div className="md:hidden mt-14">
               <Carousel opts={{ align: "start", loop: true }}>
                 <CarouselContent>
-                  <CarouselItem className="basis-full">
-                    <article className="glass-panel rounded-[30px] p-6">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
-                        <img
-                          src="/landing-icons/world.png"
-                          alt=""
-                          className="h-full w-full object-contain"
-                          aria-hidden="true"
-                        />
-                      </div>
-                      <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
-                        {copy.overview.inbox.title}
-                      </h2>
-                      <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
-                        {copy.overview.inbox.description}
-                      </p>
-
-                      <div className="mt-8 space-y-3">
-                        {copy.overview.inbox.signals.map((signal) => (
-                          <div
-                            key={signal.label}
-                            className="glass-panel-soft grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
-                          >
-                            <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
-                              {signal.label}
-                            </span>
-                            <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
-                              {signal.value}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mt-8 grid grid-cols-7 gap-2">
-                        {Array.from({ length: 28 }, (_, index) => {
-                          const active = [1, 4, 8, 12, 17, 18, 23, 25, 27].includes(index);
-                          return (
-                            <span
-                              key={index}
-                              className={`h-2.5 w-2.5 rounded-full ${
-                                active
-                                  ? "bg-[#dfff4a] shadow-[0_0_18px_rgba(223,255,74,0.7)]"
-                                  : "bg-[#6b7dff]/28"
-                              }`}
-                            />
-                          );
-                        })}
-                      </div>
-
-                      <div className="glass-panel-soft mt-8 rounded-full px-4 py-3 text-sm text-white/70">
-                        {copy.overview.inbox.footer}
-                      </div>
-                    </article>
-                  </CarouselItem>
-
-                  <CarouselItem className="basis-full">
-                    <article className="glass-panel rounded-[34px] px-6 py-7">
-                      <div className="flex flex-col gap-6">
-                        <div>
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(98,118,255,0.34),rgba(82,97,241,0.16))] p-2 text-[#dfe6ff]">
+                  {productCards.map((card) => {
+                    const Icon = card.icon;
+                    return (
+                      <CarouselItem key={card.title} className="basis-full">
+                        <article className="glass-panel rounded-[28px] p-7">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))] p-2 text-white/90">
+                            {card.assetSrc ? (
                               <img
-                                src="/landing-icons/performance.png"
+                                src={card.assetSrc}
                                 alt=""
                                 className="h-full w-full object-contain"
                                 aria-hidden="true"
                               />
-                            </div>
-                            <div>
-                              <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
-                                {copy.overview.performance.title}
-                              </h2>
-                              <p className="text-sm text-[#bcc5ee]/64">
-                                {copy.overview.performance.description}
-                              </p>
-                            </div>
+                            ) : (
+                              <Icon className="h-6 w-6" />
+                            )}
                           </div>
-
-                          <div className="mt-8">
-                            <p className="text-sm uppercase tracking-[0.25em] text-[#aeb6df]/42">
-                              {copy.overview.performance.metricLabel}
-                            </p>
-                            <div className="mt-2 flex items-end gap-3">
-                              <span className="font-marketing text-5xl font-semibold tracking-[-0.04em]">
-                                2.45M
-                              </span>
-                              <span className="rounded-full border border-[#dfff4a]/30 bg-[#dfff4a]/10 px-3 py-1 text-sm font-semibold text-[#dfff4a]">
-                                +18.6%
-                              </span>
-                            </div>
-                          </div>
-                      </div>
-
-                      <div className="glass-panel-soft rounded-2xl px-4 py-3 text-sm text-white/72">
-                          {copy.overview.performance.timeframe}
-                      </div>
-                    </div>
-
-                      <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
-                        <PerformanceChart labels={copy.overview.performance.chartDays} />
-                      </div>
-
-                      <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                        {copy.overview.performance.stats.map(({ label, value }) => (
-                          <div key={label} className="glass-panel-soft rounded-2xl px-4 py-4">
-                            <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
-                              {label}
-                            </p>
-                            <p className="font-marketing mt-2 text-2xl font-semibold tracking-[-0.03em] text-white/90">
-                              {value}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </article>
-                  </CarouselItem>
-
-                  <CarouselItem className="basis-full">
-                    <article className="glass-panel rounded-[30px] p-6">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
-                        <img
-                          src="/landing-icons/Smart-automations.png"
-                          alt=""
-                          className="h-full w-full object-contain"
-                          aria-hidden="true"
-                        />
-                      </div>
-                      <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
-                        {copy.overview.automations.title}
-                      </h2>
-                      <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
-                        {copy.overview.automations.description}
-                      </p>
-
-                      <OrbitGraphic />
-
-                      <div className="glass-panel-soft mt-3 rounded-2xl px-4 py-4">
-                        <div className="flex items-center justify-between">
-                          <span className="font-marketing text-sm font-semibold text-white/84">
-                            {copy.overview.automations.statusLabel}
-                          </span>
-                          <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
-                            <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_12px_rgba(223,255,74,0.8)]" />
-                            {copy.overview.automations.statusValue}
-                          </span>
-                        </div>
-                      </div>
-                    </article>
-                  </CarouselItem>
+                          <h3 className="font-marketing mt-7 text-2xl font-semibold tracking-[-0.03em]">
+                            {card.title}
+                          </h3>
+                          <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/72">
+                            {card.description}
+                          </p>
+                          <ul className="mt-8 space-y-3 text-sm leading-7 text-white/78">
+                            {card.bullets.map((bullet) => (
+                              <li key={bullet} className="flex gap-3">
+                                <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_14px_rgba(223,255,74,0.65)]" />
+                                <span>{bullet}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </article>
+                      </CarouselItem>
+                    );
+                  })}
                 </CarouselContent>
                 <div className="flex justify-center gap-2 mt-4">
                   <CarouselPrevious className="relative position-static mx-0" />
@@ -802,167 +664,285 @@ export default function Landing() {
             </div>
 
             {/* Desktop Grid */}
-            <div className="hidden md:grid mt-16 grid gap-6 xl:grid-cols-[0.95fr_1.7fr_0.95fr]">
-              <article className="glass-panel rounded-[30px] p-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
-                  <img
-                    src="/landing-icons/world.png"
-                    alt=""
-                    className="h-full w-full object-contain"
-                    aria-hidden="true"
-                  />
-                </div>
-                <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
-                  {copy.overview.inbox.title}
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
-                  {copy.overview.inbox.description}
-                </p>
-
-                <div className="mt-8 space-y-3">
-                  {copy.overview.inbox.signals.map((signal) => (
-                    <div
-                      key={signal.label}
-                      className="glass-panel-soft grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
-                    >
-                      <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
-                        {signal.label}
-                      </span>
-                      <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
-                        {signal.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-8 grid grid-cols-7 gap-2">
-                  {Array.from({ length: 28 }, (_, index) => {
-                    const active = [1, 4, 8, 12, 17, 18, 23, 25, 27].includes(index);
-                    return (
-                      <span
-                        key={index}
-                        className={`h-2.5 w-2.5 rounded-full ${
-                          active
-                            ? "bg-[#dfff4a] shadow-[0_0_18px_rgba(223,255,74,0.7)]"
-                            : "bg-[#6b7dff]/28"
-                        }`}
-                      />
-                    );
-                  })}
-                </div>
-
-                <div className="glass-panel-soft mt-8 rounded-full px-4 py-3 text-sm text-white/70">
-                  {copy.overview.inbox.footer}
-                </div>
-              </article>
-
-              <article className="glass-panel rounded-[34px] px-6 py-7 md:px-8">
-                <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(98,118,255,0.34),rgba(82,97,241,0.16))] p-2 text-[#dfe6ff]">
+            <div className="hidden md:grid mt-14 grid gap-6 lg:grid-cols-3">
+              {productCards.map((card) => {
+                const Icon = card.icon;
+                return (
+                  <article key={card.title} className="glass-panel rounded-[28px] p-7">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))] p-2 text-white/90">
+                      {card.assetSrc ? (
                         <img
-                          src="/landing-icons/performance.png"
+                          src={card.assetSrc}
                           alt=""
                           className="h-full w-full object-contain"
                           aria-hidden="true"
                         />
+                      ) : (
+                        <Icon className="h-6 w-6" />
+                      )}
+                    </div>
+                    <h3 className="font-marketing mt-7 text-2xl font-semibold tracking-[-0.03em]">
+                      {card.title}
+                    </h3>
+                    <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/72">
+                      {card.description}
+                    </p>
+                    <ul className="mt-8 space-y-3 text-sm leading-7 text-white/78">
+                      {card.bullets.map((bullet) => (
+                        <li key={bullet} className="flex gap-3">
+                          <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_14px_rgba(223,255,74,0.65)]" />
+                          <span>{bullet}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section id="workflows" className="px-4 py-16 md:px-8 md:py-24">
+          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.08fr_0.92fr]">
+            <article className="glass-panel rounded-[34px] p-8 md:p-10">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+                {copy.workflows.eyebrow}
+              </p>
+              <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
+                {copy.workflows.title}
+              </h2>
+              <p className="mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
+                {copy.workflows.description}
+              </p>
+
+              <div className="mt-10 grid gap-5 md:grid-cols-2">
+                {[
+                  { icon: Workflow, ...copy.workflows.features[0] },
+                  { icon: Sparkles, ...copy.workflows.features[1] },
+                  { icon: ChartSpline, ...copy.workflows.features[2] },
+                  { icon: Globe2, ...copy.workflows.features[3] },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.title} className="glass-panel-soft rounded-[24px] p-5">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/[0.06] text-[#e3e8ff]">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <h3 className="font-marketing mt-5 text-xl font-semibold tracking-[-0.03em]">
+                        {item.title}
+                      </h3>
+                      <p className="mt-3 text-sm leading-7 text-[#bcc5ee]/68">
+                        {item.body}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+
+            <article className="glass-panel rounded-[34px] p-6 md:p-8">
+              <div className="glass-panel-soft rounded-[26px] p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-[#aeb6df]/52">
+                      {copy.workflows.flowTitle}
+                    </p>
+                    <h3 className="font-marketing mt-3 text-2xl font-semibold tracking-[-0.03em]">
+                      {copy.workflows.flowHeadline}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-full border border-[#dfff4a]/28 bg-[#dfff4a]/10 px-3 py-1.5 text-sm text-[#dfff4a]">
+                    <span className="h-2 w-2 rounded-full bg-[#dfff4a]" />
+                    {copy.workflows.flowLive}
+                  </div>
+                </div>
+
+                <div className="mt-8 space-y-4">
+                  {copy.workflows.flowSteps.map(([title, detail], index) => (
+                    <div key={title} className="flex gap-4 rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4">
+                      <div className="flex flex-col items-center">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#efff53,#7ff4d2)] text-sm font-bold text-[#051127]">
+                          {index + 1}
+                        </span>
+                        {index < 3 && <span className="mt-2 h-8 w-px bg-white/10" />}
                       </div>
                       <div>
-                        <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
-                          {copy.overview.performance.title}
-                        </h2>
-                        <p className="text-sm text-[#bcc5ee]/64">
-                          {copy.overview.performance.description}
+                        <p className="font-marketing text-base font-semibold text-white/90">
+                          {title}
+                        </p>
+                        <p className="mt-1 text-sm leading-7 text-[#bcc5ee]/66">
+                          {detail}
                         </p>
                       </div>
                     </div>
-
-                    <div className="mt-8">
-                      <p className="text-sm uppercase tracking-[0.25em] text-[#aeb6df]/42">
-                        {copy.overview.performance.metricLabel}
-                      </p>
-                      <div className="mt-2 flex items-end gap-3">
-                        <span className="font-marketing text-5xl font-semibold tracking-[-0.04em]">
-                          2.45M
-                        </span>
-                        <span className="rounded-full border border-[#dfff4a]/30 bg-[#dfff4a]/10 px-3 py-1 text-sm font-semibold text-[#dfff4a]">
-                          +18.6%
-                        </span>
-                      </div>
-                    </div>
-                </div>
-
-                <div className="glass-panel-soft rounded-2xl px-4 py-3 text-sm text-white/72">
-                    {copy.overview.performance.timeframe}
+                  ))}
                 </div>
               </div>
 
-                <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
-                  <PerformanceChart labels={copy.overview.performance.chartDays} />
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                {copy.workflows.metrics.map(([label, value, detail]) => (
+                  <div key={label} className="glass-panel-soft rounded-[24px] p-5">
+                    <p className="font-marketing text-sm font-semibold uppercase tracking-[0.26em] text-[#aeb6df]/44">
+                      {label}
+                    </p>
+                    <p className="font-marketing mt-3 text-3xl font-semibold tracking-[-0.04em] text-white/92">
+                      {value}
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-[#bcc5ee]/66">
+                      {detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="insights" className="px-4 py-16 md:px-8 md:py-24">
+          <div className="mx-auto max-w-7xl">
+            <div className="glass-panel rounded-[34px] px-8 py-10 md:px-12 md:py-14">
+              <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+                <div>
+                  <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+                    {copy.insights.eyebrow}
+                  </p>
+                  <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
+                    {copy.insights.title}
+                  </h2>
+                  <p className="mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
+                    {copy.insights.description}
+                  </p>
                 </div>
 
-                <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                  {copy.overview.performance.stats.map(({ label, value }) => (
-                    <div key={label} className="glass-panel-soft rounded-2xl px-4 py-4">
-                      <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
-                        {label}
-                      </p>
-                      <p className="font-marketing mt-2 text-2xl font-semibold tracking-[-0.03em] text-white/90">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {copy.insights.stats.map(([value, label]) => (
+                    <div key={label} className="glass-panel-soft rounded-[24px] p-5">
+                      <p className="font-marketing text-3xl font-semibold tracking-[-0.04em] text-white">
                         {value}
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-[#bcc5ee]/64">
+                        {label}
                       </p>
                     </div>
                   ))}
                 </div>
-              </article>
-
-              <article className="glass-panel rounded-[30px] p-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
-                  <img
-                    src="/landing-icons/Smart-automations.png"
-                    alt=""
-                    className="h-full w-full object-contain"
-                    aria-hidden="true"
-                  />
-                </div>
-                <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
-                  {copy.overview.automations.title}
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
-                  {copy.overview.automations.description}
-                </p>
-
-                <OrbitGraphic />
-
-                <div className="glass-panel-soft mt-3 rounded-2xl px-4 py-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-marketing text-sm font-semibold text-white/84">
-                      {copy.overview.automations.statusLabel}
-                    </span>
-                    <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_12px_rgba(223,255,74,0.8)]" />
-                      {copy.overview.automations.statusValue}
-                    </span>
-                  </div>
-                </div>
-              </article>
-            </div>
-
-            <div className="mt-16 border-t border-white/10 pt-10">
-              <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-[#95a0cc]/44">
-                {copy.trustTitle}
-              </p>
-              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-5 text-lg font-semibold text-white/42">
-                {copy.trustSignals.map((signal) => (
-                  <span key={signal} className="font-marketing tracking-[-0.02em]">
-                    {signal}
-                  </span>
-                ))}
               </div>
             </div>
           </div>
         </section>
 
+        <section id="security" className="px-4 py-16 md:px-8 md:py-24">
+          <div className="mx-auto max-w-7xl">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+                {copy.security.eyebrow}
+              </p>
+              <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">
+                {copy.security.title}
+              </h2>
+              <p className="mt-6 text-base leading-8 text-[#c9d0f5]/70">
+                {copy.security.description}
+              </p>
+            </div>
+
+            {/* Mobile Carousel */}
+            <div className="md:hidden mt-14">
+              <Carousel opts={{ align: "start", loop: true }}>
+                <CarouselContent>
+                  {copy.security.cards.map((item) => (
+                    <CarouselItem key={item.title} className="basis-full">
+                      <article className="glass-panel rounded-[28px] p-7">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(232,255,89,0.18),rgba(116,244,212,0.15))] p-2 text-[#eaff9d]">
+                          <img
+                            src="/landing-icons/security.png"
+                            alt=""
+                            className="h-full w-full object-contain"
+                            aria-hidden="true"
+                          />
+                        </div>
+                        <h3 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
+                          {item.title}
+                        </h3>
+                        <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/70">
+                          {item.body}
+                        </p>
+                      </article>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <div className="flex justify-center gap-2 mt-4">
+                  <CarouselPrevious className="relative position-static mx-0" />
+                  <CarouselNext className="relative position-static mx-0" />
+                </div>
+              </Carousel>
+            </div>
+
+            {/* Desktop Grid */}
+            <div className="hidden md:grid mt-14 grid gap-6 md:grid-cols-3">
+              {copy.security.cards.map((item) => (
+                <article key={item.title} className="glass-panel rounded-[28px] p-7">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(232,255,89,0.18),rgba(116,244,212,0.15))] p-2 text-[#eaff9d]">
+                    <img
+                      src="/landing-icons/security.png"
+                      alt=""
+                      className="h-full w-full object-contain"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <h3 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
+                    {item.title}
+                  </h3>
+                  <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/70">
+                    {item.body}
+                  </p>
+                </article>
+              ))}
+            </div>
+
+            <div className="relative mt-12 overflow-hidden rounded-[34px] border border-[#2f3f93]/55 bg-[#060b21] px-8 py-10 text-center shadow-[0_28px_90px_rgba(4,8,28,0.4)] md:px-12 md:py-14">
+              <img
+                src="/landing-icons/readytolunch.png"
+                alt=""
+                className="absolute left-1/2 top-1/2 h-[124%] w-[124%] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover object-center opacity-[0.98] [filter:brightness(1.2)_saturate(1.14)_contrast(1.06)]"
+                aria-hidden="true"
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(6, 11, 33, 0.08) 0%, rgba(6, 11, 33, 0.18) 55%, rgba(6, 11, 33, 0.34) 100%)",
+                }}
+              />
+              <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(223,255,74,0.08),transparent_68%)]" />
+              <div className="relative z-10 mx-auto max-w-4xl [text-shadow:0_2px_18px_rgba(4,8,28,0.55)]">
+                <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+                  {copy.security.ctaEyebrow}
+                </p>
+                <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
+                  {copy.security.ctaTitle}
+                </h2>
+                <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#d4daf8]/84">
+                  {copy.security.ctaDescription}
+                </p>
+                <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                  <Link href="/login">
+                    <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
+                      {copy.security.ctaPrimary}
+                      <ArrowRight className="h-5 w-5" />
+                    </a>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection("platform")}
+                    className="font-marketing rounded-full border border-white/12 bg-white/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]"
+                  >
+                    {copy.security.ctaSecondary}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
