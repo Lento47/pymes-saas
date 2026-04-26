@@ -258,31 +258,36 @@ export class PaddleService {
           : undefined,
       };
 
+      let subscriptionId: string;
+
       if (existing) {
         await this.prisma.workspaceSubscription.update({
           where: { id: existing.id },
           data: subData as any,
         });
+        subscriptionId = existing.id;
       } else {
         const created = await this.prisma.workspaceSubscription.create({
           data: { workspace_id: workspaceId, ...subData } as any,
         });
-        try {
-          const info = await this.getWorkspaceInfo(workspaceId);
-          await this.billingInvoice.generateForSubscription(workspaceId, created.id, {
-            clientName: info.name,
-            clientEmail: info.email,
-            planName: plan,
-            planInterval: 'MONTHLY',
-            seats: 1,
-            amount: 0,
-            currency: 'CRC',
-            notes: 'Suscripción sincronizada — periodo de prueba iniciado',
-          });
+        subscriptionId = created.id;
+      }
+
+      try {
+        const info = await this.getWorkspaceInfo(workspaceId);
+        await this.billingInvoice.generateForSubscription(workspaceId, subscriptionId, {
+          clientName: info.name,
+          clientEmail: info.email,
+          planName: plan,
+          planInterval: 'MONTHLY',
+          seats: 1,
+          amount: 0,
+          currency: 'CRC',
+          notes: `Suscripción sincronizada — ${plan} (${status})`,
+        });
         } catch (err) {
           this.logger.warn(`Failed to generate invoice for synced sub: ${(err as Error).message}`);
         }
-      }
 
       await this.prisma.workspace.update({
         where: { id: workspaceId },
@@ -330,31 +335,36 @@ export class PaddleService {
           : undefined,
       };
 
+      let subscriptionId: string;
+
       if (existing) {
         await this.prisma.workspaceSubscription.update({
           where: { id: existing.id },
           data: subData as any,
         });
-      } else if (createIfMissing) {
+        subscriptionId = existing.id;
+      } else {
         const created = await this.prisma.workspaceSubscription.create({
           data: { workspace_id: workspaceId, ...subData } as any,
         });
-        // Generate initial invoice for the new subscription
-        try {
-          const info = await this.getWorkspaceInfo(workspaceId);
-          await this.billingInvoice.generateForSubscription(workspaceId, created.id, {
-            clientName: info.name,
-            clientEmail: info.email,
-            planName: plan,
-            planInterval: 'MONTHLY',
-            seats: 1,
-            amount: 0,
-            currency: 'CRC',
-            notes: 'Suscripción creada — periodo de prueba iniciado',
-          });
-        } catch (err) {
-          this.logger.warn(`Failed to generate initial invoice: ${(err as Error).message}`);
-        }
+        subscriptionId = created.id;
+      }
+
+      // Generate an invoice for every sync
+      try {
+        const info = await this.getWorkspaceInfo(workspaceId);
+        await this.billingInvoice.generateForSubscription(workspaceId, subscriptionId, {
+          clientName: info.name,
+          clientEmail: info.email,
+          planName: plan,
+          planInterval: 'MONTHLY',
+          seats: 1,
+          amount: 0,
+          currency: 'CRC',
+          notes: `Suscripción sincronizada — ${plan} (${status})`,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to generate invoice: ${(err as Error).message}`);
       }
 
       await this.prisma.workspace.update({
