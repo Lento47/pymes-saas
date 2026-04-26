@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
+import { ChatBubble } from "@/components/shared/chat-bubble";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -119,6 +120,7 @@ export default function App() {
         <I18nProvider>
           <TooltipProvider>
             <Toaster />
+            <ChatBubble />
             <Router hook={useWorkspaceHashLocation}>
               <AppRouter />
             </Router>
