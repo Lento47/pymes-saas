@@ -254,23 +254,28 @@ export default function BillingPage() {
                       if (isCurrent) return;
 
                       if (!tier.priceId) {
+                        console.warn('[Billing Upgrade] No priceId for', tier.name, '— redirecting to /pricing');
                         window.location.href = '/#/pricing';
                         return;
                       }
 
                       let checkoutPaddle = paddle;
                       if (!checkoutPaddle) {
+                        console.log('[Billing Upgrade] Paddle not yet ready, polling getPaddle()...');
                         setCheckoutLoading(tier.name);
+                        const started = Date.now();
                         for (let i = 0; i < 50; i++) {
                           await new Promise((r) => setTimeout(r, 200));
                           checkoutPaddle = getPaddle();
                           if (checkoutPaddle) break;
                         }
                         if (!checkoutPaddle) {
+                          console.error('[Billing Upgrade] getPaddle() still null after 10s — redirecting to /pricing');
                           setCheckoutLoading(null);
                           window.location.href = '/#/pricing';
                           return;
                         }
+                        console.log('[Billing Upgrade] Paddle acquired after', ((Date.now() - started) / 1000).toFixed(1), 's');
                       }
 
                       setCheckoutLoading(tier.name);
