@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { CookieBanner } from "@/components/shared/cookie-banner";
-import { ChatBubble, ChatPage } from "@/components/shared/chat-bubble";
+import { ChatBubble } from "@/components/shared/chat-bubble";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -30,6 +30,7 @@ import Settings from "@/pages/settings";
 import Billing from "@/pages/billing";
 import HelpPage from "@/pages/help";
 import HelpDocumentPage from "@/pages/help-document";
+import ChatPageView from "@/pages/chat";
 import DocumentationCenterPage from "@/pages/documentation";
 import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
@@ -57,7 +58,8 @@ function RootRoute() {
 
 function PublicChatBubble() {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <ChatPage /> : <ChatBubble />;
+  if (isAuthenticated) return null;
+  return <ChatBubble />;
 }
 
 function AppRouter() {
@@ -114,6 +116,9 @@ function AppRouter() {
       </Route>
       <Route path="/settings/billing">
         {() => <ProtectedLayout><Billing standalone /></ProtectedLayout>}
+      </Route>
+      <Route path="/chat">
+        {() => <ProtectedLayout><ChatPageView /></ProtectedLayout>}
       </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}
