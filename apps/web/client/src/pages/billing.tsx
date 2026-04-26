@@ -79,20 +79,22 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
 
   const queryClient = useQueryClient();
   const { mutate: syncSubscription, isPending: syncPending } = useMutation({
-    mutationFn: (customerId?: string) => api.syncSubscription(customerId),
+    mutationFn: (args?: { customerId?: string; subscriptionId?: string }) =>
+      api.syncSubscription(args?.customerId, args?.subscriptionId),
     onSuccess: (data: any) => {
-      if (!data?.synced && data?.reason?.includes('customer ID')) {
-        const cid = prompt('Enter your Paddle customer ID (from Paddle dashboard):');
-        if (cid) syncSubscription(cid);
-      }
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
       queryClient.invalidateQueries({ queryKey: ['billingInvoices'] });
     },
   });
 
   const handleSync = () => {
-    const cid = prompt('Paddle Customer ID (from Paddle dashboard → Customers):');
-    if (cid) syncSubscription(cid);
+    const id = prompt('Paddle Subscription ID (starts with sub_) or Customer ID (starts with ctm_):');
+    if (!id) return;
+    if (id.startsWith('sub_')) {
+      syncSubscription({ subscriptionId: id });
+    } else {
+      syncSubscription({ customerId: id });
+    }
   };
 
   // Auto-trigger upgrade when ?plan=growth|starter|business is in the URL

@@ -257,7 +257,8 @@ export const api = {
   getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
   getBillingInvoices: () => request<any>("GET", "/api/billing/invoices"),
   getBillingInvoicePdf: (id: string) => request<any>("GET", `/api/billing/invoices/${id}/pdf`),
-  syncSubscription: (customerId?: string) => request<any>("POST", "/api/billing/sync", customerId ? { customerId } : undefined),
+  syncSubscription: (customerId?: string, subscriptionId?: string) =>
+    request<any>("POST", "/api/billing/sync", { customerId, subscriptionId }),
   updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   testAiConnection: (data: any) => request<any>("POST", "/api/workspaces/current/ai/test", data),
   getApiKeys: () => request<any>("GET", "/api/workspaces/current/api-keys"),
