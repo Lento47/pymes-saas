@@ -198,6 +198,11 @@ enum TriggerType {
   MANUAL
 }
 
+enum RoutingMatchType {
+  KEYWORD
+  MENU_REPLY
+}
+
 // ============================================================
 // CORE — Auth & Tenancy
 // ============================================================
@@ -242,6 +247,7 @@ model Workspace {
   subscriptions        WorkspaceSubscription[]
   billing_events       BillingEvent[]
   stripe_events        StripeEvent[]
+  routing_rules        RoutingRule[]
 
   @@index([slug])
   @@index([status])
@@ -439,6 +445,7 @@ model Channel {
   workspace     Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   conversations Conversation[]
   department    Department?    @relation("ChannelDepartment", fields: [department_id], references: [id])
+  routing_rules RoutingRule[]
 
   @@index([workspace_id])
   @@index([workspace_id, type])
@@ -764,6 +771,7 @@ model Department {
   members       DepartmentMember[]
   channels      Channel[]          @relation("ChannelDepartment")
   conversations Conversation[]     @relation("ConversationDepartment")
+  routing_rules RoutingRule[]
 
   @@unique([workspace_id, name])
   @@index([workspace_id])
@@ -787,6 +795,33 @@ model DepartmentMember {
   @@index([workspace_id])
   @@index([user_id])
   @@map("department_members")
+}
+
+// ============================================================
+// ROUTING RULES
+// ============================================================
+
+model RoutingRule {
+  id            String           @id @default(cuid())
+  workspace_id  String
+  channel_id    String?
+  name          String
+  match_type    RoutingMatchType @default(KEYWORD)
+  pattern       String
+  department_id String
+  priority      Int              @default(0)
+  is_active     Boolean          @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace  Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  channel    Channel?   @relation(fields: [channel_id], references: [id], onDelete: SetNull)
+  department Department @relation(fields: [department_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([workspace_id, is_active])
+  @@map("routing_rules")
 }
 
 // ============================================================

@@ -78,7 +78,11 @@ export class BillingController {
   @Get('portal')
   @UseGuards(JwtAuthGuard)
   async getBillingPortal(@CurrentUser() user: AuthUser) {
-    const url = await this.paddleService.getPortalLink(user.workspace_id);
-    return { url };
+    try {
+      const url = await this.paddleService.getPortalLink(user.workspace_id);
+      return { url };
+    } catch {
+      return { url: null };
+    }
   }
 }

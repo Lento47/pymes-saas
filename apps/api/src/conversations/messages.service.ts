@@ -10,6 +10,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { Priority } from '@prisma/client';
 import { AutomationsService } from '../automations/automations.service';
 import { stringifyJson } from '../common/prisma/json';
+import { RoutingService } from '../routing/routing.service';
 
 @Injectable()
 export class MessagesService {
@@ -23,6 +24,7 @@ export class MessagesService {
     private readonly tasksService: TasksService,
     private readonly notificationsService: NotificationsService,
     private readonly automationsService: AutomationsService,
+    private readonly routingService: RoutingService,
   ) { }
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 50) {
@@ -147,6 +149,10 @@ export class MessagesService {
         });
       }
 
+      const deptId = await this.routingService
+        .resolveQueue(workspaceId, channel.id, bodyText)
+        .catch(() => null);
+
       conversation = await this.prisma.conversation.create({
         data: {
           workspace_id: workspaceId,
@@ -155,6 +161,7 @@ export class MessagesService {
           subject: subject ?? `Mensaje de ${senderName}`,
           status: 'NEW',
           priority: 'MEDIUM',
+          ...(deptId && { department_id: deptId }),
         },
       });
     }

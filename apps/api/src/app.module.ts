@@ -34,6 +34,7 @@ import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { HealthModule } from './health/health.module';
 import { BillingModule } from './billing/billing.module';
+import { RoutingModule } from './routing/routing.module';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { BillingModule } from './billing/billing.module';
     WhatsAppModule,
     HealthModule,
     BillingModule,
+    RoutingModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

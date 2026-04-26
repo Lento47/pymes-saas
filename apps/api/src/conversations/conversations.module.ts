@@ -10,6 +10,7 @@ import { AiModule } from '../ai/ai.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AutomationsModule } from '../automations/automations.module';
+import { RoutingModule } from '../routing/routing.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AutomationsModule } from '../automations/automations.module';
     forwardRef(() => TasksModule),
     NotificationsModule,
     AutomationsModule,
+    RoutingModule,
   ],
   controllers: [ConversationsController, InboundController],
   providers: [ConversationsService, MessagesService],
