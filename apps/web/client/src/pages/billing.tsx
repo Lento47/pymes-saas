@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const PRICING_TIERS = [
   {
@@ -78,27 +79,39 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
   });
 
   const queryClient = useQueryClient();
-  const { mutate: syncSubscription, isPending: syncPending } = useMutation({
+  const { toast } = useToast();
+  const { mutate: syncSubscription, isPending: syncPending, data: syncResult } = useMutation({
     mutationFn: (args?: { customerId?: string; subscriptionId?: string }) =>
       api.syncSubscription(args?.customerId, args?.subscriptionId),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
       queryClient.invalidateQueries({ queryKey: ['billingInvoices'] });
+      if (data?.synced) {
+        toast({ title: 'Sincronizado', description: `Plan: ${data.plan}, Estado: ${data.status}` });
+      }
+    },
+    onError: (err: any) => {
+      toast({ title: 'Error de sincronización', description: err?.message, variant: 'destructive' });
     },
   });
 
-  const handleSync = async () => {
-    const result = await api.syncSubscription();
-    if (result?.synced) return;
-    const reason = result?.reason || 'Unknown error';
-    const id = prompt(`Sync failed: ${reason}\n\nEnter Subscription ID (sub_) or Customer ID (ctm_):`);
-    if (!id) return;
-    if (id.startsWith('sub_')) {
-      syncSubscription({ subscriptionId: id });
-    } else {
-      syncSubscription({ customerId: id });
-    }
+  const handleSync = () => {
+    syncSubscription({});
   };
+
+  // If auto-sync fails, prompt for manual ID
+  useEffect(() => {
+    if (syncResult && !syncResult.synced) {
+      const reason = syncResult?.reason || 'Unknown error';
+      const id = prompt(`Sync failed: ${reason}\n\nEnter Subscription ID (sub_) or Customer ID (ctm_):`);
+      if (!id) return;
+      if (id.startsWith('sub_')) {
+        syncSubscription({ subscriptionId: id });
+      } else {
+        syncSubscription({ customerId: id });
+      }
+    }
+  }, [syncResult]);
 
   // Auto-trigger upgrade when ?plan=growth|starter|business is in the URL
   const autoUpgradeTier = planParam
