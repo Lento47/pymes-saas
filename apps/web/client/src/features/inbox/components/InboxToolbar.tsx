@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import { ChannelFilterTabs } from "./ChannelFilterTabs";
 import { StatusFilterSelect } from "./StatusFilterSelect";
 import { NewConversationModal } from "./NewConversationModal";
@@ -17,9 +17,42 @@ interface InboxToolbarProps {
 }
 
 export function InboxToolbar(props: InboxToolbarProps) {
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
   return (
-    <div className="border-b border-white/10 px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
+    <div className="border-b border-white/10 px-3 md:px-4 py-2 md:py-3">
+      {/* Mobile: search + actions bar */}
+      <div className="md:hidden space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Input
+              value={props.search}
+              onChange={(e) => props.onSearchChange(e.target.value)}
+              placeholder="Buscar..."
+              className="h-9 rounded-control border-white/10 bg-white/[0.04] pl-9 text-sm text-slate-100 placeholder:text-slate-500"
+            />
+          </div>
+          <button
+            onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+            className="h-9 w-9 flex items-center justify-center rounded-control border border-white/10 bg-white/[0.04] text-slate-400 shrink-0"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+          </button>
+          <NewConversationModal onCreated={props.onConversationCreated} />
+        </div>
+        {mobileFiltersOpen && (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 overflow-x-auto scrollbar-none">
+              <ChannelFilterTabs active={props.channelTab} onChange={props.onChannelTabChange} />
+            </div>
+            <StatusFilterSelect value={props.statusFilter} onChange={props.onStatusFilterChange} />
+          </div>
+        )}
+      </div>
+
+      {/* Desktop */}
+      <div className="hidden md:flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="relative w-[320px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
