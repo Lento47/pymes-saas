@@ -32,6 +32,7 @@ import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
 import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
+import { HealthModule } from './health/health.module';
 import { AiModule } from './ai/ai.module';
 
 @Module({
@@ -75,6 +76,7 @@ import { AiModule } from './ai/ai.module';
     AiModule,
     ErrorReportsModule,
     PlatformModule,
+    HealthModule,
 
     WorkersModule,
     EventsModule,
