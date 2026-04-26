@@ -35,7 +35,6 @@ import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { HealthModule } from './health/health.module';
 import { AiModule } from './ai/ai.module';
-import { HealthModule } from './health/health.module';
 import { ApiTokensModule } from './api-tokens/api-tokens.module';
 
 @Module({
@@ -81,7 +80,6 @@ import { ApiTokensModule } from './api-tokens/api-tokens.module';
     HealthModule,
     ApiTokensModule,
     PlatformModule,
-    HealthModule,
 
     WorkersModule,
     EventsModule,
