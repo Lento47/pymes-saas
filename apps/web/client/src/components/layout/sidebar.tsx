@@ -72,49 +72,46 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* ── Sidebar ── */}
-      <aside
-        style={{ background: "hsl(var(--bg-sidebar))", borderRight: "1px solid hsl(var(--border))" }}
-        className="w-[200px] shrink-0 flex flex-col"
-      >
-        {/* Workspace header / switcher */}
-        <div className="relative shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+      {/* ── Premium Sidebar ── */}
+      <aside className="w-[248px] shrink-0 flex flex-col p-3 bg-gradient-to-b from-[#0B1020] via-[#0A0F1A] to-[#070B14]">
+        {/* ── Workspace Header ── */}
+        <div className="relative shrink-0 mb-4">
           <button
-            className="w-full px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
+            className="w-full h-11 flex items-center gap-3 px-3 rounded-xl hover:bg-white/4 transition-all duration-160 group"
             onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
             style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
           >
-            <div
-              style={{ background: "hsl(var(--accent))", borderRadius: "4px" }}
-              className="w-6 h-6 flex items-center justify-center shrink-0"
-            >
-              <span className="text-white font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
+            {/* Premium logo icon */}
+            <div className="w-7 h-7 rounded-[6px] bg-gradient-to-br from-[#6366f1] to-[#4f46e5] flex items-center justify-center flex-shrink-0 shadow-sm">
+              <span className="text-white font-bold text-xs">P</span>
             </div>
+
+            {/* Workspace name */}
             <div className="min-w-0 flex-1 text-left">
-              <div className="text-sm font-semibold text-white leading-none truncate">{ws}</div>
+              <div className="text-sm font-semibold text-[#F8FAFC] truncate">{ws}</div>
             </div>
+
+            {/* Chevron */}
             {multipleWorkspaces && (
-              <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
+              <ChevronDown className="w-4 h-4 text-[#94A3B8] flex-shrink-0 transition-transform group-hover:text-white" />
             )}
           </button>
 
+          {/* Workspace selector dropdown */}
           {wsMenuOpen && multipleWorkspaces && (
-            <div
-              className="absolute left-0 right-0 top-full z-50 py-1"
-              style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))", borderTop: "none" }}
-            >
+            <div className="absolute left-0 right-0 top-full z-50 mt-1 bg-gradient-to-b from-[#0B1020] to-[#070B14] border border-white/6 rounded-lg overflow-hidden shadow-lg">
               {(myWorkspaces as any[]).map((m: any) => {
                 const isCurrent = m.workspace.id === user?.workspace?.id;
                 return (
                   <button
                     key={m.workspace.id}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-white/5 transition-colors"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/4 transition-all duration-160 border-b border-white/5 last:border-b-0"
                     onClick={() => { setWsMenuOpen(false); if (!isCurrent) switchWorkspace(m.workspace.slug); }}
                   >
-                    <span className="flex-1 text-left text-sm truncate" style={{ color: isCurrent ? "white" : "hsl(var(--fg-2))" }}>
+                    <span className="flex-1 text-left text-sm truncate text-[#CBD5E1]">
                       {m.workspace.name}
                     </span>
-                    {isCurrent && <Check style={{ width: 12, height: 12, color: "hsl(var(--accent))" }} />}
+                    {isCurrent && <Check className="w-4 h-4 text-[#6366f1] flex-shrink-0" />}
                   </button>
                 );
               })}
@@ -122,129 +119,113 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 py-2 overflow-y-auto">
+        {/* ── Navigation Section ── */}
+        <nav className="flex-1 overflow-y-auto space-y-1 mb-3">
           {NAV.map(({ path, icon: Icon, key, badge: bk }) => {
             const active = isActive(path);
             const b = badge(bk);
             return (
               <Link key={path} href={path}>
-                <div
+                <a
                   className={cn(
-                    "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
+                    "flex items-center gap-3 h-10 px-3 rounded-[10px] transition-all duration-160 group",
                     active
-                      ? "text-white"
-                      : "text-[hsl(var(--fg-2))] hover:text-white"
+                      ? "bg-gradient-to-r from-[#5B5CF0] to-[#4338CA] text-white shadow-lg shadow-indigo-500/20"
+                      : "text-[#CBD5E1] hover:bg-white/4 hover:text-white"
                   )}
-                  style={active ? { background: "hsl(var(--bg-active))" } : undefined}
                 >
-                  <Icon
-                    className="shrink-0"
-                    style={{ width: 14, height: 14 }}
-                    strokeWidth={active ? 2.2 : 1.8}
-                  />
-                  <span className="flex-1 truncate" style={{ fontSize: "13px" }}>{copy.nav[key]}</span>
+                  <Icon className="w-[18px] h-[18px] flex-shrink-0 stroke-[1.5]" />
+                  <span className="flex-1 truncate text-sm font-medium">{copy.nav[key]}</span>
                   {b > 0 && (
                     <span
+                      className="flex-shrink-0 text-xs font-semibold px-2 py-1 rounded-full"
                       style={{
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        lineHeight: 1,
-                        padding: "2px 5px",
-                        borderRadius: "10px",
-                        background: bk === "overdue" ? "hsl(var(--danger) / 0.15)" : "hsl(var(--accent) / 0.15)",
-                        color: bk === "overdue" ? "hsl(var(--danger))" : "hsl(var(--accent))",
+                        background: bk === "overdue" ? "rgba(239, 68, 68, 0.15)" : "rgba(99, 102, 241, 0.15)",
+                        color: bk === "overdue" ? "#ef4444" : "#6366f1",
                       }}
                     >
                       {b}
                     </span>
                   )}
-                </div>
+                </a>
               </Link>
             );
           })}
 
-          {/* Divider */}
-          <div className="my-2 mx-3" style={{ height: 1, background: "hsl(var(--border))" }} />
+          {/* ── Divider ── */}
+          <div className="h-px bg-white/6 my-3" />
 
+          {/* Lower nav section */}
           <Link href="/settings">
-            <div
+            <a
               className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/settings") && !isActive("/settings/billing") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
+                "flex items-center gap-3 h-10 px-3 rounded-[10px] transition-all duration-160",
+                isActive("/settings") && !isActive("/settings/billing")
+                  ? "bg-gradient-to-r from-[#5B5CF0] to-[#4338CA] text-white shadow-lg shadow-indigo-500/20"
+                  : "text-[#CBD5E1] hover:bg-white/4 hover:text-white"
               )}
-              style={isActive("/settings") && !isActive("/settings/billing") ? { background: "hsl(var(--bg-active))" } : undefined}
             >
-              <Settings style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>{copy.settings}</span>
-            </div>
+              <Settings className="w-[18px] h-[18px] flex-shrink-0 stroke-[1.5]" />
+              <span className="flex-1 truncate text-sm font-medium">{copy.settings}</span>
+            </a>
           </Link>
 
           <Link href="/settings/billing">
-            <div
+            <a
               className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/settings/billing") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
+                "flex items-center gap-3 h-10 px-3 rounded-[10px] transition-all duration-160",
+                isActive("/settings/billing")
+                  ? "bg-gradient-to-r from-[#5B5CF0] to-[#4338CA] text-white shadow-lg shadow-indigo-500/20"
+                  : "text-[#CBD5E1] hover:bg-white/4 hover:text-white"
               )}
-              style={isActive("/settings/billing") ? { background: "hsl(var(--bg-active))" } : undefined}
             >
-              <CreditCard style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>Billing</span>
-            </div>
+              <CreditCard className="w-[18px] h-[18px] flex-shrink-0 stroke-[1.5]" />
+              <span className="flex-1 truncate text-sm font-medium">Billing</span>
+            </a>
           </Link>
 
           <Link href="/help">
-            <div
+            <a
               className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/help") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
+                "flex items-center gap-3 h-10 px-3 rounded-[10px] transition-all duration-160",
+                isActive("/help")
+                  ? "bg-gradient-to-r from-[#5B5CF0] to-[#4338CA] text-white shadow-lg shadow-indigo-500/20"
+                  : "text-[#CBD5E1] hover:bg-white/4 hover:text-white"
               )}
-              style={isActive("/help") ? { background: "hsl(var(--bg-active))" } : undefined}
             >
-              <CircleHelp style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>{copy.help}</span>
-            </div>
+              <CircleHelp className="w-[18px] h-[18px] flex-shrink-0 stroke-[1.5]" />
+              <span className="flex-1 truncate text-sm font-medium">{copy.help}</span>
+            </a>
           </Link>
         </nav>
 
-        <div className="px-3 pb-3">
+        {/* ── Language Switcher ── */}
+        <div className="mb-3">
           <LanguageSwitcher className="w-full justify-between" />
         </div>
 
-        {/* User row */}
-        <div
-          className="px-3 py-3 flex items-center gap-2"
-          style={{ borderTop: "1px solid hsl(var(--border))" }}
-        >
+        {/* ── User Footer Card ── */}
+        <div className="h-14 flex items-center gap-3 px-3 rounded-xl bg-white/3 border border-white/6 flex-shrink-0">
           <div
-            style={{
-              width: 24, height: 24,
-              borderRadius: "50%",
-              background: "hsl(var(--bg-active))",
-              border: "1px solid hsl(var(--border))",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "10px", fontWeight: 600, color: "hsl(var(--fg-2))",
-              flexShrink: 0,
-            }}
+            className="w-7 h-7 rounded-full bg-gradient-to-br from-[#6366f1] to-[#4f46e5] flex items-center justify-center flex-shrink-0 text-white font-semibold text-xs"
           >
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="truncate font-medium text-white" style={{ fontSize: "12px", lineHeight: "1.3" }}>{name}</div>
-            <div className="truncate" style={{ fontSize: "11px", color: "hsl(var(--fg-3))" }}>{user?.role ?? ""}</div>
+            <div className="text-xs font-semibold text-[#F8FAFC] truncate">{name}</div>
+            <div className="text-xs text-[#94A3B8] truncate">{user?.role ?? ""}</div>
           </div>
           <button
             onClick={logout}
-            style={{ color: "hsl(var(--fg-3))", padding: "4px" }}
-            className="hover:text-white transition-colors shrink-0 rounded"
+            className="p-1.5 text-[#94A3B8] hover:text-white transition-colors duration-160 flex-shrink-0 rounded-lg hover:bg-white/5"
             title={copy.logout}
           >
-            <LogOut style={{ width: 13, height: 13 }} />
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </aside>
 
-      {/* ── Main ── */}
+      {/* ── Main Content ── */}
       <main className="flex-1 overflow-y-auto" style={{ background: "hsl(var(--bg))" }}>
         {children}
       </main>
