@@ -1,134 +1,100 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
-import { PageHeader } from "@/components/shared/page-header";
-import { StatusBadge } from "@/components/shared/status-badge";
-import { PriorityDot } from "@/components/shared/priority-dot";
-import { ModuleHero } from "@/components/shared/module-hero";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { InsightsWidget } from "@/components/shared/insights-widget";
 import {
-  RefreshCw, Loader2, ArrowRight, AlertTriangle, Plus, MessageSquare,
-  Users, CheckSquare, FileText, MessageCircle, TrendingUp
+  Plus, ArrowRight, Activity, Bell, Search,
+  Users, CheckSquare, FileText, MessageCircle, TrendingUp,
+  Receipt, Zap, BarChart2, Clock,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-interface PipelineDealSummary {
-  value: string | null;
-  currency: string;
+const STATUS_BG = "https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/statusBackground.png";
+
+interface PipelineDealSummary { value: string | null; currency: string; }
+interface PipelineStageSummary { id: string; name: string; color: string; deals: PipelineDealSummary[]; }
+
+function sumPipelineValue(deals: PipelineDealSummary[]) {
+  return deals.reduce((sum, d) => {
+    const n = d.value ? Number.parseFloat(d.value) : 0;
+    return Number.isFinite(n) ? sum + n : sum;
+  }, 0);
 }
 
-interface PipelineStageSummary {
-  id: string;
-  name: string;
-  color: string;
-  deals: PipelineDealSummary[];
+function fmtMoney(amount: number, currency: string) {
+  return new Intl.NumberFormat("es-CR", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
 }
 
-// ── Metric Card with trend ────────────────────────────────────────────────────
+// ── Metric card ───────────────────────────────────────────────────────────────
 function MetricCard({
-  label,
-  value,
-  currency,
-  trend,
-  trendLabel,
-  icon: Icon,
-  loading,
-  color = "blue"
+  label, value, currency, subLabel, icon: Icon, iconBg, loading,
 }: {
-  label: string;
-  value: any;
-  currency?: string;
-  trend?: number;
-  trendLabel?: string;
-  icon?: any;
-  loading?: boolean;
-  color?: "blue" | "orange" | "red" | "purple" | "green";
+  label: string; value: any; currency?: string; subLabel?: string;
+  icon: any; iconBg: string; loading?: boolean;
 }) {
-  const colorMap = {
-    blue: "text-blue-500",
-    orange: "text-orange-500",
-    red: "text-red-500",
-    purple: "text-purple-500",
-    green: "text-green-500"
-  };
-
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{label}</p>
+    <div
+      className="relative rounded-2xl overflow-hidden bg-white border border-gray-100 p-5 hover:shadow-md transition-shadow"
+      style={{
+        backgroundImage: `url('${STATUS_BG}')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      {/* white overlay so text stays readable */}
+      <div className="absolute inset-0 bg-white/88 rounded-2xl" />
+      <div className="relative">
+        <div className="flex items-start justify-between mb-3">
+          <p className="text-sm font-medium text-gray-500">{label}</p>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
+            <Icon className="w-4 h-4" />
+          </div>
         </div>
-        {Icon && <Icon className={`w-5 h-5 ${colorMap[color]}`} />}
-      </div>
-
-      {loading ? (
-        <Skeleton className="h-8 w-24" />
-      ) : (
-        <>
-          <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold text-gray-900">
+        {loading ? (
+          <Skeleton className="h-7 w-20" />
+        ) : (
+          <>
+            <p className="text-2xl font-bold text-gray-900">
               {currency}{typeof value === "number" ? value.toLocaleString("es-ES") : value}
             </p>
-          </div>
-          {trend !== undefined && (
-            <p className={`text-sm mt-2 flex items-center gap-1 ${trend >= 0 ? "text-green-600" : "text-red-600"}`}>
-              <span className={trend >= 0 ? "text-green-500" : "text-red-500"}>
-                {trend >= 0 ? "↑" : "↓"}
-              </span>
-              {Math.abs(trend)}% {trendLabel || "vs. mes anterior"}
-            </p>
-          )}
-        </>
-      )}
+            {subLabel && <p className="text-xs text-gray-400 mt-1">{subLabel}</p>}
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-// ── Section Card ──────────────────────────────────────────────────────────────
+// ── Section card ──────────────────────────────────────────────────────────────
 function SectionCard({
-  title,
-  linkTo,
-  linkLabel,
-  loading,
-  empty,
-  children,
+  title, linkTo, linkLabel, loading, empty, children,
 }: {
-  title: string;
-  linkTo?: string;
-  linkLabel?: string;
-  loading?: boolean;
-  empty?: boolean;
-  children?: React.ReactNode;
+  title: string; linkTo?: string; linkLabel?: string;
+  loading?: boolean; empty?: boolean; children?: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
       {(title || linkTo) && (
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="font-semibold text-gray-900">{title}</h3>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
           {linkTo && (
             <Link href={linkTo}>
-              <a className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
-                {linkLabel} <ArrowRight className="w-4 h-4" />
+              <a className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1 font-medium">
+                {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
               </a>
             </Link>
           )}
         </div>
       )}
-
       {loading ? (
-        <div className="px-6 py-4 space-y-3">
-          {[0, 1, 2].map(i => <Skeleton key={i} className="h-4 w-full" />)}
-        </div>
+        <div className="px-5 py-4 space-y-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-4 w-full" />)}</div>
       ) : empty ? (
-        <div className="px-6 py-8 text-center text-sm text-gray-500">
-          Sin datos aún
-        </div>
+        <div className="px-5 py-8 text-center text-sm text-gray-400">Sin datos aún</div>
       ) : (
         <div>{children}</div>
       )}
@@ -136,325 +102,395 @@ function SectionCard({
   );
 }
 
-function sumPipelineValue(deals: PipelineDealSummary[]) {
-  return deals.reduce((sum, deal) => {
-    const amount = deal.value ? Number.parseFloat(deal.value) : 0;
-    return Number.isFinite(amount) ? sum + amount : sum;
-  }, 0);
-}
-
-function formatPipelineMoney(amount: number, currency: string) {
-  return new Intl.NumberFormat("es-CR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-// ── Quick Action Button ───────────────────────────────────────────────────────
-function QuickAction({
-  icon: Icon,
-  label,
-  href,
-}: {
-  icon: any;
-  label: string;
-  href: string;
-}) {
+// ── Quick action button ───────────────────────────────────────────────────────
+function QuickAction({ icon: Icon, label, href, iconColor }: { icon: any; label: string; href: string; iconColor: string }) {
   return (
     <Link href={href}>
-      <a className="flex flex-col items-center gap-2 p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-        <Icon className="w-6 h-6 text-gray-600" />
-        <span className="text-xs font-medium text-gray-700 text-center">{label}</span>
+      <a className="flex flex-col items-center gap-2 py-3 px-2 rounded-xl hover:bg-gray-50 transition group">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconColor}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <span className="text-xs font-medium text-gray-600 text-center leading-tight">{label}</span>
       </a>
     </Link>
   );
 }
 
+// ── Priority badge ────────────────────────────────────────────────────────────
+function PriorityBadge({ priority }: { priority: string }) {
+  const map: Record<string, string> = {
+    HIGH: "bg-red-100 text-red-600",
+    MEDIUM: "bg-yellow-100 text-yellow-700",
+    LOW: "bg-gray-100 text-gray-500",
+  };
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${map[priority] ?? map.LOW}`}>
+      {priority === "HIGH" ? "High" : priority === "MEDIUM" ? "Medium" : "Low"}
+    </span>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 export default function DashboardPage() {
   useRequireAuth();
   const { user } = useAuth();
-  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<"tasks" | "messages">("tasks");
 
-  // Fetch all data
   const { data: todayStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/workspaces/current/stats/today"],
     queryFn: api.getTodayStats,
     refetchInterval: 60000,
   });
-
   const { data: conversations, isLoading: convsLoading } = useQuery({
     queryKey: ["/api/conversations", "dash"],
     queryFn: () => api.getConversations({ limit: "10" }),
   });
-
   const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ["/api/tasks", "dash"],
     queryFn: () => api.getTasks({ limit: "10" }),
   });
-
   const { data: overdueInvoices, isLoading: invoicesLoading } = useQuery({
     queryKey: ["/api/invoices", "overdue-widget"],
     queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }),
     refetchInterval: 60000,
   });
-
-  const { data: summaries } = useQuery({
-    queryKey: ["/api/summaries/daily"],
-    queryFn: () => api.getDailySummaries(),
-  });
-
   const { data: pipelineStagesData, isLoading: pipelineLoading } = useQuery({
     queryKey: ["/api/pipeline/stages", "dash"],
     queryFn: () => api.getPipelineStages(),
     refetchInterval: 60000,
   });
 
-  // Parse data
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
-  const overdueInvoiceList = Array.isArray(overdueInvoices)
-    ? overdueInvoices
-    : overdueInvoices?.data ?? [];
-  const pipelineStages: PipelineStageSummary[] = Array.isArray(pipelineStagesData)
-    ? pipelineStagesData
-    : pipelineStagesData?.data ?? [];
+  const overdueInvoiceList = Array.isArray(overdueInvoices) ? overdueInvoices : overdueInvoices?.data ?? [];
+  const pipelineStages: PipelineStageSummary[] = Array.isArray(pipelineStagesData) ? pipelineStagesData : pipelineStagesData?.data ?? [];
+
   const pipelineStageRows = pipelineStages
     .map((stage) => {
       const dealCount = stage.deals?.length ?? 0;
-      const currency =
-        stage.deals?.find((deal) => deal.currency)?.currency ??
-        pipelineStages
-          .flatMap((pipelineStage) => pipelineStage.deals ?? [])
-          .find((deal) => deal.currency)?.currency ??
-        "CRC";
-      const totalValue = sumPipelineValue(stage.deals ?? []);
-      return {
-        id: stage.id,
-        name: stage.name,
-        color: stage.color || "#3b82f6",
-        dealCount,
-        totalValue,
-        currency,
-      };
+      const currency = stage.deals?.find(d => d.currency)?.currency ?? "CRC";
+      return { id: stage.id, name: stage.name, color: stage.color || "#6366F1", dealCount, totalValue: sumPipelineValue(stage.deals ?? []), currency };
     })
-    .filter((stage) => stage.dealCount > 0)
-    .slice(0, 4);
-  const maxPipelineDeals = Math.max(...pipelineStageRows.map((stage) => stage.dealCount), 1);
-  const pipelineDealCount = pipelineStages.reduce(
-    (sum, stage) => sum + (stage.deals?.length ?? 0),
-    0
-  );
+    .filter(s => s.dealCount > 0)
+    .slice(0, 5);
+
+  const maxPipelineDeals = Math.max(...pipelineStageRows.map(s => s.dealCount), 1);
+  const pipelineDealCount = pipelineStages.reduce((sum, s) => sum + (s.deals?.length ?? 0), 0);
   const overdueCount = overdueInvoiceList.length;
   const overdueAmount = overdueInvoiceList.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
-  const lastSummary = Array.isArray(summaries) ? summaries[0] : summaries?.data?.[0] ?? null;
+  const urgentTasks = taskList.filter((t: any) => t.priority === "HIGH").length;
 
-  // Greeting
   const greeting = () => {
     const h = new Date().getHours();
-    if (h < 12) return "Buenos días";
-    if (h < 19) return "Buenas tardes";
-    return "Buenas noches";
+    if (h < 12) return "Good morning";
+    if (h < 19) return "Good afternoon";
+    return "Good evening";
   };
 
   return (
-    <div className="min-h-full bg-gray-50">
-      {/* Hero Header */}
-      <div className="p-4 pb-0">
-        <ModuleHero module="dashboard">
-          <div className="px-6 py-5 max-w-7xl mx-auto">
-            <div className="flex items-center justify-between mb-1">
-              <h1 className="text-2xl font-bold text-gray-900">
-                {greeting()}, {user?.name?.split(" ")[0] || "Usuario"}.
-              </h1>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Buscar en PymesHub..."
-                  className="px-4 py-2 rounded-lg border border-gray-200 bg-white/70 backdrop-blur-sm text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-                <Button variant="outline" size="sm" className="bg-white/70 backdrop-blur-sm border-gray-200">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-            <p className="text-sm text-gray-600">Aquí está lo más importante de tu negocio hoy.</p>
+    <div className="min-h-full" style={{ background: "#F4F5F9" }}>
+
+      {/* ── Page header ─────────────────────────────────────────────────── */}
+      <div className="px-8 pt-7 pb-5 flex items-start justify-between max-w-[1400px] mx-auto">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {greeting()}, {user?.name?.split(" ")[0] || "Usuario"} 👋
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">Here's what's happening with your business today.</p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-400 min-w-[220px]">
+            <Search className="w-4 h-4 flex-shrink-0" />
+            <span className="flex-1">Search in PymesHub...</span>
+            <span className="text-xs text-gray-300 font-mono">⌘ K</span>
           </div>
-        </ModuleHero>
+          <button className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition">
+            <Bell className="w-5 h-5" />
+          </button>
+          <button className="p-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition">
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-6 py-6 max-w-7xl mx-auto">
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+      <div className="px-8 pb-8 max-w-[1400px] mx-auto space-y-4">
+
+        {/* ── Status banner ───────────────────────────────────────────────── */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            backgroundImage: `url('${STATUS_BG}')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center right",
+            minHeight: 96,
+          }}
+        >
+          <div className="flex items-center gap-5 px-7 py-5">
+            {/* Icon */}
+            <div className="w-12 h-12 rounded-xl bg-white/70 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
+              <Activity className="w-6 h-6 text-indigo-600" />
+            </div>
+
+            {/* Title + subtitle */}
+            <div className="flex-shrink-0 min-w-[240px]">
+              <h2 className="text-lg font-bold text-gray-900">Everything looks good today</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Your business is on track. Keep going! ✨</p>
+            </div>
+
+            {/* Vertical divider */}
+            <div className="h-10 w-px bg-gray-300/70 mx-1 flex-shrink-0" />
+
+            {/* Inline mini-metrics */}
+            <div className="flex items-center gap-8 flex-1">
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Revenue</p>
+                <p className="text-sm font-bold text-gray-900 flex items-center gap-1">
+                  <span className="text-green-500">↑ 18%</span>
+                </p>
+                <p className="text-xs text-gray-400">vs last month</p>
+              </div>
+              <div className="h-8 w-px bg-gray-200/80" />
+              <div>
+                <p className="text-sm font-semibold text-gray-800">{overdueCount} Invoices</p>
+                <p className="text-xs text-gray-400">Pending payment</p>
+              </div>
+              <div className="h-8 w-px bg-gray-200/80" />
+              <div>
+                <p className="text-sm font-semibold text-gray-800">{urgentTasks} Tasks</p>
+                <p className="text-xs text-gray-400">Urgent</p>
+              </div>
+              <div className="h-8 w-px bg-gray-200/80" />
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Pipeline</p>
+                <p className="text-sm font-semibold text-green-600">Healthy</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Metric cards ────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <MetricCard
-            label="Ingresos este mes"
-            value={todayStats?.monthly_revenue || 0}
+            label="Revenue this month"
+            value={todayStats?.monthly_revenue ?? 0}
             currency="€"
-            trend={18.6}
-            trendLabel="vs. mes anterior"
+            subLabel="↑ 18.6% vs. last month"
             icon={TrendingUp}
+            iconBg="bg-indigo-100 text-indigo-600"
             loading={statsLoading}
-            color="blue"
           />
           <MetricCard
-            label="Por cobrar"
+            label="Outstanding"
             value={overdueAmount}
             currency="€"
+            subLabel={`${overdueCount} invoices pending`}
+            icon={Receipt}
+            iconBg="bg-orange-100 text-orange-500"
             loading={invoicesLoading}
-            color="orange"
           />
           <MetricCard
-            label="Tareas urgentes"
-            value={taskList.filter((t: any) => t.priority === "HIGH").length}
-            trendLabel="vencen hoy"
-            loading={tasksLoading}
-            color="red"
-          />
-          <MetricCard
-            label="Nuevos mensajes"
-            value={todayStats?.new_messages || 0}
-            trendLabel="sin leer"
-            loading={statsLoading}
-            color="purple"
-          />
-          <MetricCard
-            label="Negocios en pipeline"
-            value={pipelineDealCount}
+            label="Pipeline value"
+            value={pipelineStageRows.reduce((s, r) => s + r.totalValue, 0)}
+            currency="€"
+            subLabel="Potential revenue"
+            icon={BarChart2}
+            iconBg="bg-blue-100 text-blue-500"
             loading={pipelineLoading}
-            color="green"
+          />
+          <MetricCard
+            label="New messages"
+            value={todayStats?.new_messages ?? 0}
+            subLabel={todayStats?.new_messages ? `${todayStats.new_messages} unread` : "No unread messages"}
+            icon={MessageCircle}
+            iconBg="bg-purple-100 text-purple-500"
+            loading={statsLoading}
+          />
+          <MetricCard
+            label="Tasks today"
+            value={taskList.length}
+            subLabel={taskList.length === 0 ? "You're all caught up" : `${urgentTasks} urgent`}
+            icon={Clock}
+            iconBg="bg-teal-100 text-teal-500"
+            loading={tasksLoading}
           />
         </div>
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Left Column - Messages by Responder */}
-          <div className="lg:col-span-1">
-            <SectionCard title="Mensajes por responder" linkTo="/inbox" linkLabel="Ver todos">
-              <div className="divide-y divide-gray-200">
-                {convList.slice(0, 5).map((conv: any, i: number) => (
-                  <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                    <a className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-700">
-                        {conv.contact?.full_name?.charAt(0) || "?"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {conv.contact?.full_name || "Contacto desconocido"}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {conv.subject || "Sin asunto"}
-                        </p>
-                      </div>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
-                        {conv.updated_at && format(new Date(conv.updated_at), "HH:mm", { locale: es })}
-                      </span>
-                    </a>
-                  </Link>
-                ))}
-              </div>
-            </SectionCard>
-          </div>
+        {/* ── Main grid ───────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-          {/* Middle Column - Tasks & Invoices */}
-          <div className="lg:col-span-1 space-y-6">
-            <SectionCard title="Tareas de hoy" linkTo="/tasks" linkLabel="Ver todas">
-              <div className="divide-y divide-gray-200">
-                {taskList.slice(0, 5).map((task: any, i: number) => (
-                  <div key={task.id} className="flex items-center gap-3 px-6 py-3">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+          {/* Revenue overview + Tasks/Messages  (col 1-6) */}
+          <div className="lg:col-span-6 space-y-4">
+
+            {/* Revenue overview placeholder */}
+            <SectionCard title="Revenue overview">
+              <div className="px-5 py-4">
+                <div className="flex items-baseline gap-3 mb-4">
+                  <span className="text-2xl font-bold text-gray-900">
+                    €{(todayStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}
+                  </span>
+                  <span className="text-sm text-green-500 font-medium">↑ 18.6% vs. last month</span>
+                </div>
+                <div className="h-36 rounded-xl bg-gradient-to-t from-indigo-50 to-transparent flex items-end px-2 gap-1">
+                  {[30, 45, 35, 55, 48, 62, 58, 70, 55, 80, 72, 90].map((h, i) => (
+                    <div
+                      key={i}
+                      className="flex-1 rounded-t-sm"
+                      style={{ height: `${h}%`, background: i === 11 ? "#6366F1" : "#E0E7FF" }}
                     />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{task.title}</p>
-                      <p className="text-xs text-gray-500">{task.department_name}</p>
-                    </div>
-                    {task.due_date && (
-                      <span className="text-xs text-gray-500">
-                        {format(new Date(task.due_date), "HH:mm a", { locale: es })}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className="flex justify-between text-xs text-gray-400 mt-2 px-1">
+                  {["May 1", "May 8", "May 15", "May 22", "May 29"].map(d => (
+                    <span key={d}>{d}</span>
+                  ))}
+                </div>
               </div>
             </SectionCard>
 
-            <SectionCard title="Facturas próximas a vencer" linkTo="/invoices" linkLabel="Ver todas">
-              <div className="divide-y divide-gray-200">
-                {overdueInvoiceList.slice(0, 4).map((inv: any) => (
-                  <div key={inv.id} className="flex items-center gap-3 px-6 py-3 text-sm">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">#{inv.id?.slice(0, 4)}</p>
-                      <p className="text-xs text-gray-500">{inv.client_name}</p>
-                    </div>
-                    {inv.due_date && (
-                      <span className="text-xs text-gray-500">
-                        {format(new Date(inv.due_date), "dd MMM", { locale: es })}
-                      </span>
-                    )}
-                    <span className="font-semibold text-gray-900">€{inv.amount?.toLocaleString("es-ES")}</span>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          </div>
-
-          {/* Right Column - Pipeline & AI Insights */}
-          <div className="lg:col-span-1 space-y-6">
+            {/* Tasks / Messages tabs */}
             <SectionCard
-              title="Pipeline de ventas"
-              linkTo="/pipeline"
-              linkLabel="Ver pipeline"
-              loading={pipelineLoading}
-              empty={!pipelineLoading && pipelineStageRows.length === 0}
+              title=""
+              linkTo={activeTab === "tasks" ? "/tasks" : "/inbox"}
+              linkLabel={activeTab === "tasks" ? "View all tasks →" : "View all →"}
             >
-              <div className="px-6 py-4 space-y-4">
-                {pipelineStageRows.map((stage) => {
-                  const width = `${Math.max((stage.dealCount / maxPipelineDeals) * 100, 12)}%`;
+              <div className="px-5 pb-1 pt-2 border-b border-gray-100">
+                <div className="flex gap-1">
+                  {(["tasks", "messages"] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition capitalize ${
+                        activeTab === tab
+                          ? "text-indigo-600 border-b-2 border-indigo-600 rounded-none"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {tab === "tasks" ? "Tasks" : "Messages"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {activeTab === "tasks"
+                  ? taskList.slice(0, 5).map((task: any) => (
+                      <div key={task.id} className="flex items-center gap-3 px-5 py-3">
+                        <input type="checkbox" className="w-4 h-4 rounded border-gray-300 cursor-pointer accent-indigo-600" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{task.title}</p>
+                        </div>
+                        <PriorityBadge priority={task.priority} />
+                        {task.due_date && (
+                          <span className="text-xs text-gray-400 whitespace-nowrap">
+                            {format(new Date(task.due_date), "MMM d", { locale: es })}
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  : convList.slice(0, 5).map((conv: any) => (
+                      <Link key={conv.id} href={`/inbox/${conv.id}`}>
+                        <a className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-semibold text-indigo-700 flex-shrink-0">
+                            {conv.contact?.full_name?.charAt(0) || "?"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{conv.contact?.full_name || "Unknown"}</p>
+                            <p className="text-xs text-gray-400 truncate">{conv.subject || "No subject"}</p>
+                          </div>
+                          <span className="text-xs text-gray-400 whitespace-nowrap">
+                            {conv.updated_at && format(new Date(conv.updated_at), "HH:mm")}
+                          </span>
+                        </a>
+                      </Link>
+                    ))
+                }
+              </div>
+            </SectionCard>
+          </div>
 
-                  return (
-                    <div key={stage.id}>
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">{stage.name}</span>
-                        <span className="text-xs font-semibold text-gray-900">
-                          {stage.dealCount} {stage.dealCount === 1 ? "negocio" : "negocios"}
-                        </span>
+          {/* Pipeline + Recent activity  (col 7-9) */}
+          <div className="lg:col-span-3 space-y-4">
+            <SectionCard title="Pipeline overview" linkTo="/pipeline" linkLabel="View pipeline →" loading={pipelineLoading} empty={!pipelineLoading && pipelineStageRows.length === 0}>
+              <div className="px-5 py-4 space-y-3">
+                {pipelineStageRows.map(stage => (
+                  <div key={stage.id}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div>
+                        <span className="text-xs font-medium text-gray-700">{stage.name}</span>
+                        <span className="text-xs text-gray-400 ml-1">{stage.dealCount} deals</span>
                       </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                        <div
-                          className="h-full rounded-full transition-[width]"
-                          style={{ width, backgroundColor: stage.color }}
-                        />
-                      </div>
-                      <span className="text-xs text-gray-500">
-                        {stage.totalValue > 0
-                          ? formatPipelineMoney(stage.totalValue, stage.currency)
-                          : "Sin valor registrado"}
+                      <span className="text-xs font-semibold text-gray-800">
+                        {stage.totalValue > 0 ? fmtMoney(stage.totalValue, stage.currency) : "—"}
                       </span>
                     </div>
-                  );
-                })}
+                    <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${Math.max((stage.dealCount / maxPipelineDeals) * 100, 8)}%`, backgroundColor: stage.color }}
+                      />
+                    </div>
+                  </div>
+                ))}
+                {pipelineStageRows.length > 0 && (
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-700">Total pipeline value</span>
+                    <span className="text-sm font-bold text-gray-900">
+                      {fmtMoney(pipelineStageRows.reduce((s, r) => s + r.totalValue, 0), pipelineStageRows[0]?.currency ?? "CRC")}
+                    </span>
+                  </div>
+                )}
               </div>
             </SectionCard>
 
-            <SectionCard title="Insights de IA">
-              <InsightsWidget />
+            {/* Recent activity */}
+            <SectionCard title="Recent activity" linkTo="/inbox" linkLabel="View all →">
+              <div className="divide-y divide-gray-50">
+                {overdueInvoiceList.slice(0, 4).map((inv: any) => (
+                  <div key={inv.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <Receipt className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-900 truncate">
+                        Invoice #{inv.id?.slice(0, 8)} pending
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">{inv.client_name}</p>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700">€{inv.amount?.toLocaleString("es-ES")}</span>
+                  </div>
+                ))}
+                {overdueInvoiceList.length === 0 && (
+                  <div className="px-5 py-6 text-center text-xs text-gray-400">No recent activity</div>
+                )}
+              </div>
             </SectionCard>
           </div>
-        </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Acciones rápidas</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-            <QuickAction icon={FileText} label="Nueva factura" href="/invoices" />
-            <QuickAction icon={Users} label="Nuevo contacto" href="/contacts" />
-            <QuickAction icon={CheckSquare} label="Nueva tarea" href="/tasks" />
-            <QuickAction icon={FileText} label="Subir documento" href="/documents" />
-            <QuickAction icon={MessageCircle} label="Enviar mensaje" href="/inbox" />
-            <QuickAction icon={TrendingUp} label="Ver reportes" href="/invoices" />
+          {/* AI Insights + Quick actions  (col 10-12) */}
+          <div className="lg:col-span-3 space-y-4">
+            <div className="rounded-2xl overflow-hidden" style={{ background: "linear-gradient(160deg,#1e1b4b 0%,#312e81 60%,#4c1d95 100%)" }}>
+              <div className="px-4 py-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="w-4 h-4 text-violet-300" />
+                  <span className="text-sm font-semibold text-white">AI Insights</span>
+                </div>
+                <InsightsWidget />
+              </div>
+            </div>
+
+            {/* Quick actions */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Quick actions</h3>
+              <div className="grid grid-cols-3 gap-1">
+                <QuickAction icon={FileText} label="New invoice" href="/invoices" iconColor="bg-indigo-100 text-indigo-600" />
+                <QuickAction icon={Users} label="Add contact" href="/contacts" iconColor="bg-blue-100 text-blue-600" />
+                <QuickAction icon={CheckSquare} label="New task" href="/tasks" iconColor="bg-violet-100 text-violet-600" />
+                <QuickAction icon={MessageCircle} label="Send message" href="/inbox" iconColor="bg-green-100 text-green-600" />
+                <QuickAction icon={FileText} label="Upload file" href="/documents" iconColor="bg-orange-100 text-orange-500" />
+                <QuickAction icon={Zap} label="Automation" href="/automations" iconColor="bg-pink-100 text-pink-500" />
+              </div>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
