@@ -25,6 +25,8 @@ import {
   Crown,
   MessageCircle,
   Bot,
+  Menu,
+  X,
 } from "lucide-react";
 
 const NAV = [
@@ -43,6 +45,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const { user, logout, switchWorkspace } = useAuth();
   const { messages } = useI18n();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const copy = messages.sidebar;
 
   const { data: myWorkspaces } = useQuery({
@@ -76,7 +79,34 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="w-[220px] shrink-0 flex flex-col bg-[#0D1B2A]">
+      {/* Mobile hamburger + overlay */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="lg:hidden fixed top-3 left-3 z-50 p-2 rounded-lg bg-[#0D1B2A] border border-white/10 text-white/80"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={[
+        "w-[220px] shrink-0 flex flex-col bg-[#0D1B2A] transition-transform duration-200",
+        "lg:relative lg:translate-x-0",
+        mobileOpen ? "fixed inset-y-0 left-0 z-50 translate-x-0" : "fixed inset-y-0 left-0 z-50 -translate-x-full lg:translate-x-0",
+      ].join(" ")}>
+        {/* Mobile close button */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="lg:hidden absolute top-3 right-3 p-1 text-white/60 hover:text-white"
+        >
+          <X className="w-5 h-5" />
+        </button>
         <div className="relative shrink-0 px-4 py-4">
           <div className="flex items-center gap-2 mb-3">
             <img
