@@ -189,8 +189,9 @@ export class PaddleService {
     this.logger.log(`Auto-sync: looking up Paddle customer for email=${info.email}, workspace=${info.name}`);
     if (info.email) {
       try {
-        const result = await (paddle as any).customers.list({ email: [info.email] });
-        const customers = Array.isArray(result) ? result : result?.data || [];
+        const collection: any = await (paddle as any).customers.list({ email: [info.email] });
+        const page = await collection.next();
+        const customers = page || [];
         this.logger.log(`Auto-sync: found ${customers.length} Paddle customer(s) for email ${info.email}`);
         if (customers.length > 0) {
           return this.syncByCustomerId(workspaceId, customers[0].id);
@@ -213,8 +214,9 @@ export class PaddleService {
         return { synced: false, reason: `Customer ${customerId} not found` };
       }
 
-      const allSubs = await (paddle as any).subscriptions.list({ customerId: [customerId] });
-      const subsList = Array.isArray(allSubs) ? allSubs : allSubs?.data || [];
+      const subsCollection: any = await (paddle as any).subscriptions.list({ customerId: [customerId] });
+      const subsPage = await subsCollection.next();
+      const subsList = subsPage || [];
       const activeSub = subsList.find((s: any) =>
         ['active', 'trialing'].includes(s.status),
       );
