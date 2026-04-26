@@ -164,6 +164,47 @@ export class PaddleService {
     return result;
   }
 
+  async syncSubscription(workspaceId: string) {
+    const paddle = this.requireClient();
+
+    const sub = await this.prisma.workspaceSubscription.findFirst({
+      where: { workspace_id: workspaceId },
+      select: { id: true, provider_subscription_id: true },
+    });
+
+    if (!sub?.provider_subscription_id) {
+      return { synced: false, reason: 'No Paddle subscription found' };
+    }
+
+    const paddleSub = await paddle.subscriptions.get(sub.provider_subscription_id);
+    const plan = this.mapPaddlePriceToPlan(
+      paddleSub.items?.[0]?.price?.id || '',
+    );
+    const status = this.mapPaddleStatus(paddleSub.status);
+
+    await this.prisma.workspaceSubscription.update({
+      where: { id: sub.id },
+      data: {
+        plan,
+        status,
+        current_period_start: paddleSub.currentBillingPeriod?.startsAt
+          ? new Date(paddleSub.currentBillingPeriod.startsAt)
+          : undefined,
+        current_period_end: paddleSub.currentBillingPeriod?.endsAt
+          ? new Date(paddleSub.currentBillingPeriod.endsAt)
+          : undefined,
+      } as any,
+    });
+
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { plan },
+    });
+
+    this.logger.log(`Synced subscription for workspace ${workspaceId}: plan=${plan} status=${status}`);
+    return { synced: true, plan, status };
+  }
+
   // ── Webhooks ─────────────────────────────────────────────────────────────
 
   async verifyWebhookSignature(

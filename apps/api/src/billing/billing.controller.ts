@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Post, RawBodyRequest, Req, UseGuards, BadRequestException, InternalServerErrorException } from '@nestjs/common';
-import { Request } from 'express';
+import { Body, Controller, Get, Param, Post, RawBodyRequest, Req, Res, UseGuards, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { PaddleService } from './paddle.service';
+import { BillingInvoiceService } from './billing-invoice.service';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -10,6 +11,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class BillingController {
   constructor(
     private readonly paddleService: PaddleService,
+    private readonly billingInvoice: BillingInvoiceService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -84,5 +86,33 @@ export class BillingController {
     } catch {
       return { url: null };
     }
+  }
+
+  @Get('invoices')
+  @UseGuards(JwtAuthGuard)
+  async getInvoices(@CurrentUser() user: AuthUser) {
+    return this.billingInvoice.findByWorkspace(user.workspace_id);
+  }
+
+  @Get('invoices/:id/pdf')
+  @UseGuards(JwtAuthGuard)
+  async getInvoicePdf(
+    @CurrentUser() user: AuthUser,
+    @Param('id') invoiceId: string,
+    @Res() res: Response,
+  ) {
+    const { buffer, filename } = await this.billingInvoice.getPdfBuffer(invoiceId);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${filename}"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
+  }
+
+  @Post('sync')
+  @UseGuards(JwtAuthGuard)
+  async syncSubscription(@CurrentUser() user: AuthUser) {
+    return this.paddleService.syncSubscription(user.workspace_id);
   }
 }
