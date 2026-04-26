@@ -184,6 +184,20 @@ export class PaddleService {
       return this.syncExistingSubscription(sub.id, workspaceId, sub.provider_subscription_id);
     }
 
+    // Auto-lookup: try to find Paddle customer by workspace owner email
+    const info = await this.getWorkspaceInfo(workspaceId);
+    if (info.email) {
+      try {
+        const result = await (paddle as any).customers.list({ email: [info.email] });
+        const customers = Array.isArray(result) ? result : result?.data || [];
+        if (customers.length > 0) {
+          return this.syncByCustomerId(workspaceId, customers[0].id);
+        }
+      } catch (err) {
+        this.logger.warn(`Email customer lookup failed for ${info.email}: ${(err as Error).message}`);
+      }
+    }
+
     return { synced: false, reason: 'No subscription found. Provide a Paddle customer ID.' };
   }
 
