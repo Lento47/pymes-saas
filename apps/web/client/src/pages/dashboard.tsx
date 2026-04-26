@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PriorityDot } from "@/components/shared/priority-dot";
+import { ModuleHero } from "@/components/shared/module-hero";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
@@ -258,30 +259,32 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-full bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="px-6 py-4 max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-bold text-gray-900">
-              {greeting()}, {user?.name?.split(" ")[0] || "Usuario"}.
-            </h1>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Buscar en PymesHub..."
-                className="px-4 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <Button variant="outline" size="sm">
-                <Plus className="w-4 h-4" />
-              </Button>
+      {/* Hero Header */}
+      <div className="p-4 pb-0">
+        <ModuleHero module="dashboard">
+          <div className="px-6 py-5 max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-1">
+              <h1 className="text-2xl font-bold text-gray-900">
+                {greeting()}, {user?.name?.split(" ")[0] || "Usuario"}.
+              </h1>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Buscar en PymesHub..."
+                  className="px-4 py-2 rounded-lg border border-gray-200 bg-white/70 backdrop-blur-sm text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+                <Button variant="outline" size="sm" className="bg-white/70 backdrop-blur-sm border-gray-200">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
+            <p className="text-sm text-gray-600">Aquí está lo más importante de tu negocio hoy.</p>
           </div>
-          <p className="text-sm text-gray-600">Aquí está lo más importante de tu negocio hoy.</p>
-        </div>
+        </ModuleHero>
       </div>
 
       {/* Main Content */}
-      <div className="px-6 py-8 max-w-7xl mx-auto">
+      <div className="px-6 py-6 max-w-7xl mx-auto">
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <MetricCard
