@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Bot,
   Send,
@@ -303,12 +305,14 @@ export default function Agent() {
                   ) : msg.isStreaming && !msg.content ? (
                     <ThinkingDots />
                   ) : (
-                    <p className="text-sm whitespace-pre-wrap break-words">
-                      {msg.content}
+                    <div className="text-sm prose prose-invert prose-sm max-w-none break-words [&_*]:text-inherit [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-3 [&_code]:bg-black/20 [&_code]:rounded [&_code]:px-1 [&_code]:py-0.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.content}
+                      </ReactMarkdown>
                       {msg.isStreaming && (
                         <span className="inline-block w-0.5 h-4 ml-0.5 bg-blue-400 animate-pulse align-text-bottom" />
                       )}
-                    </p>
+                    </div>
                   )}
                 </div>
 
