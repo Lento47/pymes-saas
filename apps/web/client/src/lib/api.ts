@@ -1,31 +1,42 @@
 import { reportClientError } from "@/lib/error-reporting";
-const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 
-// ── Auth state — access token in-memory only, slug + refresh token in sessionStorage ──
+const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ??
+  ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
+
+// ── Auth state (tokens in-memory only; slug in sessionStorage for reload support) ──
 let _token: string | null = null;
-let _workspaceSlug: string | null = sessionStorage.getItem('ws_slug');
-let _refreshToken: string | null = sessionStorage.getItem('ws_rt');
+let _workspaceSlug: string | null = null;
+let _refreshToken: string | null = null;
 
 export function setAuthState(token: string, slug: string, refreshToken?: string) {
   _token = token;
   _workspaceSlug = slug;
-  try { sessionStorage.setItem('ws_slug', slug); } catch { /* ignore */ }
-  if (refreshToken) {
-    _refreshToken = refreshToken;
-    try { sessionStorage.setItem('ws_rt', refreshToken); } catch { /* ignore */ }
-  }
+  if (refreshToken) _refreshToken = refreshToken;
+  try {
+    sessionStorage.setItem('pymes_slug', slug);
+    if (refreshToken) sessionStorage.setItem('pymes_refresh', refreshToken);
+  } catch { /* ignore */ }
 }
 
 export function clearAuthState() {
   _token = null;
   _workspaceSlug = null;
   _refreshToken = null;
-  try { sessionStorage.removeItem('ws_slug'); sessionStorage.removeItem('ws_rt'); } catch { /* ignore */ }
+  try {
+    sessionStorage.removeItem('pymes_slug');
+    sessionStorage.removeItem('pymes_refresh');
+  } catch { /* ignore */ }
 }
 
 export function getAuthToken() { return _token; }
-export function getRefreshToken() { return _refreshToken; }
-export function getWorkspaceSlug() { return _workspaceSlug; }
+export function getWorkspaceSlug() {
+  if (_workspaceSlug) return _workspaceSlug;
+  try { return sessionStorage.getItem('pymes_slug') || null; } catch { return null; }
+}
+export function getRefreshToken() {
+  if (_refreshToken) return _refreshToken;
+  try { return sessionStorage.getItem('pymes_refresh') || null; } catch { return null; }
+}
 export function isLoggedIn() { return !!_token; }
 
 /**
@@ -46,19 +57,22 @@ async function _tryRefresh(): Promise<boolean> {
 
   _refreshPromise = (async () => {
     try {
-      if (!_refreshToken) return false;
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) return false;
 
       const res = await fetch(`${API_BASE}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: _refreshToken }),
+        body: JSON.stringify({ refresh_token: refreshToken }),
       });
 
       if (!res.ok) return false;
-
       const data = await res.json();
       _token = data.access_token;
-      if (data.refresh_token) _refreshToken = data.refresh_token;
+      if (data.refresh_token) {
+        _refreshToken = data.refresh_token;
+        try { sessionStorage.setItem('pymes_refresh', data.refresh_token); } catch { /* ignore */ }
+      }
       return true;
     } catch {
       return false;
@@ -68,6 +82,18 @@ async function _tryRefresh(): Promise<boolean> {
   })();
 
   return _refreshPromise;
+}
+
+export async function restoreSession(): Promise<boolean> {
+  const slug = getWorkspaceSlug();
+  if (slug) _workspaceSlug = slug;
+
+  const refreshToken = getRefreshToken();
+  if (refreshToken) {
+    _refreshToken = refreshToken;
+    return _tryRefresh();
+  }
+  return false;
 }
 
 async function request<T>(
@@ -115,8 +141,7 @@ async function request<T>(
     }
     if (!refreshed || res.status === 401) {
       clearAuthState();
-      history.replaceState(null, "", "/login");
-      window.dispatchEvent(new PopStateEvent("popstate"));
+      window.location.hash = "#/login";
       throw new Error("401: Sesión expirada.");
     }
   }
@@ -151,8 +176,6 @@ export const api = {
     request<any>("POST", "/api/auth/invite-preview", { token }),
   acceptInvite: (data: { token: string; name?: string; password?: string }) =>
     request<any>("POST", "/api/auth/accept-invite", data),
-  register: (data: { name: string; email: string; password: string }) =>
-    request<any>("POST", "/api/auth/register", data),
   login: async (email: string, password: string, workspaceSlug: string) => {
     const r = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
@@ -177,15 +200,6 @@ export const api = {
       throw new Error(`${r.status}: ${text}`);
     }
     return r.json() as Promise<{ access_token: string; refresh_token: string; user: any }>;
-  },
-  refresh: async (token: string): Promise<{ access_token: string; refresh_token: string }> => {
-    const res = await fetch(`${API_BASE}/api/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: token }),
-    });
-    if (!res.ok) throw new Error("Session expired");
-    return res.json();
   },
   logout: () => request<any>("POST", "/api/auth/logout"),
   getMe: () => request<any>("GET", "/api/auth/me"),
@@ -254,12 +268,6 @@ export const api = {
   updateAutomation: (id: string, data: any) => request<any>("PATCH", `/api/automations/${id}`, data),
   deleteAutomation: (id: string) => request<any>("DELETE", `/api/automations/${id}`),
   getWorkspace: () => request<any>("GET", "/api/workspaces/current"),
-  getSubscription: () => request<any>("GET", "/api/workspaces/current/subscription"),
-  getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
-  getBillingInvoices: () => request<any>("GET", "/api/billing/invoices"),
-  getBillingInvoicePdf: (id: string) => request<any>("GET", `/api/billing/invoices/${id}/pdf`),
-  syncSubscription: (customerId?: string, subscriptionId?: string) =>
-    request<any>("POST", "/api/billing/sync", { customerId, subscriptionId }),
   updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   testAiConnection: (data: any) => request<any>("POST", "/api/workspaces/current/ai/test", data),
   getApiKeys: () => request<any>("GET", "/api/workspaces/current/api-keys"),
@@ -305,7 +313,6 @@ export const api = {
   removeDepartmentMember: (id: string, userId: string) =>
     request<any>("DELETE", `/api/departments/${id}/members/${userId}`),
   getInsights: () => request<any>("GET", "/api/insights"),
-  askAssistant: (question: string) => request<any>("POST", "/api/ai/assistant", { question }),
   validateTaxpayer: (identificacion: string) =>
     request<any>("POST", "/api/hacienda/validate-taxpayer", { identificacion }),
   searchCabys: (params?: Record<string, string>) => {
@@ -328,6 +335,8 @@ export const api = {
   getMyWorkspaces: () => request<any>("GET", "/api/auth/my-workspaces"),
   switchWorkspace: (workspace_slug: string) =>
     request<any>("POST", "/api/auth/switch-workspace", { workspace_slug }),
+  register: (data: { email: string; name: string; password: string }) =>
+    request<any>("POST", "/api/auth/register", data),
   // Platform admin
   platformListWorkspaces: () => request<any>("GET", "/api/platform/workspaces"),
   platformGetWorkspaceBilling: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}/billing`),
@@ -343,5 +352,36 @@ export const api = {
   platformSearchUsers: (email?: string) => {
     const qs = email ? `?email=${encodeURIComponent(email)}` : "";
     return request<any>("GET", `/api/platform/users${qs}`);
+  },
+  platformCreateUser: (data: { email: string; name: string; password: string; is_platform_admin?: boolean }) =>
+    request<any>("POST", "/api/platform/users", data),
+  platformUpdateUserPassword: (userId: string, password: string) =>
+    request<any>("PATCH", `/api/platform/users/${userId}/password`, { password }),
+  platformResetUserPassword: (userId: string) =>
+    request<any>("POST", `/api/platform/users/${userId}/reset-password`),
+  platformUpdateUserStatus: (userId: string, status: string) =>
+    request<any>("PATCH", `/api/platform/users/${userId}/status`, { status }),
+  platformDeleteUser: (userId: string) => request<any>("DELETE", `/api/platform/users/${userId}`),
+  platformGetStats: () => request<any>("GET", "/api/platform/stats"),
+  platformToggleAdmin: (userId: string) => request<any>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
+  createAgentStream: async (input: string, conversationId?: string) => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (_token) headers['Authorization'] = `Bearer ${_token}`;
+    if (_workspaceSlug) headers['x-workspace-slug'] = _workspaceSlug;
+
+    const res = await fetch(`${API_BASE}/api/agent/stream`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ input, conversation_id: conversationId }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text);
+    }
+
+    return res;
   },
 };
