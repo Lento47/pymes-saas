@@ -27,7 +27,7 @@ export class AuthService {
 
   // ── Login ──────────────────────────────────────────────────────────────────
 
-  async login(dto: LoginDto, workspaceSlug: string) {
+  async login(dto: LoginDto, workspaceSlug: string | undefined) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -44,6 +44,32 @@ export class AuthService {
 
     if (user.status !== 'ACTIVE') {
       throw new UnauthorizedException('Usuario inactivo o suspendido.');
+    }
+
+    // Auto-detect workspace if no slug provided
+    if (!workspaceSlug) {
+      const memberships = await this.prisma.workspaceUser.findMany({
+        where: { user_id: user.id },
+        select: { workspace: { select: { id: true, slug: true, name: true } } },
+      });
+
+      if (memberships.length === 0) {
+        throw new UnauthorizedException('No tenés acceso a ningún workspace.');
+      }
+
+      if (memberships.length === 1) {
+        workspaceSlug = memberships[0].workspace.slug;
+      } else {
+        // Return list for workspace picker
+        throw new UnauthorizedException(
+          'MULTIPLE_WORKSPACES:' +
+          JSON.stringify(memberships.map((m) => ({
+            id: m.workspace.id,
+            slug: m.workspace.slug,
+            name: m.workspace.name,
+          })))
+        );
+      }
     }
 
     const workspace = await this.prisma.workspace.findUnique({

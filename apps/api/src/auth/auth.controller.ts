@@ -42,7 +42,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   login(
     @Body() dto: LoginDto,
-    @Headers('x-workspace-slug') workspaceSlug: string,
+    @Headers('x-workspace-slug') workspaceSlug: string | undefined,
   ) {
     return this.authService.login(dto, workspaceSlug);
   }
