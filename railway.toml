@@ -4,5 +4,5 @@ dockerfile = "./Dockerfile"
 
 [deploy]
 healthcheckPath = "/api/health"
-healthcheckTimeout = 100
+healthcheckTimeout = 180
 numReplicas = 1

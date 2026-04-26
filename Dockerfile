@@ -29,6 +29,8 @@ RUN pnpm --prefix apps/api build
 # Expose port
 EXPOSE 4000
 
+# Health check endpoint for Railway
+
 # Copy entrypoint script and make it executable
 COPY entrypoint.sh /app/
 RUN chmod +x /app/entrypoint.sh
