@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
-import { usePaddle } from '@/hooks/use-paddle';
+import { usePaddle, getPaddle } from '@/hooks/use-paddle';
 import { useLocation } from 'wouter';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -253,26 +253,41 @@ export default function BillingPage() {
                     onClick={async () => {
                       if (isCurrent) return;
 
-                      if (tier.priceId && paddle) {
-                        setCheckoutLoading(tier.name);
-                        try {
-                          await paddle.Checkout.open({
-                            items: [{ priceId: tier.priceId, quantity: 1 }],
-                            customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
-                            settings: {
-                              displayMode: 'overlay',
-                              theme: 'dark',
-                              locale: 'en',
-                              successUrl: `${window.location.origin}/#/settings/billing?success=true`,
-                            },
-                          });
-                        } finally {
-                          setCheckoutLoading(null);
-                        }
+                      if (!tier.priceId) {
+                        window.location.href = '/#/pricing';
                         return;
                       }
 
-                      window.location.href = '/#/pricing';
+                      let checkoutPaddle = paddle;
+                      if (!checkoutPaddle) {
+                        setCheckoutLoading(tier.name);
+                        for (let i = 0; i < 50; i++) {
+                          await new Promise((r) => setTimeout(r, 200));
+                          checkoutPaddle = getPaddle();
+                          if (checkoutPaddle) break;
+                        }
+                        if (!checkoutPaddle) {
+                          setCheckoutLoading(null);
+                          window.location.href = '/#/pricing';
+                          return;
+                        }
+                      }
+
+                      setCheckoutLoading(tier.name);
+                      try {
+                        await checkoutPaddle.Checkout.open({
+                          items: [{ priceId: tier.priceId, quantity: 1 }],
+                          customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
+                          settings: {
+                            displayMode: 'overlay',
+                            theme: 'dark',
+                            locale: 'en',
+                            successUrl: `${window.location.origin}/#/settings/billing?success=true`,
+                          },
+                        });
+                      } finally {
+                        setCheckoutLoading(null);
+                      }
                     }}
                   >
                     {checkoutLoading === tier.name ? (

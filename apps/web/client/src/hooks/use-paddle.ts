@@ -26,8 +26,14 @@ export function usePaddle() {
       instance = p;
       initializing = false;
       setPaddle(p);
+    }).catch(() => {
+      initializing = false;
     });
   }, []);
 
   return paddle;
+}
+
+export function getPaddle(): Paddle | undefined {
+  return instance;
 }
