@@ -75,9 +75,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* ── Sidebar ── */}
-      <aside className="w-[220px] shrink-0 flex flex-col bg-[#0D1B2A] border-r border-white/8">
+      <aside className="w-[220px] shrink-0 flex flex-col bg-[#0D1B2A]">
         {/* ── Workspace Header ── */}
-        <div className="relative shrink-0 px-4 py-4 border-b border-white/8">
+        <div className="relative shrink-0 px-4 py-4 border-b border-white/6">
           {/* Brand lockup */}
           <div className="flex items-center gap-2 mb-3">
             <img
@@ -159,7 +159,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           })}
 
           {/* ── Divider ── */}
-          <div className="my-2 h-px bg-white/8" />
+          <div className="my-2 h-px bg-white/6" />
 
           {/* ── Lower Section ── */}
           <Link href="/settings">
@@ -188,7 +188,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* ── Upgrade Card ── */}
-        <div className="px-3 py-3 border-t border-white/8">
+        <div className="px-3 pb-2">
           <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600/20 transition-colors group">
             <Crown className="w-4 h-4 text-yellow-400 flex-shrink-0" />
             <div className="flex-1 text-left min-w-0">
@@ -200,12 +200,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* ── Language Switcher ── */}
-        <div className="px-3 py-3 border-t border-white/8">
+        <div className="px-3 pb-2">
           <LanguageSwitcher className="w-full" />
         </div>
 
         {/* ── User Footer ── */}
-        <div className="px-3 py-3 border-t border-white/8 flex items-center gap-2.5">
+        <div className="px-3 py-3 flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
             <span className="text-white text-xs font-semibold">{initials}</span>
           </div>
