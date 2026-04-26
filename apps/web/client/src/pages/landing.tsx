@@ -196,7 +196,6 @@ export default function Landing() {
   const { messages } = useI18n();
   const copy = messages.landing;
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
-  const [isTouch, setIsTouch] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const productCards: Array<{
@@ -351,20 +350,12 @@ export default function Landing() {
     },
   };
 
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      setTimeout(() => {
-        element.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
-    }
-  };
-
   const handleMenuNavigate = (href: string) => {
     setActiveMenu(null);
 
     if (href.startsWith("#")) {
-      scrollToSection(href.slice(1));
+      // Navigate to /product with section anchor
+      window.location.href = `/#/product#${href.slice(1)}`;
     }
   };
 
@@ -446,9 +437,6 @@ export default function Landing() {
               <nav
                 className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7"
                 data-nav-item
-                onMouseLeave={() => !isTouch && activeMenu && setActiveMenu(null)}
-                onTouchStart={() => setIsTouch(true)}
-                onMouseEnter={() => setIsTouch(false)}
               >
                 <BrandLockup compact />
 
@@ -458,8 +446,6 @@ export default function Landing() {
                       key={item.id}
                       type="button"
                       data-nav-button
-                      onMouseEnter={() => setActiveMenu(item.key)}
-                      onFocus={() => setActiveMenu(item.key)}
                       onClick={() =>
                         setActiveMenu((current) => (current === item.key ? null : item.key))
                       }
@@ -550,8 +536,6 @@ export default function Landing() {
                 <div
                   className="absolute inset-x-0 top-full z-20 pt-4 pointer-events-auto"
                   data-nav-dropdown
-                  onMouseLeave={() => !isTouch && setActiveMenu(null)}
-                  onTouchStart={() => setIsTouch(true)}
                 >
                   <div className="glass-panel luminous-border grid gap-6 rounded-[32px] p-6 lg:grid-cols-[1.05fr_1.25fr]">
                     <div className="space-y-4">
@@ -626,13 +610,11 @@ export default function Landing() {
                     <ArrowRight className="h-5 w-5" />
                   </a>
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection("platform")}
-                  className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]"
-                >
-                  {copy.secondaryCta}
-                </button>
+                <Link href="/product">
+                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
+                    {copy.secondaryCta}
+                  </a>
+                </Link>
               </div>
 
               <p className="mt-5 text-sm text-[#c9d0f5]/52">

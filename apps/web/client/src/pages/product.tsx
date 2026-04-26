@@ -196,7 +196,6 @@ export default function Landing() {
   const { messages } = useI18n();
   const copy = messages.landing;
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
-  const [isTouch, setIsTouch] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const productCards: Array<{
@@ -446,9 +445,6 @@ export default function Landing() {
               <nav
                 className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7"
                 data-nav-item
-                onMouseLeave={() => !isTouch && activeMenu && setActiveMenu(null)}
-                onTouchStart={() => setIsTouch(true)}
-                onMouseEnter={() => setIsTouch(false)}
               >
                 <BrandLockup compact />
 
@@ -458,8 +454,6 @@ export default function Landing() {
                       key={item.id}
                       type="button"
                       data-nav-button
-                      onMouseEnter={() => setActiveMenu(item.key)}
-                      onFocus={() => setActiveMenu(item.key)}
                       onClick={() =>
                         setActiveMenu((current) => (current === item.key ? null : item.key))
                       }
@@ -545,8 +539,6 @@ export default function Landing() {
                 <div
                   className="absolute inset-x-0 top-full z-20 pt-4 pointer-events-auto"
                   data-nav-dropdown
-                  onMouseLeave={() => !isTouch && setActiveMenu(null)}
-                  onTouchStart={() => setIsTouch(true)}
                 >
                   <div className="glass-panel luminous-border grid gap-6 rounded-[32px] p-6 lg:grid-cols-[1.05fr_1.25fr]">
                     <div className="space-y-4">
