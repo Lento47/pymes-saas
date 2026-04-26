@@ -24,6 +24,12 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
   const priceId = isAnnual ? tier.paddlePriceIdAnnual : tier.paddlePriceIdMonthly;
 
   const handleCTA = async () => {
+    // Authenticated users should manage via Billing, not create duplicates
+    if (isAuthenticated && !isEnterprise) {
+      navigate('/settings/billing');
+      return;
+    }
+
     if (priceId && paddle) {
       const origin = window.location.origin;
       const successUrl = isAuthenticated

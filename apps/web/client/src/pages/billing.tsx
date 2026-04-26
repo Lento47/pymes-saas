@@ -340,6 +340,17 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
                     onClick={async () => {
                       if (isCurrent) return;
 
+                      // Prevent duplicate subscriptions
+                      const activeStatuses = ['TRIALING', 'ACTIVE', 'PAST_DUE'];
+                      if (subscription?.status && activeStatuses.includes(subscription.status)) {
+                        toast({
+                          title: 'Suscripción activa',
+                          description: 'Ya tenés una suscripción activa. Usá "Manage Subscription" para administrarla.',
+                          variant: 'default',
+                        });
+                        return;
+                      }
+
                       if (!tier.priceId) {
                         console.warn('[Billing Upgrade] No priceId for', tier.name, '— redirecting to /pricing');
                         window.location.href = '/pricing';
