@@ -37,6 +37,9 @@ jobs:
       - name: Build web app
         run: cd apps/web && pnpm run build
 
+      - name: Create .npmrc to allow root installations
+        run: echo "ignore-workspace-root-check=true" > .npmrc
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
