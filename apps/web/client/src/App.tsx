@@ -39,23 +39,23 @@ import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
 import AdminUsers from "@/pages/admin/users";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, initialized, user } = useAuth();
-  if (!initialized || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  const { isAuthenticated, isRestoring, user } = useAuth();
+  if (!isRestoring || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
   if (!isAuthenticated) return <Redirect to="/login" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
 
 function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, initialized } = useAuth();
-  if (!initialized || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  const { user, isAuthenticated, isRestoring } = useAuth();
+  if (!isRestoring || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
   if (!isAuthenticated) return <Redirect to="/login" />;
   if (!user?.is_platform_admin) return <Redirect to="/" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
 
 function RootRoute() {
-  const { isAuthenticated, user, initialized } = useAuth();
-  if (!initialized) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  const { isAuthenticated, user, isRestoring } = useAuth();
+  if (!isRestoring) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
   if (!isAuthenticated) return <Landing />;
   return <ProtectedLayout><Dashboard /></ProtectedLayout>;
 }

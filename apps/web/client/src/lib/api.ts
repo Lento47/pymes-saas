@@ -202,6 +202,15 @@ export const api = {
     return r.json() as Promise<{ access_token: string; refresh_token: string; user: any }>;
   },
   logout: () => request<any>("POST", "/api/auth/logout"),
+  refresh: async (token: string): Promise<{ access_token: string; refresh_token: string }> => {
+    const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: token }),
+    });
+    if (!res.ok) throw new Error("Session expired");
+    return res.json();
+  },
   getMe: () => request<any>("GET", "/api/auth/me"),
   generateSummary: () => request<any>("POST", "/api/summaries/generate"),
   getDailySummaries: (params?: Record<string, string>) => {
@@ -268,6 +277,12 @@ export const api = {
   updateAutomation: (id: string, data: any) => request<any>("PATCH", `/api/automations/${id}`, data),
   deleteAutomation: (id: string) => request<any>("DELETE", `/api/automations/${id}`),
   getWorkspace: () => request<any>("GET", "/api/workspaces/current"),
+  getSubscription: () => request<any>("GET", "/api/workspaces/current/subscription"),
+  getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
+  getBillingInvoices: () => request<any>("GET", "/api/billing/invoices"),
+  getBillingInvoicePdf: (id: string) => request<any>("GET", `/api/billing/invoices/${id}/pdf`),
+  syncSubscription: (customerId?: string, subscriptionId?: string) =>
+    request<any>("POST", "/api/billing/sync", { customerId, subscriptionId }),
   updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   testAiConnection: (data: any) => request<any>("POST", "/api/workspaces/current/ai/test", data),
   getApiKeys: () => request<any>("GET", "/api/workspaces/current/api-keys"),
@@ -313,6 +328,7 @@ export const api = {
   removeDepartmentMember: (id: string, userId: string) =>
     request<any>("DELETE", `/api/departments/${id}/members/${userId}`),
   getInsights: () => request<any>("GET", "/api/insights"),
+  askAssistant: (input: string) => request<any>("POST", "/api/workspaces/current/ai/assist", { input }),
   validateTaxpayer: (identificacion: string) =>
     request<any>("POST", "/api/hacienda/validate-taxpayer", { identificacion }),
   searchCabys: (params?: Record<string, string>) => {
