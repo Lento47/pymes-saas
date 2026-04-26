@@ -78,9 +78,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@latest
+
       - name: Deploy to Railway
-        uses: railway-app/cli-action@v1
-        with:
-          token: ${{ secrets.RAILWAY_TOKEN }}
-          service: pymeshub-api
-          environment: production
+        run: railway up --service pymeshub-api --environment production --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
