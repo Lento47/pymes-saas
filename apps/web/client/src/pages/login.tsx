@@ -91,11 +91,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const planParam = new URLSearchParams(window.location.hash.replace('#', '').split('?')[1] || '').get('plan');
+  const planParam = new URLSearchParams(window.location.search).get('plan');
 
   useEffect(() => {
     if (isAuthenticated) {
-      window.location.hash = planParam ? `#/settings/billing?plan=${planParam}` : "#/";
+      const target = planParam ? `/settings/billing?plan=${planParam}` : "/";
+      history.replaceState(null, "", target);
+      window.dispatchEvent(new PopStateEvent("popstate"));
     }
   }, [isAuthenticated]);
 

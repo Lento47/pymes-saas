@@ -36,11 +36,11 @@ function maybeNormalizePath(): void {
   const currentPath = readPathname();
   const cleanPath = currentPath.split("?")[0];
   if (isPublicPath(cleanPath)) return;
-  const expected = addSlug(cleanPath, slug);
-  if (expected !== cleanPath) {
-    const queryPart = currentPath.includes("?") ? currentPath.slice(currentPath.indexOf("?")) : "";
-    history.replaceState(null, "", expected + queryPart + window.location.hash);
-  }
+    const expected = addSlug(cleanPath, slug);
+    if (expected !== cleanPath) {
+      const queryPart = currentPath.includes("?") ? currentPath.slice(currentPath.indexOf("?")) : "";
+      history.replaceState(null, "", expected + queryPart);
+    }
 }
 
 function getLocation(): string {
@@ -71,10 +71,10 @@ export function useWorkspaceHashLocation(): [
     (to: string, opts?: { replace?: boolean }) => {
       const finalPath = addSlug(to, getWorkspaceSlug());
       if (opts?.replace) {
-        history.replaceState(null, "", finalPath + window.location.hash);
+        history.replaceState(null, "", finalPath);
         window.dispatchEvent(new PopStateEvent("popstate"));
       } else {
-        history.pushState(null, "", finalPath + window.location.hash);
+        history.pushState(null, "", finalPath);
         window.dispatchEvent(new PopStateEvent("popstate"));
       }
     },
