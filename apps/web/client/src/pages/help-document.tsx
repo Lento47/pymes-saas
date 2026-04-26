@@ -73,20 +73,6 @@ export default function HelpDocumentPage({ slug }: HelpDocumentPageProps) {
               ))}
             </ul>
           </div>
-
-          <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <ExternalLink className="h-4 w-4 text-sky-300" />
-              Fuente maestra en el repositorio
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Ruta fuente: <span className="font-mono text-foreground">{doc.repoPath}</span>
-            </p>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Esta pantalla funciona como punto de acceso dentro del producto. La versión maestra y mantenible del
-              contenido vive en el paquete documental del repositorio.
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

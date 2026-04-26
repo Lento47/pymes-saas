@@ -86,7 +86,6 @@ export default function HelpPage() {
                       </div>
                       <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                         <span>{doc.audience}</span>
-                        <span>{doc.repoPath}</span>
                       </div>
                     </div>
                   </Link>
