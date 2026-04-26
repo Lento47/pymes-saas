@@ -126,8 +126,8 @@ export const PRICING_TIERS: PricingTier[] = [
     },
     popular: false,
     cta: 'Upgrade to Business',
-    paddlePriceIdMonthly: import.meta.env.VITE_PADDLE_PRICE_BUSINESS_MONTHLY,
-    paddlePriceIdAnnual: import.meta.env.VITE_PADDLE_PRICE_BUSINESS_ANNUAL,
+    paddlePriceIdMonthly: import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY,
+    paddlePriceIdAnnual: import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_ANNUAL,
   },
   {
     name: 'Business+',

@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
-import { usePaddle } from '@/hooks/use-paddle';
+import { usePaddle, getPaddle } from '@/hooks/use-paddle';
 import { useLocation } from 'wouter';
 import { api } from '@/lib/api';
 import { ModuleHero } from '@/components/shared/module-hero';
@@ -31,7 +32,7 @@ const PRICING_TIERS = [
     monthlyUSD: 119,
     monthlyCRC: 59900,
     features: ['15,000 Contacts', '2,000 invoices/month', '100 Automations', '15 Users'],
-    priceId: import.meta.env.VITE_PADDLE_PRICE_BUSINESS_MONTHLY as string | undefined,
+    priceId: import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY as string | undefined,
   },
 ];
 
@@ -50,8 +51,10 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
   const paddle = usePaddle();
   const [location] = useLocation();
   const params = new URLSearchParams(location.split('?')[1]);
-  const success = params.get('success');
+  const success = params.get('success') || params.get('paddle');
   const canceled = params.get('canceled');
+  const planParam = params.get('plan');
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
     queryKey: ['subscription'],
@@ -66,6 +69,52 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
     enabled: isAuthenticated,
     retry: false,
   });
+
+  const { data: invoices, isLoading: invoicesLoading } = useQuery({
+    queryKey: ['billingInvoices'],
+    queryFn: api.getBillingInvoices,
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  const queryClient = useQueryClient();
+  const { mutate: syncSubscription, isPending: syncPending } = useMutation({
+    mutationFn: api.syncSubscription,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['billingInvoices'] });
+    },
+  });
+
+  // Auto-trigger upgrade when ?plan=growth|starter|business is in the URL
+  const autoUpgradeTier = planParam
+    ? PRICING_TIERS.find((t) => t.name.toLowerCase() === planParam.toLowerCase())
+    : null;
+
+  const handleOpenCheckout = async (tier: typeof PRICING_TIERS[number]) => {
+    setCheckoutLoading(tier.name);
+    try {
+      await paddle!.Checkout.open({
+        items: [{ priceId: tier.priceId!, quantity: 1 }],
+        customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
+        settings: {
+          displayMode: 'overlay',
+          theme: 'dark',
+          locale: 'en',
+          successUrl: `${window.location.origin}/#/settings/billing?success=true`,
+        },
+      });
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
+  useEffect(() => {
+    if (autoUpgradeTier && paddle && autoUpgradeTier.priceId) {
+      handleOpenCheckout(autoUpgradeTier);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!autoUpgradeTier, !!paddle]);
 
   if (!isAuthenticated) {
     return (
@@ -140,6 +189,21 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
                     {(subscription?.plan ?? 'Free').toLowerCase()}
                   </p>
                 </div>
+                {(() => {
+                  const planPrice = PRICING_TIERS.find((t) => t.name.toUpperCase() === subscription?.plan?.toUpperCase())?.monthlyUSD;
+                  if (planPrice) {
+                    return (
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Price</p>
+                        <p className="text-lg font-semibold text-foreground">
+                          ${planPrice}
+                          <span className="text-sm font-normal text-muted-foreground">/month</span>
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {subscription?.current_period_start && subscription?.current_period_end && (
@@ -174,6 +238,17 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
                 </Button>
                 <Button
                   variant="ghost"
+                  onClick={() => syncSubscription()}
+                  disabled={syncPending}
+                >
+                  {syncPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Sync'
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
                   onClick={() => {
                     const el = document.getElementById('upgrade-plans');
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -193,7 +268,6 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {PRICING_TIERS.map((tier) => {
             const isCurrent = subscription?.plan?.toUpperCase() === tier.name.toUpperCase();
-            const canUpgrade = !!tier.priceId && !!paddle && !isCurrent;
             return (
               <Card
                 key={tier.name}
@@ -228,22 +302,62 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
                   <Button
                     className="w-full"
                     variant={isCurrent ? 'outline' : 'default'}
-                    disabled={isCurrent || !canUpgrade}
-                    onClick={() => {
-                      if (!canUpgrade) return;
-                      paddle!.Checkout.open({
-                        items: [{ priceId: tier.priceId!, quantity: 1 }],
-                        customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
-                        settings: {
-                          displayMode: 'overlay',
-                          theme: 'dark',
-                          locale: 'en',
-                          successUrl: `${window.location.origin}/#/settings/billing?success=true`,
-                        },
-                      });
+                    disabled={isCurrent || checkoutLoading === tier.name}
+                    onClick={async () => {
+                      if (isCurrent) return;
+
+                      if (!tier.priceId) {
+                        console.warn('[Billing Upgrade] No priceId for', tier.name, '— redirecting to /pricing');
+                        window.location.href = '/#/pricing';
+                        return;
+                      }
+
+                      let checkoutPaddle = paddle;
+                      if (!checkoutPaddle) {
+                        console.log('[Billing Upgrade] Paddle not yet ready, polling getPaddle()...');
+                        setCheckoutLoading(tier.name);
+                        const started = Date.now();
+                        for (let i = 0; i < 50; i++) {
+                          await new Promise((r) => setTimeout(r, 200));
+                          checkoutPaddle = getPaddle();
+                          if (checkoutPaddle) break;
+                        }
+                        if (!checkoutPaddle) {
+                          console.error('[Billing Upgrade] getPaddle() still null after 10s — redirecting to /pricing');
+                          setCheckoutLoading(null);
+                          window.location.href = '/#/pricing';
+                          return;
+                        }
+                        console.log('[Billing Upgrade] Paddle acquired after', ((Date.now() - started) / 1000).toFixed(1), 's');
+                      }
+
+                      setCheckoutLoading(tier.name);
+                      try {
+                        await checkoutPaddle.Checkout.open({
+                          items: [{ priceId: tier.priceId, quantity: 1 }],
+                          customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
+                          settings: {
+                            displayMode: 'overlay',
+                            theme: 'dark',
+                            locale: 'en',
+                            successUrl: `${window.location.origin}/#/settings/billing?success=true`,
+                          },
+                        });
+                      } finally {
+                        setCheckoutLoading(null);
+                      }
                     }}
                   >
-                    {isCurrent ? 'Current Plan' : 'Upgrade'}
+                    {checkoutLoading === tier.name ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Redirecting...
+                      </>
+                    ) : isCurrent ? (
+                      'Current Plan'
+                    ) : (
+                      'Upgrade'
+                    )}
                   </Button>
                 </CardContent>
               </Card>
@@ -259,7 +373,50 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
           <CardDescription className="text-muted-foreground">Your recent invoices and payments</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No invoices yet. Your first invoice will appear after your first payment.</p>
+          {invoicesLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground py-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading invoices...</span>
+            </div>
+          ) : invoices?.length > 0 ? (
+            <div className="space-y-3">
+              {invoices.map((inv: any) => (
+                <div
+                  key={inv.id}
+                  className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--elevated))] px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{inv.number}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {inv.plan_name} — {inv.plan_interval === 'MONTHLY' ? 'Monthly' : 'Annual'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(inv.issued_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-foreground">
+                        {inv.currency === 'CRC' ? '₡' : '$'}{inv.total.toLocaleString()}
+                      </p>
+                      <Badge variant={inv.status === 'PAID' ? 'default' : inv.status === 'DRAFT' ? 'secondary' : 'outline'}>
+                        {inv.status}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open(`/api/billing/invoices/${inv.id}/pdf`, '_blank')}
+                    >
+                      PDF
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No invoices yet. Your first invoice will appear after your first payment.</p>
+          )}
         </CardContent>
       </Card>
     </div>
