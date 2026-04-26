@@ -40,7 +40,14 @@ import AdminUsers from "@/pages/admin/users";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isRestoring, user } = useAuth();
-  if (!isRestoring || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  if (isRestoring) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  if (!isAuthenticated) return <Redirect to="/login" />;
+  return <AppSidebar>{children}</AppSidebar>;
+}
+
+function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, isRestoring } = useAuth();
+  if (isRestoring) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
   if (!isAuthenticated) return <Redirect to="/login" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
@@ -55,7 +62,7 @@ function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
 
 function RootRoute() {
   const { isAuthenticated, user, isRestoring } = useAuth();
-  if (!isRestoring) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  if (isRestoring) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
   if (!isAuthenticated) return <Landing />;
   return <ProtectedLayout><Dashboard /></ProtectedLayout>;
 }
