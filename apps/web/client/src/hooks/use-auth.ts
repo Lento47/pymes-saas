@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug } from "@/lib/api";
+import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug, getRefreshToken } from "@/lib/api";
 import { connectSocket, disconnectSocket, getSocket } from "./use-socket";
 import { queryClient } from "@/lib/queryClient";
 
@@ -21,10 +21,11 @@ export interface AuthUser {
 }
 
 // Estado global en módulo (compartido entre llamadas a useAuth)
-// Tokens and user data are stored in memory only (not persisted to localStorage for security)
 let _user: AuthUser | null = null;
 let _listeners: Array<() => void> = [];
 let _hydratePromise: Promise<AuthUser | null> | null = null;
+let _isRestoring = false;
+let _restorePromise: Promise<void> | null = null;
 
 function notifyListeners() {
   _listeners.forEach(fn => fn());
@@ -57,9 +58,29 @@ function attachWorkspaceUpdateListener() {
   });
 }
 
-// Auto-reconnect WebSocket when the page reloads with an existing session
-// (login() only runs on explicit login, not on refresh)
-if (isLoggedIn()) {
+// On page load, if we have a stored refresh token, restore the session silently
+const _storedRefreshToken = getRefreshToken();
+if (_storedRefreshToken && !isLoggedIn()) {
+  _isRestoring = true;
+  _restorePromise = (async () => {
+    try {
+      const r = await api.refresh(_storedRefreshToken);
+      setAuthState(r.access_token, getWorkspaceSlug()!, r.refresh_token);
+      const me = await api.getMe();
+      _user = me;
+      // Update slug from actual user data in case it changed
+      setAuthState(r.access_token, me.workspace.slug, r.refresh_token);
+      connectSocket();
+      attachWorkspaceUpdateListener();
+    } catch {
+      clearAuthState();
+      _user = null;
+    } finally {
+      _isRestoring = false;
+      notifyListeners();
+    }
+  })();
+} else if (isLoggedIn()) {
   connectSocket();
   attachWorkspaceUpdateListener();
 }
@@ -148,6 +169,7 @@ export function useAuth() {
   return {
     user: _user,
     isAuthenticated: isLoggedIn(),
+    isRestoring: _isRestoring,
     workspaceSlug: getWorkspaceSlug(),
     login,
     register,

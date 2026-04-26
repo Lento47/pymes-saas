@@ -1,24 +1,30 @@
 import { reportClientError } from "@/lib/error-reporting";
 const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
 
-// ── In-memory state only (tokens NOT stored in localStorage for security) ──────
+// ── Auth state — access token in-memory only, slug + refresh token in sessionStorage ──
 let _token: string | null = null;
-let _workspaceSlug: string | null = null;
-let _refreshToken: string | null = null;
+let _workspaceSlug: string | null = sessionStorage.getItem('ws_slug');
+let _refreshToken: string | null = sessionStorage.getItem('ws_rt');
 
 export function setAuthState(token: string, slug: string, refreshToken?: string) {
   _token = token;
   _workspaceSlug = slug;
-  if (refreshToken) _refreshToken = refreshToken;
+  try { sessionStorage.setItem('ws_slug', slug); } catch { /* ignore */ }
+  if (refreshToken) {
+    _refreshToken = refreshToken;
+    try { sessionStorage.setItem('ws_rt', refreshToken); } catch { /* ignore */ }
+  }
 }
 
 export function clearAuthState() {
   _token = null;
   _workspaceSlug = null;
   _refreshToken = null;
+  try { sessionStorage.removeItem('ws_slug'); sessionStorage.removeItem('ws_rt'); } catch { /* ignore */ }
 }
 
 export function getAuthToken() { return _token; }
+export function getRefreshToken() { return _refreshToken; }
 export function getWorkspaceSlug() { return _workspaceSlug; }
 export function isLoggedIn() { return !!_token; }
 
@@ -170,6 +176,15 @@ export const api = {
       throw new Error(`${r.status}: ${text}`);
     }
     return r.json() as Promise<{ access_token: string; refresh_token: string; user: any }>;
+  },
+  refresh: async (token: string): Promise<{ access_token: string; refresh_token: string }> => {
+    const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: token }),
+    });
+    if (!res.ok) throw new Error("Session expired");
+    return res.json();
   },
   logout: () => request<any>("POST", "/api/auth/logout"),
   getMe: () => request<any>("GET", "/api/auth/me"),

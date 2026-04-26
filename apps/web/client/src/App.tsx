@@ -35,7 +35,12 @@ import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import NotFound from "@/pages/not-found";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isRestoring } = useAuth();
+  if (isRestoring) return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  );
   if (!isAuthenticated) return <Redirect to="/login" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
