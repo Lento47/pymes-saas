@@ -186,62 +186,67 @@ export class PaddleService {
   private async syncByCustomerId(workspaceId: string, customerId: string) {
     const paddle = this.requireClient();
 
-    const customer = await (paddle as any).customers.get(customerId);
-    if (!customer) {
-      return { synced: false, reason: `Customer ${customerId} not found` };
-    }
+    try {
+      const customer = await (paddle as any).customers.get(customerId);
+      if (!customer) {
+        return { synced: false, reason: `Customer ${customerId} not found` };
+      }
 
-    const allSubs = await (paddle as any).subscriptions.list({ customerId: [customerId] });
-    const subsList = Array.isArray(allSubs) ? allSubs : allSubs?.data || [];
-    const activeSub = subsList.find((s: any) =>
-      ['active', 'trialing'].includes(s.status),
-    );
+      const allSubs = await (paddle as any).subscriptions.list({ customerId: [customerId] });
+      const subsList = Array.isArray(allSubs) ? allSubs : allSubs?.data || [];
+      const activeSub = subsList.find((s: any) =>
+        ['active', 'trialing'].includes(s.status),
+      );
 
-    if (!activeSub) {
-      return { synced: false, reason: 'No active/trialing subscription found' };
-    }
+      if (!activeSub) {
+        return { synced: false, reason: 'No active/trialing subscription found' };
+      }
 
-    const plan = this.mapPaddlePriceToPlan(
-      activeSub.items?.[0]?.price?.id || '',
-    );
-    const status = this.mapPaddleStatus(activeSub.status);
+      const plan = this.mapPaddlePriceToPlan(
+        activeSub.items?.[0]?.price?.id || '',
+      );
+      const status = this.mapPaddleStatus(activeSub.status);
 
-    const existing = await this.prisma.workspaceSubscription.findFirst({
-      where: { workspace_id: workspaceId },
-    });
-
-    const subData = {
-      provider_customer_id: customerId,
-      provider_subscription_id: activeSub.id,
-      provider: 'PADDLE' as const,
-      plan,
-      status,
-      current_period_start: activeSub.currentBillingPeriod?.startsAt
-        ? new Date(activeSub.currentBillingPeriod.startsAt)
-        : undefined,
-      current_period_end: activeSub.currentBillingPeriod?.endsAt
-        ? new Date(activeSub.currentBillingPeriod.endsAt)
-        : undefined,
-    };
-
-    if (existing) {
-      await this.prisma.workspaceSubscription.update({
-        where: { id: existing.id },
-        data: subData as any,
+      const existing = await this.prisma.workspaceSubscription.findFirst({
+        where: { workspace_id: workspaceId },
       });
-    } else {
-      await this.prisma.workspaceSubscription.create({
-        data: { workspace_id: workspaceId, ...subData } as any,
+
+      const subData = {
+        provider_customer_id: customerId,
+        provider_subscription_id: activeSub.id,
+        provider: 'PADDLE' as const,
+        plan,
+        status,
+        current_period_start: activeSub.currentBillingPeriod?.startsAt
+          ? new Date(activeSub.currentBillingPeriod.startsAt)
+          : undefined,
+        current_period_end: activeSub.currentBillingPeriod?.endsAt
+          ? new Date(activeSub.currentBillingPeriod.endsAt)
+          : undefined,
+      };
+
+      if (existing) {
+        await this.prisma.workspaceSubscription.update({
+          where: { id: existing.id },
+          data: subData as any,
+        });
+      } else {
+        await this.prisma.workspaceSubscription.create({
+          data: { workspace_id: workspaceId, ...subData } as any,
+        });
+      }
+
+      await this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { plan },
       });
+
+      this.logger.log(`Synced (by customerId ${customerId}) workspace ${workspaceId}: plan=${plan}`);
+      return { synced: true, plan, status, customerId };
+    } catch (err) {
+      this.logger.error(`syncByCustomerId failed for ${customerId}:`, err);
+      return { synced: false, reason: `Paddle API error: ${(err as Error).message}` };
     }
-
-    await this.prisma.workspace.update({
-      where: { id: workspaceId },
-      data: { plan },
-    });
-
-    this.logger.log(`Synced (by customerId ${customerId}) workspace ${workspaceId}: plan=${plan}`);
-    return { synced: true, plan, status, customerId };
   }
 
   private async syncExistingSubscription(
