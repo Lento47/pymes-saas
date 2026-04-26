@@ -17,9 +17,22 @@ build/
 AGENTS.md
 DESIGN_SYSTEM.md
 
-# Frontend (already built separately)
-apps/web/
+# Frontend (package.json needed for workspace install, source excluded)
+apps/web/client/
+apps/web/server/
+apps/web/script/
+apps/web/dist/
+apps/web/node_modules/
+apps/web/*.ts
+apps/web/*.js
+apps/web/*.json
+!apps/web/package.json
+
 apps/desktop/
+
+# Packages source (package.json needed for install)
+packages/*/
+!packages/*/package.json
 
 # Docs
 docs/
