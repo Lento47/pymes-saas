@@ -11,10 +11,6 @@ declare global {
         placeholder?: string;
         "hide-branding"?: string;
       };
-      "style": React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLStyleElement>,
-        HTMLStyleElement
-      >;
     }
   }
 }

@@ -56,8 +56,6 @@ function RootRoute() {
 }
 
 function PublicChatBubble() {
-  const { isAuthenticated } = useAuth();
-  if (isAuthenticated) return null;
   return <ChatBubble />;
 }
 
