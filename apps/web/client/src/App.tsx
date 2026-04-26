@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { CookieBanner } from "@/components/shared/cookie-banner";
-import { ChatBubble } from "@/components/shared/chat-bubble";
+import { ChatBubble, ChatPage } from "@/components/shared/chat-bubble";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -56,7 +56,8 @@ function RootRoute() {
 }
 
 function PublicChatBubble() {
-  return <ChatBubble />;
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <ChatPage /> : <ChatBubble />;
 }
 
 function AppRouter() {
