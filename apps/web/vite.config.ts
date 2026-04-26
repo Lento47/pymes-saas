@@ -14,7 +14,7 @@ export default defineConfig({
     include: ["react", "react-dom", "@tanstack/react-query"],
   },
   root: path.resolve(import.meta.dirname, "client"),
-  base: "./",
+  base: "/",
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
