@@ -37,12 +37,11 @@ jobs:
       - name: Build web app
         run: cd apps/web && pnpm run build
 
-      - name: Create .npmrc to allow root installations
-        run: echo "ignore-workspace-root-check=true" > .npmrc
+      - name: Install Wrangler globally
+        run: npm install -g wrangler@3
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy apps/web/dist/public --project-name=pymeshub-web
+        run: wrangler pages deploy apps/web/dist/public --project-name=pymeshub-web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
