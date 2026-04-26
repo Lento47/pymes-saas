@@ -58,8 +58,10 @@ async function getLogoBuffer(): Promise<Buffer | null> {
 async function getFontBuffer(url: string): Promise<Buffer | null> {
   try {
     const res = await fetch(url);
-    if (!res.ok) return null;
-    return Buffer.from(await res.arrayBuffer());
+    if (!res.ok || res.status !== 200) return null;
+    const arr = await res.arrayBuffer();
+    if (arr.byteLength < 100) return null;
+    return Buffer.from(arr);
   } catch { return null; }
 }
 
@@ -81,8 +83,19 @@ export async function generateBillingInvoicePdf(invoice: BillingInvoicePdfData):
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 48, size: 'A4', bufferPages: true });
-    doc.registerFont('Inter', regular ?? undefined);
-    doc.registerFont('Inter-Bold', bold ?? undefined);
+    
+    let hasFont = false;
+    try {
+      if (regular && regular.length > 100) {
+        doc.registerFont('Inter', regular);
+        hasFont = true;
+      }
+      if (bold && bold.length > 100) {
+        doc.registerFont('Inter-Bold', bold);
+      }
+    } catch (err) {
+      hasFont = false;
+    }
 
     const buffers: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
@@ -93,7 +106,6 @@ export async function generateBillingInvoicePdf(invoice: BillingInvoicePdfData):
     const M = 48;
     const W = PAGE_W - M * 2; // 499pt safe content width
 
-    const hasFont = !!(regular && bold);
     const font = (style: string) => hasFont ? style : (style === 'Inter-Bold' ? 'Helvetica-Bold' : 'Helvetica');
 
     const fmt = (n: number) => {
