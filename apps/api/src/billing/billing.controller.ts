@@ -6,6 +6,9 @@ import { BillingInvoiceService } from './billing-invoice.service';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ApiRolesGuard } from '../api-tokens/api-roles.guard';
+import { RequireApiRole } from '../api-tokens/api-roles.decorator';
+import { ApiRole } from '../api-tokens/api-token.guard';
 
 @Controller('billing')
 export class BillingController {
@@ -111,7 +114,8 @@ export class BillingController {
   }
 
   @Post('sync')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, ApiRolesGuard)
+  @RequireApiRole(ApiRole.FOUNDER, ApiRole.WORKSPACE, ApiRole.USER)
   async syncSubscription(
     @CurrentUser() user: AuthUser,
     @Body() dto?: { customerId?: string; subscriptionId?: string },
