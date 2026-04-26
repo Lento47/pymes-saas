@@ -167,13 +167,94 @@ export class PaddleService {
   async syncSubscription(workspaceId: string) {
     const paddle = this.requireClient();
 
-    const sub = await this.prisma.workspaceSubscription.findFirst({
+    let sub = await this.prisma.workspaceSubscription.findFirst({
       where: { workspace_id: workspaceId },
-      select: { id: true, provider_subscription_id: true },
+      select: { id: true, provider_customer_id: true, provider_subscription_id: true },
     });
 
-    if (!sub?.provider_subscription_id) {
-      return { synced: false, reason: 'No Paddle subscription found' };
+    if (!sub?.provider_customer_id) {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { slug: true },
+      });
+
+      const ownerMember = await this.prisma.workspaceUser.findFirst({
+        where: { workspace_id: workspaceId, role: 'OWNER' },
+        select: { user: { select: { email: true } } },
+      });
+
+      const ownerEmail = ownerMember?.user?.email;
+      if (ownerEmail) {
+        try {
+          const customers = await (paddle as any).customers.list({ email: [ownerEmail] });
+          const customer = (Array.isArray(customers) ? customers : customers?.data)?.[0];
+          if (customer) {
+            const allSubs = await (paddle as any).subscriptions.list({ customerId: [customer.id] });
+            const subsList = Array.isArray(allSubs) ? allSubs : allSubs?.data || [];
+            const activeSub = subsList.find((s: any) =>
+              ['active', 'trialing'].includes(s.status),
+            );
+          if (activeSub) {
+            const plan = this.mapPaddlePriceToPlan(
+              activeSub.items?.[0]?.price?.id || '',
+            );
+            const status = this.mapPaddleStatus(activeSub.status);
+
+            const existing = await this.prisma.workspaceSubscription.findFirst({
+              where: { workspace_id: workspaceId },
+            });
+
+            if (existing) {
+              await this.prisma.workspaceSubscription.update({
+                where: { id: existing.id },
+                data: {
+                  provider_customer_id: customer.id,
+                  provider_subscription_id: activeSub.id,
+                  provider: 'PADDLE',
+                  plan,
+                  status,
+                  current_period_start: activeSub.currentBillingPeriod?.startsAt
+                    ? new Date(activeSub.currentBillingPeriod.startsAt)
+                    : undefined,
+                  current_period_end: activeSub.currentBillingPeriod?.endsAt
+                    ? new Date(activeSub.currentBillingPeriod.endsAt)
+                    : undefined,
+                } as any,
+              });
+            } else {
+              await this.prisma.workspaceSubscription.create({
+                data: {
+                  workspace_id: workspaceId,
+                  provider_customer_id: customer.id,
+                  provider_subscription_id: activeSub.id,
+                  provider: 'PADDLE',
+                  plan,
+                  status,
+                  current_period_start: activeSub.currentBillingPeriod?.startsAt
+                    ? new Date(activeSub.currentBillingPeriod.startsAt)
+                    : undefined,
+                  current_period_end: activeSub.currentBillingPeriod?.endsAt
+                    ? new Date(activeSub.currentBillingPeriod.endsAt)
+                    : undefined,
+                } as any,
+              });
+            }
+
+            await this.prisma.workspace.update({
+              where: { id: workspaceId },
+              data: { plan },
+            });
+
+            this.logger.log(`Synced (via customer lookup) workspace ${workspaceId}: plan=${plan} status=${status}`);
+            return { synced: true, plan, status };
+          }
+          }
+        } catch (err) {
+          this.logger.warn(`Customer lookup failed for workspace ${workspaceId}: ${(err as Error).message}`);
+        }
+      }
+
+      return { synced: false, reason: 'No Paddle customer or subscription found' };
     }
 
     const paddleSub = await paddle.subscriptions.get(sub.provider_subscription_id);
@@ -290,14 +371,17 @@ export class PaddleService {
     );
 
     const status = this.mapPaddleStatus(data.status);
+    const customData = data.customData || data.custom_data || {};
+    const workspaceSlug: string | undefined = customData?.workspaceSlug || customData?.workspace_slug;
 
     const existing = await this.prisma.workspaceSubscription.findFirst({
       where: { provider_customer_id: customerId },
-      select: { id: true },
+      select: { id: true, workspace_id: true },
     });
 
     const subData = {
       provider_subscription_id: data.id,
+      provider_customer_id: customerId,
       provider: 'PADDLE' as const,
       status,
       plan,
@@ -309,38 +393,32 @@ export class PaddleService {
         : undefined,
     };
 
+    let workspaceId: string | undefined;
+
     if (existing) {
       await this.prisma.workspaceSubscription.update({
         where: { id: existing.id },
         data: subData as any,
       });
-    } else {
-      const workspace = await this.prisma.workspace.findFirst({
-        where: {
-          subscriptions: { some: { provider_customer_id: customerId } },
-        },
+      workspaceId = existing.workspace_id;
+    } else if (workspaceSlug) {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { slug: workspaceSlug },
         select: { id: true },
       });
-
       if (workspace) {
         await this.prisma.workspaceSubscription.create({
           data: { workspace_id: workspace.id, ...subData } as any,
         });
+        workspaceId = workspace.id;
       }
     }
 
-    // Update workspace plan
-    if (existing) {
-      const sub = await this.prisma.workspaceSubscription.findUnique({
-        where: { id: existing.id },
-        select: { workspace_id: true },
+    if (workspaceId) {
+      await this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { plan },
       });
-      if (sub) {
-        await this.prisma.workspace.update({
-          where: { id: sub.workspace_id },
-          data: { plan },
-        });
-      }
     }
   }
 
