@@ -11,11 +11,13 @@ RUN npm install -g pnpm
 # Copy dependency files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY packages/shared-types/package.json ./packages/shared-types/
 
 # Install dependencies - use workspace install
 RUN pnpm install --frozen-lockfile --recursive
 
-# Copy source code
+# Copy source code (only what's not in .dockerignore)
 COPY . .
 
 # Generate Prisma client

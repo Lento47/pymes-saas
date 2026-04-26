@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs (included explicitly by Dockerfile)
+dist/
+build/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# CI/CD
+*.md
+AGENTS.md
+DESIGN_SYSTEM.md
+
+# Frontend (already built separately)
+apps/web/
+apps/desktop/
+
+# Docs
+docs/
+
+# Tests and coverage
+coverage/
+*.test.ts
+*.spec.ts
+jest.config.*
+vitest.config.*
+
+# Development
+.env
+.env.*
+!.env.example
+docker-compose*.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
