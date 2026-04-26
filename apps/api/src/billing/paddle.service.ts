@@ -164,8 +164,12 @@ export class PaddleService {
     return result;
   }
 
-  async syncSubscription(workspaceId: string, customerId?: string) {
+  async syncSubscription(workspaceId: string, customerId?: string, subscriptionId?: string) {
     const paddle = this.requireClient();
+
+    if (subscriptionId) {
+      return this.syncExistingSubscription(workspaceId, workspaceId, subscriptionId, true);
+    }
 
     if (customerId) {
       return this.syncByCustomerId(workspaceId, customerId);
@@ -253,6 +257,7 @@ export class PaddleService {
     subId: string,
     workspaceId: string,
     providerSubscriptionId: string,
+    createIfMissing = false,
   ) {
     const paddle = this.requireClient();
     const paddleSub = await paddle.subscriptions.get(providerSubscriptionId);
@@ -261,19 +266,34 @@ export class PaddleService {
     );
     const status = this.mapPaddleStatus(paddleSub.status);
 
-    await this.prisma.workspaceSubscription.update({
-      where: { id: subId },
-      data: {
-        plan,
-        status,
-        current_period_start: paddleSub.currentBillingPeriod?.startsAt
-          ? new Date(paddleSub.currentBillingPeriod.startsAt)
-          : undefined,
-        current_period_end: paddleSub.currentBillingPeriod?.endsAt
-          ? new Date(paddleSub.currentBillingPeriod.endsAt)
-          : undefined,
-      } as any,
+    const existing = await this.prisma.workspaceSubscription.findFirst({
+      where: createIfMissing ? { workspace_id: workspaceId } : { id: subId },
     });
+
+    const subData = {
+      provider_subscription_id: providerSubscriptionId,
+      provider_customer_id: paddleSub.customerId,
+      provider: 'PADDLE' as const,
+      plan,
+      status,
+      current_period_start: paddleSub.currentBillingPeriod?.startsAt
+        ? new Date(paddleSub.currentBillingPeriod.startsAt)
+        : undefined,
+      current_period_end: paddleSub.currentBillingPeriod?.endsAt
+        ? new Date(paddleSub.currentBillingPeriod.endsAt)
+        : undefined,
+    };
+
+    if (existing) {
+      await this.prisma.workspaceSubscription.update({
+        where: { id: existing.id },
+        data: subData as any,
+      });
+    } else if (createIfMissing) {
+      await this.prisma.workspaceSubscription.create({
+        data: { workspace_id: workspaceId, ...subData } as any,
+      });
+    }
 
     await this.prisma.workspace.update({
       where: { id: workspaceId },
