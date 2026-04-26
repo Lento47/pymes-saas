@@ -57,28 +57,30 @@ function MarketingMenuAction({
   onNavigate: (href: string) => void;
 }) {
   const classes = cn(
-    "group block rounded-[26px] border p-5 text-left transition hover:-translate-y-[2px]",
+    "group block rounded-xl px-4 py-3 text-left transition-all duration-200",
     featured
-      ? "border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]"
-      : "border-white/8 bg-white/[0.03] hover:border-white/16 hover:bg-white/[0.05]"
+      ? "bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06]"
+      : "hover:bg-white/[0.04]"
   );
 
   const content = (
     <>
-      <div
-        className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-2xl",
+      <div className="flex items-start gap-3">
+        <div className={cn(
+          "flex h-8 w-8 items-center justify-center rounded-lg shrink-0",
           featured
-            ? "bg-[linear-gradient(135deg,rgba(232,255,89,0.24),rgba(127,244,210,0.18))] text-[#f1ff9a]"
-            : "bg-[linear-gradient(135deg,rgba(108,126,255,0.22),rgba(232,255,89,0.10))] text-white/88"
-        )}
-      >
-        <Icon className="h-5 w-5" />
+            ? "bg-[#dfff4a]/10 text-[#dfff4a]"
+            : "bg-white/[0.06] text-white/50 group-hover:text-white/80"
+        )}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-marketing text-sm font-semibold tracking-[-0.01em] text-white group-hover:text-white/90">
+            {title}
+          </h3>
+          <p className="mt-0.5 text-xs leading-5 text-white/40">{description}</p>
+        </div>
       </div>
-      <h3 className="font-marketing mt-5 text-xl font-semibold tracking-[-0.03em] text-white">
-        {title}
-      </h3>
-      <p className="mt-3 text-sm leading-7 text-[#bcc5ee]/68">{description}</p>
     </>
   );
 
@@ -537,23 +539,24 @@ export default function Landing() {
                   className="absolute inset-x-0 top-full z-20 pt-4 pointer-events-auto"
                   data-nav-dropdown
                 >
-                  <div className="glass-panel luminous-border grid gap-6 rounded-[32px] p-6 lg:grid-cols-[1.05fr_1.25fr]">
-                    <div className="space-y-4">
-                      <p className="font-marketing text-xs font-semibold uppercase tracking-[0.34em] text-[#dfff4a]/72">
-                        {dropdownMenus[activeMenu].eyebrow}
-                      </p>
-                      <h2 className="font-marketing text-3xl font-semibold tracking-[-0.04em] text-white">
-                        {dropdownMenus[activeMenu].title}
-                      </h2>
-                      <p className="max-w-lg text-sm leading-7 text-[#bcc5ee]/70">
-                        {dropdownMenus[activeMenu].description}
-                      </p>
+                  <div className="bg-[#0a1022]/98 backdrop-blur-xl border border-white/[0.07] rounded-2xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)_inset]">
+                    {/* Header row */}
+                    <div className="flex items-center justify-between px-6 pt-5 pb-2">
+                      <div>
+                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30">
+                          {dropdownMenus[activeMenu].eyebrow}
+                        </p>
+                        <h2 className="font-marketing mt-1 text-xl font-semibold tracking-[-0.02em] text-white">
+                          {dropdownMenus[activeMenu].title}
+                        </h2>
+                      </div>
+                    </div>
 
-                      <div className="space-y-3">
-                        <p className="font-marketing text-xs font-semibold uppercase tracking-[0.28em] text-white/42">
-                          {
-                            copy.menus[activeMenu].featuredLabel
-                          }
+                    <div className="grid gap-3 p-4 pt-2 lg:grid-cols-[1fr_1.5fr]">
+                      {/* Left: featured */}
+                      <div>
+                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-white/25 px-1 pb-2">
+                          {copy.menus[activeMenu].featuredLabel}
                         </p>
                         <MarketingMenuAction
                           {...dropdownMenus[activeMenu].featured}
@@ -561,16 +564,17 @@ export default function Landing() {
                           onNavigate={handleMenuNavigate}
                         />
                       </div>
-                    </div>
 
-                    <div className="grid gap-4 md:grid-cols-3">
-                      {dropdownMenus[activeMenu].links.map((item) => (
-                        <MarketingMenuAction
-                          key={`${activeMenu}-${item.title}`}
-                          {...item}
-                          onNavigate={handleMenuNavigate}
-                        />
-                      ))}
+                      {/* Right: link list */}
+                      <div className="space-y-1">
+                        {dropdownMenus[activeMenu].links.map((item) => (
+                          <MarketingMenuAction
+                            key={`${activeMenu}-${item.title}`}
+                            {...item}
+                            onNavigate={handleMenuNavigate}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
