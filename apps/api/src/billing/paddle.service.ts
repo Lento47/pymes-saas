@@ -260,48 +260,54 @@ export class PaddleService {
     createIfMissing = false,
   ) {
     const paddle = this.requireClient();
-    const paddleSub = await paddle.subscriptions.get(providerSubscriptionId);
-    const plan = this.mapPaddlePriceToPlan(
-      paddleSub.items?.[0]?.price?.id || '',
-    );
-    const status = this.mapPaddleStatus(paddleSub.status);
 
-    const existing = await this.prisma.workspaceSubscription.findFirst({
-      where: createIfMissing ? { workspace_id: workspaceId } : { id: subId },
-    });
+    try {
+      const paddleSub = await paddle.subscriptions.get(providerSubscriptionId);
+      const plan = this.mapPaddlePriceToPlan(
+        paddleSub.items?.[0]?.price?.id || '',
+      );
+      const status = this.mapPaddleStatus(paddleSub.status);
 
-    const subData = {
-      provider_subscription_id: providerSubscriptionId,
-      provider_customer_id: paddleSub.customerId,
-      provider: 'PADDLE' as const,
-      plan,
-      status,
-      current_period_start: paddleSub.currentBillingPeriod?.startsAt
-        ? new Date(paddleSub.currentBillingPeriod.startsAt)
-        : undefined,
-      current_period_end: paddleSub.currentBillingPeriod?.endsAt
-        ? new Date(paddleSub.currentBillingPeriod.endsAt)
-        : undefined,
-    };
-
-    if (existing) {
-      await this.prisma.workspaceSubscription.update({
-        where: { id: existing.id },
-        data: subData as any,
+      const existing = await this.prisma.workspaceSubscription.findFirst({
+        where: createIfMissing ? { workspace_id: workspaceId } : { id: subId },
       });
-    } else if (createIfMissing) {
-      await this.prisma.workspaceSubscription.create({
-        data: { workspace_id: workspaceId, ...subData } as any,
+
+      const subData = {
+        provider_subscription_id: providerSubscriptionId,
+        provider_customer_id: paddleSub.customerId,
+        provider: 'PADDLE' as const,
+        plan,
+        status,
+        current_period_start: paddleSub.currentBillingPeriod?.startsAt
+          ? new Date(paddleSub.currentBillingPeriod.startsAt)
+          : undefined,
+        current_period_end: paddleSub.currentBillingPeriod?.endsAt
+          ? new Date(paddleSub.currentBillingPeriod.endsAt)
+          : undefined,
+      };
+
+      if (existing) {
+        await this.prisma.workspaceSubscription.update({
+          where: { id: existing.id },
+          data: subData as any,
+        });
+      } else if (createIfMissing) {
+        await this.prisma.workspaceSubscription.create({
+          data: { workspace_id: workspaceId, ...subData } as any,
+        });
+      }
+
+      await this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { plan },
       });
+
+      this.logger.log(`Synced subscription for workspace ${workspaceId}: plan=${plan}`);
+      return { synced: true, plan, status };
+    } catch (err) {
+      this.logger.error(`syncExistingSubscription failed for ${providerSubscriptionId}:`, err);
+      return { synced: false, reason: `Paddle API error: ${(err as Error).message}` };
     }
-
-    await this.prisma.workspace.update({
-      where: { id: workspaceId },
-      data: { plan },
-    });
-
-    this.logger.log(`Synced subscription for workspace ${workspaceId}: plan=${plan}`);
-    return { synced: true, plan, status };
   }
 
   // ── Webhooks ─────────────────────────────────────────────────────────────
