@@ -1,3 +1,5 @@
+import React from 'react';
+
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -9,6 +11,10 @@ declare global {
         placeholder?: string;
         "hide-branding"?: string;
       };
+      "style": React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLStyleElement>,
+        HTMLStyleElement
+      >;
     }
   }
 }
@@ -17,11 +23,12 @@ export function ChatBubble() {
   return (
     <>
       <chat-bubble-snippet
-        api-url="https://70b18965-6ccb-40df-902d-313de9c5c89e.search.ai.cloudflare.com/"
+        api-url="https://1578dd23-e8cb-47b3-98bb-9edb625ef282.search.ai.cloudflare.com/"
         placeholder="Hello! How can I help you?"
         hide-branding="true"
       />
-      <style>{`
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @media (prefers-color-scheme: dark) {
           chat-bubble-snippet {
             --search-snippet-primary-color: #4441fb;
@@ -34,7 +41,7 @@ export function ChatBubble() {
           --search-snippet-primary-hover: #77bba4;
           --search-snippet-focus-ring: #e5acf1;
         }
-      `}</style>
+      `}} />
     </>
   );
 }
