@@ -77,7 +77,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       {/* ── Sidebar ── */}
       <aside className="w-[220px] shrink-0 flex flex-col bg-[#0D1B2A]">
         {/* ── Workspace Header ── */}
-        <div className="relative shrink-0 px-4 py-4 border-b border-white/6">
+        <div className="relative shrink-0 px-4 py-4">
           {/* Brand lockup */}
           <div className="flex items-center gap-2 mb-3">
             <img
