@@ -246,7 +246,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-400 min-w-[220px]">
             <Search className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1">Search in PymesHub...</span>
-            <span className="text-xs text-gray-300 font-mono">⌘ K</span>
+            <span className="text-xs text-gray-300 font-mono hidden md:inline">⌘ K</span>
           </div>
           <button className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition">
             <Bell className="w-5 h-5" />
@@ -274,7 +274,7 @@ export default function DashboardPage() {
               )}
             </div>
             <div className="h-12 w-px bg-gray-300/60 mx-2 flex-shrink-0" />
-            <div className="flex items-center gap-6 flex-1 overflow-x-auto">
+            <div className="flex items-center gap-6 flex-1 overflow-x-auto scroll-snap-x-mandatory -mx-4 px-4">
               {[
                 { bg: "linear-gradient(135deg,#6366f1,#818cf8)", Icon: TrendingUp, label: "Revenue",           value: "↑ 18%",          sub: "vs last month",    valueClass: "text-green-500" },
                 { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt,    label: `${overdueCount} Invoices`, value: "Pending payment", sub: "",              valueClass: "text-gray-800" },
