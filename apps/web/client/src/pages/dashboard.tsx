@@ -165,6 +165,34 @@ export default function DashboardPage() {
     staleTime: 3 * 60 * 1000,
   });
 
+  // Derived totals needed for the AI prompt — only computed once data loads
+  const _overdueCount  = Array.isArray(overdueInvoices) ? overdueInvoices.length : overdueInvoices?.data?.length ?? 0;
+  const _urgentTasks   = (Array.isArray(tasks) ? tasks : tasks?.data ?? []).filter((t: any) => t.priority === "HIGH").length;
+  const _pipelineCount = Array.isArray(pipelineStagesData)
+    ? pipelineStagesData.reduce((s: number, st: any) => s + (st.deals?.length ?? 0), 0)
+    : 0;
+  const _insightSummary = Array.isArray(insights)
+    ? insights.slice(0, 3).map((i: any) => `${i.severity}: ${i.title}`).join("; ")
+    : "";
+
+  const aiPromptReady = !statsLoading && !tasksLoading && !invoicesLoading && !pipelineLoading;
+
+  const { data: bannerAI } = useQuery({
+    queryKey: ["/api/ai/banner", _overdueCount, _urgentTasks, _pipelineCount, _insightSummary],
+    queryFn: () => api.askAssistant(
+      `You are a smart business assistant. Write exactly 2 short lines for a dashboard status banner: ` +
+      `Line 1: a title (max 6 words, friendly tone). ` +
+      `Line 2: a subtitle (max 12 words, actionable). ` +
+      `Reply in this exact format: TITLE|||SUBTITLE — no markdown, no extra text. ` +
+      `Business snapshot: overdue invoices=${_overdueCount}, urgent tasks=${_urgentTasks}, ` +
+      `pipeline deals=${_pipelineCount}, monthly revenue trend=+18%. ` +
+      `Alerts: ${_insightSummary || "none"}.`
+    ),
+    enabled: aiPromptReady,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
   const overdueInvoiceList = Array.isArray(overdueInvoices) ? overdueInvoices : overdueInvoices?.data ?? [];
@@ -185,20 +213,15 @@ export default function DashboardPage() {
   const overdueAmount = overdueInvoiceList.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
   const urgentTasks = taskList.filter((t: any) => t.priority === "HIGH").length;
 
-  // AI-powered banner message derived from insights
-  const insightList = Array.isArray(insights) ? insights : [];
-  const hasDanger  = insightList.some((i: any) => i.severity === "danger");
-  const hasWarning = insightList.some((i: any) => i.severity === "warning");
-  const bannerTitle = hasDanger
-    ? "Action required today"
-    : hasWarning
-    ? "A few things need your attention"
-    : "Everything looks good today";
-  const bannerSubtitle = hasDanger
-    ? insightList.find((i: any) => i.severity === "danger")?.title ?? "Check your alerts below."
-    : hasWarning
-    ? insightList.find((i: any) => i.severity === "warning")?.title ?? "Review your pending items."
-    : "Your business is on track. Keep going! ✨";
+  // Parse the AI response (TITLE|||SUBTITLE format) with a sensible fallback
+  const [bannerTitle, bannerSubtitle] = (() => {
+    const raw: string = bannerAI?.answer ?? "";
+    const parts = raw.split("|||");
+    if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
+      return [parts[0].trim(), parts[1].trim()];
+    }
+    return ["Everything looks good today", "Your business is on track. Keep going! ✨"];
+  })();
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -253,8 +276,17 @@ export default function DashboardPage() {
 
             {/* AI-powered title + subtitle */}
             <div className="flex-shrink-0 min-w-[220px]">
-              <h2 className="text-[17px] font-bold text-gray-900 leading-snug">{bannerTitle}</h2>
-              <p className="text-sm text-gray-500 mt-0.5">{bannerSubtitle}</p>
+              {!bannerAI && aiPromptReady ? (
+                <>
+                  <div className="h-5 w-48 rounded bg-gray-200/70 animate-pulse mb-1.5" />
+                  <div className="h-3.5 w-56 rounded bg-gray-200/50 animate-pulse" />
+                </>
+              ) : (
+                <>
+                  <h2 className="text-[17px] font-bold text-gray-900 leading-snug">{bannerTitle}</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">{bannerSubtitle}</p>
+                </>
+              )}
             </div>
 
             {/* Vertical divider */}
