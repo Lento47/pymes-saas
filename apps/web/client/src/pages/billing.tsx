@@ -31,7 +31,7 @@ const PRICING_TIERS = [
     monthlyUSD: 119,
     monthlyCRC: 59900,
     features: ['15,000 Contacts', '2,000 invoices/month', '100 Automations', '15 Users'],
-    priceId: import.meta.env.VITE_PADDLE_PRICE_BUSINESS_MONTHLY as string | undefined,
+    priceId: import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY as string | undefined,
   },
 ];
 
