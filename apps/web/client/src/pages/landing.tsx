@@ -476,25 +476,29 @@ export default function Landing() {
                   ))}
                 </div>
 
-                <div className="flex items-center gap-2 md:gap-4">
-                  <LanguageSwitcher variant="marketing" />
-                  <Link href="/pricing">
-                    <a className="font-marketing hidden text-sm font-medium text-white/78 transition hover:text-white md:inline-flex">
-                      {copy.nav.pricing}
-                    </a>
-                  </Link>
-                  <Link href="/documentation">
-                    <a className="font-marketing hidden text-sm font-medium text-white/78 transition hover:text-white md:inline-flex">
-                      {copy.nav.documentation}
-                    </a>
-                  </Link>
+                <div className="flex items-center gap-1 md:gap-4 flex-shrink-0">
+                  <div className="hidden sm:flex items-center gap-2 md:gap-4">
+                    <LanguageSwitcher variant="marketing" />
+                  </div>
+                  <div className="hidden md:flex items-center gap-4">
+                    <Link href="/pricing">
+                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                        {copy.nav.pricing}
+                      </a>
+                    </Link>
+                    <Link href="/documentation">
+                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                        {copy.nav.documentation}
+                      </a>
+                    </Link>
+                  </div>
                   <Link href="/login">
-                    <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    <a className="font-marketing hidden sm:block text-sm font-medium text-white/78 transition hover:text-white">
                       {copy.nav.logIn}
                     </a>
                   </Link>
                   <Link href="/login">
-                    <a className="glow-button font-marketing inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
+                    <a className="glow-button font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
                       {copy.nav.getStarted}
                       <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                     </a>
@@ -502,7 +506,7 @@ export default function Landing() {
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="md:hidden text-white/78 transition hover:text-white"
+                    className="md:hidden text-white/78 transition hover:text-white flex-shrink-0"
                   >
                     {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                   </button>
