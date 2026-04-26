@@ -10,15 +10,24 @@ import {
   Globe2,
   LifeBuoy,
   LockKeyhole,
+  Menu,
   ShieldCheck,
   Sparkles,
   Workflow,
+  X,
 } from "lucide-react";
 import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { cn } from "@/lib/utils";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 const navItems = [
   { id: "platform", key: "platform" },
@@ -188,6 +197,7 @@ export default function Landing() {
   const copy = messages.landing;
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
   const [isTouch, setIsTouch] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const productCards: Array<{
     assetSrc?: string;
@@ -368,9 +378,16 @@ export default function Landing() {
     if (target.closest('[data-nav-button]')) {
       return;
     }
+    // Don't close if clicking inside mobile menu
+    if (target.closest('[data-mobile-menu]')) {
+      return;
+    }
     // Close menu if clicking outside nav area
     if (activeMenu) {
       setActiveMenu(null);
+    }
+    if (mobileMenuOpen) {
+      setMobileMenuOpen(false);
     }
   };
 
@@ -384,9 +401,16 @@ export default function Landing() {
     if (target.closest('[data-nav-button]')) {
       return;
     }
+    // Don't close if touching inside mobile menu
+    if (target.closest('[data-mobile-menu]')) {
+      return;
+    }
     // Close menu if touching outside nav area
     if (activeMenu) {
       setActiveMenu(null);
+    }
+    if (mobileMenuOpen) {
+      setMobileMenuOpen(false);
     }
   };
 
@@ -475,8 +499,43 @@ export default function Landing() {
                       <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                     </a>
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                    className="md:hidden text-white/78 transition hover:text-white"
+                  >
+                    {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                  </button>
                 </div>
               </nav>
+
+              {mobileMenuOpen && (
+                <div className="md:hidden mt-2 glass-panel luminous-border rounded-[28px] p-4" data-mobile-menu>
+                  <div className="space-y-2">
+                    <Link href="/pricing">
+                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                        {copy.nav.pricing}
+                      </a>
+                    </Link>
+                    <Link href="/documentation">
+                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                        {copy.nav.documentation}
+                      </a>
+                    </Link>
+                    <Link href="/login">
+                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                        {copy.nav.logIn}
+                      </a>
+                    </Link>
+                    <Link href="/login">
+                      <a className="glow-button font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px]">
+                        {copy.nav.getStarted}
+                        <ArrowRight className="h-3 w-3 inline" />
+                      </a>
+                    </Link>
+                  </div>
+                </div>
+              )}
 
               {activeMenu && (
                 <div
@@ -747,7 +806,55 @@ export default function Landing() {
               </p>
             </div>
 
-            <div className="mt-14 grid gap-6 lg:grid-cols-3">
+            {/* Mobile Carousel */}
+            <div className="md:hidden mt-14">
+              <Carousel opts={{ align: "start", loop: true }}>
+                <CarouselContent>
+                  {productCards.map((card) => {
+                    const Icon = card.icon;
+                    return (
+                      <CarouselItem key={card.title} className="basis-full">
+                        <article className="glass-panel rounded-[28px] p-7">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))] p-2 text-white/90">
+                            {card.assetSrc ? (
+                              <img
+                                src={card.assetSrc}
+                                alt=""
+                                className="h-full w-full object-contain"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <Icon className="h-6 w-6" />
+                            )}
+                          </div>
+                          <h3 className="font-marketing mt-7 text-2xl font-semibold tracking-[-0.03em]">
+                            {card.title}
+                          </h3>
+                          <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/72">
+                            {card.description}
+                          </p>
+                          <ul className="mt-8 space-y-3 text-sm leading-7 text-white/78">
+                            {card.bullets.map((bullet) => (
+                              <li key={bullet} className="flex gap-3">
+                                <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_14px_rgba(223,255,74,0.65)]" />
+                                <span>{bullet}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </article>
+                      </CarouselItem>
+                    );
+                  })}
+                </CarouselContent>
+                <div className="flex justify-center gap-2 mt-4">
+                  <CarouselPrevious className="relative position-static mx-0" />
+                  <CarouselNext className="relative position-static mx-0" />
+                </div>
+              </Carousel>
+            </div>
+
+            {/* Desktop Grid */}
+            <div className="hidden md:grid mt-14 grid gap-6 lg:grid-cols-3">
               {productCards.map((card) => {
                 const Icon = card.icon;
                 return (
@@ -928,7 +1035,40 @@ export default function Landing() {
               </p>
             </div>
 
-            <div className="mt-14 grid gap-6 md:grid-cols-3">
+            {/* Mobile Carousel */}
+            <div className="md:hidden mt-14">
+              <Carousel opts={{ align: "start", loop: true }}>
+                <CarouselContent>
+                  {copy.security.cards.map((item) => (
+                    <CarouselItem key={item.title} className="basis-full">
+                      <article className="glass-panel rounded-[28px] p-7">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(232,255,89,0.18),rgba(116,244,212,0.15))] p-2 text-[#eaff9d]">
+                          <img
+                            src="/landing-icons/security.png"
+                            alt=""
+                            className="h-full w-full object-contain"
+                            aria-hidden="true"
+                          />
+                        </div>
+                        <h3 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
+                          {item.title}
+                        </h3>
+                        <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/70">
+                          {item.body}
+                        </p>
+                      </article>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <div className="flex justify-center gap-2 mt-4">
+                  <CarouselPrevious className="relative position-static mx-0" />
+                  <CarouselNext className="relative position-static mx-0" />
+                </div>
+              </Carousel>
+            </div>
+
+            {/* Desktop Grid */}
+            <div className="hidden md:grid mt-14 grid gap-6 md:grid-cols-3">
               {copy.security.cards.map((item) => (
                 <article key={item.title} className="glass-panel rounded-[28px] p-7">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(232,255,89,0.18),rgba(116,244,212,0.15))] p-2 text-[#eaff9d]">
