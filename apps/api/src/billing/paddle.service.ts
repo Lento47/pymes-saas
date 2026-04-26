@@ -184,21 +184,30 @@ export class PaddleService {
       return this.syncExistingSubscription(sub.id, workspaceId, sub.provider_subscription_id);
     }
 
-    // Auto-lookup: try to find Paddle customer by workspace owner email
+    // Auto-lookup: try to find Paddle customer by workspace owner email via raw API
     const info = await this.getWorkspaceInfo(workspaceId);
     this.logger.log(`Auto-sync: looking up Paddle customer for email=${info.email}, workspace=${info.name}`);
     if (info.email) {
       try {
-        const collection: any = await (paddle as any).customers.list({ email: [info.email] });
-        const page = await collection.next();
-        const customers = page || [];
-        this.logger.log(`Auto-sync: found ${customers.length} Paddle customer(s) for email ${info.email}`);
-        if (customers.length > 0) {
-          return this.syncByCustomerId(workspaceId, customers[0].id);
+        const paddleApiKey = this.configService.get<string>('PADDLE_API_KEY');
+        const env = this.configService.get<string>('PADDLE_ENVIRONMENT', 'sandbox');
+        const baseUrl = env === 'production' ? 'https://api.paddle.com' : 'https://sandbox-api.paddle.com';
+        const url = `${baseUrl}/customers?email=${encodeURIComponent(info.email)}`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${paddleApiKey}`, 'Content-Type': 'application/json' },
+        });
+        if (res.ok) {
+          const body: any = await res.json();
+          const customers = body?.data || [];
+          this.logger.log(`Auto-sync: Paddle API returned ${customers.length} customer(s) for email ${info.email}`);
+          if (customers.length > 0) {
+            return this.syncByCustomerId(workspaceId, customers[0].id);
+          }
+        } else {
+          this.logger.warn(`Auto-sync: Paddle API returned ${res.status} for email lookup`);
         }
-        this.logger.warn(`Auto-sync: no Paddle customer found for email ${info.email}`);
       } catch (err) {
-        this.logger.error(`Email customer lookup failed for ${info.email}:`, err);
+        this.logger.error(`Email customer lookup HTTP failed for ${info.email}:`, err);
       }
     }
 
