@@ -53,7 +53,7 @@ function buildPayload(payload: ErrorReportPayload) {
 
   return {
     ...payload,
-    route: payload.route ?? window.location.hash ?? window.location.pathname,
+    route: payload.route ?? window.location.pathname,
     url: payload.url ?? window.location.href,
     user_agent: payload.user_agent ?? navigator.userAgent,
     occurred_at: payload.occurred_at ?? new Date().toISOString(),

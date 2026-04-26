@@ -115,7 +115,8 @@ async function request<T>(
     }
     if (!refreshed || res.status === 401) {
       clearAuthState();
-      window.location.hash = "#/login";
+      history.replaceState(null, "", "/login");
+      window.dispatchEvent(new PopStateEvent("popstate"));
       throw new Error("401: Sesión expirada.");
     }
   }

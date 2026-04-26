@@ -4,8 +4,8 @@ import "./index.css";
 import { installGlobalErrorReporting } from "@/lib/error-reporting";
 import { normalizeInitialLocation } from "@/hooks/use-workspace-location";
 
-if (!window.location.hash) {
-  window.location.hash = "#/";
+if (window.location.pathname === "/" && !window.location.hash) {
+  history.replaceState(null, "", "/");
 }
 
 normalizeInitialLocation();

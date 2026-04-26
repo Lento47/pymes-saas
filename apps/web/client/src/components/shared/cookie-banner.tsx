@@ -49,7 +49,7 @@ export function CookieBanner() {
           <p className="text-xs leading-5 text-white/60">
             We use essential cookies to keep the platform running. We don't track you or sell your data.{" "}
             <a
-              href="/#/legal/privacy-policy"
+              href="/legal/privacy-policy"
               className="underline underline-offset-2 transition hover:text-white/90"
             >
               Privacy policy

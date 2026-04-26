@@ -115,7 +115,7 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
           displayMode: 'overlay',
           theme: 'dark',
           locale: 'en',
-          successUrl: `${window.location.origin}/#/settings/billing?success=true`,
+          successUrl: `${window.location.origin}/settings/billing?success=true`,
         },
       });
     } finally {
@@ -329,7 +329,7 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
 
                       if (!tier.priceId) {
                         console.warn('[Billing Upgrade] No priceId for', tier.name, '— redirecting to /pricing');
-                        window.location.href = '/#/pricing';
+                        window.location.href = '/pricing';
                         return;
                       }
 
@@ -346,7 +346,7 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
                         if (!checkoutPaddle) {
                           console.error('[Billing Upgrade] getPaddle() still null after 10s — redirecting to /pricing');
                           setCheckoutLoading(null);
-                          window.location.href = '/#/pricing';
+                          window.location.href = '/pricing';
                           return;
                         }
                         console.log('[Billing Upgrade] Paddle acquired after', ((Date.now() - started) / 1000).toFixed(1), 's');
@@ -361,7 +361,7 @@ export default function BillingPage({ standalone = false }: { standalone?: boole
                             displayMode: 'overlay',
                             theme: 'dark',
                             locale: 'en',
-                            successUrl: `${window.location.origin}/#/settings/billing?success=true`,
+                            successUrl: `${window.location.origin}/settings/billing?success=true`,
                           },
                         });
                       } finally {

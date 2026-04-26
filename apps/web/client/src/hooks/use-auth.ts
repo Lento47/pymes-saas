@@ -153,7 +153,8 @@ export function useAuth() {
     clearAuthState();
     _user = null;
     notifyListeners();
-    window.location.hash = "#/login";
+    history.pushState(null, "", "/login");
+    window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
   const switchWorkspace = async (workspaceSlug: string) => {
@@ -162,7 +163,7 @@ export function useAuth() {
     _user = { ..._user!, role: res.role, workspace: res.workspace };
     notifyListeners();
     // Reload to re-fetch all queries with new workspace context
-    window.location.hash = "#/";
+    history.replaceState(null, "", "/");
     window.location.reload();
   };
 
@@ -183,7 +184,8 @@ export function useAuth() {
 export function useRequireAuth() {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
-    window.location.hash = "#/login";
+    history.replaceState(null, "", "/login");
+    window.dispatchEvent(new PopStateEvent("popstate"));
   }
   return { isAuthenticated };
 }

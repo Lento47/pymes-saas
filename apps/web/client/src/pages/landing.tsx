@@ -354,10 +354,8 @@ export default function Landing() {
 
   const handleMenuNavigate = (href: string) => {
     setActiveMenu(null);
-
     if (href.startsWith("#")) {
-      // Navigate to /product with section anchor
-      window.location.href = `/#/product#${href.slice(1)}`;
+      window.location.href = `/product#${href.slice(1)}`;
     }
   };
 

@@ -1,20 +1,20 @@
 import { useSyncExternalStore, useCallback } from "react";
 import { getWorkspaceSlug } from "@/lib/api";
 
-const PUBLIC_PATHS = ["/login", "/register", "/accept-invite", "/legal", "/pricing", "/documentation"];
+const PUBLIC_PATHS = ["/login", "/register", "/accept-invite", "/legal", "/pricing", "/documentation", "/product"];
 
 function isPublicPath(path: string): boolean {
   const cleanPath = path.split("?")[0];
   return PUBLIC_PATHS.some((p) => cleanPath === p || cleanPath.startsWith(p + "/"));
 }
 
-function readRawHash(): string {
-  return window.location.hash.replace(/^#/, "") || "/";
+function readPathname(): string {
+  return window.location.pathname || "/";
 }
 
-function stripSlug(hash: string, slug: string | null): string {
-  if (!slug) return hash;
-  const [pathPart, queryPart] = hash.split("?");
+function stripSlug(path: string, slug: string | null): string {
+  if (!slug) return path;
+  const [pathPart, queryPart] = path.split("?");
   const prefix = `/${slug}`;
   let stripped = pathPart;
   if (pathPart === prefix) stripped = "/";
@@ -30,35 +30,35 @@ function addSlug(path: string, slug: string | null): string {
   return `/${slug}${path}`;
 }
 
-function maybeNormalizeHash(): void {
+function maybeNormalizePath(): void {
   const slug = getWorkspaceSlug();
   if (!slug) return;
-  const hash = readRawHash();
-  const cleanPath = hash.split("?")[0];
+  const currentPath = readPathname();
+  const cleanPath = currentPath.split("?")[0];
   if (isPublicPath(cleanPath)) return;
   const expected = addSlug(cleanPath, slug);
   if (expected !== cleanPath) {
-    const queryPart = hash.includes("?") ? hash.slice(hash.indexOf("?")) : "";
-    history.replaceState(null, "", `#${expected}${queryPart}`);
+    const queryPart = currentPath.includes("?") ? currentPath.slice(currentPath.indexOf("?")) : "";
+    history.replaceState(null, "", expected + queryPart + window.location.hash);
   }
 }
 
 function getLocation(): string {
-  const hash = stripSlug(readRawHash(), getWorkspaceSlug());
-  return hash.split("?")[0];
+  const path = stripSlug(readPathname(), getWorkspaceSlug());
+  return path.split("?")[0];
 }
 
 function subscribe(onChange: () => void): () => void {
   const handler = () => {
-    maybeNormalizeHash();
+    maybeNormalizePath();
     onChange();
   };
-  window.addEventListener("hashchange", handler);
-  return () => window.removeEventListener("hashchange", handler);
+  window.addEventListener("popstate", handler);
+  return () => window.removeEventListener("popstate", handler);
 }
 
 export function normalizeInitialLocation(): void {
-  maybeNormalizeHash();
+  maybeNormalizePath();
 }
 
 export function useWorkspaceHashLocation(): [
@@ -70,12 +70,12 @@ export function useWorkspaceHashLocation(): [
   const navigate = useCallback(
     (to: string, opts?: { replace?: boolean }) => {
       const finalPath = addSlug(to, getWorkspaceSlug());
-      const finalHash = `#${finalPath}`;
       if (opts?.replace) {
-        history.replaceState(null, "", finalHash);
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
+        history.replaceState(null, "", finalPath + window.location.hash);
+        window.dispatchEvent(new PopStateEvent("popstate"));
       } else {
-        window.location.hash = finalHash;
+        history.pushState(null, "", finalPath + window.location.hash);
+        window.dispatchEvent(new PopStateEvent("popstate"));
       }
     },
     [],
