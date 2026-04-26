@@ -266,7 +266,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto pb-16 lg:pb-0" style={{ background: "hsl(var(--bg))" }}>
+      <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 pt-12 lg:pt-0 px-4 lg:px-0" style={{ background: "hsl(var(--bg))" }}>
         {children}
       </main>
       <MobileBottomNav onMenuClick={() => setMobileOpen(true)} />
