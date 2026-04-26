@@ -27,5 +27,9 @@ RUN pnpm --prefix apps/api build
 # Expose port
 EXPOSE 4000
 
+# Copy entrypoint script and make it executable
+COPY entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+
 # Run migrations then start API
-CMD sh -c "cd apps/api && npx prisma migrate deploy && node dist/src/main"
+ENTRYPOINT ["/app/entrypoint.sh"]
