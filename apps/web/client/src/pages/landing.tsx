@@ -631,7 +631,169 @@ export default function Landing() {
               </p>
             </div>
 
-            <div className="mt-16 grid gap-6 xl:grid-cols-[0.95fr_1.7fr_0.95fr]">
+            {/* Mobile Carousel */}
+            <div className="md:hidden mt-16">
+              <Carousel opts={{ align: "start", loop: true }}>
+                <CarouselContent>
+                  <CarouselItem className="basis-full">
+                    <article className="glass-panel rounded-[30px] p-6">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
+                        <img
+                          src="/landing-icons/world.png"
+                          alt=""
+                          className="h-full w-full object-contain"
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
+                        {copy.overview.inbox.title}
+                      </h2>
+                      <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
+                        {copy.overview.inbox.description}
+                      </p>
+
+                      <div className="mt-8 space-y-3">
+                        {copy.overview.inbox.signals.map((signal) => (
+                          <div
+                            key={signal.label}
+                            className="glass-panel-soft grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
+                          >
+                            <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
+                              {signal.label}
+                            </span>
+                            <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
+                              {signal.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-8 grid grid-cols-7 gap-2">
+                        {Array.from({ length: 28 }, (_, index) => {
+                          const active = [1, 4, 8, 12, 17, 18, 23, 25, 27].includes(index);
+                          return (
+                            <span
+                              key={index}
+                              className={`h-2.5 w-2.5 rounded-full ${
+                                active
+                                  ? "bg-[#dfff4a] shadow-[0_0_18px_rgba(223,255,74,0.7)]"
+                                  : "bg-[#6b7dff]/28"
+                              }`}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      <div className="glass-panel-soft mt-8 rounded-full px-4 py-3 text-sm text-white/70">
+                        {copy.overview.inbox.footer}
+                      </div>
+                    </article>
+                  </CarouselItem>
+
+                  <CarouselItem className="basis-full">
+                    <article className="glass-panel rounded-[34px] px-6 py-7">
+                      <div className="flex flex-col gap-6">
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(98,118,255,0.34),rgba(82,97,241,0.16))] p-2 text-[#dfe6ff]">
+                              <img
+                                src="/landing-icons/performance.png"
+                                alt=""
+                                className="h-full w-full object-contain"
+                                aria-hidden="true"
+                              />
+                            </div>
+                            <div>
+                              <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
+                                {copy.overview.performance.title}
+                              </h2>
+                              <p className="text-sm text-[#bcc5ee]/64">
+                                {copy.overview.performance.description}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-8">
+                            <p className="text-sm uppercase tracking-[0.25em] text-[#aeb6df]/42">
+                              {copy.overview.performance.metricLabel}
+                            </p>
+                            <div className="mt-2 flex items-end gap-3">
+                              <span className="font-marketing text-5xl font-semibold tracking-[-0.04em]">
+                                2.45M
+                              </span>
+                              <span className="rounded-full border border-[#dfff4a]/30 bg-[#dfff4a]/10 px-3 py-1 text-sm font-semibold text-[#dfff4a]">
+                                +18.6%
+                              </span>
+                            </div>
+                          </div>
+                      </div>
+
+                      <div className="glass-panel-soft rounded-2xl px-4 py-3 text-sm text-white/72">
+                          {copy.overview.performance.timeframe}
+                      </div>
+                    </div>
+
+                      <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
+                        <PerformanceChart labels={copy.overview.performance.chartDays} />
+                      </div>
+
+                      <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                        {copy.overview.performance.stats.map(({ label, value }) => (
+                          <div key={label} className="glass-panel-soft rounded-2xl px-4 py-4">
+                            <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
+                              {label}
+                            </p>
+                            <p className="font-marketing mt-2 text-2xl font-semibold tracking-[-0.03em] text-white/90">
+                              {value}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </article>
+                  </CarouselItem>
+
+                  <CarouselItem className="basis-full">
+                    <article className="glass-panel rounded-[30px] p-6">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
+                        <img
+                          src="/landing-icons/Smart-automations.png"
+                          alt=""
+                          className="h-full w-full object-contain"
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
+                        {copy.overview.automations.title}
+                      </h2>
+                      <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
+                        {copy.overview.automations.description}
+                      </p>
+
+                      <OrbitGraphic />
+
+                      <div className="glass-panel-soft mt-3 rounded-2xl px-4 py-4">
+                        <div className="flex items-center justify-between">
+                          <span className="font-marketing text-sm font-semibold text-white/84">
+                            {copy.overview.automations.statusLabel}
+                          </span>
+                          <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_12px_rgba(223,255,74,0.8)]" />
+                            {copy.overview.automations.statusValue}
+                          </span>
+                        </div>
+                      </div>
+                    </article>
+                  </CarouselItem>
+                </CarouselContent>
+                <div className="flex justify-center gap-2 mt-4">
+                  <CarouselPrevious className="relative position-static mx-0" />
+                  <CarouselNext className="relative position-static mx-0" />
+                </div>
+              </Carousel>
+            </div>
+
+            {/* Desktop Grid */}
+            <div className="hidden md:grid mt-16 grid gap-6 xl:grid-cols-[0.95fr_1.7fr_0.95fr]">
               <article className="glass-panel rounded-[30px] p-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
                   <img
