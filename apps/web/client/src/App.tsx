@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { CookieBanner } from "@/components/shared/cookie-banner";
+import { ChatBubble } from "@/components/shared/chat-bubble";
 import { I18nProvider } from "@/components/providers/i18n-provider";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -52,6 +53,12 @@ function RootRoute() {
   ) : (
     <Landing />
   );
+}
+
+function PublicChatBubble() {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return null;
+  return <ChatBubble />;
 }
 
 function AppRouter() {
@@ -128,6 +135,7 @@ export default function App() {
           <TooltipProvider>
             <Toaster />
             <CookieBanner />
+            <PublicChatBubble />
             <Router hook={useWorkspaceHashLocation}>
               <AppRouter />
             </Router>
