@@ -339,7 +339,8 @@ export const api = {
   removeDepartmentMember: (id: string, userId: string) =>
     request<any>("DELETE", `/api/departments/${id}/members/${userId}`),
   getInsights: () => request<any>("GET", "/api/insights"),
-  askAssistant: (input: string) => request<any>("POST", "/api/workspaces/current/ai/assist", { input }),
+  askAssistant: (input: string) =>
+    request<any>("POST", "/api/workspaces/current/ai/assist", { input }).catch(() => null),
   validateTaxpayer: (identificacion: string) =>
     request<any>("POST", "/api/hacienda/validate-taxpayer", { identificacion }),
   searchCabys: (params?: Record<string, string>) => {
