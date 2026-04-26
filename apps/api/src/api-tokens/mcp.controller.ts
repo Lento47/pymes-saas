@@ -88,15 +88,15 @@ export class McpController {
       case 'list_tasks': {
         const where: any = { workspace_id: workspaceId };
         if (args.status) where.status = args.status;
-        const tasks = await this.prisma.task.findMany({ where, select: { id: true, title: true, status: true, priority: true, due_date: true }, take: 50, orderBy: { created_at: 'desc' } });
+        const tasks = await this.prisma.task.findMany({ where, select: { id: true, title: true, status: true, priority: true, due_at: true }, take: 50, orderBy: { created_at: 'desc' } });
         return { tasks };
       }
       case 'create_task': {
-        const task = await this.prisma.task.create({ data: { workspace_id: workspaceId, title: args.title, description: args.description || '', priority: args.priority || 'MEDIUM', due_date: args.due_date ? new Date(args.due_date) : undefined, status: 'OPEN' } });
+        const task = await this.prisma.task.create({ data: { workspace_id: workspaceId, title: args.title, description: args.description || '', priority: args.priority || 'MEDIUM', due_at: args.due_date ? new Date(args.due_date) : undefined, status: 'TODO' } });
         return { task };
       }
       case 'list_invoices': {
-        const invoices = await this.prisma.invoice.findMany({ where: { workspace_id: workspaceId }, select: { id: true, number: true, total: true, status: true, due_date: true }, take: 50, orderBy: { created_at: 'desc' } });
+        const invoices = await this.prisma.invoice.findMany({ where: { workspace_id: workspaceId }, select: { id: true, number: true, amount: true, status: true, due_date: true }, take: 50, orderBy: { created_at: 'desc' } });
         return { invoices };
       }
       case 'list_conversations': {
@@ -119,7 +119,7 @@ export class McpController {
         return { billing_invoices: invoices };
       }
       case 'list_pipeline_deals': {
-        const deals = await this.prisma.deal.findMany({ where: { workspace_id: workspaceId }, select: { id: true, name: true, stage_id: true, value: true, status: true }, take: 50, orderBy: { created_at: 'desc' } });
+        const deals = await this.prisma.deal.findMany({ where: { workspace_id: workspaceId }, select: { id: true, title: true, stage_id: true, value: true, status: true }, take: 50, orderBy: { created_at: 'desc' } });
         return { deals };
       }
       case 'get_settings': {
