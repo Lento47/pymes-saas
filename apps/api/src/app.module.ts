@@ -30,6 +30,7 @@ import { InsightsModule } from './insights/insights.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
+// ApiTokensModule — API token management for Enterprise plan
 import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { HealthModule } from './health/health.module';
