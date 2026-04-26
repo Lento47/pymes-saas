@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { usePaddle } from '@/hooks/use-paddle';
@@ -49,8 +50,9 @@ export default function BillingPage() {
   const paddle = usePaddle();
   const [location] = useLocation();
   const params = new URLSearchParams(location.split('?')[1]);
-  const success = params.get('success');
+  const success = params.get('success') || params.get('paddle');
   const canceled = params.get('canceled');
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
     queryKey: ['subscription'],
@@ -217,22 +219,36 @@ export default function BillingPage() {
                   <Button
                     className="w-full"
                     variant={isCurrent ? 'outline' : 'default'}
-                    disabled={isCurrent || !canUpgrade}
-                    onClick={() => {
+                    disabled={isCurrent || !canUpgrade || checkoutLoading === tier.name}
+                    onClick={async () => {
                       if (!canUpgrade) return;
-                      paddle!.Checkout.open({
-                        items: [{ priceId: tier.priceId!, quantity: 1 }],
-                        customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
-                        settings: {
-                          displayMode: 'overlay',
-                          theme: 'dark',
-                          locale: 'en',
-                          successUrl: `${window.location.origin}/#/settings/billing?success=true`,
-                        },
-                      });
+                      setCheckoutLoading(tier.name);
+                      try {
+                        await paddle!.Checkout.open({
+                          items: [{ priceId: tier.priceId!, quantity: 1 }],
+                          customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
+                          settings: {
+                            displayMode: 'overlay',
+                            theme: 'dark',
+                            locale: 'en',
+                            successUrl: `${window.location.origin}/#/settings/billing?success=true`,
+                          },
+                        });
+                      } finally {
+                        setCheckoutLoading(null);
+                      }
                     }}
                   >
-                    {isCurrent ? 'Current Plan' : 'Upgrade'}
+                    {checkoutLoading === tier.name ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Redirecting...
+                      </>
+                    ) : isCurrent ? (
+                      'Current Plan'
+                    ) : (
+                      'Upgrade'
+                    )}
                   </Button>
                 </CardContent>
               </Card>
