@@ -80,14 +80,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Mobile hamburger — hidden, replaced by bottom nav "More" */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="hidden"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
-
       {mobileOpen && (
         <div
           className="lg:hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
@@ -266,7 +258,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto pb-16 lg:pb-0" style={{ background: "hsl(var(--bg))" }}>
+      <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 w-full max-w-full" style={{ background: "hsl(var(--bg))" }}>
         {children}
       </main>
       <MobileBottomNav onMenuClick={() => setMobileOpen(true)} />

@@ -28,7 +28,7 @@ export function PageTemplate({
     <div className="min-h-full bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="px-6 py-4 max-w-7xl mx-auto">
+        <div className="px-3 md:px-6 py-4 max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
@@ -76,7 +76,7 @@ export function PageTemplate({
       </div>
 
       {/* Content */}
-      <div className="px-6 py-8 max-w-7xl mx-auto">
+      <div className="px-3 md:px-6 py-8 max-w-7xl mx-auto">
         {children}
       </div>
     </div>
@@ -107,7 +107,7 @@ export function SectionCard({
   return (
     <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden ${className}`}>
       {title && (
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-3 md:px-6 py-4 border-b border-gray-200">
           <div>
             <h3 className="font-semibold text-gray-900">{title}</h3>
             {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
@@ -123,13 +123,13 @@ export function SectionCard({
       )}
 
       {loading ? (
-        <div className="px-6 py-4 space-y-3">
+        <div className="px-3 md:px-6 py-4 space-y-3">
           {[0, 1, 2].map(i => (
             <div key={i} className="h-4 bg-gray-200 rounded animate-pulse" />
           ))}
         </div>
       ) : empty ? (
-        <div className="px-6 py-12 text-center">
+        <div className="px-3 md:px-6 py-12 text-center">
           <p className="text-sm text-gray-500">Sin datos aún</p>
         </div>
       ) : (
@@ -215,7 +215,7 @@ export function TableRow({ children, onClick, href, className = "" }: TableRowPr
   const content = (
     <div
       onClick={onClick}
-      className={`flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition cursor-pointer ${className}`}
+      className={`flex items-center gap-3 px-3 md:px-6 py-3 hover:bg-gray-50 transition cursor-pointer ${className}`}
     >
       {children}
     </div>

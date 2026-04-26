@@ -237,7 +237,7 @@ export default function DashboardPage() {
     <div className="min-h-full" style={{ background: "#F4F5F9" }}>
 
       {/* ── Page header ─────────────────────────────────────────────── */}
-      <div className="px-8 pt-7 pb-5 flex items-start justify-between max-w-[1400px] mx-auto">
+      <div className="px-3 md:px-8 pt-4 md:pt-7 pb-5 flex items-start justify-between max-w-[1400px] mx-auto">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{greeting()}, {user?.name?.split(" ")[0] || "Usuario"} 👋</h1>
           <p className="text-sm text-gray-500 mt-0.5">Here's what's happening with your business today.</p>
@@ -257,7 +257,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="px-8 pb-8 max-w-[1400px] mx-auto space-y-4">
+      <div className="px-3 md:px-8 pb-8 max-w-[1400px] mx-auto space-y-4">
 
         {/* ── Status banner ───────────────────────────────────────── */}
         <div className="rounded-2xl overflow-hidden border border-gray-100"
