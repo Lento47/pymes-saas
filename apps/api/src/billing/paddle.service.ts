@@ -239,15 +239,16 @@ export class PaddleService {
           data: { workspace_id: workspaceId, ...subData } as any,
         });
         try {
+          const info = await this.getWorkspaceInfo(workspaceId);
           await this.billingInvoice.generateForSubscription(workspaceId, created.id, {
-            clientName: 'Cliente',
-            clientEmail: '',
+            clientName: info.name,
+            clientEmail: info.email,
             planName: plan,
             planInterval: 'MONTHLY',
             seats: 1,
             amount: 0,
             currency: 'CRC',
-            notes: 'Subscription synced — trial started',
+            notes: 'Suscripción sincronizada — periodo de prueba iniciado',
           });
         } catch (err) {
           this.logger.warn(`Failed to generate invoice for synced sub: ${(err as Error).message}`);
@@ -311,15 +312,16 @@ export class PaddleService {
         });
         // Generate initial invoice for the new subscription
         try {
+          const info = await this.getWorkspaceInfo(workspaceId);
           await this.billingInvoice.generateForSubscription(workspaceId, created.id, {
-            clientName: 'Cliente',
-            clientEmail: '',
+            clientName: info.name,
+            clientEmail: info.email,
             planName: plan,
             planInterval: 'MONTHLY',
             seats: 1,
             amount: 0,
             currency: 'CRC',
-            notes: 'Subscription created — trial started',
+            notes: 'Suscripción creada — periodo de prueba iniciado',
           });
         } catch (err) {
           this.logger.warn(`Failed to generate initial invoice: ${(err as Error).message}`);
@@ -592,5 +594,22 @@ export class PaddleService {
     if (enterpriseAnnual) priceVars[enterpriseAnnual] = 'ENTERPRISE';
 
     return priceVars[priceId] ?? 'FREE';
+  }
+
+  private async getWorkspaceInfo(workspaceId: string): Promise<{ name: string; email: string }> {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { name: true },
+    });
+
+    const owner = await this.prisma.workspaceUser.findFirst({
+      where: { workspace_id: workspaceId, role: 'OWNER' },
+      select: { user: { select: { email: true } } },
+    });
+
+    return {
+      name: workspace?.name || 'Cliente',
+      email: owner?.user?.email || '',
+    };
   }
 }
