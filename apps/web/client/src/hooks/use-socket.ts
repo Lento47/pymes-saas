@@ -13,13 +13,12 @@ export function getSocket(): Socket | null {
  * Inicializa la conexión WebSocket con el token JWT actual.
  * Llamar una sola vez al hacer login (en App.tsx o en el hook useAuth).
  */
-// In dev the Vite server runs on :5000 but the NestJS backend (and its
-// Socket.io server) runs on :4000. Connect directly to avoid proxy issues.
-// In production the WS server is co-located so we use a relative path.
-const WS_URL =
-  import.meta.env.DEV
-    ? `${window.location.protocol}//${window.location.hostname}:4000`
-    : window.location.origin;
+// In dev, connect directly to the NestJS port.
+// In production, use VITE_API_URL (e.g. https://api.pymeshub.lat) so the
+// WebSocket goes to Railway, not to the Cloudflare Pages static host.
+const WS_URL = import.meta.env.DEV
+  ? `${window.location.protocol}//${window.location.hostname}:4000`
+  : (import.meta.env.VITE_API_URL as string | undefined) ?? window.location.origin;
 
 export function connectSocket() {
   if (_socket?.connected) return _socket;

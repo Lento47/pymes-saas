@@ -367,6 +367,7 @@ export const translations = {
         departments: "Departments",
         integrations: "Integrations",
         ai: "Artificial Intelligence",
+        billing: "Billing",
         platform: "Platform",
       },
       locale: {
@@ -754,6 +755,7 @@ export const translations = {
         departments: "Departamentos",
         integrations: "Integraciones",
         ai: "Inteligencia Artificial",
+        billing: "Facturación",
         platform: "Plataforma",
       },
       locale: {
