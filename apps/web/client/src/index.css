@@ -193,3 +193,37 @@ body {
 .animate-pulse-halo {
   animation: pulse-halo 6s ease-in-out infinite;
 }
+
+/* ── Mobile-first responsive ── */
+@media (max-width: 768px) {
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-size: 15px;
+    line-height: 1.6;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Larger touch targets */
+  button, a, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Remove 220px fixed sidebar — handled by hamburger */
+  .app-content {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
+/* Smaller phones */
+@media (max-width: 480px) {
+  body {
+    font-size: 15px;
+  }
+}

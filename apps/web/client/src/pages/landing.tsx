@@ -585,14 +585,14 @@ export default function Landing() {
                 {copy.intro}
               </div>
 
-              <h1 className="font-marketing mt-8 text-5xl font-extrabold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl md:text-[6.8rem]">
+              <h1 className="font-marketing mt-6 md:mt-8 text-[2.5rem] leading-[0.94] tracking-[-0.05em] font-extrabold text-white sm:text-5xl md:text-6xl lg:text-[6.8rem]">
                 {copy.title[0]}
                 <br />
                 {copy.title[1]}
               </h1>
 
               <p
-                className="soft-glow mt-5 text-[2.8rem] font-medium leading-[0.95] tracking-[-0.045em] text-[#e7ff5a] sm:text-[3.25rem] md:text-[4.1rem]"
+                className="soft-glow mt-4 md:mt-5 text-[1.6rem] font-medium leading-[0.95] tracking-[-0.045em] text-[#e7ff5a] sm:text-4xl md:text-[4.1rem]"
                 style={{
                   fontFamily:
                     'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -601,19 +601,19 @@ export default function Landing() {
                 {copy.subtitle}
               </p>
 
-              <p className="mx-auto mt-8 max-w-3xl text-lg leading-8 text-[#c9d0f5]/78 md:text-xl">
+              <p className="mx-auto mt-6 md:mt-8 max-w-3xl text-base leading-7 md:text-lg md:leading-8 text-[#c9d0f5]/78 md:text-xl">
                 {copy.description}
               </p>
 
-              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <div className="mt-8 md:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                 <Link href="/login">
-                  <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
+                  <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 md:px-8 py-3.5 md:py-4 text-sm md:text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
                     {copy.primaryCta}
-                    <ArrowRight className="h-5 w-5" />
+                    <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
                   </a>
                 </Link>
                 <Link href="/product">
-                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
+                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
                     {copy.secondaryCta}
                   </a>
                 </Link>
