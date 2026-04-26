@@ -57,6 +57,7 @@ export const translations = {
         insights: "Insights",
         security: "Security",
         documentation: "Documentation",
+        pricing: "Pricing",
         logIn: "Log in",
         getStarted: "Get Started",
       },
@@ -368,6 +369,7 @@ export const translations = {
         integrations: "Integrations",
         ai: "Artificial Intelligence",
         platform: "Platform",
+        billing: "Billing",
       },
       locale: {
         title: "Workspace language",
@@ -444,6 +446,7 @@ export const translations = {
         insights: "Insights",
         security: "Seguridad",
         documentation: "Documentación",
+        pricing: "Precios",
         logIn: "Entrar",
         getStarted: "Empezar",
       },
@@ -755,6 +758,7 @@ export const translations = {
         integrations: "Integraciones",
         ai: "Inteligencia Artificial",
         platform: "Plataforma",
+        billing: "Facturación",
       },
       locale: {
         title: "Idioma del workspace",
