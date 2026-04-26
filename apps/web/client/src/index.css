@@ -195,6 +195,10 @@ body {
 }
 
 /* ── Mobile-first responsive ── */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
 @media (max-width: 768px) {
   html {
     font-size: 16px;

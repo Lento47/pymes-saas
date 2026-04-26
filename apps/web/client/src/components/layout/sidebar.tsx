@@ -6,6 +6,7 @@ import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { MobileBottomNav } from "./mobile-bottom-nav";
 import {
   LayoutDashboard,
   Inbox,
@@ -89,21 +90,23 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          className="lg:hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside className={[
-        "w-[220px] shrink-0 flex flex-col bg-[#0D1B2A] transition-transform duration-200",
-        "lg:relative lg:translate-x-0",
-        mobileOpen ? "fixed inset-y-0 left-0 z-50 translate-x-0" : "fixed inset-y-0 left-0 z-50 -translate-x-full lg:translate-x-0",
+        "flex flex-col bg-[#0D1B2A] transition-transform duration-300",
+        "lg:relative lg:w-[220px] lg:shrink-0 lg:translate-x-0",
+        mobileOpen
+          ? "fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[320px] translate-x-0 shadow-2xl"
+          : "fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[320px] -translate-x-full lg:translate-x-0",
       ].join(" ")}>
         {/* Mobile close button */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="lg:hidden absolute top-3 right-3 p-1 text-white/60 hover:text-white"
+          className="lg:hidden absolute top-3 right-3 p-2 text-white/60 hover:text-white z-10"
         >
           <X className="w-5 h-5" />
         </button>
@@ -263,9 +266,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto" style={{ background: "hsl(var(--bg))" }}>
+      <main className="flex-1 overflow-y-auto pb-16 lg:pb-0" style={{ background: "hsl(var(--bg))" }}>
         {children}
       </main>
+      <MobileBottomNav onMenuClick={() => setMobileOpen(true)} />
     </div>
   );
 }
