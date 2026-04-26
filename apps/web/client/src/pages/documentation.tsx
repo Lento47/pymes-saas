@@ -66,45 +66,40 @@ export default function DocumentationCenterPage() {
             </div>
           </section>
 
-          <div className="mt-16 space-y-10">
+          <div className="mt-16 space-y-14">
             {categories.map((category) => {
               const categoryCopy = DOCUMENTATION_CATEGORIES[category];
               const docs = publicDocs.filter((entry) => entry.category === category);
 
               return (
-                <section key={category} className="space-y-4">
-                  <div className="space-y-2">
-                    <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-white">
+                <section key={category}>
+                  <div className="mb-6">
+                    <h2 className="font-marketing text-lg font-semibold tracking-[-0.02em] text-white">
                       {categoryCopy.title}
                     </h2>
-                    <p className="max-w-3xl text-sm leading-7 text-[#bcc5ee]/68">
+                    <p className="mt-1 text-sm leading-6 text-white/40 max-w-2xl">
                       {categoryCopy.description}
                     </p>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {docs.map((doc) => (
                       <Link key={doc.slug} href={`/documentation/${doc.slug}`}>
-                        <a className="glass-panel flex h-full flex-col rounded-[28px] p-6 transition hover:-translate-y-[2px] hover:border-white/16">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))] text-white/90">
-                              <BookOpen className="h-5 w-5" />
+                        <a className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
+                              <BookOpen className="h-4 w-4" />
                             </div>
-                            <span className="rounded-full border border-[#dfff4a]/28 bg-[#dfff4a]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#dfff4a]">
+                            <span className="rounded-full border border-white/[0.06] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/25">
                               {copy.publicBadge}
                             </span>
                           </div>
-
-                          <h3 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em] text-white">
+                          <h3 className="font-marketing mt-4 text-base font-semibold tracking-[-0.01em] text-white group-hover:text-white/90">
                             {doc.title}
                           </h3>
-                          <p className="mt-3 text-sm leading-7 text-[#bcc5ee]/70">
+                          <p className="mt-2 text-sm leading-6 text-white/40">
                             {doc.summary}
                           </p>
-
-                          <div className="mt-auto pt-6 text-xs uppercase tracking-[0.2em] text-white/38">
-                            {doc.repoPath}
-                          </div>
                         </a>
                       </Link>
                     ))}
