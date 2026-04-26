@@ -198,6 +198,14 @@ body {
 }
 
 /* ── Mobile-first responsive ── */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }

@@ -534,7 +534,7 @@ export default function InvoicesPage() {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 text-xs"
+          className="h-8 text-xs hidden md:inline-flex"
           onClick={() => detectMutation.mutate()}
           disabled={detectMutation.isPending}
         >
@@ -544,7 +544,7 @@ export default function InvoicesPage() {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 text-xs"
+          className="h-8 text-xs hidden md:inline-flex"
           onClick={() => setShowGuide(true)}
         >
           <BookOpen className="w-3.5 h-3.5 mr-1.5" /> Guía Hacienda

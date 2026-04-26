@@ -2158,7 +2158,7 @@ export default function Settings() {
         </div>
       </ModuleHero>
       <Tabs defaultValue="workspace">
-        <TabsList className="bg-card border border-border">
+        <TabsList className="bg-card border border-border overflow-x-auto flex-nowrap scrollbar-none">
           <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">
             <Building2 className="h-4 w-4 mr-2" />{copy.tabs.workspace}
           </TabsTrigger>
