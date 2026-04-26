@@ -47,7 +47,8 @@ export class AuthService {
     }
 
     // Auto-detect workspace if no slug provided
-    if (!workspaceSlug) {
+    let effectiveSlug = workspaceSlug;
+    if (!effectiveSlug) {
       const memberships = await this.prisma.workspaceUser.findMany({
         where: { user_id: user.id },
         select: { workspace: { select: { id: true, slug: true, name: true } } },
@@ -58,9 +59,8 @@ export class AuthService {
       }
 
       if (memberships.length === 1) {
-        workspaceSlug = memberships[0].workspace.slug;
+        effectiveSlug = memberships[0].workspace.slug;
       } else {
-        // Return list for workspace picker
         throw new UnauthorizedException(
           'MULTIPLE_WORKSPACES:' +
           JSON.stringify(memberships.map((m) => ({
@@ -73,7 +73,7 @@ export class AuthService {
     }
 
     const workspace = await this.prisma.workspace.findUnique({
-      where: { slug: workspaceSlug },
+      where: { slug: effectiveSlug },
     });
     if (!workspace) throw new UnauthorizedException('Workspace no encontrado.');
 
