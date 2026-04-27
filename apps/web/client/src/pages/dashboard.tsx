@@ -39,7 +39,7 @@ function RevenueChart({ monthlyRevenue, changePct }: { monthlyRevenue: number; c
 
   // Use current month dates
   const now = new Date();
-  const monthName = now.toLocaleString("en-US", { month: "short" });
+  const monthName = now.toLocaleString("es-CR", { month: "short" });
   const year = now.getFullYear();
   const daysInMonth = new Date(year, now.getMonth() + 1, 0).getDate();
   const today = now.getDate();
@@ -151,12 +151,14 @@ function MetricCard({ label, value, currency, subLabel, icon: Icon, iconBg, load
 
 // ── Priority badge ────────────────────────────────────────────────────────────
 function PriorityBadge({ priority }: { priority: string }) {
+  const { messages } = useI18n();
+  const dash = messages.dashboard;
   const map: Record<string, string> = {
     HIGH:   "bg-red-500/15 text-red-400",
     MEDIUM: "bg-yellow-500/15 text-yellow-400",
     LOW:    "bg-white/[0.02] text-white/40",
   };
-  const labels: Record<string, string> = { HIGH: "High", MEDIUM: "Medium", LOW: "Low" };
+  const labels: Record<string, string> = { HIGH: dash.high, MEDIUM: dash.medium, LOW: dash.low };
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${map[priority] ?? map.LOW}`}>
       {labels[priority] ?? priority}
@@ -189,7 +191,7 @@ function Card({ title, linkTo, linkLabel, headerExtra, loading, empty, children 
       {loading
         ? <div className="px-5 py-4 space-y-3">{[0,1,2].map(i => <Skeleton key={i} className="h-4 w-full" />)}</div>
         : empty
-        ? <div className="px-5 py-8 text-center text-sm text-white/30">No data yet</div>
+        ? <div className="px-5 py-8 text-center text-sm text-white/30">Sin datos aún</div>
         : <div>{children}</div>
       }
     </div>
@@ -225,11 +227,14 @@ export default function DashboardPage() {
   const stageList: PipelineStageSummary[] = Array.isArray(pipelineStagesData) ? pipelineStagesData : pipelineStagesData?.data ?? [];
   const insightList: any[] = Array.isArray(insights) ? insights : [];
 
+  const { messages } = useI18n();
+  const dash = messages.dashboard;
+
   const revenueChange = workspaceStats?.revenue_change_pct ?? 0;
   const revenueStr = revenueChange >= 0 ? `↑ ${revenueChange}%` : `↓ ${Math.abs(revenueChange)}%`;
   const revenueClass = revenueChange >= 0 ? "text-green-500" : "text-red-500";
   const activeConvs = workspaceStats?.activeConversations ?? 0;
-  const pipelineStatus = activeConvs > 0 ? "Active" : "Empty";
+  const pipelineStatus = activeConvs > 0 ? dash.active : dash.empty;
   const stageRows = stageList
     .map(s => ({ id: s.id, name: s.name, color: s.color || "#8b7cf6", dealCount: s.deals?.length ?? 0, totalValue: sumPipelineValue(s.deals ?? []), currency: s.deals?.find(d => d.currency)?.currency ?? "CRC" }))
     .filter(s => s.dealCount > 0).slice(0, 5);
@@ -248,12 +253,12 @@ export default function DashboardPage() {
   const aiPromptReady   = !statsLoading && !tasksLoading && !invoicesLoading && !pipelineLoading;
   const { data: bannerAI } = useQuery({
     queryKey: ["/api/ai/banner", overdueCount, urgentTasks, pipelineDeals, _insightSummary],
-    queryFn: () => api.askAssistant(
-      `You are a smart business assistant. Write exactly 2 short lines for a dashboard status banner: ` +
-      `Line 1: a title (max 6 words, friendly tone). Line 2: a subtitle (max 12 words, actionable). ` +
-      `Reply in this exact format: TITLE|||SUBTITLE — no markdown, no extra text. ` +
-      `Business snapshot: overdue invoices=${overdueCount}, urgent tasks=${urgentTasks}, pipeline deals=${pipelineDeals}, monthly revenue trend=+18%. ` +
-      `Alerts: ${_insightSummary || "none"}.`
+      queryFn: () => api.askAssistant(
+        `You are a smart business assistant. Write exactly 2 short lines IN SPANISH for a dashboard status banner: ` +
+        `Line 1: a title (max 6 words, friendly tone, in Spanish). Line 2: a subtitle (max 12 words, actionable, in Spanish). ` +
+        `Reply in this exact format: TITLE|||SUBTITLE — no markdown, no extra text. ` +
+        `Business snapshot: overdue invoices=${overdueCount}, urgent tasks=${urgentTasks}, pipeline deals=${pipelineDeals}, monthly revenue trend=+18%. ` +
+        `Alerts: ${_insightSummary || "none"}.`
     ),
     enabled: aiPromptReady,
     staleTime: 5 * 60 * 1000,
@@ -264,27 +269,24 @@ export default function DashboardPage() {
     const parts = raw.split("|||");
     return (parts.length === 2 && parts[0].trim() && parts[1].trim())
       ? [parts[0].trim(), parts[1].trim()]
-      : ["Everything looks good today", "Your business is on track. Keep going! ✨"];
+      : [dash.bannerFallbackTitle, dash.bannerFallbackSubtitle];
   })();
 
   // Activity feed: merge conversations + invoices sorted by date
   const activityItems = [
     ...convList.slice(0, 3).map((c: any) => ({
       id: `c-${c.id}`, type: "message" as const,
-      title: `New message from ${c.contact?.full_name || "Unknown"}`,
-      sub: c.subject || "No subject",
+      title: `${dash.newMessageFrom} ${c.contact?.full_name || dash.unknownContact}`,
+      sub: c.subject || dash.noSubject,
       date: c.updated_at, amount: null,
     })),
     ...invoiceList.slice(0, 2).map((i: any) => ({
       id: `i-${i.id}`, type: "invoice" as const,
-      title: `Invoice #${i.id?.slice(0, 8)} overdue`,
-      sub: i.client_name || "Client",
+      title: `${dash.invoiceOverdue} #${i.id?.slice(0, 8)}`,
+      sub: i.client_name || dash.client,
       date: i.due_date, amount: i.amount,
     })),
   ].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 5);
-
-  const { messages } = useI18n();
-  const dash = messages.dashboard;
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -336,9 +338,9 @@ export default function DashboardPage() {
             <div className="hidden sm:block h-12 w-px bg-black/10 flex-shrink-0" />
             <div className="flex items-center gap-4 overflow-x-auto scrollbar-none -mx-1 px-1">
               {[
-                { bg: "linear-gradient(135deg,#8b7cf6,#a78bfa)", Icon: TrendingUp, label: dash.revenue, value: revenueStr, sub: "vs last month", valueClass: revenueClass },
-                { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} ${dash.invoices}`, value: "Pending", sub: "", valueClass: "text-gray-800" },
-                { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare, label: `${urgentTasks} ${dash.tasks}`, value: "Urgent", sub: "", valueClass: "text-gray-800" },
+                { bg: "linear-gradient(135deg,#8b7cf6,#a78bfa)", Icon: TrendingUp, label: dash.revenue, value: revenueStr, sub: dash.vsLastMonth, valueClass: revenueClass },
+                { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} ${dash.invoices}`, value: dash.pending, sub: "", valueClass: "text-gray-800" },
+                { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare, label: `${urgentTasks} ${dash.tasks}`, value: dash.urgent, sub: "", valueClass: "text-gray-800" },
                 { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart2, label: dash.pipeline, value: pipelineStatus, sub: "", valueClass: activeConvs > 0 ? "text-green-600" : "text-gray-400" },
               ].map(({ bg, Icon, label, value, sub, valueClass }, i, arr) => (
                 <div key={label} className="flex items-center gap-3 flex-shrink-0">
@@ -380,7 +382,7 @@ export default function DashboardPage() {
                   <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${(workspaceStats?.revenue_change_pct ?? 0) >= 0 ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
                     {(workspaceStats?.revenue_change_pct ?? 0) >= 0 ? "+" : ""}{workspaceStats?.revenue_change_pct ?? 0}%
                   </span>
-                  <span className="text-[11px] text-white/30">vs. last month</span>
+                  <span className="text-[11px] text-white/30">{dash.vsLastMonth}</span>
                 </div>
               </>
             )}
@@ -399,7 +401,7 @@ export default function DashboardPage() {
               <>
                 <p className="text-2xl font-bold text-white/90 mt-2 tracking-tight">₡{overdueAmount.toLocaleString("es-ES")}</p>
                 <span className={`mt-2 self-start text-[10px] font-medium px-2 py-0.5 rounded-full ${overdueCount > 0 ? "bg-amber-500/15 text-amber-300" : "bg-white/[0.04] text-white/30"}`}>
-                  {overdueCount} {overdueCount === 1 ? "invoice" : "invoices"} pending
+                  {overdueCount} {overdueCount === 1 ? dash.invoices.toLowerCase() : dash.invoices.toLowerCase()} {dash.pending.toLowerCase()}
                 </span>
               </>
             )}
@@ -418,7 +420,7 @@ export default function DashboardPage() {
             {pipelineLoading ? <Skeleton className="h-7 w-20 mt-2" /> : (
               <>
                 <p className="text-2xl font-bold text-white/90 mt-2 tracking-tight">₡{totalPipeline.toLocaleString("es-ES")}</p>
-                <p className="text-[11px] text-sky-400/50 mt-1.5">Potential revenue</p>
+                <p className="text-[11px] text-sky-400/50 mt-1.5">{dash.potentialRevenue}</p>
               </>
             )}
           </div>
@@ -440,7 +442,7 @@ export default function DashboardPage() {
             {statsLoading ? <Skeleton className="h-7 w-12 mt-2" /> : (
               <>
                 <p className="text-[2.25rem] font-bold text-white/90 leading-none mt-1">{todayStats?.received_messages ?? 0}</p>
-                <p className="text-[11px] text-white/25 mt-2">{(todayStats?.received_messages ?? 0) > 0 ? "received today" : "No messages today"}</p>
+                <p className="text-[11px] text-white/25 mt-2">{(todayStats?.received_messages ?? 0) > 0 ? `${(todayStats?.received_messages ?? 0)} ${dash.today}` : dash.noMessagesToday}</p>
               </>
             )}
           </div>
@@ -459,8 +461,8 @@ export default function DashboardPage() {
                 <p className="text-2xl font-bold text-white/90 mt-2 tracking-tight">{taskList.length}</p>
                 <div className="mt-2 flex items-center gap-1.5">
                   {taskList.length === 0
-                    ? <span className="text-[11px] text-teal-400/60">✓ All caught up</span>
-                    : <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${urgentTasks > 0 ? "bg-red-500/15 text-red-400" : "bg-teal-500/15 text-teal-300"}`}>{urgentTasks > 0 ? `${urgentTasks} urgent` : "on track"}</span>
+                    ? <span className="text-[11px] text-teal-400/60">✓ {dash.allCaughtUp}</span>
+                    : <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${urgentTasks > 0 ? "bg-red-500/15 text-red-400" : "bg-teal-500/15 text-teal-300"}`}>{urgentTasks > 0 ? `${urgentTasks} ${dash.urgent}` : dash.allCaughtUp}</span>
                   }
                 </div>
               </>
@@ -479,20 +481,20 @@ export default function DashboardPage() {
             <Card title={dash.revenueOverview}
               headerExtra={
                 <span className="text-xs text-white/40 bg-white/[0.02] px-2.5 py-1.5 rounded-lg font-medium">
-                  {new Date().toLocaleString("en-US", { month: "long", year: "numeric" })}
+                  {new Date().toLocaleString("es-CR", { month: "long", year: "numeric" })}
                 </span>
               }
             >
               <div className="px-5 pt-4 pb-3">
                 <div className="flex items-baseline gap-2 mb-3">
                   <span className="text-2xl font-bold text-white/90">₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}</span>
-                  <span className="text-sm text-green-500 font-medium">{workspaceStats?.revenue_change_pct ?? 0}% vs. last month</span>
+                  <span className="text-sm text-green-500 font-medium">{workspaceStats?.revenue_change_pct ?? 0}% {dash.vsLastMonth}</span>
                 </div>
                 <RevenueChart monthlyRevenue={workspaceStats?.monthly_revenue ?? 0} changePct={workspaceStats?.revenue_change_pct ?? 0} />
                 <div className="flex justify-between text-xs text-white/30 mt-2 px-1">
                   {(() => {
                     const now = new Date();
-                    const month = now.toLocaleString("en-US", { month: "short" });
+                    const month = now.toLocaleString("es-CR", { month: "short" });
                     const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
                     const step = Math.max(1, Math.floor(days / 5));
                     return Array.from({ length: Math.min(5, Math.ceil(days / step)) }, (_, i) => {
@@ -507,7 +509,7 @@ export default function DashboardPage() {
             {/* Tasks / Messages */}
             <Card
               linkTo={activeTab === "tasks" ? "/tasks" : "/inbox"}
-              linkLabel={activeTab === "tasks" ? "View all tasks →" : "View all →"}
+              linkLabel={activeTab === "tasks" ? `${dash.viewAllTasks} →` : `${dash.viewAll} →`}
               headerExtra={
                 <div className="flex gap-0.5 border-b border-transparent">
                   {(["tasks", "messages"] as const).map(tab => (
@@ -515,7 +517,7 @@ export default function DashboardPage() {
                       className={`px-4 py-2 text-sm font-medium transition capitalize ${
                         activeTab === tab ? "text-[#8b7cf6] border-b-2 border-[#8b7cf6]" : "text-white/40 hover:text-white/70"
                       }`}>
-                      {tab === "tasks" ? "Tasks" : "Messages"}
+                      {tab === "tasks" ? dash.tasks : dash.newMessages}
                     </button>
                   ))}
                 </div>
@@ -524,7 +526,7 @@ export default function DashboardPage() {
               <div className="divide-y divide-white/[0.02]">
                 {activeTab === "tasks" ? (
                   taskList.length === 0
-                    ? <p className="px-5 py-6 text-sm text-center text-white/30">No tasks yet</p>
+                    ? <p className="px-5 py-6 text-sm text-center text-white/30">{dash.noTasks}</p>
                     : taskList.slice(0, 5).map((task: any) => (
                         <div key={task.id} className="flex items-center gap-3 px-5 py-3">
                           <input type="checkbox" className="w-4 h-4 rounded border-white/[0.04] cursor-pointer accent-[#8b7cf6]" />
@@ -539,7 +541,7 @@ export default function DashboardPage() {
                       ))
                 ) : (
                   convList.length === 0
-                    ? <p className="px-5 py-6 text-sm text-center text-white/30">No messages yet</p>
+                    ? <p className="px-5 py-6 text-sm text-center text-white/30">{dash.noMessages}</p>
                     : convList.slice(0, 5).map((conv: any) => (
                         <Link key={conv.id} href={`/inbox/${conv.id}`}>
                           <a className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition">
@@ -547,8 +549,8 @@ export default function DashboardPage() {
                               {conv.contact?.full_name?.charAt(0) || "?"}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-white/90 truncate">{conv.contact?.full_name || "Unknown"}</p>
-                              <p className="text-xs text-white/30 truncate">{conv.subject || "No subject"}</p>
+                              <p className="text-sm font-medium text-white/90 truncate">{conv.contact?.full_name || dash.unknownContact}</p>
+                              <p className="text-xs text-white/30 truncate">{conv.subject || dash.noSubject}</p>
                             </div>
                             <span className="text-xs text-white/30 whitespace-nowrap">{conv.updated_at && format(new Date(conv.updated_at), "HH:mm")}</span>
                           </a>
@@ -571,7 +573,7 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-medium text-white/80">{stage.name}</span>
-                          <span className="text-xs text-white/30">{stage.dealCount} deals</span>
+                          <span className="text-xs text-white/30">{stage.dealCount} {dash.deals}</span>
                         </div>
                         <span className="text-xs font-semibold text-white/70">
                           {stage.totalValue > 0 ? fmtMoney(stage.totalValue, stage.currency) : "—"}
@@ -594,10 +596,10 @@ export default function DashboardPage() {
             </Card>
 
             {/* Recent activity */}
-            <Card title="Recent activity" linkTo="/inbox" linkLabel="View all →">
+            <Card title={dash.recentActivity} linkTo="/inbox" linkLabel={`${dash.viewAll} →`}>
               <div className="divide-y divide-white/[0.02]">
                 {activityItems.length === 0 && (
-                  <p className="px-5 py-6 text-sm text-center text-white/30">No recent activity</p>
+                  <p className="px-5 py-6 text-sm text-center text-white/30">{dash.noRecentActivity}</p>
                 )}
                 {activityItems.map(item => {
                   const isMsg = item.type === "message";
@@ -643,9 +645,9 @@ export default function DashboardPage() {
                   {insightList.length === 0 ? (
                     // Placeholder insights that match the screenshot style
                     [
-                      { severity: "positive", title: "No urgent alerts",       suggestion: "Great! Everything is under control." },
-                      { severity: "warning",  title: `${overdueCount || 0} invoices overdue`, suggestion: `Total amount pending review.` },
-                      { severity: "info",     title: "Best time to follow up", suggestion: "Based on contact engagement patterns." },
+                      { severity: "positive", title: dash.insightNoAlerts,       suggestion: dash.insightNoAlertsDesc },
+                      { severity: "warning",  title: `${overdueCount || 0} ${dash.insightAlertsInvoices}`, suggestion: dash.insightAlertsDesc },
+                      { severity: "info",     title: dash.insightFollowUp, suggestion: dash.insightFollowUpDesc },
                     ].map((ins, i) => {
                       const st = INSIGHT_STYLES[ins.severity] ?? INSIGHT_STYLES.info;
                       return (
@@ -685,22 +687,22 @@ export default function DashboardPage() {
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition hover:opacity-90"
                   style={{ background: "linear-gradient(90deg,#8b7cf6 0%,#a78bfa 100%)" }}
                 >
-                  <Zap className="w-4 h-4" /> Open Copilot
+                  <Zap className="w-4 h-4" /> {dash.openCopilot}
                 </button>
               </div>
             </div>
 
             {/* Quick actions */}
             <div className="bg-white/[0.02] rounded-2xl border border-white/[0.04] p-5">
-              <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">Quick actions</h3>
+              <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">{dash.quickActions}</h3>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { Icon: Receipt,     label: "New invoice",      href: "/invoices",    bg: "bg-[#8b7cf6]/15",  ic: "text-[#8b7cf6]" },
-                  { Icon: UserPlus,    label: "Add contact",      href: "/contacts",    bg: "bg-blue-500/15",    ic: "text-blue-400"   },
+                  { Icon: Receipt,     label: dash.newInvoice,      href: "/invoices",    bg: "bg-[#8b7cf6]/15",  ic: "text-[#8b7cf6]" },
+                  { Icon: UserPlus,    label: dash.addContact,      href: "/contacts",    bg: "bg-blue-500/15",    ic: "text-blue-400"   },
                   { Icon: KanbanSquare,label: dash.newOpportunity,  href: "/pipeline",    bg: "bg-violet-500/15",  ic: "text-violet-400" },
-                  { Icon: MessageCircle,label:"Send message",     href: "/inbox",       bg: "bg-green-500/15",   ic: "text-green-400"  },
-                  { Icon: FileText,    label: "Upload file",      href: "/documents",   bg: "bg-orange-500/15",  ic: "text-orange-400" },
-                  { Icon: Zap,         label: "Automation",       href: "/automations", bg: "bg-pink-500/15",    ic: "text-pink-400"   },
+                  { Icon: MessageCircle,label: dash.sendMessage,     href: "/inbox",       bg: "bg-green-500/15",   ic: "text-green-400"  },
+                  { Icon: FileText,    label: dash.uploadDocument,      href: "/documents",   bg: "bg-orange-500/15",  ic: "text-orange-400" },
+                  { Icon: Zap,         label: dash.automation,       href: "/automations", bg: "bg-pink-500/15",    ic: "text-pink-400"   },
                 ].map(({ Icon, label, href, bg, ic }) => (
                   <Link key={href + label} href={href}>
                     <a className="flex flex-col items-center gap-2 py-3 px-1 rounded-xl hover:bg-white/[0.02] transition group">
