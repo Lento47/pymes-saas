@@ -416,4 +416,9 @@ export const api = {
   },
   executeAgentTool: (tool: string, args?: any) =>
     request<any>("POST", "/api/agent/execute", { tool, arguments: args }),
+  // Routing rules
+  getRoutingRules: () => request<any>("GET", "/api/routing-rules"),
+  createRoutingRule: (data: any) => request<any>("POST", "/api/routing-rules", data),
+  updateRoutingRule: (id: string, data: any) => request<any>("PATCH", `/api/routing-rules/${id}`, data),
+  deleteRoutingRule: (id: string) => request<any>("DELETE", `/api/routing-rules/${id}`),
 };
