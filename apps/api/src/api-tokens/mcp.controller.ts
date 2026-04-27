@@ -47,6 +47,28 @@ export class McpController {
     return { status: 'ok', protocol: 'mcp', version: '1.0', tools: TOOLS.length };
   }
 
+  @Get('sse')
+  @UseGuards(ApiTokenGuard)
+  async sse(@Req() req: any, @Res() res: Response) {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      'Access-Control-Allow-Origin': '*',
+    });
+    // Send endpoint info event
+    res.write(`data: ${JSON.stringify({
+      jsonrpc: '2.0',
+      result: {
+        endpoint: '/api/mcp',
+      },
+    })}\n\n`);
+    // Keep alive
+    const keepAlive = setInterval(() => res.write(': keepalive\n\n'), 30000);
+    req.on('close', () => clearInterval(keepAlive));
+  }
+
   @Post()
   @UseGuards(ApiTokenGuard)
   async handle(
