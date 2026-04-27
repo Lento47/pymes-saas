@@ -90,8 +90,8 @@ import { TelegramModule } from './telegram/telegram.module';
     RoutingModule,
     SamlModule,
     I18nModule,
+    // Telegram module
     TelegramModule,
-    // Platform must be last
     PlatformModule,
 
     WorkersModule,
