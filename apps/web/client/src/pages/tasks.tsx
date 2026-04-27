@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -54,6 +55,8 @@ const PRIORITY_OPTIONS = ["ALL", "LOW", "MEDIUM", "HIGH", "URGENT"];
 
 export default function TasksPage() {
   useRequireAuth();
+  const { messages } = useI18n();
+  const t = messages.tasks;
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
@@ -139,7 +142,7 @@ export default function TasksPage() {
   return (
     <TooltipProvider>
       <div>
-        <PageHeader title="Tareas" description="Gestiona y da seguimiento a tus tareas">
+        <PageHeader title={t.title} description="Gestiona y da seguimiento a tus tareas">
           <Button
             size="sm"
             className="h-8 text-xs"
@@ -214,7 +217,7 @@ export default function TasksPage() {
         {isLoading ? (
           <PageLoader />
         ) : taskList.length === 0 ? (
-          <EmptyState icon={CheckSquare} title="Sin tareas" description="Crea una tarea para empezar." />
+          <EmptyState icon={CheckSquare} title={t.noTasks} description="Crea una tarea para empezar." />
         ) : (
           <div className="rounded-lg border border-border overflow-hidden bg-card">
             <Table>

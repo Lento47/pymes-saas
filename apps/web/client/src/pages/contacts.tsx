@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, parsePlanError } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -47,6 +48,8 @@ const typeBadgeColors: Record<string, string> = {
 
 export default function ContactsPage() {
   useRequireAuth();
+  const { messages } = useI18n();
+  const c = messages.contacts;
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
@@ -98,7 +101,7 @@ export default function ContactsPage() {
 
   return (
     <div>
-      <PageHeader title="Contacts" description="Manage your contacts and leads">
+      <PageHeader title={c.title} description="Manage your contacts and leads">
         <Button size="sm" className="h-8 text-xs" onClick={() => {
           setEditingId(null);
           setForm({ firstName: "", lastName: "", email: "", phone: "", company: "", type: "CUSTOMER" });
@@ -134,7 +137,7 @@ export default function ContactsPage() {
       {isLoading ? (
         <PageLoader />
       ) : contactList.length === 0 ? (
-        <EmptyState icon={Users} title="No contacts" description="Create your first contact to get started." />
+        <EmptyState icon={Users} title={c.noContacts} description="Create your first contact to get started." />
       ) : (
         <div className="rounded-lg border border-border overflow-hidden bg-card">
           <Table>

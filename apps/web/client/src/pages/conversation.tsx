@@ -409,6 +409,16 @@ export default function ConversationPage() {
                 </h2>
                 <StatusBadge status={conversation.status} type="conversation" />
                 <PriorityDot priority={conversation.priority} showLabel />
+                {conversation.sla_breached && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                    SLA
+                  </span>
+                )}
+                {conversation.first_response_at && !conversation.sla_breached && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                    ✓ {Math.round((new Date(conversation.first_response_at).getTime() - new Date(conversation.created_at).getTime()) / 60000)}m
+                  </span>
+                )}
               </div>
               {assignedMember && (
                 <div className="text-[11px] text-muted-foreground mt-0.5">
