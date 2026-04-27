@@ -161,6 +161,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"tasks" | "messages">("tasks");
 
   const { data: todayStats,       isLoading: statsLoading    } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
+  const { data: workspaceStats } = useQuery({ queryKey: ["/api/workspaces/current/stats"], queryFn: api.getWorkspaceStats, refetchInterval: 60000 });
   const { data: conversations,    isLoading: convsLoading    } = useQuery({ queryKey: ["/api/conversations", "dash"],           queryFn: () => api.getConversations({ limit: "10" }) });
   const { data: tasks,            isLoading: tasksLoading    } = useQuery({ queryKey: ["/api/tasks", "dash"],                   queryFn: () => api.getTasks({ limit: "10" }) });
   const { data: overdueInvoices,  isLoading: invoicesLoading } = useQuery({ queryKey: ["/api/invoices", "overdue-widget"],      queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }), refetchInterval: 60000 });
@@ -174,7 +175,11 @@ export default function DashboardPage() {
   const stageList: PipelineStageSummary[] = Array.isArray(pipelineStagesData) ? pipelineStagesData : pipelineStagesData?.data ?? [];
   const insightList: any[] = Array.isArray(insights) ? insights : [];
 
-  // Pipeline rows
+  const revenueChange = workspaceStats?.revenue_change_pct ?? 0;
+  const revenueStr = revenueChange >= 0 ? `↑ ${revenueChange}%` : `↓ ${Math.abs(revenueChange)}%`;
+  const revenueClass = revenueChange >= 0 ? "text-green-500" : "text-red-500";
+  const activeConvs = workspaceStats?.activeConversations ?? 0;
+  const pipelineStatus = activeConvs > 0 ? "Active" : "Empty";
   const stageRows = stageList
     .map(s => ({ id: s.id, name: s.name, color: s.color || "#6366F1", dealCount: s.deals?.length ?? 0, totalValue: sumPipelineValue(s.deals ?? []), currency: s.deals?.find(d => d.currency)?.currency ?? "CRC" }))
     .filter(s => s.dealCount > 0).slice(0, 5);
@@ -276,10 +281,10 @@ export default function DashboardPage() {
             <div className="h-12 w-px bg-gray-300/60 mx-2 flex-shrink-0" />
             <div className="flex items-center gap-6 flex-1 overflow-x-auto scroll-snap-x-mandatory -mx-4 px-4">
               {[
-                { bg: "linear-gradient(135deg,#6366f1,#818cf8)", Icon: TrendingUp, label: "Revenue",           value: "↑ 18%",          sub: "vs last month",    valueClass: "text-green-500" },
-                { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt,    label: `${overdueCount} Invoices`, value: "Pending payment", sub: "",              valueClass: "text-gray-800" },
-                { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare,label: `${urgentTasks} Tasks`,     value: "Urgent",          sub: "",              valueClass: "text-gray-800" },
-                { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart2,  label: "Pipeline",          value: "Healthy",        sub: "",              valueClass: "text-green-500" },
+                { bg: "linear-gradient(135deg,#6366f1,#818cf8)", Icon: TrendingUp, label: "Revenue", value: revenueStr, sub: "vs last month", valueClass: revenueClass },
+                { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} Invoices`, value: "Pending", sub: "", valueClass: "text-gray-800" },
+                { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare, label: `${urgentTasks} Tasks`, value: "Urgent", sub: "", valueClass: "text-gray-800" },
+                { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart2, label: "Pipeline", value: pipelineStatus, sub: "", valueClass: activeConvs > 0 ? "text-green-500" : "text-gray-400" },
               ].map(({ bg, Icon, label, value, sub, valueClass }, i, arr) => (
                 <div key={label} className="flex items-center gap-3 flex-shrink-0">
                   <div className="flex items-center gap-3">
