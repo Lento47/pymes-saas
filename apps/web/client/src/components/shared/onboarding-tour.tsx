@@ -130,13 +130,16 @@ export function OnboardingTour() {
         });
       }
     } else {
-      // First step: center pet in main content area (right of sidebar)
+      // First step: center pet & bubble in visible area
       setTargetRect(null);
       const sidebar = document.querySelector('aside') as HTMLElement;
       const sbRight = sidebar ? sidebar.getBoundingClientRect().right : 200;
+      const contentWidth = Math.max(window.innerWidth - sbRight - 32, 300);
+      const cx = sbRight + contentWidth / 2 - 36;
+      const cy = Math.min(window.innerHeight * 0.4, 350);
       setPetPos({
-        left: sbRight + (window.innerWidth - sbRight) / 2 - 36,
-        top: window.innerHeight / 2 - 100,
+        left: Math.max(sbRight + 40, cx),
+        top: cy,
       });
     }
   };
@@ -250,7 +253,7 @@ export function OnboardingTour() {
       <div
         className="absolute transition-all duration-500"
         style={{
-          left: isMobile ? '50%' : `${petPos.left - 80}px`,
+          left: isMobile ? '50%' : `${Math.max(petPos.left - 120, 220)}px`,
           top: `${petPos.top - 130}px`,
           transform: `translate(${isMobile ? '-50%' : '0'}, 0)`,
           opacity: exiting ? 0 : 1,
