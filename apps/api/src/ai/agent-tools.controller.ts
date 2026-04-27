@@ -1,11 +1,7 @@
-import { Body, Controller, Post, Req, UnauthorizedException, BadRequestException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Req, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AgentToolsService } from './agent-tools.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AgentToolDto } from './agent-tools.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('agent')
 export class AgentToolsController {
@@ -13,16 +9,6 @@ export class AgentToolsController {
     private readonly toolsService: AgentToolsService,
     private readonly prisma: PrismaService,
   ) {}
-
-  @Post('execute')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'AGENT', 'VIEWER')
-  async executeJwt(
-    @Body() body: { tool: string; arguments?: Record<string, any> },
-    @CurrentUser('workspace_id') workspaceId: string,
-  ) {
-    return this.toolsService.execute(workspaceId, body.tool, body.arguments || {});
-  }
 
   @Post('tool')
   async execute(@Body() dto: AgentToolDto, @Req() req: any) {

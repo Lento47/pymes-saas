@@ -12,12 +12,25 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AgentService } from './agent.service';
+import { AgentToolsService } from './agent-tools.service';
 import { AgentStreamDto } from './agent.dto';
 
 @Controller('agent')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AgentController {
-  constructor(private readonly agentService: AgentService) {}
+  constructor(
+    private readonly agentService: AgentService,
+    private readonly toolsService: AgentToolsService,
+  ) {} 
+
+  @Post('execute')
+  @Roles('ADMIN', 'AGENT', 'VIEWER')
+  executeTool(
+    @Body() body: { tool: string; arguments?: Record<string, any> },
+    @CurrentUser('workspace_id') workspaceId: string,
+  ) {
+    return this.toolsService.execute(workspaceId, body.tool, body.arguments || {});
+  }
 
   @Post('stream')
   @Roles('ADMIN', 'AGENT', 'VIEWER')
