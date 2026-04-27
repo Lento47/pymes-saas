@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerStorage } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
+import { RedisThrottlerStorage } from './common/redis-throttler-storage.service';
 
 import { PrismaModule } from './common/prisma/prisma.module';
 import { StorageModule } from './common/storage/storage.module';
@@ -93,6 +94,8 @@ import { PlanThrottlerGuard } from './common/plan-limits/plan-throttler.guard';
   ],
   providers: [
     { provide: APP_GUARD, useClass: PlanThrottlerGuard },
+    { provide: ThrottlerStorage, useClass: RedisThrottlerStorage },
+    RedisThrottlerStorage,
   ],
 })
 export class AppModule { }
