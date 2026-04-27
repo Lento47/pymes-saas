@@ -1,4 +1,4 @@
-name: CI - Build Check
+name: Deploy to Railway
 
 on:
   push:
@@ -9,28 +9,86 @@ on:
       - 'pnpm-lock.yaml'
       - 'Dockerfile'
       - 'railway.toml'
-      - '.github/workflows/deploy-railway.yml'
+  pull_request:
+    branches: [main-api]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pymeshub_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - uses: pnpm/action-setup@v2
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
         with:
           version: latest
 
-      - run: pnpm install --no-frozen-lockfile
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - run: cd apps/api && npx prisma generate
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: cd apps/api && pnpm exec prisma generate
+
+      - name: Build API
+        run: cd apps/api && npm run build
+
+      - name: Lint API
+        run: cd apps/api && npm run lint
+
+      - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pymeshub_test
+          JWT_SECRET: test-secret-for-ci-jwt-min-32-chars
+        run: cd apps/api && npm run test
 
-      - run: cd apps/api && pnpm exec nest build
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main-api'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Railway
+        uses: railway-app/cli-action@v1
+        with:
+          token: ${{ secrets.RAILWAY_TOKEN }}
+          service: pymeshub-api
+          environment: production
