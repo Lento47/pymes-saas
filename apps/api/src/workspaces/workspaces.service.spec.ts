@@ -36,6 +36,7 @@ const mockPrisma = {
   conversation: { count: jest.fn() },
   task: { count: jest.fn() },
   document: { count: jest.fn(), aggregate: jest.fn() },
+  invoice: { aggregate: jest.fn() },
   automationRule: { count: jest.fn() },
   message: { count: jest.fn() },
 };
