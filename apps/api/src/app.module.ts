@@ -37,6 +37,7 @@ import { HealthModule } from './health/health.module';
 import { AiModule } from './ai/ai.module';
 import { ApiTokensModule } from './api-tokens/api-tokens.module';
 import { BillingModule } from './billing/billing.module';
+import { RoutingModule } from './routing/routing.module';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { BillingModule } from './billing/billing.module';
     HealthModule,
     ApiTokensModule,
     BillingModule,
+    RoutingModule,
     PlatformModule,
 
     WorkersModule,
