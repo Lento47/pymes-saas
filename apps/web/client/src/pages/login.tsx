@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+// SSO: SAML auto-detect on login — see handleSubmit
 import {
   ArrowLeft,
   ArrowRight,
