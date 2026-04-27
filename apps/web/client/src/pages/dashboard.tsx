@@ -306,10 +306,10 @@ export default function DashboardPage() {
 
         {/* ── Metric cards ────────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <MetricCard label="Revenue this month" value={todayStats?.monthly_revenue ?? 0}  currency="€" subLabel="↑ 18.6% vs. last month"                                   icon={TrendingUp}  iconBg="bg-indigo-100 text-indigo-600" loading={statsLoading} />
-          <MetricCard label="Outstanding"        value={overdueAmount}                      currency="€" subLabel={`${overdueCount} invoices pending`}                         icon={Receipt}     iconBg="bg-orange-100 text-orange-500" loading={invoicesLoading} />
-          <MetricCard label="Pipeline value"     value={totalPipeline}                      currency="€" subLabel="Potential revenue"                                          icon={BarChart2}   iconBg="bg-blue-100 text-blue-500"     loading={pipelineLoading} />
-          <MetricCard label="New messages"       value={todayStats?.new_messages ?? 0}                   subLabel={todayStats?.new_messages ? `${todayStats.new_messages} unread` : "No unread messages"} icon={MessageCircle} iconBg="bg-purple-100 text-purple-500" loading={statsLoading} />
+          <MetricCard label="Revenue this month" value={workspaceStats?.monthly_revenue ?? 0} currency="₡" subLabel={`${workspaceStats?.revenue_change_pct ?? 0}% vs. last month`} icon={TrendingUp} iconBg="bg-indigo-100 text-indigo-600" loading={statsLoading} />
+          <MetricCard label="Outstanding"        value={overdueAmount}                      currency="₡" subLabel={`${overdueCount} invoices pending`}                         icon={Receipt}     iconBg="bg-orange-100 text-orange-500" loading={invoicesLoading} />
+          <MetricCard label="Pipeline value"     value={totalPipeline}                      currency="₡" subLabel="Potential revenue"                                          icon={BarChart2}   iconBg="bg-blue-100 text-blue-500"     loading={pipelineLoading} />
+          <MetricCard label="New messages"       value={todayStats?.received_messages ?? 0}              subLabel={todayStats?.received_messages ? `${todayStats.received_messages} today` : "No messages today"} icon={MessageCircle} iconBg="bg-purple-100 text-purple-500" loading={statsLoading} />
           <MetricCard label="Tasks today"        value={taskList.length}                                 subLabel={taskList.length === 0 ? "You're all caught up" : `${urgentTasks} urgent`}             icon={Clock}         iconBg="bg-teal-100 text-teal-500"     loading={tasksLoading} />
         </div>
 
@@ -329,8 +329,8 @@ export default function DashboardPage() {
             >
               <div className="px-5 pt-4 pb-3">
                 <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-2xl font-bold text-gray-900">€{(todayStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}</span>
-                  <span className="text-sm text-green-500 font-medium">↑ 18.6% vs. last month</span>
+                  <span className="text-2xl font-bold text-gray-900">₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}</span>
+                  <span className="text-sm text-green-500 font-medium">{workspaceStats?.revenue_change_pct ?? 0}% vs. last month</span>
                 </div>
                 <RevenueChart />
                 <div className="flex justify-between text-xs text-gray-400 mt-2 px-1">
