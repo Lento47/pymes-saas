@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import {
@@ -282,9 +283,12 @@ export default function DashboardPage() {
     })),
   ].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 5);
 
+  const { messages } = useI18n();
+  const dash = messages.dashboard;
+
   const greeting = () => {
     const h = new Date().getHours();
-    return h < 12 ? "Good morning" : h < 19 ? "Good afternoon" : "Good evening";
+    return h < 12 ? dash.morning : h < 19 ? dash.afternoon : dash.evening;
   };
 
   return (
@@ -293,13 +297,13 @@ export default function DashboardPage() {
       {/* ── Page header ─────────────────────────────────────────────── */}
       <div className="px-3 md:px-8 pt-4 md:pt-7 pb-5 flex items-start justify-between max-w-[1400px] mx-auto">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{greeting()}, {user?.name?.split(" ")[0] || "Usuario"} 👋</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{bannerSubtitle || "Here's what's happening with your business today."}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact} 👋</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{bannerSubtitle || dash.subtitle}</p>
         </div>
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-400 min-w-[220px]">
             <Search className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Search in PymesHub...</span>
+            <span className="flex-1">{dash.search}</span>
             <span className="text-xs text-gray-300 font-mono hidden md:inline">⌘ K</span>
           </div>
           <button className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition">
