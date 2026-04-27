@@ -318,29 +318,28 @@ export default function DashboardPage() {
       <div className="px-3 md:px-8 pb-8 max-w-[1400px] mx-auto space-y-4">
 
         {/* ── Status banner ───────────────────────────────────────── */}
-        <div className="rounded-2xl overflow-hidden border border-white/[0.04] relative"
+        <div className="rounded-2xl overflow-hidden border border-border/40 relative"
           style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center right", minHeight: 96 }}>
-          <div className="absolute inset-0 bg-[#0c0c0e]/[0.88] rounded-2xl" />
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-4 md:px-7 md:py-5 relative">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-white/75 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
+              <div className="w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-black/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
                 <Activity className="w-5 h-5 md:w-7 md:h-7 text-[#8b7cf6]" />
               </div>
               <div className="min-w-0">
                 {!bannerAI && aiPromptReady ? (
-                  <><div className="h-5 w-36 rounded bg-white/[0.03] animate-pulse mb-1.5" /><div className="h-3.5 w-44 rounded bg-white/[0.03] animate-pulse" /></>
+                  <><div className="h-5 w-36 rounded bg-black/10 animate-pulse mb-1.5" /><div className="h-3.5 w-44 rounded bg-black/10 animate-pulse" /></>
                 ) : (
-                  <><h2 className="text-[15px] md:text-[17px] font-bold text-white/90 leading-snug">{bannerTitle}</h2><p className="text-sm text-white/60 mt-0.5">{bannerSubtitle}</p></>
+                  <><h2 className="text-[15px] md:text-[17px] font-bold text-gray-900 leading-snug">{bannerTitle}</h2><p className="text-sm text-gray-700 mt-0.5">{bannerSubtitle}</p></>
                 )}
               </div>
             </div>
-            <div className="hidden sm:block h-12 w-px bg-white/[0.04] flex-shrink-0" />
+            <div className="hidden sm:block h-12 w-px bg-black/10 flex-shrink-0" />
             <div className="flex items-center gap-4 overflow-x-auto scrollbar-none -mx-1 px-1">
               {[
                 { bg: "linear-gradient(135deg,#8b7cf6,#a78bfa)", Icon: TrendingUp, label: dash.revenue, value: revenueStr, sub: "vs last month", valueClass: revenueClass },
-                { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} ${dash.invoices}`, value: "Pending", sub: "", valueClass: "text-white/80" },
-                { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare, label: `${urgentTasks} ${dash.tasks}`, value: "Urgent", sub: "", valueClass: "text-white/80" },
-                { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart2, label: dash.pipeline, value: pipelineStatus, sub: "", valueClass: activeConvs > 0 ? "text-green-500" : "text-white/30" },
+                { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} ${dash.invoices}`, value: "Pending", sub: "", valueClass: "text-gray-800" },
+                { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare, label: `${urgentTasks} ${dash.tasks}`, value: "Urgent", sub: "", valueClass: "text-gray-800" },
+                { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart2, label: dash.pipeline, value: pipelineStatus, sub: "", valueClass: activeConvs > 0 ? "text-green-600" : "text-gray-400" },
               ].map(({ bg, Icon, label, value, sub, valueClass }, i, arr) => (
                 <div key={label} className="flex items-center gap-3 flex-shrink-0">
                   <div className="flex items-center gap-3">
@@ -348,12 +347,12 @@ export default function DashboardPage() {
                       <Icon className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <p className="text-xs text-white/60 font-medium">{label}</p>
+                      <p className="text-xs text-gray-600 font-medium">{label}</p>
                       <p className={`text-sm font-bold ${valueClass}`}>{value}</p>
-                      {sub && <p className="text-xs text-white/50">{sub}</p>}
+                      {sub && <p className="text-xs text-gray-500">{sub}</p>}
                     </div>
                   </div>
-                  {i < arr.length - 1 && <div className="h-10 w-px bg-white/[0.03]/70 ml-3" />}
+                  {i < arr.length - 1 && <div className="h-10 w-px bg-black/10 ml-3" />}
                 </div>
               ))}
             </div>
