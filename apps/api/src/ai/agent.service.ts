@@ -64,7 +64,7 @@ export class AgentService {
       }),
       tool({
         name: 'search', description: 'Full-text search across contacts, conversations, tasks, and documents',
-        parameters: z.object({ q: z.string().describe('Search query'), types: z.string().optional().describe('Comma-separated: contact,conversation,task,document') }),
+        parameters: z.object({ q: z.string().describe('Search query'), types: z.string().optional().nullable().describe('Comma-separated: contact,conversation,task,document') }),
         execute: async ({ q, types }) => {
           const typeArr = types ? types.split(',').map((t: string) => t.trim()) : [];
           return { results: await searchSvc.search(workspaceId, q, typeArr, 10) };
@@ -74,7 +74,7 @@ export class AgentService {
       // ── Contacts ──
       tool({
         name: 'list_contacts', description: 'List all contacts in the workspace. Optional search filter.',
-        parameters: z.object({ search: z.string().optional() }),
+        parameters: z.object({ search: z.string().optional().nullable() }),
         execute: async ({ search }) => {
           const where: any = { workspace_id: workspaceId };
           if (search) where.full_name = { contains: search, mode: 'insensitive' };
@@ -82,13 +82,13 @@ export class AgentService {
         },
       }),
       tool({
-        name: 'create_contact', description: 'Create a new contact in PyMesHub. Requires full_name. Optional: email, phone, company_name, type (CUSTOMER, LEAD, SUPPLIER, PARTNER).',
+        name: 'create_contact', description: 'Create a new contact in PyMesHub. Requires full_name. Optional: email, phone, company_name, type.',
         parameters: z.object({
           full_name: z.string().describe('Full name of the contact'),
-          email: z.string().optional(),
-          phone: z.string().optional(),
-          company_name: z.string().optional(),
-          type: z.enum(['CUSTOMER','LEAD','SUPPLIER','PARTNER']).optional().default('CUSTOMER'),
+          email: z.string().optional().nullable(),
+          phone: z.string().optional().nullable(),
+          company_name: z.string().optional().nullable(),
+          type: z.enum(['CUSTOMER','LEAD','SUPPLIER','PARTNER']).optional().nullable().default('CUSTOMER'),
         }),
         execute: async (args) => ({
           contact: await prisma.contact.create({
@@ -107,11 +107,11 @@ export class AgentService {
         name: 'update_contact', description: 'Update an existing contact in PyMesHub',
         parameters: z.object({
           id: z.string().describe('Contact ID'),
-          full_name: z.string().optional(),
-          email: z.string().optional(),
-          phone: z.string().optional(),
-          company_name: z.string().optional(),
-          type: z.enum(['CUSTOMER','LEAD','SUPPLIER','PARTNER']).optional(),
+          full_name: z.string().optional().nullable(),
+          email: z.string().optional().nullable(),
+          phone: z.string().optional().nullable(),
+          company_name: z.string().optional().nullable(),
+          type: z.enum(['CUSTOMER','LEAD','SUPPLIER','PARTNER']).optional().nullable(),
         }),
         execute: async (args) => {
           const data: any = {};
@@ -127,7 +127,7 @@ export class AgentService {
       // ── Tasks ──
       tool({
         name: 'list_tasks', description: 'List all tasks. Filter by status (TODO, IN_PROGRESS, DONE, BLOCKED).',
-        parameters: z.object({ status: z.string().optional() }),
+        parameters: z.object({ status: z.string().optional().nullable() }),
         execute: async ({ status }) => {
           const where: any = { workspace_id: workspaceId };
           if (status) where.status = status;
@@ -136,14 +136,14 @@ export class AgentService {
       }),
       tool({
         name: 'create_task', description: 'Create a new task in the workspace',
-        parameters: z.object({ title: z.string(), description: z.string().optional(), priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().default('MEDIUM'), due_date: z.string().optional() }),
+        parameters: z.object({ title: z.string(), description: z.string().optional().nullable(), priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable().default('MEDIUM'), due_date: z.string().optional().nullable() }),
         execute: async (args) => ({
           task: await prisma.task.create({ data: { workspace_id: workspaceId, title: args.title, description: args.description || '', priority: args.priority || 'MEDIUM', due_at: args.due_date ? new Date(args.due_date) : undefined, status: 'TODO' } }),
         }),
       }),
       tool({
         name: 'update_task', description: 'Update an existing task',
-        parameters: z.object({ id: z.string(), title: z.string().optional(), description: z.string().optional(), status: z.enum(['TODO','IN_PROGRESS','DONE','BLOCKED']).optional(), priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional(), due_date: z.string().optional() }),
+        parameters: z.object({ id: z.string(), title: z.string().optional().nullable(), description: z.string().optional().nullable(), status: z.enum(['TODO','IN_PROGRESS','DONE','BLOCKED']).optional().nullable(), priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable(), due_date: z.string().optional().nullable() }),
         execute: async (args) => {
           const data: any = {};
           if (args.title !== undefined) data.title = args.title;
@@ -165,7 +165,7 @@ export class AgentService {
       // ── Conversations ──
       tool({
         name: 'list_conversations', description: 'List conversations. Filter by status (NEW, OPEN, PENDING, RESOLVED, CLOSED).',
-        parameters: z.object({ status: z.string().optional() }),
+        parameters: z.object({ status: z.string().optional().nullable() }),
         execute: async ({ status }) => {
           const where: any = { workspace_id: workspaceId };
           if (status) where.status = status;
@@ -200,14 +200,14 @@ export class AgentService {
       }),
       tool({
         name: 'create_automation', description: 'Create a new workflow automation rule',
-        parameters: z.object({ name: z.string(), trigger_type: z.string(), action_config: z.optional(z.record(z.string(), z.any())), trigger_config: z.optional(z.record(z.string(), z.any())) }),
+        parameters: z.object({ name: z.string(), trigger_type: z.string(), action_config: z.record(z.string(), z.any()).optional().nullable(), trigger_config: z.record(z.string(), z.any()).optional().nullable() }),
         execute: async (args) => ({
           automation: await prisma.automation.create({ data: { workspace_id: workspaceId, name: args.name, description: '', trigger_type: args.trigger_type, trigger_config_json: args.trigger_config || {}, action_config_json: args.action_config || {} } }),
         }),
       }),
       tool({
         name: 'toggle_automation', description: 'Enable or disable an automation rule',
-        parameters: z.object({ id: z.string(), enabled: z.boolean().optional() }),
+        parameters: z.object({ id: z.string(), enabled: z.boolean().optional().nullable() }),
         execute: async ({ id, enabled }) => {
           const existing = await prisma.automation.findFirst({ where: { id, workspace_id: workspaceId } });
           if (!existing) throw new Error(`Automation "${id}" not found`);
@@ -241,7 +241,7 @@ export class AgentService {
       }),
       tool({
         name: 'create_deal', description: 'Create a new sales pipeline deal',
-        parameters: z.object({ title: z.string(), stage_id: z.string(), value: z.number().optional().default(0), contact_id: z.string().optional() }),
+        parameters: z.object({ title: z.string(), stage_id: z.string(), value: z.number().optional().nullable().default(0), contact_id: z.string().optional().nullable() }),
         execute: async (args) => ({ deal: await prisma.deal.create({ data: { workspace_id: workspaceId, title: args.title, stage_id: args.stage_id, value: args.value || 0, contact_id: args.contact_id, status: 'OPEN' } }) }),
       }),
       tool({
@@ -253,7 +253,7 @@ export class AgentService {
       // ── Documents ──
       tool({
         name: 'list_documents', description: 'List uploaded documents/files with extracted text for insights',
-        parameters: z.object({ search: z.string().optional() }),
+        parameters: z.object({ search: z.string().optional().nullable() }),
         execute: async ({ search }) => {
           const where: any = { workspace_id: workspaceId };
           if (search) where.file_name = { contains: search, mode: 'insensitive' };
