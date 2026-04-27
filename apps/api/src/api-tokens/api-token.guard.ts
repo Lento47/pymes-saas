@@ -23,7 +23,7 @@ export class ApiTokenGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const auth = request.headers.authorization || request.headers['x-pymeshub-api-token'] || '';
+    const auth = request.headers.authorization || request.headers['x-pymeshub-api-token'] || request.headers['pymeshub_founder_api_key'] || '';
 
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : auth;
 
