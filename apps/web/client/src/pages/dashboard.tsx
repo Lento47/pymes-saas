@@ -35,19 +35,35 @@ function timeAgo(date: string) {
 function RevenueChart({ monthlyRevenue, changePct }: { monthlyRevenue: number; changePct: number }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const W = 500, H = 110;
-  // Generate simple trend line based on change percentage
-  const points = 15;
-  const baseY = changePct >= 0 ? H * 0.9 : H * 0.3;
-  const endY = changePct >= 0 ? H * 0.15 : H * 0.85;
+
+  // Use current month dates
+  const now = new Date();
+  const monthName = now.toLocaleString("en-US", { month: "short" });
+  const year = now.getFullYear();
+  const daysInMonth = new Date(year, now.getMonth() + 1, 0).getDate();
+  const today = now.getDate();
+  const points = Math.min(daysInMonth, 31);
+
+  // Generate proportional data points based on actual revenue
   const ys = Array.from({ length: points }, (_, i) => {
-    const t = i / (points - 1);
-    const base = baseY + (endY - baseY) * t;
-    const noise = Math.sin(i * 0.8) * 8;
-    return Math.max(5, Math.min(H - 5, base + noise));
+    // Revenue grows proportionally through the month
+    const dayProgress = (i + 1) / daysInMonth;
+    const expectedRevenue = monthlyRevenue * dayProgress;
+    const noise = monthlyRevenue > 0 ? Math.sin(i * 0.3) * (monthlyRevenue * 0.05) : 0;
+    const value = Math.max(0, expectedRevenue + noise);
+    // Scale to chart height (log scale for better visualization)
+    const maxVal = monthlyRevenue || 1;
+    const scaled = (value / maxVal) * (H * 0.8) + H * 0.1;
+    return H - Math.min(H - 5, Math.max(5, scaled));
   });
   const xs = ys.map((_, i) => (i / (ys.length - 1)) * W);
-  const labels = ["Week 1", "Week 2", "Week 3", "Week 4"];
-  const activeIdx = hoverIdx ?? (points - 1);
+  const activeIdx = hoverIdx ?? Math.min(today - 1, points - 1);
+
+  // Generate week labels from actual dates
+  const weekLabels = Array.from({ length: Math.min(5, Math.ceil(points / 7)) }, (_, w) => {
+    const d = Math.min(w * 7 + 1, daysInMonth);
+    return `${monthName} ${d}`;
+  });
 
   let d = `M ${xs[0]} ${ys[0]}`;
   for (let i = 1; i < xs.length; i++) {
@@ -55,6 +71,12 @@ function RevenueChart({ monthlyRevenue, changePct }: { monthlyRevenue: number; c
     d += ` C ${cx} ${ys[i - 1]}, ${cx} ${ys[i]}, ${xs[i]} ${ys[i]}`;
   }
   const area = `${d} L ${W} ${H} L 0 ${H} Z`;
+
+  // Tooltip date
+  const tooltipDay = Math.min(Math.round((activeIdx / (points - 1)) * daysInMonth), daysInMonth) || 1;
+  const tooltipRevenue = monthlyRevenue > 0
+    ? Math.round(monthlyRevenue * (activeIdx + 1) / points)
+    : 0;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full cursor-pointer" style={{ height: 140 }}
@@ -83,15 +105,15 @@ function RevenueChart({ monthlyRevenue, changePct }: { monthlyRevenue: number; c
       ))}
       <path d={area} fill="url(#rev-fill)" />
       <path d={d} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {/* Hover indicator line */}
-      <line x1={xs[activeIdx]} y1="0" x2={xs[activeIdx]} y2={H} stroke="#6366f1" strokeWidth="1" strokeDasharray="4 2" opacity="0.5" />
+      {/* Today indicator line */}
+      <line x1={xs[Math.min(today - 1, points - 1)]} y1="0" x2={xs[Math.min(today - 1, points - 1)]} y2={H} stroke="#6366f1" strokeWidth="1" strokeDasharray="4 2" opacity="0.5" />
       {/* Active dot */}
       <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="5" fill="#6366f1" />
       <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="9" fill="#6366f1" fillOpacity="0.15" />
       {/* Tooltip */}
-      <rect x={Math.max(0, Math.min(W - 80, xs[activeIdx] - 40))} y={Math.max(0, ys[activeIdx] - 38)} width="80" height="24" rx="6" fill="#1e1b4b" />
-      <text x={Math.max(40, Math.min(W - 40, xs[activeIdx]))} y={Math.max(16, ys[activeIdx] - 22)} textAnchor="middle" fill="white" fontSize="10" fontWeight="600">
-        {labels[Math.min(3, Math.floor(activeIdx / (points / 4)))]} · ₡{Math.round(monthlyRevenue * (activeIdx + 1) / points).toLocaleString()}
+      <rect x={Math.max(0, Math.min(W - 90, xs[activeIdx] - 45))} y={Math.max(0, ys[activeIdx] - 38)} width="90" height="24" rx="6" fill="#1e1b4b" />
+      <text x={Math.max(45, Math.min(W - 45, xs[activeIdx]))} y={Math.max(16, ys[activeIdx] - 22)} textAnchor="middle" fill="white" fontSize="10" fontWeight="600">
+        {monthName} {tooltipDay} · ₡{tooltipRevenue.toLocaleString()}
       </text>
     </svg>
   );
@@ -361,7 +383,16 @@ export default function DashboardPage() {
                 </div>
                 <RevenueChart monthlyRevenue={workspaceStats?.monthly_revenue ?? 0} changePct={workspaceStats?.revenue_change_pct ?? 0} />
                 <div className="flex justify-between text-xs text-gray-400 mt-2 px-1">
-                  {["May 1", "May 8", "May 15", "May 22", "May 29"].map(d => <span key={d}>{d}</span>)}
+                  {(() => {
+                    const now = new Date();
+                    const month = now.toLocaleString("en-US", { month: "short" });
+                    const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                    const step = Math.max(1, Math.floor(days / 5));
+                    return Array.from({ length: Math.min(5, Math.ceil(days / step)) }, (_, i) => {
+                      const d = Math.min(i * step + 1, days);
+                      return <span key={d}>{month} {d}</span>;
+                    });
+                  })()}
                 </div>
               </div>
             </Card>
