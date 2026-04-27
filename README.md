@@ -68,19 +68,51 @@ El motor de análisis compara el mes actual contra el anterior y genera alertas 
 - Resumen en español generado automáticamente al cierre del día
 - Métricas de conversaciones, mensajes, tareas y documentos
 
-### Cobro y Facturación
-- Recordatorios y envío de facturas desde la conversación
-- Facturación electrónica CR (Hacienda) integrada desde el workspace
-- Base de billing por workspace para desbloqueo por plan
+### HubbyAgent — Asistente IA
+- Chat inteligente con streaming en tiempo real via `POST /api/agent/stream`
+- **22 tools** CRUD: contactos, tareas, pipeline, facturas, documentos, automatizaciones, insights
+- Instrucciones blindadas al contexto PyMesHub — nunca sugiere herramientas externas
+- Forms embebidos en el chat: crear contacto, tarea, o deal sin salir del chat
+- Visualización de tool calls en tiempo real (spinner → check verde)
+- **LandingHubby**: asistente público en la landing page para visitantes no autenticados
+- **Onboarding Tour**: HubbyBuddy mascota animada que guía al usuario nuevo por la plataforma
+- Respuestas cortas (max 200 tokens) para visitantes, completas para usuarios autenticados
 
-### Departamentos & Roles
-- Organiza canales y conversaciones por departamento
-- Roles granulares: OWNER / ADMIN / AGENT / VIEWER
-- Visibilidad filtrada por departamento para los agentes
+### Routing Interno de WhatsApp
+- **1 número, N departamentos**: los clientes ven 1 WhatsApp, internamente se rutea a Ventas, Soporte, Facturación, etc.
+- Reglas de enrutamiento por keyword o menú (ej: `factura` → Billing, `1` → Ventas)
+- UI de administración en Settings → Enrutamiento con tabla CRUD y toggle activo/inactivo
+- Integrado en el flujo inbound: cada mensaje nuevo se asigna automáticamente al departamento correcto
 
-### Notificaciones en Tiempo Real
-- WebSockets (Socket.IO) para actualizaciones instantáneas
-- Notificaciones in-app: tarea vencida, mensaje recibido, mención, etc.
+### Billing & Subscriptions (Paddle)
+- Checkout integrado vía Paddle SDK con precios en USD y CRC
+- Webhook de Paddle para sincronización automática de suscripciones
+- Portal de cliente para gestionar método de pago y facturas
+- Generación de facturas PDF con PDFKit
+- Envío de facturas por email vía Resend
+- Sync manual y auto-detección por email del workspace owner
+
+### SAML 2.0 SSO (Service Provider)
+- Integración como Service Provider para Azure AD, Okta, PingOne, AWS SSO, etc.
+- Endpoints: `/api/auth/saml/:slug/login`, `/callback`, `/metadata`
+- Auto-provision: usuarios SAML sin membresía existente se crean como AGENT
+- Configuración por workspace en `settings_json.saml_idp_config`
+
+### API Keys & Tokens
+- Generación de tokens `pym_*` para acceso programático (Enterprise)
+- UI en Settings → API Keys con crear, listar, revocar y copiar al portapapeles
+- Rate limiting distribuido con Redis (ioredis) — límites por plan:
+  - FREE: 60 req/min, STARTER: 120, GROWTH: 300, ENTERPRISE: 1000
+
+### Feature Gates por Plan
+- Límites de recursos aplicados server-side (no solo frontend)
+- Gates: Automations avanzado → GROWTH+, WhatsApp → GROWTH+, AI → ENTERPRISE, Pipeline → STARTER+
+- Internal notes en conversaciones (textarea en sidebar con guardado async)
+
+### i18n / Bilingüe EN-ES
+- Frontend: dashboard, settings, landing, login, pricing, inbox con traducción completa
+- Backend: `I18nModule` global con `I18nService` — errores en inglés y español
+- Detección automática vía `Accept-Language` header
 
 ---
 
@@ -122,11 +154,11 @@ Una sola base de datos PostgreSQL es la fuente de verdad para ambos clientes.
 
 | Módulo | Responsabilidad |
 |--------|----------------|
-| `auth` | JWT + refresh token rotation |
+| `auth` | JWT + refresh token rotation + SAML SSO |
 | `workspaces` | Multi-tenancy, stats, miembros, billing |
 | `contacts` | CRM: clientes, proveedores, leads |
 | `channels` | Configuración de canales (Email, WhatsApp, Form, API) |
-| `conversations` | Threads + mensajes + inbox |
+| `conversations` | Threads + mensajes + inbox + internal notes |
 | `tasks` | Gestión de tareas con deadlines |
 | `documents` | Upload a S3/MinIO + OCR |
 | `automations` | Reglas, triggers, historial de ejecución |
@@ -136,12 +168,15 @@ Una sola base de datos PostgreSQL es la fuente de verdad para ambos clientes.
 | `notifications` | In-app + WebSockets |
 | `invoices` | Facturación + recordatorios |
 | `hacienda` | Facturación electrónica CR (Ministerio de Hacienda) |
-| `pipeline` | Gestión de pipeline de ventas |
+| `pipeline` | Gestión de pipeline de ventas con feature gates |
+| `routing` | Enrutamiento de WhatsApp por keyword/menú a departamentos |
+| `billing` | Paddle — checkout, webhooks, portal, facturas PDF |
+| `api-tokens` | Tokens de API `pym_*` para acceso programático enterprise |
+| `ai` | HubbyAgent — 22 tools CRUD con @openai/agents SDK |
 | `workers` | BullMQ — jobs asíncronos (OCR, IA, email, sync) |
-| `ai` | Adaptadores de proveedores IA (OpenAI, Anthropic, Gemini) |
 | `audit` | Logs de auditoría por workspace |
 | `search` | Búsqueda full-text vía Prisma |
-| `common` | PrismaService, CryptoService, PlanLimitsService |
+| `common` | PrismaService, CryptoService, PlanLimitsService, I18nModule, RedisThrottler |
 
 ---
 
@@ -162,8 +197,12 @@ Una sola base de datos PostgreSQL es la fuente de verdad para ambos clientes.
 | **Auth** | JWT + Refresh Token Rotation (reuse detection) |
 | **Real-time** | Socket.IO |
 | **Email** | Resend (outbound + inbound webhook) |
-| **AI** | OpenAI, Anthropic, Gemini, Moonshot |
+| **AI** | OpenAI Agents SDK (@openai/agents), GPT-5.4 / GPT-4.1 |
 | **Observabilidad** | OpenTelemetry + Jaeger |
+| **SSO** | SAML 2.0 SP (@node-saml/node-saml) |
+| **Billing** | Paddle (@paddle/paddle-node-sdk) + Resend |
+| **Rate Limiting** | Redis-backed distributed throttling (ioredis) |
+| **i18n** | Zod v4, TypeScript 5 |
 | **Tipos compartidos** | `packages/shared-types` — enums de dominio |
 
 ---
@@ -388,32 +427,65 @@ Cada modelo está aislado por `workspace_id` — multi-tenancy completo a nivel 
 
 ## Planes
 
-| Plan | Descripción |
-|------|-------------|
-| **FREE** | Funcionalidades básicas, límites estrictos |
-| **STARTER** | Más miembros, canales y almacenamiento |
-| **GROWTH** | Automatizaciones avanzadas, más integraciones |
-| **ENTERPRISE** | Sin límites, soporte dedicado |
+| Plan | Usuarios | Automatizaciones | Contactos | Facturas/mes | Almacenamiento | Rate Limit |
+|------|----------|-----------------|-----------|-------------|----------------|------------|
+| **FREE** | 3 | 5 | 500 | 50 | 100 MB | 60 req/min |
+| **STARTER** | 10 | 25 | 5,000 | 200 | 1 GB | 120 req/min |
+| **GROWTH** | 50 | 100 | 50,000 | 1,000 | 10 GB | 300 req/min |
+| **ENTERPRISE** | ∞ | ∞ | ∞ | ∞ | ∞ | 1,000 req/min |
 
-Los límites se aplican en tiempo real via `PlanLimitsService` antes de cada operación de creación.
+> **Business** y **Business+** en el frontend mapean a `ENTERPRISE` en la base de datos.
+
+Los límites se aplican en tiempo real via `PlanLimitsService` antes de cada operación de creación, con feature gates server-side por plan.
 
 ---
 
 ## API Reference (resumen)
 
 ```
+# Auth + SSO
 POST   /api/auth/:workspace/login
 POST   /api/auth/register
 GET    /api/auth/me
+GET    /api/auth/saml/:slug/login
+POST   /api/auth/saml/:slug/callback
+GET    /api/auth/saml/:slug/metadata
 
+# Workspace
 GET    /api/workspaces/current
 GET    /api/workspaces/current/stats
 GET    /api/workspaces/current/stats/today
 GET    /api/workspaces/current/members
+GET    /api/workspaces/current/subscription
+GET    /api/workspaces/current/api-tokens
 
-GET    /api/insights
+# HubbyAgent
+POST   /api/agent/stream          # SSE streaming chat
+POST   /api/agent/execute         # Tool execution (JWT)
+POST   /api/agent/public          # Public landing chat
+POST   /api/agent/tool            # Tool execution (API key)
+
+# Conversations
 GET    /api/conversations
 POST   /api/conversations/:id/messages
+PATCH  /api/conversations/:id      # status, priority, notes, assigned_user_id
+
+# Billing
+POST   /api/billing/checkout
+POST   /api/billing/webhook
+GET    /api/billing/portal
+GET    /api/billing/invoices
+GET    /api/billing/invoices/:id/pdf
+POST   /api/billing/sync
+
+# Routing
+GET    /api/routing-rules
+POST   /api/routing-rules
+PATCH  /api/routing-rules/:id
+DELETE /api/routing-rules/:id
+
+# Core
+GET    /api/insights
 GET    /api/contacts
 GET    /api/tasks
 POST   /api/documents/upload
@@ -422,6 +494,7 @@ POST   /api/summaries/generate
 GET    /api/notifications
 GET    /api/invoices
 GET    /api/pipeline/stages
+GET    /api/search
 ```
 
 Todos los endpoints requieren `Authorization: Bearer <token>`.
@@ -480,12 +553,22 @@ docs/
 
 ---
 
+## Ramas y Deploy
+
+| Rama | Propósito | Deploy |
+|------|-----------|--------|
+| `main` | Referencia estable — nunca modificar directamente | — |
+| `main-api` | Backend NestJS | Railway |
+| `main-web` | Frontend React SPA | Cloudflare Pages |
+
+**Regla estricta**: backend solo en `main-api`, frontend solo en `main-web`. Nunca mezclar.
+
 ## Contribuir
 
-1. Fork del repo
-2. Crea tu rama: `git checkout -b feat/mi-feature`
+1. Identifica si tu cambio es backend (`main-api`) o frontend (`main-web`)
+2. Cambiate al worktree correspondiente
 3. Commit con mensaje descriptivo
-4. Push y abre un Pull Request — usa el template provisto
+4. Push al branch respectivo
 
 ---
 
