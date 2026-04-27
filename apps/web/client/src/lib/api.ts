@@ -299,6 +299,10 @@ export const api = {
   updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   testAiConnection: (data: any) => request<any>("POST", "/api/workspaces/current/ai/test", data),
   getApiKeys: () => request<any>("GET", "/api/workspaces/current/api-keys"),
+  // API Tokens (Enterprise)
+  getApiTokens: () => request<any>("GET", "/api/workspaces/current/api-tokens"),
+  createApiToken: (name: string) => request<any>("POST", "/api/workspaces/current/api-tokens", { name }),
+  revokeApiToken: (id: string) => request<any>("DELETE", `/api/workspaces/current/api-tokens/${id}`),
   updateApiKeys: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   getMembers: () => request<any>("GET", "/api/workspaces/current/members"),
   inviteUser: (data: any) => request<any>("POST", "/api/workspaces/current/members/invite", data),
