@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { LandingHubby } from "@/components/shared/landing-hubby";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { cn } from "@/lib/utils";
@@ -948,6 +949,8 @@ export default function Landing() {
         </section>
 
       </main>
+
+      <LandingHubby />
     </div>
   );
 }
