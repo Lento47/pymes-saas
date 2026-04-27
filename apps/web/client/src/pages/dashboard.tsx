@@ -131,7 +131,7 @@ function MetricCard({ label, value, currency, subLabel, icon: Icon, iconBg, load
       <div className="absolute inset-0 bg-[#0c0c0e]/[0.88] rounded-2xl" />
       <div className="relative">
         <div className="flex items-start justify-between mb-3">
-          <p className="text-sm font-medium text-white/40">{label}</p>
+          <p className="text-sm font-medium text-white/70">{label}</p>
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
             <Icon className="w-4 h-4" />
           </div>
@@ -141,7 +141,7 @@ function MetricCard({ label, value, currency, subLabel, icon: Icon, iconBg, load
             <p className="text-2xl font-bold text-white/90">
               {currency}{typeof value === "number" ? value.toLocaleString("es-ES") : value}
             </p>
-            {subLabel && <p className="text-xs text-white/30 mt-1">{subLabel}</p>}
+            {subLabel && <p className="text-xs text-white/50 mt-1">{subLabel}</p>}
           </>
         )}
       </div>
@@ -318,9 +318,10 @@ export default function DashboardPage() {
       <div className="px-3 md:px-8 pb-8 max-w-[1400px] mx-auto space-y-4">
 
         {/* ── Status banner ───────────────────────────────────────── */}
-        <div className="rounded-2xl overflow-hidden border border-white/[0.04]"
+        <div className="rounded-2xl overflow-hidden border border-white/[0.04] relative"
           style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center right", minHeight: 96 }}>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-4 md:px-7 md:py-5">
+          <div className="absolute inset-0 bg-[#0c0c0e]/[0.88] rounded-2xl" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-4 md:px-7 md:py-5 relative">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-white/75 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
                 <Activity className="w-5 h-5 md:w-7 md:h-7 text-[#8b7cf6]" />
@@ -329,7 +330,7 @@ export default function DashboardPage() {
                 {!bannerAI && aiPromptReady ? (
                   <><div className="h-5 w-36 rounded bg-white/[0.03] animate-pulse mb-1.5" /><div className="h-3.5 w-44 rounded bg-white/[0.03] animate-pulse" /></>
                 ) : (
-                  <><h2 className="text-[15px] md:text-[17px] font-bold text-white/90 leading-snug">{bannerTitle}</h2><p className="text-sm text-white/40 mt-0.5">{bannerSubtitle}</p></>
+                  <><h2 className="text-[15px] md:text-[17px] font-bold text-white/90 leading-snug">{bannerTitle}</h2><p className="text-sm text-white/60 mt-0.5">{bannerSubtitle}</p></>
                 )}
               </div>
             </div>
@@ -347,9 +348,9 @@ export default function DashboardPage() {
                       <Icon className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <p className="text-xs text-white/40 font-medium">{label}</p>
+                      <p className="text-xs text-white/60 font-medium">{label}</p>
                       <p className={`text-sm font-bold ${valueClass}`}>{value}</p>
-                      {sub && <p className="text-xs text-white/30">{sub}</p>}
+                      {sub && <p className="text-xs text-white/50">{sub}</p>}
                     </div>
                   </div>
                   {i < arr.length - 1 && <div className="h-10 w-px bg-white/[0.03]/70 ml-3" />}
