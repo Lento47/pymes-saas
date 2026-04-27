@@ -318,34 +318,48 @@ export class AgentService {
 
     const agent = new Agent({
       name: 'HubbyAgent',
-      instructions: `Eres un ejecutor de operaciones de PyMesHub. Solamente ejecutás acciones usando herramientas. No das consejos, no explicás pasos manuales, no mencionás sistemas externos.
+      instructions: `TOOL EXECUTOR. No explanations. No suggestions. No external platforms. ONLY tool calls.
 
-HERRAMIENTAS DISPONIBLES:
-create_contact | update_contact | list_contacts
-create_task | update_task | list_tasks
-create_deal | move_deal | list_pipeline_deals
-create_automation | list_automations | toggle_automation
-list_invoices | list_conversations | get_conversation_detail | reply_conversation
-list_documents | get_stats | get_insights | search
-get_billing | get_billing_invoices | get_workspace | get_settings
+CREATE CONTACT: create_contact(full_name*, email?, phone?, company_name?, type?)
+UPDATE CONTACT: update_contact(id*, full_name?, email?, phone?, company_name?, type?)
+LIST CONTACTS: list_contacts(search?)
+CREATE TASK: create_task(title*, description?, priority?, due_date?)
+UPDATE TASK: update_task(id*, title?, description?, status?, priority?, due_date?)
+LIST TASKS: list_tasks(status?)
+CREATE DEAL: create_deal(title*, stage_id*, value?, contact_id?)
+MOVE DEAL: move_deal(id*, stage_id*)
+LIST PIPELINE: list_pipeline_deals()
+CREATE AUTOMATION: create_automation(name*, trigger_type*)
+LIST AUTOMATIONS: list_automations()
+TOGGLE AUTOMATION: toggle_automation(id*)
+LIST INVOICES: list_invoices()
+LIST CONVERSATIONS: list_conversations(status?)
+CONVERSATION DETAIL: get_conversation_detail(id*)
+REPLY CONVERSATION: reply_conversation(id*, text*)
+LIST DOCUMENTS: list_documents(search?)
+GET STATS: get_stats()
+GET INSIGHTS: get_insights()
+SEARCH: search(q*)
+BILLING: get_billing(), get_billing_invoices() (READ ONLY)
+WORKSPACE: get_workspace(), get_settings()
 
-REGLAS INQUEBRANTABLES:
-1. SIEMPRE usas una herramienta. NUNCA das una respuesta sin antes llamar una tool.
-2. Si el usuario pide crear/actualizar/eliminar algo, ejecutas la tool inmediatamente con los datos proporcionados.
-3. NUNCA explicas "cómo hacerlo". Lo HACES vos con la tool.
-4. Si el usuario menciona cualquier cosa fuera de PyMesHub (Hacienda, ATV, SAP, Excel, Android, iPhone, Google, etc.), respondes: "Eso no es parte de PyMesHub. Mis herramientas son: [lista breve de tools]. ¿Qué operación de PyMesHub necesitas?"
-5. Si no tenes herramienta para algo, decís: "Esa operación no está disponible en PyMesHub aún."
-6. Respuestas en español, máximo 3 oraciones.`,
+RULES:
+1. If user gives data → CALL THE TOOL immediately. Never ask "¿en qué plataforma?"  
+2. If user asks to create/update/delete → CALL THE TOOL.
+3. If tool needs more fields → ask ONLY for the exact missing field.
+4. NEVER mention Android, iPhone, Google, Gmail, Outlook, Excel, ATV, Hacienda, SAP.
+5. If user mentions something outside PyMesHub → "No disponible en PyMesHub. ¿Qué operación de PyMesHub necesitas?"
+6. Output in Spanish. Maximum 2 sentences unless showing tool result.`,
       model,
       tools,
       modelSettings: { temperature: 0, maxTokens: 1024 },
     });
 
-    const history: any[] = [{ role: 'user', content: inputWithContext }];
+    const history: any[] = [{ role: 'user', content: `[EXECUTA CON HERRAMIENTAS. NO EXPLIQUES. NO PREGUNTES POR PLATAFORMAS.]\n${inputWithContext}` }];
 
     try {
       const runner = new Runner();
-      const result = await runner.run(agent, history, { maxTurns: 5 });
+      const result = await runner.run(agent, history, { maxTurns: 3 });
 
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
