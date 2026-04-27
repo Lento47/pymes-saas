@@ -45,6 +45,17 @@ const TOOLS = [
   makeTool('get_settings', 'Get workspace settings and members'),
 ];
 
+function getToolsForResponse(): any[] {
+  if (process.env.PYMESHUB_MCP_COMPAT_MODE === 'true') {
+    return [
+      { name: 'get_workspace', description: 'Get workspace info', input_schema: { type: 'object', properties: {} } },
+      { name: 'list_contacts', description: 'List contacts', input_schema: { type: 'object', properties: {} } },
+      { name: 'get_stats', description: 'Get workspace stats', input_schema: { type: 'object', properties: {} } },
+    ];
+  }
+  return TOOLS;
+}
+
 @Controller('mcp')
 export class McpController {
   constructor(private readonly prisma: PrismaService) {}
@@ -58,7 +69,7 @@ export class McpController {
 
   @Get()
   health() {
-    return { status: 'ok', protocol: 'mcp', version: '1.0', tools: TOOLS.length };
+    return { status: 'ok', protocol: 'mcp', version: '1.0', tools: getToolsForResponse().length };
   }
 
   @Get('sse')
@@ -98,7 +109,7 @@ export class McpController {
         result: { protocolVersion: '1.0', capabilities: { tools: {} }, serverInfo: { name: 'PyMesHub', version: '1.0' } },
       });
     } else if (body.method === 'tools/list') {
-      sseSend(res, { jsonrpc: '2.0', id: body.id, result: { tools: TOOLS } });
+      sseSend(res, { jsonrpc: '2.0', id: body.id,         result: { tools: getToolsForResponse() } });
     } else if (body.method === 'tools/call') {
       const result = await this.executeToolCall(req.workspace_id, body.params, body.id, req);
       sseSend(res, result);
@@ -146,7 +157,7 @@ export class McpController {
 
       // Handle tools/list
       else if (body.method === 'tools/list') {
-        sseSend(res, { jsonrpc: '2.0', id: body.id, result: { tools: TOOLS } });
+        sseSend(res, { jsonrpc: '2.0', id: body.id,         result: { tools: getToolsForResponse() } });
       }
 
       // Handle tools/call
@@ -176,7 +187,7 @@ export class McpController {
           result: { protocolVersion: '1.0', capabilities: { tools: {} }, serverInfo: { name: 'PyMesHub MCP', version: '1.0' } },
         });
       case 'tools/list':
-        return res.json({ jsonrpc: '2.0', id: body.id, result: { tools: TOOLS } });
+        return res.json({ jsonrpc: '2.0', id: body.id,         result: { tools: getToolsForResponse() } });
       case 'tools/call': {
         const result = await this.executeToolCall(req.workspace_id, body.params, body.id, req);
         return res.json(result);
