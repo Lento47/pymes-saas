@@ -17,6 +17,7 @@ interface ToolDef {
 }
 
 const TOOLS: ToolDef[] = [
+  { name: 'set_workspace', description: 'Set the active workspace slug for subsequent calls', inputSchema: { type: 'object', required: ['slug'], properties: { slug: { type: 'string' } } } },
   { name: 'get_workspace', description: 'Get current workspace info', inputSchema: { type: 'object', properties: {} } },
   { name: 'get_stats', description: 'Get workspace statistics', inputSchema: { type: 'object', properties: {} } },
   { name: 'list_contacts', description: 'List all contacts', inputSchema: { type: 'object', properties: { search: { type: 'string' } } } },
@@ -38,6 +39,8 @@ function sseSend(res: Response, data: any) {
 @Controller('mcp')
 export class McpController {
   constructor(private readonly prisma: PrismaService) {}
+  // Session storage: token hash → workspace slug
+  private sessions = new Map<string, string>();
 
   @Get()
   health() {
@@ -83,7 +86,7 @@ export class McpController {
 
       // Handle tools/call
       else if (body.method === 'tools/call') {
-        const result = await this.executeToolCall(req.workspace_id, body.params, body.id);
+        const result = await this.executeToolCall(req.workspace_id, body.params, body.id, req);
         sseSend(res, result);
       }
 
@@ -110,7 +113,7 @@ export class McpController {
       case 'tools/list':
         return res.json({ jsonrpc: '2.0', id: body.id, result: { tools: TOOLS } });
       case 'tools/call': {
-        const result = await this.executeToolCall(req.workspace_id, body.params, body.id);
+        const result = await this.executeToolCall(req.workspace_id, body.params, body.id, req);
         return res.json(result);
       }
       default:
@@ -118,19 +121,38 @@ export class McpController {
     }
   }
 
-  private async executeToolCall(workspaceId: string, params: { name: string; arguments: any }, id: string | number) {
-    if (!workspaceId) {
-      return { jsonrpc: '2.0', id, error: { code: -32000, message: 'Missing x-workspace-slug header' } };
-    }
+  private async executeToolCall(workspaceId: string, params: { name: string; arguments: any }, id: string | number, req: any) {
+    const auth = req.headers?.authorization || '';
+    const sessionKey = auth.replace(/^Bearer /, '').slice(0, 32);
     try {
-      const result = await this.executeTool(workspaceId, params.name, params.arguments || {});
+      const result = await this.executeTool(workspaceId, params.name, params.arguments || {}, sessionKey);
       return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } };
     } catch (err: any) {
       return { jsonrpc: '2.0', id, error: { code: -32000, message: err.message } };
     }
   }
 
-  private async executeTool(workspaceId: string, name: string, args: any): Promise<any> {
+  private async executeTool(workspaceId: string, name: string, args: any, sessionKey: string): Promise<any> {
+    // Handle set_workspace separately
+    if (name === 'set_workspace') {
+      const ws = await this.prisma.workspace.findUnique({
+        where: { slug: args.slug },
+        select: { id: true, name: true, slug: true, plan: true },
+      });
+      if (!ws) throw new Error(`Workspace "${args.slug}" not found`);
+      this.sessions.set(sessionKey, ws.id);
+      return { workspace_set: ws };
+    }
+
+    // Use stored workspaceId from session if header wasn't provided
+    let effectiveWorkspaceId = workspaceId;
+    if (!effectiveWorkspaceId && sessionKey) {
+      effectiveWorkspaceId = this.sessions.get(sessionKey) || null;
+    }
+    if (!effectiveWorkspaceId) {
+      throw new Error('No workspace set. Use set_workspace tool or x-workspace-slug header.');
+    }
+
     switch (name) {
       case 'get_workspace': {
         const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { id: true, name: true, slug: true, plan: true, status: true, created_at: true } });
