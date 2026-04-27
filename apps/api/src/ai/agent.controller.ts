@@ -14,6 +14,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AgentService } from './agent.service';
 import { AgentToolsService } from './agent-tools.service';
 import { AgentStreamDto } from './agent.dto';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 @Controller('agent')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -21,6 +22,7 @@ export class AgentController {
   constructor(
     private readonly agentService: AgentService,
     private readonly toolsService: AgentToolsService,
+    private readonly planLimits: PlanLimitsService,
   ) {} 
 
   @Post('execute')
@@ -40,6 +42,7 @@ export class AgentController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
+    await this.planLimits.enforcePlanTier(workspaceId, 'ENTERPRISE', 'HubbyAgent');
     const result = await this.agentService.streamWorkflow(
       workspaceId,
       dto.input,

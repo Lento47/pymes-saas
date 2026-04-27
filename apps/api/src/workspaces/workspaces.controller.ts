@@ -76,10 +76,11 @@ export class WorkspacesController {
 
   @Post('current/ai/test')
   @Roles(WorkspaceUserRole.ADMIN)
-  testAiConnection(
+  async testAiConnection(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: TestAiConnectionDto,
   ) {
+    await this.planLimits.enforcePlanTier(workspaceId, 'ENTERPRISE', 'Inteligencia Artificial');
     return this.service.testAiConnection(workspaceId, dto);
   }
 
