@@ -1,4 +1,5 @@
-import { Controller, Post, Body, Req, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Body, Req, Res, UseGuards, Get, Headers } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { ApiTokenGuard } from '../api-tokens/api-token.guard';
 import { PrismaService } from '../common/prisma/prisma.service';
 
@@ -30,6 +31,10 @@ const TOOLS: ToolDef[] = [
   { name: 'get_settings', description: 'Get workspace settings and members', inputSchema: { type: 'object', properties: {} } },
 ];
 
+function sseSend(res: Response, data: any) {
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
 @Controller('mcp')
 export class McpController {
   constructor(private readonly prisma: PrismaService) {}
@@ -41,28 +46,87 @@ export class McpController {
 
   @Post()
   @UseGuards(ApiTokenGuard)
-  async handle(@Req() req: any, @Body() body: McpRequest) {
-    const workspaceId = req.workspace_id;
+  async handle(
+    @Req() req: any,
+    @Res() res: Response,
+    @Body() body: McpRequest,
+    @Headers('accept') accept?: string,
+  ) {
+    const isSSE = accept?.includes('text/event-stream');
 
+    // MCP HTTP SSE transport
+    if (isSSE) {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+
+      // Handle initialize
+      if (body.method === 'initialize') {
+        sseSend(res, {
+          jsonrpc: '2.0',
+          id: body.id,
+          result: {
+            protocolVersion: '1.0',
+            capabilities: { tools: {} },
+            serverInfo: { name: 'PyMesHub MCP', version: '1.0' },
+          },
+        });
+      }
+
+      // Handle tools/list
+      else if (body.method === 'tools/list') {
+        sseSend(res, { jsonrpc: '2.0', id: body.id, result: { tools: TOOLS } });
+      }
+
+      // Handle tools/call
+      else if (body.method === 'tools/call') {
+        const result = await this.executeToolCall(req.workspace_id, body.params, body.id);
+        sseSend(res, result);
+      }
+
+      // Handle notifications/initialized
+      else if (body.method === 'notifications/initialized') {
+        sseSend(res, { jsonrpc: '2.0', id: body.id, result: {} });
+      }
+
+      else {
+        sseSend(res, { jsonrpc: '2.0', id: body.id, error: { code: -32601, message: `Unknown method: ${body.method}` } });
+      }
+
+      res.end();
+      return;
+    }
+
+    // Plain JSON-RPC fallback
     switch (body.method) {
+      case 'initialize':
+        return res.json({
+          jsonrpc: '2.0', id: body.id,
+          result: { protocolVersion: '1.0', capabilities: { tools: {} }, serverInfo: { name: 'PyMesHub MCP', version: '1.0' } },
+        });
       case 'tools/list':
-        return { jsonrpc: '2.0', result: { tools: TOOLS }, id: body.id };
-      case 'tools/call':
-        return this.handleCallTool(workspaceId, body.params, body.id);
+        return res.json({ jsonrpc: '2.0', id: body.id, result: { tools: TOOLS } });
+      case 'tools/call': {
+        const result = await this.executeToolCall(req.workspace_id, body.params, body.id);
+        return res.json(result);
+      }
       default:
-        return { jsonrpc: '2.0', error: { code: -32601, message: `Unknown method: ${body.method}` }, id: body.id };
+        return res.json({ jsonrpc: '2.0', id: body.id, error: { code: -32601, message: `Unknown method: ${body.method}` } });
     }
   }
 
-  private async handleCallTool(workspaceId: string, params: { name: string; arguments: any }, id: string | number) {
+  private async executeToolCall(workspaceId: string, params: { name: string; arguments: any }, id: string | number) {
     if (!workspaceId) {
-      return { jsonrpc: '2.0', error: { code: -32000, message: 'Missing x-workspace-slug header' }, id };
+      return { jsonrpc: '2.0', id, error: { code: -32000, message: 'Missing x-workspace-slug header' } };
     }
     try {
       const result = await this.executeTool(workspaceId, params.name, params.arguments || {});
-      return { jsonrpc: '2.0', result: { content: [{ type: 'text', text: JSON.stringify(result) }] }, id };
+      return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } };
     } catch (err: any) {
-      return { jsonrpc: '2.0', error: { code: -32000, message: err.message }, id };
+      return { jsonrpc: '2.0', id, error: { code: -32000, message: err.message } };
     }
   }
 
