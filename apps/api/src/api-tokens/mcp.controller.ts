@@ -19,7 +19,7 @@ function makeTool(name: string, description: string, properties: any = {}, requi
     name,
     description,
     annotations: null,
-    input_schema: {
+    inputSchema: {
       type: 'object',
       properties,
       required,
@@ -48,9 +48,9 @@ const TOOLS = [
 function getToolsForResponse(): any[] {
   if (process.env.PYMESHUB_MCP_COMPAT_MODE === 'true') {
     return [
-      { name: 'get_workspace', description: 'Get workspace info', input_schema: { type: 'object', properties: {} } },
-      { name: 'list_contacts', description: 'List contacts', input_schema: { type: 'object', properties: {} } },
-      { name: 'get_stats', description: 'Get workspace stats', input_schema: { type: 'object', properties: {} } },
+      { name: 'get_workspace', description: 'Get workspace info', inputSchema: { type: 'object', properties: {} } },
+      { name: 'list_contacts', description: 'List contacts', inputSchema: { type: 'object', properties: {} } },
+      { name: 'get_stats', description: 'Get workspace stats', inputSchema: { type: 'object', properties: {} } },
     ];
   }
   return TOOLS;
