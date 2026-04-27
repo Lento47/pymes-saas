@@ -13,6 +13,16 @@ export class SamlController {
     private readonly authService: AuthService,
   ) {}
 
+  @Get('status/:workspaceSlug')
+  async status(@Param('workspaceSlug') workspaceSlug: string) {
+    try {
+      const config = await this.getIdpConfig(workspaceSlug);
+      return { configured: true, loginUrl: `/api/auth/saml/${workspaceSlug}/login` };
+    } catch {
+      return { configured: false };
+    }
+  }
+
   @Get(':workspaceSlug/metadata')
   metadata(@Param('workspaceSlug') workspaceSlug: string) {
     return this.samlService.generateMetadata(workspaceSlug);

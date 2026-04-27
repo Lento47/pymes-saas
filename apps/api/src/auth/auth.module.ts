@@ -17,6 +17,6 @@ import { RefreshTokenService } from './refresh-token.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, RolesGuard, RefreshTokenService],
-  exports: [JwtModule, PassportModule, RolesGuard, RefreshTokenService],
+  exports: [JwtModule, PassportModule, RolesGuard, RefreshTokenService, AuthService],
 })
 export class AuthModule {}
