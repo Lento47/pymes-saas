@@ -360,12 +360,113 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Metric cards ────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <MetricCard label={dash.revenueThisMonth} value={workspaceStats?.monthly_revenue ?? 0} currency="₡" subLabel={`${workspaceStats?.revenue_change_pct ?? 0}% vs. last month`} icon={TrendingUp} iconBg="bg-[#8b7cf6]/15 text-[#8b7cf6]" loading={statsLoading} />
-          <MetricCard label={dash.outstanding}        value={overdueAmount}                      currency="₡" subLabel={`${overdueCount} invoices pending`}                         icon={Receipt}     iconBg="bg-orange-500/15 text-orange-400" loading={invoicesLoading} />
-          <MetricCard label={dash.pipelineValue}      value={totalPipeline}                      currency="₡" subLabel="Potential revenue"                                          icon={BarChart2}   iconBg="bg-blue-500/15 text-blue-400"     loading={pipelineLoading} />
-          <MetricCard label={dash.newMessages}        value={todayStats?.received_messages ?? 0}              subLabel={todayStats?.received_messages ? `${todayStats.received_messages} today` : "No messages today"} icon={MessageCircle} iconBg="bg-purple-500/15 text-purple-400" loading={statsLoading} />
-          <MetricCard label={dash.tasksToday}         value={taskList.length}                                 subLabel={taskList.length === 0 ? "You're all caught up" : `${urgentTasks} urgent`}             icon={Clock}         iconBg="bg-teal-500/15 text-teal-400"     loading={tasksLoading} />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+
+          {/* 1 — Revenue: gradient hero */}
+          <div className="col-span-2 md:col-span-1 rounded-2xl p-5 flex flex-col justify-between min-h-[110px]"
+            style={{ background: "linear-gradient(135deg,rgba(139,124,246,0.22) 0%,rgba(91,92,240,0.12) 100%)", border: "1px solid rgba(139,124,246,0.28)" }}>
+            <div className="flex items-start justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a78bfa]/70">{dash.revenueThisMonth}</p>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#8b7cf6]/20 text-[#a78bfa]">
+                <TrendingUp className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            {statsLoading ? <Skeleton className="h-8 w-24 mt-2" /> : (
+              <>
+                <p className="text-[1.75rem] font-bold text-white tracking-tight leading-none mt-2">
+                  ₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}
+                </p>
+                <div className="mt-2 flex items-center gap-1.5">
+                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${(workspaceStats?.revenue_change_pct ?? 0) >= 0 ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
+                    {(workspaceStats?.revenue_change_pct ?? 0) >= 0 ? "+" : ""}{workspaceStats?.revenue_change_pct ?? 0}%
+                  </span>
+                  <span className="text-[11px] text-white/30">vs. last month</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 2 — Outstanding: amber alert */}
+          <div className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px]"
+            style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.20)" }}>
+            <div className="flex items-start justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-400/60">{dash.outstanding}</p>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-amber-500/15 text-amber-400">
+                <Receipt className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            {invoicesLoading ? <Skeleton className="h-7 w-20 mt-2" /> : (
+              <>
+                <p className="text-2xl font-bold text-white/90 mt-2 tracking-tight">₡{overdueAmount.toLocaleString("es-ES")}</p>
+                <span className={`mt-2 self-start text-[10px] font-medium px-2 py-0.5 rounded-full ${overdueCount > 0 ? "bg-amber-500/15 text-amber-300" : "bg-white/[0.04] text-white/30"}`}>
+                  {overdueCount} {overdueCount === 1 ? "invoice" : "invoices"} pending
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* 3 — Pipeline: blue with bottom bar */}
+          <div className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px] overflow-hidden relative"
+            style={{ background: "rgba(14,165,233,0.06)", border: "1px solid rgba(14,165,233,0.18)" }}>
+            <div className="absolute bottom-0 inset-x-0 h-0.5 bg-gradient-to-r from-sky-500/60 via-blue-400/40 to-transparent" />
+            <div className="flex items-start justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-400/60">{dash.pipelineValue}</p>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-sky-500/15 text-sky-400">
+                <BarChart2 className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            {pipelineLoading ? <Skeleton className="h-7 w-20 mt-2" /> : (
+              <>
+                <p className="text-2xl font-bold text-white/90 mt-2 tracking-tight">₡{totalPipeline.toLocaleString("es-ES")}</p>
+                <p className="text-[11px] text-sky-400/50 mt-1.5">Potential revenue</p>
+              </>
+            )}
+          </div>
+
+          {/* 4 — Messages: minimal with live indicator */}
+          <div className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px]"
+            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-start justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/30">{dash.newMessages}</p>
+              <div className="flex items-center gap-1">
+                {(todayStats?.received_messages ?? 0) > 0 && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                )}
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.05] text-white/40">
+                  <MessageCircle className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </div>
+            {statsLoading ? <Skeleton className="h-7 w-12 mt-2" /> : (
+              <>
+                <p className="text-[2.25rem] font-bold text-white/90 leading-none mt-1">{todayStats?.received_messages ?? 0}</p>
+                <p className="text-[11px] text-white/25 mt-2">{(todayStats?.received_messages ?? 0) > 0 ? "received today" : "No messages today"}</p>
+              </>
+            )}
+          </div>
+
+          {/* 5 — Tasks: teal completion */}
+          <div className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px]"
+            style={{ background: "rgba(20,184,166,0.07)", border: "1px solid rgba(20,184,166,0.20)" }}>
+            <div className="flex items-start justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-teal-400/60">{dash.tasksToday}</p>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-teal-500/15 text-teal-400">
+                <Clock className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            {tasksLoading ? <Skeleton className="h-7 w-16 mt-2" /> : (
+              <>
+                <p className="text-2xl font-bold text-white/90 mt-2 tracking-tight">{taskList.length}</p>
+                <div className="mt-2 flex items-center gap-1.5">
+                  {taskList.length === 0
+                    ? <span className="text-[11px] text-teal-400/60">✓ All caught up</span>
+                    : <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${urgentTasks > 0 ? "bg-red-500/15 text-red-400" : "bg-teal-500/15 text-teal-300"}`}>{urgentTasks > 0 ? `${urgentTasks} urgent` : "on track"}</span>
+                  }
+                </div>
+              </>
+            )}
+          </div>
+
         </div>
 
         {/* ── Main grid ───────────────────────────────────────────── */}
