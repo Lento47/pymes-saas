@@ -133,7 +133,9 @@ export function SamlConfig() {
       </div>
 
       <p className="text-[10px] text-muted-foreground">
-        Una vez configurado, los usuarios pueden iniciar sesión desde {spLoginUrl}. Requiere plan ENTERPRISE.
+        Una vez configurado, los usuarios de tu workspace podrán iniciar sesión sin contraseña desde la página de login.
+        Al ingresar su email, el sistema detectará que el SSO está activo y los redirigirá automáticamente a tu Identity Provider.
+        Requiere plan ENTERPRISE.
       </p>
     </div>
   );
