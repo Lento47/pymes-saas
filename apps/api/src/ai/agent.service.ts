@@ -337,7 +337,7 @@ REGLAS:
 5. Respuestas en español.`,
       model,
       tools,
-      modelSettings: { temperature: 0, maxTokens: 1024 },
+      modelSettings: { temperature: 0.2, maxTokens: 1024 },
     });
 
     const history: any[] = [{ role: 'user', content: inputWithContext }];
@@ -346,20 +346,26 @@ REGLAS:
       const runner = new Runner();
       const result = await runner.run(agent, history, { maxTurns: 3 });
 
+      // Extract text from result
+      const finalOutput: string = (() => {
+        const fo = (result as any).finalOutput;
+        if (typeof fo === 'string') return fo;
+        if (fo && typeof fo === 'object' && typeof fo.text === 'string') return fo.text;
+        if (fo) return JSON.stringify(fo);
+        const out = (result as any).output;
+        if (typeof out === 'string') return out;
+        return '';
+      })();
+
+      this.logger.log(`Agent response length: ${finalOutput.length}, preview: ${finalOutput.slice(0, 100)}`);
+
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            const events = (result as any).streamEvents;
-            if (typeof events === 'function') {
-              for await (const event of events.call(result)) {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-              }
-            }
-            const final = await (result.finalOutput || (result as any).output);
-            if (final) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: typeof final === 'string' ? final : JSON.stringify(final) } })}\n\n`));
-            }
+            const output = finalOutput || '¡Hola! Soy Hubby, tu asistente de PyMesHub. ¿En qué puedo ayudarte?';
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: output })}\n\n`));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: output } })}\n\n`));
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           } catch (err: any) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err.message } })}\n\n`));
