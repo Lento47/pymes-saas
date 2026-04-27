@@ -2,56 +2,48 @@ import { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
 const STORAGE_KEY = 'pymeshub_onboarding_done';
-const TOUR_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+const TOUR_DURATION_MS = 5 * 60 * 1000;
 
 type Step = {
   title: string;
   body: string;
-  x: number; // % from left
-  y: number; // % from top
   targetSelector?: string;
+  offsetX?: number; // extra horizontal offset for the pet
 };
 
 const STEPS: Step[] = [
   {
     title: '¡Hola! Soy Hubby',
     body: 'Tu asistente inteligente en PyMesHub. Dejame mostrarte lo más importante.',
-    x: 85, y: 80,
   },
   {
     title: 'Dashboard',
-    body: 'Acá ves el resumen de tu negocio: métricas, gráficos e insights en tiempo real.',
-    x: 22, y: 14,
+    body: 'Acá ves el resumen de tu negocio: métricas, gráficos e insights.',
     targetSelector: 'a[href="/"]',
   },
   {
-    title: 'Bandeja de entrada',
-    body: 'WhatsApp, email y chat en un solo lugar. Atendé a tus clientes sin cambiar de app.',
-    x: 22, y: 24,
+    title: 'Bandeja',
+    body: 'WhatsApp, email y chat en un solo lugar.',
     targetSelector: 'a[href="/inbox"]',
   },
   {
-    title: 'Contactos y CRM',
-    body: 'Gestioná tus clientes, leads y proveedores. Todo centralizado.',
-    x: 22, y: 34,
+    title: 'Contactos',
+    body: 'Gestioná clientes, leads y proveedores. Todo centralizado.',
     targetSelector: 'a[href="/contacts"]',
   },
   {
-    title: 'Pipeline de ventas',
-    body: 'Seguí tus oportunidades de negocio desde el primer contacto hasta el cierre.',
-    x: 22, y: 53,
+    title: 'Pipeline',
+    body: 'Seguí tus oportunidades desde el primer contacto hasta el cierre.',
     targetSelector: 'a[href="/pipeline"]',
   },
   {
     title: 'Automatizaciones',
-    body: 'Creá reglas para que las tareas repetitivas se hagan solas.',
-    x: 22, y: 60,
+    body: 'Creá reglas para que tareas repetitivas se hagan solas.',
     targetSelector: 'a[href="/automations"]',
   },
   {
     title: '¡Y yo estoy acá!',
     body: 'Preguntame lo que necesites. Creo contactos, tareas, analizo datos y más.',
-    x: 85, y: 50,
     targetSelector: 'a[href="/agent"]',
   },
 ];
@@ -97,11 +89,9 @@ function PetSvg({ size = 64, mood = 'happy' }: { size?: number; mood?: 'happy' |
         <path d="M28 44 Q32 46 36 44" stroke="#5b21b6" strokeWidth="1.2" fill="none" strokeLinecap="round" />
       )}
       {mood === 'waving' && (
-        <>
-          <ellipse cx="12" cy="28" rx="4" ry="2.5" fill="#7c3aed" transform="rotate(-20 12 28)">
-            <animateTransform attributeName="transform" type="rotate" values="-20 12 28;10 12 28;-20 12 28" dur="0.6s" repeatCount="indefinite" />
-          </ellipse>
-        </>
+        <ellipse cx="12" cy="28" rx="5" ry="3" fill="#7c3aed" transform="rotate(-20 12 28)">
+          <animateTransform attributeName="transform" type="rotate" values="-20 12 28;10 12 28;-20 12 28" dur="0.6s" repeatCount="indefinite" />
+        </ellipse>
       )}
       <ellipse cx="18" cy="54" rx="6" ry="4" fill="#7c3aed" />
       <ellipse cx="46" cy="54" rx="6" ry="4" fill="#7c3aed" />
@@ -110,92 +100,101 @@ function PetSvg({ size = 64, mood = 'happy' }: { size?: number; mood?: 'happy' |
   );
 }
 
-function PawPrints({ step }: { step: number }) {
-  if (step < 1) return null;
-  return (
-    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 9998 }}>
-      {Array.from({ length: 4 }).map((_, i) => (
-        <span
-          key={i}
-          className="absolute text-lg opacity-0"
-          style={{
-            left: `${15 + i * 8}%`,
-            top: `${70 - i * 5}%`,
-            animation: `fadeInOut 2s ${i * 0.3}s ease forwards`,
-            fontSize: '20px',
-          }}
-        >
-          🐾
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function isOnboardingDone() {
   const done = localStorage.getItem(STORAGE_KEY);
   if (!done) return false;
-  const ts = parseInt(done);
-  return Date.now() - ts > 500; // 500ms grace to prevent flash
+  return Date.now() - parseInt(done) > 500;
 }
 
 export function OnboardingTour() {
   const [step, setStep] = useState(0);
   const [exiting, setExiting] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [width, setWidth] = useState(window.innerWidth);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [petPos, setPetPos] = useState({ left: 0, top: 0 });
   const timerRef = useRef<any>(null);
   const autoRef = useRef<any>(null);
   const doneCheck = useRef(isOnboardingDone());
 
+  // Calculate positions based on target element
+  const updatePositions = (s: Step) => {
+    if (s.targetSelector) {
+      const el = document.querySelector(s.targetSelector) as HTMLElement;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        setTargetRect(rect);
+        // Pet to the right of the sidebar element, centered vertically
+        setPetPos({
+          left: rect.right + 28,
+          top: rect.top + rect.height / 2 - 32,
+        });
+      }
+    } else {
+      // First step: center pet in main content area (right of sidebar)
+      setTargetRect(null);
+      const sidebar = document.querySelector('aside') as HTMLElement;
+      const sbRight = sidebar ? sidebar.getBoundingClientRect().right : 200;
+      setPetPos({
+        left: sbRight + (window.innerWidth - sbRight) / 2 - 36,
+        top: window.innerHeight / 2 - 100,
+      });
+    }
+  };
+
   useEffect(() => {
     if (doneCheck.current) return;
     setMounted(true);
+    updatePositions(STEPS[0]);
 
-    // Don't auto-advance on first step
-    if (step > 0) {
-      autoRef.current = setInterval(() => {
-        setStep(s => (s < STEPS.length - 1 ? s + 1 : s));
-      }, 8000);
-    }
-
-    // Auto-dismiss after 5 minutes
-    timerRef.current = setTimeout(() => finish(), TOUR_DURATION_MS);
-
-    const onResize = () => setWidth(window.innerWidth);
+    const onResize = () => updatePositions(STEPS[step]);
     window.addEventListener('resize', onResize);
 
+    timerRef.current = setTimeout(() => finish(), TOUR_DURATION_MS);
+
     return () => {
-      clearInterval(autoRef.current);
       clearTimeout(timerRef.current);
       window.removeEventListener('resize', onResize);
     };
   }, []);
 
+  useEffect(() => {
+    updatePositions(STEPS[step]);
+    // Restart auto-advance on step change
+    clearInterval(autoRef.current);
+    if (step > 0) {
+      autoRef.current = setInterval(() => {
+        setStep(s => (s < STEPS.length - 1 ? s + 1 : s));
+      }, 8000);
+    }
+  }, [step]);
+
   const finish = () => {
     setExiting(true);
     localStorage.setItem(STORAGE_KEY, Date.now().toString());
+    // Clean up highlights
+    STEPS.forEach(s => {
+      if (!s.targetSelector) return;
+      const el = document.querySelector(s.targetSelector) as HTMLElement;
+      if (el) {
+        el.style.boxShadow = '';
+        el.style.zIndex = '';
+      }
+    });
     setTimeout(() => setMounted(false), 600);
   };
 
   const next = () => {
     if (step < STEPS.length - 1) {
       setStep(s => s + 1);
-      clearInterval(autoRef.current);
-      autoRef.current = setInterval(() => setStep(s => s < STEPS.length - 1 ? s + 1 : s), 8000);
     } else {
       finish();
     }
   };
 
-  const s = STEPS[step];
-  const lastStep = step === STEPS.length - 1;
-  const isMobile = width < 640;
-
-  // Highlight target if exists
+  // Highlight current target
   useEffect(() => {
-    if (!s.targetSelector || exiting) return;
-    const el = document.querySelector(s.targetSelector) as HTMLElement;
+    if (!STEPS[step].targetSelector || exiting) return;
+    const el = document.querySelector(STEPS[step].targetSelector!) as HTMLElement;
     if (!el) return;
     const origShadow = el.style.boxShadow;
     const origZ = el.style.zIndex;
@@ -208,14 +207,19 @@ export function OnboardingTour() {
       el.style.boxShadow = origShadow;
       el.style.zIndex = origZ;
     };
-  }, [step, s.targetSelector, exiting]);
+  }, [step, exiting]);
 
-  // Don't render if already done or finished
   if (doneCheck.current || !mounted) return null;
+
+  const s = STEPS[step];
+  const lastStep = step === STEPS.length - 1;
+  const hasTarget = !!s.targetSelector && !!targetRect;
+  // On narrow screens, center pet below target
+  const isMobile = window.innerWidth < 640;
 
   return (
     <div className="fixed inset-0 z-[9998]" style={{ pointerEvents: 'all' }}>
-      {/* Backdrop — lighter, click-through to skip */}
+      {/* Backdrop */}
       <div
         className="absolute inset-0 transition-opacity duration-500"
         onClick={() => next()}
@@ -226,40 +230,35 @@ export function OnboardingTour() {
         }}
       />
 
-      {/* Paw prints */}
-      <PawPrints step={step} />
-
       {/* HubbyBuddy character */}
       <div
-        className="absolute transition-all duration-700 ease-in-out"
+        className="absolute transition-all duration-600"
         style={{
-          left: isMobile ? '50%' : `${s.x}%`,
-          top: isMobile ? '50%' : `${s.y}%`,
-          transform: `translate(-50%, -50%) scale(${exiting ? 0 : 1})`,
+          left: isMobile ? '50%' : `${petPos.left}px`,
+          top: `${petPos.top}px`,
+          transform: `translate(${isMobile ? '-50%' : '0'}, 0) scale(${exiting ? 0 : 1})`,
           opacity: exiting ? 0 : 1,
           zIndex: 9999,
           filter: 'drop-shadow(0 0 24px rgba(124,58,237,0.6))',
+          transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}
       >
-        {/* Bounce animation when arriving */}
-        <div className="animate-bounce" style={{ animationDuration: '0.5s', animationIterationCount: '3' }}>
-          <PetSvg size={72} mood={lastStep ? 'waving' : 'happy'} />
-        </div>
+        <PetSvg size={64} mood={lastStep ? 'waving' : 'happy'} />
       </div>
 
       {/* Speech bubble */}
       <div
         className="absolute transition-all duration-500"
         style={{
-          left: isMobile ? '50%' : `${s.x}%`,
-          top: isMobile ? '35%' : `${s.y - 10}%`,
-          transform: `translate(-50%, -100%)`,
+          left: isMobile ? '50%' : `${petPos.left - 80}px`,
+          top: `${petPos.top - 130}px`,
+          transform: `translate(${isMobile ? '-50%' : '0'}, 0)`,
           opacity: exiting ? 0 : 1,
           zIndex: 9999,
         }}
       >
         <div
-          className="rounded-2xl p-4 max-w-xs shadow-2xl relative"
+          className="rounded-2xl p-4 max-w-[280px] shadow-2xl relative"
           style={{
             background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
             border: '1px solid #4338ca',
@@ -274,6 +273,28 @@ export function OnboardingTour() {
             </span>
           </div>
           <p className="text-xs leading-relaxed" style={{ color: '#c7d2fe' }}>{s.body}</p>
+
+          {/* Connection arrow — points from bubble to highlighted element */}
+          {hasTarget && (
+            <div className="absolute" style={{
+              bottom: '-30px',
+              left: `${petPos.left - (petPos.left - 80) + 67}px`,
+            }}>
+              {/* Vertical line down from bubble */}
+              <div className="w-0.5 h-7 mx-auto" style={{ background: '#7c3aed', opacity: 0.5 }} />
+              {/* Chevron pointing left at target */}
+              <div
+                className="w-2 h-2 border-l-2 border-b-2"
+                style={{
+                  borderColor: '#7c3aed',
+                  transform: 'rotate(45deg)',
+                  marginTop: '-4px',
+                  marginLeft: '-3px',
+                  opacity: 0.7,
+                }}
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-between mt-3">
             <button
@@ -292,17 +313,6 @@ export function OnboardingTour() {
               <ArrowRight style={{ width: 12, height: 12 }} />
             </button>
           </div>
-
-          {/* Arrow pointing down to HubbyBuddy */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2 w-3 h-3 rotate-45"
-            style={{
-              bottom: '-6px',
-              background: '#312e81',
-              borderRight: '1px solid #4338ca',
-              borderBottom: '1px solid #4338ca',
-            }}
-          />
         </div>
       </div>
 
@@ -316,7 +326,7 @@ export function OnboardingTour() {
         }}
       />
 
-      {/* Timer bar at top - depletes over 5 minutes */}
+      {/* Timer bar */}
       <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/10" style={{ zIndex: 9999 }}>
         <div
           className="h-full"
@@ -327,10 +337,7 @@ export function OnboardingTour() {
         />
       </div>
 
-      <style>{`
-        @keyframes shrink { from { width: 100%; } to { width: 0%; } }
-        @keyframes fadeInOut { 0% { opacity: 0; transform: scale(0.5); } 50% { opacity: 0.4; } 100% { opacity: 0; transform: scale(1.2); } }
-      `}</style>
+      <style>{`@keyframes shrink { from { width: 100%; } to { width: 0%; } }`}</style>
     </div>
   );
 }
