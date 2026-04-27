@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
@@ -199,6 +199,15 @@ export default function Landing() {
   const copy = messages.landing;
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const hash = window.location.hash?.replace('#', '');
+    if (hash && ['platform','workflows','insights','security'].includes(hash)) {
+      setTimeout(() => {
+        document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  }, []);
 
   const productCards: Array<{
     assetSrc?: string;
