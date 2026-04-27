@@ -43,6 +43,9 @@ const mockPrisma = {
 const mockCrypto = { encrypt: jest.fn((v: string) => `enc:${v}`), decrypt: jest.fn() };
 const mockAiService = { getWorkspaceConfig: jest.fn(), getDefaultModel: jest.fn(), testConnection: jest.fn() };
 const mockEmailService = { sendOutbound: jest.fn() };
+const mockEventsGateway = { emitToWorkspace: jest.fn(), emitToUser: jest.fn() };
+const mockPlanLimits = { checkUserLimit: jest.fn(), enforceMembers: jest.fn(), enforceAutomations: jest.fn(), enforceContacts: jest.fn(), enforceDocuments: jest.fn(), isPlanAtLeast: jest.fn(), enforcePlanTier: jest.fn(), getUpgradePlan: jest.fn(), getLimits: jest.fn() };
+const mockRefreshToken = { create: jest.fn(), invalidate: jest.fn() };
 
 describe('WorkspacesService', () => {
   let service: WorkspacesService;
@@ -58,6 +61,9 @@ describe('WorkspacesService', () => {
         { provide: CryptoService, useValue: mockCrypto },
         { provide: AiService, useValue: mockAiService },
         { provide: EmailService, useValue: mockEmailService },
+        { provide: require('../gateways/events.gateway').EventsGateway, useValue: mockEventsGateway },
+        { provide: require('../common/plan-limits/plan-limits.service').PlanLimitsService, useValue: mockPlanLimits },
+        { provide: require('../auth/refresh-token.service').RefreshTokenService, useValue: mockRefreshToken },
       ],
     }).compile();
 

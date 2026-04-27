@@ -8,7 +8,7 @@ import { CreateAutomationDto } from './dto/create-automation.dto';
 import { UpdateAutomationDto } from './dto/update-automation.dto';
 import { FilterAutomationsDto } from './dto/filter-automations.dto';
 import { QueueService } from '../workers/queue.service';
-import { PlanLimitsService } from '../billing/plan-limits.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 @Injectable()
 export class AutomationsService {
