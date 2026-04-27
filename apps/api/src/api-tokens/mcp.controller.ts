@@ -48,25 +48,40 @@ export class McpController {
   }
 
   @Get('sse')
+  @Post('sse')
   @UseGuards(ApiTokenGuard)
-  async sse(@Req() req: any, @Res() res: Response) {
+  async sse(@Req() req: any, @Res() res: Response, @Body() body?: McpRequest) {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
-      'Access-Control-Allow-Origin': '*',
     });
-    // Send endpoint info event
-    res.write(`data: ${JSON.stringify({
-      jsonrpc: '2.0',
-      result: {
-        endpoint: '/api/mcp',
-      },
-    })}\n\n`);
-    // Keep alive
-    const keepAlive = setInterval(() => res.write(': keepalive\n\n'), 30000);
-    req.on('close', () => clearInterval(keepAlive));
+
+    // If POST with JSON-RPC body, handle it
+    if (body?.method) {
+      if (body.method === 'initialize') {
+        sseSend(res, {
+          jsonrpc: '2.0', id: body.id,
+          result: { protocolVersion: '1.0', capabilities: { tools: {} }, serverInfo: { name: 'PyMesHub', version: '1.0' } },
+        });
+      } else if (body.method === 'tools/list') {
+        sseSend(res, { jsonrpc: '2.0', id: body.id, result: { tools: TOOLS } });
+      } else if (body.method === 'tools/call') {
+        const result = await this.executeToolCall(req.workspace_id, body.params, body.id, req);
+        sseSend(res, result);
+      } else if (body.method === 'notifications/initialized') {
+        sseSend(res, { jsonrpc: '2.0', id: body.id, result: {} });
+      } else {
+        sseSend(res, { jsonrpc: '2.0', id: body.id, error: { code: -32601, message: `Unknown: ${body.method}` } });
+      }
+    } else {
+      // GET or empty POST: send endpoint info
+      sseSend(res, { jsonrpc: '2.0', result: { endpoint: '/api/mcp', ready: true } });
+    }
+
+    req.on('close', () => { if (!res.writableEnded) res.end(); });
+    setTimeout(() => { if (!res.writableEnded) res.end(); }, 5000);
   }
 
   @Post()
