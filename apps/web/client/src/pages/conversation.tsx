@@ -437,7 +437,7 @@ export default function ConversationPage() {
                     </SelectTrigger>
                   </TooltipTrigger>
                   <SelectContent>
-                    {memberList.map((m: any) => (
+                    {memberList.filter((m: any) => m.user?.id || m.userId || m.id).map((m: any) => (
                       <SelectItem key={m.user?.id || m.userId || m.id} value={m.user?.id || m.userId || m.id}>
                         {m.user?.name || m.name || m.email}
                       </SelectItem>

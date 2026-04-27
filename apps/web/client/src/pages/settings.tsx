@@ -1559,7 +1559,7 @@ function DepartmentsTab() {
                 <SelectTrigger><SelectValue placeholder="Seleccionar usuario" /></SelectTrigger>
                 <SelectContent>
                   {allMembers.map((m: any) => (
-                    <SelectItem key={m.user?.id ?? m.id} value={m.user?.id ?? m.id}>
+                    <SelectItem key={m.user?.id || m.id} value={m.user?.id || m.id}>
                       {m.user?.name ?? m.name} ({m.user?.email ?? m.email})
                     </SelectItem>
                   ))}
