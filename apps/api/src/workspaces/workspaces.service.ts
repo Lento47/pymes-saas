@@ -386,6 +386,28 @@ export class WorkspacesService {
       _sum: { file_size: true },
     });
 
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const [monthlyRevenue, prevMonthRevenue] = await Promise.all([
+      this.prisma.invoice.aggregate({
+        where: { workspace_id: workspaceId, created_at: { gte: startOfMonth } },
+        _sum: { amount: true },
+      }),
+      this.prisma.invoice.aggregate({
+        where: { workspace_id: workspaceId, created_at: { gte: startOfPrevMonth, lte: endOfPrevMonth } },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const revenueThisMonth = Number(monthlyRevenue._sum.amount ?? 0);
+    const revenuePrevMonth = Number(prevMonthRevenue._sum.amount ?? 0);
+    const revenueChange = revenuePrevMonth > 0
+      ? ((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth * 100)
+      : 0;
+
     return {
       contacts,
       conversations,
@@ -396,6 +418,9 @@ export class WorkspacesService {
       documentStorageBytes: totalDocumentSize._sum.file_size ?? 0,
       automations,
       members,
+      monthly_revenue: revenueThisMonth,
+      prev_month_revenue: revenuePrevMonth,
+      revenue_change_pct: Math.round(revenueChange),
     };
   }
 
