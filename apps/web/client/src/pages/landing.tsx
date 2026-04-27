@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
@@ -195,11 +195,37 @@ function OrbitGraphic() {
   );
 }
 
+function useReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { el.classList.add("visible"); obs.disconnect(); } },
+      { threshold: 0.12 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return ref;
+}
+
 export default function Landing() {
   const { messages } = useI18n();
   const copy = messages.landing;
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const revealCards = useReveal();
+  const revealTrust = useReveal();
+  const revealMockup = useReveal();
 
   const productCards: Array<{
     assetSrc?: string;
@@ -424,6 +450,8 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0.04)_0%,rgba(5,9,29,0.06)_22%,rgba(5,9,29,0.18)_44%,rgba(5,9,29,0.42)_64%,#05091d_86%)]" />
         <div className="animate-drift-x absolute left-[-10rem] top-[8rem] h-80 w-80 rounded-full bg-[#5771ff]/16 blur-[110px]" />
         <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#d5ff63]/12 blur-[130px]" />
+        <div className="absolute right-[20%] top-[30%] h-72 w-72 rounded-full bg-[#4F6EF7]/8 blur-[100px]" />
+        <div className="absolute left-[38%] top-[-4rem] h-64 w-64 rounded-full bg-[#CBFF47]/5 blur-[90px]" />
         <div className="marketing-grid absolute inset-x-0 bottom-0 h-[36rem] opacity-50" />
       </div>
 
@@ -436,7 +464,12 @@ export default function Landing() {
               onTouchEnd={handleNavTouchEnd}
             >
               <nav
-                className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7"
+                className={cn(
+                  "luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7 transition-all duration-300",
+                  scrolled
+                    ? "bg-[rgba(5,9,29,0.88)] backdrop-blur-[32px] border border-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
+                    : "glass-panel"
+                )}
                 data-nav-item
               >
                 <BrandLockup compact />
@@ -623,6 +656,52 @@ export default function Landing() {
               <p className="mt-5 text-sm text-[#c9d0f5]/52">
                 {copy.note}
               </p>
+
+              <div className="mt-8 flex items-center justify-center gap-3">
+                <div className="flex -space-x-2">
+                  {["#4F6EF7","#CBFF47","#7FC8F8","#F87171"].map((c, i) => (
+                    <span key={i} className="h-7 w-7 rounded-full border-2 border-[#05091d]" style={{ background: c, opacity: 0.88 }} />
+                  ))}
+                </div>
+                <p className="text-sm text-[#c9d0f5]/60">
+                  Trusted by <span className="font-semibold text-white/80">200+ SMEs</span> across LATAM
+                </p>
+              </div>
+
+              {/* Mini hero dashboard mockup */}
+              <div ref={revealMockup} className="mx-auto mt-14 max-w-2xl reveal-up" style={{ transitionDelay: "120ms" }}>
+                <div className="glass-panel luminous-border rounded-[24px] p-4 shadow-[0_40px_100px_rgba(0,0,0,0.55)]">
+                  <div className="mb-3 flex items-center gap-2 px-1">
+                    {["#ff5f57","#febc2e","#28c840"].map((c, i) => (
+                      <span key={i} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
+                    ))}
+                    <span className="ml-2 text-xs text-white/30 font-marketing">PymesHub — Inbox</span>
+                  </div>
+                  <div className="space-y-2">
+                    {[
+                      { ch: "WA", color: "#25D366", name: "Andrea Mora", msg: "Invoice #1042 sent ✓", time: "2m", dot: true },
+                      { ch: "EM", color: "#4F6EF7", name: "Carlos Ríos", msg: "Follow-up scheduled for Friday", time: "14m", dot: false },
+                      { ch: "WA", color: "#25D366", name: "Beatriz Salas", msg: "Proposal accepted — pipeline updated", time: "1h", dot: true },
+                    ].map((row) => (
+                      <div key={row.name} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5 hover:bg-white/[0.06] transition-colors">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: row.color + "22", color: row.color }}>{row.ch}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-marketing text-xs font-semibold text-white/90">{row.name}</p>
+                          <p className="truncate text-[11px] text-white/40">{row.msg}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[10px] text-white/30">{row.time}</span>
+                          {row.dot && <span className="h-1.5 w-1.5 rounded-full bg-[#CBFF47] shadow-[0_0_6px_rgba(203,255,71,0.8)]" />}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between rounded-xl bg-white/[0.02] px-3 py-2">
+                    <span className="text-xs text-white/30">3 active threads · avg reply 6 min</span>
+                    <span className="rounded-full bg-[#CBFF47]/10 px-2 py-0.5 text-[10px] font-semibold text-[#CBFF47]">SLA 94%</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Mobile Carousel */}
@@ -787,8 +866,8 @@ export default function Landing() {
             </div>
 
             {/* Desktop Grid */}
-            <div className="hidden md:grid mt-16 grid gap-6 xl:grid-cols-[0.95fr_1.7fr_0.95fr]">
-              <article className="glass-panel rounded-[30px] p-6">
+            <div ref={revealCards} className="reveal-up hidden md:grid mt-16 grid gap-6 xl:grid-cols-[0.95fr_1.7fr_0.95fr]">
+              <article className="glass-panel rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
                   <img
                     src="/landing-icons/world.png"
@@ -804,21 +883,35 @@ export default function Landing() {
                   {copy.overview.inbox.description}
                 </p>
 
-                <div className="mt-8 space-y-3">
-                  {copy.overview.inbox.signals.map((signal) => (
-                    <div
-                      key={signal.label}
-                      className="glass-panel-soft grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
-                    >
-                      <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
-                        {signal.label}
-                      </span>
-                      <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
-                        {signal.value}
-                      </span>
+                {(() => {
+                  const channelColors: Record<string, string> = {
+                    WhatsApp: "#25D366",
+                    Email: "#4F6EF7",
+                    Invoices: "#dfff4a",
+                    Pipeline: "#8B7CF6",
+                  };
+                  return (
+                    <div className="mt-8 space-y-3">
+                      {copy.overview.inbox.signals.map((signal) => (
+                        <div
+                          key={signal.label}
+                          className="glass-panel-soft flex items-center gap-3 rounded-2xl px-4 py-3"
+                        >
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ background: channelColors[signal.label] ?? "#fff", boxShadow: `0 0 8px ${channelColors[signal.label] ?? "#fff"}88` }}
+                          />
+                          <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
+                            {signal.label}
+                          </span>
+                          <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
+                            {signal.value}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
 
                 <div className="mt-8 grid grid-cols-7 gap-2">
                   {Array.from({ length: 28 }, (_, index) => {
@@ -841,7 +934,7 @@ export default function Landing() {
                 </div>
               </article>
 
-              <article className="glass-panel rounded-[34px] px-6 py-7 md:px-8">
+              <article className="glass-panel rounded-[34px] px-6 py-7 md:px-8 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
                 <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="flex items-center gap-3">
@@ -901,7 +994,7 @@ export default function Landing() {
                 </div>
               </article>
 
-              <article className="glass-panel rounded-[30px] p-6">
+              <article className="glass-panel rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
                   <img
                     src="/landing-icons/Smart-automations.png"
@@ -919,6 +1012,21 @@ export default function Landing() {
 
                 <OrbitGraphic />
 
+                <div className="mt-3 space-y-2">
+                  {[
+                    { step: "New lead", action: "Assign agent", color: "#4F6EF7" },
+                    { step: "Proposal sent", action: "Schedule reminder", color: "#CBFF47" },
+                    { step: "Invoice issued", action: "Send follow-up", color: "#25D366" },
+                  ].map((chip) => (
+                    <div key={chip.step} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: chip.color, boxShadow: `0 0 6px ${chip.color}99` }} />
+                      <span className="font-marketing text-xs text-white/60">{chip.step}</span>
+                      <span className="text-white/20 text-xs">→</span>
+                      <span className="font-marketing text-xs font-semibold text-white/85">{chip.action}</span>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="glass-panel-soft mt-3 rounded-2xl px-4 py-4">
                   <div className="flex items-center justify-between">
                     <span className="font-marketing text-sm font-semibold text-white/84">
@@ -933,16 +1041,21 @@ export default function Landing() {
               </article>
             </div>
 
-            <div className="mt-16 border-t border-white/10 pt-10">
+            <div ref={revealTrust} className="reveal-up mt-16 border-t border-white/10 pt-10">
               <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-[#95a0cc]/44">
                 {copy.trustTitle}
               </p>
-              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-5 text-lg font-semibold text-white/42">
-                {copy.trustSignals.map((signal) => (
-                  <span key={signal} className="font-marketing tracking-[-0.02em]">
-                    {signal}
-                  </span>
-                ))}
+              <div className="relative mt-7 overflow-hidden">
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-[linear-gradient(to_right,#05091d,transparent)]" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-[linear-gradient(to_left,#05091d,transparent)]" />
+                <div className="flex animate-marquee items-center gap-12 whitespace-nowrap">
+                  {[...copy.trustSignals, ...copy.trustSignals].map((signal, i) => (
+                    <span key={i} className="font-marketing text-lg font-semibold tracking-[-0.02em] text-white/38 inline-flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-[#4F6EF7]/50" />
+                      {signal}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
