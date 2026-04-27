@@ -128,6 +128,21 @@ export class AgentService {
         },
         body: JSON.stringify(body),
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        this.logger.error(`OpenAI Responses error ${res.status}: ${text}`);
+        return { error: `Error del agente (${res.status}): ${text.slice(0, 300)}` };
       }
+
+      if (!res.body) {
+        return { error: 'El agente no devolvió respuesta.' };
+      }
+
+      return { stream: res.body, apiKey, model };
+    } catch (err) {
+      this.logger.error(`Error llamando al workflow: ${(err as Error).message}`);
+      return { error: `Error de conexión: ${(err as Error).message}` };
     }
+  }
 }
