@@ -372,6 +372,7 @@ export const translations = {
         platform: "Platform",
         billing: "Billing",
         routing: "Routing",
+        apiTokens: "API Keys",
       },
       locale: {
         title: "Workspace language",
@@ -832,6 +833,7 @@ export const translations = {
         platform: "Plataforma",
         billing: "Facturación",
         routing: "Enrutamiento",
+        apiTokens: "API Keys",
       },
       locale: {
         title: "Idioma del workspace",

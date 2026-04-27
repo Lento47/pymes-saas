@@ -2430,7 +2430,7 @@ export default function Settings() {
             <Shuffle className="h-4 w-4 mr-2" />{copy.tabs.routing}
           </TabsTrigger>
           <TabsTrigger value="apitokens" className="data-[state=active]:bg-elevated">
-            <Key className="h-4 w-4 mr-2" />API Keys
+            <Key className="h-4 w-4 mr-2" />{copy.tabs.apiTokens}
           </TabsTrigger>
           {isPlatformAdmin && (
             <TabsTrigger value="platform" className="data-[state=active]:bg-elevated">
