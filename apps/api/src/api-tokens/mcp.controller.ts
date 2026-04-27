@@ -87,7 +87,17 @@ export class McpController {
     const base = req.headers['x-forwarded-proto'] || 'https';
     const host = req.headers.host || 'api.pymeshub.lat';
     sseSend(res, { jsonrpc: '2.0', result: { endpoint: `${base}://${host}/api/mcp`, ready: true } });
-    setTimeout(() => { if (!res.writableEnded) res.end(); }, 3000);
+
+    // Keep alive — send ping every 15s to prevent proxy/nginx timeout
+    const keepAlive = setInterval(() => {
+      if (!res.writableEnded) res.write(': ping\n\n');
+    }, 15000);
+
+    req.on('close', () => {
+      clearInterval(keepAlive);
+      this.mcpSessions.delete(sessionId);
+      if (!res.writableEnded) res.end();
+    });
   }
 
   @Post('sse')
@@ -120,7 +130,8 @@ export class McpController {
     }
 
     req.on('close', () => { if (!res.writableEnded) res.end(); });
-    setTimeout(() => { if (!res.writableEnded) res.end(); }, 5000);
+    // Give agent tools up to 60s before closing
+    setTimeout(() => { this.mcpSessions.delete(sessionId); if (!res.writableEnded) res.end(); }, 60000);
   }
 
   @Post()
