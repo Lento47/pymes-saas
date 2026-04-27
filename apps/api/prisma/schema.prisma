@@ -469,6 +469,10 @@ model Conversation {
   category         String?
   assigned_user_id String?
   last_message_at  DateTime?
+  first_response_at DateTime?
+  resolved_at       DateTime?
+  sla_breached  Boolean @default(false)
+  sla_target_hours Int?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

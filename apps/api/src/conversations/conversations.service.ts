@@ -9,12 +9,16 @@ import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { FilterConversationsDto } from './dto/filter-conversations.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AutomationsService } from '../automations/automations.service';
+import { SlaService } from './sla.service';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class ConversationsService {
+  private readonly logger = new Logger(ConversationsService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly automationsService: AutomationsService,
+    private readonly slaService: SlaService,
   ) {}
 
   // ── GET /conversations ─────────────────────────────────────────────────────
@@ -206,6 +210,11 @@ export class ConversationsService {
     return this.prisma.conversation.update({
       where: { id },
       data: { status: 'RESOLVED', updated_at: new Date() },
+    }).then(updated => {
+      this.slaService.trackResolution(id).catch(err =>
+        this.logger.warn(`SLA resolution error: ${(err as Error).message}`),
+      );
+      return updated;
     });
   }
 

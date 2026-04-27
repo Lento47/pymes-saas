@@ -11,6 +11,7 @@ import { Priority } from '@prisma/client';
 import { AutomationsService } from '../automations/automations.service';
 import { stringifyJson } from '../common/prisma/json';
 import { RoutingService } from '../routing/routing.service';
+import { SlaService } from './sla.service';
 
 @Injectable()
 export class MessagesService {
@@ -25,6 +26,7 @@ export class MessagesService {
     private readonly notificationsService: NotificationsService,
     private readonly automationsService: AutomationsService,
     private readonly routingService: RoutingService,
+    private readonly slaService: SlaService,
   ) { }
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 50) {
@@ -88,6 +90,13 @@ export class MessagesService {
 
     // Emitir en tiempo real
     this.events.emitNewMessage(conversationId, workspaceId, message);
+
+    // SLA: track first response
+    if (dto.direction === 'OUTBOUND' || !dto.direction) {
+      this.slaService.trackFirstResponse(conversationId).catch(err =>
+        this.logger.warn(`SLA first response error: ${(err as Error).message}`),
+      );
+    }
 
     return message;
   }
