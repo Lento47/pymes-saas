@@ -1,88 +1,198 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'wouter';
-import { Sparkles } from 'lucide-react';
 
 export function HubbyBuddy() {
   const [visible, setVisible] = useState(false);
   const [bounce, setBounce] = useState(false);
   const [waving, setWaving] = useState(false);
+  const [blinking, setBlinking] = useState(false);
+  const [lookingRight, setLookingRight] = useState(false);
   const intervalRef = useRef<any>(null);
+  const blinkRef = useRef<any>(null);
 
   useEffect(() => {
-    const showTimer = setTimeout(() => setVisible(true), 2000);
+    const showTimer = setTimeout(() => setVisible(true), 1500);
+
+    // Bounce/wave every 12 seconds
     intervalRef.current = setInterval(() => {
       setBounce(true);
       setWaving(true);
       setTimeout(() => setBounce(false), 600);
       setTimeout(() => setWaving(false), 1500);
     }, 12000);
+
+    // Blink every 2-5 seconds
+    const scheduleBlink = () => {
+      const delay = 2000 + Math.random() * 3000;
+      blinkRef.current = setTimeout(() => {
+        setBlinking(true);
+        setTimeout(() => setBlinking(false), 150);
+        scheduleBlink();
+      }, delay);
+    };
+    scheduleBlink();
+
+    // Look around every 6-10 seconds
+    const scheduleLook = () => {
+      const delay = 6000 + Math.random() * 4000;
+      setTimeout(() => {
+        setLookingRight(prev => !prev);
+        scheduleLook();
+      }, delay);
+    };
+    scheduleLook();
+
     return () => {
       clearTimeout(showTimer);
       clearInterval(intervalRef.current);
+      clearTimeout(blinkRef.current);
     };
   }, []);
 
   return (
     <div
-      className={`fixed bottom-4 right-4 z-50 transition-all duration-500 ${
-        visible ? 'translate-y-0 opacity-100' : 'translate-y-16 opacity-0'
+      className={`fixed bottom-6 right-6 z-50 transition-all duration-700 ${
+        visible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-20 opacity-0 scale-75'
       }`}
       style={{ pointerEvents: visible ? 'auto' : 'none' }}
     >
       <Link href="/agent">
-        <div className="relative group cursor-pointer">
-          {/* Tooltip */}
-          <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap"
-            style={{ background: 'hsl(var(--bg-card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--fg-1))' }}
-          >
-            <span className="text-xs font-medium">¿Necesitas ayuda?</span>
+        <div className="relative group cursor-pointer select-none">
+          {/* Speech bubble tooltip */}
+          <div className="absolute bottom-full right-0 mb-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
+            <div
+              className="relative px-3 py-2 rounded-2xl rounded-br-md text-xs font-medium whitespace-nowrap shadow-lg"
+              style={{ background: '#1e1b4b', color: '#e0e7ff', border: '1px solid #4338ca' }}
+            >
+              <span className="relative z-10">¡Hola! Soy Hubby 🐾</span>
+              <div className="absolute -bottom-1 right-3 w-2 h-2 bg-[#1e1b4b] border-r border-b border-[#4338ca] transform rotate-45" />
+            </div>
           </div>
 
-          {/* Glow ring */}
+          {/* Glow ring on hover */}
           <div
-            className={`absolute inset-0 rounded-full transition-all duration-300 ${
-              bounce ? 'scale-150 opacity-20' : 'scale-100 opacity-0 group-hover:scale-125 group-hover:opacity-15'
-            }`}
-            style={{ background: 'hsl(var(--accent))' }}
+            className="absolute -inset-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl"
+            style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%)' }}
           />
 
-          {/* Avatar */}
+          {/* Shadow */}
           <div
-            className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110 ${
+            className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-12 h-3 rounded-full opacity-30 blur-sm transition-all duration-300"
+            style={{ background: '#312e81' }}
+          />
+
+          {/* === THE PET === */}
+          <div
+            className={`relative transition-transform duration-300 group-hover:scale-110 ${
               bounce ? 'animate-bounce' : ''
             }`}
-            style={{
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)',
-              boxShadow: '0 4px 24px rgba(99,102,241,0.4)',
-            }}
+            style={{ filter: 'drop-shadow(0 4px 12px rgba(79,70,229,0.5))' }}
           >
-            {/* Eyes */}
-            <div className="flex items-center gap-1.5">
-              <span
-                className="w-1.5 h-1.5 rounded-full bg-white inline-block"
-                style={waving ? { transform: 'scaleY(0.3)' } : {}}
-              />
-              <span
-                className="w-1.5 h-1.5 rounded-full bg-white inline-block"
-                style={waving ? { transform: 'scaleY(0.3)' } : {}}
-              />
-            </div>
+            {/* Body */}
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="bodyGrad" cx="40%" cy="35%" r="50%">
+                  <stop offset="0%" stopColor="#a78bfa" />
+                  <stop offset="60%" stopColor="#7c3aed" />
+                  <stop offset="100%" stopColor="#5b21b6" />
+                </radialGradient>
+                <radialGradient id="earGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#c4b5fd" />
+                  <stop offset="100%" stopColor="#7c3aed" />
+                </radialGradient>
+                <radialGradient id="bellyGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#ddd6fe" />
+                  <stop offset="100%" stopColor="#a78bfa" />
+                </radialGradient>
+              </defs>
 
-            {/* Sparkle accent */}
-            <Sparkles
-              className="absolute -top-1 -right-1 transition-opacity duration-300"
-              style={{
-                width: 10,
-                height: 10,
-                color: '#fbbf24',
-                opacity: bounce ? 1 : 0,
-              }}
-            />
+              {/* Left ear */}
+              <ellipse cx="16" cy="14" rx="7" ry="11" fill="url(#earGrad)" transform="rotate(-15 16 14)" />
+              <ellipse cx="16" cy="14" rx="4" ry="7" fill="#c4b5fd" transform="rotate(-15 16 14)" opacity="0.4" />
 
-            {/* Pulse dot */}
+              {/* Right ear */}
+              <ellipse cx="48" cy="14" rx="7" ry="11" fill="url(#earGrad)" transform="rotate(15 48 14)" />
+              <ellipse cx="48" cy="14" rx="4" ry="7" fill="#c4b5fd" transform="rotate(15 48 14)" opacity="0.4" />
+
+              {/* Main body */}
+              <ellipse cx="32" cy="36" rx="22" ry="21" fill="url(#bodyGrad)" />
+
+              {/* Belly */}
+              <ellipse cx="32" cy="42" rx="12" ry="11" fill="url(#bellyGrad)" opacity="0.6" />
+
+              {/* Cheeks (blush) */}
+              <ellipse cx="20" cy="38" rx="5" ry="3" fill="#f472b6" opacity="0.3" />
+              <ellipse cx="44" cy="38" rx="5" ry="3" fill="#f472b6" opacity="0.3" />
+
+              {/* Eyes - white part */}
+              <ellipse cx="26" cy="33" rx="6" ry="7" fill="white" />
+              <ellipse cx="38" cy="33" rx="6" ry="7" fill="white" />
+
+              {/* Eyes - pupil (moves side to side) */}
+              <ellipse
+                cx={lookingRight ? 28 : 25}
+                cy="34"
+                rx="3"
+                ry="4"
+                fill="#1e1b4b"
+                style={{ transition: 'cx 0.3s ease' }}
+              />
+              <ellipse
+                cx={lookingRight ? 40 : 37}
+                cy="34"
+                rx="3"
+                ry="4"
+                fill="#1e1b4b"
+                style={{ transition: 'cx 0.3s ease' }}
+              />
+
+              {/* Eyes - sparkle */}
+              <circle cx="24" cy="31" r="1.2" fill="white" opacity="0.9" />
+              <circle cx="36" cy="31" r="1.2" fill="white" opacity="0.9" />
+
+              {/* Blinking overlay */}
+              {blinking && (
+                <>
+                  <ellipse cx="26" cy="33" rx="6" ry="1.5" fill="#7c3aed" />
+                  <ellipse cx="38" cy="33" rx="6" ry="1.5" fill="#7c3aed" />
+                </>
+              )}
+
+              {/* Nose */}
+              <ellipse cx="32" cy="40" rx="2.5" ry="2" fill="#5b21b6" />
+
+              {/* Mouth (smile) */}
+              <path
+                d="M28 43 Q32 47 36 43"
+                stroke="#5b21b6"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+              />
+
+              {/* Left paw */}
+              <ellipse cx="18" cy="54" rx="6" ry="4" fill="#7c3aed" />
+              <ellipse cx="18" cy="53" rx="3.5" ry="2.5" fill="#a78bfa" opacity="0.5" />
+
+              {/* Right paw */}
+              <ellipse cx="46" cy="54" rx="6" ry="4" fill="#7c3aed" />
+              <ellipse cx="46" cy="53" rx="3.5" ry="2.5" fill="#a78bfa" opacity="0.5" />
+
+              {/* Tiny tail on the left */}
+              <path
+                d="M10 40 Q4 35 6 30"
+                stroke="#7c3aed"
+                strokeWidth="3"
+                fill="none"
+                strokeLinecap="round"
+                opacity="0.7"
+              />
+            </svg>
+
+            {/* Pulse dot notification */}
             <div
-              className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full animate-pulse"
-              style={{ background: '#fbbf24', border: '2px solid rgb(17,24,39)' }}
+              className="absolute -top-1 -right-1 w-3 h-3 rounded-full animate-pulse"
+              style={{ background: '#fbbf24', border: '2px solid #1e1b4b' }}
             />
           </div>
         </div>
