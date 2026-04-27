@@ -71,7 +71,7 @@ export function WorkflowSpine({ triggerType, actionType, hasBoth }: WorkflowSpin
           )} />
         </div>
         <span className="text-[10px] font-medium text-center leading-tight px-1 text-foreground/80">
-          {TRIGGER_LABEL[triggerType] || "Trigger"}
+          {TRIGGER_LABEL[triggerType] || "Evento"}
         </span>
       </div>
 

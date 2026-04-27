@@ -114,7 +114,7 @@ export function ConditionsSection({ conditions, onChange, currentPlan, isEditing
 
           {conditions.length === 0 ? (
             <div className="text-center py-4">
-              <p className="text-[11px] text-muted-foreground/50">Sin condiciones. La automatización se ejecutará siempre que ocurra el trigger.</p>
+              <p className="text-[11px] text-muted-foreground/50">Sin condiciones. La automatización se ejecutará siempre que ocurra el evento.</p>
             </div>
           ) : (
             <div className="space-y-2">
