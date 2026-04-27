@@ -414,4 +414,6 @@ export const api = {
 
     return res;
   },
+  executeAgentTool: (tool: string, args?: any) =>
+    request<any>("POST", "/api/agent/execute", { tool, arguments: args }),
 };

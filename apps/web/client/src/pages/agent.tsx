@@ -18,6 +18,9 @@ import {
   FileSearch,
   MessageSquareText,
   BrainCircuit,
+  UserPlus,
+  ClipboardCheck,
+  TrendingUp,
 } from 'lucide-react';
 
 type Message = {
@@ -32,6 +35,56 @@ type ToolCall = {
   name: string;
   status: 'running' | 'done';
 };
+
+type FormField = {
+  name: string;
+  label: string;
+  type: 'text' | 'email' | 'select' | 'date' | 'number';
+  required: boolean;
+  placeholder?: string;
+  options?: string[];
+};
+
+type EmbeddedForm = {
+  id: string;
+  title: string;
+  icon: any;
+  tool: string;
+  fields: FormField[];
+  values: Record<string, string>;
+  isSubmitting: boolean;
+  result?: string;
+  error?: string;
+};
+
+const QUICK_FORMS: { label: string; icon: any; tool: string; title: string; fields: FormField[] }[] = [
+  {
+    label: 'Contacto', icon: UserPlus, tool: 'create_contact', title: 'Nuevo Contacto',
+    fields: [
+      { name: 'full_name', label: 'Nombre completo', type: 'text', required: true, placeholder: 'Ej: Juan Pérez' },
+      { name: 'email', label: 'Email', type: 'email', required: false, placeholder: 'juan@ejemplo.com' },
+      { name: 'phone', label: 'Teléfono', type: 'text', required: false, placeholder: '8888-0000' },
+      { name: 'type', label: 'Tipo', type: 'select', required: false, options: ['CUSTOMER', 'LEAD', 'SUPPLIER', 'PARTNER'] },
+    ],
+  },
+  {
+    label: 'Tarea', icon: ClipboardCheck, tool: 'create_task', title: 'Nueva Tarea',
+    fields: [
+      { name: 'title', label: 'Título', type: 'text', required: true, placeholder: 'Ej: Llamar al cliente' },
+      { name: 'description', label: 'Descripción', type: 'text', required: false, placeholder: 'Detalles de la tarea...' },
+      { name: 'priority', label: 'Prioridad', type: 'select', required: false, options: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] },
+      { name: 'due_date', label: 'Fecha límite', type: 'date', required: false },
+    ],
+  },
+  {
+    label: 'Deal', icon: TrendingUp, tool: 'create_deal', title: 'Nuevo Deal',
+    fields: [
+      { name: 'title', label: 'Título', type: 'text', required: true, placeholder: 'Ej: Venta de software' },
+      { name: 'stage_id', label: 'ID del Stage', type: 'text', required: true, placeholder: 'ID de la etapa del pipeline' },
+      { name: 'value', label: 'Valor', type: 'number', required: false, placeholder: '50000' },
+    ],
+  },
+];
 
 function ThinkingDots() {
   return (
@@ -57,6 +110,7 @@ export default function Agent() {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
+  const [activeForm, setActiveForm] = useState<EmbeddedForm | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -168,7 +222,49 @@ export default function Agent() {
     setConversationId(undefined);
     setError(null);
     setInput('');
+    setActiveForm(null);
     inputRef.current?.focus();
+  };
+
+  const openForm = (formDef: typeof QUICK_FORMS[0]) => {
+    const values: Record<string, string> = {};
+    formDef.fields.forEach(f => { values[f.name] = ''; });
+    setActiveForm({
+      id: crypto.randomUUID(),
+      title: formDef.title,
+      icon: formDef.icon,
+      tool: formDef.tool,
+      fields: formDef.fields,
+      values,
+      isSubmitting: false,
+    });
+  };
+
+  const updateFormValue = (name: string, value: string) => {
+    setActiveForm(prev => prev ? { ...prev, values: { ...prev.values, [name]: value } } : null);
+  };
+
+  const submitForm = async () => {
+    if (!activeForm || activeForm.isSubmitting) return;
+    setActiveForm(prev => prev ? { ...prev, isSubmitting: true } : null);
+    try {
+      const args: Record<string, any> = {};
+      for (const f of activeForm.fields) {
+        const v = activeForm.values[f.name]?.trim();
+        if (f.required && !v) {
+          setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: `"${f.label}" es requerido` } : null);
+          return;
+        }
+        if (v) {
+          if (f.type === 'number') args[f.name] = parseFloat(v);
+          else args[f.name] = v;
+        }
+      }
+      const result = await api.executeAgentTool(activeForm.tool, args);
+      setActiveForm(prev => prev ? { ...prev, isSubmitting: false, result: JSON.stringify(result, null, 2) } : null);
+    } catch (err: any) {
+      setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: err?.message || 'Error' } : null);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -343,6 +439,102 @@ export default function Agent() {
             ))}
 
             {/* Tool call badges */}
+            {/* Embedded form card */}
+            {activeForm && (
+              <div className="flex justify-start pl-10">
+                <div
+                  className="w-full max-w-md rounded-2xl rounded-tl-md p-4"
+                  style={{ background: 'hsl(var(--bg-card))', border: '1px solid hsl(var(--border))' }}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <activeForm.icon style={{ width: 16, height: 16, color: 'hsl(var(--accent))' }} />
+                    <span className="text-sm font-semibold" style={{ color: 'hsl(var(--fg-1))' }}>{activeForm.title}</span>
+                    <button
+                      onClick={() => setActiveForm(null)}
+                      className="ml-auto p-0.5 rounded hover:bg-white/10 transition-colors"
+                      style={{ color: 'hsl(var(--fg-3))' }}
+                    >
+                      <X style={{ width: 12, height: 12 }} />
+                    </button>
+                  </div>
+
+                  {!activeForm.result && !activeForm.error && (
+                    <div className="space-y-2.5">
+                      {activeForm.fields.map(f => (
+                        <div key={f.name}>
+                          <label className="block text-xs font-medium mb-1" style={{ color: 'hsl(var(--fg-2))' }}>
+                            {f.label}{f.required ? ' *' : ''}
+                          </label>
+                          {f.type === 'select' ? (
+                            <select
+                              value={activeForm.values[f.name]}
+                              onChange={e => updateFormValue(f.name, e.target.value)}
+                              disabled={activeForm.isSubmitting}
+                              className="w-full rounded-lg px-3 py-2 text-sm outline-none disabled:opacity-40"
+                              style={{ background: 'hsl(var(--bg))', color: 'hsl(var(--fg-1))', border: '1px solid hsl(var(--border))' }}
+                            >
+                              <option value="">Seleccionar...</option>
+                              {f.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                          ) : (
+                            <input
+                              type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'email' ? 'email' : 'text'}
+                              value={activeForm.values[f.name]}
+                              onChange={e => updateFormValue(f.name, e.target.value)}
+                              placeholder={f.placeholder}
+                              disabled={activeForm.isSubmitting}
+                              className="w-full rounded-lg px-3 py-2 text-sm outline-none disabled:opacity-40"
+                              style={{ background: 'hsl(var(--bg))', color: 'hsl(var(--fg-1))', border: '1px solid hsl(var(--border))' }}
+                            />
+                          )}
+                        </div>
+                      ))}
+
+                      <button
+                        onClick={submitForm}
+                        disabled={activeForm.isSubmitting}
+                        className="w-full mt-2 py-2 rounded-lg text-sm font-semibold text-white transition-all duration-150 disabled:opacity-50"
+                        style={{ background: 'hsl(var(--accent))' }}
+                      >
+                        {activeForm.isSubmitting ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> Enviando...
+                          </span>
+                        ) : 'Enviar'}
+                      </button>
+                    </div>
+                  )}
+
+                  {activeForm.result && (
+                    <div className="rounded-lg p-3" style={{ background: 'hsl(142 60% 8%)', border: '1px solid hsl(142 60% 20%)' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle2 style={{ width: 14, height: 14, color: 'hsl(142 60% 60%)' }} />
+                        <span className="text-xs font-semibold" style={{ color: 'hsl(142 60% 60%)' }}>¡Creado!</span>
+                      </div>
+                      <pre className="text-xs whitespace-pre-wrap overflow-x-auto" style={{ color: 'hsl(142 60% 80%)' }}>{activeForm.result}</pre>
+                      <button
+                        onClick={() => setActiveForm(null)}
+                        className="mt-2 text-xs font-medium rounded px-3 py-1 transition-colors"
+                        style={{ color: 'hsl(var(--accent))', background: 'hsl(var(--accent) / 0.1)' }}
+                      >
+                        Cerrar
+                      </button>
+                    </div>
+                  )}
+
+                  {activeForm.error && (
+                    <div className="rounded-lg p-3" style={{ background: 'hsl(var(--danger) / 0.08)', border: '1px solid hsl(var(--danger) / 0.2)' }}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertCircle style={{ width: 14, height: 14, color: 'hsl(var(--danger))' }} />
+                        <span className="text-xs font-medium" style={{ color: 'hsl(var(--danger))' }}>Error</span>
+                      </div>
+                      <p className="text-xs" style={{ color: 'hsl(var(--danger))' }}>{activeForm.error}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {toolCalls.length > 0 && (
               <div className="flex flex-wrap gap-2 justify-start pl-10">
                 {toolCalls.map(tc => (
@@ -394,6 +586,22 @@ export default function Agent() {
       {/* Input area */}
       <div className="shrink-0 px-4 pb-4 pt-2" style={{ background: 'hsl(var(--bg))' }}>
         <div className="max-w-3xl mx-auto">
+          {/* Quick-action toolbar */}
+          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+            {QUICK_FORMS.map((qf) => (
+              <button
+                key={qf.tool}
+                onClick={() => openForm(qf)}
+                disabled={isStreaming || !!activeForm}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all duration-150 disabled:opacity-30 hover:scale-[1.02]"
+                style={{ background: 'hsl(var(--bg-card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--fg-2))' }}
+              >
+                <qf.icon style={{ width: 12, height: 12, color: 'hsl(var(--accent))' }} />
+                {qf.label}
+              </button>
+            ))}
+          </div>
+
           <div
             className="flex items-end gap-2 rounded-2xl px-4 py-2.5 transition-colors"
             style={{
