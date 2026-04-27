@@ -41,6 +41,7 @@ import { BillingModule } from './billing/billing.module';
 import { RoutingModule } from './routing/routing.module';
 import { PlanThrottlerGuard } from './common/plan-limits/plan-throttler.guard';
 import { SamlModule } from './auth/saml/saml.module';
+import { I18nModule } from './common/i18n/i18n.module';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { SamlModule } from './auth/saml/saml.module';
     BillingModule,
     RoutingModule,
     SamlModule,
+    I18nModule,
     PlatformModule,
 
     WorkersModule,

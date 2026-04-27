@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { I18nService } from '../i18n/i18n.service';
 
 // ─── Structured quota error ──────────────────────────────────────────────────
 
@@ -73,7 +74,10 @@ const PLAN_NAMES: Record<string, string> = {
 
 @Injectable()
 export class PlanLimitsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly i18n: I18nService,
+  ) {}
 
   // ── Public helpers ────────────────────────────────────────────────────────
 
@@ -98,6 +102,7 @@ export class PlanLimitsService {
     if (!ok) {
       const plan = await this.getWorkspacePlan(workspaceId);
       throw new ForbiddenException(
+        this.i18n.t('errors.planTierRequired', { feature: featureName, plan: minimumPlan }) ||
         `${featureName} requiere plan ${minimumPlan} o superior. Tu plan actual es ${plan}.`,
       );
     }
