@@ -83,8 +83,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
         run: |
-          cd apps/api
-          npm run start &
+          node apps/api/dist/main &
           APP_PID=$!
           echo "Waiting for NestJS to start (PID: $APP_PID)..."
 
