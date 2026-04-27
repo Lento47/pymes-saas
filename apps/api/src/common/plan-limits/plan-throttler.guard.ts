@@ -1,4 +1,5 @@
 import { Injectable, ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -11,7 +12,7 @@ const PLAN_RATE_LIMITS: Record<string, number> = {
 
 @Injectable()
 export class PlanThrottlerGuard extends ThrottlerGuard {
-  constructor(options: any, storageService: any, reflector: any, private readonly prisma: PrismaService) {
+  constructor(options: any, storageService: any, reflector: Reflector, private readonly prisma: PrismaService) {
     super(options, storageService, reflector);
   }
 
