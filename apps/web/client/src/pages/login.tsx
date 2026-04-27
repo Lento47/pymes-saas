@@ -189,7 +189,6 @@ export default function LoginPage() {
                     >
                       <p className="text-sm font-semibold text-white">{ws.name}</p>
                       <p className="text-xs text-white/40">{ws.slug}</p>
-                      {ws.samlEnabled && <p className="text-xs text-green-400 mt-0.5">SSO disponible</p>}
                     </button>
                   ))}
                 </div>

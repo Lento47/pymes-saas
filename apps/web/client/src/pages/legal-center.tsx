@@ -2,14 +2,14 @@ import { Link } from "wouter";
 import { ArrowLeft, ExternalLink, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { getPublicDocumentation, getDocumentationBySlug } from "@/lib/documentation";
+import { getDocumentationByCategory, getDocumentationBySlug } from "@/lib/documentation";
 
 interface LegalDocumentPageProps {
   slug?: string;
 }
 
 export function LegalCenterPage() {
-  const docs = getPublicDocumentation();
+  const docs = getDocumentationByCategory("legal").filter(e => e.visibility === "public");
 
   return (
     <div className="min-h-screen bg-[hsl(var(--bg))] px-6 py-10">
