@@ -18,6 +18,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { ConfigureEmailDto } from './dto/configure-email.dto';
 import { ConfigureWhatsAppDto } from './dto/configure-whatsapp.dto';
+import { ConfigureTelegramDto } from './dto/configure-telegram.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -106,5 +107,15 @@ export class ChannelsController {
   ) {
     await this.planLimits.enforcePlanTier(workspaceId, 'GROWTH', 'WhatsApp');
     return this.channelsService.configureWhatsApp(workspaceId, id, dto);
+  }
+
+  @Post(':id/configure-telegram')
+  @Roles(WorkspaceUserRole.ADMIN)
+  async configureTelegram(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id', ValidateUUIDPipe) id: string,
+    @Body() dto: ConfigureTelegramDto,
+  ) {
+    return this.channelsService.configureTelegram(workspaceId, id, dto);
   }
 }

@@ -42,6 +42,7 @@ import { RoutingModule } from './routing/routing.module';
 import { PlanThrottlerGuard } from './common/plan-limits/plan-throttler.guard';
 import { SamlModule } from './auth/saml/saml.module';
 import { I18nModule } from './common/i18n/i18n.module';
+import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { I18nModule } from './common/i18n/i18n.module';
     RoutingModule,
     SamlModule,
     I18nModule,
+    TelegramModule,
     PlatformModule,
 
     WorkersModule,

@@ -82,6 +82,7 @@ enum ContactType {
 enum ChannelType {
   EMAIL
   WHATSAPP
+  TELEGRAM
   FORM
   API
   MANUAL
