@@ -50,6 +50,11 @@ export class McpController {
   constructor(private readonly prisma: PrismaService) {}
   // Session storage: token hash → workspace slug
   private sessions = new Map<string, string>();
+  private mcpSessions = new Map<string, number>();
+
+  private newSessionId(): string {
+    return `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
 
   @Get()
   health() {
@@ -59,6 +64,9 @@ export class McpController {
   @Get('sse')
   @UseGuards(ApiTokenGuard)
   async sseGet(@Req() req: any, @Res() res: Response) {
+    const sessionId = this.newSessionId();
+    this.mcpSessions.set(sessionId, Date.now());
+    res.setHeader('Mcp-Session-Id', sessionId);
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -74,6 +82,9 @@ export class McpController {
   @Post('sse')
   @UseGuards(ApiTokenGuard)
   async ssePost(@Req() req: any, @Res() res: Response, @Body() body: any) {
+    const sessionId = this.newSessionId();
+    this.mcpSessions.set(sessionId, Date.now());
+    res.setHeader('Mcp-Session-Id', sessionId);
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
