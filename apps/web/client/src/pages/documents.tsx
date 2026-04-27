@@ -164,6 +164,7 @@ export default function DocumentsPage() {
         />
       </PageHeader>
 
+      <div className="px-4 md:px-6 py-4 space-y-4">
       {/* Drag & drop zone — only shown when no docs or uploading */}
       {(docList.length === 0 && !isLoading) && (
         <div
@@ -247,7 +248,7 @@ export default function DocumentsPage() {
           No se encontraron archivos con ese filtro.
         </div>
       ) : docList.length > 0 ? (
-        <div className="rounded-lg border border-border overflow-hidden bg-card">
+        <div className="rounded-lg border border-border overflow-x-auto bg-card">
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
@@ -329,6 +330,7 @@ export default function DocumentsPage() {
           </Table>
         </div>
       ) : null}
+      </div>{/* end px-4 content wrapper */}
     </div>
   );
 }

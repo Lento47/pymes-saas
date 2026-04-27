@@ -558,7 +558,7 @@ export default function InvoicesPage() {
         </Button>
       </PageHeader>
 
-      <div className="px-6 py-6 space-y-4">
+      <div className="px-4 md:px-6 py-4 space-y-4">
         {(totalOverdue > 0 || overdueAmount > 0) && (
           <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
             <div className="flex items-center gap-2">
@@ -657,7 +657,7 @@ export default function InvoicesPage() {
         ) : filteredInvoices.length === 0 ? (
           <EmptyState icon={Receipt} title="Sin facturas" description="Crea tu primera factura para empezar." />
         ) : (
-          <div className="rounded-lg border border-border overflow-hidden bg-card">
+          <div className="rounded-lg border border-border overflow-x-auto bg-card">
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">

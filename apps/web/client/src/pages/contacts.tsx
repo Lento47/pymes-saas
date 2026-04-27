@@ -111,7 +111,8 @@ export default function ContactsPage() {
         </Button>
       </PageHeader>
 
-      <div className="flex items-center gap-2 mb-4">
+      <div className="px-4 md:px-6 py-4 space-y-4">
+      <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
           <Input
@@ -139,8 +140,8 @@ export default function ContactsPage() {
       ) : contactList.length === 0 ? (
         <EmptyState icon={Users} title={c.noContacts} description="Create your first contact to get started." />
       ) : (
-        <div className="rounded-lg border border-border overflow-hidden bg-card">
-          <Table>
+        <div className="rounded-lg border border-border overflow-x-auto bg-card">
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="text-[11px] text-white/40 font-medium">Name</TableHead>
@@ -212,6 +213,8 @@ export default function ContactsPage() {
           </Table>
         </div>
       )}
+
+      </div>{/* end px-4 content wrapper */}
 
       {/* Create / Edit Contact Dialog */}
       <Dialog open={showCreate} onOpenChange={(open) => {

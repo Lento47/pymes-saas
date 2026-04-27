@@ -12,7 +12,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, description, className, children }: PageHeaderProps) {
   return (
     <div
-      className={cn("flex items-center justify-between px-6 py-4 sticky top-0 z-10", className)}
+      className={cn("flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4 sticky top-0 z-10", className)}
       style={{ borderBottom: "1px solid hsl(var(--border))", background: "hsl(var(--bg))" }}
       data-testid="page-header"
     >

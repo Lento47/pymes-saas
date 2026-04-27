@@ -295,16 +295,16 @@ export default function DashboardPage() {
     <div className="min-h-full" style={{ background: "#0c0c0e" }}>
 
       {/* ── Page header ─────────────────────────────────────────────── */}
-      <div className="px-3 md:px-8 pt-4 md:pt-7 pb-5 flex items-start justify-between max-w-[1400px] mx-auto">
-        <div>
-          <h1 className="text-2xl font-bold text-white/90">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact} 👋</h1>
+      <div className="px-4 md:px-8 pt-4 md:pt-7 pb-5 flex items-start justify-between gap-3 max-w-[1400px] mx-auto">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold text-white/90 truncate">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact} 👋</h1>
           <p className="text-sm text-white/40 mt-0.5">{bannerSubtitle || dash.subtitle}</p>
         </div>
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/[0.04] bg-white/[0.02] text-sm text-white/30 min-w-[220px]">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/[0.04] bg-white/[0.02] text-sm text-white/30 min-w-[200px]">
             <Search className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1">{dash.search}</span>
-            <span className="text-xs text-white/20 font-mono hidden md:inline">⌘ K</span>
+            <span className="text-xs text-white/20 font-mono">⌘ K</span>
           </div>
           <button className="p-2.5 rounded-xl border border-white/[0.04] bg-white/[0.02] text-white/40 hover:bg-white/[0.03] transition">
             <Bell className="w-5 h-5" />
@@ -320,19 +320,21 @@ export default function DashboardPage() {
         {/* ── Status banner ───────────────────────────────────────── */}
         <div className="rounded-2xl overflow-hidden border border-white/[0.04]"
           style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center right", minHeight: 96 }}>
-          <div className="flex items-center gap-6 px-7 py-5">
-            <div className="w-14 h-14 rounded-2xl bg-white/75 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
-              <Activity className="w-7 h-7 text-[#8b7cf6]" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-4 md:px-7 md:py-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-white/75 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
+                <Activity className="w-5 h-5 md:w-7 md:h-7 text-[#8b7cf6]" />
+              </div>
+              <div className="min-w-0">
+                {!bannerAI && aiPromptReady ? (
+                  <><div className="h-5 w-36 rounded bg-white/[0.03] animate-pulse mb-1.5" /><div className="h-3.5 w-44 rounded bg-white/[0.03] animate-pulse" /></>
+                ) : (
+                  <><h2 className="text-[15px] md:text-[17px] font-bold text-white/90 leading-snug">{bannerTitle}</h2><p className="text-sm text-white/40 mt-0.5">{bannerSubtitle}</p></>
+                )}
+              </div>
             </div>
-            <div className="flex-shrink-0 min-w-[220px]">
-              {!bannerAI && aiPromptReady ? (
-                <><div className="h-5 w-48 rounded bg-white/[0.03] animate-pulse mb-1.5" /><div className="h-3.5 w-56 rounded bg-white/[0.03] animate-pulse" /></>
-              ) : (
-                <><h2 className="text-[17px] font-bold text-white/90 leading-snug">{bannerTitle}</h2><p className="text-sm text-white/40 mt-0.5">{bannerSubtitle}</p></>
-              )}
-            </div>
-            <div className="h-12 w-px bg-white/[0.04]/60 mx-2 flex-shrink-0" />
-            <div className="flex items-center gap-6 flex-1 overflow-x-auto scroll-snap-x-mandatory -mx-4 px-4">
+            <div className="hidden sm:block h-12 w-px bg-white/[0.04] flex-shrink-0" />
+            <div className="flex items-center gap-4 overflow-x-auto scrollbar-none -mx-1 px-1">
               {[
                 { bg: "linear-gradient(135deg,#8b7cf6,#a78bfa)", Icon: TrendingUp, label: dash.revenue, value: revenueStr, sub: "vs last month", valueClass: revenueClass },
                 { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} ${dash.invoices}`, value: "Pending", sub: "", valueClass: "text-white/80" },

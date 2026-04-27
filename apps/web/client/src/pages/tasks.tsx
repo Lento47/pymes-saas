@@ -143,6 +143,7 @@ export default function TasksPage() {
     <TooltipProvider>
       <div>
         <PageHeader title={t.title} description="Gestiona y da seguimiento a tus tareas">
+
           <Button
             size="sm"
             className="h-8 text-xs"
@@ -157,9 +158,10 @@ export default function TasksPage() {
           </Button>
         </PageHeader>
 
+        <div className="px-4 md:px-6 py-4 space-y-4">
         {/* Overdue banner */}
         {overdueList.length > 0 && (
-          <div className="flex items-center gap-2.5 mb-4 px-3.5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400" data-testid="alert-overdue">
+          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400" data-testid="alert-overdue">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             <span className="text-xs">
               Tienes <strong>{overdueList.length}</strong> tarea{overdueList.length > 1 ? "s" : ""} vencida{overdueList.length > 1 ? "s" : ""} que requieren atención.
@@ -219,8 +221,8 @@ export default function TasksPage() {
         ) : taskList.length === 0 ? (
           <EmptyState icon={CheckSquare} title={t.noTasks} description="Crea una tarea para empezar." />
         ) : (
-          <div className="rounded-lg border border-border overflow-hidden bg-card">
-            <Table>
+          <div className="rounded-lg border border-border overflow-x-auto bg-card">
+            <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="w-8" />
@@ -336,6 +338,8 @@ export default function TasksPage() {
             </Table>
           </div>
         )}
+
+        </div>{/* end px-4 content wrapper */}
 
         {/* Create / Edit Dialog */}
         <Dialog open={showCreate} onOpenChange={setShowCreate}>
