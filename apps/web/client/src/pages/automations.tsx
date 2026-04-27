@@ -25,9 +25,10 @@ export default function AutomationsPage() {
   const [editingAuto, setEditingAuto] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const { data: automations = [], isLoading } = useQuery({ queryKey: ["/api/automations"], queryFn: api.getAutomations });
-  const { data: executions = [] } = useQuery({ queryKey: ["/api/automations/executions"], queryFn: () => api.getAutomations() as any, enabled: false });
-  const { data: channels = [] } = useQuery({ queryKey: ["/api/channels"], queryFn: api.getChannels });
+  const { data: automationsRaw = [], isLoading } = useQuery({ queryKey: ["/api/automations"], queryFn: api.getAutomations });
+  const automations = Array.isArray(automationsRaw) ? automationsRaw : (automationsRaw as any)?.data || (automationsRaw as any)?.automations || [];
+  const { data: channelsRaw = [] } = useQuery({ queryKey: ["/api/channels"], queryFn: api.getChannels });
+  const channels = Array.isArray(channelsRaw) ? channelsRaw : (channelsRaw as any)?.data || (channelsRaw as any)?.channels || [];
 
   const toggleMut = useMutation({ mutationFn: (id: string) => api.toggleAutomation(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/automations"] }) });
   const deleteMut = useMutation({ mutationFn: (id: string) => api.deleteAutomation(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/automations"] }); setDeleteId(null); toast({ title: 'Automatización eliminada' }); } });
