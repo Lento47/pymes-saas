@@ -10,28 +10,6 @@ interface McpRequest {
   id: string | number;
 }
 
-interface ToolDef {
-  name: string;
-  description: string;
-  inputSchema: any;
-}
-
-const TOOLS: ToolDef[] = [
-  { name: 'set_workspace', description: 'Set the active workspace slug for subsequent calls', inputSchema: { type: 'object', required: ['slug'], properties: { slug: { type: 'string' } } } },
-  { name: 'get_workspace', description: 'Get current workspace info', inputSchema: { type: 'object', properties: {} } },
-  { name: 'get_stats', description: 'Get workspace statistics', inputSchema: { type: 'object', properties: {} } },
-  { name: 'list_contacts', description: 'List all contacts', inputSchema: { type: 'object', properties: { search: { type: 'string' } } } },
-  { name: 'list_tasks', description: 'List all tasks', inputSchema: { type: 'object', properties: { status: { type: 'string' } } } },
-  { name: 'create_task', description: 'Create a new task', inputSchema: { type: 'object', required: ['title'], properties: { title: { type: 'string' }, description: { type: 'string' }, priority: { type: 'string', enum: ['LOW','MEDIUM','HIGH','URGENT'] }, due_date: { type: 'string' } } } },
-  { name: 'list_invoices', description: 'List all invoices', inputSchema: { type: 'object', properties: {} } },
-  { name: 'list_conversations', description: 'List all conversations', inputSchema: { type: 'object', properties: { status: { type: 'string' } } } },
-  { name: 'list_automations', description: 'List all automations', inputSchema: { type: 'object', properties: {} } },
-  { name: 'get_billing', description: 'Get subscription and billing info', inputSchema: { type: 'object', properties: {} } },
-  { name: 'get_billing_invoices', description: 'Get billing history invoices', inputSchema: { type: 'object', properties: {} } },
-  { name: 'list_pipeline_deals', description: 'List sales pipeline deals', inputSchema: { type: 'object', properties: {} } },
-  { name: 'get_settings', description: 'Get workspace settings and members', inputSchema: { type: 'object', properties: {} } },
-];
-
 function sseSend(res: Response, data: any) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
