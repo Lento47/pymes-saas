@@ -90,6 +90,8 @@ describe('WorkspacesService', () => {
       mockPrisma.document.aggregate.mockResolvedValue({ _sum: { file_size: 1024 } });
       mockPrisma.automationRule.count.mockResolvedValue(2);
       mockPrisma.workspaceUser.count.mockResolvedValue(3);
+      mockPrisma.invoice.aggregate.mockResolvedValue({ _sum: { amount: 1000 } });
+      mockPrisma.message.count.mockResolvedValue(5);
 
       const result = await service.getStats('w1');
 
