@@ -32,40 +32,67 @@ function timeAgo(date: string) {
 }
 
 // ── Revenue area chart ────────────────────────────────────────────────────────
-function RevenueChart() {
+function RevenueChart({ monthlyRevenue, changePct }: { monthlyRevenue: number; changePct: number }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const W = 500, H = 110;
-  // Decorative upward-trending line (placeholder shape)
-  const ys = [95, 88, 91, 82, 78, 74, 70, 65, 60, 68, 55, 50, 44, 38, 30];
+  // Generate simple trend line based on change percentage
+  const points = 15;
+  const baseY = changePct >= 0 ? H * 0.9 : H * 0.3;
+  const endY = changePct >= 0 ? H * 0.15 : H * 0.85;
+  const ys = Array.from({ length: points }, (_, i) => {
+    const t = i / (points - 1);
+    const base = baseY + (endY - baseY) * t;
+    const noise = Math.sin(i * 0.8) * 8;
+    return Math.max(5, Math.min(H - 5, base + noise));
+  });
   const xs = ys.map((_, i) => (i / (ys.length - 1)) * W);
-  // Smooth bezier path
+  const labels = ["Week 1", "Week 2", "Week 3", "Week 4"];
+  const activeIdx = hoverIdx ?? (points - 1);
+
   let d = `M ${xs[0]} ${ys[0]}`;
   for (let i = 1; i < xs.length; i++) {
     const cx = (xs[i - 1] + xs[i]) / 2;
     d += ` C ${cx} ${ys[i - 1]}, ${cx} ${ys[i]}, ${xs[i]} ${ys[i]}`;
   }
   const area = `${d} L ${W} ${H} L 0 ${H} Z`;
-  // Tooltip dot at ~80% of the way (May 22)
-  const dotIdx = 11;
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full" style={{ height: 140 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full cursor-pointer" style={{ height: 140 }}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * W;
+        const idx = Math.round((x / W) * (points - 1));
+        setHoverIdx(Math.max(0, Math.min(points - 1, idx)));
+      }}
+      onMouseLeave={() => setHoverIdx(null)}
+      onTouchMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = ((e.touches[0].clientX - rect.left) / rect.width) * W;
+        const idx = Math.round((x / W) * (points - 1));
+        setHoverIdx(Math.max(0, Math.min(points - 1, idx)));
+      }}
+    >
       <defs>
         <linearGradient id="rev-fill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25" />
           <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02" />
         </linearGradient>
       </defs>
-      {/* Y-axis guide lines */}
       {[25, 50, 75, 100].map(y => (
         <line key={y} x1="0" y1={y} x2={W} y2={y} stroke="#f1f5f9" strokeWidth="1" />
       ))}
       <path d={area} fill="url(#rev-fill)" />
       <path d={d} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {/* Tooltip dot */}
-      <circle cx={xs[dotIdx]} cy={ys[dotIdx]} r="5" fill="#6366f1" />
-      <circle cx={xs[dotIdx]} cy={ys[dotIdx]} r="9" fill="#6366f1" fillOpacity="0.15" />
-      {/* Tooltip box */}
-      <rect x={xs[dotIdx] - 36} y={ys[dotIdx] - 32} width="72" height="24" rx="6" fill="#1e1b4b" />
-      <text x={xs[dotIdx]} y={ys[dotIdx] - 16} textAnchor="middle" fill="white" fontSize="10" fontWeight="600">May 22 · €4,560</text>
+      {/* Hover indicator line */}
+      <line x1={xs[activeIdx]} y1="0" x2={xs[activeIdx]} y2={H} stroke="#6366f1" strokeWidth="1" strokeDasharray="4 2" opacity="0.5" />
+      {/* Active dot */}
+      <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="5" fill="#6366f1" />
+      <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="9" fill="#6366f1" fillOpacity="0.15" />
+      {/* Tooltip */}
+      <rect x={Math.max(0, Math.min(W - 80, xs[activeIdx] - 40))} y={Math.max(0, ys[activeIdx] - 38)} width="80" height="24" rx="6" fill="#1e1b4b" />
+      <text x={Math.max(40, Math.min(W - 40, xs[activeIdx]))} y={Math.max(16, ys[activeIdx] - 22)} textAnchor="middle" fill="white" fontSize="10" fontWeight="600">
+        {labels[Math.min(3, Math.floor(activeIdx / (points / 4)))]} · ₡{Math.round(monthlyRevenue * (activeIdx + 1) / points).toLocaleString()}
+      </text>
     </svg>
   );
 }
@@ -332,7 +359,7 @@ export default function DashboardPage() {
                   <span className="text-2xl font-bold text-gray-900">₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}</span>
                   <span className="text-sm text-green-500 font-medium">{workspaceStats?.revenue_change_pct ?? 0}% vs. last month</span>
                 </div>
-                <RevenueChart />
+                <RevenueChart monthlyRevenue={workspaceStats?.monthly_revenue ?? 0} changePct={workspaceStats?.revenue_change_pct ?? 0} />
                 <div className="flex justify-between text-xs text-gray-400 mt-2 px-1">
                   {["May 1", "May 8", "May 15", "May 22", "May 29"].map(d => <span key={d}>{d}</span>)}
                 </div>
