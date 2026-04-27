@@ -87,6 +87,22 @@ export class PlanLimitsService {
     return { ...(PLAN_LIMITS[plan] ?? PLAN_LIMITS['FREE']) };
   }
 
+  async isPlanAtLeast(workspaceId: string, minimumPlan: string): Promise<boolean> {
+    const plan = await this.getWorkspacePlan(workspaceId);
+    const order = ['FREE', 'STARTER', 'GROWTH', 'ENTERPRISE'];
+    return order.indexOf(plan) >= order.indexOf(minimumPlan);
+  }
+
+  async enforcePlanTier(workspaceId: string, minimumPlan: string, featureName: string): Promise<void> {
+    const ok = await this.isPlanAtLeast(workspaceId, minimumPlan);
+    if (!ok) {
+      const plan = await this.getWorkspacePlan(workspaceId);
+      throw new ForbiddenException(
+        `${featureName} requiere plan ${minimumPlan} o superior. Tu plan actual es ${plan}.`,
+      );
+    }
+  }
+
   // ── Private: resolve workspace plan ─────────────────────────────────────
 
   private async getWorkspacePlan(workspaceId: string): Promise<string> {

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 
@@ -38,6 +38,7 @@ import { AiModule } from './ai/ai.module';
 import { ApiTokensModule } from './api-tokens/api-tokens.module';
 import { BillingModule } from './billing/billing.module';
 import { RoutingModule } from './routing/routing.module';
+import { PlanThrottlerGuard } from './common/plan-limits/plan-throttler.guard';
 
 @Module({
   imports: [
@@ -91,7 +92,7 @@ import { RoutingModule } from './routing/routing.module';
     WhatsAppModule,
   ],
   providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: PlanThrottlerGuard },
   ],
 })
 export class AppModule { }

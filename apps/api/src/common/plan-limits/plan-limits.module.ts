@@ -1,9 +1,12 @@
 import { Global, Module } from '@nestjs/common';
 import { PlanLimitsService } from './plan-limits.service';
+import { PlanThrottlerGuard } from './plan-throttler.guard';
+import { PrismaModule } from '../prisma/prisma.module';
 
-@Global() // Inject anywhere without re-importing
+@Global()
 @Module({
-  providers: [PlanLimitsService],
-  exports: [PlanLimitsService],
+  imports: [PrismaModule],
+  providers: [PlanLimitsService, PlanThrottlerGuard],
+  exports: [PlanLimitsService, PlanThrottlerGuard],
 })
 export class PlanLimitsModule {}
