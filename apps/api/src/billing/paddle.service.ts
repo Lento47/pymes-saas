@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { Paddle, Environment, LogLevel, type EventEntity } from '@paddle/paddle-node-sdk';
 import { BillingInvoiceService } from './billing-invoice.service';
+import { Resend } from 'resend';
 
 @Injectable()
 export class PaddleService {
@@ -582,8 +583,63 @@ export class PaddleService {
           notes: `Pago procesado — ${new Date().toISOString()}`,
         },
       );
+
+      // Send invoice email notification
+      this.sendInvoiceEmail(sub.workspace_id, amount, currency, sub.plan).catch(err =>
+        this.logger.warn(`Invoice email failed: ${err.message}`),
+      );
     } catch (err) {
       this.logger.error(`Failed to generate billing invoice for workspace ${sub.workspace_id}: ${(err as Error).message}`);
+    }
+  }
+
+  private async sendInvoiceEmail(workspaceId: string, amount: number, currency: string, plan: string) {
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    if (!apiKey) {
+      this.logger.warn('RESEND_API_KEY not configured, skipping invoice email');
+      return;
+    }
+
+    const resend = new Resend(apiKey);
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { name: true },
+    });
+
+    const owner = await this.prisma.workspaceUser.findFirst({
+      where: { workspace_id: workspaceId, is_owner: true },
+      select: { user: { select: { email: true, name: true } } },
+    });
+
+    const to = owner?.user?.email;
+    if (!to) {
+      this.logger.warn(`No owner email found for workspace ${workspaceId}, skipping invoice email`);
+      return;
+    }
+
+    const monthName = new Date().toLocaleString('es-CR', { month: 'long', year: 'numeric' });
+    const formattedAmount = currency === 'CRC'
+      ? `₡${amount.toLocaleString('es-CR')}`
+      : `$${amount.toLocaleString('en-US')}`;
+
+    try {
+      await resend.emails.send({
+        from: 'PyMesHub <billing@pymeshub.lat>',
+        to,
+        subject: `Factura PyMesHub — ${plan} (${monthName})`,
+        html: `<div style="font-family:sans-serif;max-width:500px;margin:0 auto">
+          <h2 style="color:#6366f1">PyMesHub</h2>
+          <p>Hola ${owner?.user?.name || ''},</p>
+          <p>Tu pago por <strong>${formattedAmount}</strong> fue procesado para el plan <strong>${plan}</strong>.</p>
+          <p>Periodo: ${monthName}</p>
+          <p>Podés descargar tu factura desde <a href="https://pymeshub.lat/settings/billing">Configuración → Facturación</a>.</p>
+          <hr style="border-color:#e5e7eb;margin:16px 0"/>
+          <p style="color:#6b7280;font-size:12px">PyMesHub — Business OS para PYMEs</p>
+        </div>`,
+      });
+      this.logger.log(`Invoice email sent to ${to} for workspace ${ws?.name}`);
+    } catch (err) {
+      this.logger.error(`Failed to send invoice email: ${(err as Error).message}`);
     }
   }
 
