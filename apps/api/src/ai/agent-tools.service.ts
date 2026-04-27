@@ -204,8 +204,8 @@ export class AgentToolsService {
   private async search(workspaceId: string, args: Record<string, any>) {
     const q = args.q || args.query || '';
     if (!q) throw new Error('search requires a "q" argument');
-    const types = args.types as string | undefined;
-    const results = await this.searchService.search(workspaceId, q, types);
+    const typesArr = args.types ? (args.types as string).split(',').map((t: string) => t.trim()) : [];
+    const results = await this.searchService.search(workspaceId, q, typesArr, 10);
     return { results };
   }
 
@@ -318,12 +318,12 @@ export class AgentToolsService {
 
   private async listDocuments(workspaceId: string, args: Record<string, any>) {
     const where: any = { workspace_id: workspaceId };
-    if (args.search) where.filename = { contains: args.search, mode: 'insensitive' };
+    if (args.search) where.file_name = { contains: args.search, mode: 'insensitive' };
     const docs = await this.prisma.document.findMany({
       where,
-      select: { id: true, filename: true, mime_type: true, file_size: true, uploaded_at: true, extracted_text: true },
+      select: { id: true, file_name: true, mime_type: true, file_size: true, ocr_text: true, created_at: true },
       take: 50,
-      orderBy: { uploaded_at: 'desc' },
+      orderBy: { created_at: 'desc' },
     });
     return { documents: docs };
   }
