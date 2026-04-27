@@ -785,7 +785,7 @@ export default function ConversationPage() {
           </div>
 
           <ConversationNotes
-            conversationId={conversationId}
+            conversationId={id}
             initialNotes={conversation?.notes}
           />
 
