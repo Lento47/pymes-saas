@@ -221,7 +221,7 @@ export function LandingHubby() {
               onKeyDown={e => { if (e.key === 'Enter') send(); }}
               placeholder="Preguntame algo..."
               disabled={loading}
-              className="flex-1 text-sm px-3 py-2 rounded-xl border border-gray-200 outline-none focus:border-amber-400 disabled:opacity-50"
+              className="flex-1 text-sm px-3 py-2 rounded-xl border border-gray-200 outline-none focus:border-amber-400 disabled:opacity-50 text-gray-900"
               style={{ background: '#f9fafb' }}
             />
             <button

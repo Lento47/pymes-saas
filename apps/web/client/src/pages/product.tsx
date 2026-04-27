@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
@@ -200,15 +200,6 @@ export default function Landing() {
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    const hash = window.location.hash?.replace('#', '');
-    if (hash && ['platform','workflows','insights','security'].includes(hash)) {
-      setTimeout(() => {
-        document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 300);
-    }
-  }, []);
-
   const productCards: Array<{
     assetSrc?: string;
     icon: LucideIcon;
@@ -242,14 +233,14 @@ export default function Landing() {
       featured: {
         title: copy.menus.platform.featuredTitle,
         description: copy.menus.platform.featuredDescription,
-        href: "#platform",
+        href: "/platform",
         icon: ShieldCheck,
       },
       links: [
         {
           title: copy.menus.platform.links[0].title,
           description: copy.menus.platform.links[0].description,
-          href: "#security",
+          href: "/security",
           icon: LockKeyhole,
         },
         {
@@ -273,14 +264,14 @@ export default function Landing() {
       featured: {
         title: copy.menus.workflows.featuredTitle,
         description: copy.menus.workflows.featuredDescription,
-        href: "#workflows",
+        href: "/workflows",
         icon: Workflow,
       },
       links: [
         {
           title: copy.menus.workflows.links[0].title,
           description: copy.menus.workflows.links[0].description,
-          href: "#workflows",
+          href: "/workflows",
           icon: Workflow,
         },
         {
@@ -304,14 +295,14 @@ export default function Landing() {
       featured: {
         title: copy.menus.insights.featuredTitle,
         description: copy.menus.insights.featuredDescription,
-        href: "#insights",
+        href: "/insights",
         icon: ChartSpline,
       },
       links: [
         {
           title: copy.menus.insights.links[0].title,
           description: copy.menus.insights.links[0].description,
-          href: "#insights",
+          href: "/insights",
           icon: ChartSpline,
         },
         {
@@ -335,14 +326,14 @@ export default function Landing() {
       featured: {
         title: copy.menus.security.featuredTitle,
         description: copy.menus.security.featuredDescription,
-        href: "#security",
+        href: "/security",
         icon: ShieldCheck,
       },
       links: [
         {
           title: copy.menus.security.links[0].title,
           description: copy.menus.security.links[0].description,
-          href: "#security",
+          href: "/security",
           icon: LockKeyhole,
         },
         {

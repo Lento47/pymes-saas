@@ -14,6 +14,10 @@ import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Product from "@/pages/product";
+import Platform from "@/pages/platform";
+import Workflows from "@/pages/workflows";
+import InsightsPage from "@/pages/insights-page";
+import SecurityPage from "@/pages/security-page";
 import AcceptInvite from "@/pages/accept-invite";
 import Pricing from "@/pages/pricing";
 import Dashboard from "@/pages/dashboard";
@@ -71,6 +75,10 @@ function AppRouter() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/product" component={Product} />
+      <Route path="/platform" component={Platform} />
+      <Route path="/workflows" component={Workflows} />
+      <Route path="/insights" component={InsightsPage} />
+      <Route path="/security" component={SecurityPage} />
       <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/documentation">
