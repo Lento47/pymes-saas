@@ -83,7 +83,17 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
         run: |
-          node apps/api/dist/src/main &
+          if [ -f apps/api/dist/main.js ]; then
+            echo "Found dist/main.js"
+            node apps/api/dist/main &
+          elif [ -f apps/api/dist/src/main.js ]; then
+            echo "Found dist/src/main.js"
+            node apps/api/dist/src/main &
+          else
+            echo "❌ Could not find dist/main.js or dist/src/main.js"
+            find apps/api/dist -name "main.js" 2>/dev/null || echo "No main.js found anywhere"
+            exit 1
+          fi
           APP_PID=$!
           echo "Waiting for NestJS to start (PID: $APP_PID)..."
 
