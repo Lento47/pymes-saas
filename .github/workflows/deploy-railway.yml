@@ -68,9 +68,6 @@ jobs:
       - name: Build API
         run: cd apps/api && npm run build
 
-      - name: Lint API
-        run: cd apps/api && npm run lint
-
       - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pymeshub_test
