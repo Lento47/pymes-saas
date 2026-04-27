@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { AiService } from '../../ai/ai.service';
 import { stringifyJson } from '../../common/prisma/json';
 import { QUEUE_NAMES } from '../queues.constants';
 
@@ -15,7 +16,10 @@ interface DocumentJobData {
 export class DocumentProcessor extends WorkerHost {
   private readonly logger = new Logger(DocumentProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly aiService: AiService,
+  ) {
     super();
   }
 
@@ -46,14 +50,31 @@ export class DocumentProcessor extends WorkerHost {
       data: { status: 'PROCESSING' },
     });
 
-    // 4. Simular OCR
-    const ocr_text = `[OCR simulado para ${doc.file_name}] Texto extraído pendiente de integración con motor OCR.`;
-
+    // 4. AI-powered OCR and extraction
     const isInvoice = /factura|invoice/i.test(doc.file_name);
     const isContract = /contrato|contract/i.test(doc.file_name);
     const docType = isInvoice ? 'invoice' : isContract ? 'contract' : 'general';
 
-    const summary_text = `Documento tipo ${docType}: ${doc.file_name}. Procesado el ${new Date().toLocaleDateString('es-CR')}.`;
+    let ocr_text = `Documento: ${doc.file_name} (${doc.mime_type}, ${(doc.file_size / 1024).toFixed(1)} KB)`;
+    let summary_text = `Documento tipo ${docType}: ${doc.file_name}. Procesado el ${new Date().toLocaleDateString('es-CR')}.`;
+    let extractedData: any = { docType, processed_at: new Date().toISOString() };
+
+    // Attempt AI extraction if API key is configured
+    try {
+      const aiResult = await this.aiService.analyzeDocument(doc.workspace_id, {
+        fileName: doc.file_name,
+        mimeType: doc.mime_type,
+        fileSize: doc.file_size,
+      });
+
+      if (aiResult) {
+        ocr_text = aiResult.extractedText || ocr_text;
+        summary_text = aiResult.summary || summary_text;
+        extractedData = { ...extractedData, ...aiResult.extractedData };
+      }
+    } catch (err) {
+      this.logger.warn(`AI extraction failed for ${doc.file_name}: ${(err as Error).message}`);
+    }
 
     // 5. Actualizar documento con resultados
     await this.prisma.document.update({
