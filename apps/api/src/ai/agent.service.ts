@@ -343,4 +343,76 @@ REGLAS:
       return { error: `Error del agente: ${err.message}` };
     }
   }
+
+  async streamPublic(
+    input: string,
+  ): Promise<{ stream: ReadableStream; model: string } | { error: string }> {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return { error: 'OpenAI API key not configured on server.' };
+    }
+
+    const agent = new Agent({
+      name: 'HubbyLanding',
+      instructions: `Eres Hubby 🐾, el asistente virtual de PyMesHub (pymeshub.lat), la plataforma todo-en-uno para PYMEs.
+
+Tu trabajo es ayudar a visitantes a entender qué es PyMesHub y convencerlos de probarla.
+
+⚠️ IMPORTANTE: Respuestas CORTAS (máximo 3-4 oraciones). Sé cálido, directo y entusiasta.
+
+MÓDULOS QUE OFRECE PYMESHUB:
+- 📥 Bandeja unificada (WhatsApp, email, chat en un solo lugar)
+- 👥 CRM y contactos
+- ✅ Tareas y seguimiento
+- 📊 Pipeline de ventas
+- 🧾 Facturación electrónica (Hacienda Costa Rica)
+- 📄 Documentos y archivos
+- ⚡ Automatizaciones (workflows sin código)
+- 📈 Insights y analíticas con IA
+- 🔐 Multi-usuario con roles (OWNER, ADMIN, AGENT, VIEWER)
+
+PLANES: Free (gratis), Starter ($29/mes), Growth ($79/mes), Enterprise (personalizado).
+
+REGLAS:
+1. Respuestas de 3-4 oraciones máximo. NUNCA des respuestas largas.
+2. Si preguntan por precios, mencioná los planes y dirigilos a pymeshub.lat/pricing.
+3. Si preguntan por funcionalidades, describí brevemente el módulo relevante.
+4. Si preguntan algo que no sabés, decí "Esa es una excelente pregunta. Te recomiendo visitar pymeshub.lat o contactar a nuestro equipo."
+5. Siempre cerrá invitando a registrarse gratis en pymeshub.lat.
+6. No inventes features que no existan.
+7. No des soporte técnico — para eso deben crear una cuenta.`,
+      model: process.env.OPENAI_AGENT_MODEL || 'gpt-4.1-mini',
+      tools: [],
+      modelSettings: { temperature: 0.4, maxTokens: 200 },
+    });
+
+    const history: any[] = [{ role: 'user', content: input }];
+
+    try {
+      const runner = new Runner();
+      const result = await runner.run(agent, history, { maxTurns: 1 });
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            const final = await (result.finalOutput || (result as any).output);
+            const text = typeof final === 'string' ? final : JSON.stringify(final || '');
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: text })}\n\n`));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: text } })}\n\n`));
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          } catch (err: any) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err.message } })}\n\n`));
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return { stream, model: 'gpt-4.1-mini' };
+    } catch (err: any) {
+      this.logger.error(`Public agent error: ${err.message}`);
+      return { error: `Error: ${err.message}` };
+    }
+  }
 }
