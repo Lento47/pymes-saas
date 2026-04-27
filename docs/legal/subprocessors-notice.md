@@ -1,6 +1,6 @@
 # Aviso de Subencargados
 
-**Última actualización:** [●]
+**Última actualización:** 27 de abril de 2026
 
 ## 1. Introducción
 
@@ -10,15 +10,14 @@ De conformidad con el Data Processing Addendum (DPA), PymeHub podrá apoyarse en
 
 | Proveedor | Función | Categorías de Datos | Región de Tratamiento | Base Contractual | Fecha de Alta |
 |---|---|---|---|---|---|
-| [●] (hosting) | Infraestructura cloud, alojamiento de base de datos y almacenamiento de archivos | Datos de cuenta, conversaciones, documentos cargados, metadatos de uso | [●] | DPA / cláusulas contractuales | [●] |
-| OpenAI, L.L.C. | Procesamiento de lenguaje natural, generación de texto, análisis de conversaciones | Texto de conversaciones, prompts del usuario, configuraciones de workspace | Estados Unidos | DPA (processor), políticas de uso empresarial | [●] |
-| Anthropic, PBC | Procesamiento de lenguaje natural, generación de texto | Texto de conversaciones, prompts del usuario | Estados Unidos | DPA (processor), Commercial Terms | [●] |
-| Google Cloud | Servicios de infraestructura, IA generativa | Datos de cuenta, metadatos, contenido cargado por el cliente | [●] | CDPA, Cloud Data Processing Addendum | [●] |
-| Paddle.com, Inc. | Procesamiento de pagos, gestión de suscripciones, checkout | Datos de facturación, correo electrónico, datos de transacción | [●] | MSA, DPA, Data Sharing Addendum | [●] |
-| Meta Platforms, Inc. (WhatsApp) | Canal de mensajería WhatsApp Business | Números de teléfono, contenido de mensajes, metadatos de conversación | Global | Business Terms, Messaging Policy | [●] |
-| Resend, Inc. | Envío de correos electrónicos transaccionales y de facturación | Correo electrónico del cliente, contenido de correos | Estados Unidos | DPA / términos de servicio | [●] |
-| [●] (analytics) | Analítica web y de producto | Datos de navegación, cookies, eventos de uso | [●] | DPA / términos de servicio | [●] |
-| [●] (CRM) | Gestión de relación con clientes, soporte | Datos de contacto, historial de soporte | [●] | DPA / términos de servicio | [●] |
+| Railway (app hosting) | Infraestructura cloud, alojamiento de base de datos y almacenamiento de archivos | Datos de cuenta, base de datos, conversaciones, documentos cargados, metadatos | Estados Unidos | DPA / términos de servicio | 2025-01-01 |
+| OpenAI, L.L.C. | Procesamiento de lenguaje natural, generación de texto, análisis de conversaciones | Texto de conversaciones, prompts del usuario, configuraciones de workspace | Estados Unidos | DPA (processor), políticas de uso empresarial | 2025-01-01 |
+| Anthropic, PBC | Procesamiento de lenguaje natural, generación de texto | Texto de conversaciones, prompts del usuario | Estados Unidos | DPA (processor), Commercial Terms | 2025-06-01 |
+| Google Cloud | Servicios de infraestructura, IA generativa | Datos de cuenta, metadatos, contenido cargado por el cliente | Estados Unidos | CDPA, Cloud Data Processing Addendum | 2025-01-01 |
+| Paddle.com, Inc. | Procesamiento de pagos, gestión de suscripciones, checkout | Datos de facturación, correo electrónico, datos de transacción | Estados Unidos / Global | MSA, DPA, Data Sharing Addendum | 2025-01-01 |
+| Meta Platforms, Inc. (WhatsApp) | Canal de mensajería WhatsApp Business | Números de teléfono, contenido de mensajes, metadatos de conversación | Global | Business Terms, Messaging Policy | 2025-03-01 |
+| Resend, Inc. | Envío de correos electrónicos transaccionales y de facturación | Correo electrónico del cliente, contenido de correos | Estados Unidos | DPA / términos de servicio | 2025-01-01 |
+| Plataforma PymeHub (interno) | Gestión de contactos, soporte y CRM integrado | Datos de cuenta, historial de soporte, contactos | Costa Rica | Interno | 2025-01-01 |
 
 ## 3. Actualizaciones
 
@@ -26,7 +25,7 @@ PymeHub revisará y actualizará esta lista periódicamente. Los cambios materia
 
 ## 4. Objeción a Nuevos Subencargados
 
-De conformidad con el DPA, los Clientes podrán objetar la incorporación de un nuevo subencargado dentro de los quince días siguientes a la notificación del cambio, por motivos razonables de privacidad o seguridad. La objeción deberá presentarse por escrito a [●] e incluir los motivos específicos.
+De conformidad con el DPA, los Clientes podrán objetar la incorporación de un nuevo subencargado dentro de los quince días siguientes a la notificación del cambio, por motivos razonables de privacidad o seguridad. La objeción deberá presentarse por escrito a support@pymeshub.lat e incluir los motivos específicos.
 
 ## 5. Debida Diligencia
 

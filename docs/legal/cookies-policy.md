@@ -1,6 +1,6 @@
 # Política de Cookies
 
-**Última actualización:** [●]
+**Última actualización:** 27 de abril de 2026
 
 ## 1. ¿Qué son las Cookies?
 
@@ -33,16 +33,12 @@ Recopilan información anónima sobre cómo los visitantes utilizan la Plataform
 | Cookie | Proveedor | Finalidad | Duración |
 |---|---|---|---|
 | `_ga`, `_ga_*` | Google Analytics | Analítica de uso del sitio | 2 años |
-| `[●]` | [●] | [●] | [●] |
-
 ### 2.4 Cookies de Marketing
 
 Se utilizan para mostrar anuncios relevantes para el usuario y medir la efectividad de campañas.
 
 | Cookie | Proveedor | Finalidad | Duración |
 |---|---|---|---|
-| `[●]` | [●] | [●] | [●] |
-
 ## 3. Base Legal para el Uso de Cookies
 
 De conformidad con la Ley N.º 8968 de Costa Rica, PymeHub solicita el consentimiento expreso, previo e informado del usuario para la instalación de cookies no esenciales (analítica, preferencias y marketing). Las cookies estrictamente necesarias no requieren consentimiento por ser indispensables para la prestación del servicio solicitado.
@@ -69,8 +65,6 @@ El usuario podrá retirar su consentimiento para cookies no esenciales en cualqu
 Algunas cookies son instaladas por servicios de terceros que aparecen en la Plataforma. PymeHub no controla estas cookies. Se recomienda al usuario revisar las políticas de privacidad de dichos terceros:
 
 - Google Analytics: [https://policies.google.com/privacy](https://policies.google.com/privacy)
-- [●]: [●]
-
 ## 6. Cómo Desactivar las Cookies desde el Navegador
 
 La mayoría de los navegadores permiten gestionar las preferencias de cookies desde su configuración. El usuario puede configurar su navegador para rechazar todas las cookies o para que le avise cuando se envía una cookie. A continuación se indican enlaces a las instrucciones de los navegadores más comunes:
@@ -90,4 +84,4 @@ PymeHub podrá modificar esta Política de Cookies en cualquier momento. Los cam
 
 ## 9. Contacto
 
-Para consultas sobre esta Política de Cookies, contactar a [●].
+Para consultas sobre esta Política de Cookies, contactar a support@pymeshub.lat.

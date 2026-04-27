@@ -1,6 +1,6 @@
 # Términos de Servicio
 
-**Última actualización:** [●]
+**Última actualización:** 27 de abril de 2026
 
 ## 1. Aceptación
 
@@ -72,4 +72,4 @@ Si alguna disposición de estos Términos fuera declarada nula o inaplicable, la
 
 ## 18. Contacto
 
-Para consultas sobre estos Términos, contactar a [●].
+Para consultas sobre estos Términos, contactar a support@pymeshub.lat.

@@ -1,6 +1,6 @@
 # Política de WhatsApp e Inteligencia Artificial
 
-**Última actualización:** [●]
+**Última actualización:** 27 de abril de 2026
 
 ## 1. Propósito
 

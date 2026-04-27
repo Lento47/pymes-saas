@@ -1,6 +1,6 @@
 # Política de Uso Aceptable (AUP)
 
-**Última actualización:** [●]
+**Última actualización:** 27 de abril de 2026
 
 ## 1. Propósito
 
@@ -65,4 +65,4 @@ PymeHub procurará notificar al Cliente antes de aplicar medidas, salvo que la u
 
 ## 7. Reporte de Violaciones
 
-Para reportar una posible violación de esta política, contactar a [●].
+Para reportar una posible violación de esta política, contactar a support@pymeshub.lat.

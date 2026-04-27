@@ -1,10 +1,10 @@
 # Política de Facturación y Reembolsos
 
-**Última actualización:** [●]
+**Última actualización:** 27 de abril de 2026
 
 ## 1. Planes y Precios
 
-PymeHub ofrece diversos planes de suscripción con funcionalidades, límites y precios publicados en el sitio web. Los precios se muestran en [●] e incluyen o no incluyen impuestos según se indique. PymeHub se reserva el derecho de modificar los precios con aviso previo de al menos treinta días.
+PymeHub ofrece diversos planes de suscripción con funcionalidades, límites y precios publicados en el sitio web. Los precios se muestran en CRC (colones costarricenses) e incluyen o no incluyen impuestos según se indique. PymeHub se reserva el derecho de modificar los precios con aviso previo de al menos treinta días.
 
 ## 2. Ciclos de Facturación
 
@@ -44,7 +44,7 @@ Salvo disposición legal imperativa en contrario, los pagos son no reembolsables
 - Cobro duplicado por error técnico atribuible a PymeHub.
 - Error manifiesto de facturación.
 - Indisponibilidad sustancial del Servicio imputable a PymeHub durante un período prolongado del ciclo facturado.
-- Cancelación solicitada dentro de la ventana de [●] días desde la primera suscripción o renovación anual.
+- Cancelación solicitada dentro de la ventana de 7 (siete) días desde la primera suscripción o renovación anual.
 
 ## 10. Mora y Suspensión por Impago
 
@@ -64,4 +64,4 @@ PymeHub podrá modificar esta Política de Facturación y Reembolsos con aviso p
 
 ## 14. Contacto
 
-Para consultas sobre facturación, contactar a [●].
+Para consultas sobre facturación, contactar a support@pymeshub.lat.

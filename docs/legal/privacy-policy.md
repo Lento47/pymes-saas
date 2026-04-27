@@ -1,10 +1,10 @@
 # Política de Privacidad
 
-**Última actualización:** [●]
+**Última actualización:** 27 de abril de 2026
 
 ## 1. Identidad del Responsable
 
-[●] (en adelante "PymeHub"), cédula jurídica [●], con domicilio en [●], correo electrónico [●] y teléfono [●], es el responsable del tratamiento de los datos personales recolectados a través del sitio web [●], la Plataforma PymeHub, formularios, procesos de alta, soporte, facturación y comunicaciones propias.
+PYMEHUB S.A. (en adelante "PymeHub"), cédula jurídica En trámite, con domicilio en Limón, Costa Rica, correo electrónico support@pymeshub.lat y teléfono 88888888, es el responsable del tratamiento de los datos personales recolectados a través del sitio web pymeshub.lat, la Plataforma PymeHub, formularios, procesos de alta, soporte, facturación y comunicaciones propias.
 
 ## 2. Datos que Recolectamos
 
@@ -76,12 +76,12 @@ PymeHub conservará los datos personales únicamente durante el tiempo necesario
 | Categoría | Plazo de Retención |
 |---|---|
 | Datos de cuenta activa | Mientras la cuenta esté activa |
-| Datos de cuenta cancelada | Hasta [●] días tras la cancelación para exportación; luego supresión |
+| Datos de cuenta cancelada | Hasta 14 (catorce) días tras la cancelación para exportación; luego supresión |
 | Datos de facturación y comprobantes electrónicos | 5 años (obligación legal tributaria) |
 | Datos de soporte | 2 años desde la última interacción |
 | Datos de leads no convertidos | 12-24 meses desde el último contacto |
 | Logs de seguridad | 12-24 meses |
-| Datos de backups | Hasta [●] días (eliminación programada) |
+| Datos de backups | Hasta 7 días para plan FREE, 14 días para STARTER, 30 días para GROWTH, 90 días para ENTERPRISE (eliminación programada) |
 | Cookies | Según lo indicado en la Política de Cookies |
 
 En ningún caso se conservarán datos que puedan afectar al titular por más de diez años desde la ocurrencia de los hechos, salvo norma especial o disociación.
@@ -97,7 +97,7 @@ De conformidad con la Ley N.º 8968 y su Reglamento, el titular de los datos tie
 - **Revocación del Consentimiento:** retirar el consentimiento otorgado en cualquier momento, sin que ello afecte la licitud del tratamiento previo.
 - **Portabilidad:** en los casos que aplique, recibir los datos en un formato estructurado.
 
-Para ejercer estos derechos, el titular deberá enviar una solicitud a [●] indicando el derecho que desea ejercer, los datos que permitan identificarlo y un medio para recibir notificaciones. PymeHub atenderá la solicitud de forma gratuita dentro del plazo de cinco días hábiles establecido por la ley. PymeHub podrá solicitar información adicional una sola vez para verificar la identidad del solicitante. Las negativas serán justificadas por escrito.
+Para ejercer estos derechos, el titular deberá enviar una solicitud a support@pymeshub.lat indicando el derecho que desea ejercer, los datos que permitan identificarlo y un medio para recibir notificaciones. PymeHub atenderá la solicitud de forma gratuita dentro del plazo de cinco días hábiles establecido por la ley. PymeHub podrá solicitar información adicional una sola vez para verificar la identidad del solicitante. Las negativas serán justificadas por escrito.
 
 ## 9. Seguridad de los Datos
 
@@ -119,6 +119,6 @@ PymeHub podrá modificar esta Política de Privacidad en cualquier momento. Los 
 
 Para cualquier consulta, solicitud o reclamación relacionada con esta Política de Privacidad o con el tratamiento de datos personales, contactar a:
 
-- **Correo electrónico:** [●]
-- **Dirección postal:** [●]
-- **Teléfono:** [●]
+- **Correo electrónico:** support@pymeshub.lat
+- **Dirección postal:** Limón, Costa Rica
+- **Teléfono:** 88888888
