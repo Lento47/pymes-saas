@@ -40,6 +40,7 @@ import { ApiTokensModule } from './api-tokens/api-tokens.module';
 import { BillingModule } from './billing/billing.module';
 import { RoutingModule } from './routing/routing.module';
 import { PlanThrottlerGuard } from './common/plan-limits/plan-throttler.guard';
+import { SamlModule } from './auth/saml/saml.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { PlanThrottlerGuard } from './common/plan-limits/plan-throttler.guard';
     ApiTokensModule,
     BillingModule,
     RoutingModule,
+    SamlModule,
     PlatformModule,
 
     WorkersModule,

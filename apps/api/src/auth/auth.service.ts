@@ -198,6 +198,86 @@ export class AuthService {
     };
   }
 
+  async ssoLogin(workspaceId: string, email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado para SSO.');
+    }
+
+    if (user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Usuario inactivo o suspendido.');
+    }
+
+    const membership = await this.prisma.workspaceUser.findUnique({
+      where: {
+        workspace_id_user_id: {
+          workspace_id: workspaceId,
+          user_id: user.id,
+        },
+      },
+    });
+
+    if (!membership) {
+      // Auto-provision user into workspace if not a member
+      const ws = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { plan: true },
+      });
+
+      await this.prisma.workspaceUser.create({
+        data: {
+          workspace_id: workspaceId,
+          user_id: user.id,
+          role: 'AGENT',
+          is_owner: false,
+        },
+      });
+    }
+
+    const effectiveMembership = membership || {
+      role: 'AGENT',
+      is_owner: false,
+    };
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+    if (!workspace) throw new UnauthorizedException('Workspace no encontrado.');
+
+    const access_token = this.signToken({
+      sub: user.id,
+      email: user.email,
+      workspace_id: workspace.id,
+      role: effectiveMembership.role,
+      is_platform_admin: user.is_platform_admin,
+    });
+
+    const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
+
+    return {
+      access_token,
+      refresh_token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar_url: user.avatar_url,
+        role: effectiveMembership.role,
+        is_owner: effectiveMembership.is_owner,
+        is_platform_admin: user.is_platform_admin,
+        workspace: {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          plan: workspace.plan,
+        },
+      },
+    };
+  }
+
   async getInvitePreview(rawToken?: string) {
     const payload = this.verifyInviteToken(rawToken);
     const workspace = await this.prisma.workspace.findUnique({
