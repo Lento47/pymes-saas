@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { openExternal } from "@/lib/platform";
 import { useI18n } from "@/components/providers/i18n-provider";
-import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -2401,7 +2400,6 @@ export default function Settings() {
             <h1 className="text-xl font-bold text-gray-900">{copy.pageTitle}</h1>
             <p className="text-sm text-gray-500 mt-0.5">Gestiona tu workspace, equipo e integraciones</p>
           </div>
-          <LanguageSwitcher />
         </div>
       </ModuleHero>
       <Tabs defaultValue="workspace">
