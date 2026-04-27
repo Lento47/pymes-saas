@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/providers/i18n-provider";
+import { HubbyBuddy } from "@/components/shared/hubby-buddy";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -258,8 +259,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 w-full max-w-full" style={{ background: "hsl(var(--bg))" }}>
+      <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 w-full max-w-full relative" style={{ background: "hsl(var(--bg))" }}>
         {children}
+        <HubbyBuddy />
       </main>
       <MobileBottomNav onMenuClick={() => setMobileOpen(true)} />
     </div>

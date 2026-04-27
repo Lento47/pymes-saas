@@ -14,6 +14,7 @@ import {
   ArrowUp,
   Loader2,
   Zap,
+  CheckCircle2,
   FileSearch,
   MessageSquareText,
   BrainCircuit,
@@ -24,6 +25,12 @@ type Message = {
   role: 'user' | 'agent' | 'system' | 'tool';
   content: string;
   isStreaming?: boolean;
+};
+
+type ToolCall = {
+  id: string;
+  name: string;
+  status: 'running' | 'done';
 };
 
 function ThinkingDots() {
@@ -49,6 +56,7 @@ export default function Agent() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
+  const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -87,6 +95,7 @@ export default function Agent() {
     };
 
     setMessages(prev => [...prev, userMessage, agentMessage]);
+    setToolCalls([]);
     setInput('');
     setIsStreaming(true);
 
@@ -118,6 +127,12 @@ export default function Agent() {
                     : m
                 ),
               );
+            } else if (data.type === 'response.output_item.added' && data.item) {
+              if (data.item.type === 'function_call') {
+                setToolCalls(prev => [...prev, { id: data.item.id || data.item.call_id, name: data.item.name || 'tool', status: 'running' }]);
+              }
+            } else if (data.type === 'response.output_item.done' && data.item) {
+              setToolCalls(prev => prev.map(t => t.id === (data.item.id || data.item.call_id) ? { ...t, status: 'done' } : t));
             } else if (data.type === 'response.completed' && data.response?.id) {
               setConversationId(data.response.id);
             } else if (data.type === 'error') {
@@ -326,6 +341,30 @@ export default function Agent() {
                 )}
               </div>
             ))}
+
+            {/* Tool call badges */}
+            {toolCalls.length > 0 && (
+              <div className="flex flex-wrap gap-2 justify-start pl-10">
+                {toolCalls.map(tc => (
+                  <div
+                    key={tc.id}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-300"
+                    style={{
+                      background: tc.status === 'running' ? 'hsl(var(--accent) / 0.1)' : 'hsl(142 60% 12%)',
+                      border: `1px solid ${tc.status === 'running' ? 'hsl(var(--accent) / 0.25)' : 'hsl(142 60% 25%)'}`,
+                      color: tc.status === 'running' ? 'hsl(var(--accent))' : 'hsl(142 60% 60%)',
+                    }}
+                  >
+                    {tc.status === 'running' ? (
+                      <Loader2 style={{ width: 10, height: 10 }} className="animate-spin" />
+                    ) : (
+                      <CheckCircle2 style={{ width: 10, height: 10 }} />
+                    )}
+                    <span>{tc.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {error && (
               <div
