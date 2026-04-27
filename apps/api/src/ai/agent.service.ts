@@ -200,7 +200,7 @@ export class AgentService {
       }),
       tool({
         name: 'create_automation', description: 'Create a new workflow automation rule',
-        parameters: z.object({ name: z.string(), trigger_type: z.string(), action_config: z.record(z.any()).optional(), trigger_config: z.record(z.any()).optional() }),
+        parameters: z.object({ name: z.string(), trigger_type: z.string(), action_config: z.optional(z.record(z.string(), z.any())), trigger_config: z.optional(z.record(z.string(), z.any())) }),
         execute: async (args) => ({
           automation: await prisma.automation.create({ data: { workspace_id: workspaceId, name: args.name, description: '', trigger_type: args.trigger_type, trigger_config_json: args.trigger_config || {}, action_config_json: args.action_config || {} } }),
         }),
