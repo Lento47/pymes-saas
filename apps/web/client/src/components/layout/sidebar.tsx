@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/providers/i18n-provider";
@@ -76,6 +76,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const multipleWorkspaces = Array.isArray(myWorkspaces) && myWorkspaces.length > 1;
 
   const isActive = (p: string) => p === "/" ? location === "/" : location.startsWith(p);
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
 
   const badge = (key?: string) =>
     key === "unread" ? unreadCount : key === "overdue" ? overdueCount : 0;
@@ -159,6 +165,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             return (
               <Link key={path} href={path}>
                 <a
+                  onClick={() => setMobileOpen(false)}
                   className={cn(
                     "flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
                     active
@@ -187,7 +194,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <div className="my-2 h-px bg-white/6" />
 
           <Link href="/settings">
-            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+            <a onClick={() => setMobileOpen(false)} className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
               isActive("/settings") && !isActive("/settings/billing") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
               <Settings className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
               <span className="flex-1 text-sm font-medium truncate">{copy.settings}</span>
@@ -195,7 +202,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </Link>
 
           <Link href="/settings/billing">
-            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+            <a onClick={() => setMobileOpen(false)} className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
               isActive("/settings/billing") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
               <CreditCard className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
               <span className="flex-1 text-sm font-medium truncate">Billing</span>
@@ -203,7 +210,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </Link>
 
           <Link href="/chat">
-            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+            <a onClick={() => setMobileOpen(false)} className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
               isActive("/chat") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
               <MessageCircle className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
               <span className="flex-1 text-sm font-medium truncate">AI Chat</span>
@@ -211,7 +218,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </Link>
 
           <Link href="/agent">
-            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+            <a onClick={() => setMobileOpen(false)} className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
               isActive("/agent") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
               <Bot className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
               <span className="flex-1 text-sm font-medium truncate">AI Agent</span>
@@ -219,7 +226,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </Link>
 
           <Link href="/help">
-            <a className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+            <a onClick={() => setMobileOpen(false)} className={cn("flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
               isActive("/help") ? "bg-indigo-600 text-white" : "text-white/60 hover:text-white hover:bg-white/5")}>
               <CircleHelp className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
               <span className="flex-1 text-sm font-medium truncate">{copy.help}</span>
@@ -229,7 +236,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
         <div className="px-3 pb-2">
           <Link href="/pricing">
-            <a className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600/20 transition-colors group">
+            <a onClick={() => setMobileOpen(false)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600/20 transition-colors group">
               <Crown className="w-4 h-4 text-yellow-400 flex-shrink-0" />
               <div className="flex-1 text-left min-w-0">
                 <div className="text-xs font-semibold text-white truncate">Upgrade to Business+</div>
@@ -262,7 +269,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 w-full max-w-full relative" style={{ background: "hsl(var(--bg))" }}>
+      <main className="flex-1 overflow-y-auto pb-14 lg:pb-0 w-full max-w-full relative" style={{ background: "hsl(var(--bg))" }}>
         {children}
         <HubbyBuddy />
       </main>

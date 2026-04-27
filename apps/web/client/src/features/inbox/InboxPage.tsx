@@ -53,7 +53,7 @@ export default function InboxPage() {
   const content = (
     <>
       {/* Desktop: 3 columns | Tablet: 2 columns | Mobile: 1 column */}
-      <div className="hidden lg:grid h-[calc(100vh-156px)] grid-cols-[340px_minmax(0,1fr)_340px] gap-3 overflow-hidden px-4 pb-4">
+      <div className="hidden lg:grid h-[calc(100dvh-156px)] grid-cols-[340px_minmax(0,1fr)_340px] gap-3 overflow-hidden px-4 pb-4">
         <ConversationList
           conversations={conversations}
           isLoading={conversationsQuery.isLoading}
@@ -66,7 +66,7 @@ export default function InboxPage() {
       </div>
 
       {/* Tablet: 2 columns (list + thread) */}
-      <div className="hidden md:grid lg:hidden h-[calc(100vh-156px)] grid-cols-[320px_1fr] gap-3 overflow-hidden px-4 pb-4">
+      <div className="hidden md:grid lg:hidden h-[calc(100dvh-156px)] grid-cols-[320px_1fr] gap-3 overflow-hidden px-4 pb-4">
         <ConversationList
           conversations={conversations}
           isLoading={conversationsQuery.isLoading}
@@ -77,8 +77,8 @@ export default function InboxPage() {
         <ConversationThreadPanel conversationId={selectedConversationId} />
       </div>
 
-      {/* Mobile: single column with view switching */}
-      <div className="md:hidden h-[calc(100vh-156px)] overflow-hidden px-2 pb-2">
+      {/* Mobile: single column with view switching — subtract header (156px) + bottom nav (56px) */}
+      <div className="md:hidden h-[calc(100dvh-212px)] overflow-hidden px-2 pb-2">
         {mobileView === "list" && (
           <ConversationList
             conversations={conversations}

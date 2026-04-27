@@ -86,13 +86,13 @@ export default function AutomationsPage() {
           <p className="text-sm">Sin automatizaciones. Creá tu primera regla.</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 pb-16 lg:pb-4 space-y-3">
           {automations.map((auto: any) => (
             <div key={auto.id}
               className="rounded-2xl p-4 transition-all duration-200 hover:bg-white/[0.01]"
               style={{ background: 'rgba(255,255,255,0.015)', border: `1px solid ${auto.enabled ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)'}` }}>
-              <div className="flex items-start gap-4">
-                <div className="flex items-center gap-2 shrink-0 pt-1" style={{ minWidth: 200 }}>
+              <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+                <div className="flex items-center gap-2 shrink-0 pt-1">
                   <div className="flex flex-col items-center gap-1">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(139,124,246,0.12)' }}>
                       <Zap style={{ width: 14, height: 14, color: '#a78bfa' }} />
