@@ -205,7 +205,7 @@ export default function DashboardPage() {
     retry: false,
   });
   const [bannerTitle, bannerSubtitle] = (() => {
-    const raw: string = bannerAI?.answer ?? "";
+    const raw: string = bannerAI?.reply ?? "";
     const parts = raw.split("|||");
     return (parts.length === 2 && parts[0].trim() && parts[1].trim())
       ? [parts[0].trim(), parts[1].trim()]
@@ -240,7 +240,7 @@ export default function DashboardPage() {
       <div className="px-3 md:px-8 pt-4 md:pt-7 pb-5 flex items-start justify-between max-w-[1400px] mx-auto">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{greeting()}, {user?.name?.split(" ")[0] || "Usuario"} 👋</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Here's what's happening with your business today.</p>
+          <p className="text-sm text-gray-500 mt-0.5">{bannerSubtitle || "Here's what's happening with your business today."}</p>
         </div>
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-400 min-w-[220px]">
