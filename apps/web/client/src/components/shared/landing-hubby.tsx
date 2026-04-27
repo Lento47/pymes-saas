@@ -7,19 +7,38 @@ const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_A
 
 function PetSvg({ small }: { small?: boolean }) {
   const [blinking, setBlinking] = useState(false);
+  const [blinkWidth, setBlinkWidth] = useState(7);
   const [lookingRight, setLookingRight] = useState(false);
 
   useEffect(() => {
-    const blink = setInterval(() => {
-      setBlinking(true);
-      setTimeout(() => setBlinking(false), 150);
-    }, 2500 + Math.random() * 3000);
+    let blinkTimer: any;
+    let lookTimer: any;
 
-    const look = setInterval(() => {
-      setLookingRight(prev => !prev);
-    }, 5000 + Math.random() * 4000);
+    const scheduleBlink = () => {
+      const delay = 1500 + Math.random() * 2500;
+      blinkTimer = setTimeout(() => {
+        setBlinking(true);
+        setBlinkWidth(0.8);
+        setTimeout(() => {
+          setBlinking(false);
+          setBlinkWidth(7);
+          scheduleBlink();
+        }, 220);
+      }, delay);
+    };
 
-    return () => { clearInterval(blink); clearInterval(look); };
+    const scheduleLook = () => {
+      const delay = 4000 + Math.random() * 3000;
+      lookTimer = setTimeout(() => {
+        setLookingRight(prev => !prev);
+        scheduleLook();
+      }, delay);
+    };
+
+    scheduleBlink();
+    scheduleLook();
+
+    return () => { clearTimeout(blinkTimer); clearTimeout(lookTimer); };
   }, []);
 
   const s = small ? 0.65 : 1;
@@ -45,12 +64,10 @@ function PetSvg({ small }: { small?: boolean }) {
       <ellipse cx={lookingRight ? 40 : 37} cy="34" rx="3" ry="4" fill="#78350f" style={{ transition: 'cx 0.3s' }} />
       <circle cx="24" cy="31" r="1.2" fill="white" opacity="0.9" />
       <circle cx="36" cy="31" r="1.2" fill="white" opacity="0.9" />
-      {blinking && (
-        <>
-          <ellipse cx="26" cy="33" rx="6" ry="1.5" fill="#d97706" />
-          <ellipse cx="38" cy="33" rx="6" ry="1.5" fill="#d97706" />
-        </>
-      )}
+      <g style={{ opacity: blinkWidth < 2 ? 1 : 0, transition: 'opacity 0.06s ease' }}>
+        <ellipse cx="26" cy="33" rx="6.5" ry={blinkWidth} fill="#92400e" style={{ transition: 'ry 0.1s ease' }} />
+        <ellipse cx="38" cy="33" rx="6.5" ry={blinkWidth} fill="#92400e" style={{ transition: 'ry 0.1s ease' }} />
+      </g>
       <ellipse cx="32" cy="40" rx="2.5" ry="2" fill="#92400e" />
       <path d="M28 43 Q32 47 36 43" stroke="#92400e" strokeWidth="1.5" fill="none" strokeLinecap="round" />
       <ellipse cx="18" cy="54" rx="6" ry="4" fill="#d97706" />

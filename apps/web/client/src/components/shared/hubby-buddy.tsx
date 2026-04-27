@@ -21,12 +21,12 @@ export function HubbyBuddy() {
       setTimeout(() => setWaving(false), 1500);
     }, 12000);
 
-    // Blink every 2-5 seconds
+    // Blink every 1.5-4s with random delay each time
     const scheduleBlink = () => {
-      const delay = 2000 + Math.random() * 3000;
+      const delay = 1500 + Math.random() * 2500;
       blinkRef.current = setTimeout(() => {
         setBlinking(true);
-        setTimeout(() => setBlinking(false), 150);
+        setTimeout(() => setBlinking(false), 220);
         scheduleBlink();
       }, delay);
     };
@@ -150,13 +150,11 @@ export function HubbyBuddy() {
               <circle cx="24" cy="31" r="1.2" fill="white" opacity="0.9" />
               <circle cx="36" cy="31" r="1.2" fill="white" opacity="0.9" />
 
-              {/* Blinking overlay */}
-              {blinking && (
-                <>
-                  <ellipse cx="26" cy="33" rx="6" ry="1.5" fill="#7c3aed" />
-                  <ellipse cx="38" cy="33" rx="6" ry="1.5" fill="#7c3aed" />
-                </>
-              )}
+              {/* Blinking eyelids — smooth close/open */}
+              <g style={{ opacity: blinking ? 1 : 0, transition: 'opacity 0.08s ease' }}>
+                <ellipse cx="26" cy="33" rx="6.5" ry={blinking ? 0.8 : 7} fill="#4c1d95" style={{ transition: 'ry 0.1s ease' }} />
+                <ellipse cx="38" cy="33" rx="6.5" ry={blinking ? 0.8 : 7} fill="#4c1d95" style={{ transition: 'ry 0.1s ease' }} />
+              </g>
 
               {/* Nose */}
               <ellipse cx="32" cy="40" rx="2.5" ry="2" fill="#5b21b6" />
