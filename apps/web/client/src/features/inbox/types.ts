@@ -1,6 +1,7 @@
 export type ChannelTab =
   | "ALL"
   | "WHATSAPP"
+  | "TELEGRAM"
   | "EMAIL"
   | "FORM"
   | "UNASSIGNED";
