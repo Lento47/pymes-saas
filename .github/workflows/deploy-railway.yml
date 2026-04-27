@@ -77,6 +77,37 @@ jobs:
           JWT_SECRET: test-secret-for-ci-jwt-min-32-chars
         run: cd apps/api && npm run test
 
+      - name: Healthcheck — start API and verify /api/health
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pymeshub_test
+          JWT_SECRET: test-secret-for-ci-jwt-min-32-chars
+          PORT: 4000
+          NODE_ENV: test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+        run: |
+          cd apps/api
+          npm run start &
+          APP_PID=$!
+          echo "Waiting for NestJS to start (PID: $APP_PID)..."
+
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4000/api/health > /dev/null 2>&1; then
+              echo "✅ Healthcheck passed after ${i}s"
+              kill $APP_PID 2>/dev/null || true
+              exit 0
+            fi
+            if ! kill -0 $APP_PID 2>/dev/null; then
+              echo "❌ NestJS process crashed during startup"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          echo "❌ Healthcheck timed out after 30s"
+          kill $APP_PID 2>/dev/null || true
+          exit 1
+
   deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
