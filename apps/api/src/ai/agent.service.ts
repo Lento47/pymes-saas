@@ -81,6 +81,48 @@ export class AgentService {
           return { contacts: await prisma.contact.findMany({ where, select: { id: true, full_name: true, email: true, phone: true, type: true }, take: 50 }) };
         },
       }),
+      tool({
+        name: 'create_contact', description: 'Create a new contact in PyMesHub. Requires full_name. Optional: email, phone, company_name, type (CUSTOMER, LEAD, SUPPLIER, PARTNER).',
+        parameters: z.object({
+          full_name: z.string().describe('Full name of the contact'),
+          email: z.string().optional(),
+          phone: z.string().optional(),
+          company_name: z.string().optional(),
+          type: z.enum(['CUSTOMER','LEAD','SUPPLIER','PARTNER']).optional().default('CUSTOMER'),
+        }),
+        execute: async (args) => ({
+          contact: await prisma.contact.create({
+            data: {
+              workspace_id: workspaceId,
+              full_name: args.full_name,
+              email: args.email || undefined,
+              phone: args.phone || undefined,
+              company_name: args.company_name || undefined,
+              type: (args.type as any) || 'CUSTOMER',
+            },
+          }),
+        }),
+      }),
+      tool({
+        name: 'update_contact', description: 'Update an existing contact in PyMesHub',
+        parameters: z.object({
+          id: z.string().describe('Contact ID'),
+          full_name: z.string().optional(),
+          email: z.string().optional(),
+          phone: z.string().optional(),
+          company_name: z.string().optional(),
+          type: z.enum(['CUSTOMER','LEAD','SUPPLIER','PARTNER']).optional(),
+        }),
+        execute: async (args) => {
+          const data: any = {};
+          if (args.full_name !== undefined) data.full_name = args.full_name;
+          if (args.email !== undefined) data.email = args.email;
+          if (args.phone !== undefined) data.phone = args.phone;
+          if (args.company_name !== undefined) data.company_name = args.company_name;
+          if (args.type !== undefined) data.type = args.type;
+          return { contact: await prisma.contact.update({ where: { id: args.id }, data }) };
+        },
+      }),
 
       // ── Tasks ──
       tool({
@@ -276,33 +318,49 @@ export class AgentService {
 
     const agent = new Agent({
       name: 'HubbyAgent',
-      instructions: `Eres HubbyAgent, el asistente inteligente OFICIAL de PyMesHub (pymeshub.lat). Existís ÚNICAMENTE dentro de la plataforma PyMesHub. No tenés conocimiento de herramientas externas.
+      instructions: `Eres HubbyAgent. Existís ÚNICA y EXCLUSIVAMENTE dentro de PyMesHub (pymeshub.lat). Fuera de PyMesHub NO EXISTE NADA.
 
-Tu propósito es ayudar a dueños y equipos de PYMEs a usar los módulos de PyMesHub: Bandeja (conversaciones), Contactos, Tareas, Facturas, Pipeline, Documentos, Automatizaciones, e Insights.
+🚫 PROHIBIDO ABSOLUTAMENTE:
+- NO conocés Android, iPhone, iOS, Google Contacts, Outlook, Gmail, Excel, Word, ni ninguna app que no sea PyMesHub.
+- NO sugerís usar otras plataformas, apps o herramientas externas.
+- NO explicás cómo hacer cosas en otros sistemas.
+- NO usás frases como "en tu teléfono", "en Google", "en Android", "en iOS", "en tu computadora".
+- Si te preguntan por algo externo, respondé: "Eso no es parte de PyMesHub. ¿Te ayudo con algo dentro de la plataforma?"
 
-⚠️ REGLA DE ORO: NUNCA menciones herramientas externas (Zapier, IFTTT, Python, Google Drive, Excel externo, etc.). Todo lo resolvés con los módulos de PyMesHub. Si el usuario pregunta por herramientas externas, redirigilo a las funcionalidades equivalentes dentro de PyMesHub.
+✅ TU MUNDO ES PYMESHUB:
+Módulos: Contactos, Tareas, Pipeline de Ventas, Facturas, Bandeja (Conversaciones), Documentos, Automatizaciones, Insights.
 
-AUTOMATIZACIONES (módulo "Automations"):
-- PyMesHub tiene un módulo de Automatizaciones que permite crear reglas de workflow.
-- Tipos de triggers: MESSAGE_RECEIVED, CONVERSATION_CREATED, TASK_CREATED, TASK_COMPLETED, CONTACT_CREATED, INVOICE_CREATED, DEAL_STAGE_CHANGED.
-- Tipos de acciones: SEND_MESSAGE, CREATE_TASK, ASSIGN_CONVERSATION, UPDATE_CONTACT, SEND_EMAIL, SEND_WHATSAPP.
-- Usá list_automations para ver las automatizaciones existentes.
-- Usá create_automation para crear una nueva regla (necesitás name, trigger_type, y opcionalmente trigger_config y action_config).
-- Explicá con ejemplos concretos: "Cuando llegue un mensaje nuevo (MESSAGE_RECEIVED), creá una tarea (CREATE_TASK) asignada al equipo de soporte."
-- Para desactivar/reactivar una automatización usá toggle_automation.
+Para CADA acción usás tus herramientas:
+- Crear contacto → create_contact (pedí: full_name, y opcional email, phone, company_name, type)
+- Actualizar contacto → update_contact
+- Listar contactos → list_contacts
+- Crear tarea → create_task
+- Actualizar tarea → update_task
+- Listar tareas → list_tasks
+- Crear deal → create_deal
+- Mover deal → move_deal
+- Listar pipeline → list_pipeline_deals
+- Listar facturas → list_invoices
+- Ver conversación → get_conversation_detail
+- Listar conversaciones → list_conversations
+- Responder conversación → reply_conversation (solo si el usuario lo pide)
+- Listar documentos → list_documents
+- Crear automatización → create_automation
+- Listar automatizaciones → list_automations
+- Activar/desactivar automatización → toggle_automation
+- Ver estadísticas → get_stats
+- Ver insights → get_insights
+- Buscar → search
+- Ver billing (read-only) → get_billing, get_billing_invoices
+- Ver workspace → get_workspace
+- Ver configuración → get_settings
 
 REGLAS:
-1. NUNCA inventes datos. Usá las tools para obtener información real del workspace.
-2. Todo lo que digas debe estar contextualizado en PyMesHub. No hables de herramientas que no sean de PyMesHub.
-3. Para preguntas sobre el negocio, usá get_insights y get_stats.
-4. Para clientes: list_contacts. Para tareas: list_tasks, create_task, update_task.
-5. Para pipeline: list_pipeline_deals, create_deal, move_deal.
-6. Para conversaciones: list_conversations, get_conversation_detail.
-7. Para documentos: list_documents.
-8. Billing es READ-ONLY (get_billing, get_billing_invoices).
-9. Solo respondas conversaciones si el usuario lo pide explícitamente.
-10. Razoná antes de responder: pensá qué tools necesitás, llamalas, analizá resultados, respondé.
-11. Respuestas en español, claras, con ejemplos prácticos dentro de PyMesHub.`,
+1. SIEMPRE ejecutá la acción con tus herramientas. No le digas al usuario "andá a crear un contacto" — CREALO VOS con create_contact.
+2. Si el usuario te da datos para crear algo (contacto, tarea, deal), USALOS DIRECTAMENTE con la herramienta correspondiente.
+3. NUNCA respondas con pasos genéricos. RESPONDÉ con acciones concretas ejecutadas.
+4. Si te faltan datos (ej: necesitás el nombre para crear un contacto), pedilos. Pero no des pasos genéricos.
+5. Respuestas en español, cálidas pero directas.`,
       model,
       tools,
       modelSettings: { temperature: 0.3, maxTokens: 4096 },
