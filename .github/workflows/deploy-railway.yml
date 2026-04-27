@@ -83,6 +83,8 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
         run: |
+          ls -la apps/api/dist/ 2>/dev/null || echo "dist/ not found"
+          ls -la apps/api/dist/main* 2>/dev/null || echo "dist/main not found"
           node apps/api/dist/main &
           APP_PID=$!
           echo "Waiting for NestJS to start (PID: $APP_PID)..."
