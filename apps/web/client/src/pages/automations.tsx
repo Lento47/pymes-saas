@@ -164,7 +164,6 @@ export default function AutomationsPage() {
                 <Select value={channelId} onValueChange={setChannelId}>
                   <SelectTrigger style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'white' }}><SelectValue placeholder="Todos los canales" /></SelectTrigger>
                   <SelectContent style={{ background: '#1a1a1d', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <SelectItem value="">Todos</SelectItem>
                     {channels?.map((c:any) => <SelectItem key={c.id} value={c.id}>{c.name} ({c.type})</SelectItem>)}
                   </SelectContent>
                 </Select>
