@@ -334,10 +334,10 @@ export default function DashboardPage() {
             <div className="h-12 w-px bg-gray-300/60 mx-2 flex-shrink-0" />
             <div className="flex items-center gap-6 flex-1 overflow-x-auto scroll-snap-x-mandatory -mx-4 px-4">
               {[
-                { bg: "linear-gradient(135deg,#6366f1,#818cf8)", Icon: TrendingUp, label: "Revenue", value: revenueStr, sub: "vs last month", valueClass: revenueClass },
-                { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} Invoices`, value: "Pending", sub: "", valueClass: "text-gray-800" },
-                { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare, label: `${urgentTasks} Tasks`, value: "Urgent", sub: "", valueClass: "text-gray-800" },
-                { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart2, label: "Pipeline", value: pipelineStatus, sub: "", valueClass: activeConvs > 0 ? "text-green-500" : "text-gray-400" },
+                { bg: "linear-gradient(135deg,#6366f1,#818cf8)", Icon: TrendingUp, label: dash.revenue, value: revenueStr, sub: "vs last month", valueClass: revenueClass },
+                { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} ${dash.invoices}`, value: "Pending", sub: "", valueClass: "text-gray-800" },
+                { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare, label: `${urgentTasks} ${dash.tasks}`, value: "Urgent", sub: "", valueClass: "text-gray-800" },
+                { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart2, label: dash.pipeline, value: pipelineStatus, sub: "", valueClass: activeConvs > 0 ? "text-green-500" : "text-gray-400" },
               ].map(({ bg, Icon, label, value, sub, valueClass }, i, arr) => (
                 <div key={label} className="flex items-center gap-3 flex-shrink-0">
                   <div className="flex items-center gap-3">
@@ -359,11 +359,11 @@ export default function DashboardPage() {
 
         {/* ── Metric cards ────────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <MetricCard label="Revenue this month" value={workspaceStats?.monthly_revenue ?? 0} currency="₡" subLabel={`${workspaceStats?.revenue_change_pct ?? 0}% vs. last month`} icon={TrendingUp} iconBg="bg-indigo-100 text-indigo-600" loading={statsLoading} />
-          <MetricCard label="Outstanding"        value={overdueAmount}                      currency="₡" subLabel={`${overdueCount} invoices pending`}                         icon={Receipt}     iconBg="bg-orange-100 text-orange-500" loading={invoicesLoading} />
-          <MetricCard label="Pipeline value"     value={totalPipeline}                      currency="₡" subLabel="Potential revenue"                                          icon={BarChart2}   iconBg="bg-blue-100 text-blue-500"     loading={pipelineLoading} />
-          <MetricCard label="New messages"       value={todayStats?.received_messages ?? 0}              subLabel={todayStats?.received_messages ? `${todayStats.received_messages} today` : "No messages today"} icon={MessageCircle} iconBg="bg-purple-100 text-purple-500" loading={statsLoading} />
-          <MetricCard label="Tasks today"        value={taskList.length}                                 subLabel={taskList.length === 0 ? "You're all caught up" : `${urgentTasks} urgent`}             icon={Clock}         iconBg="bg-teal-100 text-teal-500"     loading={tasksLoading} />
+          <MetricCard label={dash.revenueThisMonth} value={workspaceStats?.monthly_revenue ?? 0} currency="₡" subLabel={`${workspaceStats?.revenue_change_pct ?? 0}% vs. last month`} icon={TrendingUp} iconBg="bg-indigo-100 text-indigo-600" loading={statsLoading} />
+          <MetricCard label={dash.outstanding}        value={overdueAmount}                      currency="₡" subLabel={`${overdueCount} invoices pending`}                         icon={Receipt}     iconBg="bg-orange-100 text-orange-500" loading={invoicesLoading} />
+          <MetricCard label={dash.pipelineValue}      value={totalPipeline}                      currency="₡" subLabel="Potential revenue"                                          icon={BarChart2}   iconBg="bg-blue-100 text-blue-500"     loading={pipelineLoading} />
+          <MetricCard label={dash.newMessages}        value={todayStats?.received_messages ?? 0}              subLabel={todayStats?.received_messages ? `${todayStats.received_messages} today` : "No messages today"} icon={MessageCircle} iconBg="bg-purple-100 text-purple-500" loading={statsLoading} />
+          <MetricCard label={dash.tasksToday}         value={taskList.length}                                 subLabel={taskList.length === 0 ? "You're all caught up" : `${urgentTasks} urgent`}             icon={Clock}         iconBg="bg-teal-100 text-teal-500"     loading={tasksLoading} />
         </div>
 
         {/* ── Main grid ───────────────────────────────────────────── */}
@@ -373,7 +373,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-5 space-y-4">
 
             {/* Revenue overview */}
-            <Card title="Revenue overview"
+            <Card title={dash.revenueOverview}
               headerExtra={
                 <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1.5 rounded-lg font-medium">
                   {new Date().toLocaleString("en-US", { month: "long", year: "numeric" })}
@@ -460,7 +460,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-4 space-y-4">
 
             {/* Pipeline overview */}
-            <Card title="Pipeline overview" linkTo="/pipeline" linkLabel="View pipeline →" loading={pipelineLoading} empty={!pipelineLoading && stageRows.length === 0}>
+            <Card title={dash.pipelineOverview} linkTo="/pipeline" linkLabel={dash.viewPipeline + " →"} loading={pipelineLoading} empty={!pipelineLoading && stageRows.length === 0}>
               <div className="px-5 py-4 space-y-3.5">
                 {stageRows.map(stage => (
                   <div key={stage.id} className="flex items-center gap-3">
@@ -483,7 +483,7 @@ export default function DashboardPage() {
                 ))}
                 {stageRows.length > 0 && (
                   <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700">Total pipeline value</span>
+                    <span className="text-sm font-semibold text-gray-700">{dash.totalPipelineValue}</span>
                     <span className="text-sm font-bold text-gray-900">{fmtMoney(totalPipeline, firstCurrency)}</span>
                   </div>
                 )}
@@ -533,7 +533,7 @@ export default function DashboardPage() {
                   <div className="w-6 h-6 rounded-lg bg-violet-500/30 flex items-center justify-center">
                     <Sparkles className="w-3.5 h-3.5 text-violet-300" />
                   </div>
-                  <span className="text-sm font-semibold text-white">AI Insights</span>
+                  <span className="text-sm font-semibold text-white">{dash.aiInsights}</span>
                 </div>
 
                 <div className="space-y-2">
@@ -594,7 +594,7 @@ export default function DashboardPage() {
                 {[
                   { Icon: Receipt,     label: "New invoice",      href: "/invoices",    bg: "bg-indigo-50",  ic: "text-indigo-600" },
                   { Icon: UserPlus,    label: "Add contact",      href: "/contacts",    bg: "bg-blue-50",    ic: "text-blue-600"   },
-                  { Icon: KanbanSquare,label: "New opportunity",  href: "/pipeline",    bg: "bg-violet-50",  ic: "text-violet-600" },
+                  { Icon: KanbanSquare,label: dash.newOpportunity,  href: "/pipeline",    bg: "bg-violet-50",  ic: "text-violet-600" },
                   { Icon: MessageCircle,label:"Send message",     href: "/inbox",       bg: "bg-green-50",   ic: "text-green-600"  },
                   { Icon: FileText,    label: "Upload file",      href: "/documents",   bg: "bg-orange-50",  ic: "text-orange-500" },
                   { Icon: Zap,         label: "Automation",       href: "/automations", bg: "bg-pink-50",    ic: "text-pink-500"   },
