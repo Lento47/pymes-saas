@@ -161,6 +161,7 @@ export class ConversationsService {
         ...(dto.subject          !== undefined && { subject: dto.subject }),
         ...(dto.assigned_user_id !== undefined && { assigned_user_id: dto.assigned_user_id }),
         ...(dto.contact_id !== undefined && { contact_id: dto.contact_id }),
+        ...(dto.notes !== undefined && { notes: dto.notes }),
         updated_at: new Date(),
       },
     });
