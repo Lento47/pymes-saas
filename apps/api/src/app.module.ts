@@ -91,6 +91,7 @@ import { TelegramModule } from './telegram/telegram.module';
     SamlModule,
     I18nModule,
     TelegramModule,
+    // Platform must be last — admin routes
     PlatformModule,
 
     WorkersModule,
