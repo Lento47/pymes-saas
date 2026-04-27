@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
@@ -85,6 +86,8 @@ function Field({
 export default function RegisterPage() {
   const { register } = useAuth();
   const { toast } = useToast();
+  const { messages } = useI18n();
+  const reg = messages.register;
 
   const planParam = new URLSearchParams(
     window.location.hash.replace("#", "").split("?")[1] || "",
@@ -114,7 +117,7 @@ export default function RegisterPage() {
       });
     } catch (err) {
       toast({
-        title: "Registration failed",
+        title: reg.failed,
         description: parseError(err, "Something went wrong. Please try again."),
         variant: "destructive",
       });
@@ -143,10 +146,10 @@ export default function RegisterPage() {
   };
 
   const passwordRules = [
-    { label: "At least 12 characters", met: pass.length >= 12 },
-    { label: "One uppercase letter", met: /[A-Z]/.test(pass) },
-    { label: "One lowercase letter", met: /[a-z]/.test(pass) },
-    { label: "One number", met: /\d/.test(pass) },
+    { label: reg.lengthRule, met: pass.length >= 8 },
+    { label: reg.uppercaseRule, met: /[A-Z]/.test(pass) },
+    { label: reg.lowercaseRule, met: /[a-z]/.test(pass) },
+    { label: reg.numberRule, met: /\d/.test(pass) },
     { label: "One special character", met: /[^\w\s]/.test(pass) },
   ];
 
@@ -250,7 +253,7 @@ export default function RegisterPage() {
                 <form onSubmit={handleSubmit} className="mt-10 space-y-6">
                   <Field
                     id="name"
-                    label="Full name"
+                    label={reg.fullName}
                     placeholder="Maria Gonzalez"
                     value={name}
                     onChange={setName}
@@ -259,7 +262,7 @@ export default function RegisterPage() {
                   />
                   <Field
                     id="email"
-                    label="Email address"
+                    label={reg.emailAddress}
                     type="email"
                     placeholder="maria@empresa.com"
                     value={email}
@@ -269,7 +272,7 @@ export default function RegisterPage() {
                   />
                   <Field
                     id="password"
-                    label="Password"
+                    label={reg.password}
                     type={showPassword ? "text" : "password"}
                     placeholder="12+ characters"
                     value={pass}
@@ -303,7 +306,7 @@ export default function RegisterPage() {
                     className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {loading && <Loader2 className="h-5 w-5 animate-spin" />}
-                    Create account
+                    {loading ? reg.creating : reg.createAccount}
                     <ArrowRight className="h-5 w-5" />
                   </button>
                 </form>
