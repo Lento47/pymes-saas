@@ -113,19 +113,3 @@ jobs:
           echo "❌ Healthcheck timed out after 30s"
           kill $APP_PID 2>/dev/null || true
           exit 1
-
-  deploy:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main-api'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to Railway
-        uses: railway-app/cli-action@v1
-        with:
-          token: ${{ secrets.RAILWAY_TOKEN }}
-          service: pymeshub-api
-          environment: production
