@@ -14,6 +14,37 @@ function sseSend(res: Response, data: any) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
+function makeTool(name: string, description: string, properties: any = {}, required: string[] = []): any {
+  return {
+    name,
+    description,
+    annotations: null,
+    input_schema: {
+      type: 'object',
+      properties,
+      required,
+      additionalProperties: false,
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+    },
+  };
+}
+
+const TOOLS = [
+  makeTool('set_workspace', 'Set the active workspace slug for subsequent calls', { slug: { type: 'string' } }, ['slug']),
+  makeTool('get_workspace', 'Get current workspace info'),
+  makeTool('get_stats', 'Get workspace statistics'),
+  makeTool('list_contacts', 'List all contacts', { search: { type: 'string' } }),
+  makeTool('list_tasks', 'List all tasks', { status: { type: 'string' } }),
+  makeTool('create_task', 'Create a new task', { title: { type: 'string' }, description: { type: 'string' }, priority: { type: 'string', enum: ['LOW','MEDIUM','HIGH','URGENT'] }, due_date: { type: 'string' } }, ['title']),
+  makeTool('list_invoices', 'List all invoices'),
+  makeTool('list_conversations', 'List all conversations', { status: { type: 'string' } }),
+  makeTool('list_automations', 'List all automations'),
+  makeTool('get_billing', 'Get subscription and billing info'),
+  makeTool('get_billing_invoices', 'Get billing history invoices'),
+  makeTool('list_pipeline_deals', 'List sales pipeline deals'),
+  makeTool('get_settings', 'Get workspace settings and members'),
+];
+
 @Controller('mcp')
 export class McpController {
   constructor(private readonly prisma: PrismaService) {}
