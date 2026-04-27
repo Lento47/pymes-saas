@@ -100,7 +100,7 @@ function FieldHelp({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white/40 transition-colors hover:text-foreground"
           aria-label={`Ayuda sobre ${title}`}
         >
           <HelpCircle className="h-3.5 w-3.5" />
@@ -109,7 +109,7 @@ function FieldHelp({
       <PopoverContent align="start" className="w-80 border-border bg-card p-3">
         <div className="space-y-2">
           <div className="text-sm font-medium text-foreground">{title}</div>
-          <p className="text-xs leading-5 text-muted-foreground">{meaning}</p>
+          <p className="text-xs leading-5 text-white/40">{meaning}</p>
           <div className="rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-5 text-foreground">
             {example}
           </div>
@@ -567,7 +567,7 @@ export default function InvoicesPage() {
                 <div className="text-sm font-medium text-foreground">
                   {totalOverdue} factura{totalOverdue === 1 ? "" : "s"} vencida{totalOverdue === 1 ? "" : "s"}
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-white/40">
                   {formatMoney(overdueAmount, "USD")} pendientes de cobro
                 </div>
               </div>
@@ -580,7 +580,7 @@ export default function InvoicesPage() {
             <BookOpen className="mt-0.5 h-4 w-4 text-sky-400" />
             <div className="space-y-1">
               <div className="text-sm font-medium text-foreground">Ayuda para PYMES</div>
-              <p className="text-xs leading-5 text-muted-foreground">
+              <p className="text-xs leading-5 text-white/40">
                 Facturación ya muestra ayuda por campo con el ícono <span className="font-medium text-foreground">?</span>.
                 Si usas modo <span className="font-medium text-foreground">HACIENDA</span>, conviene tener configurado
                 el emisor, credenciales, certificado, callback y catálogos fiscales antes de emitir.
@@ -594,7 +594,7 @@ export default function InvoicesPage() {
               <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-400" />
               <div className="space-y-1">
                 <div className="text-sm font-medium text-foreground">Hacienda aún no está lista para emitir</div>
-                <p className="text-xs leading-5 text-muted-foreground">
+                <p className="text-xs leading-5 text-white/40">
                   Antes de usar <span className="font-medium text-foreground">Enviar MH</span>, completa en Configuración estos datos:
                   {" "}{haciendaReadinessIssues.join(", ")}.
                 </p>
@@ -605,7 +605,7 @@ export default function InvoicesPage() {
 
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-[320px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -661,14 +661,14 @@ export default function InvoicesPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-[11px] text-muted-foreground font-medium"># Factura</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Contacto</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Total</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Pagado</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Saldo</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Vencimiento</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Cobro / Hacienda</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium text-right">Acciones</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium"># Factura</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium">Contacto</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium">Total</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium">Pagado</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium">Saldo</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium">Vencimiento</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium">Cobro / Hacienda</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -688,9 +688,9 @@ export default function InvoicesPage() {
                       <TableCell className="text-sm font-medium text-foreground">{invoice.number}</TableCell>
                       <TableCell>
                         <div className="text-sm text-foreground">{invoice.contact?.full_name ?? "—"}</div>
-                        <div className="text-[11px] text-muted-foreground">{invoice.contact?.email || invoice.contact?.phone || "Sin dato de contacto"}</div>
+                        <div className="text-[11px] text-white/40">{invoice.contact?.email || invoice.contact?.phone || "Sin dato de contacto"}</div>
                         {invoice.conversation?.subject && (
-                          <div className="text-[11px] text-muted-foreground truncate">{invoice.conversation.subject}</div>
+                          <div className="text-[11px] text-white/40 truncate">{invoice.conversation.subject}</div>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-foreground">
@@ -705,7 +705,7 @@ export default function InvoicesPage() {
                           <div className="text-[11px] text-amber-400">{overdueDays}d vencida</div>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs text-white/40">
                         {format(new Date(invoice.due_date), "d MMM yyyy", { locale: es })}
                       </TableCell>
                       <TableCell>
@@ -866,7 +866,7 @@ export default function InvoicesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Modo</Label>
+                  <Label className="text-xs text-white/40">Modo</Label>
                   <FieldHelp
                     title="Modo"
                     meaning="Permite decidir si esta factura queda solo para cobranza interna o si además se emite oficialmente ante Hacienda."
@@ -886,7 +886,7 @@ export default function InvoicesPage() {
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Documento</Label>
+                  <Label className="text-xs text-white/40">Documento</Label>
                   <FieldHelp
                     title="Documento"
                     meaning="Tipo de comprobante fiscal que se emitirá."
@@ -907,7 +907,7 @@ export default function InvoicesPage() {
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-1">
-                <Label className="text-xs text-muted-foreground">Contacto</Label>
+                <Label className="text-xs text-white/40">Contacto</Label>
                 <FieldHelp
                   title="Contacto"
                   meaning="Es la persona o empresa a la que se le emite la factura. Para Hacienda, este registro debe tener datos fiscales correctos."
@@ -942,7 +942,7 @@ export default function InvoicesPage() {
                 </p>
               )}
               {!isContactsLoading && !contacts.length && !hasContactsError && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[11px] text-white/40">
                   No hay contactos creados todavía. Puedes agregarlos desde Contactos o vinculando uno desde el inbox.
                 </p>
               )}
@@ -950,7 +950,7 @@ export default function InvoicesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Número</Label>
+                  <Label className="text-xs text-white/40">Número</Label>
                   <FieldHelp
                     title="Número"
                     meaning="Identificador comercial visible de la factura dentro del sistema."
@@ -966,7 +966,7 @@ export default function InvoicesPage() {
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Moneda</Label>
+                  <Label className="text-xs text-white/40">Moneda</Label>
                   <FieldHelp
                     title="Moneda"
                     meaning="Moneda en la que se emite la operación."
@@ -984,7 +984,7 @@ export default function InvoicesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Monto total</Label>
+                  <Label className="text-xs text-white/40">Monto total</Label>
                   <FieldHelp
                     title="Monto total"
                     meaning="Total comercial de la factura. En modo Hacienda se usa para construir la línea y el cálculo fiscal."
@@ -1001,7 +1001,7 @@ export default function InvoicesPage() {
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Vencimiento</Label>
+                  <Label className="text-xs text-white/40">Vencimiento</Label>
                   <FieldHelp
                     title="Vencimiento"
                     meaning="Fecha límite de pago para cobranza interna."
@@ -1019,7 +1019,7 @@ export default function InvoicesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Fecha emisión</Label>
+                  <Label className="text-xs text-white/40">Fecha emisión</Label>
                   <FieldHelp
                     title="Fecha de emisión"
                     meaning="Fecha oficial del comprobante."
@@ -1036,7 +1036,7 @@ export default function InvoicesPage() {
               {createForm.issuance_mode === "HACIENDA" && (
                 <div className="space-y-1">
                   <div className="flex items-center gap-1">
-                    <Label className="text-xs text-muted-foreground">Actividad</Label>
+                    <Label className="text-xs text-white/40">Actividad</Label>
                     <FieldHelp
                       title="Actividad"
                       meaning="Código de actividad económica del emisor ante Hacienda."
@@ -1057,7 +1057,7 @@ export default function InvoicesPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Condición venta</Label>
+                      <Label className="text-xs text-white/40">Condición venta</Label>
                       <FieldHelp
                         title="Condición de venta"
                         meaning="Indica si la venta es de contado, crédito u otra modalidad tributaria."
@@ -1073,7 +1073,7 @@ export default function InvoicesPage() {
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Medio pago</Label>
+                      <Label className="text-xs text-white/40">Medio pago</Label>
                       <FieldHelp
                         title="Medio de pago"
                         meaning="Forma en que se realiza el pago de la operación."
@@ -1091,7 +1091,7 @@ export default function InvoicesPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1 col-span-2">
                     <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Detalle línea</Label>
+                      <Label className="text-xs text-white/40">Detalle línea</Label>
                       <FieldHelp
                         title="Detalle de línea"
                         meaning="Descripción fiscal del producto o servicio."
@@ -1107,7 +1107,7 @@ export default function InvoicesPage() {
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Impuesto %</Label>
+                      <Label className="text-xs text-white/40">Impuesto %</Label>
                       <FieldHelp
                         title="Impuesto %"
                         meaning="Porcentaje del impuesto aplicado a la línea."
@@ -1125,7 +1125,7 @@ export default function InvoicesPage() {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1">
-                    <Label className="text-xs text-muted-foreground">CABYS</Label>
+                    <Label className="text-xs text-white/40">CABYS</Label>
                     <FieldHelp
                       title="CABYS"
                       meaning="Código oficial que clasifica el bien o servicio facturado."
@@ -1143,7 +1143,7 @@ export default function InvoicesPage() {
             )}
             <div className="space-y-1">
               <div className="flex items-center gap-1">
-                <Label className="text-xs text-muted-foreground">Descripción</Label>
+                <Label className="text-xs text-white/40">Descripción</Label>
                 <FieldHelp
                   title="Descripción"
                   meaning="Texto comercial o interno de apoyo para entender la factura."
@@ -1189,42 +1189,42 @@ export default function InvoicesPage() {
           {selectedInvoice && (
             <div className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Número</span><div className="text-foreground font-medium mt-0.5">{selectedInvoice.number}</div></div>
-                <div><span className="text-muted-foreground">Estado</span><div className="mt-0.5"><StatusBadge status={selectedInvoice.status} type="invoice" /></div></div>
+                <div><span className="text-white/40">Número</span><div className="text-foreground font-medium mt-0.5">{selectedInvoice.number}</div></div>
+                <div><span className="text-white/40">Estado</span><div className="mt-0.5"><StatusBadge status={selectedInvoice.status} type="invoice" /></div></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Contacto</span><div className="text-foreground mt-0.5">{selectedInvoice.contact?.full_name ?? "—"}</div></div>
-                <div><span className="text-muted-foreground">Empresa</span><div className="text-foreground mt-0.5">{selectedInvoice.contact?.company_name ?? "—"}</div></div>
+                <div><span className="text-white/40">Contacto</span><div className="text-foreground mt-0.5">{selectedInvoice.contact?.full_name ?? "—"}</div></div>
+                <div><span className="text-white/40">Empresa</span><div className="text-foreground mt-0.5">{selectedInvoice.contact?.company_name ?? "—"}</div></div>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div><span className="text-muted-foreground">Total</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.amount, selectedInvoice.currency)}</div></div>
-                <div><span className="text-muted-foreground">Pagado</span><div className="text-green-400 font-medium mt-0.5">{formatMoney(selectedInvoice.amount_paid, selectedInvoice.currency)}</div></div>
-                <div><span className="text-muted-foreground">Saldo</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)}</div></div>
+                <div><span className="text-white/40">Total</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.amount, selectedInvoice.currency)}</div></div>
+                <div><span className="text-white/40">Pagado</span><div className="text-green-400 font-medium mt-0.5">{formatMoney(selectedInvoice.amount_paid, selectedInvoice.currency)}</div></div>
+                <div><span className="text-white/40">Saldo</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)}</div></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Emisión</span><div className="text-foreground mt-0.5">{selectedInvoice.issue_date ? format(new Date(selectedInvoice.issue_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
-                <div><span className="text-muted-foreground">Vencimiento</span><div className="text-foreground mt-0.5">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
+                <div><span className="text-white/40">Emisión</span><div className="text-foreground mt-0.5">{selectedInvoice.issue_date ? format(new Date(selectedInvoice.issue_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
+                <div><span className="text-white/40">Vencimiento</span><div className="text-foreground mt-0.5">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Modo</span><div className="text-foreground mt-0.5">{selectedInvoice.issuance_mode}</div></div>
-                <div><span className="text-muted-foreground">Hacienda</span><div className="mt-0.5"><StatusBadge status={selectedInvoice.hacienda_status} type="invoice" /></div></div>
+                <div><span className="text-white/40">Modo</span><div className="text-foreground mt-0.5">{selectedInvoice.issuance_mode}</div></div>
+                <div><span className="text-white/40">Hacienda</span><div className="mt-0.5"><StatusBadge status={selectedInvoice.hacienda_status} type="invoice" /></div></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Moneda</span><div className="text-foreground mt-0.5">{selectedInvoice.currency}</div></div>
-                <div><span className="text-muted-foreground">Tipo documento</span><div className="text-foreground mt-0.5">{selectedInvoice.document_type}</div></div>
+                <div><span className="text-white/40">Moneda</span><div className="text-foreground mt-0.5">{selectedInvoice.currency}</div></div>
+                <div><span className="text-white/40">Tipo documento</span><div className="text-foreground mt-0.5">{selectedInvoice.document_type}</div></div>
               </div>
               {selectedInvoice.description && (
-                <div><span className="text-muted-foreground">Descripción</span><div className="text-foreground mt-0.5 whitespace-pre-wrap">{selectedInvoice.description}</div></div>
+                <div><span className="text-white/40">Descripción</span><div className="text-foreground mt-0.5 whitespace-pre-wrap">{selectedInvoice.description}</div></div>
               )}
               {selectedInvoice.payments?.length > 0 && (
                 <div>
-                  <span className="text-muted-foreground">Pagos registrados</span>
+                  <span className="text-white/40">Pagos registrados</span>
                   <div className="mt-1 space-y-1">
                     {selectedInvoice.payments.map((p: any) => (
                       <div key={p.id} className="flex justify-between rounded border border-border bg-background px-2 py-1">
                         <span className="text-foreground">{formatMoney(p.amount, selectedInvoice.currency)}</span>
-                        <span className="text-muted-foreground">{p.paid_at ? format(new Date(p.paid_at), "d MMM yyyy", { locale: es }) : "—"}</span>
-                        <span className="text-muted-foreground">{p.method ?? "—"}</span>
+                        <span className="text-white/40">{p.paid_at ? format(new Date(p.paid_at), "d MMM yyyy", { locale: es }) : "—"}</span>
+                        <span className="text-white/40">{p.method ?? "—"}</span>
                       </div>
                     ))}
                   </div>
@@ -1246,14 +1246,14 @@ export default function InvoicesPage() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Modo</Label>
+                <Label className="text-xs text-white/40">Modo</Label>
                 <Select value={editForm.issuance_mode} onValueChange={(v) => setEditForm(f => ({ ...f, issuance_mode: v }))}>
                   <SelectTrigger className="h-8 text-xs bg-background border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{ISSUANCE_MODES.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Documento</Label>
+                <Label className="text-xs text-white/40">Documento</Label>
                 <Select value={editForm.document_type} onValueChange={(v) => setEditForm(f => ({ ...f, document_type: v }))}>
                   <SelectTrigger className="h-8 text-xs bg-background border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{DOCUMENT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
@@ -1261,7 +1261,7 @@ export default function InvoicesPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Contacto</Label>
+              <Label className="text-xs text-white/40">Contacto</Label>
               <select
                 value={editForm.contact_id}
                 onChange={(e) => setEditForm(f => ({ ...f, contact_id: e.target.value }))}
@@ -1275,46 +1275,46 @@ export default function InvoicesPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Número</Label>
+                <Label className="text-xs text-white/40">Número</Label>
                 <Input value={editForm.number} onChange={(e) => setEditForm(f => ({ ...f, number: e.target.value }))} className="h-8 text-xs bg-background border-border" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Moneda</Label>
+                <Label className="text-xs text-white/40">Moneda</Label>
                 <Input value={editForm.currency} onChange={(e) => setEditForm(f => ({ ...f, currency: e.target.value.toUpperCase() }))} className="h-8 text-xs bg-background border-border" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Monto total</Label>
+                <Label className="text-xs text-white/40">Monto total</Label>
                 <Input type="number" step="0.01" value={editForm.amount} onChange={(e) => setEditForm(f => ({ ...f, amount: e.target.value }))} className="h-8 text-xs bg-background border-border" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Vencimiento</Label>
+                <Label className="text-xs text-white/40">Vencimiento</Label>
                 <Input type="date" value={editForm.due_date} onChange={(e) => setEditForm(f => ({ ...f, due_date: e.target.value }))} className="h-8 text-xs bg-background border-border" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Fecha emisión</Label>
+                <Label className="text-xs text-white/40">Fecha emisión</Label>
                 <Input type="date" value={editForm.issue_date} onChange={(e) => setEditForm(f => ({ ...f, issue_date: e.target.value }))} className="h-8 text-xs bg-background border-border" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Actividad</Label>
+                <Label className="text-xs text-white/40">Actividad</Label>
                 <Input value={editForm.activity_code} onChange={(e) => setEditForm(f => ({ ...f, activity_code: e.target.value }))} className="h-8 text-xs bg-background border-border" placeholder="Código" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Condición venta</Label>
+                <Label className="text-xs text-white/40">Condición venta</Label>
                 <Input value={editForm.sale_condition} onChange={(e) => setEditForm(f => ({ ...f, sale_condition: e.target.value }))} className="h-8 text-xs bg-background border-border" placeholder="01" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Medio pago</Label>
+                <Label className="text-xs text-white/40">Medio pago</Label>
                 <Input value={editForm.payment_method} onChange={(e) => setEditForm(f => ({ ...f, payment_method: e.target.value }))} className="h-8 text-xs bg-background border-border" placeholder="01" />
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Descripción</Label>
+              <Label className="text-xs text-white/40">Descripción</Label>
               <Textarea value={editForm.description} onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))} className="min-h-[80px] text-xs bg-background border-border" placeholder="Detalles opcionales" />
             </div>
           </div>
@@ -1341,7 +1341,7 @@ export default function InvoicesPage() {
           <div className="space-y-4">
             <div className="rounded-lg border border-border bg-background px-4 py-3">
               <div className="text-sm font-medium text-foreground">Qué necesita una factura rigurosa para Hacienda</div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              <p className="mt-1 text-xs leading-5 text-white/40">
                 No basta con monto y cliente. Para que el sistema sea sólido se necesitan datos correctos del emisor,
                 datos fiscales del receptor, líneas con CABYS e impuesto, catálogos tributarios, XML, firma, token,
                 envío, callback o consulta de estado, y trazabilidad de aceptación o rechazo.
@@ -1351,7 +1351,7 @@ export default function InvoicesPage() {
               {HACIENDA_GUIDE.map((item) => (
                 <div key={item.title} className="rounded-lg border border-border bg-background px-4 py-3">
                   <div className="text-sm font-medium text-foreground">{item.title}</div>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.meaning}</p>
+                  <p className="mt-1 text-xs leading-5 text-white/40">{item.meaning}</p>
                   <div className="mt-2 rounded-md border border-border bg-card px-2.5 py-2 text-xs leading-5 text-foreground">
                     {item.example}
                   </div>
@@ -1360,7 +1360,7 @@ export default function InvoicesPage() {
             </div>
             <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
               <div className="text-sm font-medium text-foreground">Pendiente importante</div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              <p className="mt-1 text-xs leading-5 text-white/40">
                 El flujo ya contempla la estructura de Hacienda, pero para operar en serio aún debes tener configurados
                 el certificado real, la firma real, credenciales válidas, callback accesible y catálogos tributarios correctos.
               </p>
@@ -1397,20 +1397,20 @@ export default function InvoicesPage() {
           {!selectedInvoice ? null : (
             <div className="space-y-3">
               <div className="rounded-md border border-border bg-background px-3 py-2 space-y-1">
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-white/40">
                   {selectedInvoice.number} · {selectedInvoice.contact?.full_name}
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-xs">
                   <div>
-                    <div className="text-muted-foreground">Total</div>
+                    <div className="text-white/40">Total</div>
                     <div className="text-foreground">{formatMoney(selectedInvoice.amount, selectedInvoice.currency)}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">Pagado</div>
+                    <div className="text-white/40">Pagado</div>
                     <div className="text-foreground">{formatMoney(selectedInvoice.amount_paid, selectedInvoice.currency)}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">Saldo</div>
+                    <div className="text-white/40">Saldo</div>
                     <div className="text-foreground">{formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)}</div>
                   </div>
                 </div>
@@ -1418,7 +1418,7 @@ export default function InvoicesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Monto abonado</Label>
+                  <Label className="text-xs text-white/40">Monto abonado</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -1428,7 +1428,7 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Fecha de pago</Label>
+                  <Label className="text-xs text-white/40">Fecha de pago</Label>
                   <Input
                     type="date"
                     value={paymentForm.paid_at}
@@ -1440,7 +1440,7 @@ export default function InvoicesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Método</Label>
+                  <Label className="text-xs text-white/40">Método</Label>
                   <Input
                     value={paymentForm.method}
                     onChange={(e) => setPaymentForm((prev) => ({ ...prev, method: e.target.value }))}
@@ -1449,7 +1449,7 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Referencia</Label>
+                  <Label className="text-xs text-white/40">Referencia</Label>
                   <Input
                     value={paymentForm.reference}
                     onChange={(e) => setPaymentForm((prev) => ({ ...prev, reference: e.target.value }))}
@@ -1460,7 +1460,7 @@ export default function InvoicesPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Notas</Label>
+                <Label className="text-xs text-white/40">Notas</Label>
                 <Textarea
                   value={paymentForm.notes}
                   onChange={(e) => setPaymentForm((prev) => ({ ...prev, notes: e.target.value }))}
@@ -1502,14 +1502,14 @@ export default function InvoicesPage() {
             <DialogTitle className="text-sm">Recordatorio de pago</DialogTitle>
           </DialogHeader>
           {!selectedInvoice || (generateReminderMutation.isPending && !reminderDraft.trim()) ? (
-            <div className="py-6 flex items-center justify-center text-sm text-muted-foreground">
+            <div className="py-6 flex items-center justify-center text-sm text-white/40">
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Cargando borrador...
             </div>
           ) : (
             <div className="space-y-3">
               <div className="rounded-md border border-border bg-background px-3 py-2">
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-white/40">
                   {selectedInvoice.number} · {selectedInvoice.contact?.full_name}
                 </div>
                 <div className="text-sm text-foreground mt-1">
@@ -1518,7 +1518,7 @@ export default function InvoicesPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Borrador</Label>
+                <Label className="text-xs text-white/40">Borrador</Label>
                 <Textarea
                   value={reminderDraft}
                   onChange={(e) => setReminderDraft(e.target.value)}
@@ -1528,7 +1528,7 @@ export default function InvoicesPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Canal</Label>
+                <Label className="text-xs text-white/40">Canal</Label>
                 <Select value={selectedChannelId} onValueChange={setSelectedChannelId}>
                   <SelectTrigger className="h-8 text-xs bg-background border-border">
                     <SelectValue placeholder="Selecciona un canal" />

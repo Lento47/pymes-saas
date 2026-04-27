@@ -97,20 +97,20 @@ function RevenueChart({ monthlyRevenue, changePct }: { monthlyRevenue: number; c
     >
       <defs>
         <linearGradient id="rev-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02" />
+          <stop offset="0%" stopColor="#8b7cf6" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#8b7cf6" stopOpacity="0.02" />
         </linearGradient>
       </defs>
       {[25, 50, 75, 100].map(y => (
-        <line key={y} x1="0" y1={y} x2={W} y2={y} stroke="#f1f5f9" strokeWidth="1" />
+        <line key={y} x1="0" y1={y} x2={W} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
       ))}
       <path d={area} fill="url(#rev-fill)" />
-      <path d={d} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={d} fill="none" stroke="#8b7cf6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
       {/* Today indicator line */}
-      <line x1={xs[Math.min(today - 1, points - 1)]} y1="0" x2={xs[Math.min(today - 1, points - 1)]} y2={H} stroke="#6366f1" strokeWidth="1" strokeDasharray="4 2" opacity="0.5" />
+      <line x1={xs[Math.min(today - 1, points - 1)]} y1="0" x2={xs[Math.min(today - 1, points - 1)]} y2={H} stroke="#8b7cf6" strokeWidth="1" strokeDasharray="4 2" opacity="0.5" />
       {/* Active dot */}
-      <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="5" fill="#6366f1" />
-      <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="9" fill="#6366f1" fillOpacity="0.15" />
+      <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="5" fill="#8b7cf6" />
+      <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="9" fill="#8b7cf6" fillOpacity="0.15" />
       {/* Tooltip */}
       <rect x={Math.max(0, Math.min(W - 90, xs[activeIdx] - 45))} y={Math.max(0, ys[activeIdx] - 38)} width="90" height="24" rx="6" fill="#1e1b4b" />
       <text x={Math.max(45, Math.min(W - 45, xs[activeIdx]))} y={Math.max(16, ys[activeIdx] - 22)} textAnchor="middle" fill="white" fontSize="10" fontWeight="600">
@@ -126,22 +126,22 @@ function MetricCard({ label, value, currency, subLabel, icon: Icon, iconBg, load
   icon: any; iconBg: string; loading?: boolean;
 }) {
   return (
-    <div className="relative rounded-2xl overflow-hidden bg-white border border-gray-100 p-5 hover:shadow-md transition-shadow"
+    <div className="relative rounded-2xl overflow-hidden bg-white/[0.02] border border-white/[0.04] p-5 hover:shadow-md transition-shadow"
       style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center" }}>
-      <div className="absolute inset-0 bg-white/[0.88] rounded-2xl" />
+      <div className="absolute inset-0 bg-[#0c0c0e]/[0.88] rounded-2xl" />
       <div className="relative">
         <div className="flex items-start justify-between mb-3">
-          <p className="text-sm font-medium text-gray-500">{label}</p>
+          <p className="text-sm font-medium text-white/40">{label}</p>
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
             <Icon className="w-4 h-4" />
           </div>
         </div>
         {loading ? <Skeleton className="h-7 w-20" /> : (
           <>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-2xl font-bold text-white/90">
               {currency}{typeof value === "number" ? value.toLocaleString("es-ES") : value}
             </p>
-            {subLabel && <p className="text-xs text-gray-400 mt-1">{subLabel}</p>}
+            {subLabel && <p className="text-xs text-white/30 mt-1">{subLabel}</p>}
           </>
         )}
       </div>
@@ -152,9 +152,9 @@ function MetricCard({ label, value, currency, subLabel, icon: Icon, iconBg, load
 // ── Priority badge ────────────────────────────────────────────────────────────
 function PriorityBadge({ priority }: { priority: string }) {
   const map: Record<string, string> = {
-    HIGH:   "bg-red-100 text-red-600",
-    MEDIUM: "bg-yellow-100 text-yellow-700",
-    LOW:    "bg-gray-100 text-gray-500",
+    HIGH:   "bg-red-500/15 text-red-400",
+    MEDIUM: "bg-yellow-500/15 text-yellow-400",
+    LOW:    "bg-white/[0.02] text-white/40",
   };
   const labels: Record<string, string> = { HIGH: "High", MEDIUM: "Medium", LOW: "Low" };
   return (
@@ -170,15 +170,15 @@ function Card({ title, linkTo, linkLabel, headerExtra, loading, empty, children 
   loading?: boolean; empty?: boolean; children?: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+    <div className="bg-white/[0.02] rounded-2xl border border-white/[0.04] overflow-hidden">
       {(title || linkTo || headerExtra) && (
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.04]">
+          <h3 className="font-semibold text-white/90 text-sm">{title}</h3>
           <div className="flex items-center gap-2">
             {headerExtra}
             {linkTo && (
               <Link href={linkTo}>
-                <a className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1 font-medium">
+                <a className="text-xs text-[#8b7cf6] hover:text-[#a78bfa] flex items-center gap-1 font-medium">
                   {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
                 </a>
               </Link>
@@ -189,7 +189,7 @@ function Card({ title, linkTo, linkLabel, headerExtra, loading, empty, children 
       {loading
         ? <div className="px-5 py-4 space-y-3">{[0,1,2].map(i => <Skeleton key={i} className="h-4 w-full" />)}</div>
         : empty
-        ? <div className="px-5 py-8 text-center text-sm text-gray-400">No data yet</div>
+        ? <div className="px-5 py-8 text-center text-sm text-white/30">No data yet</div>
         : <div>{children}</div>
       }
     </div>
@@ -231,7 +231,7 @@ export default function DashboardPage() {
   const activeConvs = workspaceStats?.activeConversations ?? 0;
   const pipelineStatus = activeConvs > 0 ? "Active" : "Empty";
   const stageRows = stageList
-    .map(s => ({ id: s.id, name: s.name, color: s.color || "#6366F1", dealCount: s.deals?.length ?? 0, totalValue: sumPipelineValue(s.deals ?? []), currency: s.deals?.find(d => d.currency)?.currency ?? "CRC" }))
+    .map(s => ({ id: s.id, name: s.name, color: s.color || "#8b7cf6", dealCount: s.deals?.length ?? 0, totalValue: sumPipelineValue(s.deals ?? []), currency: s.deals?.find(d => d.currency)?.currency ?? "CRC" }))
     .filter(s => s.dealCount > 0).slice(0, 5);
   const maxDeals    = Math.max(...stageRows.map(s => s.dealCount), 1);
   const totalPipeline = stageRows.reduce((s, r) => s + r.totalValue, 0);
@@ -292,24 +292,24 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-full" style={{ background: "#F4F5F9" }}>
+    <div className="min-h-full" style={{ background: "#0c0c0e" }}>
 
       {/* ── Page header ─────────────────────────────────────────────── */}
       <div className="px-3 md:px-8 pt-4 md:pt-7 pb-5 flex items-start justify-between max-w-[1400px] mx-auto">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact} 👋</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{bannerSubtitle || dash.subtitle}</p>
+          <h1 className="text-2xl font-bold text-white/90">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact} 👋</h1>
+          <p className="text-sm text-white/40 mt-0.5">{bannerSubtitle || dash.subtitle}</p>
         </div>
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-400 min-w-[220px]">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/[0.04] bg-white/[0.02] text-sm text-white/30 min-w-[220px]">
             <Search className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1">{dash.search}</span>
-            <span className="text-xs text-gray-300 font-mono hidden md:inline">⌘ K</span>
+            <span className="text-xs text-white/20 font-mono hidden md:inline">⌘ K</span>
           </div>
-          <button className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition">
+          <button className="p-2.5 rounded-xl border border-white/[0.04] bg-white/[0.02] text-white/40 hover:bg-white/[0.03] transition">
             <Bell className="w-5 h-5" />
           </button>
-          <button className="p-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition">
+          <button className="p-2.5 rounded-xl bg-[#8b7cf6] text-white hover:opacity-90 transition">
             <Plus className="w-5 h-5" />
           </button>
         </div>
@@ -318,26 +318,26 @@ export default function DashboardPage() {
       <div className="px-3 md:px-8 pb-8 max-w-[1400px] mx-auto space-y-4">
 
         {/* ── Status banner ───────────────────────────────────────── */}
-        <div className="rounded-2xl overflow-hidden border border-gray-100"
+        <div className="rounded-2xl overflow-hidden border border-white/[0.04]"
           style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center right", minHeight: 96 }}>
           <div className="flex items-center gap-6 px-7 py-5">
             <div className="w-14 h-14 rounded-2xl bg-white/75 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
-              <Activity className="w-7 h-7 text-indigo-500" />
+              <Activity className="w-7 h-7 text-[#8b7cf6]" />
             </div>
             <div className="flex-shrink-0 min-w-[220px]">
               {!bannerAI && aiPromptReady ? (
-                <><div className="h-5 w-48 rounded bg-gray-200/70 animate-pulse mb-1.5" /><div className="h-3.5 w-56 rounded bg-gray-200/50 animate-pulse" /></>
+                <><div className="h-5 w-48 rounded bg-white/[0.03] animate-pulse mb-1.5" /><div className="h-3.5 w-56 rounded bg-white/[0.03] animate-pulse" /></>
               ) : (
-                <><h2 className="text-[17px] font-bold text-gray-900 leading-snug">{bannerTitle}</h2><p className="text-sm text-gray-500 mt-0.5">{bannerSubtitle}</p></>
+                <><h2 className="text-[17px] font-bold text-white/90 leading-snug">{bannerTitle}</h2><p className="text-sm text-white/40 mt-0.5">{bannerSubtitle}</p></>
               )}
             </div>
-            <div className="h-12 w-px bg-gray-300/60 mx-2 flex-shrink-0" />
+            <div className="h-12 w-px bg-white/[0.04]/60 mx-2 flex-shrink-0" />
             <div className="flex items-center gap-6 flex-1 overflow-x-auto scroll-snap-x-mandatory -mx-4 px-4">
               {[
-                { bg: "linear-gradient(135deg,#6366f1,#818cf8)", Icon: TrendingUp, label: dash.revenue, value: revenueStr, sub: "vs last month", valueClass: revenueClass },
-                { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} ${dash.invoices}`, value: "Pending", sub: "", valueClass: "text-gray-800" },
-                { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare, label: `${urgentTasks} ${dash.tasks}`, value: "Urgent", sub: "", valueClass: "text-gray-800" },
-                { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart2, label: dash.pipeline, value: pipelineStatus, sub: "", valueClass: activeConvs > 0 ? "text-green-500" : "text-gray-400" },
+                { bg: "linear-gradient(135deg,#8b7cf6,#a78bfa)", Icon: TrendingUp, label: dash.revenue, value: revenueStr, sub: "vs last month", valueClass: revenueClass },
+                { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} ${dash.invoices}`, value: "Pending", sub: "", valueClass: "text-white/80" },
+                { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare, label: `${urgentTasks} ${dash.tasks}`, value: "Urgent", sub: "", valueClass: "text-white/80" },
+                { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart2, label: dash.pipeline, value: pipelineStatus, sub: "", valueClass: activeConvs > 0 ? "text-green-500" : "text-white/30" },
               ].map(({ bg, Icon, label, value, sub, valueClass }, i, arr) => (
                 <div key={label} className="flex items-center gap-3 flex-shrink-0">
                   <div className="flex items-center gap-3">
@@ -345,12 +345,12 @@ export default function DashboardPage() {
                       <Icon className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 font-medium">{label}</p>
+                      <p className="text-xs text-white/40 font-medium">{label}</p>
                       <p className={`text-sm font-bold ${valueClass}`}>{value}</p>
-                      {sub && <p className="text-xs text-gray-400">{sub}</p>}
+                      {sub && <p className="text-xs text-white/30">{sub}</p>}
                     </div>
                   </div>
-                  {i < arr.length - 1 && <div className="h-10 w-px bg-gray-200/70 ml-3" />}
+                  {i < arr.length - 1 && <div className="h-10 w-px bg-white/[0.03]/70 ml-3" />}
                 </div>
               ))}
             </div>
@@ -359,11 +359,11 @@ export default function DashboardPage() {
 
         {/* ── Metric cards ────────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <MetricCard label={dash.revenueThisMonth} value={workspaceStats?.monthly_revenue ?? 0} currency="₡" subLabel={`${workspaceStats?.revenue_change_pct ?? 0}% vs. last month`} icon={TrendingUp} iconBg="bg-indigo-100 text-indigo-600" loading={statsLoading} />
-          <MetricCard label={dash.outstanding}        value={overdueAmount}                      currency="₡" subLabel={`${overdueCount} invoices pending`}                         icon={Receipt}     iconBg="bg-orange-100 text-orange-500" loading={invoicesLoading} />
-          <MetricCard label={dash.pipelineValue}      value={totalPipeline}                      currency="₡" subLabel="Potential revenue"                                          icon={BarChart2}   iconBg="bg-blue-100 text-blue-500"     loading={pipelineLoading} />
-          <MetricCard label={dash.newMessages}        value={todayStats?.received_messages ?? 0}              subLabel={todayStats?.received_messages ? `${todayStats.received_messages} today` : "No messages today"} icon={MessageCircle} iconBg="bg-purple-100 text-purple-500" loading={statsLoading} />
-          <MetricCard label={dash.tasksToday}         value={taskList.length}                                 subLabel={taskList.length === 0 ? "You're all caught up" : `${urgentTasks} urgent`}             icon={Clock}         iconBg="bg-teal-100 text-teal-500"     loading={tasksLoading} />
+          <MetricCard label={dash.revenueThisMonth} value={workspaceStats?.monthly_revenue ?? 0} currency="₡" subLabel={`${workspaceStats?.revenue_change_pct ?? 0}% vs. last month`} icon={TrendingUp} iconBg="bg-[#8b7cf6]/15 text-[#8b7cf6]" loading={statsLoading} />
+          <MetricCard label={dash.outstanding}        value={overdueAmount}                      currency="₡" subLabel={`${overdueCount} invoices pending`}                         icon={Receipt}     iconBg="bg-orange-500/15 text-orange-400" loading={invoicesLoading} />
+          <MetricCard label={dash.pipelineValue}      value={totalPipeline}                      currency="₡" subLabel="Potential revenue"                                          icon={BarChart2}   iconBg="bg-blue-500/15 text-blue-400"     loading={pipelineLoading} />
+          <MetricCard label={dash.newMessages}        value={todayStats?.received_messages ?? 0}              subLabel={todayStats?.received_messages ? `${todayStats.received_messages} today` : "No messages today"} icon={MessageCircle} iconBg="bg-purple-500/15 text-purple-400" loading={statsLoading} />
+          <MetricCard label={dash.tasksToday}         value={taskList.length}                                 subLabel={taskList.length === 0 ? "You're all caught up" : `${urgentTasks} urgent`}             icon={Clock}         iconBg="bg-teal-500/15 text-teal-400"     loading={tasksLoading} />
         </div>
 
         {/* ── Main grid ───────────────────────────────────────────── */}
@@ -375,18 +375,18 @@ export default function DashboardPage() {
             {/* Revenue overview */}
             <Card title={dash.revenueOverview}
               headerExtra={
-                <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1.5 rounded-lg font-medium">
+                <span className="text-xs text-white/40 bg-white/[0.02] px-2.5 py-1.5 rounded-lg font-medium">
                   {new Date().toLocaleString("en-US", { month: "long", year: "numeric" })}
                 </span>
               }
             >
               <div className="px-5 pt-4 pb-3">
                 <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-2xl font-bold text-gray-900">₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}</span>
+                  <span className="text-2xl font-bold text-white/90">₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}</span>
                   <span className="text-sm text-green-500 font-medium">{workspaceStats?.revenue_change_pct ?? 0}% vs. last month</span>
                 </div>
                 <RevenueChart monthlyRevenue={workspaceStats?.monthly_revenue ?? 0} changePct={workspaceStats?.revenue_change_pct ?? 0} />
-                <div className="flex justify-between text-xs text-gray-400 mt-2 px-1">
+                <div className="flex justify-between text-xs text-white/30 mt-2 px-1">
                   {(() => {
                     const now = new Date();
                     const month = now.toLocaleString("en-US", { month: "short" });
@@ -410,7 +410,7 @@ export default function DashboardPage() {
                   {(["tasks", "messages"] as const).map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab)}
                       className={`px-4 py-2 text-sm font-medium transition capitalize ${
-                        activeTab === tab ? "text-indigo-600 border-b-2 border-indigo-600" : "text-gray-500 hover:text-gray-700"
+                        activeTab === tab ? "text-[#8b7cf6] border-b-2 border-[#8b7cf6]" : "text-white/40 hover:text-white/70"
                       }`}>
                       {tab === "tasks" ? "Tasks" : "Messages"}
                     </button>
@@ -418,17 +418,17 @@ export default function DashboardPage() {
                 </div>
               }
             >
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-white/[0.02]">
                 {activeTab === "tasks" ? (
                   taskList.length === 0
-                    ? <p className="px-5 py-6 text-sm text-center text-gray-400">No tasks yet</p>
+                    ? <p className="px-5 py-6 text-sm text-center text-white/30">No tasks yet</p>
                     : taskList.slice(0, 5).map((task: any) => (
                         <div key={task.id} className="flex items-center gap-3 px-5 py-3">
-                          <input type="checkbox" className="w-4 h-4 rounded border-gray-300 cursor-pointer accent-indigo-600" />
-                          <p className="flex-1 text-sm font-medium text-gray-900 truncate">{task.title}</p>
+                          <input type="checkbox" className="w-4 h-4 rounded border-white/[0.04] cursor-pointer accent-[#8b7cf6]" />
+                          <p className="flex-1 text-sm font-medium text-white/90 truncate">{task.title}</p>
                           <PriorityBadge priority={task.priority} />
                           {task.due_date && (
-                            <span className="text-xs text-gray-400 whitespace-nowrap">
+                            <span className="text-xs text-white/30 whitespace-nowrap">
                               {format(new Date(task.due_date), "MMM d", { locale: es })}
                             </span>
                           )}
@@ -436,18 +436,18 @@ export default function DashboardPage() {
                       ))
                 ) : (
                   convList.length === 0
-                    ? <p className="px-5 py-6 text-sm text-center text-gray-400">No messages yet</p>
+                    ? <p className="px-5 py-6 text-sm text-center text-white/30">No messages yet</p>
                     : convList.slice(0, 5).map((conv: any) => (
                         <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                          <a className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-semibold text-indigo-700 flex-shrink-0">
+                          <a className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition">
+                            <div className="w-8 h-8 rounded-full bg-[#8b7cf6]/15 flex items-center justify-center text-xs font-semibold text-[#8b7cf6] flex-shrink-0">
                               {conv.contact?.full_name?.charAt(0) || "?"}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">{conv.contact?.full_name || "Unknown"}</p>
-                              <p className="text-xs text-gray-400 truncate">{conv.subject || "No subject"}</p>
+                              <p className="text-sm font-medium text-white/90 truncate">{conv.contact?.full_name || "Unknown"}</p>
+                              <p className="text-xs text-white/30 truncate">{conv.subject || "No subject"}</p>
                             </div>
-                            <span className="text-xs text-gray-400 whitespace-nowrap">{conv.updated_at && format(new Date(conv.updated_at), "HH:mm")}</span>
+                            <span className="text-xs text-white/30 whitespace-nowrap">{conv.updated_at && format(new Date(conv.updated_at), "HH:mm")}</span>
                           </a>
                         </Link>
                       ))
@@ -467,14 +467,14 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-gray-800">{stage.name}</span>
-                          <span className="text-xs text-gray-400">{stage.dealCount} deals</span>
+                          <span className="text-xs font-medium text-white/80">{stage.name}</span>
+                          <span className="text-xs text-white/30">{stage.dealCount} deals</span>
                         </div>
-                        <span className="text-xs font-semibold text-gray-700">
+                        <span className="text-xs font-semibold text-white/70">
                           {stage.totalValue > 0 ? fmtMoney(stage.totalValue, stage.currency) : "—"}
                         </span>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+                      <div className="h-2 w-full rounded-full bg-white/[0.02] overflow-hidden">
                         <div className="h-full rounded-full transition-all"
                           style={{ width: `${Math.max((stage.dealCount / maxDeals) * 100, 6)}%`, backgroundColor: stage.color }} />
                       </div>
@@ -482,9 +482,9 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 {stageRows.length > 0 && (
-                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700">{dash.totalPipelineValue}</span>
-                    <span className="text-sm font-bold text-gray-900">{fmtMoney(totalPipeline, firstCurrency)}</span>
+                  <div className="pt-3 border-t border-white/[0.04] flex items-center justify-between">
+                    <span className="text-sm font-semibold text-white/70">{dash.totalPipelineValue}</span>
+                    <span className="text-sm font-bold text-white/90">{fmtMoney(totalPipeline, firstCurrency)}</span>
                   </div>
                 )}
               </div>
@@ -492,28 +492,28 @@ export default function DashboardPage() {
 
             {/* Recent activity */}
             <Card title="Recent activity" linkTo="/inbox" linkLabel="View all →">
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-white/[0.02]">
                 {activityItems.length === 0 && (
-                  <p className="px-5 py-6 text-sm text-center text-gray-400">No recent activity</p>
+                  <p className="px-5 py-6 text-sm text-center text-white/30">No recent activity</p>
                 )}
                 {activityItems.map(item => {
                   const isMsg = item.type === "message";
                   return (
                     <div key={item.id} className="flex items-center gap-3 px-5 py-3.5">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isMsg ? "bg-indigo-100" : "bg-green-100"}`}>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isMsg ? "bg-[#8b7cf6]/15" : "bg-green-500/15"}`}>
                         {isMsg
-                          ? <MessageCircle className="w-4 h-4 text-indigo-600" />
-                          : <Receipt className="w-4 h-4 text-green-600" />}
+                          ? <MessageCircle className="w-4 h-4 text-[#8b7cf6]" />
+                          : <Receipt className="w-4 h-4 text-green-400" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{item.title}</p>
-                        <p className="text-xs text-gray-400 truncate">{item.sub}</p>
+                        <p className="text-sm font-medium text-white/90 truncate">{item.title}</p>
+                        <p className="text-xs text-white/30 truncate">{item.sub}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
                         {item.amount != null && (
-                          <p className="text-xs font-semibold text-green-600">€{item.amount.toLocaleString("es-ES")}</p>
+                          <p className="text-xs font-semibold text-green-400">€{item.amount.toLocaleString("es-ES")}</p>
                         )}
-                        <p className="text-xs text-gray-400">{item.date ? timeAgo(item.date) : ""}</p>
+                        <p className="text-xs text-white/30">{item.date ? timeAgo(item.date) : ""}</p>
                       </div>
                     </div>
                   );
@@ -580,7 +580,7 @@ export default function DashboardPage() {
               <div className="px-5 pb-5 pt-3">
                 <button
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition hover:opacity-90"
-                  style={{ background: "linear-gradient(90deg,#6366f1 0%,#7c3aed 100%)" }}
+                  style={{ background: "linear-gradient(90deg,#8b7cf6 0%,#a78bfa 100%)" }}
                 >
                   <Zap className="w-4 h-4" /> Open Copilot
                 </button>
@@ -588,23 +588,23 @@ export default function DashboardPage() {
             </div>
 
             {/* Quick actions */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-5">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Quick actions</h3>
+            <div className="bg-white/[0.02] rounded-2xl border border-white/[0.04] p-5">
+              <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">Quick actions</h3>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { Icon: Receipt,     label: "New invoice",      href: "/invoices",    bg: "bg-indigo-50",  ic: "text-indigo-600" },
-                  { Icon: UserPlus,    label: "Add contact",      href: "/contacts",    bg: "bg-blue-50",    ic: "text-blue-600"   },
-                  { Icon: KanbanSquare,label: dash.newOpportunity,  href: "/pipeline",    bg: "bg-violet-50",  ic: "text-violet-600" },
-                  { Icon: MessageCircle,label:"Send message",     href: "/inbox",       bg: "bg-green-50",   ic: "text-green-600"  },
-                  { Icon: FileText,    label: "Upload file",      href: "/documents",   bg: "bg-orange-50",  ic: "text-orange-500" },
-                  { Icon: Zap,         label: "Automation",       href: "/automations", bg: "bg-pink-50",    ic: "text-pink-500"   },
+                  { Icon: Receipt,     label: "New invoice",      href: "/invoices",    bg: "bg-[#8b7cf6]/15",  ic: "text-[#8b7cf6]" },
+                  { Icon: UserPlus,    label: "Add contact",      href: "/contacts",    bg: "bg-blue-500/15",    ic: "text-blue-400"   },
+                  { Icon: KanbanSquare,label: dash.newOpportunity,  href: "/pipeline",    bg: "bg-violet-500/15",  ic: "text-violet-400" },
+                  { Icon: MessageCircle,label:"Send message",     href: "/inbox",       bg: "bg-green-500/15",   ic: "text-green-400"  },
+                  { Icon: FileText,    label: "Upload file",      href: "/documents",   bg: "bg-orange-500/15",  ic: "text-orange-400" },
+                  { Icon: Zap,         label: "Automation",       href: "/automations", bg: "bg-pink-500/15",    ic: "text-pink-400"   },
                 ].map(({ Icon, label, href, bg, ic }) => (
                   <Link key={href + label} href={href}>
-                    <a className="flex flex-col items-center gap-2 py-3 px-1 rounded-xl hover:bg-gray-50 transition group">
+                    <a className="flex flex-col items-center gap-2 py-3 px-1 rounded-xl hover:bg-white/[0.02] transition group">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg}`}>
                         <Icon className={`w-5 h-5 ${ic}`} />
                       </div>
-                      <span className="text-xs font-medium text-gray-600 text-center leading-tight">{label}</span>
+                      <span className="text-xs font-medium text-white/60 text-center leading-tight">{label}</span>
                     </a>
                   </Link>
                 ))}

@@ -113,7 +113,7 @@ export default function ContactsPage() {
 
       <div className="flex items-center gap-2 mb-4">
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
           <Input
             placeholder="Search contacts..."
             value={search}
@@ -143,13 +143,13 @@ export default function ContactsPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-[11px] text-muted-foreground font-medium">Name</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium">Company</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium">Email</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium">Phone</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium">Type</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium">Last Activity</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium w-12"></TableHead>
+                <TableHead className="text-[11px] text-white/40 font-medium">Name</TableHead>
+                <TableHead className="text-[11px] text-white/40 font-medium">Company</TableHead>
+                <TableHead className="text-[11px] text-white/40 font-medium">Email</TableHead>
+                <TableHead className="text-[11px] text-white/40 font-medium">Phone</TableHead>
+                <TableHead className="text-[11px] text-white/40 font-medium">Type</TableHead>
+                <TableHead className="text-[11px] text-white/40 font-medium">Last Activity</TableHead>
+                <TableHead className="text-[11px] text-white/40 font-medium w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -162,15 +162,15 @@ export default function ContactsPage() {
                       </span>
                     </Link>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{c.company_name || c.company || "—"}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{c.email || "—"}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{c.phone || "—"}</TableCell>
+                  <TableCell className="text-xs text-white/40">{c.company_name || c.company || "—"}</TableCell>
+                  <TableCell className="text-xs text-white/40">{c.email || "—"}</TableCell>
+                  <TableCell className="text-xs text-white/40">{c.phone || "—"}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={`text-[10px] px-1.5 py-0 border ${typeBadgeColors[c.type] || typeBadgeColors.OTHER}`}>
                       {c.type}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="text-xs text-white/40">
                     {c.lastInteraction || c.last_interaction || c.updatedAt || c.updated_at
                       ? format(new Date(c.lastInteraction || c.last_interaction || c.updatedAt || c.updated_at), "MMM d, yyyy")
                       : "—"}
@@ -228,28 +228,28 @@ export default function ContactsPage() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">First Name</Label>
+                <Label className="text-xs text-white/40">First Name</Label>
                 <Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="h-8 text-xs bg-background border-border" data-testid="input-first-name" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Last Name</Label>
+                <Label className="text-xs text-white/40">Last Name</Label>
                 <Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="h-8 text-xs bg-background border-border" data-testid="input-last-name" />
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Email</Label>
+              <Label className="text-xs text-white/40">Email</Label>
               <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="h-8 text-xs bg-background border-border" data-testid="input-contact-email" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Phone</Label>
+              <Label className="text-xs text-white/40">Phone</Label>
               <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="h-8 text-xs bg-background border-border" data-testid="input-contact-phone" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Company</Label>
+              <Label className="text-xs text-white/40">Company</Label>
               <Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} className="h-8 text-xs bg-background border-border" data-testid="input-contact-company" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Type</Label>
+              <Label className="text-xs text-white/40">Type</Label>
               <Select value={form.type} onValueChange={(val) => setForm({ ...form, type: val })}>
                 <SelectTrigger className="h-8 text-xs bg-background border-border" data-testid="select-contact-type">
                   <SelectValue />
