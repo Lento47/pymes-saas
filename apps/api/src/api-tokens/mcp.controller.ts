@@ -48,9 +48,23 @@ export class McpController {
   }
 
   @Get('sse')
+  @UseGuards(ApiTokenGuard)
+  async sseGet(@Req() req: any, @Res() res: Response) {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    const base = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.headers.host || 'api.pymeshub.lat';
+    sseSend(res, { jsonrpc: '2.0', result: { endpoint: `${base}://${host}/api/mcp`, ready: true } });
+    setTimeout(() => { if (!res.writableEnded) res.end(); }, 3000);
+  }
+
   @Post('sse')
   @UseGuards(ApiTokenGuard)
-  async sse(@Req() req: any, @Res() res: Response, @Body() body?: McpRequest) {
+  async ssePost(@Req() req: any, @Res() res: Response, @Body() body: McpRequest) {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -58,28 +72,20 @@ export class McpController {
       'X-Accel-Buffering': 'no',
     });
 
-    // If POST with JSON-RPC body, handle it
-    if (body?.method) {
-      if (body.method === 'initialize') {
-        sseSend(res, {
-          jsonrpc: '2.0', id: body.id,
-          result: { protocolVersion: '1.0', capabilities: { tools: {} }, serverInfo: { name: 'PyMesHub', version: '1.0' } },
-        });
-      } else if (body.method === 'tools/list') {
-        sseSend(res, { jsonrpc: '2.0', id: body.id, result: { tools: TOOLS } });
-      } else if (body.method === 'tools/call') {
-        const result = await this.executeToolCall(req.workspace_id, body.params, body.id, req);
-        sseSend(res, result);
-      } else if (body.method === 'notifications/initialized') {
-        sseSend(res, { jsonrpc: '2.0', id: body.id, result: {} });
-      } else {
-        sseSend(res, { jsonrpc: '2.0', id: body.id, error: { code: -32601, message: `Unknown: ${body.method}` } });
-      }
+    if (body.method === 'initialize') {
+      sseSend(res, {
+        jsonrpc: '2.0', id: body.id,
+        result: { protocolVersion: '1.0', capabilities: { tools: {} }, serverInfo: { name: 'PyMesHub', version: '1.0' } },
+      });
+    } else if (body.method === 'tools/list') {
+      sseSend(res, { jsonrpc: '2.0', id: body.id, result: { tools: TOOLS } });
+    } else if (body.method === 'tools/call') {
+      const result = await this.executeToolCall(req.workspace_id, body.params, body.id, req);
+      sseSend(res, result);
+    } else if (body.method === 'notifications/initialized') {
+      sseSend(res, { jsonrpc: '2.0', id: body.id, result: {} });
     } else {
-      // GET or empty POST: send endpoint info with full URL
-      const base = req.headers['x-forwarded-proto'] || 'https';
-      const host = req.headers.host || 'api.pymeshub.lat';
-      sseSend(res, { jsonrpc: '2.0', result: { endpoint: `${base}://${host}/api/mcp`, ready: true } });
+      sseSend(res, { jsonrpc: '2.0', id: body.id, error: { code: -32601, message: `Unknown: ${body.method}` } });
     }
 
     req.on('close', () => { if (!res.writableEnded) res.end(); });
