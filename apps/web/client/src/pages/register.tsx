@@ -138,11 +138,9 @@ export default function RegisterPage() {
   };
 
   const continueToWorkspace = () => {
-    if (planParam) {
-      window.location.hash = `#/billing?paddle=success&plan=${planParam}`;
-    } else {
-      window.location.hash = "#/";
-    }
+    const target = planParam ? `/billing?paddle=success&plan=${planParam}` : "/";
+    history.replaceState(null, "", target);
+    window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
   const passwordRules = [
