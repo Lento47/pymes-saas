@@ -62,12 +62,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma client
+        run: cd apps/api && pnpm exec prisma generate
+
       - name: Build API
         run: cd apps/api && npm run build
 
       - name: Lint API
         run: cd apps/api && npm run lint
-        continue-on-error: true
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pymeshub_test
+          JWT_SECRET: test-secret-for-ci-jwt-min-32-chars
+        run: cd apps/api && npm run test
 
   deploy:
     needs: build-and-test
