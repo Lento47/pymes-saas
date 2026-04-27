@@ -370,6 +370,7 @@ export const translations = {
         ai: "Artificial Intelligence",
         platform: "Platform",
         billing: "Billing",
+        routing: "Routing",
       },
       locale: {
         title: "Workspace language",
@@ -759,6 +760,7 @@ export const translations = {
         ai: "Inteligencia Artificial",
         platform: "Plataforma",
         billing: "Facturación",
+        routing: "Enrutamiento",
       },
       locale: {
         title: "Idioma del workspace",
