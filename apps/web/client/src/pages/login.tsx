@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -105,6 +106,17 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
+      // Check SAML first if we have a workspace slug
+      if (preselectedSlug) {
+        try {
+          const saml = await api.checkSamlStatus(preselectedSlug);
+          if (saml?.configured) {
+            window.location.href = `/api/auth/saml/${preselectedSlug}/login`;
+            return;
+          }
+        } catch { /* SAML check failed, proceed with normal login */ }
+      }
+
       const res = await login(email, pass, preselectedSlug);
       const target = planParam ? `/settings/billing?plan=${planParam}` : "/";
       history.replaceState(null, "", target);
@@ -177,6 +189,7 @@ export default function LoginPage() {
                     >
                       <p className="text-sm font-semibold text-white">{ws.name}</p>
                       <p className="text-xs text-white/40">{ws.slug}</p>
+                      {ws.samlEnabled && <p className="text-xs text-green-400 mt-0.5">SSO disponible</p>}
                     </button>
                   ))}
                 </div>
