@@ -64,7 +64,7 @@ export class McpController {
 
   @Post('sse')
   @UseGuards(ApiTokenGuard)
-  async ssePost(@Req() req: any, @Res() res: Response, @Body() body: McpRequest) {
+  async ssePost(@Req() req: any, @Res() res: Response, @Body() body: any) {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -97,7 +97,7 @@ export class McpController {
   async handle(
     @Req() req: any,
     @Res() res: Response,
-    @Body() body: McpRequest,
+    @Body() body: any,
     @Headers('accept') accept?: string,
   ) {
     const isSSE = accept?.includes('text/event-stream');
