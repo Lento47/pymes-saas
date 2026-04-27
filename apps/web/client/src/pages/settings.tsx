@@ -288,7 +288,8 @@ function WorkspaceTab() {
               <Label htmlFor="workspace-name" className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                 Nombre del workspace
               </Label>
-              <div className="flex gap-2">
+
+      <div className="flex gap-2">
                 <Input
                   id="workspace-name"
                   value={workspaceName}
@@ -1980,13 +1981,18 @@ function AiTab() {
   const [apiKey, setApiKey]     = useState("");
   const [showKey, setShowKey]   = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
+  const [agentReadEnabled, setAgentReadEnabled] = useState(false);
+  const [agentActionsEnabled, setAgentActionsEnabled] = useState(false);
 
   useEffect(() => {
     if (workspace) {
       setProvider(workspace.ai_provider ?? "");
       setModel(workspace.ai_model ?? "");
+      const s = workspace.settings_json || {};
+      setAgentReadEnabled(s.ai_agent_enabled === true);
+      setAgentActionsEnabled(s.ai_agent_actions_enabled === true);
     }
-  }, [workspace?.ai_provider, workspace?.ai_model]);
+  }, [workspace?.ai_provider, workspace?.ai_model, workspace?.settings_json]);
 
   useEffect(() => {
     setTestResult(null);
@@ -1997,6 +2003,10 @@ function AiTab() {
       ai_provider: provider || undefined,
       ai_model:    model    || undefined,
       ai_api_key:  apiKey   || undefined,
+      settings_json: {
+        ai_agent_enabled: agentReadEnabled,
+        ai_agent_actions_enabled: agentActionsEnabled,
+      },
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/workspaces/current"] });
