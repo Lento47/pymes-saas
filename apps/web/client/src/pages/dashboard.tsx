@@ -371,9 +371,9 @@ export default function DashboardPage() {
             {/* Revenue overview */}
             <Card title="Revenue overview"
               headerExtra={
-                <button className="flex items-center gap-1 text-xs text-gray-500 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-lg transition font-medium">
-                  This month <ChevronDown className="w-3 h-3" />
-                </button>
+                <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1.5 rounded-lg font-medium">
+                  {new Date().toLocaleString("en-US", { month: "long", year: "numeric" })}
+                </span>
               }
             >
               <div className="px-5 pt-4 pb-3">
