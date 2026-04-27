@@ -5,6 +5,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ConversationNotes } from "@/components/conversation/conversation-notes";
 import { PriorityDot } from "@/components/shared/priority-dot";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
@@ -782,6 +783,11 @@ export default function ConversationPage() {
               )}
             </div>
           </div>
+
+          <ConversationNotes
+            conversationId={conversationId}
+            initialNotes={conversation?.notes}
+          />
 
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
