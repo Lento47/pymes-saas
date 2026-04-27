@@ -5,12 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Plus, User, Calendar, DollarSign, Trash2, Trophy, GripVertical, KanbanSquare } from "lucide-react";
 import { useLocation } from "wouter";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DealSheet } from "@/components/pipeline/DealSheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 
 interface Deal { id: string; title: string; value: string | null; currency: string; priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT"; status: "OPEN" | "WON" | "LOST"; closing_date: string | null; notes: string | null; stage_id: string; contact: { id: string; full_name: string; company_name?: string | null } | null; assigned_user: { id: string; name: string } | null; created_at: string; }
@@ -93,62 +89,6 @@ function KanbanColumn({ stage, onDragStart, onDrop, onAddDeal, onClickDeal }: { 
   );
 }
 
-function DealModal({ open, onClose, stages, deal, defaultStageId }: { open: boolean; onClose: () => void; stages: Stage[]; deal?: Deal | null; defaultStageId?: string; }) {
-  const qc = useQueryClient(); const { toast } = useToast(); const isEdit = !!deal;
-  const [form, setForm] = useState<any>(() => ({ title: deal?.title ?? "", value: deal?.value ?? "", currency: deal?.currency ?? "CRC", priority: deal?.priority ?? "MEDIUM", stage_id: deal?.stage_id ?? defaultStageId ?? stages[0]?.id ?? "", closing_date: deal?.closing_date ? deal.closing_date.slice(0, 10) : "", notes: deal?.notes ?? "", contact_id: deal?.contact?.id ?? "", }));
-  const set = (k: string, v: string) => setForm((f: any) => ({ ...f, [k]: v }));
-  const { data: contacts } = useQuery({ queryKey: ["/api/contacts"], queryFn: () => api.getContacts(), staleTime: 30000 });
-  const createMut = useMutation({ mutationFn: (data: any) => api.createDeal(data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }); onClose(); }, onError: () => toast({ title: "Error al crear deal", variant: "destructive" }) });
-  const updateMut = useMutation({ mutationFn: (data: any) => api.updateDeal(deal!.id, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }); onClose(); } });
-  const deleteMut = useMutation({ mutationFn: () => api.deleteDeal(deal!.id), onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }); onClose(); } });
-  const winMut = useMutation({ mutationFn: () => api.winDeal(deal!.id), onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }); onClose(); } });
-  const handleSubmit = () => {
-    if (!form.title) return;
-    const data = { ...form, value: form.value ? parseFloat(form.value) : 0 };
-    isEdit ? updateMut.mutate(data) : createMut.mutate(data);
-  };
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md" style={{ background: '#111114', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16 }}>
-        <DialogHeader><DialogTitle className="text-white text-base">{isEdit ? 'Editar Deal' : 'Nuevo Deal'}</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div><Label className="text-white/50 text-[12px]">Título *</Label><Input value={form.title} onChange={e => set('title', e.target.value)} className="mt-1 text-[13px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'white' }} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-white/50 text-[12px]">Valor</Label><Input type="number" value={form.value} onChange={e => set('value', e.target.value)} className="mt-1 text-[13px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'white' }} /></div>
-            <div><Label className="text-white/50 text-[12px]">Moneda</Label>
-              <Select value={form.currency} onValueChange={v => set('currency', v)}>
-                <SelectTrigger style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'white' }}><SelectValue /></SelectTrigger>
-                <SelectContent style={{ background: '#1a1a1d', border: '1px solid rgba(255,255,255,0.06)' }}><SelectItem value="CRC">CRC</SelectItem><SelectItem value="USD">USD</SelectItem></SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-white/50 text-[12px]">Prioridad</Label>
-              <Select value={form.priority} onValueChange={v => set('priority', v)}>
-                <SelectTrigger style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'white' }}><SelectValue /></SelectTrigger>
-                <SelectContent style={{ background: '#1a1a1d', border: '1px solid rgba(255,255,255,0.06)' }}><SelectItem value="LOW">Baja</SelectItem><SelectItem value="MEDIUM">Media</SelectItem><SelectItem value="HIGH">Alta</SelectItem><SelectItem value="URGENT">Urgente</SelectItem></SelectContent>
-              </Select>
-            </div>
-            <div><Label className="text-white/50 text-[12px]">Stage</Label>
-              <Select value={form.stage_id} onValueChange={v => set('stage_id', v)}>
-                <SelectTrigger style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'white' }}><SelectValue /></SelectTrigger>
-                <SelectContent style={{ background: '#1a1a1d', border: '1px solid rgba(255,255,255,0.06)' }}>{stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div><Label className="text-white/50 text-[12px]">Fecha de cierre</Label><Input type="date" value={form.closing_date} onChange={e => set('closing_date', e.target.value)} className="mt-1 text-[13px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'white' }} /></div>
-          <div><Label className="text-white/50 text-[12px]">Notas</Label><Textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} className="mt-1 text-[13px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'white' }} /></div>
-          <div className="flex gap-2 pt-1">
-            <Button onClick={handleSubmit} disabled={createMut.isPending || updateMut.isPending} className="flex-1" style={{ background: '#8b7cf6' }}>{isEdit ? 'Guardar' : 'Crear'}</Button>
-            {isEdit && <Button onClick={() => winMut.mutate()} variant="outline" className="gap-1" style={{ borderColor: 'rgba(34,197,94,0.3)', color: '#4ade80' }}><Trophy style={{ width: 14, height: 14 }} />Ganado</Button>}
-            {isEdit && <Button onClick={() => { if (confirm('Eliminar?')) deleteMut.mutate(); }} variant="ghost" style={{ color: '#f87171' }}><Trash2 style={{ width: 14, height: 14 }} /></Button>}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function PipelinePage() {
   const qc = useQueryClient(); const { toast } = useToast();
   const { data: stages = [], isLoading } = useQuery({ queryKey: ["/api/pipeline/stages"], queryFn: () => api.getPipelineStages() as Promise<Stage[]>, staleTime: 15000 });
@@ -186,7 +126,7 @@ export default function PipelinePage() {
         </div>
       )}
 
-      <DealModal open={modalOpen} onClose={() => setModalOpen(false)} stages={stages} deal={editingDeal} defaultStageId={defaultStage} />
+      <DealSheet open={modalOpen} onClose={() => setModalOpen(false)} stages={stages} deal={editingDeal} defaultStageId={defaultStage} />
     </div>
   );
 }

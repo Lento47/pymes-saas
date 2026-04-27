@@ -12,13 +12,12 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TaskSheet } from "@/components/tasks/TaskSheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CheckSquare, Plus, AlertTriangle, Check, Loader2, MoreHorizontal, Pencil, Trash, Search, Calendar, Clock } from "lucide-react";
+import { CheckSquare, Plus, AlertTriangle, Check, MoreHorizontal, Pencil, Trash, Search, Calendar, Clock } from "lucide-react";
 import { format, isPast, isToday, isTomorrow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -341,76 +340,15 @@ export default function TasksPage() {
 
         </div>{/* end px-4 content wrapper */}
 
-        {/* Create / Edit Dialog */}
-        <Dialog open={showCreate} onOpenChange={setShowCreate}>
-          <DialogContent className="bg-card border-border sm:max-w-[420px]" data-testid="dialog-create-task">
-            <DialogHeader>
-              <DialogTitle className="text-sm">{editingId ? "Editar tarea" : "Nueva tarea"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Título</Label>
-                <Input
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="h-8 text-xs bg-background border-border"
-                  placeholder="¿Qué hay que hacer?"
-                  data-testid="input-task-title"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Descripción <span className="text-white/20">(opcional)</span></Label>
-                <Input
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="h-8 text-xs bg-background border-border"
-                  placeholder="Detalles adicionales..."
-                  data-testid="input-task-description"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-white/40">Prioridad</Label>
-                  <Select value={form.priority} onValueChange={(val) => setForm({ ...form, priority: val })}>
-                    <SelectTrigger className="h-8 text-xs bg-background border-border" data-testid="select-new-task-priority">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
-                        <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-white/40">Fecha límite</Label>
-                  <Input
-                    type="date"
-                    value={form.dueDate}
-                    onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                    className="h-8 text-xs bg-background border-border"
-                    data-testid="input-task-due-date"
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setShowCreate(false)} className="h-8 text-xs">
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => createMutation.mutate(form)}
-                disabled={createMutation.isPending || !form.title.trim()}
-                data-testid="button-save-task"
-              >
-                {createMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                {editingId ? "Guardar cambios" : "Crear tarea"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {/* Create / Edit Sheet */}
+        <TaskSheet
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          editingId={editingId}
+          initialData={form}
+          onSave={(data) => createMutation.mutate(data)}
+          isSaving={createMutation.isPending}
+        />
       </div>
     </TooltipProvider>
   );
