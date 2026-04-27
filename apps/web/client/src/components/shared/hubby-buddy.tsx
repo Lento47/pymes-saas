@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'wouter';
 
+const ONBOARDING_KEY = 'pymeshub_onboarding_done';
+
 export function HubbyBuddy() {
   const [visible, setVisible] = useState(false);
   const [bounce, setBounce] = useState(false);
@@ -11,6 +13,9 @@ export function HubbyBuddy() {
   const blinkRef = useRef<any>(null);
 
   useEffect(() => {
+    const onboardingDone = localStorage.getItem(ONBOARDING_KEY);
+    if (!onboardingDone) return; // Don't show during onboarding tour
+
     const showTimer = setTimeout(() => setVisible(true), 1500);
 
     // Bounce/wave every 12 seconds

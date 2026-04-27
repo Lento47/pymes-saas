@@ -111,6 +111,7 @@ export default function Agent() {
   const [error, setError] = useState<string | null>(null);
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
   const [activeForm, setActiveForm] = useState<EmbeddedForm | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -128,6 +129,16 @@ export default function Agent() {
       inputRef.current.focus();
     }
   }, [isStreaming]);
+
+  useEffect(() => {
+    const onboardingDone = localStorage.getItem('pymeshub_onboarding_done');
+    if (onboardingDone) {
+      const ts = parseInt(onboardingDone);
+      if (Date.now() - ts < 60000) {
+        setShowWelcome(true);
+      }
+    }
+  }, []);
 
   const handleSend = useCallback(async (text?: string) => {
     const messageText = (text ?? input).trim();
@@ -323,6 +334,17 @@ export default function Agent() {
         {!hasMessages ? (
           /* Empty state */
           <div className="flex flex-col items-center justify-center h-full px-6">
+            {showWelcome && (
+              <div
+                className="mb-4 px-5 py-3 rounded-2xl text-center max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500"
+                style={{ background: 'linear-gradient(135deg, #1e1b4b, #312e81)', border: '1px solid #4338ca', color: '#e0e7ff' }}
+              >
+                <p className="text-sm font-semibold mb-1">🐾 ¡Hubby te da la bienvenida!</p>
+                <p className="text-xs" style={{ color: '#c7d2fe' }}>
+                  Soy tu asistente inteligente. Puedo crear contactos, tareas, analizar datos y más. ¡Preguntame lo que necesites!
+                </p>
+              </div>
+            )}
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
               style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}

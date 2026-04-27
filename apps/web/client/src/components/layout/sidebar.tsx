@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { HubbyBuddy } from "@/components/shared/hubby-buddy";
+import { OnboardingTour } from "@/components/shared/onboarding-tour";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -80,7 +81,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     key === "unread" ? unreadCount : key === "overdue" ? overdueCount : 0;
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <>
+      <OnboardingTour />
+      <div className="flex h-screen overflow-hidden">
       {mobileOpen && (
         <div
           className="lg:hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
@@ -265,5 +268,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       </main>
       <MobileBottomNav onMenuClick={() => setMobileOpen(true)} />
     </div>
+    </>
   );
 }
