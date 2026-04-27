@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 type Locale = 'en' | 'es';
 
-type TranslationValue = string | ((...args: any[]) => string);
+type TranslationValue = string | ((params: any) => string);
 interface TranslationSet {
   [key: string]: TranslationValue | TranslationSet;
 }
@@ -13,14 +13,14 @@ const MESSAGES: Record<Locale, TranslationSet> = {
       notFound: 'Not found',
       unauthorized: 'Unauthorized',
       forbidden: 'Forbidden',
-      planLimit: (resource: string, current: number, limit: number, plan: string) =>
-        `Your ${plan} plan allows up to ${limit} ${resource}. Upgrade to add more.`,
+      planLimit: (p: any) =>
+        `Your ${p.plan} plan allows up to ${p.limit} ${p.resource}. Upgrade to add more.`,
       workspaceNotFound: 'Workspace not found',
       userNotFound: 'User not found',
       invalidCredentials: 'Invalid credentials',
       quotaExceeded: 'Quota exceeded',
-      planTierRequired: (feature: string, plan: string) =>
-        `${feature} requires ${plan} plan or higher.`,
+      planTierRequired: (p: any) =>
+        `${p.feature} requires ${p.plan} plan or higher.`,
     },
     notifications: {
       taskOverdue: 'Task overdue',
@@ -33,14 +33,14 @@ const MESSAGES: Record<Locale, TranslationSet> = {
       notFound: 'No encontrado',
       unauthorized: 'No autorizado',
       forbidden: 'Prohibido',
-      planLimit: (resource: string, current: number, limit: number, plan: string) =>
-        `Tu plan ${plan} permite un máximo de ${limit} ${resource}. Actualizá para agregar más.`,
+      planLimit: (p: any) =>
+        `Tu plan ${p.plan} permite un máximo de ${p.limit} ${p.resource}. Actualizá para agregar más.`,
       workspaceNotFound: 'Workspace no encontrado',
       userNotFound: 'Usuario no encontrado',
       invalidCredentials: 'Credenciales inválidas',
       quotaExceeded: 'Cuota excedida',
-      planTierRequired: (feature: string, plan: string) =>
-        `${feature} requiere plan ${plan} o superior.`,
+      planTierRequired: (p: any) =>
+        `${p.feature} requiere plan ${p.plan} o superior.`,
     },
     notifications: {
       taskOverdue: 'Tarea vencida',
