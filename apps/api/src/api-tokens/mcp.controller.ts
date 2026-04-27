@@ -76,8 +76,10 @@ export class McpController {
         sseSend(res, { jsonrpc: '2.0', id: body.id, error: { code: -32601, message: `Unknown: ${body.method}` } });
       }
     } else {
-      // GET or empty POST: send endpoint info
-      sseSend(res, { jsonrpc: '2.0', result: { endpoint: '/api/mcp', ready: true } });
+      // GET or empty POST: send endpoint info with full URL
+      const base = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers.host || 'api.pymeshub.lat';
+      sseSend(res, { jsonrpc: '2.0', result: { endpoint: `${base}://${host}/api/mcp`, ready: true } });
     }
 
     req.on('close', () => { if (!res.writableEnded) res.end(); });
