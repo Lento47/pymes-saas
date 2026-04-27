@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'wouter';
-import { X, ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 
 const STORAGE_KEY = 'pymeshub_onboarding_done';
 const TOUR_DURATION_MS = 5 * 60 * 1000; // 5 minutes
@@ -133,21 +132,32 @@ function PawPrints({ step }: { step: number }) {
   );
 }
 
+function isOnboardingDone() {
+  const done = localStorage.getItem(STORAGE_KEY);
+  if (!done) return false;
+  const ts = parseInt(done);
+  return Date.now() - ts > 500; // 500ms grace to prevent flash
+}
+
 export function OnboardingTour() {
   const [step, setStep] = useState(0);
   const [exiting, setExiting] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [width, setWidth] = useState(window.innerWidth);
   const timerRef = useRef<any>(null);
   const autoRef = useRef<any>(null);
+  const doneCheck = useRef(isOnboardingDone());
 
   useEffect(() => {
-    const done = localStorage.getItem(STORAGE_KEY);
-    if (done) return;
+    if (doneCheck.current) return;
+    setMounted(true);
 
-    // Auto-advance every 8 seconds
-    autoRef.current = setInterval(() => {
-      setStep(s => (s < STEPS.length - 1 ? s + 1 : s));
-    }, 8000);
+    // Don't auto-advance on first step
+    if (step > 0) {
+      autoRef.current = setInterval(() => {
+        setStep(s => (s < STEPS.length - 1 ? s + 1 : s));
+      }, 8000);
+    }
 
     // Auto-dismiss after 5 minutes
     timerRef.current = setTimeout(() => finish(), TOUR_DURATION_MS);
@@ -165,13 +175,12 @@ export function OnboardingTour() {
   const finish = () => {
     setExiting(true);
     localStorage.setItem(STORAGE_KEY, Date.now().toString());
-    setTimeout(() => { /* component unmounts via parent */ }, 500);
+    setTimeout(() => setMounted(false), 600);
   };
 
   const next = () => {
     if (step < STEPS.length - 1) {
       setStep(s => s + 1);
-      // Reset auto timer
       clearInterval(autoRef.current);
       autoRef.current = setInterval(() => setStep(s => s < STEPS.length - 1 ? s + 1 : s), 8000);
     } else {
@@ -181,33 +190,39 @@ export function OnboardingTour() {
 
   const s = STEPS[step];
   const lastStep = step === STEPS.length - 1;
-  // On mobile (<640px), use fixed positions
   const isMobile = width < 640;
 
   // Highlight target if exists
   useEffect(() => {
-    if (!s.targetSelector) return;
+    if (!s.targetSelector || exiting) return;
     const el = document.querySelector(s.targetSelector) as HTMLElement;
     if (!el) return;
+    const origShadow = el.style.boxShadow;
+    const origZ = el.style.zIndex;
     el.style.transition = 'all 0.3s ease';
     el.style.boxShadow = '0 0 0 3px #7c3aed, 0 0 20px rgba(124,58,237,0.5)';
     el.style.borderRadius = '8px';
     el.style.position = 'relative';
     el.style.zIndex = '9999';
     return () => {
-      el.style.boxShadow = '';
-      el.style.zIndex = '';
+      el.style.boxShadow = origShadow;
+      el.style.zIndex = origZ;
     };
-  }, [step, s.targetSelector]);
+  }, [step, s.targetSelector, exiting]);
+
+  // Don't render if already done or finished
+  if (doneCheck.current || !mounted) return null;
 
   return (
     <div className="fixed inset-0 z-[9998]" style={{ pointerEvents: 'all' }}>
-      {/* Backdrop */}
+      {/* Backdrop — lighter, click-through to skip */}
       <div
         className="absolute inset-0 transition-opacity duration-500"
+        onClick={() => next()}
         style={{
-          background: 'rgba(0,0,0,0.6)',
+          background: 'rgba(0,0,0,0.35)',
           opacity: exiting ? 0 : 1,
+          cursor: 'pointer',
         }}
       />
 
