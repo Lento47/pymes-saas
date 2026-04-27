@@ -97,6 +97,7 @@ import { TelegramModule } from './telegram/telegram.module';
     EventsModule,
     EmailModule,
     WhatsAppModule,
+    TelegramModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: PlanThrottlerGuard },
