@@ -216,9 +216,13 @@ export default function Landing() {
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [showStickyCTA, setShowStickyCTA] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 60);
+      setShowStickyCTA(window.scrollY > 400);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -1134,6 +1138,27 @@ export default function Landing() {
         </section>
 
       </main>
+
+      {/* Sticky Mobile CTA */}
+      <div className={cn(
+        "fixed bottom-0 left-0 right-0 md:hidden z-40 transition-all duration-300 ease-out",
+        showStickyCTA ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
+      )}>
+        <div className="bg-gradient-to-t from-[#3d1f7d] via-[#3d1f7d]/95 to-[#3d1f7d]/90 backdrop-blur-md border-t border-indigo-400/20 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-white mb-1">{copy.primaryCta}</p>
+              <p className="text-xs text-white/70">No credit card required</p>
+            </div>
+            <Link href="/login">
+              <a className="glow-button inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-5 py-2.5 text-sm font-bold text-[#071126] transition hover:scale-105 shadow-[0_4px_12px_rgba(223,255,74,0.3)]">
+                Start
+                <ArrowRight className="h-4 w-4" />
+              </a>
+            </Link>
+          </div>
+        </div>
+      </div>
 
       <LandingHubby />
     </div>
