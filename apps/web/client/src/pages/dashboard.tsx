@@ -426,8 +426,8 @@ export default function DashboardPage() {
           </div>
 
           {/* 4 — Messages: minimal with live indicator */}
-          <div className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px]"
-            className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px] bg-foreground/[0.015] border border-border"
+          <div
+            className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px] bg-foreground/[0.015] border border-border">
             <div className="flex items-start justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/50">{dash.newMessages}</p>
               <div className="flex items-center gap-1">
