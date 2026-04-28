@@ -196,20 +196,20 @@ export default function Agent() {
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="flex flex-col h-full relative overflow-hidden" style={{ background: '#0a0a0f' }}>
+    <div className="flex flex-col h-full relative overflow-hidden bg-background">
       {/* Ambient background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[180px] opacity-[0.03]"
-          style={{ background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)' }} />
+          style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
         <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[150px] opacity-[0.03]"
-          style={{ background: 'radial-gradient(circle, #a78bfa 0%, transparent 70%)' }} />
+          style={{ background: 'radial-gradient(circle, hsl(var(--primary) / 0.7) 0%, transparent 70%)' }} />
       </div>
 
       {/* Header */}
       <header className="relative shrink-0 flex items-center justify-between px-6 py-2.5 border-b border-border/[0.6]">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+            style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))' }}>
             <Sparkles style={{ width: 13, height: 13, color: 'hsl(var(--fg))' }} />
           </div>
           <h1 className="text-[13px] font-semibold text-foreground tracking-tight">Asistente IA</h1>
@@ -239,7 +239,7 @@ export default function Agent() {
               </div>
             )}
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+              style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))' }}>
               <Sparkles style={{ width: 24, height: 24, color: 'hsl(var(--fg))' }} />
             </div>
             <h2 className="text-xl font-semibold text-foreground mb-1.5 tracking-tight">Asistente IA</h2>
@@ -268,7 +268,7 @@ export default function Agent() {
                 style={{ animationDelay: `${idx * 30}ms`, animationFillMode: 'both' }}>
                 {msg.role !== 'user' && (
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                    style={{ background: msg.role === 'system' ? 'rgba(239,68,68,0.15)' : msg.role === 'tool' ? 'rgba(245,158,11,0.15)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                    style={{ background: msg.role === 'system' ? 'rgba(239,68,68,0.15)' : msg.role === 'tool' ? 'rgba(245,158,11,0.15)' : 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))' }}>
                     {msg.role === 'system' ? (
                       <span className="text-[11px]">!</span>
                     ) : msg.role === 'tool' ? (
@@ -283,7 +283,7 @@ export default function Agent() {
                   msg.role === 'user' ? 'rounded-tr-md' : 'rounded-tl-md'
                 }`}
                   style={msg.role === 'user' ? {
-                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                    background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))',
                     color: 'hsl(var(--fg))',
                     boxShadow: '0 2px 12px hsl(var(--primary) / 0.15)',
                   } : msg.role === 'system' ? {
@@ -313,7 +313,7 @@ export default function Agent() {
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                       {msg.isStreaming && (
                         <span className="inline-block w-[2px] h-[16px] ml-0.5 align-text-bottom rounded-full animate-pulse"
-                          style={{ background: '#a78bfa' }} />
+                          style={{ background: 'hsl(var(--primary) / 0.6)' }} />
                       )}
                     </div>
                   )}
@@ -348,7 +348,7 @@ export default function Agent() {
               <div className="flex justify-start pl-10 animate-fade-in">
                 <div className="w-full max-w-sm rounded-2xl p-4" style={{ background: 'hsl(var(--foreground)/0.015)', border: '1px solid hsl(var(--foreground)/0.04)' }}>
                   <div className="flex items-center gap-2 mb-3">
-                    <activeForm.icon style={{ width: 14, height: 14, color: '#a78bfa' }} />
+                    <activeForm.icon style={{ width: 14, height: 14, color: 'hsl(var(--primary) / 0.6)' }} />
                     <span className="text-[13px] font-medium text-foreground/85">{activeForm.title}</span>
                     <button onClick={() => setActiveForm(null)} className="ml-auto p-0.5 rounded hover:bg-white/5 text-muted-foreground/40">
                       <X style={{ width: 12, height: 12 }} />
@@ -376,7 +376,7 @@ export default function Agent() {
                       ))}
                       <button onClick={submitForm} disabled={activeForm.isSubmitting}
                         className="w-full mt-2 py-1.5 rounded-lg text-[13px] font-medium text-foreground transition-all duration-200 disabled:opacity-50 hover:opacity-90"
-                        style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>
+                        style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))' }}>
                         {activeForm.isSubmitting ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin mx-auto" /> : 'Enviar'}
                       </button>
                     </div>
@@ -418,7 +418,7 @@ export default function Agent() {
               <button key={qf.tool} onClick={() => openForm(qf)} disabled={isStreaming || !!activeForm}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 disabled:opacity-20 hover:scale-[1.02]"
                 style={{ background: 'hsl(var(--foreground)/0.03)', border: '1px solid hsl(var(--foreground)/0.04)', color: 'hsl(var(--fg-2))' }}>
-                <qf.icon style={{ width: 11, height: 11, color: '#a78bfa' }} />
+                <qf.icon style={{ width: 11, height: 11, color: 'hsl(var(--primary) / 0.6)' }} />
                 {qf.label}
               </button>
             ))}
@@ -439,7 +439,7 @@ export default function Agent() {
               onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }} />
             <button onClick={() => handleSend()} disabled={!input.trim() || isStreaming}
               className="p-2 rounded-xl transition-all duration-200 shrink-0 disabled:opacity-20"
-              style={{ background: input.trim() && !isStreaming ? '#6366f1' : 'transparent', color: input.trim() && !isStreaming ? 'hsl(var(--accent-fg))' : 'hsl(var(--fg-3))' }}>
+              style={{ background: input.trim() && !isStreaming ? 'hsl(var(--primary))' : 'transparent', color: input.trim() && !isStreaming ? 'hsl(var(--primary-fg))' : 'hsl(var(--fg-3))' }}>
               {isStreaming ? <Loader2 style={{ width: 15, height: 15 }} className="animate-spin" /> : <ArrowUp style={{ width: 15, height: 15 }} />}
             </button>
           </div>
