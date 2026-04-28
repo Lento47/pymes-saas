@@ -10,7 +10,6 @@ import { ConversationThreadPanel } from "./components/ConversationThreadPanel";
 import { CustomerContextPanel } from "./components/CustomerContextPanel";
 import { buildConversationQueryParams, normalizeConversationResponse } from "./utils";
 import type { ChannelTab, ConversationStatusFilter } from "./types";
-import { ArrowLeft, X } from "lucide-react";
 
 type MobileView = "list" | "thread" | "context";
 
@@ -42,18 +41,30 @@ export default function InboxPage() {
     }
   }, [conversations, selectedConversationId]);
 
-  const selectedConversation =
-    conversations.find((c) => c.id === selectedConversationId) ?? null;
+  const selectedConversation = conversations.find((c) => c.id === selectedConversationId) ?? null;
 
   const handleSelectConversation = (id: string) => {
     setSelectedConversationId(id);
     setMobileView("thread");
   };
 
-  const content = (
-    <>
-      {/* Desktop: 3 columns | Tablet: 2 columns | Mobile: 1 column */}
-      <div className="hidden lg:grid h-[calc(100dvh-156px)] grid-cols-[340px_minmax(0,1fr)_340px] gap-3 overflow-hidden px-4 pb-4">
+  return (
+    <div className="flex flex-col h-full bg-background">
+      {/* Header: title + subtitle */}
+      <InboxHeader />
+
+      {/* Toolbar: search + filters + new button */}
+      <InboxToolbar
+        search={search}
+        onSearchChange={setSearch}
+        channelTab={channelTab}
+        onChannelTabChange={setChannelTab}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+      />
+
+      {/* Desktop: 3-panel layout */}
+      <div className="hidden lg:grid flex-1 min-h-0 grid-cols-[340px_minmax(0,1fr)_300px] gap-px bg-border">
         <ConversationList
           conversations={conversations}
           isLoading={conversationsQuery.isLoading}
@@ -61,12 +72,12 @@ export default function InboxPage() {
           onSelect={handleSelectConversation}
           channelTab={channelTab}
         />
-        <ConversationThreadPanel conversationId={selectedConversationId} />
+        <ConversationThreadPanel conversationId={selectedConversationId} conversation={selectedConversation} />
         <CustomerContextPanel conversation={selectedConversation} />
       </div>
 
-      {/* Tablet: 2 columns (list + thread) */}
-      <div className="hidden md:grid lg:hidden h-[calc(100dvh-156px)] grid-cols-[320px_1fr] gap-3 overflow-hidden px-4 pb-4">
+      {/* Tablet: 2 columns */}
+      <div className="hidden md:grid lg:hidden flex-1 min-h-0 grid-cols-[320px_1fr] gap-px bg-border">
         <ConversationList
           conversations={conversations}
           isLoading={conversationsQuery.isLoading}
@@ -74,11 +85,11 @@ export default function InboxPage() {
           onSelect={handleSelectConversation}
           channelTab={channelTab}
         />
-        <ConversationThreadPanel conversationId={selectedConversationId} />
+        <ConversationThreadPanel conversationId={selectedConversationId} conversation={selectedConversation} />
       </div>
 
-      {/* Mobile: single column with view switching — subtract header (156px) + bottom nav (56px) */}
-      <div className="md:hidden h-[calc(100dvh-212px)] overflow-hidden px-2 pb-2">
+      {/* Mobile: single column */}
+      <div className="md:hidden flex-1 min-h-0">
         {mobileView === "list" && (
           <ConversationList
             conversations={conversations}
@@ -88,38 +99,10 @@ export default function InboxPage() {
             channelTab={channelTab}
           />
         )}
-
         {mobileView === "thread" && (
-          <div className="flex flex-col h-full">
-            <button
-              onClick={() => setMobileView("list")}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Volver a la lista
-            </button>
-            <div className="flex-1 min-h-0">
-              <ConversationThreadPanel conversationId={selectedConversationId} />
-            </div>
-          </div>
+          <ConversationThreadPanel conversationId={selectedConversationId} conversation={selectedConversation} />
         )}
       </div>
-    </>
-  );
-
-  return (
-    <div className="min-h-screen bg-background text-slate-50">
-      <InboxHeader />
-      <InboxToolbar
-        search={search}
-        onSearchChange={setSearch}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        channelTab={channelTab}
-        onChannelTabChange={setChannelTab}
-        onConversationCreated={setSelectedConversationId}
-      />
-      {content}
     </div>
   );
 }

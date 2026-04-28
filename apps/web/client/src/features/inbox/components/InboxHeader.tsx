@@ -1,8 +1,8 @@
 export function InboxHeader() {
   return (
-    <div className="border-b border-border px-4 py-4">
-      <h1 className="text-lg font-semibold tracking-tight text-foreground">Inbox</h1>
-      <p className="mt-0.5 text-sm text-muted-foreground/70">Todas tus conversaciones en un solo lugar</p>
+    <div className="shrink-0 px-5 pt-4 pb-2">
+      <h1 className="text-[18px] font-medium text-foreground tracking-tight">Inbox</h1>
+      <p className="text-[13px] text-muted-foreground/50 mt-0.5">Todas tus conversaciones en un solo lugar</p>
     </div>
   );
 }
