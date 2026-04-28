@@ -59,12 +59,12 @@ function Field({
     <div className="space-y-3">
       <label
         htmlFor={id}
-        className="font-marketing block text-sm font-medium text-white/88"
+        className="font-marketing block text-sm font-medium text-white/95"
       >
         {label}
       </label>
-      <div className="group flex items-center gap-3 rounded-[20px] border border-white/12 bg-[#09102b]/82 px-4 py-4 transition focus-within:border-[#b9c7ff]/35 focus-within:bg-[#0b1333]/92">
-        <span className="text-white/60">{icon}</span>
+      <div className="group flex items-center gap-3 rounded-[20px] border border-white/12 bg-[#3d1f7d]/82 px-4 py-4 transition focus-within:border-[#6b5fe0]/35 focus-within:bg-[#4a2a8f]/92">
+        <span className="text-white/75">{icon}</span>
         <input
           id={id}
           data-testid={`input-${id}`}
@@ -73,11 +73,11 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required={required}
-          className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-[#8f97bc] md:text-[15px]"
+          className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-white/50 md:text-[15px]"
         />
         {rightAdornment}
       </div>
-      {hint && <p className="text-xs leading-6 text-[#a9b3df]/60">{hint}</p>}
+      {hint && <p className="text-xs leading-6 text-white/70">{hint}</p>}
     </div>
   );
 }
@@ -164,7 +164,7 @@ export default function LoginPage() {
         <div className="w-full max-w-[34rem]">
           <div className="mb-8 flex items-center justify-between gap-4">
             <Link href="/">
-              <a className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
+              <a className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/85 transition hover:text-white">
                 <ArrowLeft className="h-4 w-4" />
                 {copy.back}
               </a>
@@ -179,7 +179,7 @@ export default function LoginPage() {
             {workspaceOptions.length > 0 ? (
               <div className="mt-10">
                 <h2 className="text-center font-marketing text-xl font-semibold text-white">Seleccioná tu workspace</h2>
-                <p className="mt-2 text-center text-sm text-white/60">Tenés acceso a múltiples workspaces</p>
+                <p className="mt-2 text-center text-sm text-white/75">Tenés acceso a múltiples workspaces</p>
                 <div className="mt-6 space-y-3">
                   {workspaceOptions.map((ws) => (
                     <button
@@ -189,13 +189,13 @@ export default function LoginPage() {
                       className="w-full rounded-2xl border border-border bg-foreground/[0.04] p-4 text-left transition hover:border-white/20 hover:bg-white/[0.08]"
                     >
                       <p className="text-sm font-semibold text-white">{ws.name}</p>
-                      <p className="text-xs text-white/40">{ws.slug}</p>
+                      <p className="text-xs text-white/75">{ws.slug}</p>
                     </button>
                   ))}
                 </div>
                 <button
                   onClick={() => setWorkspaceOptions([])}
-                  className="mt-4 w-full text-center text-xs text-white/40 hover:text-white/60"
+                  className="mt-4 w-full text-center text-xs text-white/75 hover:text-white/75"
                 >
                   Cancelar
                 </button>
@@ -235,7 +235,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((current) => !current)}
-                    className="text-white/55 transition hover:text-white/85"
+                    className="text-white/75 transition hover:text-white/85"
                     aria-label={showPassword ? copy.hidePassword : copy.showPassword}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -258,18 +258,18 @@ export default function LoginPage() {
             <div className="mt-8">
               <div className="flex items-center gap-4">
                 <div className="h-px flex-1 bg-white/10" />
-                <span className="text-sm text-white/46">{copy.forgot}</span>
+                <span className="text-sm text-white/70">{copy.forgot}</span>
                 <div className="h-px flex-1 bg-white/10" />
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <Link href="/accept-invite">
-                  <a className="glass-panel-soft font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/86 transition hover:border-white/18 hover:text-white">
+                  <a className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/95 transition hover:border-white/18 hover:text-white">
                     {copy.acceptInvite}
                   </a>
                 </Link>
                 <Link href="/legal">
-                  <a className="glass-panel-soft font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/86 transition hover:border-white/18 hover:text-white">
+                  <a className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/95 transition hover:border-white/18 hover:text-white">
                     {copy.legalCenter}
                   </a>
                 </Link>
@@ -279,11 +279,11 @@ export default function LoginPage() {
             )}
 
             <div className="mt-10 flex flex-col items-center gap-4 text-center">
-              <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/58">
+              <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/80">
                 <Link href="/legal/terms-and-conditions">
                   <a className="transition hover:text-white/82">{copy.terms}</a>
                 </Link>
-                <span className="h-1 w-1 rounded-full bg-white/24" />
+                <span className="h-1 w-1 rounded-full bg-white/40" />
                 <Link href="/legal/privacy-policy">
                   <a className="transition hover:text-white/82">{copy.privacy}</a>
                 </Link>
@@ -306,7 +306,7 @@ export default function LoginPage() {
                 </Link>
               </p>
 
-              <p className="text-xs uppercase tracking-[0.22em] text-white/34">
+              <p className="text-xs uppercase tracking-[0.22em] text-white/60">
                 © {new Date().getFullYear()} PymesHub
               </p>
             </div>
