@@ -496,29 +496,6 @@ export class AuthService {
     throw new Error('Could not generate unique workspace slug.');
   }
 
-  async resetPassword(email: string, newPassword: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) throw new NotFoundException('Usuario no encontrado.');
-
-    if (typeof newPassword !== 'string' || newPassword.length < 12) {
-      throw new BadRequestException('La contraseña debe tener al menos 12 caracteres.');
-    }
-
-    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s])\S{12,}$/.test(newPassword)) {
-      throw new BadRequestException(
-        'La contraseña debe contener mayúscula, minúscula, número y carácter especial.',
-      );
-    }
-
-    const password_hash = await bcrypt.hash(newPassword, 12);
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { password_hash },
-    });
-
-    return { message: 'Contraseña actualizada correctamente.' };
-  }
-
   private verifyInviteToken(rawToken?: string): InviteTokenPayload {
     if (!rawToken) throw new BadRequestException('Invite token requerido.');
 
