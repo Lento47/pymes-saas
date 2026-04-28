@@ -22,7 +22,7 @@ export class PipelineController {
   ) {}
 
   @Get('stages')
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   getStages(@CurrentUser('workspace_id') workspaceId: string) {
     return this.pipelineService.getStages(workspaceId);
   }
@@ -57,13 +57,13 @@ export class PipelineController {
   }
 
   @Get('deals')
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   getDeals(@CurrentUser('workspace_id') workspaceId: string) {
     return this.pipelineService.getStages(workspaceId);
   }
 
   @Post('deals')
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   async createDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateDealDto,
@@ -73,7 +73,7 @@ export class PipelineController {
   }
 
   @Patch('deals/:id')
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   updateDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -83,7 +83,7 @@ export class PipelineController {
   }
 
   @Patch('deals/:id/move')
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   moveDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -93,7 +93,7 @@ export class PipelineController {
   }
 
   @Post('deals/:id/win')
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   winDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -102,7 +102,7 @@ export class PipelineController {
   }
 
   @Delete('deals/:id')
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   deleteDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
