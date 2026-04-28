@@ -56,11 +56,11 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-gradient-to-r from-primary to-brand-violet hover:opacity-90 h-9 text-xs">
+        <Button size="sm" className="bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 h-9 text-xs">
           <Plus className="h-3.5 w-3.5 mr-1.5" />Nueva
         </Button>
       </DialogTrigger>
-      <DialogContent className="border-border bg-[#0D1424]">
+      <DialogContent className="border-border bg-card">
         <DialogHeader><DialogTitle className="text-foreground">Nueva conversación</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-2">
           <div>
@@ -69,7 +69,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
               <SelectTrigger className="mt-1 border-border bg-foreground/[0.04] text-foreground">
                 <SelectValue placeholder="Seleccioná un canal activo" />
               </SelectTrigger>
-              <SelectContent className="border-border bg-[#0D1424]">
+              <SelectContent className="border-border bg-card">
                 {activeChannels.length === 0
                   ? <SelectItem value="-" disabled>Sin canales activos</SelectItem>
                   : activeChannels.map((c: any) => (
@@ -85,7 +85,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
               <SelectTrigger className="mt-1 border-border bg-foreground/[0.04] text-foreground">
                 <SelectValue placeholder="Seleccioná un contacto (opcional)" />
               </SelectTrigger>
-              <SelectContent className="border-border bg-[#0D1424]">
+              <SelectContent className="border-border bg-card">
                 <SelectItem value="none">Sin contacto</SelectItem>
                 {contactList.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>
@@ -107,7 +107,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
           <Button
             onClick={() => create.mutate()}
             disabled={!channelId || create.isPending}
-            className="w-full bg-gradient-to-r from-primary to-brand-violet hover:opacity-90"
+            className="w-full bg-gradient-to-r from-primary to-primary/80 hover:opacity-90"
           >
             {create.isPending ? "Creando..." : "Crear conversación"}
           </Button>

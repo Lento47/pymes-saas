@@ -35,10 +35,10 @@ export function ConversationList({
   channelTab: ChannelTab;
 }) {
   return (
-    <section className="flex min-h-0 flex-col rounded-panel border border-border bg-[#0D1424] shadow-panel">
+    <section className="flex min-h-0 flex-col rounded-xl border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">Conversaciones</h2>
+          <h2 className="text-sm font-semibold text-foreground">Conversaciones</h2>
           <p className="text-xs text-muted-foreground/70">
             {conversations.length} encontradas
           </p>

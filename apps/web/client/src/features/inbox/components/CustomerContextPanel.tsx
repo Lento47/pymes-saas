@@ -8,7 +8,7 @@ export function CustomerContextPanel({
 }) {
   if (!conversation) {
     return (
-      <aside className="rounded-panel border border-border bg-[#0D1424] p-5">
+      <aside className="rounded-xl border border-border bg-card p-5">
         <p className="text-sm text-muted-foreground/70 text-center mt-8">
           Seleccioná una conversación para ver el contexto del cliente.
         </p>
@@ -19,7 +19,7 @@ export function CustomerContextPanel({
   const contact = conversation.contact;
 
   return (
-    <aside className="min-h-0 overflow-y-auto rounded-panel border border-border bg-[#0D1424] p-4 shadow-panel space-y-4">
+    <aside className="min-h-0 overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-sm space-y-4">
       <section className="rounded-card border border-border bg-foreground/[0.03] p-4">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground/70">
           Información del contacto
@@ -28,7 +28,7 @@ export function CustomerContextPanel({
         <div className="mt-4 flex items-center gap-3">
           <AvatarFallback name={contact?.full_name || contact?.name || "Cliente"} />
           <div>
-            <h3 className="text-sm font-semibold text-white">
+            <h3 className="text-sm font-semibold text-foreground">
               {contact?.full_name || contact?.name || "Cliente desconocido"}
             </h3>
             <p className="text-xs text-muted-foreground/70">
