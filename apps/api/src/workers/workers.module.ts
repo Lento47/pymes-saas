@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AiModule } from '../ai/ai.module';
 import { QUEUE_NAMES } from './queues.constants';
 import { QueueService } from './queue.service';
 import { ClassifierProcessor } from './processors/classifier.processor';
@@ -15,6 +16,7 @@ import { SummaryProcessor } from './processors/summary.processor';
 @Module({
   imports: [
     NotificationsModule,
+    AiModule,
     ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       inject: [ConfigService],
