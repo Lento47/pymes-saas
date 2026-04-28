@@ -6,6 +6,7 @@ import {
 import { ChannelType, ConversationStatus, InvoiceStatus, MessageDirection } from '../common/types/enums';
 import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { ConversationsService } from '../conversations/conversations.service';
 import { MessagesService } from '../conversations/messages.service';
@@ -16,6 +17,7 @@ export class RemindersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiService: AiService,
+    private readonly notificationsService: NotificationsService,
     private readonly conversationsService: ConversationsService,
     private readonly messagesService: MessagesService,
   ) {}
@@ -23,7 +25,7 @@ export class RemindersService {
   async detectOverdue(workspaceId: string) {
     const now = new Date();
 
-    await this.prisma.invoice.updateMany({
+    const updated = await this.prisma.invoice.updateMany({
       where: {
         workspace_id: workspaceId,
         status: { in: [InvoiceStatus.DRAFT, InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID] },
@@ -31,6 +33,27 @@ export class RemindersService {
       },
       data: { status: InvoiceStatus.OVERDUE },
     });
+
+    if (updated.count > 0) {
+      const admins = await this.prisma.workspaceMembership.findMany({
+        where: { workspace_id: workspaceId, role: { in: ['OWNER'] as any } },
+        select: { user_id: true },
+        take: 3,
+      });
+      const notified = new Set<string>();
+      for (const admin of admins) {
+        if (notified.has(admin.user_id)) continue;
+        notified.add(admin.user_id);
+        this.notificationsService.create(workspaceId, {
+          user_id: admin.user_id,
+          type: 'invoice_overdue',
+          title: 'Facturas vencidas detectadas',
+          body: `${updated.count} factura(s) fueron marcadas como vencidas. Revisa el módulo de facturación.`,
+          related_entity_type: 'invoice',
+          related_entity_id: null as any,
+        }).catch(() => {});
+      }
+    }
 
     return this.prisma.invoice.findMany({
       where: {

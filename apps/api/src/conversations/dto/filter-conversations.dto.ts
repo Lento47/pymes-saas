@@ -25,6 +25,10 @@ export class FilterConversationsDto {
 
   @IsOptional()
   @IsString()
+  department_id?: string;
+
+  @IsOptional()
+  @IsString()
   category?: string;
 
   @IsOptional()

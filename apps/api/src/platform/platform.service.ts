@@ -1,25 +1,26 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AssignMemberDto } from './dto/assign-member.dto';
+import { CreatePlatformUserDto } from './dto/create-platform-user.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateWorkspaceBillingDto } from './dto/update-workspace-billing.dto';
-import { BillingEvent, WorkspaceSubscription } from '@prisma/client';
 import {
+  BillingEvent,
   BillingInterval,
   BillingProvider,
+  UserStatus,
   WorkspacePlan,
+  WorkspaceSubscription,
   WorkspaceSubscriptionStatus,
-<<<<<<< HEAD
 } from '@prisma/client';
 import { stringifyJson } from '../common/prisma/json';
-=======
-} from '../common/types/enums';
-import { serializeJson } from '../common/prisma/enterprise-sqlite-json';
->>>>>>> origin/main
+import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class PlatformService {
@@ -141,14 +142,10 @@ export class PlatformService {
     ]);
 
     return this.serializeBilling(
-<<<<<<< HEAD
       {
         ...workspace,
         plan: workspace.plan as WorkspacePlan,
       },
-=======
-      { ...workspace, plan: workspace.plan as WorkspacePlan },
->>>>>>> origin/main
       subscription,
       events,
     );
@@ -267,14 +264,10 @@ export class PlatformService {
       cancel_at_period_end:
         dto.cancel_at_period_end ?? currentSubscription?.cancel_at_period_end ?? false,
       notes: dto.notes ?? currentSubscription?.notes ?? null,
-<<<<<<< HEAD
       metadata_json:
         dto.metadata_json !== undefined
           ? stringifyJson(dto.metadata_json)
           : currentSubscription?.metadata_json ?? null,
-=======
-      metadata_json: serializeJson(dto.metadata_json ?? currentSubscription?.metadata_json ?? null),
->>>>>>> origin/main
     };
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -306,14 +299,10 @@ export class PlatformService {
           event_type: dto.event_type ?? 'MANUAL_PLAN_UPDATE',
           actor_user_id: actorUserId,
           applied_plan: effectivePlan,
-<<<<<<< HEAD
           payload_json:
             dto.payload_json || dto.metadata_json
               ? stringifyJson(dto.payload_json ?? dto.metadata_json ?? null)
               : null,
-=======
-          payload_json: serializeJson(dto.payload_json ?? dto.metadata_json ?? null),
->>>>>>> origin/main
           processed_at: new Date(),
           notes:
             dto.notes ??
@@ -332,14 +321,10 @@ export class PlatformService {
       });
 
       return this.serializeBilling(
-<<<<<<< HEAD
         {
           ...refreshedWorkspace,
           plan: refreshedWorkspace.plan as WorkspacePlan,
         },
-=======
-        { ...refreshedWorkspace, plan: refreshedWorkspace.plan as WorkspacePlan },
->>>>>>> origin/main
         subscription,
         events,
       );
@@ -370,5 +355,185 @@ export class PlatformService {
       take: 50,
       orderBy: { created_at: 'desc' },
     });
+  }
+
+  async createUser(dto: CreatePlatformUserDto) {
+    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (existing) throw new ConflictException('El email ya está registrado.');
+
+    const password_hash = await bcrypt.hash(dto.password, 12);
+    return this.prisma.user.create({
+      data: {
+        email: dto.email,
+        name: dto.name,
+        password_hash,
+        status: UserStatus.ACTIVE,
+        is_platform_admin: dto.is_platform_admin ?? false,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar_url: true,
+        status: true,
+        is_platform_admin: true,
+        created_at: true,
+        workspace_users: {
+          include: {
+            workspace: { select: { id: true, name: true, slug: true } },
+          },
+        },
+      },
+    });
+  }
+
+  async updateUserPassword(userId: string, password: string) {
+    await this.ensureUserExists(userId);
+    const password_hash = await bcrypt.hash(password, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password_hash, status: UserStatus.ACTIVE },
+    });
+    await this.prisma.refreshToken.deleteMany({ where: { user_id: userId } });
+    return { message: 'Contraseña actualizada y sesiones revocadas.' };
+  }
+
+  async resetUserPassword(userId: string) {
+    const user = await this.ensureUserExists(userId);
+    const temporaryPassword = this.generateTemporaryPassword();
+    const password_hash = await bcrypt.hash(temporaryPassword, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password_hash, status: UserStatus.ACTIVE },
+    });
+    await this.prisma.refreshToken.deleteMany({ where: { user_id: userId } });
+
+    return {
+      message: `Contraseña temporal generada para ${user.email}.`,
+      temporary_password: temporaryPassword,
+    };
+  }
+
+  async updateUserStatus(userId: string, actorUserId: string, status: UserStatus) {
+    if (userId === actorUserId && status !== UserStatus.ACTIVE) {
+      throw new BadRequestException('No podés bloquear o desactivar tu propio usuario.');
+    }
+
+    await this.ensureUserExists(userId);
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { status },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar_url: true,
+        status: true,
+        is_platform_admin: true,
+        created_at: true,
+        workspace_users: {
+          include: {
+            workspace: { select: { id: true, name: true, slug: true } },
+          },
+        },
+      },
+    });
+
+    if (status !== UserStatus.ACTIVE) {
+      await this.prisma.refreshToken.deleteMany({ where: { user_id: userId } });
+    }
+
+    return updated;
+  }
+
+  async togglePlatformAdmin(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, is_platform_admin: true },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { is_platform_admin: !user.is_platform_admin },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar_url: true,
+        status: true,
+        is_platform_admin: true,
+        created_at: true,
+        workspace_users: {
+          include: {
+            workspace: { select: { id: true, name: true, slug: true } },
+          },
+        },
+      },
+    });
+  }
+
+  async deleteUser(userId: string, actorUserId: string) {
+    if (userId === actorUserId) {
+      throw new BadRequestException('No podés eliminar tu propio usuario.');
+    }
+
+    const user = await this.ensureUserExists(userId);
+    const ownerMembership = await this.prisma.workspaceUser.findFirst({
+      where: { user_id: userId, is_owner: true },
+      include: { workspace: { select: { name: true, slug: true } } },
+    });
+    if (ownerMembership) {
+      throw new ConflictException(
+        `No se puede eliminar porque es owner de ${ownerMembership.workspace.name} (${ownerMembership.workspace.slug}). Transferí ownership primero.`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.conversation.updateMany({
+        where: { assigned_user_id: userId },
+        data: { assigned_user_id: null },
+      });
+      await tx.message.updateMany({
+        where: { sender_user_id: userId },
+        data: { sender_user_id: null },
+      });
+      await tx.task.updateMany({
+        where: { assigned_user_id: userId },
+        data: { assigned_user_id: null },
+      });
+      await tx.document.updateMany({
+        where: { uploaded_by_user_id: userId },
+        data: { uploaded_by_user_id: null },
+      });
+      await tx.automationRule.updateMany({
+        where: { created_by_user_id: userId },
+        data: { created_by_user_id: null },
+      });
+      await tx.auditLog.updateMany({
+        where: { user_id: userId },
+        data: { user_id: null },
+      });
+      await tx.deal.updateMany({
+        where: { assigned_user_id: userId },
+        data: { assigned_user_id: null },
+      });
+      await tx.user.delete({ where: { id: userId } });
+    });
+
+    return { message: `Usuario ${user.email} eliminado.` };
+  }
+
+  private async ensureUserExists(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado.');
+    return user;
+  }
+
+  private generateTemporaryPassword() {
+    return `${randomBytes(9).toString('base64url')}aA1!`;
   }
 }

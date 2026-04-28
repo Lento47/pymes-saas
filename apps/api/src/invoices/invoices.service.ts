@@ -20,7 +20,8 @@ import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { CreateInvoicePaymentDto } from './dto/create-invoice-payment.dto';
-import { PlanLimitsService } from '../billing/plan-limits.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class InvoicesService {
@@ -31,6 +32,7 @@ export class InvoicesService {
     private readonly haciendaSigning: HaciendaSigningService,
     private readonly haciendaXmlBuilder: HaciendaXmlBuilderService,
     private readonly planLimits: PlanLimitsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findAll(workspaceId: string, filters: FilterInvoicesDto) {
@@ -100,7 +102,9 @@ export class InvoicesService {
   }
 
   async create(workspaceId: string, dto: CreateInvoiceDto) {
+    // Check invoice limit for workspace plan
     await this.planLimits.checkInvoiceLimit(workspaceId);
+
     await this.assertContact(workspaceId, dto.contact_id);
     await this.ensureUniqueNumber(workspaceId, dto.number);
 
@@ -114,6 +118,10 @@ export class InvoicesService {
 
     const preparedLines = this.prepareLines(dto.lines, dto.amount);
     const computedAmount = preparedLines.totalAmount;
+
+    if (computedAmount <= 0 && preparedLines.lines.length === 0) {
+      throw new BadRequestException('La factura debe tener al menos una línea de detalle o un monto mayor a cero.');
+    }
 
     const invoice = await this.prisma.invoice.create({
       data: {
@@ -241,6 +249,10 @@ export class InvoicesService {
       });
     });
 
+    if (dto.status !== undefined) {
+      this.validateStateTransition(existing.status as InvoiceStatus, dto.status as InvoiceStatus);
+    }
+
     const finalStatus =
       dto.status !== undefined
         ? dto.status
@@ -299,6 +311,13 @@ export class InvoicesService {
     const paidAt = dto.paid_at ? new Date(dto.paid_at) : new Date();
     const paymentCurrency = dto.currency ?? invoice.currency;
 
+    // Reject payments with mismatched currency to prevent silent exchange rate issues
+    if (dto.currency && dto.currency !== invoice.currency) {
+      throw new BadRequestException(
+        `La moneda del pago (${dto.currency}) no coincide con la moneda de la factura (${invoice.currency}).`,
+      );
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const payment = await tx.invoicePayment.create({
         data: {
@@ -337,8 +356,31 @@ export class InvoicesService {
         include: this.invoiceInclude(),
       });
 
-      return { payment, invoice: updated };
+      return { payment, invoice: updated, newStatus: nextStatus };
     });
+
+    // Notificar pago recibido
+    const isPaid = result.newStatus === InvoiceStatus.PAID;
+    const admins = await this.prisma.workspaceMembership.findMany({
+      where: { workspace_id: workspaceId, role: { in: ['OWNER'] as any } },
+      select: { user_id: true },
+      take: 3,
+    });
+    const notified = new Set<string>();
+    for (const admin of admins) {
+      if (notified.has(admin.user_id)) continue;
+      notified.add(admin.user_id);
+      this.notificationsService.create(workspaceId, {
+        user_id: admin.user_id,
+        type: isPaid ? 'invoice_paid' : 'payment_received',
+        title: isPaid ? 'Factura pagada' : 'Pago recibido',
+        body: isPaid
+          ? `La factura ${invoice.number} fue pagada por completo (₡${amount.toFixed(2)}).`
+          : `Se recibió un pago de ₡${amount.toFixed(2)} para la factura ${invoice.number}.`,
+        related_entity_type: 'invoice',
+        related_entity_id: invoiceId,
+      }).catch(() => {});
+    }
 
     return {
       payment: result.payment,
@@ -667,6 +709,24 @@ export class InvoicesService {
     return Math.max(0, Number(invoice.amount ?? 0) - this.getAmountPaid(invoice));
   }
 
+  private validateStateTransition(current: InvoiceStatus, next: InvoiceStatus): void {
+    const ALLOWED_TRANSITIONS: Partial<Record<InvoiceStatus, InvoiceStatus[]>> = {
+      [InvoiceStatus.DRAFT]: [InvoiceStatus.SENT, InvoiceStatus.CANCELLED],
+      [InvoiceStatus.SENT]: [InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID, InvoiceStatus.OVERDUE, InvoiceStatus.CANCELLED],
+      [InvoiceStatus.PARTIALLY_PAID]: [InvoiceStatus.PAID, InvoiceStatus.OVERDUE, InvoiceStatus.CANCELLED],
+      [InvoiceStatus.OVERDUE]: [InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID, InvoiceStatus.CANCELLED],
+      [InvoiceStatus.PAID]: [],
+      [InvoiceStatus.CANCELLED]: [],
+    };
+
+    const allowed = ALLOWED_TRANSITIONS[current] ?? [];
+    if (current !== next && !allowed.includes(next)) {
+      throw new BadRequestException(
+        `Transición de estado inválida: ${current} → ${next}.`,
+      );
+    }
+  }
+
   private computeInvoiceStatus(
     currentStatus: InvoiceStatus,
     amountPaid: number,
@@ -767,6 +827,8 @@ export class InvoicesService {
 
   private prepareLines(lines: any[] | undefined, fallbackAmount: number) {
     if (!lines?.length) {
+      // Allow empty lines only for manual invoices where amount is directly set
+      // Amount is always from fallbackAmount when no lines provided
       return {
         totalAmount: Number(fallbackAmount ?? 0),
         lines: [],

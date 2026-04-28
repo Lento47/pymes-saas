@@ -6,8 +6,10 @@ import { HaciendaPublicApiService } from './hacienda-public-api.service';
 import { HaciendaRecepcionService } from './hacienda-recepcion.service';
 import { HaciendaSigningService } from './hacienda-signing.service';
 import { HaciendaXmlBuilderService } from './hacienda-xml-builder.service';
+import { CryptoModule } from '../common/crypto/crypto.module';
 
 @Module({
+  imports: [CryptoModule],
   controllers: [HaciendaController, HaciendaWebhookController],
   providers: [
     HaciendaAuthService,

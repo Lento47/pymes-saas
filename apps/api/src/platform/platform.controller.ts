@@ -13,7 +13,10 @@ import { PlatformService } from './platform.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PlatformAdminGuard } from '../auth/guards/platform-admin.guard';
 import { AssignMemberDto } from './dto/assign-member.dto';
+import { CreatePlatformUserDto } from './dto/create-platform-user.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
+import { UpdatePlatformUserPasswordDto } from './dto/update-platform-user-password.dto';
+import { UpdatePlatformUserStatusDto } from './dto/update-platform-user-status.dto';
 import { UpdateWorkspaceBillingDto } from './dto/update-workspace-billing.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
@@ -69,5 +72,42 @@ export class PlatformController {
   @Get('users')
   searchUsers(@Query('email') email?: string) {
     return this.service.searchUsers(email);
+  }
+
+  @Post('users')
+  createUser(@Body() dto: CreatePlatformUserDto) {
+    return this.service.createUser(dto);
+  }
+
+  @Patch('users/:userId/password')
+  updateUserPassword(
+    @Param('userId') userId: string,
+    @Body() dto: UpdatePlatformUserPasswordDto,
+  ) {
+    return this.service.updateUserPassword(userId, dto.password);
+  }
+
+  @Post('users/:userId/reset-password')
+  resetUserPassword(@Param('userId') userId: string) {
+    return this.service.resetUserPassword(userId);
+  }
+
+  @Patch('users/:userId/status')
+  updateUserStatus(
+    @Param('userId') userId: string,
+    @CurrentUser() user: AuthUser,
+    @Body() dto: UpdatePlatformUserStatusDto,
+  ) {
+    return this.service.updateUserStatus(userId, user.id, dto.status);
+  }
+
+  @Patch('users/:userId/toggle-admin')
+  togglePlatformAdmin(@Param('userId') userId: string) {
+    return this.service.togglePlatformAdmin(userId);
+  }
+
+  @Delete('users/:userId')
+  deleteUser(@Param('userId') userId: string, @CurrentUser() user: AuthUser) {
+    return this.service.deleteUser(userId, user.id);
   }
 }

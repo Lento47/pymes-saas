@@ -44,7 +44,7 @@ tsconfig.test.json
 Thumbs.db
 
 # Docker files themselves (avoid recursive COPY confusion)
-Dockerfile*
+Dockerfile
 docker-compose*.yml
 .dockerignore
 

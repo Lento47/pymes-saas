@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerStorage } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
+import { RedisThrottlerStorage } from './common/redis-throttler-storage.service';
 
 import { PrismaModule } from './common/prisma/prisma.module';
 import { StorageModule } from './common/storage/storage.module';
@@ -30,16 +31,26 @@ import { InsightsModule } from './insights/insights.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
+// ApiTokensModule — API token management for Enterprise plan
 import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { HealthModule } from './health/health.module';
+import { AiModule } from './ai/ai.module';
+import { ApiTokensModule } from './api-tokens/api-tokens.module';
+import { BillingModule } from './billing/billing.module';
+import { RoutingModule } from './routing/routing.module';
+import { PlanThrottlerGuard } from './common/plan-limits/plan-throttler.guard';
+import { SamlModule } from './auth/saml/saml.module';
+import { I18nModule } from './common/i18n/i18n.module';
+import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    // Multiple throttle tiers: default (100/min) and strict auth tier (10/15min)
     ThrottlerModule.forRoot([
-      { ttl: 60_000, limit: 100 }, // Global: 100 req/min
-      { ttl: 60_000, limit: 10, name: 'webhook' }, // Webhook: 10 req/min (stricter)
+      { name: 'default', ttl: 60_000, limit: 100 },
+      { name: 'auth', ttl: 15 * 60_000, limit: 10 },
     ]),
     ScheduleModule.forRoot(),
 
@@ -71,17 +82,28 @@ import { HealthModule } from './health/health.module';
     InvoicesModule,
     HaciendaModule,
     PipelineModule,
+    AiModule,
     ErrorReportsModule,
+    HealthModule,
+    ApiTokensModule,
+    BillingModule,
+    RoutingModule,
+    SamlModule,
+    I18nModule,
+    // Telegram module
+    TelegramModule,
     PlatformModule,
 
     WorkersModule,
     EventsModule,
     EmailModule,
     WhatsAppModule,
-    HealthModule,
+    TelegramModule,
   ],
   providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: PlanThrottlerGuard },
+    { provide: ThrottlerStorage, useClass: RedisThrottlerStorage },
+    RedisThrottlerStorage,
   ],
 })
 export class AppModule { }

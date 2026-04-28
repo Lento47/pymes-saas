@@ -23,6 +23,7 @@ export enum BillingProvider {
   MANUAL = 'MANUAL',
   STRIPE = 'STRIPE',
   PAYPAL = 'PAYPAL',
+  PADDLE = 'PADDLE',
   BAC = 'BAC',
   CUSTOM = 'CUSTOM',
 }

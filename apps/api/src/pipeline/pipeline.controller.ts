@@ -6,6 +6,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PipelineService } from './pipeline.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 import { CreateStageDto } from './dto/create-stage.dto';
 import { UpdateStageDto } from './dto/update-stage.dto';
 import { CreateDealDto } from './dto/create-deal.dto';
@@ -15,7 +16,10 @@ import { MoveDealDto } from './dto/move-deal.dto';
 @Controller('pipeline')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PipelineController {
-  constructor(private readonly pipelineService: PipelineService) {}
+  constructor(
+    private readonly pipelineService: PipelineService,
+    private readonly planLimits: PlanLimitsService,
+  ) {}
 
   @Get('stages')
   @Roles(WorkspaceUserRole.AGENT)
@@ -25,10 +29,11 @@ export class PipelineController {
 
   @Post('stages')
   @Roles(WorkspaceUserRole.ADMIN)
-  createStage(
+  async createStage(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateStageDto,
   ) {
+    await this.planLimits.enforcePlanTier(workspaceId, 'STARTER', 'Pipeline');
     return this.pipelineService.createStage(workspaceId, dto);
   }
 
@@ -59,10 +64,11 @@ export class PipelineController {
 
   @Post('deals')
   @Roles(WorkspaceUserRole.AGENT)
-  createDeal(
+  async createDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateDealDto,
   ) {
+    await this.planLimits.enforcePlanTier(workspaceId, 'STARTER', 'Pipeline');
     return this.pipelineService.createDeal(workspaceId, dto);
   }
 

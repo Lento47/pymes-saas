@@ -17,7 +17,7 @@ import { AiProvider, AiService } from '../ai/ai.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 import { EmailService } from '../email/email.service';
 import { EventsGateway } from '../gateways/events.gateway';
-import { PlanLimitsService } from '../billing/plan-limits.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 @Injectable()
 export class WorkspacesService {
@@ -49,12 +49,12 @@ export class WorkspacesService {
       hacienda_environment: settings.hacienda_environment ?? 'staging',
       hacienda_callback_url: settings.hacienda_callback_url ?? null,
       hacienda_username_set: !!(settings.hacienda_username),
-      hacienda_password_set: !!(settings.hacienda_password),
+      hacienda_password_set: !!(settings.hacienda_password_enc || settings.hacienda_password),
       hacienda_client_id_set: !!(settings.hacienda_client_id),
       hacienda_token_url_set: !!(settings.hacienda_token_url),
-      hacienda_access_token_set: !!(settings.hacienda_access_token),
+      hacienda_access_token_set: !!(settings.hacienda_access_token_enc || settings.hacienda_access_token),
       hacienda_certificate_path_set: !!(settings.hacienda_certificate_path),
-      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin),
+      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin_enc || settings.hacienda_certificate_pin),
       hacienda_signing_enabled: settings.hacienda_signing_enabled === true,
     };
   }
@@ -81,6 +81,33 @@ export class WorkspacesService {
     });
 
     return this.serializeWorkspace(workspace);
+  }
+
+  // ── GET /workspaces/current/subscription ─────────────────────────────────
+
+  async getSubscription(workspaceId: string) {
+    const sub = await this.prisma.workspaceSubscription.findFirst({
+      where: { workspace_id: workspaceId },
+      select: {
+        id: true,
+        plan: true,
+        status: true,
+        provider: true,
+        provider_customer_id: true,
+        provider_subscription_id: true,
+        current_period_start: true,
+        current_period_end: true,
+        trial_ends_at: true,
+        cancel_at_period_end: true,
+      },
+    });
+
+    if (!sub) {
+      return null;
+    }
+
+    const limits = this.planLimits.getLimits(sub.plan);
+    return { ...sub, limits };
   }
 
   // ── PATCH /workspaces/current ─────────────────────────────────────────────
@@ -132,15 +159,27 @@ export class WorkspacesService {
       }
     };
 
+    // Encrypt sensitive fields; non-sensitive fields stored as plain text.
+    const setOrUnsetEnc = (plainKey: string, encKey: string, value: string | undefined) => {
+      if (value === undefined) return;
+      if (value === '') {
+        delete nextSettings[plainKey];
+        delete nextSettings[encKey];
+      } else {
+        nextSettings[encKey] = this.crypto.encrypt(value);
+        delete nextSettings[plainKey]; // remove legacy plaintext key if present
+      }
+    };
+
     setOrUnset('hacienda_environment', hacienda_environment);
     setOrUnset('hacienda_username', hacienda_username);
-    setOrUnset('hacienda_password', hacienda_password);
+    setOrUnsetEnc('hacienda_password', 'hacienda_password_enc', hacienda_password);
     setOrUnset('hacienda_client_id', hacienda_client_id);
     setOrUnset('hacienda_token_url', hacienda_token_url);
-    setOrUnset('hacienda_access_token', hacienda_access_token);
+    setOrUnsetEnc('hacienda_access_token', 'hacienda_access_token_enc', hacienda_access_token);
     setOrUnset('hacienda_callback_url', hacienda_callback_url);
     setOrUnset('hacienda_certificate_path', hacienda_certificate_path);
-    setOrUnset('hacienda_certificate_pin', hacienda_certificate_pin);
+    setOrUnsetEnc('hacienda_certificate_pin', 'hacienda_certificate_pin_enc', hacienda_certificate_pin);
 
     if (hacienda_signing_enabled !== undefined) {
       nextSettings.hacienda_signing_enabled = hacienda_signing_enabled === 'true';
@@ -347,6 +386,28 @@ export class WorkspacesService {
       _sum: { file_size: true },
     });
 
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const [monthlyRevenue, prevMonthRevenue] = await Promise.all([
+      this.prisma.invoice.aggregate({
+        where: { workspace_id: workspaceId, created_at: { gte: startOfMonth } },
+        _sum: { amount: true },
+      }),
+      this.prisma.invoice.aggregate({
+        where: { workspace_id: workspaceId, created_at: { gte: startOfPrevMonth, lte: endOfPrevMonth } },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const revenueThisMonth = Number(monthlyRevenue._sum.amount ?? 0);
+    const revenuePrevMonth = Number(prevMonthRevenue._sum.amount ?? 0);
+    const revenueChange = revenuePrevMonth > 0
+      ? ((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth * 100)
+      : 0;
+
     return {
       contacts,
       conversations,
@@ -357,6 +418,9 @@ export class WorkspacesService {
       documentStorageBytes: totalDocumentSize._sum.file_size ?? 0,
       automations,
       members,
+      monthly_revenue: revenueThisMonth,
+      prev_month_revenue: revenuePrevMonth,
+      revenue_change_pct: Math.round(revenueChange),
     };
   }
 

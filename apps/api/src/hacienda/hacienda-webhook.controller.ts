@@ -1,15 +1,29 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { Body, Controller, Headers, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 
 @Controller('hacienda/webhook')
 export class HaciendaWebhookController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post()
   async receiveCallback(
+    @Query('token') token: string | undefined,
     @Body() payload: any,
     @Headers('user-agent') userAgent?: string,
   ) {
+    // Verify shared secret — set HACIENDA_WEBHOOK_SECRET and append ?token=<secret>
+    // to the callback URL registered with Hacienda.
+    const expectedSecret = this.configService.get<string>('HACIENDA_WEBHOOK_SECRET');
+    if (expectedSecret) {
+      if (!token || token !== expectedSecret) {
+        throw new UnauthorizedException('Invalid webhook token');
+      }
+    }
+
     const clave = payload?.clave;
     if (!clave) {
       return { received: false, reason: 'missing-clave' };

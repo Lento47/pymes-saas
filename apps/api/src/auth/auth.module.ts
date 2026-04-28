@@ -5,7 +5,6 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
-import { PermissionsGuard } from './guards/permissions.guard';
 import { RefreshTokenService } from './refresh-token.service';
 
 @Module({
@@ -17,7 +16,7 @@ import { RefreshTokenService } from './refresh-token.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RolesGuard, PermissionsGuard, RefreshTokenService],
-  exports: [JwtModule, PassportModule, RolesGuard, PermissionsGuard, RefreshTokenService],
+  providers: [AuthService, JwtStrategy, RolesGuard, RefreshTokenService],
+  exports: [JwtModule, PassportModule, RolesGuard, RefreshTokenService, AuthService],
 })
 export class AuthModule {}

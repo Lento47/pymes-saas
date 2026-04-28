@@ -25,4 +25,8 @@ export class UpdateConversationDto {
   @IsOptional()
   @IsString()
   contact_id?: string | null;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

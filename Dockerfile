@@ -11,11 +11,13 @@ RUN npm install -g pnpm
 # Copy dependency files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY packages/shared-types/package.json ./packages/shared-types/
 
 # Install dependencies - use workspace install
 RUN pnpm install --frozen-lockfile --recursive
 
-# Copy source code
+# Copy source code (only what's not in .dockerignore)
 COPY . .
 
 # Generate Prisma client
@@ -27,5 +29,11 @@ RUN pnpm --prefix apps/api build
 # Expose port
 EXPOSE 4000
 
-# Run API
-CMD ["node", "apps/api/dist/src/main"]
+# Health check endpoint for Railway
+
+# Copy entrypoint script and make it executable
+COPY entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+
+# Run migrations then start API
+ENTRYPOINT ["/app/entrypoint.sh"]

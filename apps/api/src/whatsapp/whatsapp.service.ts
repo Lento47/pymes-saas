@@ -64,24 +64,21 @@ export class WhatsAppService {
    */
   private async resolveWorkspaceFromPhoneNumberId(phoneNumberId: string): Promise<string | null> {
     try {
-      // Fetch all WhatsApp channels and match by phone_number_id
-      const channels = await this.prisma.channel.findMany({
+      // Query channels table to find workspace with this phone_number_id
+      const channel = await this.prisma.channel.findFirst({
         where: {
           type: 'WHATSAPP',
-          status: 'ACTIVE',
+          config_json: {
+            path: ['phone_number_id'],
+            equals: phoneNumberId,
+          },
         },
+        select: { workspace_id: true },
       });
 
-      for (const channel of channels) {
-        const cfg = channel.config_json as any;
-        if (cfg?.phone_number_id === phoneNumberId) {
-          return channel.workspace_id;
-        }
-      }
-
-      return null;
+      return channel?.workspace_id ?? null;
     } catch (err) {
-      this.logger.error(`Error resolving workspace: ${err}`);
+      this.logger.error(`Error resolving workspace from phone_number_id: ${err}`);
       return null;
     }
   }

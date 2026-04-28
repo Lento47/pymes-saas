@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs (included explicitly by Dockerfile)
+dist/
+build/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# CI/CD
+*.md
+AGENTS.md
+DESIGN_SYSTEM.md
+
+# Frontend (package.json needed for workspace install, source excluded)
+apps/web/client/
+apps/web/server/
+apps/web/script/
+apps/web/dist/
+apps/web/node_modules/
+apps/web/*.ts
+apps/web/*.js
+apps/web/*.json
+!apps/web/package.json
+
+apps/desktop/
+
+# Packages source (package.json needed for install)
+packages/*/
+!packages/*/package.json
+
+# Docs
+docs/
+
+# Tests and coverage
+coverage/
+*.test.ts
+*.spec.ts
+jest.config.*
+vitest.config.*
+
+# Development
+.env
+.env.*
+!.env.example
+docker-compose*.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

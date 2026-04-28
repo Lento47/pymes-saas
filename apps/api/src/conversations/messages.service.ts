@@ -181,6 +181,18 @@ export class MessagesService {
     // Emitir en tiempo real
     this.events.emitNewMessage(conversation.id, workspaceId, message);
 
+    // Notificar al agente asignado sobre nuevo mensaje
+    if (conversation.assigned_user_id) {
+      this.notificationsService.create(workspaceId, {
+        user_id: conversation.assigned_user_id,
+        type: 'new_message',
+        title: 'Nuevo mensaje recibido',
+        body: `Nuevo mensaje de ${senderName} en "${conversation.subject || 'Sin asunto'}": "${bodyText.slice(0, 100)}${bodyText.length > 100 ? '...' : ''}"`,
+        related_entity_type: 'conversation',
+        related_entity_id: conversation.id,
+      }).catch((err) => this.logger.error('Error al crear notificación de nuevo mensaje', err));
+    }
+
     await this.automationsService.triggerRules(
       workspaceId,
       'MESSAGE_RECEIVED',

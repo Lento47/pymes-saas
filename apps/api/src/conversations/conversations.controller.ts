@@ -15,6 +15,7 @@ import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { ConversationsService } from './conversations.service';
 import { MessagesService } from './messages.service';
+import { SlaService } from './sla.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -35,12 +36,26 @@ export class ConversationsController {
   constructor(
     private readonly service: ConversationsService,
     private readonly messagesService: MessagesService,
+    private readonly slaService: SlaService,
     private readonly emailService: EmailService,
     private readonly whatsAppService: WhatsAppService,
     private readonly prisma: PrismaService,
   ) {}
 
   // ── Conversations ──────────────────────────────────────────────────────────
+
+  @Get('sla/stats')
+  @Roles(WorkspaceUserRole.AGENT)
+  getSlaStats(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.slaService.getSlaStats(workspaceId);
+  }
+
+  @Post('sla/check')
+  @Roles(WorkspaceUserRole.ADMIN)
+  async checkSla(@CurrentUser('workspace_id') workspaceId: string) {
+    await this.slaService.checkSlaBreaches(workspaceId);
+    return { ok: true };
+  }
 
   @Get()
   findAll(

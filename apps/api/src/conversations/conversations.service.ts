@@ -9,13 +9,16 @@ import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { FilterConversationsDto } from './dto/filter-conversations.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AutomationsService } from '../automations/automations.service';
-import { TriggerType } from '../common/types/enums';
+import { SlaService } from './sla.service';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class ConversationsService {
+  private readonly logger = new Logger(ConversationsService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly automationsService: AutomationsService,
+    private readonly slaService: SlaService,
   ) {}
 
   // ── GET /conversations ─────────────────────────────────────────────────────
@@ -23,7 +26,7 @@ export class ConversationsService {
   async findAll(workspaceId: string, filters: FilterConversationsDto, caller?: { id: string; role: string }) {
     const {
       status, priority, assigned_user_id, contact_id,
-      channel_id, channel_type, unassigned, category, q, page = 1, limit = 20,
+      channel_id, channel_type, unassigned, category, q, department_id, page = 1, limit = 20,
     } = filters;
     const skip = (page - 1) * limit;
 
@@ -37,6 +40,7 @@ export class ConversationsService {
     if (channel_type)     where.channel          = { type: channel_type };
     if (category)         where.category         = { contains: category, mode: 'insensitive' };
     if (q)                where.subject          = { contains: q, mode: 'insensitive' };
+    if (department_id)    where.department_id    = department_id;
 
     // AGENTs only see conversations belonging to their department(s)
     if (caller && caller.role === 'AGENT') {
@@ -102,7 +106,7 @@ export class ConversationsService {
 
     await this.automationsService.triggerRules(
       workspaceId,
-      TriggerType.CONVERSATION_CREATED,
+      'CONVERSATION_CREATED',
       'conversation',
       conversation.id,
     );
@@ -161,6 +165,7 @@ export class ConversationsService {
         ...(dto.subject          !== undefined && { subject: dto.subject }),
         ...(dto.assigned_user_id !== undefined && { assigned_user_id: dto.assigned_user_id }),
         ...(dto.contact_id !== undefined && { contact_id: dto.contact_id }),
+        ...(dto.notes !== undefined && { notes: dto.notes }),
         updated_at: new Date(),
       },
     });
@@ -168,7 +173,7 @@ export class ConversationsService {
     if (dto.status !== undefined) {
       await this.automationsService.triggerRules(
         workspaceId,
-        TriggerType.CONVERSATION_STATUS_CHANGED,
+        'CONVERSATION_STATUS_CHANGED',
         'conversation',
         updated.id,
       );
@@ -205,6 +210,11 @@ export class ConversationsService {
     return this.prisma.conversation.update({
       where: { id },
       data: { status: 'RESOLVED', updated_at: new Date() },
+    }).then(updated => {
+      this.slaService.trackResolution(id).catch(err =>
+        this.logger.warn(`SLA resolution error: ${(err as Error).message}`),
+      );
+      return updated;
     });
   }
 

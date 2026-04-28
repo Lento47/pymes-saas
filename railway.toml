@@ -3,7 +3,6 @@ builder = "dockerfile"
 dockerfile = "./Dockerfile"
 
 [deploy]
-startCommand = "node apps/api/dist/src/main"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 100
+healthcheckTimeout = 180
 numReplicas = 1

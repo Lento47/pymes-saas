@@ -1,87 +1,125 @@
-import { Body, Controller, Get, Post, RawBodyRequest, Req, UseGuards, BadRequestException } from '@nestjs/common';
-import { Request } from 'express';
+import { Body, Controller, Get, Param, Post, RawBodyRequest, Req, Res, UseGuards, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { StripeService } from './stripe.service';
+import { PaddleService } from './paddle.service';
+import { BillingInvoiceService } from './billing-invoice.service';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import Stripe from 'stripe';
+import { ApiRolesGuard } from '../api-tokens/api-roles.guard';
+import { RequireApiRole } from '../api-tokens/api-roles.decorator';
+import { ApiRole } from '../api-tokens/api-token.guard';
 
 @Controller('billing')
 export class BillingController {
   constructor(
-    private readonly stripeService: StripeService,
+    private readonly paddleService: PaddleService,
+    private readonly billingInvoice: BillingInvoiceService,
     private readonly configService: ConfigService,
   ) {}
 
   @Post('checkout')
   @UseGuards(JwtAuthGuard)
-  async createCheckoutSession(
+  async createCheckout(
     @CurrentUser() user: AuthUser,
-    @Body() dto: { priceId: string; idempotencyKey: string },
+    @Body() dto: { priceId: string },
   ) {
-    if (!dto.priceId || !dto.idempotencyKey) {
-      throw new BadRequestException('priceId and idempotencyKey are required');
+    if (!dto.priceId) {
+      throw new BadRequestException('priceId is required');
     }
 
-    const workspace = await this.getWorkspace(user.workspace_id);
-    const customerId = await this.stripeService.createOrGetCustomer(
-      user.workspace_id,
-      user.email,
-    );
+    try {
+      const customerId = await this.paddleService.createOrGetCustomer(
+        user.workspace_id,
+        user.email,
+      );
 
-    const successUrl = `${this.configService.get('APP_URL')}/settings/billing?success=true`;
-    const cancelUrl = `${this.configService.get('APP_URL')}/settings/billing?canceled=true`;
+      const result = await this.paddleService.createTransaction(
+        user.workspace_id,
+        customerId,
+        dto.priceId,
+      );
 
-    const session = await this.stripeService.createCheckoutSession(
-      user.workspace_id,
-      customerId,
-      dto.priceId,
-      dto.idempotencyKey,
-      successUrl,
-      cancelUrl,
-    );
-
-    return {
-      sessionId: session.sessionId,
-      url: session.url,
-    };
+      return result;
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException(
+        `Checkout failed: ${(error as Error).message}`,
+      );
+    }
   }
 
   @Post('webhook')
   async handleWebhook(@Req() request: RawBodyRequest<Request>) {
-    const signature = request.headers['stripe-signature'] as string;
-    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+    const signature = request.headers['paddle-signature'] as string;
+    const webhookSecret = this.configService.get<string>('PADDLE_WEBHOOK_SECRET');
 
     if (!signature || !webhookSecret) {
-      throw new BadRequestException('Missing signature or webhook secret');
+      throw new BadRequestException('Missing paddle-signature header or webhook secret');
     }
 
-    let event: Stripe.Event;
+    let event: any;
     try {
-      event = this.stripeService.verifyWebhookSignature(
-        request.rawBody?.toString() || '',
-        signature,
+      event = await this.paddleService.verifyWebhookSignature(
+        request.rawBody?.toString() || JSON.stringify(request.body),
         webhookSecret,
+        signature,
       );
     } catch (error) {
       throw new BadRequestException(`Webhook signature verification failed: ${(error as Error).message}`);
     }
 
-    await this.stripeService.handleWebhookEvent(event);
+    await this.paddleService.handleWebhookEvent(event);
 
     return { received: true };
+  }
+
+  @Get('prices')
+  @UseGuards(JwtAuthGuard)
+  getAvailablePrices() {
+    return this.paddleService.getAvailablePrices();
   }
 
   @Get('portal')
   @UseGuards(JwtAuthGuard)
   async getBillingPortal(@CurrentUser() user: AuthUser) {
-    const url = await this.stripeService.getBillingPortalLink(user.workspace_id);
-    return { url };
+    try {
+      const url = await this.paddleService.getPortalLink(user.workspace_id);
+      return { url };
+    } catch {
+      return { url: null };
+    }
   }
 
-  private async getWorkspace(workspace_id: string) {
-    // This would be injected in real implementation
-    return { id: workspace_id };
+  @Get('invoices')
+  @UseGuards(JwtAuthGuard)
+  async getInvoices(@CurrentUser() user: AuthUser) {
+    return this.billingInvoice.findByWorkspace(user.workspace_id);
+  }
+
+  @Get('invoices/:id/pdf')
+  @UseGuards(JwtAuthGuard)
+  async getInvoicePdf(
+    @CurrentUser() user: AuthUser,
+    @Param('id') invoiceId: string,
+    @Res() res: Response,
+  ) {
+    const { buffer, filename } = await this.billingInvoice.getPdfBuffer(invoiceId);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${filename}"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
+  }
+
+  @Post('sync')
+  @UseGuards(JwtAuthGuard, ApiRolesGuard)
+  @RequireApiRole(ApiRole.FOUNDER, ApiRole.WORKSPACE, ApiRole.USER)
+  async syncSubscription(
+    @CurrentUser() user: AuthUser,
+    @Body() dto?: { customerId?: string; subscriptionId?: string },
+  ) {
+    return this.paddleService.syncSubscription(user.workspace_id, dto?.customerId, dto?.subscriptionId);
   }
 }

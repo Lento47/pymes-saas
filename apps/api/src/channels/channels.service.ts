@@ -10,6 +10,7 @@ import { CryptoService } from '../common/crypto/crypto.service';
 import { parseJsonValue, stringifyJson } from '../common/prisma/json';
 import { ConfigureEmailDto } from './dto/configure-email.dto';
 import { ConfigureWhatsAppDto } from './dto/configure-whatsapp.dto';
+import { ConfigureTelegramDto } from './dto/configure-telegram.dto';
 
 interface CreateChannelDto {
   type: string;
@@ -146,6 +147,28 @@ export class ChannelsService {
     });
 
     this.logger.log(`WHATSAPP canal ${id} configurado para workspace ${workspaceId}`);
+    return this.sanitise(updated);
+  }
+
+  async configureTelegram(workspaceId: string, id: string, dto: ConfigureTelegramDto) {
+    const channel = await this.prisma.channel.findFirst({ where: { id, workspace_id: workspaceId } });
+    if (!channel) throw new NotFoundException('Canal no encontrado.');
+    if (channel.type !== 'TELEGRAM') throw new BadRequestException('El canal no es de tipo TELEGRAM.');
+
+    const existingConfig = parseJsonValue<Record<string, any>>(channel.config_json, {});
+    const bot_token_encrypted = dto.bot_token
+      ? this.crypto.encrypt(dto.bot_token)
+      : existingConfig.bot_token_encrypted;
+
+    const updated = await this.prisma.channel.update({
+      where: { id },
+      data: {
+        status: 'ACTIVE',
+        config_json: stringifyJson({ ...existingConfig, bot_token_encrypted }),
+      },
+    });
+
+    this.logger.log(`TELEGRAM canal ${id} configurado para workspace ${workspaceId}`);
     return this.sanitise(updated);
   }
 

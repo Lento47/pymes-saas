@@ -291,4 +291,31 @@ export class AiService {
     if (!text) throw new Error('La IA devolvió un borrador vacío.');
     return { draft_text: text, tokens_used: tokens };
   }
+
+  async analyzeDocument(
+    workspaceId: string,
+    meta: { fileName: string; mimeType: string; fileSize: number },
+  ): Promise<{ extractedText: string; summary: string; extractedData: any } | null> {
+    const config = await this.getConfig(workspaceId);
+    if (!config) return null;
+
+    const system = `Eres un asistente de extracción de documentos. Analiza la metadata del documento y genera:
+1. Un texto simulado de lo que podría contener el documento basado en su nombre y tipo.
+2. Un resumen breve en español del contenido inferido.
+3. Datos estructurados inferidos (ej: tipo de documento, categoría).
+Responde en formato JSON puro: { "extractedText": "...", "summary": "...", "extractedData": {...} }`;
+
+    const user = `Analiza este documento:
+- Nombre: ${meta.fileName}
+- Tipo MIME: ${meta.mimeType}
+- Tamaño: ${(meta.fileSize / 1024).toFixed(1)} KB`;
+
+    try {
+      const { text } = await this.chat(config, system, user, 300, 0.3);
+      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      return JSON.parse(clean);
+    } catch {
+      return null;
+    }
+  }
 }

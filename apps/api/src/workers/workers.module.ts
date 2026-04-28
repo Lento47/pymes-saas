@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 
+import { NotificationsModule } from '../notifications/notifications.module';
 import { QUEUE_NAMES } from './queues.constants';
 import { QueueService } from './queue.service';
 import { ClassifierProcessor } from './processors/classifier.processor';
@@ -10,10 +11,10 @@ import { DocumentProcessor } from './processors/document.processor';
 import { AutomationProcessor } from './processors/automation.processor';
 import { FollowupProcessor } from './processors/followup.processor';
 import { SummaryProcessor } from './processors/summary.processor';
-import { NotificationProcessor } from './processors/notification.processor';
 
 @Module({
   imports: [
+    NotificationsModule,
     ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       inject: [ConfigService],
@@ -32,7 +33,6 @@ import { NotificationProcessor } from './processors/notification.processor';
       { name: QUEUE_NAMES.AUTOMATION },
       { name: QUEUE_NAMES.FOLLOWUP },
       { name: QUEUE_NAMES.SUMMARY },
-      { name: QUEUE_NAMES.NOTIFICATION },
     ),
   ],
   providers: [
@@ -42,7 +42,6 @@ import { NotificationProcessor } from './processors/notification.processor';
     AutomationProcessor,
     FollowupProcessor,
     SummaryProcessor,
-    NotificationProcessor,
   ],
   exports: [QueueService],
 })

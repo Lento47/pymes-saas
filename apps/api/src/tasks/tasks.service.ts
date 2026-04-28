@@ -9,13 +9,14 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { FilterTasksDto } from './dto/filter-tasks.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AutomationsService } from '../automations/automations.service';
-import { TriggerType } from '../common/types/enums';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly automationsService: AutomationsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ── GET /tasks ─────────────────────────────────────────────────────────────
@@ -110,7 +111,7 @@ export class TasksService {
 
     await this.automationsService.triggerRules(
       workspaceId,
-      TriggerType.TASK_CREATED,
+      'TASK_CREATED',
       'task',
       task.id,
     );
@@ -162,7 +163,7 @@ export class TasksService {
       throw new BadRequestException('La tarea ya está completada.');
     }
 
-    return this.prisma.task.update({
+    const updated = await this.prisma.task.update({
       where: { id },
       data: {
         status:       'DONE',
@@ -170,6 +171,20 @@ export class TasksService {
         updated_at:   new Date(),
       },
     });
+
+    // Notificar al responsable
+    if (task.assigned_user_id) {
+      this.notificationsService.create(workspaceId, {
+        user_id: task.assigned_user_id,
+        type: 'task_completed',
+        title: 'Tarea completada',
+        body: `La tarea "${task.title}" fue marcada como completada.`,
+        related_entity_type: 'task',
+        related_entity_id: task.id,
+      }).catch(() => {});
+    }
+
+    return updated;
   }
 
   // ── GET /tasks/overdue — resumen de tareas vencidas ───────────────────────

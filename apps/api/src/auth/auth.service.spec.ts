@@ -131,6 +131,7 @@ describe('AuthService', () => {
 
       mockPrisma.user.findUnique.mockResolvedValue(null);
       mockPrisma.user.create.mockResolvedValue(user);
+      mockPrisma.workspace.findUnique.mockResolvedValue(null);
       mockPrisma.workspace.create.mockResolvedValue(workspace);
       mockPrisma.refreshToken.create.mockResolvedValue({});
 
@@ -138,8 +139,39 @@ describe('AuthService', () => {
 
       expect(result.access_token).toBeDefined();
       expect(result.refresh_token).toBeDefined();
+      expect(result.user.email).toBe(dto.email);
+      expect(result.user.role).toBe('OWNER');
+      expect(result.user.workspace.slug).toBe(workspace.slug);
+      expect((result as any).workspace.slug).toBe(workspace.slug);
       expect(mockPrisma.user.create).toHaveBeenCalledTimes(1);
       expect(mockPrisma.workspace.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('allows public registration with non-pymeshub email domains', async () => {
+      const dto = { email: 'owner@customer-company.com', name: 'Customer Owner', password: 'password123' };
+      const user = { id: 'u-public', email: dto.email, name: dto.name, avatar_url: null };
+      const workspace = { id: 'w-public', name: `${dto.name}'s Workspace`, slug: 'customer-123', plan: 'FREE' };
+
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.user.create.mockResolvedValue(user);
+      mockPrisma.workspace.findUnique.mockResolvedValue(null);
+      mockPrisma.workspace.create.mockResolvedValue(workspace);
+      mockPrisma.refreshToken.create.mockResolvedValue({});
+
+      await expect(service.register(dto)).resolves.toEqual({
+        access_token: expect.any(String),
+        refresh_token: expect.anything(),
+        user: expect.objectContaining({
+          email: dto.email,
+          workspace: expect.objectContaining({ slug: workspace.slug }),
+        }),
+        workspace: expect.objectContaining({ slug: workspace.slug }),
+      });
+      expect(mockPrisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ email: dto.email }),
+        }),
+      );
     });
 
     it('throws ConflictException when email is already registered', async () => {

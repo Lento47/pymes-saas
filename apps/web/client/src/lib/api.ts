@@ -413,6 +413,10 @@ export const api = {
   getMyWorkspaces: () => request<any>("GET", "/api/auth/my-workspaces"),
   switchWorkspace: (workspace_slug: string) =>
     request<any>("POST", "/api/auth/switch-workspace", { workspace_slug }),
+  // Billing
+  getBillingPrices: () => request<Record<string, string | null>>("GET", "/api/billing/prices"),
+  createCheckout: (priceId: string) =>
+    request<{ transactionId: string; checkoutUrl: string | null }>("POST", "/api/billing/checkout", { priceId }),
   // Platform admin
   platformListWorkspaces: () => request<any>("GET", "/api/platform/workspaces"),
   platformGetWorkspaceBilling: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}/billing`),

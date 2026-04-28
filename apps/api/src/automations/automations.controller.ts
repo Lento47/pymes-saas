@@ -46,6 +46,10 @@ export class AutomationsController {
     @Body() dto: CreateAutomationDto,
   ) {
     await this.planLimits.enforceAutomations(user.workspace_id);
+    // Advanced condition builder requires GROWTH+
+    if (dto.condition_config_json && Object.keys(dto.condition_config_json).length > 0) {
+      await this.planLimits.enforcePlanTier(user.workspace_id, 'GROWTH', 'Constructor avanzado de condiciones');
+    }
     return this.automationsService.create(user.workspace_id, user.id, dto);
   }
 

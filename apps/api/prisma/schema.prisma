@@ -36,6 +36,7 @@ enum BillingProvider {
   MANUAL
   STRIPE
   PAYPAL
+  PADDLE
   BAC
   CUSTOM
 }
@@ -81,6 +82,7 @@ enum ContactType {
 enum ChannelType {
   EMAIL
   WHATSAPP
+  TELEGRAM
   FORM
   API
   MANUAL
@@ -197,6 +199,11 @@ enum TriggerType {
   MANUAL
 }
 
+enum RoutingMatchType {
+  KEYWORD
+  MENU_REPLY
+}
+
 // ============================================================
 // CORE — Auth & Tenancy
 // ============================================================
@@ -241,6 +248,7 @@ model Workspace {
   subscriptions        WorkspaceSubscription[]
   billing_events       BillingEvent[]
   stripe_events        StripeEvent[]
+  routing_rules        RoutingRule[]
 
   @@index([slug])
   @@index([status])
@@ -438,6 +446,7 @@ model Channel {
   workspace     Workspace      @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   conversations Conversation[]
   department    Department?    @relation("ChannelDepartment", fields: [department_id], references: [id])
+  routing_rules RoutingRule[]
 
   @@index([workspace_id])
   @@index([workspace_id, type])
@@ -460,6 +469,10 @@ model Conversation {
   category         String?
   assigned_user_id String?
   last_message_at  DateTime?
+  first_response_at DateTime?
+  resolved_at       DateTime?
+  sla_breached  Boolean @default(false)
+  sla_target_hours Int?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -763,6 +776,7 @@ model Department {
   members       DepartmentMember[]
   channels      Channel[]          @relation("ChannelDepartment")
   conversations Conversation[]     @relation("ConversationDepartment")
+  routing_rules RoutingRule[]
 
   @@unique([workspace_id, name])
   @@index([workspace_id])
@@ -786,6 +800,33 @@ model DepartmentMember {
   @@index([workspace_id])
   @@index([user_id])
   @@map("department_members")
+}
+
+// ============================================================
+// ROUTING RULES
+// ============================================================
+
+model RoutingRule {
+  id            String           @id @default(cuid())
+  workspace_id  String
+  channel_id    String?
+  name          String
+  match_type    RoutingMatchType @default(KEYWORD)
+  pattern       String
+  department_id String
+  priority      Int              @default(0)
+  is_active     Boolean          @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace  Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  channel    Channel?   @relation(fields: [channel_id], references: [id], onDelete: SetNull)
+  department Department @relation(fields: [department_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([workspace_id, is_active])
+  @@map("routing_rules")
 }
 
 // ============================================================
@@ -1016,4 +1057,51 @@ model StripeEvent {
   @@index([processed])
   @@index([created_at(sort: Desc)])
   @@map("stripe_events")
+}
+
+// ============================================================
+// Billing Invoice — PDF generation for subscription payments
+// ============================================================
+
+enum BillingInvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  VOID
+}
+
+model BillingInvoice {
+  id              String               @id @default(cuid())
+  number          String               @unique
+  workspace_id    String
+  subscription_id String?
+  status          BillingInvoiceStatus @default(DRAFT)
+  client_name     String
+  client_email    String
+  client_company  String?
+  client_address  String?
+  client_tax_id   String?
+  plan_name       String
+  plan_interval   String
+  seats           Int
+  subtotal        Float
+  tax_rate        Float                @default(0)
+  tax_amount      Float                @default(0)
+  total           Float
+  currency        String               @default("USD")
+  notes           String?              @db.Text
+  pdf_url         String?
+  line_items      Json                 @db.JsonB
+  issued_at       DateTime             @default(now())
+  due_date        DateTime?
+  paid_at         DateTime?
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @updatedAt
+
+  @@index([workspace_id])
+  @@index([subscription_id])
+  @@index([status])
+  @@index([issued_at(sort: Desc)])
+  @@map("billing_invoices")
 }

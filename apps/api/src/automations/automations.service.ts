@@ -2,13 +2,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { TriggerType } from '../common/types/enums';
+import { TriggerType } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CreateAutomationDto } from './dto/create-automation.dto';
 import { UpdateAutomationDto } from './dto/update-automation.dto';
 import { FilterAutomationsDto } from './dto/filter-automations.dto';
 import { QueueService } from '../workers/queue.service';
-import { PlanLimitsService } from '../billing/plan-limits.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 @Injectable()
 export class AutomationsService {

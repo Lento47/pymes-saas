@@ -16,7 +16,6 @@ import { InviteTokenPayload } from './invite-token.types';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
-import { resolvePermissions } from './permissions/permission.types';
 
 @Injectable()
 export class AuthService {
@@ -28,7 +27,7 @@ export class AuthService {
 
   // ── Login ──────────────────────────────────────────────────────────────────
 
-  async login(dto: LoginDto, workspaceSlug: string) {
+  async login(dto: LoginDto, workspaceSlug: string | undefined) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -47,8 +46,34 @@ export class AuthService {
       throw new UnauthorizedException('Usuario inactivo o suspendido.');
     }
 
+    // Auto-detect workspace if no slug provided
+    let effectiveSlug = workspaceSlug;
+    if (!effectiveSlug) {
+      const memberships = await this.prisma.workspaceUser.findMany({
+        where: { user_id: user.id },
+        select: { workspace: { select: { id: true, slug: true, name: true } } },
+      });
+
+      if (memberships.length === 0) {
+        throw new UnauthorizedException('No tenés acceso a ningún workspace.');
+      }
+
+      if (memberships.length === 1) {
+        effectiveSlug = memberships[0].workspace.slug;
+      } else {
+        throw new UnauthorizedException(
+          'MULTIPLE_WORKSPACES:' +
+          JSON.stringify(memberships.map((m) => ({
+            id: m.workspace.id,
+            slug: m.workspace.slug,
+            name: m.workspace.name,
+          })))
+        );
+      }
+    }
+
     const workspace = await this.prisma.workspace.findUnique({
-      where: { slug: workspaceSlug },
+      where: { slug: effectiveSlug },
     });
     if (!workspace) throw new UnauthorizedException('Workspace no encontrado.');
 
@@ -146,7 +171,111 @@ export class AuthService {
 
     const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
 
-    return { access_token, refresh_token };
+    return {
+      access_token,
+      refresh_token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar_url: user.avatar_url,
+        role: 'OWNER',
+        is_owner: true,
+        is_platform_admin: false,
+        workspace: {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          plan: workspace.plan,
+        },
+      },
+      workspace: {
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+        plan: workspace.plan,
+      },
+    };
+  }
+
+  async ssoLogin(workspaceId: string, email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado para SSO.');
+    }
+
+    if (user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Usuario inactivo o suspendido.');
+    }
+
+    const membership = await this.prisma.workspaceUser.findUnique({
+      where: {
+        workspace_id_user_id: {
+          workspace_id: workspaceId,
+          user_id: user.id,
+        },
+      },
+    });
+
+    if (!membership) {
+      // Auto-provision user into workspace if not a member
+      const ws = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { plan: true },
+      });
+
+      await this.prisma.workspaceUser.create({
+        data: {
+          workspace_id: workspaceId,
+          user_id: user.id,
+          role: 'AGENT',
+          is_owner: false,
+        },
+      });
+    }
+
+    const effectiveMembership = membership || {
+      role: 'AGENT',
+      is_owner: false,
+    };
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+    if (!workspace) throw new UnauthorizedException('Workspace no encontrado.');
+
+    const access_token = this.signToken({
+      sub: user.id,
+      email: user.email,
+      workspace_id: workspace.id,
+      role: effectiveMembership.role,
+      is_platform_admin: user.is_platform_admin,
+    });
+
+    const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
+
+    return {
+      access_token,
+      refresh_token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar_url: user.avatar_url,
+        role: effectiveMembership.role,
+        is_owner: effectiveMembership.is_owner,
+        is_platform_admin: user.is_platform_admin,
+        workspace: {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          plan: workspace.plan,
+        },
+      },
+    };
   }
 
   async getInvitePreview(rawToken?: string) {
@@ -279,16 +408,11 @@ export class AuthService {
       },
     });
 
-    const overrides =
-      (membership.permissions_json as Record<string, boolean> | null) ?? null;
-    const permissions = resolvePermissions(membership.role, overrides);
-
     return {
       ...membership.user,
       role: membership.role,
       is_owner: membership.is_owner,
       workspace: membership.workspace,
-      permissions,
     };
   }
 
