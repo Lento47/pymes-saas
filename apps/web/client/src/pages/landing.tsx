@@ -51,7 +51,7 @@ export default function Landing() {
         </h1>
 
         {/* Subheading */}
-        <p className="text-xl md:text-2xl text-slate-300 mb-8 max-w-3xl mx-auto">
+        <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-3xl mx-auto">
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-lime-300 italic font-light">
             Intelligence that converts.
           </span>
@@ -60,9 +60,9 @@ export default function Landing() {
         </p>
 
         {/* Description */}
-        <p className="text-slate-400 max-w-2xl mx-auto mb-10 text-lg">
-          PymeHub is the all-in-one business management platform built for SMEs in Latin America.
-          Deploy in minutes, scale with confidence, integrate with your favorite tools.
+        <p className="text-white/85 max-w-2xl mx-auto mb-10 text-lg">
+          PymeHub es la plataforma all-in-one de gestión empresarial construida para PYMEs en América Latina.
+          Despliega en minutos, escala con confianza, integra con tus herramientas favoritas.
         </p>
 
         {/* CTA Button */}
@@ -71,7 +71,7 @@ export default function Landing() {
             Start Building Now
             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition" />
           </button>
-          <p className="text-slate-500 text-sm">✓ No credit card required</p>
+          <p className="text-white text-sm">Se requiere tarjeta para los planes</p>
         </div>
 
         {/* Feature Cards */}
@@ -85,7 +85,7 @@ export default function Landing() {
               </svg>
             </div>
             <h3 className="text-lg font-semibold mb-2">Conversation Management</h3>
-            <p className="text-slate-400 text-sm">
+            <p className="text-white/85 text-sm">
               Unified inbox for email, WhatsApp and more. Never miss a customer message.
             </p>
           </div>
@@ -98,7 +98,7 @@ export default function Landing() {
               </svg>
             </div>
             <h3 className="text-lg font-semibold mb-2">Invoice & Billing</h3>
-            <p className="text-slate-400 text-sm">
+            <p className="text-white/85 text-sm">
               Send invoices, track payments, and automate reminders. Integrate with local tax systems.
             </p>
           </div>
@@ -111,7 +111,7 @@ export default function Landing() {
               </svg>
             </div>
             <h3 className="text-lg font-semibold mb-2">AI-Powered Insights</h3>
-            <p className="text-slate-400 text-sm">
+            <p className="text-white/85 text-sm">
               Get monthly insights in Spanish. Identify trends, optimize workflows, grow faster.
             </p>
           </div>
@@ -121,15 +121,15 @@ export default function Landing() {
         <div className="grid md:grid-cols-3 gap-8 mt-20 pt-16 border-t border-slate-800">
           <div className="text-center">
             <div className="text-4xl font-bold text-cyan-400 mb-2">500+</div>
-            <p className="text-slate-400">SMEs in Latin America</p>
+            <p className="text-white/85">SMEs in Latin America</p>
           </div>
           <div className="text-center">
             <div className="text-4xl font-bold text-lime-400 mb-2">10M+</div>
-            <p className="text-slate-400">Messages managed</p>
+            <p className="text-white/85">Messages managed</p>
           </div>
           <div className="text-center">
             <div className="text-4xl font-bold text-purple-400 mb-2">99.9%</div>
-            <p className="text-slate-400">Uptime SLA</p>
+            <p className="text-white/85">Uptime SLA</p>
           </div>
         </div>
       </div>
@@ -139,7 +139,7 @@ export default function Landing() {
         <h2 className="text-3xl md:text-4xl font-bold mb-6">
           Ready to transform your business?
         </h2>
-        <p className="text-slate-400 mb-8 max-w-2xl mx-auto">
+        <p className="text-white/85 mb-8 max-w-2xl mx-auto">
           Join hundreds of businesses already using PymeHub to streamline their operations.
         </p>
         <Link href="/login">
@@ -152,15 +152,15 @@ export default function Landing() {
 
       {/* Brand Trust Section */}
       <div className="relative z-10 border-t border-slate-800 mt-20 py-16">
-        <p className="text-center text-slate-500 text-sm mb-8 uppercase tracking-wide">
+        <p className="text-center text-white/80 text-sm mb-8 uppercase tracking-wide">
           Trusted by innovative teams across Latin America
         </p>
         <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16 px-6">
-          <div className="text-slate-600 font-semibold">🏢 Startups</div>
-          <div className="text-slate-600 font-semibold">📊 Agencies</div>
-          <div className="text-slate-600 font-semibold">🛍️ E-commerce</div>
-          <div className="text-slate-600 font-semibold">🏪 Retailers</div>
-          <div className="text-slate-600 font-semibold">⚙️ Manufacturers</div>
+          <div className="text-white/70 font-semibold">🏢 Startups</div>
+          <div className="text-white/70 font-semibold">📊 Agencies</div>
+          <div className="text-white/70 font-semibold">🛍️ E-commerce</div>
+          <div className="text-white/70 font-semibold">🏪 Retailers</div>
+          <div className="text-white/70 font-semibold">⚙️ Manufacturers</div>
         </div>
       </div>
     </div>
