@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -10,15 +11,22 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import { Resend } from 'resend';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { InviteTokenPayload } from './invite-token.types';
+import { PasswordResetTokenPayload } from './password-reset-token.types';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
 
+const PASSWORD_RESET_TOKEN_TTL = '30m';
+const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s])\S{12,}$/;
+
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -507,6 +515,124 @@ export class AuthService {
       return payload;
     } catch {
       throw new BadRequestException('Invite token inválido o expirado.');
+    }
+  }
+
+  // ── Password reset (forgot → email link → reset) ──────────────────────────
+
+  /**
+   * Generates a signed reset token for the user (if they exist) and emails it.
+   * Always returns success to avoid leaking which emails are registered.
+   */
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const normalisedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({ where: { email: normalisedEmail } });
+
+    const genericResponse = {
+      message:
+        'Si el email está registrado, recibirás un enlace para restablecer tu contraseña.',
+    };
+
+    if (!user || user.status !== 'ACTIVE' || !user.password_hash) {
+      return genericResponse;
+    }
+
+    const payload: PasswordResetTokenPayload = {
+      type: 'password-reset',
+      user_id: user.id,
+      hash_fingerprint: user.password_hash.slice(0, 16),
+    };
+    const token = this.jwtService.sign(payload, { expiresIn: PASSWORD_RESET_TOKEN_TTL });
+
+    // Fire and forget — failures are logged but don't change the response.
+    this.sendPasswordResetEmail(user.email, user.name, token).catch((err) => {
+      this.logger.warn(`Password reset email send failed for ${user.email}: ${(err as Error).message}`);
+    });
+
+    return genericResponse;
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    if (!PASSWORD_COMPLEXITY_REGEX.test(newPassword)) {
+      throw new BadRequestException(
+        'La contraseña debe tener al menos 12 caracteres, mayúscula, minúscula, número y carácter especial.',
+      );
+    }
+
+    let payload: PasswordResetTokenPayload;
+    try {
+      payload = this.jwtService.verify<PasswordResetTokenPayload>(token);
+    } catch {
+      throw new BadRequestException('Token de restablecimiento inválido o expirado.');
+    }
+
+    if (payload.type !== 'password-reset') {
+      throw new BadRequestException('Token de restablecimiento inválido.');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.user_id } });
+    if (!user || !user.password_hash || user.status !== 'ACTIVE') {
+      throw new BadRequestException('Token de restablecimiento inválido.');
+    }
+
+    if (user.password_hash.slice(0, 16) !== payload.hash_fingerprint) {
+      throw new BadRequestException('El token ya fue usado o la contraseña fue cambiada.');
+    }
+
+    const password_hash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { password_hash },
+    });
+
+    return { message: 'Contraseña actualizada correctamente.' };
+  }
+
+  /**
+   * Sends a password-reset email using a system-level Resend account configured
+   * via env vars. Decoupled from workspace-level EMAIL channels so password
+   * resets work even before a user has configured an outbound channel.
+   *
+   * Required env: SYSTEM_EMAIL_API_KEY, SYSTEM_EMAIL_FROM, APP_URL.
+   * If missing, logs a warning and skips delivery — caller still returns success.
+   */
+  private async sendPasswordResetEmail(
+    to: string,
+    name: string,
+    token: string,
+  ): Promise<void> {
+    const apiKey = process.env.SYSTEM_EMAIL_API_KEY;
+    const fromEmail = process.env.SYSTEM_EMAIL_FROM;
+    const appUrl = process.env.APP_URL;
+
+    if (!apiKey || !fromEmail || !appUrl) {
+      this.logger.warn(
+        'Password reset email not sent — SYSTEM_EMAIL_API_KEY / SYSTEM_EMAIL_FROM / APP_URL not configured.',
+      );
+      return;
+    }
+
+    const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    const resend = new Resend(apiKey);
+
+    const html = `
+      <p>Hola ${name},</p>
+      <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en PymesHub.</p>
+      <p><a href="${resetUrl}">Restablecer mi contraseña</a></p>
+      <p>Este enlace expira en 30 minutos. Si no solicitaste este cambio, podés ignorar este correo.</p>
+    `;
+    const text = `Hola ${name},\n\nPara restablecer tu contraseña visitá:\n${resetUrl}\n\nEste enlace expira en 30 minutos.`;
+
+    const response = await resend.emails.send({
+      from: `PymesHub <${fromEmail}>`,
+      to: [to],
+      subject: 'Restablecer tu contraseña en PymesHub',
+      html,
+      text,
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message ?? JSON.stringify(response.error));
     }
   }
 }

@@ -15,8 +15,10 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { InvitePreviewDto } from './dto/invite-preview.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthUser } from './strategies/jwt.strategy';
@@ -68,6 +70,22 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   acceptInvite(@Body() dto: AcceptInviteDto) {
     return this.authService.acceptInvite(dto);
+  }
+
+  /** POST /auth/forgot-password — sends reset email if account exists */
+  @Post('forgot-password')
+  @Throttle({ auth: { limit: 3, ttl: 900_000 } })
+  @HttpCode(HttpStatus.OK)
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email);
+  }
+
+  /** POST /auth/reset-password — verifies signed token and applies new password */
+  @Post('reset-password')
+  @Throttle({ auth: { limit: 5, ttl: 900_000 } })
+  @HttpCode(HttpStatus.OK)
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.password);
   }
 
   /** GET /auth/me */
