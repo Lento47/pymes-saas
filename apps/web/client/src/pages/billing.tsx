@@ -4,6 +4,7 @@ import { useAuth, useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { api } from "@/lib/api";
+import { ADD_ONS } from "@/data/pricing.data";
 import { PageHeader } from "@/components/shared/page-header";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import {
   Users, Zap, Receipt, FolderOpen, Database, TrendingUp,
 } from "lucide-react";
 
-const PLAN_ORDER = ["FREE", "STARTER", "GROWTH", "ENTERPRISE"] as const;
+const PLAN_ORDER = ["FREE", "STARTER", "GROWTH", "BUSINESS", "BUSINESS_PLUS"] as const;
 
 interface PlanTier {
   key: string;
@@ -60,23 +61,23 @@ const PLAN_TIERS: PlanTier[] = [
   {
     key: "STARTER",
     name: "Starter",
-    description: "Ideal para negocios que necesitan más capacidad y control.",
+    description: "Ideal para dueños que empiezan a ordenar clientes y facturas.",
     monthlyCRC: 12900,
     monthlyUSD: 25,
-    usersLabel: "hasta 10 usuarios",
+    usersLabel: "1 usuario incluido",
     highlights: [
       "Todo lo de Free",
-      "Pipeline de ventas",
-      "Roles de usuario",
-      "Canales (Email)",
-      "25 automatizaciones",
+      "Facturación básica",
+      "Dashboard",
+      "Soporte por email",
+      "100 facturas/mes",
     ],
     limits: [
-      { label: "Contactos", value: "5,000", icon: Users },
-      { label: "Facturas/mes", value: "200", icon: Receipt },
-      { label: "Automatizaciones", value: "25", icon: Zap },
+      { label: "Contactos", value: "500", icon: Users },
+      { label: "Facturas/mes", value: "100", icon: Receipt },
+      { label: "Automatizaciones", value: "5", icon: Zap },
       { label: "Documentos", value: "500", icon: FolderOpen },
-      { label: "Almacenamiento", value: "1 GB", icon: Database },
+      { label: "Almacenamiento", value: "5 GB", icon: Database },
     ],
     popular: false,
     priceIdMonthly: null,
@@ -88,18 +89,18 @@ const PLAN_TIERS: PlanTier[] = [
     description: "Para equipos en crecimiento que necesitan flujos avanzados.",
     monthlyCRC: 29900,
     monthlyUSD: 59,
-    usersLabel: "hasta 50 usuarios",
+    usersLabel: "5 usuarios incluidos",
     highlights: [
       "Todo lo de Starter",
       "WhatsApp inbox",
-      "Editor JSON de automatizaciones",
-      "Prompt builder IA (3/día)",
-      "Reportes avanzados",
+      "Automatizaciones básicas",
+      "Dashboard de dueño",
+      "Soporte prioritario",
     ],
     limits: [
-      { label: "Contactos", value: "50,000", icon: Users },
-      { label: "Facturas/mes", value: "1,000", icon: Receipt },
-      { label: "Automatizaciones", value: "100", icon: Zap },
+      { label: "Contactos", value: "2,500", icon: Users },
+      { label: "Facturas/mes", value: "500", icon: Receipt },
+      { label: "Automatizaciones", value: "25", icon: Zap },
       { label: "Documentos", value: "5,000", icon: FolderOpen },
       { label: "Almacenamiento", value: "10 GB", icon: Database },
     ],
@@ -108,32 +109,33 @@ const PLAN_TIERS: PlanTier[] = [
     priceIdAnnual: null,
   },
   {
-    key: "ENTERPRISE",
+    key: "BUSINESS",
     name: "Business",
     description: "Control avanzado para operaciones que no pueden frenar.",
     monthlyCRC: 59900,
     monthlyUSD: 119,
-    usersLabel: "hasta 50 usuarios",
+    usersLabel: "15 usuarios incluidos",
     highlights: [
       "Todo lo de Growth",
-      "Prompt builder IA ilimitado",
+      "WhatsApp Inbox avanzado",
       "API access",
       "Audit logs",
-      "SLA garantizado",
+      "Multi-location",
+      "100 automatizaciones",
     ],
     limits: [
-      { label: "Contactos", value: "Ilimitado", icon: Users },
-      { label: "Facturas/mes", value: "Ilimitado", icon: Receipt },
-      { label: "Automatizaciones", value: "Ilimitado", icon: Zap },
-      { label: "Documentos", value: "Ilimitado", icon: FolderOpen },
-      { label: "Almacenamiento", value: "Ilimitado", icon: Database },
+      { label: "Contactos", value: "15,000", icon: Users },
+      { label: "Facturas/mes", value: "2,000", icon: Receipt },
+      { label: "Automatizaciones", value: "100", icon: Zap },
+      { label: "Documentos", value: "5,000", icon: FolderOpen },
+      { label: "Almacenamiento", value: "50 GB", icon: Database },
     ],
     popular: false,
     priceIdMonthly: null,
     priceIdAnnual: null,
   },
   {
-    key: "ENTERPRISE",
+    key: "BUSINESS_PLUS",
     name: "Business+",
     description: "Para pymes con operaciones avanzadas y necesidades a medida.",
     monthlyCRC: 0,
@@ -163,15 +165,21 @@ const PLAN_BADGE: Record<string, string> = {
   FREE: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
   STARTER: "border-amber-500/20 bg-amber-500/10 text-amber-400",
   GROWTH: "border-violet-500/20 bg-violet-500/10 text-violet-400",
-  ENTERPRISE: "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",
+  BUSINESS: "border-sky-500/20 bg-sky-500/10 text-sky-400",
+  ENTERPRISE: "border-sky-500/20 bg-sky-500/10 text-sky-400", // Legacy
+  BUSINESS_PLUS: "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",
 };
 
 const PLAN_CARD_BORDER: Record<string, string> = {
   FREE: "border-border/60",
   STARTER: "border-amber-500/20",
   GROWTH: "border-violet-500/20",
-  ENTERPRISE: "border-yellow-500/20",
+  BUSINESS: "border-sky-500/20",
+  ENTERPRISE: "border-sky-500/20", // Legacy
+  BUSINESS_PLUS: "border-yellow-500/20",
 };
+
+const EXTRA_SEAT_ADD_ON = ADD_ONS.find((addOn) => addOn.key === "extra_user");
 
 type PlanRelation = "upgrade" | "current" | "downgrade";
 
@@ -239,16 +247,30 @@ export default function BillingPage() {
   const handleCheckout = (tier: PlanTier) => {
     const interval = intervals[tier.key] ?? "monthly";
     const priceKey = interval === "annual" ? `${tier.key.toLowerCase()}_annual` : `${tier.key.toLowerCase()}_monthly`;
-    const priceId = priceIds[priceKey] || tier.key === "FREE" ? null : null;
+    const priceId = tier.key === "FREE" ? null : priceIds[priceKey] ?? null;
 
     if (!priceId) {
-      if (tier.key === "ENTERPRISE") {
+      if (tier.key === "BUSINESS_PLUS") {
         toast({ title: "Contactá a ventas", description: "El plan Business+ requiere contacto directo con nuestro equipo." });
       } else {
         toast({ title: "No disponible", description: "Este plan aún no está configurado para checkout automático." });
       }
       return;
     }
+    checkoutMutation.mutate(priceId);
+  };
+
+  const handleExtraSeatCheckout = () => {
+    const priceId =
+      priceIds[EXTRA_SEAT_ADD_ON?.priceKeyMonthly || "extra_user_monthly"] ??
+      priceIds[EXTRA_SEAT_ADD_ON?.priceKeyAnnual || "extra_user_annual"] ??
+      null;
+
+    if (!priceId) {
+      window.location.href = "mailto:legal@pymeshub.lat?subject=Extra%20seat%20for%20PyMesHub";
+      return;
+    }
+
     checkoutMutation.mutate(priceId);
   };
 
@@ -358,6 +380,55 @@ export default function BillingPage() {
           )}
         </div>
 
+        {EXTRA_SEAT_ADD_ON && (
+          <div className="rounded-xl border border-accent/25 bg-gradient-to-br from-accent/[0.07] via-card/50 to-card/30 p-5 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-sm font-semibold text-foreground">Usuarios adicionales</h2>
+                    <Badge variant="outline" className="border-accent/25 bg-accent/10 text-[10px] text-accent">
+                      Add-on
+                    </Badge>
+                  </div>
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+                    Agrega usuarios por encima del límite incluido en tu plan. Los planes públicos incluyen Starter 1 usuario,
+                    Growth 5 usuarios y Business 15 usuarios.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="rounded-lg border border-border/70 bg-card/60 px-4 py-3">
+                  <div className="text-lg font-bold text-foreground">
+                    {formatCRC(EXTRA_SEAT_ADD_ON.monthlyCRC)}
+                    <span className="ml-1 text-xs font-medium text-muted-foreground">/usuario/mes</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    ${EXTRA_SEAT_ADD_ON.monthlyUSD}/user/month
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  className="h-9 text-xs"
+                  onClick={handleExtraSeatCheckout}
+                  disabled={checkoutMutation.isPending}
+                >
+                  {checkoutMutation.isPending ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ArrowUpRight className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Comprar usuario extra
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Plan tier cards grid */}
         <div>
           <h2 className="text-sm font-semibold text-foreground mb-4">Planes disponibles</h2>
@@ -415,6 +486,9 @@ export default function BillingPage() {
                         </p>
                       </>
                     )}
+                    <p className="mt-2 text-[11px] font-medium text-foreground">
+                      {tier.usersLabel}
+                    </p>
                   </div>
 
                   {/* Limits */}
@@ -477,7 +551,7 @@ export default function BillingPage() {
             {/* Business+ card (separate, wider or different style) */}
             {(() => {
               const tier = PLAN_TIERS.find((t) => t.name === "Business+")!;
-              const isCurrent = currentPlan === "ENTERPRISE";
+              const isCurrent = currentPlan === "BUSINESS_PLUS" || currentPlan === "ENTERPRISE";
               return (
                 <div
                   className={`rounded-xl border p-5 transition-all duration-200 md:col-span-2 xl:col-span-1 ${

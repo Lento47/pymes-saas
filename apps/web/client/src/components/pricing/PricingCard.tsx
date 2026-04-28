@@ -59,7 +59,7 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
 
     // Enterprise with no price ID → contact sales
     if (isEnterprise) {
-      navigate('/contact-sales');
+      window.location.href = 'mailto:legal@pymeshub.lat?subject=Business%2B%20pricing';
       return;
     }
 

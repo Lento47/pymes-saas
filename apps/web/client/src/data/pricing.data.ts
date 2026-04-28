@@ -22,10 +22,13 @@ export interface PricingTier {
 }
 
 export interface AddOn {
+  key: string;
   name: string;
   monthlyUSD: number;
   monthlyCRC: number;
   description: string;
+  priceKeyMonthly?: string;
+  priceKeyAnnual?: string;
 }
 
 export interface FAQ {
@@ -157,36 +160,44 @@ export const PRICING_TIERS: PricingTier[] = [
     },
     popular: false,
     cta: 'Contact sales',
-    paddlePriceIdMonthly: import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY,
+    paddlePriceIdMonthly: undefined,
+    paddlePriceIdAnnual: undefined,
   },
 ];
 
 export const ADD_ONS: AddOn[] = [
   {
+    key: 'extra_user',
     name: 'Extra user',
     monthlyUSD: 8,
     monthlyCRC: 4000,
     description: 'Add one additional user to your workspace',
+    priceKeyMonthly: 'extra_user_monthly',
+    priceKeyAnnual: 'extra_user_annual',
   },
   {
+    key: 'whatsapp_premium',
     name: 'WhatsApp Premium',
     monthlyUSD: 19,
     monthlyCRC: 9900,
     description: 'Advanced WhatsApp features and analytics',
   },
   {
+    key: 'advanced_inventory',
     name: 'Advanced Inventory',
     monthlyUSD: 29,
     monthlyCRC: 14900,
     description: 'Full inventory management and tracking',
   },
   {
+    key: 'ai_assistant',
     name: 'AI Assistant',
     monthlyUSD: 39,
     monthlyCRC: 19900,
     description: 'AI-powered suggestions and automations',
   },
   {
+    key: 'approvals_signature',
     name: 'Approvals & Digital Signature',
     monthlyUSD: 25,
     monthlyCRC: 12900,
@@ -233,7 +244,17 @@ export const FAQS: FAQ[] = [
   {
     question: 'What payment methods do you accept?',
     answer:
-      'We accept all major credit cards (Visa, Mastercard, American Express) via Stripe. Bank transfers available for Business+ plans.',
+      'We accept all major credit cards (Visa, Mastercard, American Express) via Paddle. Bank transfers available for Business+ plans.',
+  },
+  {
+    question: 'Are there additional costs for WhatsApp messaging?',
+    answer:
+      'WhatsApp Inbox is included for managing conversations, assigning customers and tracking follow-ups. Official Meta WhatsApp Business Platform messaging fees may apply depending on usage, message category, recipient country, and provider configuration. These are separate from your PymeHub subscription.',
+  },
+  {
+    question: 'Are Business+ enterprise features ready?',
+    answer:
+      'Business+ features like SSO/SAML, custom workflows, SLA policies, and dedicated onboarding are actively being built. Some are partially available, others require configuration or are on the roadmap. Contact our sales team for current availability.',
   },
 ];
 

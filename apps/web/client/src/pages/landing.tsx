@@ -437,7 +437,7 @@ export default function Landing() {
   };
 
   return (
-    <div className="dark relative overflow-hidden bg-background">
+    <div className="dark marketing-canvas relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-0 -translate-x-1/2 overflow-hidden">
           <div className="relative w-[max(1536px,100vw,calc(100vh*1.5))]">
@@ -1121,6 +1121,21 @@ export default function Landing() {
               <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-white/75">
                 {copy.trustTitle}
               </p>
+              {copy.trustDescription && (
+                <p className="mx-auto mt-4 max-w-3xl text-center text-sm leading-6 text-white/75">
+                  {copy.trustDescription}
+                </p>
+              )}
+              {copy.trustOffer && (
+                <p className="mx-auto mt-3 max-w-3xl text-center text-sm font-semibold leading-6 text-[#efff8a]">
+                  {copy.trustOffer}
+                </p>
+              )}
+              {copy.trustFootnote && (
+                <p className="mt-2 text-center text-xs text-white/65">
+                  {copy.trustFootnote}
+                </p>
+              )}
               <div className="relative mt-7 overflow-hidden">
                 <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-[linear-gradient(to_right,#3d1f7d,transparent)]" />
                 <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-[linear-gradient(to_left,#3d1f7d,transparent)]" />

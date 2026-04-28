@@ -15,14 +15,16 @@ export default function PricingPage() {
   const [isAnnual, setIsAnnual] = useState(false);
   const { messages } = useI18n();
   const copy = messages.pricing || {};
+  const earlyAccessHref = 'mailto:legal@pymeshub.lat?subject=Quiero%20acceso%20anticipado';
 
   return (
-    <div className="dark relative min-h-screen overflow-hidden bg-background text-white">
+    <div className="dark marketing-canvas relative min-h-screen overflow-hidden text-white">
       {/* Background Effects */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0.04)_0%,rgba(5,9,29,0.06)_22%,rgba(5,9,29,0.18)_44%,rgba(5,9,29,0.42)_64%,#05091d_86%)]" />
-        <div className="animate-drift-x absolute left-[-10rem] top-[8rem] h-80 w-80 rounded-full bg-[#5771ff]/16 blur-[110px]" />
-        <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#d5ff63]/12 blur-[130px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0)_0%,rgba(5,9,29,0.10)_42%,#05091d_96%)]" />
+        <div className="animate-drift-x absolute left-[-10rem] top-[8rem] h-80 w-80 rounded-full bg-[#5771ff]/20 blur-[110px]" />
+        <div className="animate-pulse-halo absolute right-[-5rem] top-[18rem] h-96 w-96 rounded-full bg-[#d5ff63]/10 blur-[130px]" />
+        <div className="marketing-grid absolute inset-x-0 top-[18rem] h-[46rem] opacity-45" />
       </div>
 
       <main className="relative z-10">
@@ -101,6 +103,70 @@ export default function PricingPage() {
                   isAnnual={isAnnual}
                 />
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Add-ons */}
+        <section className="px-4 py-12 md:px-8 md:py-16">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+              <div>
+                <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-white md:text-4xl">
+                  {copy.addOns?.title || 'Add capacity when you need it'}
+                </h2>
+                <p className="mt-3 max-w-2xl text-base leading-7 text-white/75">
+                  {copy.addOns?.subtitle || 'Keep your base plan simple, then add seats or advanced capabilities as your operation grows.'}
+                </p>
+              </div>
+              <p className="rounded-full border border-[#dfff4a]/25 bg-[#dfff4a]/10 px-4 py-2 text-sm font-semibold text-[#efff8a]">
+                {copy.addOns?.note || 'Extra seats are available for paid plans'}
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              {ADD_ONS.map((addOn) => {
+                const localized = (
+                  copy.addOns?.items as Record<string, { name: string; description: string }> | undefined
+                )?.[addOn.key];
+                const isSeat = addOn.key === 'extra_user';
+                return (
+                  <article
+                    key={addOn.key}
+                    className={cn(
+                      'rounded-2xl border border-indigo-400/15 bg-indigo-900/20 p-5 transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-indigo-900/30',
+                      isSeat && 'border-[#dfff4a]/40 bg-gradient-to-br from-[#dfff4a]/12 to-indigo-900/25 shadow-[0_18px_60px_rgba(223,255,74,0.10)]'
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-marketing text-lg font-bold tracking-[-0.02em] text-white">
+                        {localized?.name || addOn.name}
+                      </h3>
+                      {isSeat && (
+                        <span className="rounded-full bg-[#dfff4a] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#071126]">
+                          {copy.addOns?.seatBadge || 'Seat'}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-3 min-h-[3rem] text-sm leading-6 text-white/70">
+                      {localized?.description || addOn.description}
+                    </p>
+                    <div className="mt-5 border-t border-white/10 pt-4">
+                      <div className="flex items-end gap-2">
+                        <span className="font-marketing text-3xl font-extrabold tracking-[-0.05em] text-white">
+                          ${addOn.monthlyUSD}
+                        </span>
+                        <span className="pb-1 text-xs font-semibold text-white/65">
+                          / {copy.addOns?.month || 'month'}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-xs font-semibold text-white/65">
+                        ₡{addOn.monthlyCRC.toLocaleString()} / {copy.addOns?.month || 'month'}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -313,11 +379,11 @@ export default function PricingPage() {
                 {copy.cta?.primary || 'Start Free Trial'}
                 <ArrowRight className="h-4 w-4" />
               </button>
-              <button
-                onClick={() => navigate('/contact-sales')}
+              <a
+                href={earlyAccessHref}
                 className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/20 bg-indigo-900/20 px-8 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-indigo-900/30">
                 {copy.cta?.secondary || 'Schedule a Demo'}
-              </button>
+              </a>
             </div>
             {copy.cta?.note && (
               <p className="mt-6 text-sm text-white/75">

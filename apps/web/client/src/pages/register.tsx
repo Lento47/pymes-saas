@@ -109,7 +109,7 @@ export default function RegisterPage() {
       const res = await register({ name, email, password: pass });
       const workspace = res.workspace ?? res.user?.workspace;
       if (!workspace?.slug) {
-        throw new Error("Registration completed, but the workspace slug was not returned.");
+        throw new Error(reg.workspaceMissing);
       }
       setSuccess({
         workspaceName: workspace.name ?? `${name}'s Workspace`,
@@ -118,7 +118,7 @@ export default function RegisterPage() {
     } catch (err) {
       toast({
         title: reg.failed,
-        description: parseError(err, "Something went wrong. Please try again."),
+        description: parseError(err, reg.genericError),
         variant: "destructive",
       });
     } finally {
@@ -131,9 +131,9 @@ export default function RegisterPage() {
     const value = `Workspace slug: ${success.workspaceSlug}\nLogin URL: ${workspaceUrl}`;
     try {
       await navigator.clipboard.writeText(value);
-      toast({ title: "Workspace details copied" });
+      toast({ title: reg.workspaceCopied });
     } catch {
-      toast({ title: "Copy failed", description: success.workspaceSlug });
+      toast({ title: reg.copyFailed, description: success.workspaceSlug });
     }
   };
 
@@ -148,11 +148,11 @@ export default function RegisterPage() {
     { label: reg.uppercaseRule, met: /[A-Z]/.test(pass) },
     { label: reg.lowercaseRule, met: /[a-z]/.test(pass) },
     { label: reg.numberRule, met: /\d/.test(pass) },
-    { label: "One special character", met: /[^\w\s]/.test(pass) },
+    { label: reg.specialRule, met: /[^\w\s]/.test(pass) },
   ];
 
   return (
-    <div className="dark relative min-h-screen overflow-hidden bg-background px-4 py-10 md:px-6">
+    <div className="dark marketing-canvas relative min-h-screen overflow-hidden px-4 py-10 md:px-6">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -179,7 +179,7 @@ export default function RegisterPage() {
             <Link href="/login">
               <a className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
                 <ArrowLeft className="h-4 w-4" />
-                Back to login
+                {reg.backToLogin}
               </a>
             </Link>
             <LanguageSwitcher variant="marketing" />
@@ -193,26 +193,26 @@ export default function RegisterPage() {
                 <div className="text-center">
                   <CheckCircle2 className="mx-auto h-12 w-12 text-[#dfff4a]" />
                   <h1 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-white md:text-[3.1rem]">
-                    Workspace created
+                    {reg.workspaceCreated}
                   </h1>
                   <p className="mx-auto mt-4 max-w-md text-base leading-8 text-[#c9d0f5]/72">
-                    Save this workspace slug. You will need it when logging in.
+                    {reg.workspaceCreatedDescription}
                   </p>
                 </div>
 
                 <div className="space-y-4 rounded-[24px] border border-white/12 bg-[#09102b]/82 p-5">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">Workspace</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/58">{reg.workspace}</p>
                     <p className="mt-1 text-sm font-medium text-white">{success.workspaceName}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">Slug</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/58">{reg.slug}</p>
                     <p className="mt-1 break-all font-mono text-lg font-semibold text-[#dfff4a]">
                       {success.workspaceSlug}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/40">Login URL</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/58">{reg.loginUrl}</p>
                     <p className="mt-1 break-all text-sm text-white/78">{workspaceUrl}</p>
                   </div>
                 </div>
@@ -223,7 +223,7 @@ export default function RegisterPage() {
                   className="font-marketing flex w-full items-center justify-center gap-2 rounded-full border border-white/14 px-6 py-4 text-sm font-semibold text-white/86 transition hover:border-white/24 hover:text-white"
                 >
                   <Copy className="h-4 w-4" />
-                  Copy workspace details
+                  {reg.copyWorkspace}
                 </button>
 
                 <button
@@ -231,7 +231,7 @@ export default function RegisterPage() {
                   onClick={continueToWorkspace}
                   className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px]"
                 >
-                  Continue to workspace
+                  {reg.continueToWorkspace}
                   <ArrowRight className="h-5 w-5" />
                 </button>
               </div>
@@ -239,12 +239,12 @@ export default function RegisterPage() {
               <>
                 <div className="mt-10 text-center">
                   <h1 className="font-marketing text-4xl font-semibold tracking-[-0.04em] text-white md:text-[3.1rem]">
-                    Create account
+                    {reg.createAccount}
                   </h1>
                   <p className="mx-auto mt-4 max-w-md text-base leading-8 text-[#c9d0f5]/72">
                     {planParam
-                      ? `You're signing up for the ${planParam} plan. Fill in your details to get started.`
-                      : "Start your free workspace in seconds. No credit card required."}
+                      ? reg.planDescription.replace("{plan}", planParam)
+                      : reg.description}
                   </p>
                 </div>
 
@@ -272,18 +272,18 @@ export default function RegisterPage() {
                     id="password"
                     label={reg.password}
                     type={showPassword ? "text" : "password"}
-                    placeholder="12+ characters"
+                    placeholder={reg.passwordPlaceholder}
                     value={pass}
                     onChange={setPass}
                     required
                     icon={<LockKeyhole className="h-5 w-5" />}
-                    hint="Must contain uppercase, lowercase, a number, and a special character."
+                    hint={reg.passwordHint}
                     rightAdornment={
                       <button
                         type="button"
                         onClick={() => setShowPassword((v) => !v)}
                         className="text-white/55 transition hover:text-white/85"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-label={showPassword ? reg.hidePassword : reg.showPassword}
                       >
                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
@@ -314,19 +314,19 @@ export default function RegisterPage() {
             <div className="mt-8 flex flex-col items-center gap-4 text-center">
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/58">
                 <Link href="/legal/terms-and-conditions">
-                  <a className="transition hover:text-white/82">Terms</a>
+                  <a className="transition hover:text-white/82">{reg.terms}</a>
                 </Link>
                 <span className="h-1 w-1 rounded-full bg-white/24" />
                 <Link href="/legal/privacy-policy">
-                  <a className="transition hover:text-white/82">Privacy</a>
+                  <a className="transition hover:text-white/82">{reg.privacy}</a>
                 </Link>
               </div>
 
               <p className="text-sm text-[#b3bcdf]/58">
-                Already have an account?{" "}
+                {reg.alreadyHaveAccount}{" "}
                 <Link href="/login">
                   <a className="font-medium text-[#dfff4a] transition hover:text-[#efff8a]">
-                    Log in →
+                    {reg.logIn}
                   </a>
                 </Link>
               </p>

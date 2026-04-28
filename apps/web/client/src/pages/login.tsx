@@ -131,7 +131,7 @@ export default function LoginPage() {
         } catch {}
       } else {
         setWorkspaceOptions([]);
-        toast({ title: 'Error', description: msg, variant: 'destructive' });
+        toast({ title: copy.loginErrorTitle, description: msg, variant: 'destructive' });
       }
     } finally {
       setLoading(false);
@@ -178,8 +178,8 @@ export default function LoginPage() {
 
             {workspaceOptions.length > 0 ? (
               <div className="mt-10">
-                <h2 className="text-center font-marketing text-xl font-semibold text-white">Seleccioná tu workspace</h2>
-                <p className="mt-2 text-center text-sm text-white/75">Tenés acceso a múltiples workspaces</p>
+                <h2 className="text-center font-marketing text-xl font-semibold text-white">{copy.workspacePickerTitle}</h2>
+                <p className="mt-2 text-center text-sm text-white/75">{copy.workspacePickerDescription}</p>
                 <div className="mt-6 space-y-3">
                   {workspaceOptions.map((ws) => (
                     <button
@@ -197,7 +197,7 @@ export default function LoginPage() {
                   onClick={() => setWorkspaceOptions([])}
                   className="mt-4 w-full text-center text-xs text-white/75 hover:text-white/75"
                 >
-                  Cancelar
+                  {copy.cancel}
                 </button>
               </div>
             ) : (

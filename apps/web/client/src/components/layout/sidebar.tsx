@@ -331,7 +331,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 "p-2 rounded-lg transition-all duration-200 flex-1 flex items-center justify-center",
                 "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
               )}
-              title={theme === "dark" ? "Light mode" : "Dark mode"}
+              aria-label={theme === "dark" ? copy.lightMode : copy.darkMode}
+              title={theme === "dark" ? copy.lightMode : copy.darkMode}
             >
               {theme === "dark" ? (
                 <Sun className="w-4 h-4" />
@@ -397,7 +398,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 "focus:outline-none focus:border-primary/40 focus:bg-sidebar-accent/30",
                 "transition-all duration-200"
               )}
-              placeholder="Search... ⌘K"
+              placeholder={copy.searchPlaceholder}
             />
           </div>
 
