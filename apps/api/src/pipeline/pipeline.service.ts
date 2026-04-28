@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { HaciendaStatus, InvoiceDocumentType, InvoiceIssuanceMode, InvoiceStatus } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateStageDto } from './dto/create-stage.dto';
 import { UpdateStageDto } from './dto/update-stage.dto';
 import { CreateDealDto } from './dto/create-deal.dto';
@@ -24,7 +25,10 @@ const DEFAULT_STAGES = [
 
 @Injectable()
 export class PipelineService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async getStages(workspaceId: string) {
     const count = await this.prisma.dealStage.count({ where: { workspace_id: workspaceId } });
@@ -76,7 +80,7 @@ export class PipelineService {
   }
 
   async createDeal(workspaceId: string, dto: CreateDealDto) {
-    return this.prisma.deal.create({
+    const deal = await this.prisma.deal.create({
       data: {
         workspace_id: workspaceId,
         stage_id: dto.stage_id,
@@ -91,6 +95,19 @@ export class PipelineService {
       },
       include: DEAL_INCLUDE,
     });
+
+    if (deal.assigned_user_id) {
+      this.notificationsService.create(workspaceId, {
+        user_id: deal.assigned_user_id,
+        type: 'deal_created',
+        title: 'Nuevo negocio creado',
+        body: `Se te asignó el negocio "${deal.title}" en el pipeline.`,
+        related_entity_type: 'deal',
+        related_entity_id: deal.id,
+      }).catch(() => {});
+    }
+
+    return deal;
   }
 
   async updateDeal(workspaceId: string, id: string, dto: UpdateDealDto) {
@@ -110,10 +127,22 @@ export class PipelineService {
 
   async moveDeal(workspaceId: string, id: string, dto: MoveDealDto) {
     await this.ensureDeal(workspaceId, id);
-    return this.prisma.deal.update({
+    const deal = await this.prisma.deal.update({
       where: { id },
       data: { stage_id: dto.stage_id },
+      include: { assigned_user: { select: { id: true } }, stage: { select: { name: true } } },
     });
+    if (deal.assigned_user_id) {
+      this.notificationsService.create(workspaceId, {
+        user_id: deal.assigned_user_id,
+        type: 'deal_stage_changed',
+        title: 'Negocio movido de etapa',
+        body: `El negocio "${deal.title}" pasó a la etapa "${deal.stage?.name || 'nueva'}".`,
+        related_entity_type: 'deal',
+        related_entity_id: deal.id,
+      }).catch(() => {});
+    }
+    return deal;
   }
 
   async deleteDeal(workspaceId: string, id: string) {
@@ -141,6 +170,7 @@ export class PipelineService {
       this.prisma.deal.update({
         where: { id },
         data: { status: 'WON' },
+        include: { assigned_user: { select: { id: true } } },
       }),
       this.prisma.invoice.create({
         data: {
@@ -159,6 +189,17 @@ export class PipelineService {
         },
       }),
     ]);
+
+    if (deal.assigned_user_id) {
+      this.notificationsService.create(workspaceId, {
+        user_id: deal.assigned_user_id,
+        type: 'deal_won',
+        title: '¡Negocio ganado!',
+        body: `El negocio "${deal.title}" fue marcado como ganado. Se generó la factura ${invoice.number}.`,
+        related_entity_type: 'deal',
+        related_entity_id: deal.id,
+      }).catch(() => {});
+    }
 
     return { deal: updatedDeal, invoice_id: invoice.id, invoice_number: invoiceNumber };
   }

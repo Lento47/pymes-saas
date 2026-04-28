@@ -1,12 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 @Injectable()
 export class FollowupProcessor {
   private readonly logger = new Logger(FollowupProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   @Cron('0 * * * *') // cada hora
   async checkOverdueTasks(): Promise<void> {
@@ -29,16 +33,13 @@ export class FollowupProcessor {
       if (!task.assigned_user_id) continue;
 
       try {
-        await this.prisma.notification.create({
-          data: {
-            workspace_id: task.workspace_id,
-            user_id: task.assigned_user_id,
-            type: 'task_overdue',
-            title: 'Tarea vencida',
-            body: `La tarea "${task.title}" venció el ${task.due_at!.toLocaleDateString('es-CR')}`,
-            related_entity_type: 'task',
-            related_entity_id: task.id,
-          },
+        await this.notificationsService.create(task.workspace_id, {
+          user_id: task.assigned_user_id,
+          type: 'task_overdue',
+          title: 'Tarea vencida',
+          body: `La tarea "${task.title}" venció el ${task.due_at!.toLocaleDateString('es-CR')}`,
+          related_entity_type: 'task',
+          related_entity_id: task.id,
         });
       } catch (error: any) {
         this.logger.error(
@@ -72,16 +73,13 @@ export class FollowupProcessor {
       if (!conv.assigned_user_id) continue;
 
       try {
-        await this.prisma.notification.create({
-          data: {
-            workspace_id: conv.workspace_id,
-            user_id: conv.assigned_user_id,
-            type: 'conversation_no_reply',
-            title: 'Conversación sin respuesta',
-            body: 'La conversación lleva más de 4 horas sin respuesta.',
-            related_entity_type: 'conversation',
-            related_entity_id: conv.id,
-          },
+        await this.notificationsService.create(conv.workspace_id, {
+          user_id: conv.assigned_user_id,
+          type: 'conversation_no_reply',
+          title: 'Conversación sin respuesta',
+          body: 'La conversación lleva más de 4 horas sin respuesta.',
+          related_entity_type: 'conversation',
+          related_entity_id: conv.id,
         });
       } catch (error: any) {
         this.logger.error(

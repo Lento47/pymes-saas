@@ -10,8 +10,6 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { Priority } from '@prisma/client';
 import { AutomationsService } from '../automations/automations.service';
 import { stringifyJson } from '../common/prisma/json';
-import { RoutingService } from '../routing/routing.service';
-import { SlaService } from './sla.service';
 
 @Injectable()
 export class MessagesService {
@@ -25,8 +23,6 @@ export class MessagesService {
     private readonly tasksService: TasksService,
     private readonly notificationsService: NotificationsService,
     private readonly automationsService: AutomationsService,
-    private readonly routingService: RoutingService,
-    private readonly slaService: SlaService,
   ) { }
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 50) {
@@ -91,13 +87,6 @@ export class MessagesService {
     // Emitir en tiempo real
     this.events.emitNewMessage(conversationId, workspaceId, message);
 
-    // SLA: track first response
-    if (dto.direction === 'OUTBOUND' || !dto.direction) {
-      this.slaService.trackFirstResponse(conversationId).catch(err =>
-        this.logger.warn(`SLA first response error: ${(err as Error).message}`),
-      );
-    }
-
     return message;
   }
 
@@ -158,10 +147,6 @@ export class MessagesService {
         });
       }
 
-      const deptId = await this.routingService
-        .resolveQueue(workspaceId, channel.id, bodyText)
-        .catch(() => null);
-
       conversation = await this.prisma.conversation.create({
         data: {
           workspace_id: workspaceId,
@@ -170,7 +155,6 @@ export class MessagesService {
           subject: subject ?? `Mensaje de ${senderName}`,
           status: 'NEW',
           priority: 'MEDIUM',
-          ...(deptId && { department_id: deptId }),
         },
       });
     }
@@ -196,6 +180,18 @@ export class MessagesService {
 
     // Emitir en tiempo real
     this.events.emitNewMessage(conversation.id, workspaceId, message);
+
+    // Notificar al agente asignado sobre nuevo mensaje
+    if (conversation.assigned_user_id) {
+      this.notificationsService.create(workspaceId, {
+        user_id: conversation.assigned_user_id,
+        type: 'new_message',
+        title: 'Nuevo mensaje recibido',
+        body: `Nuevo mensaje de ${senderName} en "${conversation.subject || 'Sin asunto'}": "${bodyText.slice(0, 100)}${bodyText.length > 100 ? '...' : ''}"`,
+        related_entity_type: 'conversation',
+        related_entity_id: conversation.id,
+      }).catch((err) => this.logger.error('Error al crear notificación de nuevo mensaje', err));
+    }
 
     await this.automationsService.triggerRules(
       workspaceId,

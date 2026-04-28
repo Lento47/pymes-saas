@@ -1,13 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { PaddleService } from './paddle.service';
-import { BillingInvoiceService } from './billing-invoice.service';
-import { BillingController } from './billing.controller';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 @Module({
-  imports: [ConfigModule],
-  controllers: [BillingController],
-  providers: [PaddleService, BillingInvoiceService],
-  exports: [PaddleService, BillingInvoiceService],
+  providers: [PlanLimitsService],
+  exports: [PlanLimitsService],
 })
 export class BillingModule {}

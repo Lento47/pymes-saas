@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import { stringifyJson } from '../../common/prisma/json';
 import { QUEUE_NAMES } from '../queues.constants';
 
@@ -28,7 +29,10 @@ interface AutomationAction {
 export class AutomationProcessor extends WorkerHost {
   private readonly logger = new Logger(AutomationProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {
     super();
   }
 
@@ -215,16 +219,13 @@ export class AutomationProcessor extends WorkerHost {
           );
 
           if (recipientId) {
-            await this.prisma.notification.create({
-              data: {
-                workspace_id: workspaceId,
-                user_id: recipientId,
-                type: 'automation',
-                title: action.title ?? 'Notificación automática',
-                body: action.body ?? 'Se ejecutó una automatización.',
-                related_entity_type: conversationTargetId ? 'conversation' : triggerEntityType,
-                related_entity_id: conversationTargetId ?? triggerEntityId,
-              },
+            await this.notificationsService.create(workspaceId, {
+              user_id: recipientId,
+              type: 'automation',
+              title: action.title ?? 'Notificación automática',
+              body: action.body ?? 'Se ejecutó una automatización.',
+              related_entity_type: conversationTargetId ? 'conversation' : triggerEntityType,
+              related_entity_id: conversationTargetId ?? triggerEntityId,
             });
           }
         }
@@ -281,16 +282,13 @@ export class AutomationProcessor extends WorkerHost {
           );
 
           if (recipientId) {
-          await this.prisma.notification.create({
-            data: {
-              workspace_id: workspaceId,
-              user_id: recipientId,
-              type: 'automation',
-              title: action.title ?? 'Notificación automática',
-              body: action.body ?? '',
-              related_entity_type: conversationTargetId ? 'conversation' : triggerEntityType,
-              related_entity_id: conversationTargetId ?? triggerEntityId,
-            },
+          await this.notificationsService.create(workspaceId, {
+            user_id: recipientId,
+            type: 'automation',
+            title: action.title ?? 'Notificación automática',
+            body: action.body ?? '',
+            related_entity_type: conversationTargetId ? 'conversation' : triggerEntityType,
+            related_entity_id: conversationTargetId ?? triggerEntityId,
           });
         }
         }

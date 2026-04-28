@@ -20,9 +20,6 @@ export class QueueService {
 
     @InjectQueue(QUEUE_NAMES.SUMMARY)
     private readonly summaryQueue: Queue,
-
-    @InjectQueue(QUEUE_NAMES.NOTIFICATION)
-    private readonly notificationQueue: Queue,
   ) {}
 
   async enqueueClassifier(messageId: string, workspaceId: string): Promise<void> {
@@ -50,22 +47,6 @@ export class QueueService {
     await this.automationQueue.add(
       'run-automation',
       { ruleId, workspaceId, triggerEntityType, triggerEntityId },
-      { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
-    );
-  }
-
-  async enqueueNotification(
-    workspaceId: string,
-    userId: string,
-    type: string,
-    title: string,
-    body: string,
-    relatedEntityType?: string,
-    relatedEntityId?: string,
-  ): Promise<void> {
-    await this.notificationQueue.add(
-      'send-notification',
-      { workspaceId, userId, type, title, body, relatedEntityType, relatedEntityId },
       { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
     );
   }
