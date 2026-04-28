@@ -23,6 +23,7 @@ import Tasks from "@/pages/tasks";
 import Documents from "@/pages/documents";
 import Invoices from "@/pages/invoices";
 import Automations from "@/pages/automations";
+import Notifications from "@/pages/notifications";
 import Pipeline from "@/pages/pipeline";
 import Settings from "@/pages/settings";
 import Billing from "@/pages/billing";
@@ -104,6 +105,9 @@ function AppRouter() {
       </Route>
       <Route path="/automations">
         {() => <ProtectedLayout><Automations /></ProtectedLayout>}
+      </Route>
+      <Route path="/notifications">
+        {() => <ProtectedLayout><Notifications /></ProtectedLayout>}
       </Route>
       <Route path="/pipeline">
         {() => <ProtectedLayout><Pipeline /></ProtectedLayout>}

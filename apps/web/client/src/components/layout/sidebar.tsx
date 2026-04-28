@@ -3,8 +3,10 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
+import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api } from "@/lib/api";
 import {
   LayoutDashboard,
@@ -21,6 +23,7 @@ import {
   ChevronDown,
   Check,
   Shield,
+  BellRing,
 } from "lucide-react";
 
 const NAV = [
@@ -32,6 +35,7 @@ const NAV = [
   { path: "/invoices", icon: Receipt, key: "invoices" as const },
   { path: "/pipeline", icon: KanbanSquare, key: "pipeline" as const },
   { path: "/automations", icon: Zap, key: "automations" as const },
+  { path: "/notifications", icon: BellRing, key: "notifications" as const },
 ];
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
@@ -40,6 +44,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const { messages } = useI18n();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
   const copy = messages.sidebar;
+
+  useNotificationsSocket(); // Monta el listener de notificaciones en tiempo real
 
   const { data: myWorkspaces } = useQuery({
     queryKey: ["/api/auth/my-workspaces"],
@@ -78,9 +84,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         className="w-[200px] shrink-0 flex flex-col"
       >
         {/* Workspace header / switcher */}
-        <div className="relative shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+        <div className="relative shrink-0 flex items-center" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
           <button
-            className="w-full px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
+            className="flex-1 px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
             onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
             style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
           >
@@ -97,6 +103,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
             )}
           </button>
+
+          <NotificationBell />
 
           {wsMenuOpen && multipleWorkspaces && (
             <div

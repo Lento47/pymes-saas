@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { PlanLimitsService } from './plan-limits.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 @Module({
   providers: [PlanLimitsService],

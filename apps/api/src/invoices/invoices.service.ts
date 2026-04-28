@@ -21,6 +21,7 @@ import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { CreateInvoicePaymentDto } from './dto/create-invoice-payment.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class InvoicesService {
@@ -31,6 +32,7 @@ export class InvoicesService {
     private readonly haciendaSigning: HaciendaSigningService,
     private readonly haciendaXmlBuilder: HaciendaXmlBuilderService,
     private readonly planLimits: PlanLimitsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findAll(workspaceId: string, filters: FilterInvoicesDto) {
@@ -354,8 +356,31 @@ export class InvoicesService {
         include: this.invoiceInclude(),
       });
 
-      return { payment, invoice: updated };
+      return { payment, invoice: updated, newStatus: nextStatus };
     });
+
+    // Notificar pago recibido
+    const isPaid = result.newStatus === InvoiceStatus.PAID;
+    const admins = await this.prisma.workspaceMembership.findMany({
+      where: { workspace_id: workspaceId, role: { in: ['OWNER'] as any } },
+      select: { user_id: true },
+      take: 3,
+    });
+    const notified = new Set<string>();
+    for (const admin of admins) {
+      if (notified.has(admin.user_id)) continue;
+      notified.add(admin.user_id);
+      this.notificationsService.create(workspaceId, {
+        user_id: admin.user_id,
+        type: isPaid ? 'invoice_paid' : 'payment_received',
+        title: isPaid ? 'Factura pagada' : 'Pago recibido',
+        body: isPaid
+          ? `La factura ${invoice.number} fue pagada por completo (₡${amount.toFixed(2)}).`
+          : `Se recibió un pago de ₡${amount.toFixed(2)} para la factura ${invoice.number}.`,
+        related_entity_type: 'invoice',
+        related_entity_id: invoiceId,
+      }).catch(() => {});
+    }
 
     return {
       payment: result.payment,

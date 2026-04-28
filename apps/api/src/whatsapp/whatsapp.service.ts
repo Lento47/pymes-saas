@@ -67,7 +67,7 @@ export class WhatsAppService {
       // Query channels table to find workspace with this phone_number_id
       const channel = await this.prisma.channel.findFirst({
         where: {
-          type: 'whatsapp',
+          type: 'WHATSAPP',
           config_json: {
             path: ['phone_number_id'],
             equals: phoneNumberId,
