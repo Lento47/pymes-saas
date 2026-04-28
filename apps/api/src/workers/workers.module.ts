@@ -24,6 +24,7 @@ import { SummaryProcessor } from './processors/summary.processor';
         connection: {
           host: config.get<string>('REDIS_HOST', 'localhost'),
           port: config.get<number>('REDIS_PORT', 6379),
+          password: config.get<string>('REDIS_PASSWORD'),
           maxRetriesPerRequest: null,
           enableOfflineQueue: false,
           retryStrategy: (times: number) => {
