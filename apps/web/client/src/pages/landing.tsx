@@ -71,7 +71,7 @@ function MarketingMenuAction({
           "flex h-8 w-8 items-center justify-center rounded-lg shrink-0",
           featured
             ? "bg-[#dfff4a]/10 text-[#dfff4a]"
-            : "bg-white/[0.06] text-white/50 group-hover:text-white/80"
+            : "bg-white/[0.06] text-white/75 group-hover:text-white/80"
         )}>
           <Icon className="h-4 w-4" />
         </div>
@@ -79,7 +79,7 @@ function MarketingMenuAction({
           <h3 className="font-marketing text-sm font-semibold tracking-[-0.01em] text-white group-hover:text-white/90">
             {title}
           </h3>
-          <p className="mt-0.5 text-xs leading-5 text-white/40">{description}</p>
+          <p className="mt-0.5 text-xs leading-5 text-white/85">{description}</p>
         </div>
       </div>
     </>
@@ -468,7 +468,7 @@ export default function Landing() {
                   "luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7 transition-all duration-300",
                   scrolled
                     ? "bg-[rgba(5,9,29,0.88)] backdrop-blur-[32px] border border-border/[0.8] shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
-                    : "bg-slate-900/40 backdrop-blur-md border border-white/10"
+                    : "bg-indigo-900/40 backdrop-blur-md border border-indigo-400/20"
                 )}
                 data-nav-item
               >
@@ -483,12 +483,12 @@ export default function Landing() {
                       onClick={() =>
                         setActiveMenu((current) => (current === item.key ? null : item.key))
                       }
-                      className="font-marketing text-sm font-medium text-white/78 transition hover:text-white"
+                      className="font-marketing text-sm font-medium text-white/85 transition hover:text-white"
                     >
                       {copy.nav[item.key]}
                       <ChevronDown
                         className={cn(
-                          "ml-1 inline h-4 w-4 text-white/55 transition",
+                          "ml-1 inline h-4 w-4 text-white/70 transition",
                           activeMenu === item.key && "rotate-180 text-white"
                         )}
                       />
@@ -502,23 +502,23 @@ export default function Landing() {
                   </div>
                   <div className="hidden md:flex items-center gap-4">
                     <Link href="/pricing">
-                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                      <a className="font-marketing text-sm font-medium text-white/85 transition hover:text-white">
                         {copy.nav.pricing}
                       </a>
                     </Link>
                     <Link href="/documentation">
-                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                      <a className="font-marketing text-sm font-medium text-white/85 transition hover:text-white">
                         {copy.nav.documentation}
                       </a>
                     </Link>
                     <Link href="/product">
-                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                      <a className="font-marketing text-sm font-medium text-white/85 transition hover:text-white">
                         {copy.nav.platform}
                       </a>
                     </Link>
                   </div>
                   <Link href="/login">
-                    <a className="font-marketing hidden sm:block text-sm font-medium text-white/78 transition hover:text-white">
+                    <a className="font-marketing hidden sm:block text-sm font-medium text-white/85 transition hover:text-white">
                       {copy.nav.logIn}
                     </a>
                   </Link>
@@ -531,7 +531,7 @@ export default function Landing() {
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="md:hidden text-white/78 transition hover:text-white flex-shrink-0"
+                    className="md:hidden text-white/85 transition hover:text-white flex-shrink-0"
                   >
                     {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                   </button>
@@ -539,20 +539,20 @@ export default function Landing() {
               </nav>
 
               {mobileMenuOpen && (
-                <div className="md:hidden mt-2 bg-slate-900/40 backdrop-blur-md border border-white/10 luminous-border rounded-[28px] p-4" data-mobile-menu>
+                <div className="md:hidden mt-2 bg-indigo-900/40 backdrop-blur-md border border-indigo-400/20 luminous-border rounded-[28px] p-4" data-mobile-menu>
                   <div className="space-y-2">
                     <Link href="/pricing">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/85 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.pricing}
                       </a>
                     </Link>
                     <Link href="/documentation">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/85 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.documentation}
                       </a>
                     </Link>
                     <Link href="/login">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/85 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.logIn}
                       </a>
                     </Link>
@@ -614,7 +614,7 @@ export default function Landing() {
             </div>
 
             <div className="mx-auto max-w-4xl pt-16 text-center md:pt-20">
-              <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 inline-flex items-center gap-3 rounded-full px-5 py-2.5 text-sm text-white/84">
+              <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 inline-flex items-center gap-3 rounded-full px-5 py-2.5 text-sm text-white/90">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_14px_rgba(223,255,74,0.85)]" />
                 {copy.intro}
               </div>
@@ -647,7 +647,7 @@ export default function Landing() {
                   </a>
                 </Link>
                 <Link href="/product">
-                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-foreground/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
+                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-foreground/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/90 transition hover:border-white/20 hover:bg-white/[0.07]">
                     {copy.secondaryCta}
                   </a>
                 </Link>
@@ -687,7 +687,7 @@ export default function Landing() {
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: row.color + "22", color: row.color }}>{row.ch}</span>
                         <div className="min-w-0 flex-1">
                           <p className="font-marketing text-xs font-semibold text-white/90">{row.name}</p>
-                          <p className="truncate text-[11px] text-white/40">{row.msg}</p>
+                          <p className="truncate text-[11px] text-white/85">{row.msg}</p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-[10px] text-white/30">{row.time}</span>
@@ -729,7 +729,7 @@ export default function Landing() {
                         {copy.overview.inbox.signals.map((signal) => (
                           <div
                             key={signal.label}
-                            className="bg-slate-800/30 backdrop-blur-sm border border-white/5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
+                            className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
                           >
                             <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
                               {signal.label}
@@ -757,7 +757,7 @@ export default function Landing() {
                         })}
                       </div>
 
-                      <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 mt-8 rounded-full px-4 py-3 text-sm text-white/70">
+                      <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 mt-8 rounded-full px-4 py-3 text-sm text-white/85">
                         {copy.overview.inbox.footer}
                       </div>
                     </article>
@@ -801,7 +801,7 @@ export default function Landing() {
                           </div>
                       </div>
 
-                      <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 rounded-2xl px-4 py-3 text-sm text-white/72">
+                      <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 rounded-2xl px-4 py-3 text-sm text-white/80">
                           {copy.overview.performance.timeframe}
                       </div>
                     </div>
@@ -812,7 +812,7 @@ export default function Landing() {
 
                       <div className="mt-7 grid gap-3 sm:grid-cols-3">
                         {copy.overview.performance.stats.map(({ label, value }) => (
-                          <div key={label} className="bg-slate-800/30 backdrop-blur-sm border border-white/5 rounded-2xl px-4 py-4">
+                          <div key={label} className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 rounded-2xl px-4 py-4">
                             <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
                               {label}
                             </p>
@@ -844,9 +844,9 @@ export default function Landing() {
 
                       <OrbitGraphic />
 
-                      <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 mt-3 rounded-2xl px-4 py-4">
+                      <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 mt-3 rounded-2xl px-4 py-4">
                         <div className="flex items-center justify-between">
-                          <span className="font-marketing text-sm font-semibold text-white/84">
+                          <span className="font-marketing text-sm font-semibold text-white/90">
                             {copy.overview.automations.statusLabel}
                           </span>
                           <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
@@ -895,7 +895,7 @@ export default function Landing() {
                       {copy.overview.inbox.signals.map((signal) => (
                         <div
                           key={signal.label}
-                          className="bg-slate-800/30 backdrop-blur-sm border border-white/5 flex items-center gap-3 rounded-2xl px-4 py-3"
+                          className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 flex items-center gap-3 rounded-2xl px-4 py-3"
                         >
                           <span
                             className="h-2 w-2 shrink-0 rounded-full"
@@ -929,7 +929,7 @@ export default function Landing() {
                   })}
                 </div>
 
-                <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 mt-8 rounded-full px-4 py-3 text-sm text-white/70">
+                <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 mt-8 rounded-full px-4 py-3 text-sm text-white/85">
                   {copy.overview.inbox.footer}
                 </div>
               </article>
@@ -971,7 +971,7 @@ export default function Landing() {
                     </div>
                 </div>
 
-                <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 rounded-2xl px-4 py-3 text-sm text-white/72">
+                <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 rounded-2xl px-4 py-3 text-sm text-white/80">
                     {copy.overview.performance.timeframe}
                 </div>
               </div>
@@ -982,7 +982,7 @@ export default function Landing() {
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
                   {copy.overview.performance.stats.map(({ label, value }) => (
-                    <div key={label} className="bg-slate-800/30 backdrop-blur-sm border border-white/5 rounded-2xl px-4 py-4">
+                    <div key={label} className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 rounded-2xl px-4 py-4">
                       <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
                         {label}
                       </p>
@@ -1027,9 +1027,9 @@ export default function Landing() {
                   ))}
                 </div>
 
-                <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 mt-3 rounded-2xl px-4 py-4">
+                <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 mt-3 rounded-2xl px-4 py-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-marketing text-sm font-semibold text-white/84">
+                    <span className="font-marketing text-sm font-semibold text-white/90">
                       {copy.overview.automations.statusLabel}
                     </span>
                     <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
