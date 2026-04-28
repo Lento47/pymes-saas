@@ -200,7 +200,7 @@ function Card({ title, linkTo, linkLabel, headerExtra, loading, empty, children 
 
 // ── Insight severity → visual ─────────────────────────────────────────────────
 const INSIGHT_STYLES: Record<string, { Icon: any; ring: string; iconColor: string; bg: string }> = {
-  danger:   { Icon: AlertCircle,  ring: "#ef4444", iconColor: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
+  danger:   { Icon: CircleAlert,  ring: "#ef4444", iconColor: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
   warning:  { Icon: AlertTriangle,ring: "#f59e0b", iconColor: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
   positive: { Icon: ShieldCheck, ring: "#22c55e", iconColor: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
   info:     { Icon: Info,         ring: "#818cf8", iconColor: "#818cf8", bg: "rgba(129,140,248,0.12)" },
