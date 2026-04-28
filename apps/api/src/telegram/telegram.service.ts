@@ -62,7 +62,7 @@ export class TelegramService {
     if (!channel) return;
 
     const message = update?.message || update?.edited_message;
-    if (!message?.text && !message?.caption && !message?.photo && !message?.document) return;
+    if (!message?.text && !message?.caption && !message?.photo && !message?.document && !message?.video && !message?.audio) return;
 
     const from = message.from;
     const chat = message.chat;
@@ -73,6 +73,17 @@ export class TelegramService {
 
     const senderRef = `tg:${from?.id}`;
     const conversationRef = `tg:${chat?.id}`;
+
+    const attachments: any[] = [];
+    if (message.photo) {
+      attachments.push({ type: 'photo', file_id: message.photo[message.photo.length - 1]?.file_id });
+    } else if (message.document) {
+      attachments.push({ type: 'document', file_id: message.document.file_id, file_name: message.document.file_name });
+    } else if (message.video) {
+      attachments.push({ type: 'video', file_id: message.video.file_id, file_name: message.video.file_name });
+    } else if (message.audio) {
+      attachments.push({ type: 'audio', file_id: message.audio.file_id });
+    }
 
     try {
       await this.messagesService.receiveInbound(
@@ -85,11 +96,7 @@ export class TelegramService {
           external_id: String(message.message_id),
           conversation_ref: conversationRef,
           raw_payload: update,
-          attachments: message.photo
-            ? [{ type: 'photo', file_id: message.photo[message.photo.length - 1]?.file_id }]
-            : message.document
-              ? [{ type: 'document', file_id: message.document.file_id, file_name: message.document.file_name }]
-              : undefined,
+          attachments: attachments.length > 0 ? attachments : undefined,
         },
       );
     } catch (err) {
@@ -112,5 +119,33 @@ export class TelegramService {
       return;
     }
     await bot.telegram.sendMessage(chatId, text);
+  }
+
+  async getWebhookStatus(channelId: string) {
+    const channel = await this.prisma.channel.findFirst({
+      where: { id: channelId, type: 'TELEGRAM' },
+      select: { config_json: true },
+    });
+
+    if (!channel?.config_json) return null;
+
+    const cfg = channel.config_json as any;
+    const token = cfg.bot_token_encrypted
+      ? this.crypto.decrypt(cfg.bot_token_encrypted)
+      : cfg.bot_token;
+
+    if (!token) {
+      this.logger.warn(`No bot token for channel ${channelId}`);
+      return null;
+    }
+
+    try {
+      const bot = new Telegraf(token);
+      const info = await bot.telegram.getWebhookInfo();
+      return info;
+    } catch (err) {
+      this.logger.error(`Failed to get webhook info: ${(err as Error).message}`);
+      return null;
+    }
   }
 }

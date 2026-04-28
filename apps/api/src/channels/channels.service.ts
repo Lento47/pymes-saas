@@ -11,6 +11,7 @@ import { parseJsonValue, stringifyJson } from '../common/prisma/json';
 import { ConfigureEmailDto } from './dto/configure-email.dto';
 import { ConfigureWhatsAppDto } from './dto/configure-whatsapp.dto';
 import { ConfigureTelegramDto } from './dto/configure-telegram.dto';
+import { TelegramService } from '../telegram/telegram.service';
 
 interface CreateChannelDto {
   type: string;
@@ -30,6 +31,7 @@ export class ChannelsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
+    private readonly telegramService: TelegramService,
   ) {}
 
   async create(workspaceId: string, dto: CreateChannelDto) {
@@ -166,6 +168,11 @@ export class ChannelsService {
         status: 'ACTIVE',
         config_json: stringifyJson({ ...existingConfig, bot_token_encrypted }),
       },
+    });
+
+    // Register webhook asynchronously (fire and forget)
+    this.telegramService.registerWebhook(workspaceId, id).catch((err) => {
+      this.logger.error(`Failed to register Telegram webhook for channel ${id}: ${(err as Error).message}`);
     });
 
     this.logger.log(`TELEGRAM canal ${id} configurado para workspace ${workspaceId}`);
