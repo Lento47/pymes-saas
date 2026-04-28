@@ -79,7 +79,7 @@ export function NotificationBell() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
-            className="absolute right-0 top-full mt-1 z-50 w-80 rounded-lg border shadow-xl"
+            className="fixed right-4 top-14 z-50 w-80 rounded-lg border shadow-xl"
             style={{ background: "hsl(var(--bg-elevated))", borderColor: "hsl(var(--border))" }}
           >
             <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
@@ -115,8 +115,8 @@ export function NotificationBell() {
                   return (
                     <button
                       key={n.id}
-                      className={cn(
-                        "w-full text-left px-3 py-2.5 transition-colors hover:bg-white/5 flex items-start gap-2.5",
+                        className={cn(
+                          "w-full text-left px-3 py-2.5 transition-colors hover:bg-foreground/5 flex items-start gap-2.5",
                         isUnread && "bg-accent/5",
                       )}
                       style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)" }}
@@ -147,7 +147,7 @@ export function NotificationBell() {
 
             <Link href="/notifications">
               <div
-                className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium hover:bg-white/5 transition-colors"
+                className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium hover:bg-foreground/5 transition-colors"
                 style={{ borderTop: "1px solid hsl(var(--border))", color: "hsl(var(--accent))" }}
                 onClick={() => setOpen(false)}
               >
