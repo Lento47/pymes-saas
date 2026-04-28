@@ -102,7 +102,7 @@ function RevenueChart({ monthlyRevenue, changePct }: { monthlyRevenue: number; c
         </linearGradient>
       </defs>
       {[25, 50, 75, 100].map(y => (
-        <line key={y} x1="0" y1={y} x2={W} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+        <line key={y} x1="0" y1={y} x2={W} y2={y} stroke="hsl(var(--border))" strokeWidth="1" />
       ))}
       <path d={area} fill="url(#rev-fill)" />
       <path d={d} fill="none" stroke="#8b7cf6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
@@ -180,7 +180,7 @@ function Card({ title, linkTo, linkLabel, headerExtra, loading, empty, children 
             {headerExtra}
             {linkTo && (
               <Link href={linkTo}>
-                <a className="text-xs text-[#8b7cf6] hover:text-[#a78bfa] flex items-center gap-1 font-medium">
+                <a className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 font-medium">
                   {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
                 </a>
               </Link>
@@ -294,7 +294,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-full" style={{ background: "#0c0c0e" }}>
+    <div className="min-h-full bg-background">
 
       {/* ── Page header ─────────────────────────────────────────────── */}
       <div className="px-4 md:px-8 pt-4 md:pt-7 pb-5 flex items-start justify-between gap-3 max-w-[1400px] mx-auto">
@@ -311,7 +311,7 @@ export default function DashboardPage() {
           <button className="p-2.5 rounded-xl border border-border/[0.6] bg-foreground/[0.015] text-white/40 hover:bg-foreground/[0.03] transition">
             <Bell className="w-5 h-5" />
           </button>
-          <button className="p-2.5 rounded-xl bg-[#8b7cf6] text-white hover:opacity-90 transition">
+          <button className="p-2.5 rounded-xl bg-primary text-white hover:opacity-90 transition">
             <Plus className="w-5 h-5" />
           </button>
         </div>
@@ -325,7 +325,7 @@ export default function DashboardPage() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-4 md:px-7 md:py-5 relative">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-black/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
-                <Activity className="w-5 h-5 md:w-7 md:h-7 text-[#8b7cf6]" />
+                <Activity className="w-5 h-5 md:w-7 md:h-7 text-primary" />
               </div>
               <div className="min-w-0">
                 {!bannerAI && aiPromptReady ? (
@@ -368,8 +368,8 @@ export default function DashboardPage() {
           <div className="col-span-2 md:col-span-1 rounded-2xl p-5 flex flex-col justify-between min-h-[110px]"
             style={{ background: "linear-gradient(135deg,rgba(139,124,246,0.22) 0%,rgba(91,92,240,0.12) 100%)", border: "1px solid rgba(139,124,246,0.28)" }}>
             <div className="flex items-start justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a78bfa]/70">{dash.revenueThisMonth}</p>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#8b7cf6]/20 text-[#a78bfa]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/80/70">{dash.revenueThisMonth}</p>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-primary/20 text-primary/80">
                 <TrendingUp className="w-3.5 h-3.5" />
               </div>
             </div>
@@ -427,7 +427,7 @@ export default function DashboardPage() {
 
           {/* 4 — Messages: minimal with live indicator */}
           <div className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px]"
-            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            style={{ background: "rgba(255,255,255,0.025)", border: "border border-border" }}>
             <div className="flex items-start justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/50">{dash.newMessages}</p>
               <div className="flex items-center gap-1">
@@ -515,7 +515,7 @@ export default function DashboardPage() {
                   {(["tasks", "messages"] as const).map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab)}
                       className={`px-4 py-2 text-sm font-medium transition capitalize ${
-                        activeTab === tab ? "text-[#8b7cf6] border-b-2 border-[#8b7cf6]" : "text-white/40 hover:text-foreground/75"
+                        activeTab === tab ? "text-primary border-b-2 border-primary" : "text-white/40 hover:text-foreground"
                       }`}>
                       {tab === "tasks" ? dash.tasks : dash.newMessages}
                     </button>
@@ -529,7 +529,7 @@ export default function DashboardPage() {
                     ? <p className="px-5 py-6 text-sm text-center text-muted-foreground/50">{dash.noTasks}</p>
                     : taskList.slice(0, 5).map((task: any) => (
                         <div key={task.id} className="flex items-center gap-3 px-5 py-3">
-                          <input type="checkbox" className="w-4 h-4 rounded border-border/[0.6] cursor-pointer accent-[#8b7cf6]" />
+                          <input type="checkbox" className="w-4 h-4 rounded border-border/[0.6] cursor-pointer accent-primary" />
                           <p className="flex-1 text-sm font-medium text-foreground truncate">{task.title}</p>
                           <PriorityBadge priority={task.priority} />
                           {task.due_date && (
@@ -545,7 +545,7 @@ export default function DashboardPage() {
                     : convList.slice(0, 5).map((conv: any) => (
                         <Link key={conv.id} href={`/inbox/${conv.id}`}>
                           <a className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.015] transition">
-                            <div className="w-8 h-8 rounded-full bg-[#8b7cf6]/15 flex items-center justify-center text-xs font-semibold text-[#8b7cf6] flex-shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-semibold text-primary flex-shrink-0">
                               {conv.contact?.full_name?.charAt(0) || "?"}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -605,9 +605,9 @@ export default function DashboardPage() {
                   const isMsg = item.type === "message";
                   return (
                     <div key={item.id} className="flex items-center gap-3 px-5 py-3.5">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isMsg ? "bg-[#8b7cf6]/15" : "bg-green-500/15"}`}>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isMsg ? "bg-primary/15" : "bg-green-500/15"}`}>
                         {isMsg
-                          ? <MessageCircle className="w-4 h-4 text-[#8b7cf6]" />
+                          ? <MessageCircle className="w-4 h-4 text-primary" />
                           : <Receipt className="w-4 h-4 text-green-400" />}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -651,7 +651,7 @@ export default function DashboardPage() {
                     ].map((ins, i) => {
                       const st = INSIGHT_STYLES[ins.severity] ?? INSIGHT_STYLES.info;
                       return (
-                        <div key={i} className="flex items-start gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-foreground/[0.04]">
                           <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: st.bg }}>
                             <st.Icon className="w-3.5 h-3.5" style={{ color: st.ring }} />
                           </div>
@@ -666,7 +666,7 @@ export default function DashboardPage() {
                     insightList.slice(0, 4).map((ins: any, i: number) => {
                       const st = INSIGHT_STYLES[ins.severity] ?? INSIGHT_STYLES.info;
                       return (
-                        <div key={i} className="flex items-start gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-foreground/[0.04]">
                           <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: st.bg }}>
                             <st.Icon className="w-3.5 h-3.5" style={{ color: st.ring }} />
                           </div>
@@ -697,7 +697,7 @@ export default function DashboardPage() {
               <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">{dash.quickActions}</h3>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { Icon: Receipt,     label: dash.newInvoice,      href: "/invoices",    bg: "bg-[#8b7cf6]/15",  ic: "text-[#8b7cf6]" },
+                  { Icon: Receipt,     label: dash.newInvoice,      href: "/invoices",    bg: "bg-primary/15",  ic: "text-primary" },
                   { Icon: UserPlus,    label: dash.addContact,      href: "/contacts",    bg: "bg-blue-500/15",    ic: "text-blue-400"   },
                   { Icon: KanbanSquare,label: dash.newOpportunity,  href: "/pipeline",    bg: "bg-violet-500/15",  ic: "text-violet-400" },
                   { Icon: MessageCircle,label: dash.sendMessage,     href: "/inbox",       bg: "bg-green-500/15",   ic: "text-green-400"  },
