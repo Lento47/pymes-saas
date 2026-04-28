@@ -363,8 +363,8 @@ export default function Agent() {
                             <select value={activeForm.values[f.name]} onChange={e => updateFormValue(f.name, e.target.value)} disabled={activeForm.isSubmitting}
                               className="w-full rounded-lg px-3 py-1.5 text-[13px] outline-none disabled:opacity-40 text-foreground/85"
                               style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                              <option value="" className="bg-[#111]">Seleccionar...</option>
-                              {f.options?.map(o => <option key={o} value={o} className="bg-[#111]">{o}</option>)}
+                              <option value="" className="bg-card">Seleccionar...</option>
+                              {f.options?.map(o => <option key={o} value={o} className="bg-card">{o}</option>)}
                             </select>
                           ) : (
                             <input type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'email' ? 'email' : 'text'}

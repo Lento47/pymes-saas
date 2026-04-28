@@ -74,7 +74,7 @@ function KanbanColumn({ stage, onDragStart, onDrop, onAddDeal, onClickDeal }: { 
         <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: `${stage.color}18`, color: stage.color }}>{stage.deals.length}</span>
       </div>
       {total && <div className="px-3 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}><span className="text-[11px] text-muted-foreground/40">{total}</span></div>}
-      <div className={cn("flex-1 flex flex-col gap-2 p-2 min-h-[80px] transition-colors", over && "bg-[#8b7cf6]/[0.03]")}>
+      <div className={cn("flex-1 flex flex-col gap-2 p-2 min-h-[80px] transition-colors", over && "bg-primary/[0.03]")}>
         {stage.deals.map(deal => <DealCard key={deal.id} deal={deal} onDragStart={onDragStart} onClick={onClickDeal} />)}
         {stage.deals.length === 0 && (
           <div className="flex-1 flex items-center justify-center rounded-xl text-[11px] text-muted-foreground/20" style={{ border: '1px dashed rgba(255,255,255,0.04)', minHeight: 60 }}>Arrastra aquí</div>

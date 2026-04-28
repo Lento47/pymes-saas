@@ -70,7 +70,7 @@ export function HubbyBuddy() {
               style={{ background: '#1e1b4b', color: '#e0e7ff', border: '1px solid #4338ca' }}
             >
               <span className="relative z-10">¡Hola! Soy Hubby 🐾</span>
-              <div className="absolute -bottom-1 right-3 w-2 h-2 bg-[#1e1b4b] border-r border-b border-[#4338ca] transform rotate-45" />
+              <div className="absolute -bottom-1 right-3 w-2 h-2 bg-card border-r border-b border-[#4338ca] transform rotate-45" />
             </div>
           </div>
 

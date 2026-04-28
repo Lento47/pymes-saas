@@ -108,7 +108,7 @@ export default function InboxPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#070B14] text-slate-50">
+    <div className="min-h-screen bg-background text-slate-50">
       <InboxHeader />
       <InboxToolbar
         search={search}

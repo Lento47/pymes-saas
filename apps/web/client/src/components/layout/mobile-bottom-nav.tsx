@@ -12,7 +12,7 @@ export function MobileBottomNav({ onMenuClick }: { onMenuClick: () => void }) {
   const [location] = useLocation();
 
   return (
-    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#0D1424]/95 backdrop-blur-xl border-t border-border safe-area-bottom">
+    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur-xl border-t border-border safe-area-bottom">
       <div className="flex items-center justify-around h-14 px-2">
         {TABS.map(({ path, icon: Icon, label }) => {
           const active = path === "/" ? location === "/" : location.startsWith(path);
