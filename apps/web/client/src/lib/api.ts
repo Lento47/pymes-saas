@@ -336,6 +336,7 @@ export const api = {
   winDeal: (id: string) => request<any>("POST", `/api/pipeline/deals/${id}/win`),
   deleteDeal: (id: string) => request<any>("DELETE", `/api/pipeline/deals/${id}`),
   // Auth extras
+  refresh: (token: string) => request<any>("POST", "/api/auth/refresh", { refresh_token: token }),
   getMyWorkspaces: () => request<any>("GET", "/api/auth/my-workspaces"),
   switchWorkspace: (workspace_slug: string) =>
     request<any>("POST", "/api/auth/switch-workspace", { workspace_slug }),
@@ -368,4 +369,22 @@ export const api = {
   platformDeleteUser: (userId: string) => request<any>("DELETE", `/api/platform/users/${userId}`),
   platformGetStats: () => request<any>("GET", "/api/platform/stats"),
   platformToggleAdmin: (userId: string) => request<any>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
+  // AI / Agent
+  askAssistant: (prompt: string) => request<any>("POST", "/api/ai/ask", { prompt }),
+  createAgentStream: (message: string, conversationId?: string) => request<any>("POST", "/api/ai/agent/stream", { message, conversationId }),
+  executeAgentTool: (tool: string, args?: any) => request<any>("POST", "/api/ai/agent/execute-tool", { tool, args }),
+  // Routing rules
+  getRoutingRules: () => request<any>("GET", "/api/routing/rules"),
+  createRoutingRule: (data: any) => request<any>("POST", "/api/routing/rules", data),
+  updateRoutingRule: (id: string, data: any) => request<any>("PATCH", `/api/routing/rules/${id}`, data),
+  deleteRoutingRule: (id: string) => request<any>("DELETE", `/api/routing/rules/${id}`),
+  // SAML
+  checkSamlStatus: (workspaceSlug?: string) => {
+    const qs = workspaceSlug ? `?slug=${encodeURIComponent(workspaceSlug)}` : "";
+    return request<any>("GET", `/api/auth/saml/status${qs}`);
+  },
+  // API Tokens
+  getApiTokens: () => request<any>("GET", "/api/workspaces/current/api-tokens"),
+  createApiToken: (name: string) => request<any>("POST", "/api/workspaces/current/api-tokens", { name }),
+  revokeApiToken: (id: string) => request<any>("DELETE", `/api/workspaces/current/api-tokens/${id}`),
 };
