@@ -160,7 +160,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <div ref={wsMenuRef} className="relative">
             <button
               className={cn(
-                "group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
+                "group w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200",
                 "hover:bg-sidebar-accent/40 active:scale-95",
                 wsMenuOpen && "bg-sidebar-accent/60"
               )}
@@ -172,22 +172,27 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 <Building2 className="w-4 h-4 text-primary-foreground" />
               </div>
 
-              {/* Workspace Info */}
-              <div className="flex-1 min-w-0 text-left">
+              {/* Workspace Name */}
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate leading-tight">{ws}</p>
-                {multipleWorkspaces && (
-                  <p className="text-xs text-muted-foreground/60 truncate">{myWorkspaces?.length} workspace{(myWorkspaces?.length ?? 0) > 1 ? "s" : ""}</p>
-                )}
               </div>
 
-              {/* Chevron */}
+              {/* Vertical Chevrons (^ ˅) */}
               {multipleWorkspaces && (
-                <ChevronDown
-                  className={cn(
-                    "w-4 h-4 text-muted-foreground/50 shrink-0 transition-transform duration-300",
-                    wsMenuOpen && "rotate-180"
-                  )}
-                />
+                <div className="flex flex-col items-center justify-center shrink-0 gap-0.5">
+                  <ChevronDown
+                    className={cn(
+                      "w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-300 rotate-180",
+                      wsMenuOpen && "text-primary/70"
+                    )}
+                  />
+                  <ChevronDown
+                    className={cn(
+                      "w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-300",
+                      wsMenuOpen && "text-primary/70"
+                    )}
+                  />
+                </div>
               )}
             </button>
 
