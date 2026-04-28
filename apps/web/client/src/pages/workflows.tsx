@@ -9,7 +9,7 @@ export default function WorkflowsPage() {
   const copy = messages.landing?.menus?.workflows || {} as any;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
+    <div className="relative min-h-screen overflow-hidden bg-background text-white">
       <div className="pointer-events-none absolute inset-0"><div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(42,60,180,0.08),transparent_36%)]" /></div>
       <main className="relative z-10">
         <nav className="flex items-center justify-between px-4 py-5 md:px-8">

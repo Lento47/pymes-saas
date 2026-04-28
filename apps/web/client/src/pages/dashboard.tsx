@@ -128,7 +128,7 @@ function MetricCard({ label, value, currency, subLabel, icon: Icon, iconBg, load
   return (
     <div className="relative rounded-2xl overflow-hidden bg-foreground/[0.015] border border-border/[0.6] p-5 hover:shadow-md transition-shadow"
       style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center" }}>
-      <div className="absolute inset-0 bg-[#0c0c0e]/[0.88] rounded-2xl" />
+      <div className="absolute inset-0 bg-background/[0.88] rounded-2xl" />
       <div className="relative">
         <div className="flex items-start justify-between mb-3">
           <p className="text-sm font-medium text-foreground/75">{label}</p>

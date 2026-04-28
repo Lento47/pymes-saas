@@ -53,7 +53,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
   const copy = messages.sidebar;
 
-  useNotificationsSocket(); // Monta el listener de notificaciones en tiempo real
+  useNotificationsSocket();
 
   const { data: myWorkspaces } = useQuery({
     queryKey: ["/api/auth/my-workspaces"],
@@ -78,68 +78,59 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const name = user?.name ?? user?.email ?? "—";
   const initials = name.slice(0, 2).toUpperCase();
   const multipleWorkspaces = Array.isArray(myWorkspaces) && myWorkspaces.length > 1;
-
   const isActive = (p: string) => p === "/" ? location === "/" : location.startsWith(p);
-
-  const badge = (key?: string) =>
-    key === "unread" ? unreadCount : key === "overdue" ? overdueCount : 0;
+  const badge = (key?: string) => key === "unread" ? unreadCount : key === "overdue" ? overdueCount : 0;
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* ── Sidebar ── */}
-      <aside
-        style={{ background: "hsl(var(--bg-sidebar))", borderRight: "1px solid hsl(var(--border))" }}
-        className="w-[200px] shrink-0 flex flex-col"
-      >
-        {/* Workspace header / switcher */}
-        <div className="relative shrink-0 flex items-center" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+      {/* Sidebar */}
+      <aside className="w-[220px] shrink-0 flex flex-col bg-sidebar border-r border-sidebar-border">
+        {/* Workspace header */}
+        <div className="shrink-0 px-3 py-3 border-b border-sidebar-border">
           <button
-            className="flex-1 px-4 h-12 flex items-center gap-2.5 hover:bg-foreground/5 transition-colors"
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-sidebar-accent/50 transition-colors"
             onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
             style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
           >
-            <div
-              style={{ background: "hsl(var(--accent))", borderRadius: "4px" }}
-              className="w-6 h-6 flex items-center justify-center shrink-0"
-            >
-              <span className="text-primary-foreground font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
+            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
+              <span className="text-primary-foreground font-semibold text-[11px]">P</span>
             </div>
             <div className="min-w-0 flex-1 text-left">
-              <div className="text-sm font-semibold text-foreground leading-none truncate">{ws}</div>
+              <div className="text-[13px] font-semibold text-sidebar-foreground leading-tight truncate">{ws}</div>
             </div>
             {multipleWorkspaces && (
-              <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
+              <ChevronDown className="w-3.5 h-3.5 text-sidebar-foreground/40 shrink-0" />
             )}
           </button>
 
           <NotificationBell />
 
+          {/* Workspace switcher dropdown */}
           {wsMenuOpen && multipleWorkspaces && (
-            <div
-              className="absolute left-0 right-0 top-full z-50 py-1"
-              style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))", borderTop: "none" }}
-            >
-              {(myWorkspaces as any[]).map((m: any) => {
-                const isCurrent = m.workspace.id === user?.workspace?.id;
-                return (
-                  <button
-                    key={m.workspace.id}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-foreground/5 transition-colors"
-                    onClick={() => { setWsMenuOpen(false); if (!isCurrent) switchWorkspace(m.workspace.slug); }}
-                  >
-                    <span className="flex-1 text-left text-sm truncate" style={{ color: isCurrent ? "hsl(var(--fg))" : "hsl(var(--fg-2))" }}>
-                      {m.workspace.name}
-                    </span>
-                    {isCurrent && <Check style={{ width: 12, height: 12, color: "hsl(var(--accent))" }} />}
-                  </button>
-                );
-              })}
+            <div className="relative">
+              <div className="absolute left-0 right-0 top-2 z-50 rounded-xl bg-sidebar border border-sidebar-border shadow-lg overflow-hidden">
+                {(myWorkspaces as any[]).map((m: any) => {
+                  const isCurrent = m.workspace.id === user?.workspace?.id;
+                  return (
+                    <button
+                      key={m.workspace.id}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-sidebar-accent/50 transition-colors"
+                      onClick={() => { setWsMenuOpen(false); if (!isCurrent) switchWorkspace(m.workspace.slug); }}
+                    >
+                      <span className="flex-1 text-left text-[13px] truncate" style={{ color: isCurrent ? "hsl(var(--sidebar-foreground))" : "hsl(var(--sidebar-foreground) / 0.6)" }}>
+                        {m.workspace.name}
+                      </span>
+                      {isCurrent && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 py-2 overflow-y-auto">
+        {/* Navigation */}
+        <nav className="flex-1 py-3 px-2 overflow-y-auto space-y-0.5">
           {NAV.map(({ path, icon: Icon, key, badge: bk }) => {
             const active = isActive(path);
             const b = badge(bk);
@@ -147,30 +138,22 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               <Link key={path} href={path}>
                 <div
                   className={cn(
-                    "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
+                    "flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-150",
                     active
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-sidebar-accent text-sidebar-foreground font-medium"
+                      : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/40"
                   )}
-                  style={active ? { background: "hsl(var(--bg-active))" } : undefined}
                 >
-                  <Icon
-                    className="shrink-0"
-                    style={{ width: 14, height: 14 }}
-                    strokeWidth={active ? 2.2 : 1.8}
-                  />
-                  <span className="flex-1 truncate" style={{ fontSize: "13px" }}>{copy.nav[key]}</span>
+                  <Icon className="w-[18px] h-[18px] shrink-0" strokeWidth={active ? 2.2 : 1.8} />
+                  <span className="flex-1 truncate text-[13px]">{copy.nav[key]}</span>
                   {b > 0 && (
                     <span
-                      style={{
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        lineHeight: 1,
-                        padding: "2px 5px",
-                        borderRadius: "10px",
-                        background: bk === "overdue" ? "hsl(var(--danger) / 0.15)" : "hsl(var(--accent) / 0.15)",
-                        color: bk === "overdue" ? "hsl(var(--danger))" : "hsl(var(--accent))",
-                      }}
+                      className={cn(
+                        "text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none",
+                        bk === "overdue"
+                          ? "bg-destructive/15 text-destructive"
+                          : "bg-primary/15 text-primary"
+                      )}
                     >
                       {b}
                     </span>
@@ -180,20 +163,20 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             );
           })}
 
-          {/* Divider */}
-          <div className="my-2 mx-3" style={{ height: 1, background: "hsl(var(--border))" }} />
+          <div className="my-1.5 mx-3 h-px bg-sidebar-border" />
 
           {user?.is_platform_admin && (
             <Link href="/admin">
               <div
                 className={cn(
-                  "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                  isActive("/admin") ? "text-foreground" : "text-[hsl(var(--fg-2))] hover:text-white"
+                  "flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-150",
+                  isActive("/admin")
+                    ? "bg-sidebar-accent text-sidebar-foreground font-medium"
+                    : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/40"
                 )}
-                style={isActive("/admin") ? { background: "hsl(var(--bg-active))" } : undefined}
               >
-                <Shield style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-                <span style={{ fontSize: "13px" }}>Platform Admin</span>
+                <Shield className="w-[18px] h-[18px] shrink-0" strokeWidth={1.8} />
+                <span className="text-[13px]">Platform Admin</span>
               </div>
             </Link>
           )}
@@ -201,77 +184,67 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <Link href="/settings">
             <div
               className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/settings") ? "text-foreground" : "text-[hsl(var(--fg-2))] hover:text-white"
+                "flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-150",
+                isActive("/settings")
+                  ? "bg-sidebar-accent text-sidebar-foreground font-medium"
+                  : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/40"
               )}
-              style={isActive("/settings") ? { background: "hsl(var(--bg-active))" } : undefined}
             >
-              <Settings style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>{copy.settings}</span>
+              <Settings className="w-[18px] h-[18px] shrink-0" strokeWidth={1.8} />
+              <span className="text-[13px]">{copy.settings}</span>
             </div>
           </Link>
 
           <Link href="/help">
             <div
               className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/help") ? "text-foreground" : "text-[hsl(var(--fg-2))] hover:text-white"
+                "flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-150",
+                isActive("/help")
+                  ? "bg-sidebar-accent text-sidebar-foreground font-medium"
+                  : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/40"
               )}
-              style={isActive("/help") ? { background: "hsl(var(--bg-active))" } : undefined}
             >
-              <CircleHelp style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>{copy.help}</span>
+              <CircleHelp className="w-[18px] h-[18px] shrink-0" strokeWidth={1.8} />
+              <span className="text-[13px]">{copy.help}</span>
             </div>
           </Link>
         </nav>
 
-        <div className="px-3 pb-2 space-y-1">
+        {/* Bottom: theme + language + user */}
+        <div className="shrink-0 border-t border-sidebar-border px-3 py-2.5 space-y-1">
           <button
             onClick={toggle}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
-            title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-all"
           >
-            {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+            {theme === "dark" ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
             {theme === "dark" ? "Modo claro" : "Modo oscuro"}
           </button>
-          <LanguageSwitcher className="w-full justify-between" />
+          <LanguageSwitcher className="w-full" />
         </div>
 
-        {/* User row */}
-        <div
-          className="px-3 py-3 flex items-center gap-2"
-          style={{ borderTop: "1px solid hsl(var(--border))" }}
-        >
-          <div
-            style={{
-              width: 24, height: 24,
-              borderRadius: "50%",
-              background: "hsl(var(--bg-active))",
-              border: "1px solid hsl(var(--border))",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "10px", fontWeight: 600, color: "hsl(var(--fg-2))",
-              flexShrink: 0,
-            }}
-          >
-            {initials}
+        {/* User */}
+        <div className="shrink-0 border-t border-sidebar-border px-3 py-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-sidebar-accent border border-sidebar-border flex items-center justify-center shrink-0">
+              <span className="text-[10px] font-semibold text-sidebar-foreground/60">{initials}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="truncate text-[12px] font-medium text-sidebar-foreground leading-tight">{name}</div>
+              <div className="text-[10px] text-sidebar-foreground/40 capitalize">{user?.role?.toLowerCase() ?? ""}</div>
+            </div>
+            <button
+              onClick={logout}
+              className="p-1.5 rounded-lg text-sidebar-foreground/30 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-all"
+              title={copy.logout}
+            >
+              <LogOut className="w-[15px] h-[15px]" />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="truncate font-medium text-foreground" style={{ fontSize: "12px", lineHeight: "1.3" }}>{name}</div>
-            <div className="truncate" style={{ fontSize: "11px", color: "hsl(var(--fg-3))" }}>{user?.role ?? ""}</div>
-          </div>
-          <button
-            onClick={logout}
-            style={{ color: "hsl(var(--fg-3))", padding: "4px" }}
-            className="hover:text-foreground transition-colors shrink-0 rounded"
-            title={copy.logout}
-          >
-            <LogOut style={{ width: 13, height: 13 }} />
-          </button>
         </div>
       </aside>
 
-      {/* ── Main ── */}
-      <main className="flex-1 overflow-y-auto" style={{ background: "hsl(var(--bg))" }}>
+      {/* Main */}
+      <main className="flex-1 overflow-y-auto bg-background">
         {children}
       </main>
     </div>

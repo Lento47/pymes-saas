@@ -18,7 +18,7 @@ export default function DocumentationDocumentPage({
 
   if (!doc || doc.visibility !== "public") {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-[#05091d] px-4 py-6 text-white md:px-8">
+      <div className="relative min-h-screen overflow-hidden bg-background px-4 py-6 text-white md:px-8">
         <div className="mx-auto max-w-5xl">
           <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7">
             <BrandLockup compact />
@@ -43,7 +43,7 @@ export default function DocumentationDocumentPage({
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
+    <div className="relative min-h-screen overflow-hidden bg-background text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-10rem] top-[4rem] h-72 w-72 rounded-full bg-[#5870ff]/12 blur-[120px]" />
         <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#dfff4a]/10 blur-[150px]" />

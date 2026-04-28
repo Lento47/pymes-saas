@@ -100,7 +100,7 @@ export default function PipelinePage() {
   const handleDrop = (e: React.DragEvent, stageId: string) => { const dealId = e.dataTransfer.getData("dealId"); if (dealId) moveMut.mutate({ dealId, stageId }); };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0c0c0e' }}>
+    <div className="flex flex-col h-full overflow-hidden bg-background">
       <header className="shrink-0 flex items-center justify-between px-6 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="flex items-center gap-3">
           <KanbanSquare style={{ width: 16, height: 16, color: '#a78bfa' }} />
