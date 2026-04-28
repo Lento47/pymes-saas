@@ -987,11 +987,11 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           </div>
         </div>
 
-        <div className="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-blue-200">
+        <div className="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-blue-700 dark:text-blue-200">
           <p>
             Dirección inbound activa: <span className="font-mono">{resolvedInboundEmail || "sin definir"}</span>
           </p>
-          <p className="mt-1 text-blue-100/80">
+          <p className="mt-1 text-blue-600/80 dark:text-blue-100/80">
             Recomendado si tienes varios buzones: configurar esta dirección en Resend y además enviar <span className="font-mono">X-Channel-Id</span>.
           </p>
         </div>

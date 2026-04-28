@@ -8,8 +8,8 @@ import { Link } from "wouter";
 import {
   Plus, ArrowRight, Activity, Bell, Search,
   Users, CheckSquare, FileText, MessageCircle, TrendingUp,
-  Receipt, Zap, BarChart2, Clock, ChevronDown, Sparkles,
-  CheckCircle2, AlertTriangle, AlertCircle, Info, UserPlus,
+  Receipt, Zap, BarChart4, Clock, ChevronDown, Sparkles,
+  ShieldCheck, TriangleAlert, CircleAlert, Info, UserPlus,
   KanbanSquare,
 } from "lucide-react";
 import { format, formatDistanceToNowStrict } from "date-fns";
@@ -202,7 +202,7 @@ function Card({ title, linkTo, linkLabel, headerExtra, loading, empty, children 
 const INSIGHT_STYLES: Record<string, { Icon: any; ring: string; iconColor: string; bg: string }> = {
   danger:   { Icon: AlertCircle,  ring: "#ef4444", iconColor: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
   warning:  { Icon: AlertTriangle,ring: "#f59e0b", iconColor: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
-  positive: { Icon: CheckCircle2, ring: "#22c55e", iconColor: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
+  positive: { Icon: ShieldCheck, ring: "#22c55e", iconColor: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
   info:     { Icon: Info,         ring: "#818cf8", iconColor: "#818cf8", bg: "rgba(129,140,248,0.12)" },
 };
 
