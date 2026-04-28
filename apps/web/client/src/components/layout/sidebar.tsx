@@ -24,9 +24,14 @@ function navLabel(copy: any, key: NavKey): string {
   return copy.nav[key] ?? key;
 }
 
-const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+interface NavGroup {
+  key: "work" | "operations" | "assistants";
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Work",
+    key: "work",
     items: [
       { path: "/",              icon: LayoutDashboard, key: "dashboard" },
       { path: "/inbox",         icon: Inbox,           key: "inbox",       badge: "unread" },
@@ -35,7 +40,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: "Operations",
+    key: "operations",
     items: [
       { path: "/contacts",      icon: Users,           key: "contacts" },
       { path: "/documents",     icon: FileText,        key: "documents" },
@@ -44,7 +49,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: "Assistants",
+    key: "assistants",
     items: [
       { path: "/chat",          icon: MessageCircle,    key: "chat" },
       { path: "/agent",         icon: Bot,             key: "agent" },
@@ -215,10 +220,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         {/* ── Navigation ── */}
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sidebar-accent/20 hover:scrollbar-thumb-sidebar-accent/30">
           {NAV_GROUPS.map((group) => (
-            <div key={group.label} className="space-y-1.5">
+            <div key={group.key} className="space-y-1.5">
               <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50 flex items-center gap-2">
                 <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                <span>{group.label}</span>
+                <span>{(copy.groups as any)[group.key]}</span>
               </div>
               <div className="space-y-1">
                 {group.items.map(({ path, icon: Icon, key, badge: bk }) => {
