@@ -635,7 +635,7 @@ export default function Landing() {
                 {copy.subtitle}
               </p>
 
-              <p className="mx-auto mt-6 md:mt-8 max-w-3xl text-base leading-7 md:text-lg md:leading-8 text-[#c9d0f5]/78 md:text-xl">
+              <p className="mx-auto mt-6 md:mt-8 max-w-3xl text-base leading-7 md:text-lg md:leading-8 text-white/90 md:text-xl">
                 {copy.description}
               </p>
 
@@ -647,13 +647,13 @@ export default function Landing() {
                   </a>
                 </Link>
                 <Link href="/product">
-                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-foreground/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/90 transition hover:border-white/20 hover:bg-white/[0.07]">
+                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-indigo-400/25 bg-foreground/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/90 transition hover:border-white/20 hover:bg-white/[0.07]">
                     {copy.secondaryCta}
                   </a>
                 </Link>
               </div>
 
-              <p className="mt-5 text-sm text-[#c9d0f5]/52">
+              <p className="mt-5 text-sm text-white/75">
                 {copy.note}
               </p>
 
@@ -663,7 +663,7 @@ export default function Landing() {
                     <span key={i} className="h-7 w-7 rounded-full border-2 border-[#05091d]" style={{ background: c, opacity: 0.88 }} />
                   ))}
                 </div>
-                <p className="text-sm text-[#c9d0f5]/60">
+                <p className="text-sm text-white/80">
                   Trusted by <span className="font-semibold text-white/80">200+ SMEs</span> across LATAM
                 </p>
               </div>
@@ -806,7 +806,7 @@ export default function Landing() {
                       </div>
                     </div>
 
-                      <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
+                      <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-indigo-400/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
                         <PerformanceChart labels={copy.overview.performance.chartDays} />
                       </div>
 
@@ -976,7 +976,7 @@ export default function Landing() {
                 </div>
               </div>
 
-                <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
+                <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-indigo-400/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
                   <PerformanceChart labels={copy.overview.performance.chartDays} />
                 </div>
 
