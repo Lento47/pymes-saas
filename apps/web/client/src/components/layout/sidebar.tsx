@@ -35,6 +35,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, switchWorkspace } = useAuth();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const { data: myWorkspaces } = useQuery({
     queryKey: ["/api/auth/my-workspaces"],
@@ -70,52 +71,78 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       {/* ── Sidebar ── */}
       <aside
         style={{ background: "hsl(var(--bg-sidebar))", borderRight: "1px solid hsl(var(--border))" }}
-        className="w-[200px] shrink-0 flex flex-col"
+        className={`shrink-0 flex flex-col transition-all duration-300 ${
+          sidebarOpen ? "w-[200px]" : "w-16"
+        }`}
       >
-        {/* Workspace header / switcher */}
-        <div className="relative shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+        {/* Hamburger toggle */}
+        <div className="px-3 py-3 flex items-center justify-between">
           <button
-            className="w-full px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
-            onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
-            style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-1.5 hover:bg-white/5 rounded transition-colors"
+            title={sidebarOpen ? "Contraer" : "Expandir"}
           >
-            <div
-              style={{ background: "hsl(var(--accent))", borderRadius: "4px" }}
-              className="w-6 h-6 flex items-center justify-center shrink-0"
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              style={{ color: "hsl(var(--fg-2))" }}
             >
-              <span className="text-white font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
-            </div>
-            <div className="min-w-0 flex-1 text-left">
-              <div className="text-sm font-semibold text-white leading-none truncate">{ws}</div>
-            </div>
-            {multipleWorkspaces && (
-              <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
-            )}
+              {sidebarOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              )}
+            </svg>
           </button>
-
-          {wsMenuOpen && multipleWorkspaces && (
-            <div
-              className="absolute left-0 right-0 top-full z-50 py-1"
-              style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))", borderTop: "none" }}
-            >
-              {(myWorkspaces as any[]).map((m: any) => {
-                const isCurrent = m.workspace.id === user?.workspace?.id;
-                return (
-                  <button
-                    key={m.workspace.id}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-white/5 transition-colors"
-                    onClick={() => { setWsMenuOpen(false); if (!isCurrent) switchWorkspace(m.workspace.slug); }}
-                  >
-                    <span className="flex-1 text-left text-sm truncate" style={{ color: isCurrent ? "white" : "hsl(var(--fg-2))" }}>
-                      {m.workspace.name}
-                    </span>
-                    {isCurrent && <Check style={{ width: 12, height: 12, color: "hsl(var(--accent))" }} />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
+        {/* Workspace header / switcher */}
+        {sidebarOpen && (
+          <div className="relative shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+            <button
+              className="w-full px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
+              onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
+              style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
+            >
+              <div
+                style={{ background: "hsl(var(--accent))", borderRadius: "4px" }}
+                className="w-6 h-6 flex items-center justify-center shrink-0"
+              >
+                <span className="text-white font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
+              </div>
+              <div className="min-w-0 flex-1 text-left">
+                <div className="text-sm font-semibold text-white leading-none truncate">{ws}</div>
+              </div>
+              {multipleWorkspaces && (
+                <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
+              )}
+            </button>
+
+            {wsMenuOpen && multipleWorkspaces && (
+              <div
+                className="absolute left-0 right-0 top-full z-50 py-1"
+                style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))", borderTop: "none" }}
+              >
+                {(myWorkspaces as any[]).map((m: any) => {
+                  const isCurrent = m.workspace.id === user?.workspace?.id;
+                  return (
+                    <button
+                      key={m.workspace.id}
+                      className="w-full flex items-center gap-2 px-4 py-2 hover:bg-white/5 transition-colors"
+                      onClick={() => { setWsMenuOpen(false); if (!isCurrent) switchWorkspace(m.workspace.slug); }}
+                    >
+                      <span className="flex-1 text-left text-sm truncate" style={{ color: isCurrent ? "white" : "hsl(var(--fg-2))" }}>
+                        {m.workspace.name}
+                      </span>
+                      {isCurrent && <Check style={{ width: 12, height: 12, color: "hsl(var(--accent))" }} />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Nav */}
         <nav className="flex-1 py-2 overflow-y-auto">
@@ -127,71 +154,81 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 <div
                   className={cn(
                     "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
+                    sidebarOpen ? "" : "justify-center",
                     active
                       ? "text-white"
                       : "text-[hsl(var(--fg-2))] hover:text-white"
                   )}
                   style={active ? { background: "hsl(var(--bg-active))" } : undefined}
+                  title={sidebarOpen ? undefined : label}
                 >
                   <Icon
                     className="shrink-0"
                     style={{ width: 14, height: 14 }}
                     strokeWidth={active ? 2.2 : 1.8}
                   />
-                  <span className="flex-1 truncate" style={{ fontSize: "13px" }}>{label}</span>
-                  {b > 0 && (
-                    <span
-                      style={{
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        lineHeight: 1,
-                        padding: "2px 5px",
-                        borderRadius: "10px",
-                        background: bk === "overdue" ? "hsl(var(--danger) / 0.15)" : "hsl(var(--accent) / 0.15)",
-                        color: bk === "overdue" ? "hsl(var(--danger))" : "hsl(var(--accent))",
-                      }}
-                    >
-                      {b}
-                    </span>
+                  {sidebarOpen && (
+                    <>
+                      <span className="flex-1 truncate" style={{ fontSize: "13px" }}>{label}</span>
+                      {b > 0 && (
+                        <span
+                          style={{
+                            fontSize: "10px",
+                            fontWeight: 600,
+                            lineHeight: 1,
+                            padding: "2px 5px",
+                            borderRadius: "10px",
+                            background: bk === "overdue" ? "hsl(var(--danger) / 0.15)" : "hsl(var(--accent) / 0.15)",
+                            color: bk === "overdue" ? "hsl(var(--danger))" : "hsl(var(--accent))",
+                          }}
+                        >
+                          {b}
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
               </Link>
             );
           })}
 
-          {/* Divider */}
-          <div className="my-2 mx-3" style={{ height: 1, background: "hsl(var(--border))" }} />
+          {sidebarOpen && (
+            <>
+              {/* Divider */}
+              <div className="my-2 mx-3" style={{ height: 1, background: "hsl(var(--border))" }} />
 
-          <Link href="/settings">
-            <div
-              className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/settings") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
-              )}
-              style={isActive("/settings") ? { background: "hsl(var(--bg-active))" } : undefined}
-            >
-              <Settings style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>Configuración</span>
-            </div>
-          </Link>
+              <Link href="/settings">
+                <div
+                  className={cn(
+                    "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
+                    isActive("/settings") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
+                  )}
+                  style={isActive("/settings") ? { background: "hsl(var(--bg-active))" } : undefined}
+                >
+                  <Settings style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
+                  <span style={{ fontSize: "13px" }}>Configuración</span>
+                </div>
+              </Link>
 
-          <Link href="/help">
-            <div
-              className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/help") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
-              )}
-              style={isActive("/help") ? { background: "hsl(var(--bg-active))" } : undefined}
-            >
-              <CircleHelp style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>Ayuda</span>
-            </div>
-          </Link>
+              <Link href="/help">
+                <div
+                  className={cn(
+                    "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
+                    isActive("/help") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
+                  )}
+                  style={isActive("/help") ? { background: "hsl(var(--bg-active))" } : undefined}
+                >
+                  <CircleHelp style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
+                  <span style={{ fontSize: "13px" }}>Ayuda</span>
+                </div>
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* User row */}
         <div
-          className="px-3 py-3 flex items-center gap-2"
+          className={`px-3 py-3 flex items-center gap-2 ${sidebarOpen ? "" : "justify-center"}`}
           style={{ borderTop: "1px solid hsl(var(--border))" }}
         >
           <div
@@ -204,21 +241,26 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               fontSize: "10px", fontWeight: 600, color: "hsl(var(--fg-2))",
               flexShrink: 0,
             }}
+            title={sidebarOpen ? undefined : name}
           >
             {initials}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="truncate font-medium text-white" style={{ fontSize: "12px", lineHeight: "1.3" }}>{name}</div>
-            <div className="truncate" style={{ fontSize: "11px", color: "hsl(var(--fg-3))" }}>{user?.role ?? ""}</div>
-          </div>
-          <button
-            onClick={logout}
-            style={{ color: "hsl(var(--fg-3))", padding: "4px" }}
-            className="hover:text-white transition-colors shrink-0 rounded"
-            title="Cerrar sesión"
-          >
-            <LogOut style={{ width: 13, height: 13 }} />
-          </button>
+          {sidebarOpen && (
+            <>
+              <div className="flex-1 min-w-0">
+                <div className="truncate font-medium text-white" style={{ fontSize: "12px", lineHeight: "1.3" }}>{name}</div>
+                <div className="truncate" style={{ fontSize: "11px", color: "hsl(var(--fg-3))" }}>{user?.role ?? ""}</div>
+              </div>
+              <button
+                onClick={logout}
+                style={{ color: "hsl(var(--fg-3))", padding: "4px" }}
+                className="hover:text-white transition-colors shrink-0 rounded"
+                title="Cerrar sesión"
+              >
+                <LogOut style={{ width: 13, height: 13 }} />
+              </button>
+            </>
+          )}
         </div>
       </aside>
 
