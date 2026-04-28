@@ -100,6 +100,17 @@ export class AuthController {
     return { message: 'Sesión cerrada.' };
   }
 
+  /** POST /auth/reset-password — direct reset by email + new password */
+  @Post('reset-password')
+  @Throttle({ auth: { limit: 2, ttl: 900_000 } })
+  @HttpCode(HttpStatus.OK)
+  resetPassword(
+    @Body('email') email: string,
+    @Body('newPassword') newPassword: string,
+  ) {
+    return this.authService.resetPassword(email, newPassword);
+  }
+
   /** GET /auth/my-workspaces — list all workspaces the user belongs to */
   @Get('my-workspaces')
   @UseGuards(JwtAuthGuard)
