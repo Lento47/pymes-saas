@@ -24,6 +24,27 @@ function navLabel(copy: any, key: NavKey): string {
   return copy.nav[key] ?? key;
 }
 
+function getWorkspaceColor(name: string): { bg: string; text: string } {
+  const colors = [
+    { bg: "bg-blue-500", text: "text-white" },
+    { bg: "bg-purple-500", text: "text-white" },
+    { bg: "bg-pink-500", text: "text-white" },
+    { bg: "bg-red-500", text: "text-white" },
+    { bg: "bg-orange-500", text: "text-white" },
+    { bg: "bg-yellow-500", text: "text-white" },
+    { bg: "bg-green-500", text: "text-white" },
+    { bg: "bg-teal-500", text: "text-white" },
+    { bg: "bg-cyan-500", text: "text-white" },
+    { bg: "bg-indigo-500", text: "text-white" },
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash) + name.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
 interface NavGroup {
   key: "work" | "operations" | "assistants";
   items: NavItem[];
@@ -172,8 +193,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 <Building2 className="w-4 h-4 text-primary-foreground" />
               </div>
 
-              {/* Workspace Name */}
-              <div className="flex-1 min-w-0">
+              {/* Workspace Name with Color Badge */}
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                <div className={cn(
+                  "w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold shrink-0",
+                  getWorkspaceColor(ws).bg,
+                  getWorkspaceColor(ws).text
+                )}>
+                  {ws.charAt(0).toUpperCase()}
+                </div>
                 <p className="text-sm font-semibold text-foreground truncate leading-tight">{ws}</p>
               </div>
 
