@@ -69,7 +69,7 @@ export function SamlConfig() {
           <div>
             <Label className="text-xs text-muted-foreground">Metadata URL</Label>
             <div className="flex items-center gap-2 mt-1">
-              <Input value={spMetadataUrl} readOnly className="text-xs font-mono bg-black/20 border-border" />
+              <Input value={spMetadataUrl} readOnly className="text-xs font-mono bg-foreground/[0.04] border-border" />
               <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(spMetadataUrl); toast({ title: 'Copiado' }); }}>
                 <Copy className="w-3 h-3" />
               </Button>
@@ -79,7 +79,7 @@ export function SamlConfig() {
           <div>
             <Label className="text-xs text-muted-foreground">Login URL</Label>
             <div className="flex items-center gap-2 mt-1">
-              <Input value={spLoginUrl} readOnly className="text-xs font-mono bg-black/20 border-border" />
+              <Input value={spLoginUrl} readOnly className="text-xs font-mono bg-foreground/[0.04] border-border" />
               <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(spLoginUrl); toast({ title: 'Copiado' }); }}>
                 <Copy className="w-3 h-3" />
               </Button>

@@ -324,18 +324,18 @@ export default function DashboardPage() {
           style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center right", minHeight: 96 }}>
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-4 md:px-7 md:py-5 relative">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-black/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
+              <div className="w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-foreground/[0.04] backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
                 <Activity className="w-5 h-5 md:w-7 md:h-7 text-primary" />
               </div>
               <div className="min-w-0">
                 {!bannerAI && aiPromptReady ? (
-                  <><div className="h-5 w-36 rounded bg-black/10 animate-pulse mb-1.5" /><div className="h-3.5 w-44 rounded bg-black/10 animate-pulse" /></>
+                  <><div className="h-5 w-36 rounded bg-foreground/[0.04] animate-pulse mb-1.5" /><div className="h-3.5 w-44 rounded bg-foreground/[0.04] animate-pulse" /></>
                 ) : (
                   <><h2 className="text-[15px] md:text-[17px] font-bold text-gray-900 leading-snug">{bannerTitle}</h2><p className="text-sm text-gray-700 mt-0.5">{bannerSubtitle}</p></>
                 )}
               </div>
             </div>
-            <div className="hidden sm:block h-12 w-px bg-black/10 flex-shrink-0" />
+            <div className="hidden sm:block h-12 w-px bg-foreground/[0.04] flex-shrink-0" />
             <div className="flex items-center gap-4 overflow-x-auto scrollbar-none -mx-1 px-1">
               {[
                 { bg: "linear-gradient(135deg,#8b7cf6,#a78bfa)", Icon: TrendingUp, label: dash.revenue, value: revenueStr, sub: dash.vsLastMonth, valueClass: revenueClass },
@@ -354,7 +354,7 @@ export default function DashboardPage() {
                       {sub && <p className="text-xs text-gray-500">{sub}</p>}
                     </div>
                   </div>
-                  {i < arr.length - 1 && <div className="h-10 w-px bg-black/10 ml-3" />}
+                  {i < arr.length - 1 && <div className="h-10 w-px bg-foreground/[0.04] ml-3" />}
                 </div>
               ))}
             </div>
@@ -427,7 +427,7 @@ export default function DashboardPage() {
 
           {/* 4 — Messages: minimal with live indicator */}
           <div className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px]"
-            style={{ background: "rgba(255,255,255,0.025)", border: "border border-border" }}>
+            className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px] bg-foreground/[0.015] border border-border"
             <div className="flex items-start justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/50">{dash.newMessages}</p>
               <div className="flex items-center gap-1">

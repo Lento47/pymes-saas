@@ -23,9 +23,9 @@ function DealCard({ deal, onDragStart, onClick }: { deal: Deal; onDragStart: (e:
   return (
     <div draggable onDragStart={(e) => onDragStart(e, deal.id)} onClick={() => onClick(deal)}
       className="rounded-xl p-3 cursor-grab active:cursor-grabbing select-none transition-all duration-200 hover:scale-[1.01] hover:shadow-lg active:opacity-70 group"
-      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
+      style={{ background: 'hsl(var(--foreground)/0.015)', border: '1px solid hsl(var(--foreground)/0.04)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
       <div className="flex items-start gap-2">
-        <GripVertical style={{ width: 12, height: 12, color: 'rgba(255,255,255,0.1)', marginTop: 2 }} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <GripVertical style={{ width: 12, height: 12, color: 'hsl(var(--fg-3))', marginTop: 2 }} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         <div className="flex-1 min-w-0">
           <div className="text-white text-[13px] font-medium leading-snug mb-2">{deal.title}</div>
           {deal.value && (
@@ -49,7 +49,7 @@ function DealCard({ deal, onDragStart, onClick }: { deal: Deal; onDragStart: (e:
           <div className="flex items-center justify-between mt-2">
             <span className={cn("text-[10px] font-medium", PRIORITY_COLORS[deal.priority])}>{PRIORITY_LABELS[deal.priority]}</span>
             {deal.assigned_user && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full text-muted-foreground/50" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full text-muted-foreground/50" style={{ background: 'hsl(var(--foreground)/0.04)' }}>
                 {deal.assigned_user.name.split(" ")[0]}
               </span>
             )}
@@ -64,25 +64,25 @@ function KanbanColumn({ stage, onDragStart, onDrop, onAddDeal, onClickDeal }: { 
   const [over, setOver] = useState(false);
   const total = columnTotal(stage.deals);
   return (
-    <div className="flex flex-col shrink-0 rounded-2xl transition-all duration-300"
-      style={{ width: 270, background: 'rgba(255,255,255,0.015)', border: `1px solid ${over ? 'rgba(139,124,246,0.25)' : 'rgba(255,255,255,0.04)'}` }}
+    <div       className="flex flex-col shrink-0 rounded-2xl transition-all duration-300 bg-foreground/[0.015]"
+      style={{ width: 270, border: `1px solid ${over ? 'rgba(139,124,246,0.25)' : 'hsl(var(--border))'}` }}
       onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
       onDrop={(e) => { setOver(false); onDrop(e, stage.id); }}>
-      <div className="px-3 py-3 flex items-center gap-2 rounded-t-2xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="px-3 py-3 flex items-center gap-2 rounded-t-2xl" style={{ borderBottom: '1px solid hsl(var(--foreground)/0.04)' }}>
         <div className="w-2 h-2 rounded-full" style={{ background: stage.color }} />
         <span className="flex-1 text-[13px] font-semibold text-foreground/85 truncate">{stage.name}</span>
         <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: `${stage.color}18`, color: stage.color }}>{stage.deals.length}</span>
       </div>
-      {total && <div className="px-3 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}><span className="text-[11px] text-muted-foreground/40">{total}</span></div>}
+      {total && <div className="px-3 py-1.5" style={{ borderBottom: '1px solid hsl(var(--foreground)/0.04)' }}><span className="text-[11px] text-muted-foreground/40">{total}</span></div>}
       <div className={cn("flex-1 flex flex-col gap-2 p-2 min-h-[80px] transition-colors", over && "bg-primary/[0.03]")}>
         {stage.deals.map(deal => <DealCard key={deal.id} deal={deal} onDragStart={onDragStart} onClick={onClickDeal} />)}
         {stage.deals.length === 0 && (
-          <div className="flex-1 flex items-center justify-center rounded-xl text-[11px] text-muted-foreground/20" style={{ border: '1px dashed rgba(255,255,255,0.04)', minHeight: 60 }}>Arrastra aquí</div>
+          <div className="flex-1 flex items-center justify-center rounded-xl text-[11px] text-muted-foreground/20" style={{ border: '1px dashed hsl(var(--foreground)/0.04)', minHeight: 60 }}>Arrastra aquí</div>
         )}
       </div>
       <button onClick={() => onAddDeal(stage.id)}
         className="flex items-center justify-center gap-1.5 px-3 py-2.5 w-full hover:bg-foreground/[0.015] transition-colors rounded-b-2xl text-muted-foreground/40 hover:text-muted-foreground/60"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+        style={{ borderTop: '1px solid hsl(var(--foreground)/0.04)' }}>
         <Plus style={{ width: 12, height: 12 }} /><span style={{ fontSize: 12 }}>Agregar</span>
       </button>
     </div>
@@ -101,7 +101,7 @@ export default function PipelinePage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
-      <header className="shrink-0 flex items-center justify-between px-6 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <header className="shrink-0 flex items-center justify-between px-6 py-3" style={{ borderBottom: '1px solid hsl(var(--foreground)/0.04)' }}>
         <div className="flex items-center gap-3">
           <KanbanSquare style={{ width: 16, height: 16, color: '#a78bfa' }} />
           <h1 className="text-[15px] font-semibold text-foreground">Pipeline</h1>

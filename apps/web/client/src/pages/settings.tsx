@@ -2355,7 +2355,7 @@ function ApiTokensTab() {
             <span className="text-sm font-semibold text-yellow-400">¡Guardá este token! No se mostrará de nuevo.</span>
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 bg-black/30 rounded px-3 py-2 text-xs text-yellow-200 break-all font-mono">{newToken}</code>
+            <code className="flex-1 bg-foreground/[0.04] rounded px-3 py-2 text-xs text-yellow-600 dark:text-yellow-200 break-all font-mono">{newToken}</code>
             <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(newToken); toast({ title: 'Copiado' }); }}><Copy className="h-4 w-4" /></Button>
           </div>
         </div>

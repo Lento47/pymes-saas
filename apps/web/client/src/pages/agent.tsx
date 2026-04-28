@@ -251,9 +251,9 @@ export default function Agent() {
               {SUGGESTIONS.map(({ text, sub }, i) => (
                 <button key={i} onClick={() => handleSend(text)} disabled={isStreaming}
                   className="group relative text-left px-4 py-3 rounded-xl transition-all duration-300 disabled:opacity-30"
-                  style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
+                  style={{ background: 'hsl(var(--foreground)/0.015)', border: '1px solid hsl(var(--foreground)/0.04)' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.2)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)'; }}>
+                  onMouseLeave={e => { e.currentTarget.style.background = 'hsl(var(--foreground)/0.015)'; e.currentTarget.style.borderColor = 'hsl(var(--foreground)/0.04)'; }}>
                   <span className="block text-[13px] text-foreground/75 group-hover:text-foreground transition-colors leading-snug">{text}</span>
                   <span className="block text-[10px] text-muted-foreground/40 mt-0.5">{sub}</span>
                 </button>
@@ -291,8 +291,8 @@ export default function Agent() {
                     border: '1px solid rgba(239,68,68,0.12)',
                     color: '#fca5a5',
                   } : {
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'hsl(var(--foreground)/0.015)',
+                    border: '1px solid hsl(var(--foreground)/0.04)',
                     color: '#e4e4e7',
                   }}>
                   {msg.role === 'user' ? (
@@ -346,7 +346,7 @@ export default function Agent() {
             {/* Embedded form */}
             {activeForm && (
               <div className="flex justify-start pl-10 animate-fade-in">
-                <div className="w-full max-w-sm rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="w-full max-w-sm rounded-2xl p-4" style={{ background: 'hsl(var(--foreground)/0.015)', border: '1px solid hsl(var(--foreground)/0.04)' }}>
                   <div className="flex items-center gap-2 mb-3">
                     <activeForm.icon style={{ width: 14, height: 14, color: '#a78bfa' }} />
                     <span className="text-[13px] font-medium text-foreground/85">{activeForm.title}</span>
@@ -362,15 +362,15 @@ export default function Agent() {
                           {f.type === 'select' ? (
                             <select value={activeForm.values[f.name]} onChange={e => updateFormValue(f.name, e.target.value)} disabled={activeForm.isSubmitting}
                               className="w-full rounded-lg px-3 py-1.5 text-[13px] outline-none disabled:opacity-40 text-foreground/85"
-                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                              style={{ background: 'hsl(var(--foreground)/0.03)', border: '1px solid hsl(var(--foreground)/0.04)' }}>
                               <option value="" className="bg-card">Seleccionar...</option>
                               {f.options?.map(o => <option key={o} value={o} className="bg-card">{o}</option>)}
                             </select>
                           ) : (
                             <input type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'email' ? 'email' : 'text'}
                               value={activeForm.values[f.name]} onChange={e => updateFormValue(f.name, e.target.value)} placeholder={f.placeholder} disabled={activeForm.isSubmitting}
-                              className="w-full rounded-lg px-3 py-1.5 text-[13px] outline-none disabled:opacity-40 text-foreground/85 placeholder:text-white/15"
-                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }} />
+                              className="w-full rounded-lg px-3 py-1.5 text-[13px] outline-none disabled:opacity-40 text-foreground/85 placeholder:text-foreground/15"
+                              style={{ background: 'hsl(var(--foreground)/0.03)', border: '1px solid hsl(var(--foreground)/0.04)' }} />
                           )}
                         </div>
                       ))}
@@ -417,7 +417,7 @@ export default function Agent() {
             {QUICK_FORMS.map(qf => (
               <button key={qf.tool} onClick={() => openForm(qf)} disabled={isStreaming || !!activeForm}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 disabled:opacity-20 hover:scale-[1.02]"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}>
+                style={{ background: 'hsl(var(--foreground)/0.03)', border: '1px solid hsl(var(--foreground)/0.04)', color: 'hsl(var(--fg-2))' }}>
                 <qf.icon style={{ width: 11, height: 11, color: '#a78bfa' }} />
                 {qf.label}
               </button>
@@ -427,8 +427,8 @@ export default function Agent() {
           {/* Input bar */}
           <div className="relative flex items-end gap-2 rounded-2xl px-4 py-3 transition-all duration-300 focus-within:border-indigo-500/30"
             style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'hsl(var(--foreground)/0.03)',
+              border: '1px solid hsl(var(--foreground)/0.04)',
               boxShadow: '0 1px 3px rgba(0,0,0,0.3), 0 0 0 1px rgba(99,102,241,0)',
             }}>
             <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
@@ -439,12 +439,12 @@ export default function Agent() {
               onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }} />
             <button onClick={() => handleSend()} disabled={!input.trim() || isStreaming}
               className="p-2 rounded-xl transition-all duration-200 shrink-0 disabled:opacity-20"
-              style={{ background: input.trim() && !isStreaming ? '#6366f1' : 'transparent', color: input.trim() && !isStreaming ? 'white' : 'rgba(255,255,255,0.2)' }}>
+              style={{ background: input.trim() && !isStreaming ? '#6366f1' : 'transparent', color: input.trim() && !isStreaming ? 'hsl(var(--accent-fg))' : 'hsl(var(--fg-3))' }}>
               {isStreaming ? <Loader2 style={{ width: 15, height: 15 }} className="animate-spin" /> : <ArrowUp style={{ width: 15, height: 15 }} />}
             </button>
           </div>
 
-          <p className="text-[10px] text-center mt-2 text-white/15">
+          <p className="text-[10px] text-center mt-2 text-foreground/15">
             HubbyAgent puede consultar datos, analizar documentos y ejecutar tareas.
           </p>
         </div>
