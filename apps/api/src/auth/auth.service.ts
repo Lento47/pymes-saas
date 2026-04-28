@@ -16,6 +16,7 @@ import { InviteTokenPayload } from './invite-token.types';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
+import { DemoDataService } from '../demo/demo-data.service';
 
 @Injectable()
 export class AuthService {
@@ -23,6 +24,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly refreshTokenService: RefreshTokenService,
+    private readonly demoData: DemoDataService,
   ) {}
 
   // ── Login ──────────────────────────────────────────────────────────────────
@@ -159,6 +161,11 @@ export class AuthService {
           },
         },
       },
+    });
+
+    // Auto-populate demo data (fire-and-forget — does not block registration)
+    this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch((err) => {
+      // Silent — demo data population failures are non-critical
     });
 
     const access_token = this.signToken({

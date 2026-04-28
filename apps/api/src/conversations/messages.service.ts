@@ -175,7 +175,23 @@ export class MessagesService {
 
     await this.prisma.conversation.update({
       where: { id: conversation.id },
-      data: { last_message_at: new Date(), updated_at: new Date() },
+      data: {
+        last_message_at: new Date(),
+        updated_at: new Date(),
+        // WhatsApp 24h service window tracking
+        ...(channel.type === 'WHATSAPP'
+          ? {
+              last_customer_message_at: new Date(),
+              service_window_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+              is_service_window_open: true,
+              requires_template_for_outbound: false,
+            }
+          : {}),
+        // Set first_response_at on first agent outbound reply
+        ...(message.direction === 'OUTBOUND' && !conversation.first_response_at
+          ? { first_response_at: new Date() }
+          : {}),
+      },
     });
 
     // Emitir en tiempo real

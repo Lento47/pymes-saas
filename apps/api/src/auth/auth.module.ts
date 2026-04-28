@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { RefreshTokenService } from './refresh-token.service';
+import { DemoModule } from '../demo/demo.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { RefreshTokenService } from './refresh-token.service';
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN ?? '15m') as any },
     }),
+    DemoModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, RolesGuard, RefreshTokenService],

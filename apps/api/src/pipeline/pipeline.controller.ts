@@ -59,7 +59,7 @@ export class PipelineController {
   @Get('deals')
   @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   getDeals(@CurrentUser('workspace_id') workspaceId: string) {
-    return this.pipelineService.getStages(workspaceId);
+    return this.pipelineService.getDeals(workspaceId);
   }
 
   @Post('deals')

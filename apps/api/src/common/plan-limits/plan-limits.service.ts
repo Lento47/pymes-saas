@@ -8,24 +8,42 @@ export class QuotaExceededError extends ForbiddenException {
   constructor(
     public resourceType: string,
     public current: number,
-    public limit: number,
+    public limit: number | string,
     public plan: string,
     public upgradeTo: string,
   ) {
-    const message = `Tu plan ${plan} permite un máximo de ${limit} ${resourceType}. Upgrade a ${upgradeTo} para agregar más.`;
-    super({ error: 'QUOTA_EXCEEDED', message, resourceType, current, limit, plan, upgradeTo });
+    const limitDisplay = limit === Infinity || limit === 'custom' ? 'ilimitado' : limit;
+    const message = `Tu plan ${plan} permite un máximo de ${limitDisplay} ${resourceType}. Upgrade a ${upgradeTo} para agregar más.`;
+    const helpActions = [
+      { type: 'delete' as const, label: `Eliminar ${resourceType} que ya no uses`, resourceType },
+      { type: 'upgrade' as const, label: `Actualizar a plan ${upgradeTo}`, upgradeTo },
+    ];
+    super({ error: 'QUOTA_EXCEEDED', message, resourceType, current, limit, plan, upgradeTo, helpActions });
   }
+}
+
+// ─── Evaluation result ──────────────────────────────────────────────────────
+
+export interface PlanLimitEvaluation {
+  allowed: boolean;
+  currentUsage: number;
+  limit: number | 'custom';
+  planKey: string;
+  reason?: string;
+  upgradeTarget?: string;
+  message?: string;
 }
 
 // ─── Plan limits definition ──────────────────────────────────────────────────
 
 interface PlanLimits {
-  users: number;
-  automations: number;
-  contacts: number;
-  documents: number;
-  invoices_per_month: number;
-  storage_bytes: number;
+  users: number | 'custom';
+  automations: number | 'custom';
+  contacts: number | 'custom';
+  documents: number | 'custom';
+  invoices_per_month: number | 'custom';
+  storage_bytes: number | 'custom';
+  locations: number | 'custom';
 }
 
 export type { PlanLimits };
@@ -38,39 +56,72 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     documents: 50,
     invoices_per_month: 50,
     storage_bytes: 100 * 1024 * 1024, // 100 MB
+    locations: 1,
   },
   STARTER: {
-    users: 10,
-    automations: 25,
-    contacts: 5_000,
-    documents: 500,
-    invoices_per_month: 200,
-    storage_bytes: 1 * 1024 * 1024 * 1024, // 1 GB
+    users: 1,
+    automations: 5,
+    contacts: 500,
+    documents: 100,
+    invoices_per_month: 100,
+    storage_bytes: 5 * 1024 * 1024 * 1024, // 5 GB
+    locations: 1,
   },
   GROWTH: {
-    users: 50,
-    automations: 100,
-    contacts: 50_000,
-    documents: 5_000,
-    invoices_per_month: 1_000,
+    users: 5,
+    automations: 25,
+    contacts: 2_500,
+    documents: 500,
+    invoices_per_month: 500,
     storage_bytes: 10 * 1024 * 1024 * 1024, // 10 GB
+    locations: 1,
+  },
+  BUSINESS: {
+    users: 15,
+    automations: 100,
+    contacts: 15_000,
+    documents: 5_000,
+    invoices_per_month: 2_000,
+    storage_bytes: 50 * 1024 * 1024 * 1024, // 50 GB
+    locations: 3,
   },
   ENTERPRISE: {
-    users: Infinity,
-    automations: Infinity,
-    contacts: Infinity,
-    documents: Infinity,
-    invoices_per_month: Infinity,
-    storage_bytes: Infinity,
+    // Legacy mapping → Business limits (backward compatibility)
+    users: 15,
+    automations: 100,
+    contacts: 15_000,
+    documents: 5_000,
+    invoices_per_month: 2_000,
+    storage_bytes: 50 * 1024 * 1024 * 1024,
+    locations: 3,
+  },
+  BUSINESS_PLUS: {
+    users: 'custom',
+    automations: 'custom',
+    contacts: 'custom',
+    documents: 'custom',
+    invoices_per_month: 'custom',
+    storage_bytes: 'custom',
+    locations: 'custom',
   },
 };
+
+export const PLAN_ORDER = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'] as const;
 
 const PLAN_NAMES: Record<string, string> = {
   FREE: 'Gratis',
   STARTER: 'Starter',
   GROWTH: 'Growth',
-  ENTERPRISE: 'Enterprise',
+  BUSINESS: 'Business',
+  ENTERPRISE: 'Business',
+  BUSINESS_PLUS: 'Business+',
 };
+
+// Normalize legacy ENTERPRISE to BUSINESS for upgrades
+function normalizePlan(plan: string): string {
+  if (plan === 'ENTERPRISE') return 'BUSINESS';
+  return plan;
+}
 
 @Injectable()
 export class PlanLimitsService {
@@ -82,19 +133,70 @@ export class PlanLimitsService {
   // ── Public helpers ────────────────────────────────────────────────────────
 
   getUpgradePlan(currentPlan: string): string {
-    const order = ['FREE', 'STARTER', 'GROWTH', 'ENTERPRISE'];
-    const idx = order.indexOf(currentPlan);
-    return order[Math.min(idx + 1, order.length - 1)];
+    const normalized = normalizePlan(currentPlan);
+    const order = [...PLAN_ORDER] as string[];
+    const idx = order.indexOf(normalized);
+    if (idx < 0) return 'BUSINESS_PLUS';
+    // Skip legacy ENTERPRISE — upgrade from BUSINESS goes directly to BUSINESS_PLUS
+    let nextIdx = Math.min(idx + 1, order.length - 1);
+    if (order[nextIdx] === 'ENTERPRISE') nextIdx = Math.min(nextIdx + 1, order.length - 1);
+    return order[nextIdx];
   }
 
   getLimits(plan: string): PlanLimits {
-    return { ...(PLAN_LIMITS[plan] ?? PLAN_LIMITS['FREE']) };
+    const p = normalizePlan(plan);
+    return { ...(PLAN_LIMITS[p] ?? PLAN_LIMITS['FREE']) };
+  }
+
+  /** Async version — reads custom limits from WorkspaceEnterpriseConfig for BUSINESS_PLUS */
+  async getEffectiveLimits(workspaceId: string): Promise<PlanLimits> {
+    const plan = await this.getWorkspacePlan(workspaceId);
+    const normalized = normalizePlan(plan);
+    const base = { ...(PLAN_LIMITS[normalized] ?? PLAN_LIMITS['FREE']) };
+
+    // BUSINESS_PLUS: merge custom limits from enterprise config
+    if (normalized === 'BUSINESS_PLUS') {
+      try {
+        const config = await this.prisma.workspaceEnterpriseConfig.findUnique({
+          where: { workspace_id: workspaceId },
+          select: { custom_limits: true },
+        });
+        const custom = (config?.custom_limits as any) ?? {};
+
+        // Map custom limit keys to PlanLimits fields
+        const limitMap: Record<string, keyof PlanLimits> = {
+          users: 'users',
+          contacts: 'contacts',
+          automations: 'automations',
+          documents: 'documents',
+          invoicesPerMonth: 'invoices_per_month',
+          storageGb: 'storage_bytes',
+          locations: 'locations',
+        };
+
+        for (const [key, planKey] of Object.entries(limitMap)) {
+          if (key === 'storageGb' && typeof custom[key] === 'number') {
+            base[planKey] = custom[key] * 1024 * 1024 * 1024; // GB → bytes
+          } else if (typeof custom[key] === 'number') {
+            base[planKey] = custom[key];
+          }
+        }
+      } catch {
+        // If enterprise config doesn't exist, fall through to default 'custom' limits
+      }
+    }
+
+    return base;
   }
 
   async isPlanAtLeast(workspaceId: string, minimumPlan: string): Promise<boolean> {
     const plan = await this.getWorkspacePlan(workspaceId);
-    const order = ['FREE', 'STARTER', 'GROWTH', 'ENTERPRISE'];
-    return order.indexOf(plan) >= order.indexOf(minimumPlan);
+    const normalized = normalizePlan(plan);
+    let minNorm = normalizePlan(minimumPlan);
+    const order = [...PLAN_ORDER] as string[];
+    // Skip ENTERPRISE in comparison — it's a legacy alias for BUSINESS
+    const effectiveOrder = order.filter(p => p !== 'ENTERPRISE');
+    return effectiveOrder.indexOf(normalized) >= effectiveOrder.indexOf(minNorm);
   }
 
   async enforcePlanTier(workspaceId: string, minimumPlan: string, featureName: string): Promise<void> {
@@ -108,6 +210,47 @@ export class PlanLimitsService {
     }
   }
 
+  // ── evaluatePlanLimit — centralized reusable evaluation ──────────────────
+
+  async evaluatePlanLimit(
+    workspaceId: string,
+    resourceKey: keyof PlanLimits,
+    requestedIncrement: number = 1,
+  ): Promise<PlanLimitEvaluation> {
+    const plan = await this.getWorkspacePlan(workspaceId);
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits[resourceKey];
+
+    // Custom / unlimited → always allow
+    if (limit === 'custom' || limit === Infinity) {
+      return {
+        allowed: true,
+        currentUsage: 0,
+        limit: 'custom',
+        planKey: plan,
+      };
+    }
+
+    const currentUsage = await this.getCurrentUsage(workspaceId, resourceKey);
+
+    const allowed = (currentUsage + requestedIncrement) <= (limit as number);
+
+    if (allowed) {
+      return { allowed: true, currentUsage, limit: limit as number, planKey: plan };
+    }
+
+    const upgradeTarget = this.getUpgradePlan(plan);
+    return {
+      allowed: false,
+      currentUsage,
+      limit: limit as number,
+      planKey: plan,
+      reason: `Límite de ${resourceKey} alcanzado`,
+      upgradeTarget,
+      message: `Has alcanzado el límite de ${resourceKeyToString(resourceKey)} (${currentUsage}/${limit}). Considera actualizar a ${PLAN_NAMES[upgradeTarget] || upgradeTarget}.`,
+    };
+  }
+
   // ── Private: resolve workspace plan ─────────────────────────────────────
 
   private async getWorkspacePlan(workspaceId: string): Promise<string> {
@@ -118,52 +261,90 @@ export class PlanLimitsService {
     return ws.plan;
   }
 
+  // ── Private: resolve current usage ──────────────────────────────────────
+
+  private async getCurrentUsage(workspaceId: string, resourceKey: keyof PlanLimits): Promise<number> {
+    switch (resourceKey) {
+      case 'users':
+        return this.prisma.workspaceUser.count({ where: { workspace_id: workspaceId } });
+      case 'automations':
+        return this.prisma.automationRule.count({ where: { workspace_id: workspaceId } });
+      case 'contacts':
+        return this.prisma.contact.count({ where: { workspace_id: workspaceId } });
+      case 'documents':
+        return this.prisma.document.count({ where: { workspace_id: workspaceId } });
+      case 'invoices_per_month': {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        return this.prisma.invoice.count({
+          where: { workspace_id: workspaceId, created_at: { gte: monthStart } },
+        });
+      }
+      case 'storage_bytes': {
+        const agg = await this.prisma.document.aggregate({
+          where: { workspace_id: workspaceId },
+          _sum: { file_size: true },
+        });
+        return agg._sum.file_size ?? 0;
+      }
+      case 'locations':
+        // Count unique location-like data points (canton/province combos on contacts)
+        return 1; // Simplified — real implementation would count locations
+      default:
+        return 0;
+    }
+  }
+
   // ── Public check methods (used by services) ─────────────────────────────
 
   async checkUserLimit(workspaceId: string): Promise<void> {
     const plan = await this.getWorkspacePlan(workspaceId);
-    const limit = this.getLimits(plan).users;
-    if (limit === Infinity) return;
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits.users;
+    if (limit === 'custom' || limit === Infinity) return;
 
     const current = await this.prisma.workspaceUser.count({ where: { workspace_id: workspaceId } });
-    if (current >= limit) {
+    if (current >= (limit as number)) {
       throw new QuotaExceededError('miembros', current, limit, plan, this.getUpgradePlan(plan));
     }
   }
 
   async checkAutomationLimit(workspaceId: string): Promise<void> {
     const plan = await this.getWorkspacePlan(workspaceId);
-    const limit = this.getLimits(plan).automations;
-    if (limit === Infinity) return;
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits.automations;
+    if (limit === 'custom' || limit === Infinity) return;
 
     const current = await this.prisma.automationRule.count({ where: { workspace_id: workspaceId } });
-    if (current >= limit) {
+    if (current >= (limit as number)) {
       throw new QuotaExceededError('automatizaciones', current, limit, plan, this.getUpgradePlan(plan));
     }
   }
 
   async checkContactLimit(workspaceId: string): Promise<void> {
     const plan = await this.getWorkspacePlan(workspaceId);
-    const limit = this.getLimits(plan).contacts;
-    if (limit === Infinity) return;
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits.contacts;
+    if (limit === 'custom' || limit === Infinity) return;
 
     const current = await this.prisma.contact.count({ where: { workspace_id: workspaceId } });
-    if (current >= limit) {
+    if (current >= (limit as number)) {
       throw new QuotaExceededError('contactos', current, limit, plan, this.getUpgradePlan(plan));
     }
   }
 
   async checkInvoiceLimit(workspaceId: string): Promise<void> {
     const plan = await this.getWorkspacePlan(workspaceId);
-    const limit = this.getLimits(plan).invoices_per_month;
-    if (limit === Infinity) return;
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits.invoices_per_month;
+    if (limit === 'custom' || limit === Infinity) return;
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const current = await this.prisma.invoice.count({
       where: { workspace_id: workspaceId, created_at: { gte: monthStart } },
     });
-    if (current >= limit) {
+    if (current >= (limit as number)) {
       throw new QuotaExceededError('facturas este mes', current, limit, plan, this.getUpgradePlan(plan));
     }
   }
@@ -186,22 +367,22 @@ export class PlanLimitsService {
     const plan = await this.getWorkspacePlan(workspaceId);
     const limits = this.getLimits(plan);
 
-    if (limits.documents !== Infinity) {
+    if (limits.documents !== Infinity && limits.documents !== 'custom') {
       const currentCount = await this.prisma.document.count({ where: { workspace_id: workspaceId } });
-      if (currentCount >= limits.documents) {
+      if (currentCount >= (limits.documents as number)) {
         throw new QuotaExceededError('documentos', currentCount, limits.documents, plan, this.getUpgradePlan(plan));
       }
     }
 
-    if (limits.storage_bytes !== Infinity) {
+    if (limits.storage_bytes !== Infinity && limits.storage_bytes !== 'custom') {
       const agg = await this.prisma.document.aggregate({
         where: { workspace_id: workspaceId },
         _sum: { file_size: true },
       });
       const usedBytes = agg._sum.file_size ?? 0;
-      if (usedBytes + newFileSizeBytes > limits.storage_bytes) {
+      if (usedBytes + newFileSizeBytes > (limits.storage_bytes as number)) {
         const usedMB = (usedBytes / 1024 / 1024).toFixed(1);
-        const limitMB = (limits.storage_bytes / 1024 / 1024).toFixed(0);
+        const limitMB = ((limits.storage_bytes as number) / 1024 / 1024).toFixed(0);
         throw new QuotaExceededError(
           'almacenamiento',
           parseFloat(usedMB),
@@ -212,4 +393,17 @@ export class PlanLimitsService {
       }
     }
   }
+}
+
+function resourceKeyToString(key: keyof PlanLimits): string {
+  const map: Record<string, string> = {
+    users: 'usuarios',
+    automations: 'automatizaciones',
+    contacts: 'contactos',
+    documents: 'documentos',
+    invoices_per_month: 'facturas por mes',
+    storage_bytes: 'almacenamiento',
+    locations: 'ubicaciones',
+  };
+  return map[key] || key;
 }

@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { DemoDataService } from '../demo/demo-data.service';
 
 const JWT_SECRET = 'test-secret';
 
@@ -31,6 +32,10 @@ const mockPrisma = {
   },
 };
 
+const mockDemoData = {
+  populateDemoWorkspace: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('AuthService', () => {
   let service: AuthService;
   let refreshTokenService: RefreshTokenService;
@@ -46,6 +51,7 @@ describe('AuthService', () => {
         AuthService,
         RefreshTokenService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: DemoDataService, useValue: mockDemoData },
       ],
     }).compile();
 

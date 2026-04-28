@@ -39,11 +39,13 @@ export class ChannelsController {
   }
 
   @Get()
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findAll(@CurrentUser('workspace_id') workspaceId: string) {
     return this.channelsService.findAll(workspaceId);
   }
 
   @Get(':id')
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,

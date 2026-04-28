@@ -58,6 +58,7 @@ export class ConversationsController {
   }
 
   @Get()
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findAll(
     @CurrentUser() user: AuthUser,
     @Query() filters: FilterConversationsDto,
@@ -75,6 +76,7 @@ export class ConversationsController {
   }
 
   @Get(':id')
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -123,6 +125,7 @@ export class ConversationsController {
   // ── Messages ───────────────────────────────────────────────────────────────
 
   @Get(':id/messages')
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   getMessages(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) conversationId: string,

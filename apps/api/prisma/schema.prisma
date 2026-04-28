@@ -28,7 +28,9 @@ enum WorkspacePlan {
   FREE
   STARTER
   GROWTH
+  BUSINESS
   ENTERPRISE
+  BUSINESS_PLUS
 }
 
 enum BillingProvider {
@@ -249,6 +251,15 @@ model Workspace {
   stripe_events        StripeEvent[]
   routing_rules        RoutingRule[]
 
+  // Business+ Enterprise relations
+  enterprise_config    WorkspaceEnterpriseConfig?
+  sso_config           WorkspaceSsoConfig?
+  sla_assignments      WorkspaceSlaAssignment[]
+  onboarding_project   OnboardingProject?
+  message_templates    MessageTemplate[]
+  usage_snapshots      WorkspaceUsageSnapshot[]
+  sales_inquiries      ContactSalesInquiry[]
+
   @@index([slug])
   @@index([status])
   @@map("workspaces")
@@ -281,6 +292,10 @@ model User {
   error_reports         ErrorReport[]
   assigned_deals        Deal[]              @relation("DealAssignee")
   billing_events        BillingEvent[]
+
+  // Business+ Enterprise relations
+  onboarding_projects  OnboardingProject[]  @relation("OnboardingOwner")
+  template_creations   MessageTemplate[]    @relation("TemplateCreator")
 
   @@index([email])
   @@index([status])
@@ -473,6 +488,12 @@ model Conversation {
   sla_breached  Boolean @default(false)
   sla_target_hours Int?
 
+  // WhatsApp 24h service window
+  last_customer_message_at    DateTime?
+  service_window_expires_at   DateTime?
+  is_service_window_open      Boolean  @default(false)
+  requires_template_for_outbound Boolean @default(false)
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -512,6 +533,17 @@ model Message {
   raw_payload_json      Json?             @db.JsonB
   ai_classification_json Json?            @db.JsonB
   sent_at               DateTime?
+
+  // WhatsApp / Telegram cost tracking
+  message_type  String?  // text | image | file | audio | template | system
+  cost_category String?  // service | utility | marketing | authentication | free | unknown
+  cost_estimate Float?   @default(0)
+  cost_currency  String? @default("CRC")
+
+  // Telegram specific
+  telegram_chat_id      String?
+  telegram_user_id      String?
+  telegram_message_id   String?
 
   created_at DateTime @default(now())
 
@@ -1103,4 +1135,372 @@ model BillingInvoice {
   @@index([status])
   @@index([issued_at(sort: Desc)])
   @@map("billing_invoices")
+}
+
+// ============================================================
+// BUSINESS+ — Enterprise Capability Definitions
+// ============================================================
+
+enum CapabilityStatus {
+  IMPLEMENTED
+  PARTIAL
+  BEHIND_FEATURE_FLAG
+  REQUIRES_CONFIGURATION
+  ROADMAP
+  DISABLED
+}
+
+model BusinessPlusCapability {
+  id                    String           @id @default(cuid())
+  key                   String           @unique
+  name                  String
+  description           String?          @db.Text
+  status                CapabilityStatus @default(ROADMAP)
+  visible_on_pricing    Boolean          @default(false)
+  visible_in_admin      Boolean          @default(true)
+  requires_sales_approval Boolean        @default(false)
+  requires_setup        Boolean          @default(false)
+  documentation_url     String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([key])
+  @@index([status])
+  @@map("business_plus_capabilities")
+}
+
+// ============================================================
+// BUSINESS+ — Workspace Enterprise Configuration
+// ============================================================
+
+model WorkspaceEnterpriseConfig {
+  id                 String    @id @default(cuid())
+  workspace_id       String    @unique
+  plan_key           String    @default("BUSINESS_PLUS")
+  contract_type      String?   // monthly | annual | custom
+  contract_start_date DateTime?
+  contract_end_date   DateTime?
+  custom_monthly_price Float?
+  custom_annual_price  Float?
+  currency            String?   @default("CRC")
+  custom_limits       Json?     @db.JsonB // { contacts, invoicesPerMonth, automations, storageGb, locations, users, apiCallsPerMonth, whatsappMessagesIncluded, telegramMessagesIncluded }
+  enabled_capabilities String[] // array of BusinessPlusCapability keys
+  sla_tier            String?   // none | standard | priority | custom
+  onboarding_tier     String?   // none | assisted | dedicated | custom
+  support_tier        String?   // standard | priority | dedicated | custom
+  security_tier       String?   // standard | advanced | custom
+  contract_notes      String?   @db.Text
+  internal_notes      String?   @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([plan_key])
+  @@map("workspace_enterprise_configs")
+}
+
+// ============================================================
+// SSO / SAML — Workspace-level SAML Configuration
+// ============================================================
+
+model WorkspaceSsoConfig {
+  id                           String  @id @default(cuid())
+  workspace_id                 String  @unique
+  provider_type                String  @default("saml")
+  enabled                      Boolean @default(false)
+  idp_entity_id                String?
+  idp_sso_url                  String?
+  idp_certificate_encrypted    String? @db.Text
+  metadata_url                 String?
+  metadata_xml_encrypted       String? @db.Text
+  sp_entity_id                 String?
+  acs_url                      String?
+  name_id_format               String?
+  email_attribute              String?
+  first_name_attribute         String?
+  last_name_attribute          String?
+  role_attribute               String?
+  allow_password_fallback_for_admins Boolean @default(true)
+  require_sso_for_members       Boolean @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([workspace_id, enabled])
+  @@map("workspace_sso_configs")
+}
+
+// ============================================================
+// FEATURE FLAGS
+// ============================================================
+
+enum RequiredPlan {
+  FREE
+  STARTER
+  GROWTH
+  BUSINESS
+  ENTERPRISE
+  BUSINESS_PLUS
+}
+
+model FeatureFlag {
+  id            String       @id @default(cuid())
+  key           String       @unique
+  name          String
+  description   String?      @db.Text
+  required_plan RequiredPlan @default(FREE)
+  enabled       Boolean      @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([key])
+  @@index([required_plan])
+  @@map("feature_flags")
+}
+
+// ============================================================
+// SLA — Service Level Agreement Policies
+// ============================================================
+
+model SlaPolicy {
+  id                          String  @id @default(cuid())
+  key                         String  @unique // standard | priority | custom
+  name                        String
+  support_window              String? // e.g. "Mon-Fri 8am-6pm CST"
+  first_response_target_minutes Int?
+  resolution_target_hours     Int?
+  uptime_target_percent       Float?
+  applies_to_plan             String  @default("BUSINESS_PLUS")
+  requires_contract           Boolean @default(false)
+  description                 String? @db.Text
+
+  assignments WorkspaceSlaAssignment[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([key])
+  @@index([applies_to_plan])
+  @@map("sla_policies")
+}
+
+model WorkspaceSlaAssignment {
+  id                 String   @id @default(cuid())
+  workspace_id       String
+  sla_policy_id      String
+  effective_from     DateTime @default(now())
+  effective_to       DateTime?
+  contract_reference String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace  Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  sla_policy SlaPolicy @relation(fields: [sla_policy_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([sla_policy_id])
+  @@map("workspace_sla_assignments")
+}
+
+// ============================================================
+// ONBOARDING — Dedicated Onboarding Projects
+// ============================================================
+
+enum OnboardingStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+}
+
+model OnboardingProject {
+  id                 String           @id @default(cuid())
+  workspace_id       String           @unique
+  plan_key           String           @default("BUSINESS_PLUS")
+  owner_user_id      String?
+  status             OnboardingStatus @default(NOT_STARTED)
+  target_go_live_date DateTime?
+  checklist          Json             @db.JsonB // [{ category, items: [{ label, completed, notes }] }]
+  notes              String?          @db.Text
+  success_criteria   String?          @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace  Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  owner_user User?     @relation("OnboardingOwner", fields: [owner_user_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([status])
+  @@map("onboarding_projects")
+}
+
+// ============================================================
+// MESSAGE TEMPLATES — WhatsApp / Telegram / Email
+// ============================================================
+
+enum TemplateStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  DISABLED
+}
+
+model MessageTemplate {
+  id                  String         @id @default(cuid())
+  workspace_id        String
+  channel             String         @default("WHATSAPP") // whatsapp | telegram | email
+  name                String
+  external_template_id String?
+  category            String?        // service | utility | marketing | authentication | unknown
+  language            String?
+  body                String         @db.Text
+  status              TemplateStatus @default(DRAFT)
+  variables           Json?          @db.JsonB
+  created_by_user_id  String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace  Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  created_by User?     @relation("TemplateCreator", fields: [created_by_user_id], references: [id])
+
+  @@index([workspace_id])
+  @@index([workspace_id, channel])
+  @@index([workspace_id, status])
+  @@index([workspace_id, name])
+  @@map("message_templates")
+}
+
+// ============================================================
+// USAGE METERING — Workspace Usage Snapshots
+// ============================================================
+
+model WorkspaceUsageSnapshot {
+  id                       String   @id @default(cuid())
+  workspace_id             String
+  period_start             DateTime
+  period_end               DateTime
+  contacts_count           Int      @default(0)
+  invoices_count           Int      @default(0)
+  automations_count        Int      @default(0)
+  storage_used_mb          Float    @default(0)
+  users_count              Int      @default(0)
+  locations_count          Int      @default(0)
+  whatsapp_messages_count  Int      @default(0)
+  telegram_messages_count  Int      @default(0)
+  email_messages_count     Int      @default(0)
+  forms_submitted_count    Int      @default(0)
+  api_calls_count          Int      @default(0)
+
+  created_at DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([workspace_id, period_start, period_end])
+  @@map("workspace_usage_snapshots")
+}
+
+// ============================================================
+// CONTACT SALES — Business+ Inquiry
+// ============================================================
+
+model ContactSalesInquiry {
+  id                        String   @id @default(cuid())
+  workspace_id              String?
+  business_name             String
+  contact_name              String
+  email                     String
+  phone                     String?
+  industry                  String?
+  employee_count            Int?
+  users_needed              Int?
+  locations_count           Int?
+  monthly_invoices_estimate Int?
+  contacts_estimate         Int?
+  current_tools             String?  @db.Text
+  channels_needed           String[] // whatsapp | telegram | email | forms
+  migration_needed          Boolean  @default(false)
+  sso_needed                Boolean  @default(false)
+  sla_needed                Boolean  @default(false)
+  dedicated_onboarding_needed Boolean @default(false)
+  custom_workflows_needed   Boolean  @default(false)
+  preferred_onboarding_date DateTime?
+  message                   String?  @db.Text
+  status                    String   @default("NEW") // NEW | CONTACTED | QUALIFIED | CLOSED
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([status])
+  @@index([email])
+  @@map("contact_sales_inquiries")
+}
+
+// ============================================================
+// RELATIONS for User (append to User model above)
+// ============================================================
+// NOTE: User.onboarding_projects and User.template_creations are added
+// via the @relation annotations on OnboardingProject and MessageTemplate
+
+// ============================================================
+// SYSTEM TEMPLATES — Pre-built templates for automation, message, invoice
+// ============================================================
+
+model SystemTemplate {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  type        String   // "automation" | "message" | "invoice" | "workspace"
+  name        String
+  description String?  @db.Text
+  category    String?  // "sales" | "support" | "billing" | "onboarding" | "general"
+  channel     String?  // "whatsapp" | "telegram" | "email"
+  body        Json     @db.JsonB
+  is_active   Boolean  @default(true)
+  order       Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([type])
+  @@index([type, is_active])
+  @@index([category])
+  @@map("system_templates")
+}
+
+// ============================================================
+// WORKSPACE TEMPLATES — Pre-built workspace configurations
+// ============================================================
+
+model WorkspaceTemplate {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  name            String
+  description     String?  @db.Text
+  industry        String?  // "retail" | "services" | "healthcare" | "restaurant"
+  pipeline_stages Json     @db.JsonB   // [{ name, color, order }]
+  contact_tags    String[]             // e.g. ["cliente", "proveedor"]
+  automation_rules Json    @db.JsonB   // array of automation templates
+  invoice_config  Json?   @db.JsonB   // default invoice settings
+  is_active       Boolean  @default(true)
+  order           Int      @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([industry])
+  @@index([is_active])
+  @@map("workspace_templates")
 }

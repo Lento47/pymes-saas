@@ -53,6 +53,14 @@ export class PipelineService {
     });
   }
 
+  async getDeals(workspaceId: string) {
+    return this.prisma.deal.findMany({
+      where: { stage: { workspace_id: workspaceId } },
+      orderBy: { created_at: 'desc' },
+      include: DEAL_INCLUDE,
+    });
+  }
+
   async createStage(workspaceId: string, dto: CreateStageDto) {
     const agg = await this.prisma.dealStage.aggregate({
       where: { workspace_id: workspaceId },
