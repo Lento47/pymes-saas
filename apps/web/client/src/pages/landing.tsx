@@ -780,14 +780,14 @@ export default function Landing() {
                               <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
                                 {copy.overview.performance.title}
                               </h2>
-                              <p className="text-sm text-[#bcc5ee]/64">
+                              <p className="text-sm text-white/85">
                                 {copy.overview.performance.description}
                               </p>
                             </div>
                           </div>
 
                           <div className="mt-8">
-                            <p className="text-sm uppercase tracking-[0.25em] text-[#aeb6df]/42">
+                            <p className="text-sm uppercase tracking-[0.25em] text-white/85">
                               {copy.overview.performance.metricLabel}
                             </p>
                             <div className="mt-2 flex items-end gap-3">
@@ -813,7 +813,7 @@ export default function Landing() {
                       <div className="mt-7 grid gap-3 sm:grid-cols-3">
                         {copy.overview.performance.stats.map(({ label, value }) => (
                           <div key={label} className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 rounded-2xl px-4 py-4">
-                            <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
+                            <p className="text-xs uppercase tracking-[0.22em] text-white/85">
                               {label}
                             </p>
                             <p className="font-marketing mt-2 text-2xl font-semibold tracking-[-0.03em] text-white/90">

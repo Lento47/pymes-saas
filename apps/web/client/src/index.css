@@ -138,9 +138,11 @@ html.dark .glass-panel-soft {
 
 html.dark .marketing-grid {
   background-image:
-    linear-gradient(to right, rgba(78,98,214,0.12) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(78,98,214,0.08) 1px, transparent 1px);
-  background-size: 72px 72px;
+    radial-gradient(circle, rgba(107,95,224,0.18) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(79,110,247,0.08) 1px, transparent 1px),
+    linear-gradient(-135deg, rgba(79,110,247,0.06) 1px, transparent 1px);
+  background-size: 80px 80px, 120px 120px, 120px 120px;
+  background-position: 0 0, 0 0, 40px 40px;
   mask-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.65) 18%, black 60%, transparent);
 }
 .marketing-grid {
