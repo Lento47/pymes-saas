@@ -24,25 +24,25 @@ function navLabel(copy: any, key: NavKey): string {
   return copy.nav[key] ?? key;
 }
 
-function getWorkspaceColor(name: string): { bg: string; text: string } {
-  const colors = [
-    { bg: "bg-blue-500", text: "text-white" },
-    { bg: "bg-purple-500", text: "text-white" },
-    { bg: "bg-pink-500", text: "text-white" },
-    { bg: "bg-red-500", text: "text-white" },
-    { bg: "bg-orange-500", text: "text-white" },
-    { bg: "bg-yellow-500", text: "text-white" },
-    { bg: "bg-green-500", text: "text-white" },
-    { bg: "bg-teal-500", text: "text-white" },
-    { bg: "bg-cyan-500", text: "text-white" },
-    { bg: "bg-indigo-500", text: "text-white" },
+function getWorkspaceGradient(name: string): { gradient: string; text: string } {
+  const gradients = [
+    { gradient: "linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #a855f7 0%, #6d28d9 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #ec4899 0%, #be185d 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #f43f5e 0%, #be123c 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #f97316 0%, #c2410c 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #eab308 0%, #854d0e 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #10b981 0%, #065f46 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #14b8a6 0%, #0d4f4a 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #06b6d4 0%, #084e62 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #6366f1 0%, #3730a3 100%)", text: "text-white" },
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = ((hash << 5) - hash) + name.charCodeAt(i);
     hash = hash & hash;
   }
-  return colors[Math.abs(hash) % colors.length];
+  return gradients[Math.abs(hash) % gradients.length];
 }
 
 interface NavGroup {
@@ -181,28 +181,28 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <div ref={wsMenuRef} className="relative">
             <button
               className={cn(
-                "group w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200",
-                "hover:bg-sidebar-accent/40 active:scale-95",
-                wsMenuOpen && "bg-sidebar-accent/60"
+                "group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+                "active:scale-95 relative overflow-hidden",
+                !wsMenuOpen && "hover:shadow-lg hover:shadow-black/20"
               )}
               onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
-              style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
+              style={{
+                background: wsMenuOpen ? "hsl(var(--sidebar-accent) / 0.4)" : getWorkspaceGradient(ws).gradient,
+                cursor: multipleWorkspaces ? "pointer" : "default",
+                boxShadow: wsMenuOpen ? "0 0 0 1px hsl(var(--primary) / 0.3)" : "0 4px 12px rgba(0, 0, 0, 0.15)"
+              }}
             >
+              {/* Background glow effect */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300" style={{ background: "radial-gradient(circle at top-right, rgba(255,255,255,0.3))" }}></div>
+
               {/* Workspace Avatar */}
-              <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shrink-0 shadow-sm group-hover:shadow-md transition-shadow lg:hidden">
-                <Building2 className="w-4 h-4 text-primary-foreground" />
+              <div className="relative w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 shadow-sm group-hover:shadow-md transition-shadow lg:hidden">
+                <Building2 className="w-4 h-4 text-white/80" />
               </div>
 
-              {/* Workspace Name with Color Badge */}
-              <div className="flex-1 min-w-0 flex items-center gap-2">
-                <div className={cn(
-                  "w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold shrink-0",
-                  getWorkspaceColor(ws).bg,
-                  getWorkspaceColor(ws).text
-                )}>
-                  {ws.charAt(0).toUpperCase()}
-                </div>
-                <p className="text-sm font-semibold text-foreground truncate leading-tight">{ws}</p>
+              {/* Workspace Name */}
+              <div className="flex-1 min-w-0 relative z-10">
+                <p className="text-sm font-bold text-white truncate leading-tight drop-shadow-sm">{ws}</p>
               </div>
 
               {/* Vertical Chevrons (^ ˅) */}
