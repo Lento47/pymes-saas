@@ -6,17 +6,17 @@
 const OTEL_ENABLED = process.env.OTEL_ENABLED === 'true';
 
 if (OTEL_ENABLED) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { NodeSDK } = require('@opentelemetry/sdk-node');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-http');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { PeriodicExportingMetricReader } = require('@opentelemetry/sdk-metrics');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Resource } = require('@opentelemetry/resources');
 
   const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318';

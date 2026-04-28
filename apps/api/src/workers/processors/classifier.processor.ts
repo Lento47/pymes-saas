@@ -41,7 +41,7 @@ export class ClassifierProcessor extends WorkerHost {
       message.body_text?.toLowerCase().includes(k),
     );
 
-    const dateRegex = /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}-\d{2}-\d{2})\b/;
+    const dateRegex = /\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}-\d{2}-\d{2})\b/;
     const hasDate = dateRegex.test(message.body_text ?? '');
 
     const category = isUrgent ? 'urgente' : 'general';

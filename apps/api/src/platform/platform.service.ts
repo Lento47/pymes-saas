@@ -152,7 +152,7 @@ export class PlatformService {
     const workspace = await this.prisma.workspace.findUnique({ where: { slug } });
     if (!workspace) throw new NotFoundException('Workspace no encontrado.');
 
-    let user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) throw new NotFoundException(`Usuario con email ${dto.email} no existe. Debe registrarse primero.`);
 
     const existing = await this.prisma.workspaceUser.findUnique({

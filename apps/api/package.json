@@ -58,6 +58,7 @@
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.0",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
     "@types/bcrypt": "^5.0.0",
@@ -65,11 +66,15 @@
     "@types/multer": "^2.1.0",
     "@types/node": "^20.0.0",
     "@types/passport-jwt": "^3.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^10.0.0",
     "jest": "^29.0.0",
     "prisma": "^5.0.0",
     "ts-jest": "^29.0.0",
     "ts-node": "^10.9.1",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.0.0"
   },
   "jest": {
     "moduleFileExtensions": [
