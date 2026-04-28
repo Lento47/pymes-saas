@@ -77,6 +77,11 @@ export default function TasksPage() {
     queryKey: ["/api/tasks/overdue"],
     queryFn: () => api.getOverdueTasks(),
   });
+  const { data: membersRaw } = useQuery({
+    queryKey: ["/api/workspaces/current/members", "tasks"],
+    queryFn: api.getMembers,
+  });
+  const members = Array.isArray(membersRaw) ? membersRaw : (membersRaw as any)?.data || [];
 
   const createMutation = useMutation({
     mutationFn: (data: Parameters<typeof toCreateTaskPayload>[0]) =>
@@ -348,6 +353,7 @@ export default function TasksPage() {
           initialData={form}
           onSave={(data) => createMutation.mutate(data)}
           isSaving={createMutation.isPending}
+          members={members}
         />
       </div>
     </TooltipProvider>

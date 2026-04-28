@@ -31,9 +31,10 @@ interface TaskSheetProps {
   initialData: TaskFormData;
   onSave: (data: TaskFormData) => void;
   isSaving: boolean;
+  members: any[];
 }
 
-export function TaskSheet({ open, onOpenChange, editingId, initialData, onSave, isSaving }: TaskSheetProps) {
+export function TaskSheet({ open, onOpenChange, editingId, initialData, onSave, isSaving, members }: TaskSheetProps) {
   const { messages } = useI18n();
   const t = messages.tasks;
   const isEdit = !!editingId;
@@ -114,6 +115,22 @@ export function TaskSheet({ open, onOpenChange, editingId, initialData, onSave, 
               className="h-9 text-xs bg-background border-border"
               data-testid="input-task-due-date"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] text-muted-foreground">Asignar a</Label>
+            <Select>
+              <SelectTrigger className="h-9 text-xs bg-background border-border">
+                <SelectValue placeholder="Sin asignar" />
+              </SelectTrigger>
+              <SelectContent>
+                {members.filter((m: any) => m.user?.id || m.id).map((m: any) => (
+                  <SelectItem key={m.user?.id || m.id} value={m.user?.id || m.id} className="text-xs">
+                    {m.user?.name || m.name || m.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
