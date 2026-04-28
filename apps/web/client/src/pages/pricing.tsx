@@ -105,6 +105,109 @@ export default function PricingPage() {
           </div>
         </section>
 
+        {/* ROI Messaging Section */}
+        <section className="px-4 py-16 md:px-8 md:py-24 bg-gradient-to-b from-indigo-900/10 to-transparent">
+          <div className="mx-auto max-w-7xl">
+            <div className="text-center mb-16">
+              <h2 className="font-marketing text-3xl md:text-4xl font-bold tracking-[-0.04em] text-white">
+                Clear ROI at Every Level
+              </h2>
+              <p className="mx-auto mt-4 max-w-2xl text-white/75">
+                Pay only for what you need. Scale up as your business grows and see immediate improvements in customer response times and revenue.
+              </p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-3">
+              {/* Starter */}
+              <div className="bg-indigo-900/20 border border-indigo-400/15 rounded-2xl p-6 transition-all hover:bg-indigo-900/30">
+                <div className="text-sm font-semibold text-white/75 mb-3">STARTER PLAN</div>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="text-[#dfff4a] font-bold mt-0.5">+</span>
+                    <div className="text-sm">
+                      <p className="text-white font-semibold">Save 5-10 hours/week</p>
+                      <p className="text-white/60 text-xs mt-1">Automated message routing & basic responses</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-[#dfff4a] font-bold mt-0.5">+</span>
+                    <div className="text-sm">
+                      <p className="text-white font-semibold">Respond 3x faster</p>
+                      <p className="text-white/60 text-xs mt-1">Unified inbox for WhatsApp, Email & more</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-[#dfff4a] font-bold mt-0.5">+</span>
+                    <div className="text-sm">
+                      <p className="text-white font-semibold">Ideal for teams 1-5</p>
+                      <p className="text-white/60 text-xs mt-1">Perfect to start improving customer ops</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Growth */}
+              <div className="bg-gradient-to-br from-[#dfff4a]/20 to-indigo-900/20 border border-[#dfff4a]/40 rounded-2xl p-6 ring-1 ring-[#dfff4a]/20 transition-all hover:from-[#dfff4a]/30 hover:to-indigo-900/30 relative">
+                <div className="absolute -top-3 left-6 bg-[#dfff4a] text-[#051127] px-3 py-1 rounded-full text-xs font-bold">
+                  Most Popular ROI
+                </div>
+                <div className="text-sm font-semibold text-[#dfff4a] mb-3 mt-2">GROWTH PLAN</div>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="text-[#dfff4a] font-bold mt-0.5">→</span>
+                    <div className="text-sm">
+                      <p className="text-white font-semibold">+25-40% faster billing</p>
+                      <p className="text-white/60 text-xs mt-1">Automated invoicing & payment tracking</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-[#dfff4a] font-bold mt-0.5">→</span>
+                    <div className="text-sm">
+                      <p className="text-white font-semibold">$500-1000/month revenue gain</p>
+                      <p className="text-white/60 text-xs mt-1">Recover lost invoices, reduce payment delays</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-[#dfff4a] font-bold mt-0.5">→</span>
+                    <div className="text-sm">
+                      <p className="text-white font-semibold">Best for teams 5-50</p>
+                      <p className="text-white/60 text-xs mt-1">Scale operations without hiring</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Business+ */}
+              <div className="bg-indigo-900/20 border border-indigo-400/15 rounded-2xl p-6 transition-all hover:bg-indigo-900/30">
+                <div className="text-sm font-semibold text-white/75 mb-3">BUSINESS+ PLAN</div>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="text-[#dfff4a] font-bold mt-0.5">↑</span>
+                    <div className="text-sm">
+                      <p className="text-white font-semibold">Custom integrations</p>
+                      <p className="text-white/60 text-xs mt-1">Sync with your existing CRM & tools</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-[#dfff4a] font-bold mt-0.5">↑</span>
+                    <div className="text-sm">
+                      <p className="text-white font-semibold">Dedicated support & training</p>
+                      <p className="text-white/60 text-xs mt-1">Maximize adoption & ROI across team</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-[#dfff4a] font-bold mt-0.5">↑</span>
+                    <div className="text-sm">
+                      <p className="text-white font-semibold">For enterprise teams</p>
+                      <p className="text-white/60 text-xs mt-1">Unlimited customization & growth</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Features Grid */}
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
