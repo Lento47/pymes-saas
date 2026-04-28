@@ -299,7 +299,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             <div className="flex-1">
               <LanguageSwitcher />
             </div>
-            <NotificationBell />
           </div>
 
           {/* User Profile */}
@@ -362,6 +361,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           {/* Spacer */}
           <div className="hidden md:flex-1" />
+
+          <NotificationBell />
 
           {/* Role Badge */}
           <span className="hidden sm:inline-block text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-3 py-1.5 rounded-lg bg-sidebar-accent/20">
