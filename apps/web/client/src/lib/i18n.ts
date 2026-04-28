@@ -719,7 +719,7 @@ export const translations = {
         "PymesHub reúne conversaciones, facturación, flujos de trabajo y visibilidad del pipeline en un solo sistema operativo para que tu equipo responda más rápido, dé mejor seguimiento y crezca con confianza.",
       primaryCta: "Empieza gratis hoy",
       secondaryCta: "Explora la plataforma",
-      note: "No se requiere tarjeta. Lanza tu workspace en minutos.",
+      note: "Comienza gratis en minutos. Planes opcionales cuando crezcas.",
       overview: {
         inbox: {
           title: "Bandeja omnicanal",
