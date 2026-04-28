@@ -168,7 +168,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
             >
               {/* Workspace Avatar */}
-              <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+              <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shrink-0 shadow-sm group-hover:shadow-md transition-shadow lg:hidden">
                 <Building2 className="w-4 h-4 text-primary-foreground" />
               </div>
 
