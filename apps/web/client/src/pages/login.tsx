@@ -63,7 +63,7 @@ function Field({
       >
         {label}
       </label>
-      <div className="group flex items-center gap-3 rounded-[20px] border border-white/12 bg-[#3d1f7d]/82 px-4 py-4 transition focus-within:border-[#6b5fe0]/35 focus-within:bg-[#4a2a8f]/92">
+      <div className="group flex items-center gap-3 rounded-[20px] border border-indigo-400/25 bg-indigo-900/30 backdrop-blur-sm px-4 py-4 shadow-[0_4px_20px_rgba(79,56,220,0.10)] transition focus-within:border-indigo-400/50 focus-within:bg-indigo-900/40 focus-within:shadow-[0_8px_32px_rgba(79,56,220,0.20)]">
         <span className="text-white/75">{icon}</span>
         <input
           id={id}
@@ -173,7 +173,7 @@ export default function LoginPage() {
             <LanguageSwitcher variant="marketing" />
           </div>
 
-          <div className="glass-panel rounded-[34px] px-6 py-8 md:px-10 md:py-10">
+          <div className="bg-indigo-950/50 backdrop-blur-xl border border-indigo-400/20 rounded-[34px] px-6 py-8 md:px-10 md:py-10">
             <BrandLockup className="justify-center" textClassName="text-xl tracking-[0.32em]" />
 
             {workspaceOptions.length > 0 ? (
@@ -206,7 +206,7 @@ export default function LoginPage() {
               <h1 className="font-marketing text-4xl font-semibold tracking-[-0.04em] text-white md:text-[3.45rem]">
                 {copy.welcome}
               </h1>
-              <p className="mx-auto mt-4 max-w-md text-base leading-8 text-[#c9d0f5]/72">
+              <p className="mx-auto mt-4 max-w-md text-base leading-8 text-white/85">
                 {copy.description}
               </p>
             </div>
@@ -257,9 +257,9 @@ export default function LoginPage() {
 
             <div className="mt-8">
               <div className="flex items-center gap-4">
-                <div className="h-px flex-1 bg-white/10" />
+                <div className="h-px flex-1 bg-indigo-400/20" />
                 <span className="text-sm text-white/70">{copy.forgot}</span>
-                <div className="h-px flex-1 bg-white/10" />
+                <div className="h-px flex-1 bg-indigo-400/20" />
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
