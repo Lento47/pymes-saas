@@ -9,7 +9,7 @@ export function CustomerContextPanel({
   if (!conversation) {
     return (
       <aside className="rounded-panel border border-border bg-[#0D1424] p-5">
-        <p className="text-sm text-slate-500 text-center mt-8">
+        <p className="text-sm text-muted-foreground/70 text-center mt-8">
           Seleccioná una conversación para ver el contexto del cliente.
         </p>
       </aside>
@@ -21,7 +21,7 @@ export function CustomerContextPanel({
   return (
     <aside className="min-h-0 overflow-y-auto rounded-panel border border-border bg-[#0D1424] p-4 shadow-panel space-y-4">
       <section className="rounded-card border border-border bg-foreground/[0.03] p-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground/70">
           Información del contacto
         </p>
 
@@ -31,23 +31,23 @@ export function CustomerContextPanel({
             <h3 className="text-sm font-semibold text-white">
               {contact?.full_name || contact?.name || "Cliente desconocido"}
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground/70">
               {contact?.company || "Sin empresa"}
             </p>
           </div>
         </div>
 
-        <div className="mt-4 space-y-2 text-sm text-slate-300">
+        <div className="mt-4 space-y-2 text-sm text-muted-foreground">
           {contact?.phone && <p>{contact.phone}</p>}
           {contact?.email && <p>{contact.email}</p>}
         </div>
       </section>
 
       <section className="rounded-card border border-border bg-foreground/[0.03] p-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground/70">
           Actividad reciente
         </p>
-        <p className="mt-3 text-sm text-slate-400">Sin actividad todavía.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Sin actividad todavía.</p>
       </section>
     </aside>
   );

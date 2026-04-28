@@ -20,8 +20,8 @@ export function ChannelFilterTabs({
             className={cn(
               "flex h-8 items-center gap-2 rounded-full px-3 text-xs font-medium transition-all",
               isActive
-                ? "bg-gradient-to-r from-brand-indigo to-brand-violet text-white shadow-glow"
-                : "text-slate-400 hover:bg-foreground/[0.06] hover:text-slate-100"
+                ? "bg-gradient-to-r from-primary to-brand-violet text-white "
+                : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground"
             )}
           >
             {icon}

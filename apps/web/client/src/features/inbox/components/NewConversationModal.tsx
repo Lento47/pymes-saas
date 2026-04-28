@@ -56,7 +56,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-gradient-to-r from-brand-indigo to-brand-violet hover:opacity-90 h-9 text-xs">
+        <Button size="sm" className="bg-gradient-to-r from-primary to-brand-violet hover:opacity-90 h-9 text-xs">
           <Plus className="h-3.5 w-3.5 mr-1.5" />Nueva
         </Button>
       </DialogTrigger>
@@ -64,9 +64,9 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
         <DialogHeader><DialogTitle className="text-foreground">Nueva conversación</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-2">
           <div>
-            <Label className="text-slate-300">Canal <span className="text-red-400">*</span></Label>
+            <Label className="text-muted-foreground">Canal <span className="text-red-400">*</span></Label>
             <Select value={channelId} onValueChange={setChannelId}>
-              <SelectTrigger className="mt-1 border-border bg-foreground/[0.04] text-slate-200">
+              <SelectTrigger className="mt-1 border-border bg-foreground/[0.04] text-foreground">
                 <SelectValue placeholder="Seleccioná un canal activo" />
               </SelectTrigger>
               <SelectContent className="border-border bg-[#0D1424]">
@@ -80,9 +80,9 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
             </Select>
           </div>
           <div>
-            <Label className="text-slate-300">Contacto</Label>
+            <Label className="text-muted-foreground">Contacto</Label>
             <Select value={contactId} onValueChange={setContactId}>
-              <SelectTrigger className="mt-1 border-border bg-foreground/[0.04] text-slate-200">
+              <SelectTrigger className="mt-1 border-border bg-foreground/[0.04] text-foreground">
                 <SelectValue placeholder="Seleccioná un contacto (opcional)" />
               </SelectTrigger>
               <SelectContent className="border-border bg-[#0D1424]">
@@ -96,18 +96,18 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
             </Select>
           </div>
           <div>
-            <Label className="text-slate-300">Asunto</Label>
+            <Label className="text-muted-foreground">Asunto</Label>
             <Input
               value={subject}
               onChange={e => setSubject(e.target.value)}
               placeholder="ej. Consulta sobre factura #123"
-              className="mt-1 border-border bg-foreground/[0.04] text-slate-200"
+              className="mt-1 border-border bg-foreground/[0.04] text-foreground"
             />
           </div>
           <Button
             onClick={() => create.mutate()}
             disabled={!channelId || create.isPending}
-            className="w-full bg-gradient-to-r from-brand-indigo to-brand-violet hover:opacity-90"
+            className="w-full bg-gradient-to-r from-primary to-brand-violet hover:opacity-90"
           >
             {create.isPending ? "Creando..." : "Crear conversación"}
           </Button>

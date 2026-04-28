@@ -25,17 +25,17 @@ export function InboxToolbar(props: InboxToolbarProps) {
       <div className="md:hidden space-y-2">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
             <Input
               value={props.search}
               onChange={(e) => props.onSearchChange(e.target.value)}
               placeholder="Buscar..."
-              className="h-9 rounded-control border-border bg-foreground/[0.04] pl-9 text-sm text-slate-100 placeholder:text-slate-500"
+              className="h-9 rounded-control border-border bg-foreground/[0.04] pl-9 text-sm text-foreground placeholder:text-muted-foreground/70"
             />
           </div>
           <button
             onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-            className="h-9 w-9 flex items-center justify-center rounded-control border border-border bg-foreground/[0.04] text-slate-400 shrink-0"
+            className="h-9 w-9 flex items-center justify-center rounded-control border border-border bg-foreground/[0.04] text-muted-foreground shrink-0"
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
@@ -55,12 +55,12 @@ export function InboxToolbar(props: InboxToolbarProps) {
       <div className="hidden md:flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="relative w-[320px]">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
             <Input
               value={props.search}
               onChange={(e) => props.onSearchChange(e.target.value)}
               placeholder="Buscar conversaciones..."
-              className="h-10 rounded-control border-border bg-foreground/[0.04] pl-9 text-sm text-slate-100 placeholder:text-slate-500"
+              className="h-10 rounded-control border-border bg-foreground/[0.04] pl-9 text-sm text-foreground placeholder:text-muted-foreground/70"
             />
           </div>
           <ChannelFilterTabs active={props.channelTab} onChange={props.onChannelTabChange} />

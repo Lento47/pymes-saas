@@ -11,7 +11,7 @@ export function StatusFilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as ConversationStatusFilter)}>
-      <SelectTrigger className="h-9 w-[150px] rounded-control border-border bg-foreground/[0.04] text-xs text-slate-300">
+      <SelectTrigger className="h-9 w-[150px] rounded-control border-border bg-foreground/[0.04] text-xs text-muted-foreground">
         <SelectValue />
       </SelectTrigger>
       <SelectContent className="border-border bg-[#0D1424]">

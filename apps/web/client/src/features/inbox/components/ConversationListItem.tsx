@@ -31,7 +31,7 @@ export function ConversationListItem({
       className={[
         "w-full rounded-2xl border p-3 text-left transition-all",
         selected
-          ? "border-brand-indigo/50 bg-brand-indigo/15 shadow-glow"
+          ? "border-primary/50 bg-primary/15 "
           : "border-transparent bg-foreground/[0.015] hover:border-border hover:bg-foreground/[0.045]",
       ].join(" ")}
     >
@@ -40,12 +40,12 @@ export function ConversationListItem({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="truncate text-sm font-semibold text-slate-100">
+            <p className="truncate text-sm font-semibold text-foreground">
               {contactName}
             </p>
 
             {timestamp && (
-              <span className="shrink-0 text-[11px] text-slate-500">
+              <span className="shrink-0 text-[11px] text-muted-foreground/70">
                 {formatDistanceToNow(new Date(timestamp), { addSuffix: false })}
               </span>
             )}
@@ -60,7 +60,7 @@ export function ConversationListItem({
             )}
           </div>
 
-          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-400">
+          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
             {preview}
           </p>
         </div>
