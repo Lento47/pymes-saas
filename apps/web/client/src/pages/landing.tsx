@@ -703,9 +703,81 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Mobile Carousel */}
-            <div className="md:hidden mt-16">
-              <Carousel opts={{ align: "start", loop: true }}>
+            {/* Value Props Grid - Mobile & Desktop */}
+            <div className="mt-16">
+              {/* Desktop: 3-column grid */}
+              <div className="hidden md:grid grid-cols-3 gap-6">
+                {/* Inbox/Communication */}
+                <div className="group bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl p-6 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300 group-hover:bg-indigo-400/25">
+                    <img src="/landing-icons/world.png" alt="" className="h-6 w-6" aria-hidden="true" />
+                  </div>
+                  <h3 className="font-marketing mt-4 text-xl font-bold tracking-[-0.02em] text-white">
+                    {copy.overview.inbox.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-white/75">
+                    {copy.overview.inbox.description}
+                  </p>
+                  <div className="mt-5 space-y-2">
+                    {copy.overview.inbox.signals.slice(0, 3).map((signal) => (
+                      <div key={signal.label} className="flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-300/60" />
+                        <span className="text-xs font-medium text-white/70">{signal.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Performance/Analytics */}
+                <div className="group bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl p-6 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300 group-hover:bg-indigo-400/25">
+                    <img src="/landing-icons/performance.png" alt="" className="h-6 w-6" aria-hidden="true" />
+                  </div>
+                  <h3 className="font-marketing mt-4 text-xl font-bold tracking-[-0.02em] text-white">
+                    {copy.overview.performance.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-white/75">
+                    {copy.overview.performance.description}
+                  </p>
+                  <div className="mt-5 space-y-2">
+                    {copy.overview.performance.stats.slice(0, 3).map(({ label }) => (
+                      <div key={label} className="flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-300/60" />
+                        <span className="text-xs font-medium text-white/70">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Automations */}
+                <div className="group bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl p-6 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300 group-hover:bg-indigo-400/25">
+                    <img src="/landing-icons/Smart-automations.png" alt="" className="h-6 w-6" aria-hidden="true" />
+                  </div>
+                  <h3 className="font-marketing mt-4 text-xl font-bold tracking-[-0.02em] text-white">
+                    {copy.overview.automations.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-white/75">
+                    {copy.overview.automations.description}
+                  </p>
+                  <div className="mt-5 space-y-2">
+                    {[
+                      { step: "New lead", action: "Assign agent" },
+                      { step: "Proposal sent", action: "Schedule reminder" },
+                      { step: "Invoice issued", action: "Send follow-up" },
+                    ].map((chip) => (
+                      <div key={chip.step} className="flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-300/60" />
+                        <span className="text-xs font-medium text-white/70">{chip.step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Carousel */}
+              <div className="md:hidden">
+                <Carousel opts={{ align: "start", loop: true }}>
                 <CarouselContent>
                   <CarouselItem className="basis-full">
                     <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[30px] p-6">
@@ -862,23 +934,24 @@ export default function Landing() {
                   <CarouselNext className="relative position-static mx-0 text-white hover:text-white/85" />
                 </div>
               </Carousel>
+              </div>
             </div>
 
             {/* Desktop Grid */}
-            <div ref={revealCards} className="reveal-up hidden md:grid mt-16 grid gap-6 xl:grid-cols-[0.95fr_1.7fr_0.95fr]">
-              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
+            <div ref={revealCards} className="reveal-up hidden md:grid mt-20 grid gap-6 grid-cols-1 lg:grid-cols-3">
+              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl p-6 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300">
                   <img
                     src="/landing-icons/world.png"
                     alt=""
-                    className="h-full w-full object-contain"
+                    className="h-6 w-6 object-contain"
                     aria-hidden="true"
                   />
                 </div>
-                <h2 className="font-marketing mt-6 text-3xl font-bold tracking-[-0.04em] text-white">
+                <h2 className="font-marketing mt-6 text-2xl font-bold tracking-[-0.03em] text-white">
                   {copy.overview.inbox.title}
                 </h2>
-                <p className="mt-3 text-sm leading-7 text-white/85">
+                <p className="mt-2 text-sm leading-6 text-white/75">
                   {copy.overview.inbox.description}
                 </p>
 
@@ -933,23 +1006,23 @@ export default function Landing() {
                 </div>
               </article>
 
-              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[34px] px-6 py-7 md:px-8 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
-                <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl px-6 py-7 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
+                <div className="flex flex-col gap-6">
                   <div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(98,118,255,0.34),rgba(82,97,241,0.16))] p-2 text-[#dfe6ff]">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300 shrink-0">
                         <img
                           src="/landing-icons/performance.png"
                           alt=""
-                          className="h-full w-full object-contain"
+                          className="h-6 w-6 object-contain"
                           aria-hidden="true"
                         />
                       </div>
-                      <div>
-                        <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
+                      <div className="min-w-0">
+                        <h2 className="font-marketing text-2xl font-bold tracking-[-0.03em] text-white">
                           {copy.overview.performance.title}
                         </h2>
-                        <p className="text-sm text-white/85">
+                        <p className="mt-1 text-sm text-white/75">
                           {copy.overview.performance.description}
                         </p>
                       </div>
@@ -993,19 +1066,19 @@ export default function Landing() {
                 </div>
               </article>
 
-              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
+              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl p-6 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300">
                   <img
                     src="/landing-icons/Smart-automations.png"
                     alt=""
-                    className="h-full w-full object-contain"
+                    className="h-6 w-6 object-contain"
                     aria-hidden="true"
                   />
                 </div>
-                <h2 className="font-marketing mt-6 text-3xl font-bold tracking-[-0.04em] text-white">
+                <h2 className="font-marketing mt-6 text-2xl font-bold tracking-[-0.03em] text-white">
                   {copy.overview.automations.title}
                 </h2>
-                <p className="mt-3 text-sm leading-7 text-white/85">
+                <p className="mt-2 text-sm leading-6 text-white/75">
                   {copy.overview.automations.description}
                 </p>
 
