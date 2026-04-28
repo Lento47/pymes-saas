@@ -140,6 +140,21 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           isMobile && "fixed left-0 top-0 h-screen z-50 shadow-lg"
         )}
       >
+        {/* ── Mobile Close Button ── */}
+        {isMobile && (
+          <div className="shrink-0 flex justify-end px-3 py-3 border-b border-border/40">
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className={cn(
+                "p-2 rounded-lg transition-all duration-200",
+                "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+              )}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
         {/* ── Workspace Selector ── */}
         <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border/40">
           <div ref={wsMenuRef} className="relative">
@@ -327,21 +342,18 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       {/* ── Main Content ── */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* ── Top Bar ── */}
-        <header className="shrink-0 flex items-center gap-3 px-4 lg:px-6 py-3 border-b border-border/40 bg-background/80 backdrop-blur-sm">
+        <header className="shrink-0 flex items-center gap-3 px-4 lg:px-6 py-3 border-b border-border/40 bg-background/80 backdrop-blur-sm relative z-40">
           {/* Menu toggle (Mobile) */}
-          {isMobile && (
+          {isMobile && !sidebarOpen && (
             <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+              onClick={() => setSidebarOpen(true)}
               className={cn(
-                "p-2 rounded-lg transition-all duration-200 lg:hidden",
+                "p-2 rounded-lg transition-all duration-200 lg:hidden shrink-0",
                 "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
               )}
+              title="Abrir menú"
             >
-              {sidebarOpen ? (
-                <X className="w-5 h-5" />
-              ) : (
-                <Menu className="w-5 h-5" />
-              )}
+              <Menu className="w-5 h-5" />
             </button>
           )}
 
