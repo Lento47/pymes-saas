@@ -72,7 +72,7 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
       'relative rounded-2xl border transition-all backdrop-blur-sm p-8',
       tier.popular
         ? 'border-[#dfff4a]/30 bg-white/[0.08]'
-        : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.05] hover:border-white/20'
+        : 'border-border bg-foreground/[0.03] hover:bg-foreground/[0.05] hover:border-white/20'
     )}>
       {/* Popular Badge */}
       {tier.popular && (
@@ -86,7 +86,7 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
       {/* Header */}
       <div>
         <h3 className="text-2xl font-bold text-white">{tier.name}</h3>
-        <p className="mt-2 text-sm text-white/60">{tier.description}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{tier.description}</p>
       </div>
 
       {/* Pricing */}
@@ -97,9 +97,9 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
           <>
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-bold text-white">${price}</span>
-              <span className="text-white/60">/{isAnnual ? 'year' : 'month'}</span>
+              <span className="text-muted-foreground">/{isAnnual ? 'year' : 'month'}</span>
             </div>
-            <div className="mt-2 text-sm text-white/60">
+            <div className="mt-2 text-sm text-muted-foreground">
               ₡{priceCRC.toLocaleString()} / {isAnnual ? 'año' : 'mes'}
             </div>
           </>
@@ -127,31 +127,31 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
       </button>
 
       {/* Features List */}
-      <div className="mt-8 border-t border-white/10 pt-8">
-        <div className="text-xs font-semibold text-white/60 uppercase tracking-wide mb-4">
+      <div className="mt-8 border-t border-border pt-8">
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
           Features
         </div>
         <div className="space-y-3">
           {tier.features.map((feature, index) => (
             <div key={index} className="flex gap-3">
               <Check className="h-4 w-4 flex-shrink-0 text-[#dfff4a]" />
-              <span className="text-sm text-white/80">{feature}</span>
+              <span className="text-sm text-foreground/85">{feature}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Limits */}
-      <div className="mt-8 border-t border-white/10 pt-8">
-        <div className="text-xs font-semibold text-white/60 uppercase tracking-wide mb-4">
+      <div className="mt-8 border-t border-border pt-8">
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
           Limits
         </div>
         {isEnterprise ? (
-          <div className="text-sm text-white/70 italic">
+          <div className="text-sm text-foreground/75 italic">
             Contact Sales for custom limits tailored to your business needs
           </div>
         ) : (
-          <div className="space-y-2 text-sm text-white/70">
+          <div className="space-y-2 text-sm text-foreground/75">
             <div>Contacts: <span className="text-white font-semibold">{tier.limits.contacts.toLocaleString()}</span></div>
             <div>Invoices/month: <span className="text-white font-semibold">{tier.limits.invoicesPerMonth.toLocaleString()}</span></div>
             <div>Automations: <span className="text-white font-semibold">{tier.limits.automations}</span></div>

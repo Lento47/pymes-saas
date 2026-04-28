@@ -21,15 +21,12 @@ function applyTheme(theme: Theme) {
   try { localStorage.setItem("pymeshub-theme", theme); } catch {}
 }
 
-// Apply theme immediately before React renders
-applyTheme(getStoredTheme());
-
 interface ThemeContextValue {
   theme: Theme;
   toggle: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextValue>({ theme: "dark", toggle: () => {} });
+const ThemeContext = createContext<ThemeContextValue>({ theme: getStoredTheme(), toggle: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(getStoredTheme);

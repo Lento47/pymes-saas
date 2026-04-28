@@ -58,7 +58,7 @@ export default function DocumentationCenterPage() {
 
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link href="/legal">
-                <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
+                <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-foreground/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
                   <ExternalLink className="h-4 w-4" />
                   {copy.openLegal}
                 </a>
@@ -85,12 +85,12 @@ export default function DocumentationCenterPage() {
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {docs.map((doc) => (
                       <Link key={doc.slug} href={`/documentation/${doc.slug}`}>
-                        <a className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                        <a className="group flex flex-col rounded-xl border border-border/[0.8] bg-foreground/[0.015] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-foreground/[0.04]">
                           <div className="flex items-center gap-3">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
                               <BookOpen className="h-4 w-4" />
                             </div>
-                            <span className="rounded-full border border-white/[0.06] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/25">
+                            <span className="rounded-full border border-border/[0.8] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/25">
                               {copy.publicBadge}
                             </span>
                           </div>

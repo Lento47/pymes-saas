@@ -60,7 +60,7 @@ export function NotificationBell() {
   return (
     <div className="relative">
       <button
-        className="relative p-1 rounded-md hover:bg-white/10 transition-colors"
+        className="relative p-1 rounded-md hover:bg-foreground/5 transition-colors"
         onClick={() => setOpen(!open)}
         title="Notificaciones"
       >
@@ -68,7 +68,7 @@ export function NotificationBell() {
         {unreadCount > 0 && (
           <span
             className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[16px] h-[16px] rounded-full text-[9px] font-semibold px-1"
-            style={{ background: "hsl(var(--accent))", color: "white" }}
+            style={{ background: "hsl(var(--accent))", color: "hsl(var(--accent-fg))" }}
           >
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>

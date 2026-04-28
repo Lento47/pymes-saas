@@ -39,7 +39,7 @@ export function LegalCenterPage() {
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {docs.map((doc) => (
             <Link key={doc.slug} href={`/legal/${doc.slug}`}>
-              <div className="group cursor-pointer rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+              <div className="group cursor-pointer rounded-xl border border-border/[0.8] bg-foreground/[0.015] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-foreground/[0.04]">
                 <div className="flex items-start gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 shrink-0 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
                     <ShieldCheck className="h-4 w-4" />

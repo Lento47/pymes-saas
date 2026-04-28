@@ -155,7 +155,7 @@ export default function ContactsPage() {
             </TableHeader>
             <TableBody>
               {contactList.map((c: any) => (
-                <TableRow key={c.id} className="border-border hover:bg-white/[0.02] cursor-pointer" data-testid={`contact-row-${c.id}`}>
+                <TableRow key={c.id} className="border-border hover:bg-foreground/[0.015] cursor-pointer" data-testid={`contact-row-${c.id}`}>
                   <TableCell>
                     <Link href={`/contacts/${c.id}`}>
                       <span className="text-sm font-medium text-foreground hover:text-primary transition-colors">

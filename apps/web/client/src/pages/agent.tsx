@@ -206,21 +206,21 @@ export default function Agent() {
       </div>
 
       {/* Header */}
-      <header className="relative shrink-0 flex items-center justify-between px-6 py-2.5 border-b border-white/[0.04]">
+      <header className="relative shrink-0 flex items-center justify-between px-6 py-2.5 border-b border-border/[0.6]">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-            <Sparkles style={{ width: 13, height: 13, color: 'white' }} />
+            <Sparkles style={{ width: 13, height: 13, color: 'hsl(var(--fg))' }} />
           </div>
-          <h1 className="text-[13px] font-semibold text-white/90 tracking-tight">Asistente IA</h1>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white/30"
+          <h1 className="text-[13px] font-semibold text-foreground tracking-tight">Asistente IA</h1>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-muted-foreground/50"
             style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.15)' }}>
             {isStreaming ? 'Respondiendo' : 'GPT-5.4'}
           </span>
         </div>
         {hasMessages && (
           <button onClick={handleNewConversation}
-            className="p-1.5 rounded-lg text-white/20 hover:text-white/50 hover:bg-white/[0.04] transition-all duration-200"
+            className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-muted-foreground/80 hover:bg-foreground/[0.04] transition-all duration-200"
             title="Nueva conversación">
             <Trash2 style={{ width: 14, height: 14 }} />
           </button>
@@ -234,16 +234,16 @@ export default function Agent() {
             {showWelcome && (
               <div className="mb-6 px-4 py-3 rounded-2xl text-center max-w-sm animate-fade-in"
                 style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.1)' }}>
-                <p className="text-sm font-medium text-white/80">🐾 ¡Hubby te da la bienvenida!</p>
-                <p className="text-xs text-white/40 mt-1">Preguntame lo que necesites sobre tu negocio.</p>
+                <p className="text-sm font-medium text-foreground/85">🐾 ¡Hubby te da la bienvenida!</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Preguntame lo que necesites sobre tu negocio.</p>
               </div>
             )}
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-lg"
               style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-              <Sparkles style={{ width: 24, height: 24, color: 'white' }} />
+              <Sparkles style={{ width: 24, height: 24, color: 'hsl(var(--fg))' }} />
             </div>
             <h2 className="text-xl font-semibold text-white mb-1.5 tracking-tight">Asistente IA</h2>
-            <p className="text-sm text-white/30 text-center mb-10 max-w-sm leading-relaxed">
+            <p className="text-sm text-muted-foreground/50 text-center mb-10 max-w-sm leading-relaxed">
               Tu agente inteligente para consultas, análisis y automatizaciones.
             </p>
 
@@ -254,8 +254,8 @@ export default function Agent() {
                   style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.2)'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)'; }}>
-                  <span className="block text-[13px] text-white/70 group-hover:text-white/90 transition-colors leading-snug">{text}</span>
-                  <span className="block text-[10px] text-white/20 mt-0.5">{sub}</span>
+                  <span className="block text-[13px] text-foreground/75 group-hover:text-foreground transition-colors leading-snug">{text}</span>
+                  <span className="block text-[10px] text-muted-foreground/40 mt-0.5">{sub}</span>
                 </button>
               ))}
             </div>
@@ -274,7 +274,7 @@ export default function Agent() {
                     ) : msg.role === 'tool' ? (
                       <span className="text-[11px]">⚡</span>
                     ) : (
-                      <Sparkles style={{ width: 12, height: 12, color: 'white' }} />
+                      <Sparkles style={{ width: 12, height: 12, color: 'hsl(var(--fg))' }} />
                     )}
                   </div>
                 )}
@@ -284,7 +284,7 @@ export default function Agent() {
                 }`}
                   style={msg.role === 'user' ? {
                     background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                    color: 'white',
+                    color: 'hsl(var(--fg))',
                     boxShadow: '0 2px 12px rgba(99,102,241,0.15)',
                   } : msg.role === 'system' ? {
                     background: 'rgba(239,68,68,0.06)',
@@ -306,10 +306,10 @@ export default function Agent() {
                   ) : (
                     <div className="text-[14px] leading-relaxed prose prose-invert prose-sm max-w-none break-words
                       [&_*]:text-inherit
-                      [&_code]:bg-white/[0.04] [&_code]:rounded [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[13px]
-                      [&_pre]:bg-white/[0.03] [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-[13px] [&_pre]:border [&_pre]:border-white/[0.05]
+                      [&_code]:bg-foreground/[0.04] [&_code]:rounded [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[13px]
+                      [&_pre]:bg-foreground/[0.03] [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-[13px] [&_pre]:border [&_pre]:border-white/[0.05]
                       [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5
-                      [&_strong]:text-white/90 [&_em]:text-white/70">
+                      [&_strong]:text-foreground [&_em]:text-foreground/75">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                       {msg.isStreaming && (
                         <span className="inline-block w-[2px] h-[16px] ml-0.5 align-text-bottom rounded-full animate-pulse"
@@ -349,8 +349,8 @@ export default function Agent() {
                 <div className="w-full max-w-sm rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
                   <div className="flex items-center gap-2 mb-3">
                     <activeForm.icon style={{ width: 14, height: 14, color: '#a78bfa' }} />
-                    <span className="text-[13px] font-medium text-white/80">{activeForm.title}</span>
-                    <button onClick={() => setActiveForm(null)} className="ml-auto p-0.5 rounded hover:bg-white/5 text-white/20">
+                    <span className="text-[13px] font-medium text-foreground/85">{activeForm.title}</span>
+                    <button onClick={() => setActiveForm(null)} className="ml-auto p-0.5 rounded hover:bg-white/5 text-muted-foreground/40">
                       <X style={{ width: 12, height: 12 }} />
                     </button>
                   </div>
@@ -358,10 +358,10 @@ export default function Agent() {
                     <div className="space-y-2">
                       {activeForm.fields.map(f => (
                         <div key={f.name}>
-                          <label className="block text-[11px] font-medium mb-1 text-white/30">{f.label}{f.required ? ' *' : ''}</label>
+                          <label className="block text-[11px] font-medium mb-1 text-muted-foreground/50">{f.label}{f.required ? ' *' : ''}</label>
                           {f.type === 'select' ? (
                             <select value={activeForm.values[f.name]} onChange={e => updateFormValue(f.name, e.target.value)} disabled={activeForm.isSubmitting}
-                              className="w-full rounded-lg px-3 py-1.5 text-[13px] outline-none disabled:opacity-40 text-white/80"
+                              className="w-full rounded-lg px-3 py-1.5 text-[13px] outline-none disabled:opacity-40 text-foreground/85"
                               style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                               <option value="" className="bg-[#111]">Seleccionar...</option>
                               {f.options?.map(o => <option key={o} value={o} className="bg-[#111]">{o}</option>)}
@@ -369,7 +369,7 @@ export default function Agent() {
                           ) : (
                             <input type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'email' ? 'email' : 'text'}
                               value={activeForm.values[f.name]} onChange={e => updateFormValue(f.name, e.target.value)} placeholder={f.placeholder} disabled={activeForm.isSubmitting}
-                              className="w-full rounded-lg px-3 py-1.5 text-[13px] outline-none disabled:opacity-40 text-white/80 placeholder:text-white/15"
+                              className="w-full rounded-lg px-3 py-1.5 text-[13px] outline-none disabled:opacity-40 text-foreground/85 placeholder:text-white/15"
                               style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }} />
                           )}
                         </div>
@@ -401,7 +401,7 @@ export default function Agent() {
               <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl animate-fade-in"
                 style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)', color: '#fca5a5' }}>
                 <span className="text-[13px]">{error}</span>
-                <button onClick={() => setError(null)} className="ml-auto p-0.5 rounded hover:bg-white/5 text-white/30"><X style={{ width: 10, height: 10 }} /></button>
+                <button onClick={() => setError(null)} className="ml-auto p-0.5 rounded hover:bg-white/5 text-muted-foreground/50"><X style={{ width: 10, height: 10 }} /></button>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -434,7 +434,7 @@ export default function Agent() {
             <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
               placeholder="Preguntame algo..."
               disabled={isStreaming} rows={1}
-              className="flex-1 resize-none bg-transparent text-[14px] outline-none disabled:opacity-30 text-white/80 placeholder:text-white/20"
+              className="flex-1 resize-none bg-transparent text-[14px] outline-none disabled:opacity-30 text-foreground/85 placeholder:text-muted-foreground/40"
               style={{ maxHeight: '120px' }}
               onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }} />
             <button onClick={() => handleSend()} disabled={!input.trim() || isStreaming}

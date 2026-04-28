@@ -60,8 +60,8 @@ function MarketingMenuAction({
   const classes = cn(
     "group block rounded-xl px-4 py-3 text-left transition-all duration-200",
     featured
-      ? "bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06]"
-      : "hover:bg-white/[0.04]"
+      ? "bg-foreground/[0.04] hover:bg-white/[0.08] border border-border/[0.8]"
+      : "hover:bg-foreground/[0.04]"
   );
 
   const content = (
@@ -467,7 +467,7 @@ export default function Landing() {
                 className={cn(
                   "luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7 transition-all duration-300",
                   scrolled
-                    ? "bg-[rgba(5,9,29,0.88)] backdrop-blur-[32px] border border-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
+                    ? "bg-[rgba(5,9,29,0.88)] backdrop-blur-[32px] border border-border/[0.8] shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
                     : "glass-panel"
                 )}
                 data-nav-item
@@ -647,7 +647,7 @@ export default function Landing() {
                   </a>
                 </Link>
                 <Link href="/product">
-                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
+                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-foreground/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
                     {copy.secondaryCta}
                   </a>
                 </Link>
@@ -683,7 +683,7 @@ export default function Landing() {
                       { ch: "EM", color: "#4F6EF7", name: "Carlos Ríos", msg: "Follow-up scheduled for Friday", time: "14m", dot: false },
                       { ch: "WA", color: "#25D366", name: "Beatriz Salas", msg: "Proposal accepted — pipeline updated", time: "1h", dot: true },
                     ].map((row) => (
-                      <div key={row.name} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5 hover:bg-white/[0.06] transition-colors">
+                      <div key={row.name} className="flex items-center gap-3 rounded-xl bg-foreground/[0.03] px-3 py-2.5 hover:bg-white/[0.06] transition-colors">
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: row.color + "22", color: row.color }}>{row.ch}</span>
                         <div className="min-w-0 flex-1">
                           <p className="font-marketing text-xs font-semibold text-white/90">{row.name}</p>
@@ -696,7 +696,7 @@ export default function Landing() {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 flex items-center justify-between rounded-xl bg-white/[0.02] px-3 py-2">
+                  <div className="mt-3 flex items-center justify-between rounded-xl bg-foreground/[0.015] px-3 py-2">
                     <span className="text-xs text-white/30">3 active threads · avg reply 6 min</span>
                     <span className="rounded-full bg-[#CBFF47]/10 px-2 py-0.5 text-[10px] font-semibold text-[#CBFF47]">SLA 94%</span>
                   </div>
@@ -1018,7 +1018,7 @@ export default function Landing() {
                     { step: "Proposal sent", action: "Schedule reminder", color: "#CBFF47" },
                     { step: "Invoice issued", action: "Send follow-up", color: "#25D366" },
                   ].map((chip) => (
-                    <div key={chip.step} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
+                    <div key={chip.step} className="flex items-center gap-2 rounded-xl bg-foreground/[0.03] px-3 py-2">
                       <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: chip.color, boxShadow: `0 0 6px ${chip.color}99` }} />
                       <span className="font-marketing text-xs text-white/60">{chip.step}</span>
                       <span className="text-white/20 text-xs">→</span>
@@ -1041,7 +1041,7 @@ export default function Landing() {
               </article>
             </div>
 
-            <div ref={revealTrust} className="reveal-up mt-16 border-t border-white/10 pt-10">
+            <div ref={revealTrust} className="reveal-up mt-16 border-t border-border pt-10">
               <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-[#95a0cc]/44">
                 {copy.trustTitle}
               </p>

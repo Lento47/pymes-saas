@@ -174,7 +174,7 @@ export default function DocumentsPage() {
           onClick={() => fileInputRef.current?.click()}
           className={cn(
             "mb-4 border-2 border-dashed rounded-xl p-10 flex flex-col items-center gap-3 cursor-pointer transition-colors",
-            dragOver ? "border-primary/60 bg-primary/5" : "border-border hover:border-border/80 hover:bg-white/[0.02]"
+            dragOver ? "border-primary/60 bg-primary/5" : "border-border hover:border-border/80 hover:bg-foreground/[0.015]"
           )}
         >
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -268,7 +268,7 @@ export default function DocumentsPage() {
                 const fileSize = formatBytes(doc.file_size || doc.fileSize);
 
                 return (
-                  <TableRow key={doc.id} className="border-border hover:bg-white/[0.02]" data-testid={`doc-row-${doc.id}`}>
+                  <TableRow key={doc.id} className="border-border hover:bg-foreground/[0.015]" data-testid={`doc-row-${doc.id}`}>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         {getFileIcon(mime)}

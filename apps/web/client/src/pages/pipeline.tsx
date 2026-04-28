@@ -13,7 +13,7 @@ interface Deal { id: string; title: string; value: string | null; currency: stri
 
 interface Stage { id: string; name: string; color: string; order: number; deals: Deal[]; }
 
-const PRIORITY_COLORS: Record<Deal["priority"], string> = { LOW: "text-white/30", MEDIUM: "text-[#a78bfa]", HIGH: "text-amber-400", URGENT: "text-rose-400", };
+const PRIORITY_COLORS: Record<Deal["priority"], string> = { LOW: "text-muted-foreground/50", MEDIUM: "text-[#a78bfa]", HIGH: "text-amber-400", URGENT: "text-rose-400", };
 const PRIORITY_LABELS: Record<Deal["priority"], string> = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", URGENT: "Urgente", };
 
 function fmtCRC(val: string | null, currency: string) { if (!val) return null; const n = parseFloat(val); if (isNaN(n)) return null; return new Intl.NumberFormat("es-CR", { style: "currency", currency, maximumFractionDigits: 0 }).format(n); }
@@ -30,18 +30,18 @@ function DealCard({ deal, onDragStart, onClick }: { deal: Deal; onDragStart: (e:
           <div className="text-white text-[13px] font-medium leading-snug mb-2">{deal.title}</div>
           {deal.value && (
             <div className="flex items-center gap-1 mb-1.5">
-              <DollarSign style={{ width: 10, height: 10 }} className="text-white/20" />
+              <DollarSign style={{ width: 10, height: 10 }} className="text-muted-foreground/40" />
               <span className="text-[12px] font-semibold text-[#a78bfa]">{fmtCRC(deal.value, deal.currency)}</span>
             </div>
           )}
           {deal.contact && (
-            <div className="flex items-center gap-1 mb-1 text-white/40">
+            <div className="flex items-center gap-1 mb-1 text-muted-foreground/60">
               <User style={{ width: 10, height: 10 }} />
               <span className="text-[11px] truncate">{deal.contact.full_name}</span>
             </div>
           )}
           {deal.closing_date && (
-            <div className="flex items-center gap-1 text-white/20">
+            <div className="flex items-center gap-1 text-muted-foreground/40">
               <Calendar style={{ width: 10, height: 10 }} />
               <span className="text-[11px]">{format(new Date(deal.closing_date), "dd/MM/yy")}</span>
             </div>
@@ -49,7 +49,7 @@ function DealCard({ deal, onDragStart, onClick }: { deal: Deal; onDragStart: (e:
           <div className="flex items-center justify-between mt-2">
             <span className={cn("text-[10px] font-medium", PRIORITY_COLORS[deal.priority])}>{PRIORITY_LABELS[deal.priority]}</span>
             {deal.assigned_user && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full text-white/30" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full text-muted-foreground/50" style={{ background: 'rgba(255,255,255,0.04)' }}>
                 {deal.assigned_user.name.split(" ")[0]}
               </span>
             )}
@@ -70,18 +70,18 @@ function KanbanColumn({ stage, onDragStart, onDrop, onAddDeal, onClickDeal }: { 
       onDrop={(e) => { setOver(false); onDrop(e, stage.id); }}>
       <div className="px-3 py-3 flex items-center gap-2 rounded-t-2xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="w-2 h-2 rounded-full" style={{ background: stage.color }} />
-        <span className="flex-1 text-[13px] font-semibold text-white/80 truncate">{stage.name}</span>
+        <span className="flex-1 text-[13px] font-semibold text-foreground/85 truncate">{stage.name}</span>
         <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: `${stage.color}18`, color: stage.color }}>{stage.deals.length}</span>
       </div>
-      {total && <div className="px-3 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}><span className="text-[11px] text-white/20">{total}</span></div>}
+      {total && <div className="px-3 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}><span className="text-[11px] text-muted-foreground/40">{total}</span></div>}
       <div className={cn("flex-1 flex flex-col gap-2 p-2 min-h-[80px] transition-colors", over && "bg-[#8b7cf6]/[0.03]")}>
         {stage.deals.map(deal => <DealCard key={deal.id} deal={deal} onDragStart={onDragStart} onClick={onClickDeal} />)}
         {stage.deals.length === 0 && (
-          <div className="flex-1 flex items-center justify-center rounded-xl text-[11px] text-white/10" style={{ border: '1px dashed rgba(255,255,255,0.04)', minHeight: 60 }}>Arrastra aquí</div>
+          <div className="flex-1 flex items-center justify-center rounded-xl text-[11px] text-muted-foreground/20" style={{ border: '1px dashed rgba(255,255,255,0.04)', minHeight: 60 }}>Arrastra aquí</div>
         )}
       </div>
       <button onClick={() => onAddDeal(stage.id)}
-        className="flex items-center justify-center gap-1.5 px-3 py-2.5 w-full hover:bg-white/[0.02] transition-colors rounded-b-2xl text-white/20 hover:text-white/40"
+        className="flex items-center justify-center gap-1.5 px-3 py-2.5 w-full hover:bg-foreground/[0.015] transition-colors rounded-b-2xl text-muted-foreground/40 hover:text-muted-foreground/60"
         style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
         <Plus style={{ width: 12, height: 12 }} /><span style={{ fontSize: 12 }}>Agregar</span>
       </button>
@@ -104,17 +104,17 @@ export default function PipelinePage() {
       <header className="shrink-0 flex items-center justify-between px-6 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="flex items-center gap-3">
           <KanbanSquare style={{ width: 16, height: 16, color: '#a78bfa' }} />
-          <h1 className="text-[15px] font-semibold text-white/90">Pipeline</h1>
-          <span className="text-[11px] text-white/20 ml-1">{stages?.length || 0} etapas</span>
+          <h1 className="text-[15px] font-semibold text-foreground">Pipeline</h1>
+          <span className="text-[11px] text-muted-foreground/40 ml-1">{stages?.length || 0} etapas</span>
         </div>
         <Button onClick={() => { setEditingDeal(null); setDefaultStage(undefined); setModalOpen(true); }}
-          size="sm" className="gap-1.5 rounded-xl text-[12px]" style={{ background: '#8b7cf6', color: 'white' }}>
+          size="sm" className="gap-1.5 rounded-xl text-[12px]" style={{ background: '#8b7cf6', color: 'hsl(var(--fg))' }}>
           <Plus style={{ width: 13, height: 13 }} />Nuevo deal
         </Button>
       </header>
 
       {isLoading ? (
-        <div className="flex-1 flex items-center justify-center text-white/20 text-sm">Cargando pipeline...</div>
+        <div className="flex-1 flex items-center justify-center text-muted-foreground/40 text-sm">Cargando pipeline...</div>
       ) : (
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
           <div className="flex gap-3 p-4 h-full items-start" style={{ minWidth: stages.length * 280 }}>

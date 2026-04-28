@@ -94,7 +94,7 @@ export default function HelpPage() {
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {docs.map((doc) => (
                   <Link key={doc.slug} href={`/help/${doc.slug}`}>
-                    <div className="cursor-pointer rounded-xl border border-border bg-card p-4 transition-colors hover:bg-white/[0.03]">
+                    <div className="cursor-pointer rounded-xl border border-border bg-card p-4 transition-colors hover:bg-foreground/[0.03]">
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <p className="text-sm font-medium text-foreground">{doc.title}</p>

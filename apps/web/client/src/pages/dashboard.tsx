@@ -126,22 +126,22 @@ function MetricCard({ label, value, currency, subLabel, icon: Icon, iconBg, load
   icon: any; iconBg: string; loading?: boolean;
 }) {
   return (
-    <div className="relative rounded-2xl overflow-hidden bg-white/[0.02] border border-white/[0.04] p-5 hover:shadow-md transition-shadow"
+    <div className="relative rounded-2xl overflow-hidden bg-foreground/[0.015] border border-border/[0.6] p-5 hover:shadow-md transition-shadow"
       style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center" }}>
       <div className="absolute inset-0 bg-[#0c0c0e]/[0.88] rounded-2xl" />
       <div className="relative">
         <div className="flex items-start justify-between mb-3">
-          <p className="text-sm font-medium text-white/70">{label}</p>
+          <p className="text-sm font-medium text-foreground/75">{label}</p>
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
             <Icon className="w-4 h-4" />
           </div>
         </div>
         {loading ? <Skeleton className="h-7 w-20" /> : (
           <>
-            <p className="text-2xl font-bold text-white/90">
+            <p className="text-2xl font-bold text-foreground">
               {currency}{typeof value === "number" ? value.toLocaleString("es-ES") : value}
             </p>
-            {subLabel && <p className="text-xs text-white/50 mt-1">{subLabel}</p>}
+            {subLabel && <p className="text-xs text-muted-foreground/80 mt-1">{subLabel}</p>}
           </>
         )}
       </div>
@@ -156,7 +156,7 @@ function PriorityBadge({ priority }: { priority: string }) {
   const map: Record<string, string> = {
     HIGH:   "bg-red-500/15 text-red-400",
     MEDIUM: "bg-yellow-500/15 text-yellow-400",
-    LOW:    "bg-white/[0.02] text-white/40",
+    LOW:    "bg-foreground/[0.015] text-white/40",
   };
   const labels: Record<string, string> = { HIGH: dash.high, MEDIUM: dash.medium, LOW: dash.low };
   return (
@@ -172,10 +172,10 @@ function Card({ title, linkTo, linkLabel, headerExtra, loading, empty, children 
   loading?: boolean; empty?: boolean; children?: React.ReactNode;
 }) {
   return (
-    <div className="bg-white/[0.02] rounded-2xl border border-white/[0.04] overflow-hidden">
+    <div className="bg-foreground/[0.015] rounded-2xl border border-border/[0.6] overflow-hidden">
       {(title || linkTo || headerExtra) && (
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.04]">
-          <h3 className="font-semibold text-white/90 text-sm">{title}</h3>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border/[0.6]">
+          <h3 className="font-semibold text-foreground text-sm">{title}</h3>
           <div className="flex items-center gap-2">
             {headerExtra}
             {linkTo && (
@@ -191,7 +191,7 @@ function Card({ title, linkTo, linkLabel, headerExtra, loading, empty, children 
       {loading
         ? <div className="px-5 py-4 space-y-3">{[0,1,2].map(i => <Skeleton key={i} className="h-4 w-full" />)}</div>
         : empty
-        ? <div className="px-5 py-8 text-center text-sm text-white/30">Sin datos aún</div>
+        ? <div className="px-5 py-8 text-center text-sm text-muted-foreground/50">Sin datos aún</div>
         : <div>{children}</div>
       }
     </div>
@@ -299,16 +299,16 @@ export default function DashboardPage() {
       {/* ── Page header ─────────────────────────────────────────────── */}
       <div className="px-4 md:px-8 pt-4 md:pt-7 pb-5 flex items-start justify-between gap-3 max-w-[1400px] mx-auto">
         <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-bold text-white/90 truncate">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact} 👋</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground truncate">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact} 👋</h1>
           <p className="text-sm text-white/40 mt-0.5">{bannerSubtitle || dash.subtitle}</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/[0.04] bg-white/[0.02] text-sm text-white/30 min-w-[200px]">
+          <div className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/[0.6] bg-foreground/[0.015] text-sm text-muted-foreground/50 min-w-[200px]">
             <Search className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1">{dash.search}</span>
-            <span className="text-xs text-white/20 font-mono">⌘ K</span>
+            <span className="text-xs text-muted-foreground/40 font-mono">⌘ K</span>
           </div>
-          <button className="p-2.5 rounded-xl border border-white/[0.04] bg-white/[0.02] text-white/40 hover:bg-white/[0.03] transition">
+          <button className="p-2.5 rounded-xl border border-border/[0.6] bg-foreground/[0.015] text-white/40 hover:bg-foreground/[0.03] transition">
             <Bell className="w-5 h-5" />
           </button>
           <button className="p-2.5 rounded-xl bg-[#8b7cf6] text-white hover:opacity-90 transition">
@@ -382,7 +382,7 @@ export default function DashboardPage() {
                   <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${(workspaceStats?.revenue_change_pct ?? 0) >= 0 ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
                     {(workspaceStats?.revenue_change_pct ?? 0) >= 0 ? "+" : ""}{workspaceStats?.revenue_change_pct ?? 0}%
                   </span>
-                  <span className="text-[11px] text-white/30">{dash.vsLastMonth}</span>
+                  <span className="text-[11px] text-muted-foreground/50">{dash.vsLastMonth}</span>
                 </div>
               </>
             )}
@@ -399,8 +399,8 @@ export default function DashboardPage() {
             </div>
             {invoicesLoading ? <Skeleton className="h-7 w-20 mt-2" /> : (
               <>
-                <p className="text-2xl font-bold text-white/90 mt-2 tracking-tight">₡{overdueAmount.toLocaleString("es-ES")}</p>
-                <span className={`mt-2 self-start text-[10px] font-medium px-2 py-0.5 rounded-full ${overdueCount > 0 ? "bg-amber-500/15 text-amber-300" : "bg-white/[0.04] text-white/30"}`}>
+                <p className="text-2xl font-bold text-foreground mt-2 tracking-tight">₡{overdueAmount.toLocaleString("es-ES")}</p>
+                <span className={`mt-2 self-start text-[10px] font-medium px-2 py-0.5 rounded-full ${overdueCount > 0 ? "bg-amber-500/15 text-amber-300" : "bg-foreground/[0.04] text-muted-foreground/50"}`}>
                   {overdueCount} {overdueCount === 1 ? dash.invoices.toLowerCase() : dash.invoices.toLowerCase()} {dash.pending.toLowerCase()}
                 </span>
               </>
@@ -419,7 +419,7 @@ export default function DashboardPage() {
             </div>
             {pipelineLoading ? <Skeleton className="h-7 w-20 mt-2" /> : (
               <>
-                <p className="text-2xl font-bold text-white/90 mt-2 tracking-tight">₡{totalPipeline.toLocaleString("es-ES")}</p>
+                <p className="text-2xl font-bold text-foreground mt-2 tracking-tight">₡{totalPipeline.toLocaleString("es-ES")}</p>
                 <p className="text-[11px] text-sky-400/50 mt-1.5">{dash.potentialRevenue}</p>
               </>
             )}
@@ -429,19 +429,19 @@ export default function DashboardPage() {
           <div className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px]"
             style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
             <div className="flex items-start justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/30">{dash.newMessages}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/50">{dash.newMessages}</p>
               <div className="flex items-center gap-1">
                 {(todayStats?.received_messages ?? 0) > 0 && (
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 )}
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.05] text-white/40">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-foreground/[0.05] text-white/40">
                   <MessageCircle className="w-3.5 h-3.5" />
                 </div>
               </div>
             </div>
             {statsLoading ? <Skeleton className="h-7 w-12 mt-2" /> : (
               <>
-                <p className="text-[2.25rem] font-bold text-white/90 leading-none mt-1">{todayStats?.received_messages ?? 0}</p>
+                <p className="text-[2.25rem] font-bold text-foreground leading-none mt-1">{todayStats?.received_messages ?? 0}</p>
                 <p className="text-[11px] text-white/25 mt-2">{(todayStats?.received_messages ?? 0) > 0 ? `${(todayStats?.received_messages ?? 0)} ${dash.today}` : dash.noMessagesToday}</p>
               </>
             )}
@@ -458,7 +458,7 @@ export default function DashboardPage() {
             </div>
             {tasksLoading ? <Skeleton className="h-7 w-16 mt-2" /> : (
               <>
-                <p className="text-2xl font-bold text-white/90 mt-2 tracking-tight">{taskList.length}</p>
+                <p className="text-2xl font-bold text-foreground mt-2 tracking-tight">{taskList.length}</p>
                 <div className="mt-2 flex items-center gap-1.5">
                   {taskList.length === 0
                     ? <span className="text-[11px] text-teal-400/60">✓ {dash.allCaughtUp}</span>
@@ -480,18 +480,18 @@ export default function DashboardPage() {
             {/* Revenue overview */}
             <Card title={dash.revenueOverview}
               headerExtra={
-                <span className="text-xs text-white/40 bg-white/[0.02] px-2.5 py-1.5 rounded-lg font-medium">
+                <span className="text-xs text-white/40 bg-foreground/[0.015] px-2.5 py-1.5 rounded-lg font-medium">
                   {new Date().toLocaleString("es-CR", { month: "long", year: "numeric" })}
                 </span>
               }
             >
               <div className="px-5 pt-4 pb-3">
                 <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-2xl font-bold text-white/90">₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}</span>
+                  <span className="text-2xl font-bold text-foreground">₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}</span>
                   <span className="text-sm text-green-500 font-medium">{workspaceStats?.revenue_change_pct ?? 0}% {dash.vsLastMonth}</span>
                 </div>
                 <RevenueChart monthlyRevenue={workspaceStats?.monthly_revenue ?? 0} changePct={workspaceStats?.revenue_change_pct ?? 0} />
-                <div className="flex justify-between text-xs text-white/30 mt-2 px-1">
+                <div className="flex justify-between text-xs text-muted-foreground/50 mt-2 px-1">
                   {(() => {
                     const now = new Date();
                     const month = now.toLocaleString("es-CR", { month: "short" });
@@ -515,7 +515,7 @@ export default function DashboardPage() {
                   {(["tasks", "messages"] as const).map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab)}
                       className={`px-4 py-2 text-sm font-medium transition capitalize ${
-                        activeTab === tab ? "text-[#8b7cf6] border-b-2 border-[#8b7cf6]" : "text-white/40 hover:text-white/70"
+                        activeTab === tab ? "text-[#8b7cf6] border-b-2 border-[#8b7cf6]" : "text-white/40 hover:text-foreground/75"
                       }`}>
                       {tab === "tasks" ? dash.tasks : dash.newMessages}
                     </button>
@@ -523,17 +523,17 @@ export default function DashboardPage() {
                 </div>
               }
             >
-              <div className="divide-y divide-white/[0.02]">
+              <div className="divide-y divide-border/[0.5]">
                 {activeTab === "tasks" ? (
                   taskList.length === 0
-                    ? <p className="px-5 py-6 text-sm text-center text-white/30">{dash.noTasks}</p>
+                    ? <p className="px-5 py-6 text-sm text-center text-muted-foreground/50">{dash.noTasks}</p>
                     : taskList.slice(0, 5).map((task: any) => (
                         <div key={task.id} className="flex items-center gap-3 px-5 py-3">
-                          <input type="checkbox" className="w-4 h-4 rounded border-white/[0.04] cursor-pointer accent-[#8b7cf6]" />
-                          <p className="flex-1 text-sm font-medium text-white/90 truncate">{task.title}</p>
+                          <input type="checkbox" className="w-4 h-4 rounded border-border/[0.6] cursor-pointer accent-[#8b7cf6]" />
+                          <p className="flex-1 text-sm font-medium text-foreground truncate">{task.title}</p>
                           <PriorityBadge priority={task.priority} />
                           {task.due_date && (
-                            <span className="text-xs text-white/30 whitespace-nowrap">
+                            <span className="text-xs text-muted-foreground/50 whitespace-nowrap">
                               {format(new Date(task.due_date), "MMM d", { locale: es })}
                             </span>
                           )}
@@ -541,18 +541,18 @@ export default function DashboardPage() {
                       ))
                 ) : (
                   convList.length === 0
-                    ? <p className="px-5 py-6 text-sm text-center text-white/30">{dash.noMessages}</p>
+                    ? <p className="px-5 py-6 text-sm text-center text-muted-foreground/50">{dash.noMessages}</p>
                     : convList.slice(0, 5).map((conv: any) => (
                         <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                          <a className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition">
+                          <a className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.015] transition">
                             <div className="w-8 h-8 rounded-full bg-[#8b7cf6]/15 flex items-center justify-center text-xs font-semibold text-[#8b7cf6] flex-shrink-0">
                               {conv.contact?.full_name?.charAt(0) || "?"}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-white/90 truncate">{conv.contact?.full_name || dash.unknownContact}</p>
-                              <p className="text-xs text-white/30 truncate">{conv.subject || dash.noSubject}</p>
+                              <p className="text-sm font-medium text-foreground truncate">{conv.contact?.full_name || dash.unknownContact}</p>
+                              <p className="text-xs text-muted-foreground/50 truncate">{conv.subject || dash.noSubject}</p>
                             </div>
-                            <span className="text-xs text-white/30 whitespace-nowrap">{conv.updated_at && format(new Date(conv.updated_at), "HH:mm")}</span>
+                            <span className="text-xs text-muted-foreground/50 whitespace-nowrap">{conv.updated_at && format(new Date(conv.updated_at), "HH:mm")}</span>
                           </a>
                         </Link>
                       ))
@@ -572,14 +572,14 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-white/80">{stage.name}</span>
-                          <span className="text-xs text-white/30">{stage.dealCount} {dash.deals}</span>
+                          <span className="text-xs font-medium text-foreground/85">{stage.name}</span>
+                          <span className="text-xs text-muted-foreground/50">{stage.dealCount} {dash.deals}</span>
                         </div>
-                        <span className="text-xs font-semibold text-white/70">
+                        <span className="text-xs font-semibold text-foreground/75">
                           {stage.totalValue > 0 ? fmtMoney(stage.totalValue, stage.currency) : "—"}
                         </span>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-white/[0.02] overflow-hidden">
+                      <div className="h-2 w-full rounded-full bg-foreground/[0.015] overflow-hidden">
                         <div className="h-full rounded-full transition-all"
                           style={{ width: `${Math.max((stage.dealCount / maxDeals) * 100, 6)}%`, backgroundColor: stage.color }} />
                       </div>
@@ -587,9 +587,9 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 {stageRows.length > 0 && (
-                  <div className="pt-3 border-t border-white/[0.04] flex items-center justify-between">
-                    <span className="text-sm font-semibold text-white/70">{dash.totalPipelineValue}</span>
-                    <span className="text-sm font-bold text-white/90">{fmtMoney(totalPipeline, firstCurrency)}</span>
+                  <div className="pt-3 border-t border-border/[0.6] flex items-center justify-between">
+                    <span className="text-sm font-semibold text-foreground/75">{dash.totalPipelineValue}</span>
+                    <span className="text-sm font-bold text-foreground">{fmtMoney(totalPipeline, firstCurrency)}</span>
                   </div>
                 )}
               </div>
@@ -597,9 +597,9 @@ export default function DashboardPage() {
 
             {/* Recent activity */}
             <Card title={dash.recentActivity} linkTo="/inbox" linkLabel={`${dash.viewAll} →`}>
-              <div className="divide-y divide-white/[0.02]">
+              <div className="divide-y divide-border/[0.5]">
                 {activityItems.length === 0 && (
-                  <p className="px-5 py-6 text-sm text-center text-white/30">{dash.noRecentActivity}</p>
+                  <p className="px-5 py-6 text-sm text-center text-muted-foreground/50">{dash.noRecentActivity}</p>
                 )}
                 {activityItems.map(item => {
                   const isMsg = item.type === "message";
@@ -611,14 +611,14 @@ export default function DashboardPage() {
                           : <Receipt className="w-4 h-4 text-green-400" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white/90 truncate">{item.title}</p>
-                        <p className="text-xs text-white/30 truncate">{item.sub}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
+                        <p className="text-xs text-muted-foreground/50 truncate">{item.sub}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
                         {item.amount != null && (
                           <p className="text-xs font-semibold text-green-400">€{item.amount.toLocaleString("es-ES")}</p>
                         )}
-                        <p className="text-xs text-white/30">{item.date ? timeAgo(item.date) : ""}</p>
+                        <p className="text-xs text-muted-foreground/50">{item.date ? timeAgo(item.date) : ""}</p>
                       </div>
                     </div>
                   );
@@ -657,7 +657,7 @@ export default function DashboardPage() {
                           </div>
                           <div>
                             <p className="text-xs font-semibold text-white leading-snug">{ins.title}</p>
-                            <p className="text-xs text-white/50 mt-0.5 leading-snug">{ins.suggestion}</p>
+                            <p className="text-xs text-muted-foreground/80 mt-0.5 leading-snug">{ins.suggestion}</p>
                           </div>
                         </div>
                       );
@@ -672,7 +672,7 @@ export default function DashboardPage() {
                           </div>
                           <div>
                             <p className="text-xs font-semibold text-white leading-snug">{ins.title}</p>
-                            <p className="text-xs text-white/50 mt-0.5 leading-snug">{ins.suggestion}</p>
+                            <p className="text-xs text-muted-foreground/80 mt-0.5 leading-snug">{ins.suggestion}</p>
                           </div>
                         </div>
                       );
@@ -693,7 +693,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Quick actions */}
-            <div className="bg-white/[0.02] rounded-2xl border border-white/[0.04] p-5">
+            <div className="bg-foreground/[0.015] rounded-2xl border border-border/[0.6] p-5">
               <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">{dash.quickActions}</h3>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -705,11 +705,11 @@ export default function DashboardPage() {
                   { Icon: Zap,         label: dash.automation,       href: "/automations", bg: "bg-pink-500/15",    ic: "text-pink-400"   },
                 ].map(({ Icon, label, href, bg, ic }) => (
                   <Link key={href + label} href={href}>
-                    <a className="flex flex-col items-center gap-2 py-3 px-1 rounded-xl hover:bg-white/[0.02] transition group">
+                    <a className="flex flex-col items-center gap-2 py-3 px-1 rounded-xl hover:bg-foreground/[0.015] transition group">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg}`}>
                         <Icon className={`w-5 h-5 ${ic}`} />
                       </div>
-                      <span className="text-xs font-medium text-white/60 text-center leading-tight">{label}</span>
+                      <span className="text-xs font-medium text-muted-foreground text-center leading-tight">{label}</span>
                     </a>
                   </Link>
                 ))}

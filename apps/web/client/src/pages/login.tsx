@@ -186,7 +186,7 @@ export default function LoginPage() {
                       key={ws.slug}
                       onClick={(e) => { setWorkspaceOptions([]); handleSubmit(e, ws.slug); }}
                       disabled={loading}
-                      className="w-full rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:border-white/20 hover:bg-white/[0.08]"
+                      className="w-full rounded-2xl border border-border bg-foreground/[0.04] p-4 text-left transition hover:border-white/20 hover:bg-white/[0.08]"
                     >
                       <p className="text-sm font-semibold text-white">{ws.name}</p>
                       <p className="text-xs text-white/40">{ws.slug}</p>

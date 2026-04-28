@@ -117,10 +117,10 @@ export default function PricingPage() {
               </p>
             </div>
 
-            <div className="mt-16 overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02]">
+            <div className="mt-16 overflow-x-auto rounded-xl border border-border bg-foreground/[0.015]">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/10">
+                  <tr className="border-b border-border">
                     <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">
                       Feature
                     </th>
@@ -142,7 +142,7 @@ export default function PricingPage() {
                     { label: 'Automations', key: 'automations' },
                     { label: 'Storage', key: 'storageGB' },
                   ].map((row) => (
-                    <tr key={row.key} className="hover:bg-white/[0.02] transition">
+                    <tr key={row.key} className="hover:bg-foreground/[0.015] transition">
                       <td className="px-6 py-4 text-sm text-white/80">{row.label}</td>
                       {PRICING_TIERS.map((tier) => {
                         const isBusinessPlus = tier.name === 'Business+';
@@ -212,7 +212,7 @@ export default function PricingPage() {
               </button>
               <button
                 onClick={() => navigate('/contact-sales')}
-                className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.04] px-8 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/[0.08]">
+                className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/20 bg-foreground/[0.04] px-8 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/[0.08]">
                 {copy.cta?.secondary || 'Schedule a Demo'}
               </button>
             </div>

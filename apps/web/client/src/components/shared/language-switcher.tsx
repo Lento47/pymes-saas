@@ -22,7 +22,7 @@ export function LanguageSwitcher({
       className={cn(
         "inline-flex items-center gap-1 rounded-full border p-1",
         isMarketing
-          ? "border-white/10 bg-white/[0.04] text-white/76"
+          ? "border-border bg-foreground/[0.04] text-white/76"
           : "border-border bg-[hsl(var(--elevated))] text-muted-foreground",
         className
       )}
@@ -31,7 +31,7 @@ export function LanguageSwitcher({
       <span
         className={cn(
           "inline-flex h-8 w-8 items-center justify-center rounded-full",
-          isMarketing ? "bg-white/[0.05]" : "bg-black/10"
+            isMarketing ? "bg-foreground/[0.05]" : "bg-foreground/[0.06]"
         )}
         aria-hidden="true"
       >
@@ -51,9 +51,9 @@ export function LanguageSwitcher({
               active
                 ? isMarketing
                   ? "bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] text-[#071126]"
-                  : "bg-[hsl(var(--bg-active))] text-foreground"
+                  : "bg-primary text-primary-foreground shadow-sm"
                 : isMarketing
-                  ? "text-white/70 hover:text-white"
+                  ? "text-foreground/75 hover:text-white"
                   : "text-muted-foreground hover:text-foreground"
             )}
             aria-pressed={active}

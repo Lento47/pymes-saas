@@ -59,8 +59,8 @@ function MarketingMenuAction({
   const classes = cn(
     "group block rounded-xl px-4 py-3 text-left transition-all duration-200",
     featured
-      ? "bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06]"
-      : "hover:bg-white/[0.04]"
+      ? "bg-foreground/[0.04] hover:bg-white/[0.08] border border-border/[0.8]"
+      : "hover:bg-foreground/[0.04]"
   );
 
   const content = (
@@ -755,7 +755,7 @@ export default function Landing() {
 
                 <div className="mt-8 space-y-4">
                   {copy.workflows.flowSteps.map(([title, detail], index) => (
-                    <div key={title} className="flex gap-4 rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4">
+                    <div key={title} className="flex gap-4 rounded-[22px] border border-white/8 bg-foreground/[0.03] px-4 py-4">
                       <div className="flex flex-col items-center">
                         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#efff53,#7ff4d2)] text-sm font-bold text-[#051127]">
                           {index + 1}
@@ -930,7 +930,7 @@ export default function Landing() {
                   <button
                     type="button"
                     onClick={() => scrollToSection("platform")}
-                    className="font-marketing rounded-full border border-white/12 bg-white/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]"
+                    className="font-marketing rounded-full border border-white/12 bg-foreground/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]"
                   >
                     {copy.security.ctaSecondary}
                   </button>

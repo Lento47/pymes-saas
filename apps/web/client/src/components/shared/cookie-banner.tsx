@@ -39,18 +39,18 @@ export function CookieBanner() {
     <div
       role="dialog"
       aria-label="Cookie consent"
-      className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-2xl border border-white/10 bg-[#0c1230]/95 px-5 py-4 shadow-[0_8px_40px_rgba(0,0,0,0.5)] backdrop-blur-md md:bottom-6"
+      className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-2xl border border-border bg-[#0c1230]/95 px-5 py-4 shadow-[0_8px_40px_rgba(0,0,0,0.5)] backdrop-blur-md md:bottom-6"
     >
       <div className="flex items-start gap-3">
         <div className="flex-1 space-y-2">
           <p className="text-sm font-semibold text-white">
             We use cookies 🍪
           </p>
-          <p className="text-xs leading-5 text-white/60">
+          <p className="text-xs leading-5 text-muted-foreground">
             We use essential cookies to keep the platform running. We don't track you or sell your data.{" "}
             <a
               href="/legal/privacy-policy"
-              className="underline underline-offset-2 transition hover:text-white/90"
+              className="underline underline-offset-2 transition hover:text-foreground"
             >
               Privacy policy
             </a>
@@ -60,7 +60,7 @@ export function CookieBanner() {
         <button
           onClick={() => respond("rejected")}
           aria-label="Dismiss"
-          className="mt-0.5 shrink-0 text-white/40 transition hover:text-white/80"
+          className="mt-0.5 shrink-0 text-muted-foreground/60 transition hover:text-foreground/85"
         >
           <X className="h-4 w-4" />
         </button>
@@ -75,7 +75,7 @@ export function CookieBanner() {
         </button>
         <button
           onClick={() => respond("rejected")}
-          className="flex-1 rounded-full border border-white/15 py-2 text-xs font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
+          className="flex-1 rounded-full border border-white/15 py-2 text-xs font-semibold text-foreground/85 transition hover:border-white/30 hover:text-white"
         >
           Reject non-essential
         </button>

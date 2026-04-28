@@ -246,7 +246,7 @@ export default function TasksPage() {
                   return (
                     <TableRow
                       key={task.id}
-                      className={cn("border-border hover:bg-white/[0.02]", isOverdue && "bg-red-500/5")}
+                      className={cn("border-border hover:bg-foreground/[0.015]", isOverdue && "bg-red-500/5")}
                       data-testid={`task-row-${task.id}`}
                     >
                       <TableCell>

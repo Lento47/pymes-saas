@@ -587,7 +587,7 @@ function BillingHistory() {
     <div className="rounded-xl border border-border/60 bg-card/40 overflow-hidden">
       <div className="divide-y divide-border/60">
         {invoices.map((inv: any) => (
-          <div key={inv.id} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors">
+          <div key={inv.id} className="flex items-center justify-between px-4 py-3 hover:bg-foreground/[0.015] transition-colors">
             <div>
               <div className="text-xs font-medium text-foreground">
                 {inv.number || inv.receipt_number || `Factura #${inv.id?.slice(0, 8)}`}
