@@ -575,7 +575,7 @@ export default function Landing() {
                     {/* Header row */}
                     <div className="flex items-center justify-between px-6 pt-5 pb-2">
                       <div>
-                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30">
+                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
                           {dropdownMenus[activeMenu].eyebrow}
                         </p>
                         <h2 className="font-marketing mt-1 text-xl font-semibold tracking-[-0.02em] text-white">
@@ -587,7 +587,7 @@ export default function Landing() {
                     <div className="grid gap-3 p-4 pt-2 lg:grid-cols-[1fr_1.5fr]">
                       {/* Left: featured */}
                       <div>
-                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-white/25 px-1 pb-2">
+                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70 px-1 pb-2">
                           {copy.menus[activeMenu].featuredLabel}
                         </p>
                         <MarketingMenuAction
@@ -675,7 +675,7 @@ export default function Landing() {
                     {["#ff5f57","#febc2e","#28c840"].map((c, i) => (
                       <span key={i} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
                     ))}
-                    <span className="ml-2 text-xs text-white/30 font-marketing">PymesHub — Inbox</span>
+                    <span className="ml-2 text-xs text-white/70 font-marketing">PymesHub — Inbox</span>
                   </div>
                   <div className="space-y-2">
                     {[
@@ -690,14 +690,14 @@ export default function Landing() {
                           <p className="truncate text-[11px] text-white/85">{row.msg}</p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <span className="text-[10px] text-white/30">{row.time}</span>
+                          <span className="text-[10px] text-white/70">{row.time}</span>
                           {row.dot && <span className="h-1.5 w-1.5 rounded-full bg-[#CBFF47] shadow-[0_0_6px_rgba(203,255,71,0.8)]" />}
                         </div>
                       </div>
                     ))}
                   </div>
                   <div className="mt-3 flex items-center justify-between rounded-xl bg-foreground/[0.015] px-3 py-2">
-                    <span className="text-xs text-white/30">3 active threads · avg reply 6 min</span>
+                    <span className="text-xs text-white/70">3 active threads · avg reply 6 min</span>
                     <span className="rounded-full bg-[#CBFF47]/10 px-2 py-0.5 text-[10px] font-semibold text-[#CBFF47]">SLA 94%</span>
                   </div>
                 </div>
