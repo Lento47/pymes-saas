@@ -214,7 +214,7 @@ export default function Agent() {
           </div>
           <h1 className="text-[13px] font-semibold text-foreground tracking-tight">Asistente IA</h1>
           <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-muted-foreground/50"
-            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.15)' }}>
+            style={{ background: 'hsl(var(--primary) / 0.10)', border: '1px solid hsl(var(--primary) / 0.15)' }}>
             {isStreaming ? 'Respondiendo' : 'GPT-5.4'}
           </span>
         </div>
@@ -233,7 +233,7 @@ export default function Agent() {
           <div className="flex flex-col items-center justify-center h-full px-6">
             {showWelcome && (
               <div className="mb-6 px-4 py-3 rounded-2xl text-center max-w-sm animate-fade-in"
-                style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.1)' }}>
+                style={{ background: 'hsl(var(--primary) / 0.06)', border: '1px solid hsl(var(--primary) / 0.10)' }}>
                 <p className="text-sm font-medium text-foreground/85">🐾 ¡Hubby te da la bienvenida!</p>
                 <p className="text-xs text-muted-foreground/60 mt-1">Preguntame lo que necesites sobre tu negocio.</p>
               </div>
@@ -252,7 +252,7 @@ export default function Agent() {
                 <button key={i} onClick={() => handleSend(text)} disabled={isStreaming}
                   className="group relative text-left px-4 py-3 rounded-xl transition-all duration-300 disabled:opacity-30"
                   style={{ background: 'hsl(var(--foreground)/0.015)', border: '1px solid hsl(var(--foreground)/0.04)' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.2)'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'hsl(var(--primary) / 0.06)'; e.currentTarget.style.borderColor = 'hsl(var(--primary) / 0.20)'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'hsl(var(--foreground)/0.015)'; e.currentTarget.style.borderColor = 'hsl(var(--foreground)/0.04)'; }}>
                   <span className="block text-[13px] text-foreground/75 group-hover:text-foreground transition-colors leading-snug">{text}</span>
                   <span className="block text-[10px] text-muted-foreground/40 mt-0.5">{sub}</span>
@@ -285,7 +285,7 @@ export default function Agent() {
                   style={msg.role === 'user' ? {
                     background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
                     color: 'hsl(var(--fg))',
-                    boxShadow: '0 2px 12px rgba(99,102,241,0.15)',
+                    boxShadow: '0 2px 12px hsl(var(--primary) / 0.15)',
                   } : msg.role === 'system' ? {
                     background: 'rgba(239,68,68,0.06)',
                     border: '1px solid rgba(239,68,68,0.12)',
@@ -328,8 +328,8 @@ export default function Agent() {
                   <span key={tc.id}
                     className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium transition-all duration-500"
                     style={{
-                      background: tc.status === 'running' ? 'rgba(99,102,241,0.08)' : 'rgba(34,197,94,0.08)',
-                      border: `1px solid ${tc.status === 'running' ? 'rgba(99,102,241,0.15)' : 'rgba(34,197,94,0.15)'}`,
+                      background: tc.status === 'running' ? 'hsl(var(--primary) / 0.08)' : 'hsl(var(--success) / 0.08)',
+                      border: `1px solid ${tc.status === 'running' ? 'hsl(var(--primary) / 0.15)' : 'hsl(var(--success) / 0.15)'}`,
                       color: tc.status === 'running' ? '#a5b4fc' : '#86efac',
                     }}>
                     {tc.status === 'running' ? (
@@ -429,7 +429,7 @@ export default function Agent() {
             style={{
               background: 'hsl(var(--foreground)/0.03)',
               border: '1px solid hsl(var(--foreground)/0.04)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.3), 0 0 0 1px rgba(99,102,241,0)',
+              boxShadow: '0 1px 3px hsl(var(--foreground) / 0.08), 0 0 0 1px hsl(var(--primary) / 0)',
             }}>
             <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
               placeholder="Preguntame algo..."
