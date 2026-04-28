@@ -21,7 +21,7 @@ import { SUPPORTED_LOCALES, normalizeLocale, type SupportedLocale } from "@/lib/
 import {
   Building2, Users, PlugZap, UserPlus, Plus, Plug,
   Mail, MessageCircle, Radio, Eye, EyeOff, ExternalLink,
-  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard, Shuffle, Loader2, Key, Copy, Shield,
+  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard, Shuffle, Loader2, Key, Copy, Shield, Send,
 } from "lucide-react";
 import BillingPage from "@/pages/billing";
 import { SamlConfig } from "@/components/settings/saml-config";
@@ -185,6 +185,7 @@ const ROLE_COLORS: Record<string, string> = {
 const CHANNEL_TYPE_COLORS: Record<string, string> = {
   EMAIL: "bg-blue-500/10 text-blue-400",
   WHATSAPP: "bg-green-500/10 text-green-400",
+  TELEGRAM: "bg-sky-500/10 text-sky-400",
   FORM: "bg-purple-500/10 text-purple-400",
   API: "bg-orange-500/10 text-orange-400",
   MANUAL: "bg-gray-500/10 text-gray-400",
@@ -193,6 +194,7 @@ const CHANNEL_TYPE_COLORS: Record<string, string> = {
 const CHANNEL_ICONS: Record<string, any> = {
   EMAIL: Mail,
   WHATSAPP: MessageCircle,
+  TELEGRAM: Send,
   FORM: PlugZap,
   API: Plug,
   MANUAL: Radio,
@@ -1086,6 +1088,66 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
   );
 }
 
+function TelegramConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [botToken, setBotToken] = useState("");
+
+  const save = useMutation({
+    mutationFn: () => api.configureTelegram(channel.id, { bot_token: botToken }),
+    onSuccess: () => {
+      toast({ title: "Bot de Telegram guardado y activado" });
+      qc.invalidateQueries({ queryKey: ["/api/channels"] });
+      onClose();
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const isEdit = channel?.status === "ACTIVE";
+
+  return (
+    <div className="space-y-4 pt-2">
+      <div className="p-3 rounded-lg bg-sky-500/10 border border-sky-500/20 text-xs text-sky-300">
+        Obtené el token del bot en{" "}
+        <a
+          href="https://t.me/BotFather"
+          target="_blank"
+          rel="noreferrer"
+          className="underline inline-flex items-center gap-1"
+          onClick={(event) => {
+            event.preventDefault();
+            void openExternal("https://t.me/BotFather");
+          }}
+        >
+          @BotFather <ExternalLink className="h-3 w-3" />
+        </a>
+        {" "} con los comandos /newbot
+      </div>
+
+      <div>
+        <Label>Bot Token {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener el actual)</span>}</Label>
+        <div className="mt-1">
+          <SecretInput value={botToken} onChange={setBotToken} placeholder={isEdit ? "••••••••••••••••••••" : "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh"} />
+        </div>
+      </div>
+
+      <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs text-muted-foreground space-y-1">
+        <p className="font-medium text-foreground">Webhook automático:</p>
+        <p>El webhook se registra automáticamente al guardar el token</p>
+        <p className="mt-2">Los mensajes que reciba tu bot aparecerán como conversaciones en PyMesHub</p>
+      </div>
+
+      <Button
+        onClick={() => save.mutate()}
+        disabled={(!isEdit && !botToken) || save.isPending}
+        className="w-full bg-sky-600 hover:bg-sky-700"
+      >
+        {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
+      </Button>
+    </div>
+  );
+}
+
 // ─── Confirm delete ───────────────────────────────────────────────────────────
 function DeleteChannelDialog({ channel, onClose }: { channel: any; onClose: () => void }) {
   const { toast } = useToast();
@@ -1162,6 +1224,7 @@ function ChannelsTab() {
   const channels = Array.isArray(data) ? data : [];
   const isEmail = configChannel?.type === "EMAIL";
   const isWA = configChannel?.type === "WHATSAPP";
+  const isTelegram = configChannel?.type === "TELEGRAM";
 
   return (
     <div>
@@ -1187,7 +1250,7 @@ function ChannelsTab() {
                 <Select value={type} onValueChange={setType}>
                   <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-card border-border">
-                    {["EMAIL", "WHATSAPP", "FORM", "API", "MANUAL"].map(t => (
+                    {["EMAIL", "WHATSAPP", "TELEGRAM", "FORM", "API", "MANUAL"].map(t => (
                       <SelectItem key={t} value={t}>{t}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1213,6 +1276,7 @@ function ChannelsTab() {
           </DialogHeader>
           {isEmail && <EmailConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
           {isWA && <WhatsAppConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
+          {isTelegram && <TelegramConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
         </DialogContent>
       </Dialog>
 
