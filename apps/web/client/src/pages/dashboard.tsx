@@ -201,7 +201,7 @@ function Card({ title, linkTo, linkLabel, headerExtra, loading, empty, children 
 // ── Insight severity → visual ─────────────────────────────────────────────────
 const INSIGHT_STYLES: Record<string, { Icon: any; ring: string; iconColor: string; bg: string }> = {
   danger:   { Icon: CircleAlert,  ring: "#ef4444", iconColor: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
-  warning:  { Icon: AlertTriangle,ring: "#f59e0b", iconColor: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
+  warning:  { Icon: TriangleAlert,ring: "#f59e0b", iconColor: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
   positive: { Icon: ShieldCheck, ring: "#22c55e", iconColor: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
   info:     { Icon: Info,         ring: "#818cf8", iconColor: "#818cf8", bg: "rgba(129,140,248,0.12)" },
 };
@@ -341,7 +341,7 @@ export default function DashboardPage() {
                 { bg: "linear-gradient(135deg,#8b7cf6,#a78bfa)", Icon: TrendingUp, label: dash.revenue, value: revenueStr, sub: dash.vsLastMonth, valueClass: revenueClass },
                 { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} ${dash.invoices}`, value: dash.pending, sub: "", valueClass: "text-gray-800" },
                 { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare, label: `${urgentTasks} ${dash.tasks}`, value: dash.urgent, sub: "", valueClass: "text-gray-800" },
-                { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart2, label: dash.pipeline, value: pipelineStatus, sub: "", valueClass: activeConvs > 0 ? "text-green-600" : "text-gray-400" },
+                { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart4, label: dash.pipeline, value: pipelineStatus, sub: "", valueClass: activeConvs > 0 ? "text-green-600" : "text-gray-400" },
               ].map(({ bg, Icon, label, value, sub, valueClass }, i, arr) => (
                 <div key={label} className="flex items-center gap-3 flex-shrink-0">
                   <div className="flex items-center gap-3">
@@ -414,7 +414,7 @@ export default function DashboardPage() {
             <div className="flex items-start justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-400/60">{dash.pipelineValue}</p>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-sky-500/15 text-sky-400">
-                <BarChart2 className="w-3.5 h-3.5" />
+                <BarChart4 className="w-3.5 h-3.5" />
               </div>
             </div>
             {pipelineLoading ? <Skeleton className="h-7 w-20 mt-2" /> : (
