@@ -69,16 +69,16 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
 
   return (
     <div className={cn(
-      'relative rounded-2xl border transition-all backdrop-blur-sm p-8',
+      'relative rounded-3xl border transition-all backdrop-blur-md p-8',
       tier.popular
-        ? 'border-[#dfff4a]/30 bg-white/[0.08]'
-        : 'border-border bg-foreground/[0.03] hover:bg-foreground/[0.05] hover:border-white/20'
+        ? 'border-[#dfff4a]/40 bg-indigo-900/30 shadow-[0_8px_40px_rgba(223,255,74,0.15)] scale-105'
+        : 'border-border bg-indigo-900/10 hover:bg-indigo-900/15 hover:border-white/20'
     )}>
       {/* Popular Badge */}
       {tier.popular && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="rounded-full bg-[#dfff4a] px-3 py-1 text-xs font-semibold text-[#051127]">
-            Most Popular
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+          <span className="rounded-full bg-[#dfff4a] px-4 py-1.5 text-xs font-bold text-[#051127] shadow-[0_4px_16px_rgba(223,255,74,0.4)]">
+            🌟 RECOMENDADO
           </span>
         </div>
       )}

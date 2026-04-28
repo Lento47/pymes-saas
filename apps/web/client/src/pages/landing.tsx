@@ -717,7 +717,7 @@ export default function Landing() {
                           aria-hidden="true"
                         />
                       </div>
-                      <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em] text-white">
+                      <h2 className="font-marketing mt-6 text-3xl font-bold tracking-[-0.04em] text-white">
                         {copy.overview.inbox.title}
                       </h2>
                       <p className="mt-3 text-sm leading-7 text-white/85">
@@ -834,7 +834,7 @@ export default function Landing() {
                           aria-hidden="true"
                         />
                       </div>
-                      <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em] text-white">
+                      <h2 className="font-marketing mt-6 text-3xl font-bold tracking-[-0.04em] text-white">
                         {copy.overview.automations.title}
                       </h2>
                       <p className="mt-3 text-sm leading-7 text-white/85">
@@ -875,7 +875,7 @@ export default function Landing() {
                     aria-hidden="true"
                   />
                 </div>
-                <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em] text-white">
+                <h2 className="font-marketing mt-6 text-3xl font-bold tracking-[-0.04em] text-white">
                   {copy.overview.inbox.title}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-white/85">
@@ -1002,7 +1002,7 @@ export default function Landing() {
                     aria-hidden="true"
                   />
                 </div>
-                <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em] text-white">
+                <h2 className="font-marketing mt-6 text-3xl font-bold tracking-[-0.04em] text-white">
                   {copy.overview.automations.title}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-white/85">
