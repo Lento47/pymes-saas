@@ -35,6 +35,11 @@ export const translations = {
     },
     sidebar: {
       workspaceFallback: "Workspace",
+      groups: {
+        work: "Work",
+        operations: "Operations",
+        assistants: "Assistants",
+      },
       nav: {
         dashboard: "Dashboard",
         inbox: "Inbox",
@@ -560,6 +565,11 @@ export const translations = {
     },
     sidebar: {
       workspaceFallback: "Workspace",
+      groups: {
+        work: "Trabajo",
+        operations: "Operaciones",
+        assistants: "Asistentes",
+      },
       nav: {
         dashboard: "Dashboard",
         inbox: "Bandeja",
