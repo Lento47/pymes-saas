@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/providers/i18n-provider";
+import { useTheme } from "@/components/providers/theme-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useAuth } from "@/hooks/use-auth";
@@ -26,6 +27,8 @@ import {
   BellRing,
   Bot,
   MessageCircle,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 const NAV = [
@@ -46,6 +49,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, switchWorkspace } = useAuth();
   const { messages } = useI18n();
+  const { theme, toggle } = useTheme();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
   const copy = messages.sidebar;
 
@@ -90,7 +94,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         {/* Workspace header / switcher */}
         <div className="relative shrink-0 flex items-center" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
           <button
-            className="flex-1 px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
+            className="flex-1 px-4 h-12 flex items-center gap-2.5 hover:bg-foreground/5 transition-colors"
             onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
             style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
           >
@@ -98,10 +102,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               style={{ background: "hsl(var(--accent))", borderRadius: "4px" }}
               className="w-6 h-6 flex items-center justify-center shrink-0"
             >
-              <span className="text-white font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
+              <span className="text-primary-foreground font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
             </div>
             <div className="min-w-0 flex-1 text-left">
-              <div className="text-sm font-semibold text-white leading-none truncate">{ws}</div>
+              <div className="text-sm font-semibold text-foreground leading-none truncate">{ws}</div>
             </div>
             {multipleWorkspaces && (
               <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
@@ -120,10 +124,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 return (
                   <button
                     key={m.workspace.id}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-white/5 transition-colors"
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-foreground/5 transition-colors"
                     onClick={() => { setWsMenuOpen(false); if (!isCurrent) switchWorkspace(m.workspace.slug); }}
                   >
-                    <span className="flex-1 text-left text-sm truncate" style={{ color: isCurrent ? "white" : "hsl(var(--fg-2))" }}>
+                    <span className="flex-1 text-left text-sm truncate" style={{ color: isCurrent ? "hsl(var(--fg))" : "hsl(var(--fg-2))" }}>
                       {m.workspace.name}
                     </span>
                     {isCurrent && <Check style={{ width: 12, height: 12, color: "hsl(var(--accent))" }} />}
@@ -145,8 +149,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   className={cn(
                     "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
                     active
-                      ? "text-white"
-                      : "text-[hsl(var(--fg-2))] hover:text-white"
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                   style={active ? { background: "hsl(var(--bg-active))" } : undefined}
                 >
@@ -221,7 +225,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </Link>
         </nav>
 
-        <div className="px-3 pb-3">
+        <div className="px-3 pb-2 space-y-1">
+          <button
+            onClick={toggle}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
+            title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+          >
+            {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+            {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+          </button>
           <LanguageSwitcher className="w-full justify-between" />
         </div>
 
@@ -244,13 +256,13 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="truncate font-medium text-white" style={{ fontSize: "12px", lineHeight: "1.3" }}>{name}</div>
+            <div className="truncate font-medium text-foreground" style={{ fontSize: "12px", lineHeight: "1.3" }}>{name}</div>
             <div className="truncate" style={{ fontSize: "11px", color: "hsl(var(--fg-3))" }}>{user?.role ?? ""}</div>
           </div>
           <button
             onClick={logout}
             style={{ color: "hsl(var(--fg-3))", padding: "4px" }}
-            className="hover:text-white transition-colors shrink-0 rounded"
+            className="hover:text-foreground transition-colors shrink-0 rounded"
             title={copy.logout}
           >
             <LogOut style={{ width: 13, height: 13 }} />

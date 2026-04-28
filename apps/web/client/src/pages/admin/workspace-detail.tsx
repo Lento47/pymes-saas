@@ -1,7 +1,7 @@
 export default function AdminWorkspaceDetail({ slug }: { slug: string }) {
   return (
     <div className="p-6">
-      <h1 className="text-xl font-semibold text-white">Workspace: {slug}</h1>
+      <h1 className="text-xl font-semibold text-foreground">Workspace: {slug}</h1>
     </div>
   );
 }

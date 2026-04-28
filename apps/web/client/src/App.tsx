@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { I18nProvider } from "@/components/providers/i18n-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
 
 import Landing from "@/pages/landing";
@@ -43,14 +44,14 @@ import AdminUsers from "@/pages/admin/users";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, initialized, user } = useAuth();
-  if (!initialized || (isAuthenticated && !user)) return <div className="flex flex-col items-center justify-center min-h-screen bg-[#05091d] gap-3"><Loader2 className="w-6 h-6 text-white/40 animate-spin" /><span className="text-white/30 text-sm">Cargando...</span></div>;
+  if (!initialized || (isAuthenticated && !user)) return <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-3"><Loader2 className="w-6 h-6 text-muted-foreground animate-spin" /><span className="text-muted-foreground text-sm">Cargando...</span></div>;
   if (!isAuthenticated) return <Redirect to="/login" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
 
 function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, initialized } = useAuth();
-  if (!initialized || (isAuthenticated && !user)) return <div className="flex flex-col items-center justify-center min-h-screen bg-[#05091d] gap-3"><Loader2 className="w-6 h-6 text-white/40 animate-spin" /><span className="text-white/30 text-sm">Cargando...</span></div>;
+  if (!initialized || (isAuthenticated && !user)) return <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-3"><Loader2 className="w-6 h-6 text-muted-foreground animate-spin" /><span className="text-muted-foreground text-sm">Cargando...</span></div>;
   if (!isAuthenticated) return <Redirect to="/login" />;
   if (!user?.is_platform_admin) return <Redirect to="/" />;
   return <AppSidebar>{children}</AppSidebar>;
@@ -58,7 +59,7 @@ function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
 
 function RootRoute() {
   const { isAuthenticated, user, initialized } = useAuth();
-  if (!initialized) return <div className="flex flex-col items-center justify-center min-h-screen bg-[#05091d] gap-3"><Loader2 className="w-6 h-6 text-white/40 animate-spin" /><span className="text-white/30 text-sm">Cargando...</span></div>;
+  if (!initialized) return <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-3"><Loader2 className="w-6 h-6 text-muted-foreground animate-spin" /><span className="text-muted-foreground text-sm">Cargando...</span></div>;
   if (!isAuthenticated) return <Landing />;
   return <ProtectedLayout><Dashboard /></ProtectedLayout>;
 }
@@ -157,12 +158,14 @@ export default function App() {
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
+          <ThemeProvider>
           <TooltipProvider>
             <Toaster />
             <Router hook={useWorkspaceHashLocation}>
               <AppRouter />
             </Router>
           </TooltipProvider>
+          </ThemeProvider>
         </I18nProvider>
       </QueryClientProvider>
     </AppErrorBoundary>
