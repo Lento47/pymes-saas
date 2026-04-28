@@ -416,7 +416,7 @@ export default function Landing() {
   };
 
   return (
-    <div className="relative overflow-hidden bg-background text-white">
+    <div className="dark relative overflow-hidden bg-background text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-0 -translate-x-1/2 overflow-hidden">
           <div className="relative w-[max(1536px,100vw,calc(100vh*1.5))]">

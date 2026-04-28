@@ -17,7 +17,7 @@ export default function PricingPage() {
   const copy = messages.pricing || {};
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background text-white">
+    <div className="dark relative min-h-screen overflow-hidden bg-background text-white">
       {/* Background Effects */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0.04)_0%,rgba(5,9,29,0.06)_22%,rgba(5,9,29,0.18)_44%,rgba(5,9,29,0.42)_64%,#05091d_86%)]" />

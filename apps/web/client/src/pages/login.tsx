@@ -139,7 +139,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background px-4 py-10 text-white md:px-6">
+    <div className="dark relative min-h-screen overflow-hidden bg-background px-4 py-10 md:px-6">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
