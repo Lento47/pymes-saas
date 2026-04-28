@@ -1,5 +1,6 @@
 import { Controller, Post, Param, Body, Get, UseGuards, HttpCode, Logger } from '@nestjs/common';
 import { TelegramService } from './telegram.service';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -21,7 +22,7 @@ export class TelegramController {
   @Post('webhook/:channelId')
   @HttpCode(200)
   async webhook(
-    @Param('channelId') channelId: string,
+    @Param('channelId', ValidateUUIDPipe) channelId: string,
     @Body() update: any,
   ) {
     // Process update asynchronously to respond quickly
@@ -42,7 +43,7 @@ export class TelegramController {
   @Post(':channelId/register-webhook')
   async registerWebhook(
     @CurrentUser() user: AuthUser,
-    @Param('channelId') channelId: string,
+    @Param('channelId', ValidateUUIDPipe) channelId: string,
   ) {
     await this.telegramService.registerWebhook(user.workspace_id, channelId);
     return {
@@ -61,7 +62,7 @@ export class TelegramController {
   @Get(':channelId/webhook-status')
   async getWebhookStatus(
     @CurrentUser() user: AuthUser,
-    @Param('channelId') channelId: string,
+    @Param('channelId', ValidateUUIDPipe) channelId: string,
   ) {
     const status = await this.telegramService.getWebhookStatus(channelId);
     if (!status) {
@@ -86,7 +87,7 @@ export class TelegramController {
   @Get(':channelId/bot-info')
   async getBotInfo(
     @CurrentUser() user: AuthUser,
-    @Param('channelId') channelId: string,
+    @Param('channelId', ValidateUUIDPipe) channelId: string,
   ) {
     const info = await this.telegramService.getBotInfo(channelId);
     if (!info) {
@@ -107,7 +108,7 @@ export class TelegramController {
   @Post(':channelId/send-test-message')
   async sendTestMessage(
     @CurrentUser() user: AuthUser,
-    @Param('channelId') channelId: string,
+    @Param('channelId', ValidateUUIDPipe) channelId: string,
     @Body() body: { chatId: string; message?: string },
   ) {
     const message = body.message || '✓ Webhook de Telegram funciona correctamente';

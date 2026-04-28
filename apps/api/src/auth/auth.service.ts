@@ -500,8 +500,14 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) throw new NotFoundException('Usuario no encontrado.');
 
-    if (newPassword.length < 8) {
-      throw new BadRequestException('La contraseña debe tener al menos 8 caracteres.');
+    if (typeof newPassword !== 'string' || newPassword.length < 12) {
+      throw new BadRequestException('La contraseña debe tener al menos 12 caracteres.');
+    }
+
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s])\S{12,}$/.test(newPassword)) {
+      throw new BadRequestException(
+        'La contraseña debe contener mayúscula, minúscula, número y carácter especial.',
+      );
     }
 
     const password_hash = await bcrypt.hash(newPassword, 12);

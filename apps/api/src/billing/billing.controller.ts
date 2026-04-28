@@ -9,6 +9,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApiRolesGuard } from '../api-tokens/api-roles.guard';
 import { RequireApiRole } from '../api-tokens/api-roles.decorator';
 import { ApiRole } from '../api-tokens/api-token.guard';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 
 @Controller('billing')
 export class BillingController {
@@ -101,10 +102,10 @@ export class BillingController {
   @UseGuards(JwtAuthGuard)
   async getInvoicePdf(
     @CurrentUser() user: AuthUser,
-    @Param('id') invoiceId: string,
+    @Param('id', ValidateUUIDPipe) invoiceId: string,
     @Res() res: Response,
   ) {
-    const { buffer, filename } = await this.billingInvoice.getPdfBuffer(invoiceId);
+    const { buffer, filename } = await this.billingInvoice.getPdfBuffer(user.workspace_id, invoiceId);
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `inline; filename="${filename}"`,

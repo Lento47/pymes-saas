@@ -64,8 +64,11 @@ export class BillingInvoiceService {
     return invoice;
   }
 
-  async getPdfBuffer(invoiceId: string): Promise<{ buffer: Buffer; filename: string }> {
-    const inv = await this.prisma.billingInvoice.findUniqueOrThrow({ where: { id: invoiceId } });
+  async getPdfBuffer(workspaceId: string, invoiceId: string): Promise<{ buffer: Buffer; filename: string }> {
+    const inv = await this.prisma.billingInvoice.findFirst({ where: { id: invoiceId, workspace_id: workspaceId } });
+    if (!inv) {
+      throw new NotFoundException('Invoice not found');
+    }
     const lineItems = (inv.line_items as any[]) || [];
     const buffer = await generateBillingInvoicePdf({
       id: inv.id,

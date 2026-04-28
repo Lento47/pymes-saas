@@ -2,6 +2,7 @@ import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/c
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { ApiTokensService } from './api-tokens.service';
 
 @Controller('workspaces/current/api-tokens')
@@ -25,7 +26,7 @@ export class ApiTokensController {
   @Delete(':id')
   async revokeToken(
     @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     await this.service.revokeToken(user.workspace_id, id);
     return { ok: true };

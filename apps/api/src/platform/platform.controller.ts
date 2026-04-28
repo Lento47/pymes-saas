@@ -20,6 +20,7 @@ import { UpdatePlatformUserStatusDto } from './dto/update-platform-user-status.d
 import { UpdateWorkspaceBillingDto } from './dto/update-workspace-billing.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 
 @Controller('platform')
 @UseGuards(JwtAuthGuard, PlatformAdminGuard)
@@ -49,14 +50,14 @@ export class PlatformController {
   @Patch('workspaces/:slug/members/:userId/role')
   updateMemberRole(
     @Param('slug') slug: string,
-    @Param('userId') userId: string,
+    @Param('userId', ValidateUUIDPipe) userId: string,
     @Body() dto: UpdateMemberRoleDto,
   ) {
     return this.service.updateMemberRole(slug, userId, dto);
   }
 
   @Delete('workspaces/:slug/members/:userId')
-  removeMember(@Param('slug') slug: string, @Param('userId') userId: string) {
+  removeMember(@Param('slug') slug: string, @Param('userId', ValidateUUIDPipe) userId: string) {
     return this.service.removeMember(slug, userId);
   }
 
@@ -81,20 +82,20 @@ export class PlatformController {
 
   @Patch('users/:userId/password')
   updateUserPassword(
-    @Param('userId') userId: string,
+    @Param('userId', ValidateUUIDPipe) userId: string,
     @Body() dto: UpdatePlatformUserPasswordDto,
   ) {
     return this.service.updateUserPassword(userId, dto.password);
   }
 
   @Post('users/:userId/reset-password')
-  resetUserPassword(@Param('userId') userId: string) {
+  resetUserPassword(@Param('userId', ValidateUUIDPipe) userId: string) {
     return this.service.resetUserPassword(userId);
   }
 
   @Patch('users/:userId/status')
   updateUserStatus(
-    @Param('userId') userId: string,
+    @Param('userId', ValidateUUIDPipe) userId: string,
     @CurrentUser() user: AuthUser,
     @Body() dto: UpdatePlatformUserStatusDto,
   ) {
@@ -102,12 +103,12 @@ export class PlatformController {
   }
 
   @Patch('users/:userId/toggle-admin')
-  togglePlatformAdmin(@Param('userId') userId: string) {
+  togglePlatformAdmin(@Param('userId', ValidateUUIDPipe) userId: string) {
     return this.service.togglePlatformAdmin(userId);
   }
 
   @Delete('users/:userId')
-  deleteUser(@Param('userId') userId: string, @CurrentUser() user: AuthUser) {
+  deleteUser(@Param('userId', ValidateUUIDPipe) userId: string, @CurrentUser() user: AuthUser) {
     return this.service.deleteUser(userId, user.id);
   }
 }

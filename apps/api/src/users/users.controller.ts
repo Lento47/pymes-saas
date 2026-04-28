@@ -11,6 +11,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('users')
@@ -40,7 +41,7 @@ export class UsersController {
   @Get(':id')
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
   }
@@ -49,7 +50,7 @@ export class UsersController {
   @Patch(':id')
   updateById(
     @CurrentUser() user: AuthUser,
-    @Param('id') targetId: string,
+    @Param('id', ValidateUUIDPipe) targetId: string,
     @Body() dto: UpdateUserDto,
   ) {
     return this.service.updateById(user.workspace_id, user, targetId, dto);

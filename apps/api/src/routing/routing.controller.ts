@@ -15,6 +15,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { CreateRoutingRuleDto } from './dto/create-routing-rule.dto';
 import { UpdateRoutingRuleDto } from './dto/update-routing-rule.dto';
 
@@ -62,7 +63,7 @@ export class RoutingController {
   @Roles(WorkspaceUserRole.ADMIN)
   async update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateRoutingRuleDto,
   ) {
     const rule = await this.prisma.routingRule.findFirst({
@@ -93,7 +94,7 @@ export class RoutingController {
   @Roles(WorkspaceUserRole.ADMIN)
   async remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     const rule = await this.prisma.routingRule.findFirst({
       where: { id, workspace_id: workspaceId },
