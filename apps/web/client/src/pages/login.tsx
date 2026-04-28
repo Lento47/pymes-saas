@@ -289,7 +289,7 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              <p className="text-sm text-[#b3bcdf]/58">
+              <p className="text-sm text-white/85">
                 {copy.noWorkspace}{" "}
                 <Link href="/">
                   <a className="font-medium text-[#dfff4a] transition hover:text-[#efff8a]">
@@ -298,7 +298,7 @@ export default function LoginPage() {
                 </Link>
               </p>
 
-              <p className="text-sm text-[#b3bcdf]/58">
+              <p className="text-sm text-white/85">
                 <Link href="/register">
                   <a className="font-medium text-[#dfff4a] transition hover:text-[#efff8a]">
                     Create account →
