@@ -859,8 +859,8 @@ export default function Landing() {
                   </CarouselItem>
                 </CarouselContent>
                 <div className="flex justify-center gap-2 mt-4">
-                  <CarouselPrevious className="relative position-static mx-0" />
-                  <CarouselNext className="relative position-static mx-0" />
+                  <CarouselPrevious className="relative position-static mx-0 text-white hover:text-white/85" />
+                  <CarouselNext className="relative position-static mx-0 text-white hover:text-white/85" />
                 </div>
               </Carousel>
             </div>
