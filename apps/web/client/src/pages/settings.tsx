@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { openExternal } from "@/lib/platform";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,12 +17,161 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { SUPPORTED_LOCALES, normalizeLocale, type SupportedLocale } from "@/lib/i18n";
 import {
   Building2, Users, PlugZap, UserPlus, Plus, Plug,
   Mail, MessageCircle, Radio, Eye, EyeOff, ExternalLink,
-  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen,
-  Send, X, RotateCw, Lock,
+  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard, Shuffle, Loader2, Key, Copy, Shield,
 } from "lucide-react";
+import BillingPage from "@/pages/billing";
+import { SamlConfig } from "@/components/settings/saml-config";
+import { ModuleHero } from "@/components/shared/module-hero";
+
+function RoutingRulesTab() {
+  const { toast } = useToast();
+  const { data: rules = [], isLoading, refetch } = useQuery({
+    queryKey: ['routing-rules'],
+    queryFn: api.getRoutingRules,
+  });
+
+  const createRule = useMutation({
+    mutationFn: api.createRoutingRule,
+    onSuccess: () => { refetch(); toast({ title: 'Regla creada' }); },
+    onError: (err: any) => toast({ title: 'Error', description: err?.message, variant: 'destructive' }),
+  });
+
+  const deleteRule = useMutation({
+    mutationFn: (id: string) => api.deleteRoutingRule(id),
+    onSuccess: () => { refetch(); toast({ title: 'Regla eliminada' }); },
+    onError: (err: any) => toast({ title: 'Error', description: err?.message, variant: 'destructive' }),
+  });
+
+  const toggleRule = useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+      api.updateRoutingRule(id, { is_active: active }),
+    onSuccess: () => refetch(),
+  });
+
+  const [newRule, setNewRule] = useState({ name: '', pattern: '', match_type: 'KEYWORD', department_id: '', channel_id: '', priority: 0, is_active: true });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-foreground">Reglas de Enrutamiento</h2>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button size="sm"><Plus className="h-4 w-4 mr-1" />Nueva Regla</Button>
+          </DialogTrigger>
+          <DialogContent className="bg-card border-border max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-foreground">Nueva Regla de Enrutamiento</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-foreground">Nombre</Label>
+                <Input value={newRule.name} onChange={e => setNewRule({ ...newRule, name: e.target.value })} placeholder="Ej: Ventas" className="bg-[hsl(var(--elevated))] border-border" />
+              </div>
+              <div>
+                <Label className="text-foreground">Tipo de coincidencia</Label>
+                <Select value={newRule.match_type} onValueChange={v => setNewRule({ ...newRule, match_type: v })}>
+                  <SelectTrigger className="bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="KEYWORD">Palabra clave</SelectItem>
+                    <SelectItem value="MENU_REPLY">Menú (texto exacto)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-foreground">Patrón / Palabra clave</Label>
+                <Input value={newRule.pattern} onChange={e => setNewRule({ ...newRule, pattern: e.target.value })} placeholder="Ej: factura, precio, ayuda, 1, 2..." className="bg-[hsl(var(--elevated))] border-border" />
+              </div>
+              <div>
+                <Label className="text-foreground">ID del Depto</Label>
+                <Input value={newRule.department_id} onChange={e => setNewRule({ ...newRule, department_id: e.target.value })} placeholder="ID del departamento destino" className="bg-[hsl(var(--elevated))] border-border" />
+              </div>
+              <div>
+                <Label className="text-foreground">ID del Canal (opcional)</Label>
+                <Input value={newRule.channel_id} onChange={e => setNewRule({ ...newRule, channel_id: e.target.value })} placeholder="Dejar vacío para todos" className="bg-[hsl(var(--elevated))] border-border" />
+              </div>
+              <Button
+                className="w-full"
+                disabled={createRule.isPending || !newRule.name || !newRule.pattern || !newRule.department_id}
+                onClick={() => {
+                  createRule.mutate({
+                    name: newRule.name,
+                    pattern: newRule.pattern,
+                    match_type: newRule.match_type,
+                    department_id: newRule.department_id,
+                    channel_id: newRule.channel_id || undefined,
+                    priority: newRule.priority,
+                    is_active: newRule.is_active,
+                  });
+                  setNewRule({ name: '', pattern: '', match_type: 'KEYWORD', department_id: '', channel_id: '', priority: 0, is_active: true });
+                }}
+              >
+                {createRule.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Crear
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-muted-foreground py-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Cargando...</span>
+        </div>
+      ) : rules.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Sin reglas de enrutamiento. Creá la primera regla para distribuir mensajes automáticamente.</p>
+      ) : (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-[hsl(var(--elevated))]">
+              <tr>
+                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Nombre</th>
+                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Patrón</th>
+                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Tipo</th>
+                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Depto</th>
+                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Activo</th>
+                <th className="text-right px-4 py-2 text-muted-foreground font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rules.map((r: any) => (
+                <tr key={r.id} className="border-t border-border hover:bg-[hsl(var(--elevated))] transition-colors">
+                  <td className="px-4 py-2.5 text-foreground">{r.name}</td>
+                  <td className="px-4 py-2.5 text-foreground font-mono text-xs">{r.pattern}</td>
+                  <td className="px-4 py-2.5">
+                    <Badge variant={r.match_type === 'MENU_REPLY' ? 'secondary' : 'default'}>
+                      {r.match_type === 'MENU_REPLY' ? 'Menú' : 'Keyword'}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2.5 text-muted-foreground text-xs">{r.department_id}</td>
+                  <td className="px-4 py-2.5">
+                    <Switch
+                      checked={r.is_active}
+                      onCheckedChange={(checked) => toggleRule.mutate({ id: r.id, active: checked })}
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { if (confirm('Eliminar regla?')) deleteRule.mutate(r.id); }}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-400" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Paletas ──────────────────────────────────────────────────────────────────
 
@@ -78,11 +228,16 @@ function SecretInput({ value, onChange, placeholder }: { value: string; onChange
 function WorkspaceTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { setLocale, messages } = useI18n();
+  const { refreshUser } = useAuth();
+  const localeCopy = messages.settings.locale;
   const { data, isLoading } = useQuery({
     queryKey: ["/api/workspaces/current"],
     queryFn: () => api.getWorkspace(),
   });
   const [financeOptIn, setFinanceOptIn] = useState(false);
+  const [workspaceLocale, setWorkspaceLocale] = useState<SupportedLocale>(() => normalizeLocale());
+  const [workspaceName, setWorkspaceName] = useState("");
   const [taxStep, setTaxStep] = useState(0);
   const [taxConfig, setTaxConfig] = useState({
     legal_name: "",
@@ -114,6 +269,32 @@ function WorkspaceTab() {
       qc.setQueryData(["/api/workspaces/current"], workspace);
       setFinanceOptIn(workspace?.ai_message_finance_opt_in === true);
       toast({ title: "Permiso actualizado" });
+    },
+    onError: (e: any) =>
+      toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const saveWorkspaceLocale = useMutation({
+    mutationFn: (locale: SupportedLocale) => api.updateWorkspace({ locale }),
+    onSuccess: async (workspace) => {
+      const nextLocale = normalizeLocale(workspace?.locale);
+      qc.setQueryData(["/api/workspaces/current"], workspace);
+      setWorkspaceLocale(nextLocale);
+      setLocale(nextLocale);
+      toast({ title: localeCopy.saved });
+      await refreshUser();
+    },
+    onError: (e: any) =>
+      toast({ title: localeCopy.error, description: e.message, variant: "destructive" }),
+  });
+
+  const saveWorkspaceName = useMutation({
+    mutationFn: (name: string) => api.updateWorkspace({ name: name.trim() }),
+    onSuccess: async (workspace) => {
+      qc.setQueryData(["/api/workspaces/current"], workspace);
+      setWorkspaceName(workspace?.name ?? "");
+      toast({ title: "Nombre actualizado" });
+      await refreshUser();
     },
     onError: (e: any) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -176,6 +357,7 @@ function WorkspaceTab() {
 
   useEffect(() => {
     setFinanceOptIn(workspace?.ai_message_finance_opt_in === true);
+    setWorkspaceName(workspace?.name ?? "");
     setTaxConfig({
       legal_name: workspace?.workspace_tax_profile?.legal_name ?? "",
       trade_name: workspace?.workspace_tax_profile?.trade_name ?? "",
@@ -200,9 +382,14 @@ function WorkspaceTab() {
     });
   }, [workspace?.ai_message_finance_opt_in, workspace?.workspace_tax_profile, workspace?.hacienda_environment, workspace?.hacienda_callback_url, workspace?.hacienda_signing_enabled]);
 
+  useEffect(() => {
+    setWorkspaceLocale(normalizeLocale(workspace?.locale));
+  }, [workspace?.locale]);
+
   if (isLoading) return <div className="text-muted-foreground text-sm">Cargando...</div>;
   const ws = workspace;
   const hasFinanceOptInChanges = financeOptIn !== (ws?.ai_message_finance_opt_in === true);
+  const hasLocaleChanges = workspaceLocale !== normalizeLocale(ws?.locale);
   const saveTaxConfig = () => saveWorkspace.mutate({
     hacienda_environment: taxConfig.hacienda_environment,
     hacienda_callback_url: taxConfig.hacienda_callback_url,
@@ -243,6 +430,36 @@ function WorkspaceTab() {
               Configuración general del espacio, permisos rápidos de operación y preparación para facturación electrónica en Costa Rica.
             </p>
 
+            <div className="max-w-xl space-y-2">
+              <Label htmlFor="workspace-name" className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                Nombre del workspace
+              </Label>
+
+      <div className="flex gap-2">
+                <Input
+                  id="workspace-name"
+                  value={workspaceName}
+                  onChange={(e) => setWorkspaceName(e.target.value)}
+                  placeholder="Mi empresa S.A."
+                  maxLength={80}
+                  className="bg-[hsl(var(--elevated))] border-border"
+                />
+                <Button
+                  onClick={() => saveWorkspaceName.mutate(workspaceName)}
+                  disabled={
+                    saveWorkspaceName.isPending ||
+                    workspaceName.trim().length < 2 ||
+                    workspaceName.trim() === (ws?.name ?? "")
+                  }
+                >
+                  {saveWorkspaceName.isPending ? "Guardando…" : "Guardar"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Los miembros verán este nombre en tiempo real cuando lo cambies.
+              </p>
+            </div>
+
             <div className="grid gap-x-10 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
               {[
                 { label: "Slug", value: ws?.slug },
@@ -258,29 +475,74 @@ function WorkspaceTab() {
             </div>
           </div>
 
-          <div className="space-y-3 lg:pl-4 lg:border-l lg:border-border">
-            <div>
-              <div className="text-sm font-medium text-foreground">Cobros con IA</div>
-              <div className="mt-1 text-xs leading-5 text-muted-foreground">
-                Permite leer mensajes para detectar promesas o pendientes de pago. La detección por facturas vencidas sigue funcionando aunque esto esté apagado.
+          <div className="space-y-4 lg:border-l lg:border-border lg:pl-4">
+            <div className="rounded-lg border border-border bg-[hsl(var(--elevated))] p-4">
+              <div>
+                <div className="text-sm font-medium text-foreground">{localeCopy.title}</div>
+                <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {localeCopy.description}
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="workspace-language" className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  {localeCopy.label}
+                </Label>
+                <Select
+                  value={workspaceLocale}
+                  onValueChange={(value) => setWorkspaceLocale(value as SupportedLocale)}
+                >
+                  <SelectTrigger
+                    id="workspace-language"
+                    className="bg-[hsl(var(--elevated))] border-border"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {SUPPORTED_LOCALES.map((locale) => (
+                      <SelectItem key={locale} value={locale}>
+                        {locale === "en" ? messages.language.english : messages.language.spanish}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={() => saveWorkspaceLocale.mutate(workspaceLocale)}
+                  disabled={!hasLocaleChanges || saveWorkspaceLocale.isPending}
+                >
+                  {saveWorkspaceLocale.isPending ? localeCopy.saving : localeCopy.save}
+                </Button>
               </div>
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-[hsl(var(--elevated))] px-3 py-3">
-              <div className="text-sm text-foreground">{financeOptIn ? "Activo" : "Inactivo"}</div>
-              <Switch
-                checked={financeOptIn}
-                onCheckedChange={setFinanceOptIn}
-                aria-label="Permitir lectura de mensajes para cobros"
-              />
-            </div>
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                onClick={() => saveWorkspace.mutate({ ai_message_finance_opt_in: financeOptIn })}
-                disabled={!hasFinanceOptInChanges || saveWorkspace.isPending}
-              >
-                {saveWorkspace.isPending ? "Guardando..." : "Guardar cambio"}
-              </Button>
+
+            <div className="space-y-3">
+              <div>
+                <div className="text-sm font-medium text-foreground">Cobros con IA</div>
+                <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Permite leer mensajes para detectar promesas o pendientes de pago. La detección por facturas vencidas sigue funcionando aunque esto esté apagado.
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-[hsl(var(--elevated))] px-3 py-3">
+                <div className="text-sm text-foreground">{financeOptIn ? "Activo" : "Inactivo"}</div>
+                <Switch
+                  checked={financeOptIn}
+                  onCheckedChange={setFinanceOptIn}
+                  aria-label="Permitir lectura de mensajes para cobros"
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={() => saveWorkspace.mutate({ ai_message_finance_opt_in: financeOptIn })}
+                  disabled={!hasFinanceOptInChanges || saveWorkspace.isPending}
+                >
+                  {saveWorkspace.isPending ? "Guardando..." : "Guardar cambio"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -526,212 +788,35 @@ function WorkspaceTab() {
 // MEMBERS TAB
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ─── Permissions modal ──────────────────────────────────────────────────────
-
-function PermissionsDialog({
-  member,
-  open,
-  onClose,
-}: {
-  member: any;
-  open: boolean;
-  onClose: () => void;
-}) {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-
-  const { data: catalog } = useQuery({
-    queryKey: ["/api/workspaces/current/permissions/catalog"],
-    queryFn: () => api.getPermissionsCatalog(),
-    enabled: open,
-  });
-
-  const { data: memberPerms, isLoading } = useQuery({
-    queryKey: ["/api/workspaces/current/members", member?.id, "permissions"],
-    queryFn: () => api.getMemberPermissions(member.id),
-    enabled: open && !!member?.id,
-  });
-
-  const [draft, setDraft] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    if (memberPerms?.resolved) setDraft({ ...memberPerms.resolved });
-  }, [memberPerms]);
-
-  const save = useMutation({
-    mutationFn: () => {
-      // Compute diff against role defaults — send overrides, null to reset.
-      const defaults = catalog?.role_defaults?.[memberPerms?.role] ?? {};
-      const changes: Record<string, boolean | null> = {};
-      for (const key of Object.keys(draft)) {
-        const current = draft[key];
-        const def = defaults[key];
-        if (current === def) {
-          // Matches role default → clear override if one exists
-          if (memberPerms?.overrides?.[key] !== undefined) changes[key] = null;
-        } else {
-          changes[key] = current;
-        }
-      }
-      return api.updateMemberPermissions(member.id, changes);
-    },
-    onSuccess: () => {
-      toast({ title: "Permisos actualizados" });
-      qc.invalidateQueries({
-        queryKey: ["/api/workspaces/current/members", member?.id, "permissions"],
-      });
-      onClose();
-    },
-    onError: (e: any) =>
-      toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  if (!member) return null;
-
-  const isOwner = member.is_owner || memberPerms?.is_owner;
-  const permissions: Array<{ key: string; label: string; description: string }> =
-    catalog?.permissions ?? [];
-  const defaults: Record<string, boolean> =
-    catalog?.role_defaults?.[memberPerms?.role] ?? {};
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="bg-card border-border max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-sm font-semibold">
-            Permisos de {member.name ?? member.email}
-          </DialogTitle>
-        </DialogHeader>
-
-        {isOwner ? (
-          <div className="p-4 rounded-[4px] bg-[hsl(var(--bg-elevated))] text-xs text-muted-foreground">
-            El OWNER tiene todos los permisos y no puede modificarse.
-          </div>
-        ) : isLoading || !memberPerms ? (
-          <div className="py-6 text-xs text-muted-foreground">Cargando…</div>
-        ) : (
-          <div className="space-y-1 max-h-[440px] overflow-y-auto -mx-2 px-2">
-            <div className="flex items-center gap-2 mb-3 text-[11px] text-muted-foreground">
-              <span className="uppercase tracking-wider">Rol:</span>
-              <Badge variant="outline" className={ROLE_COLORS[memberPerms.role] ?? ""}>
-                {memberPerms.role}
-              </Badge>
-              <span className="ml-auto">Los valores por defecto provienen del rol.</span>
-            </div>
-            {permissions.map((p) => {
-              const enabled = draft[p.key] ?? false;
-              const isOverride =
-                draft[p.key] !== undefined && draft[p.key] !== defaults[p.key];
-              return (
-                <div
-                  key={p.key}
-                  className="flex items-start justify-between gap-3 py-2.5 border-b border-border last:border-b-0"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-[13px] font-medium text-foreground">{p.label}</p>
-                      {isOverride && (
-                        <span className="text-[10px] uppercase tracking-wider text-amber-500/80">
-                          override
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                      {p.description}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={enabled}
-                    onCheckedChange={(v) =>
-                      setDraft((d) => ({ ...d, [p.key]: v }))
-                    }
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {!isOwner && (
-          <div className="flex justify-end gap-2 pt-3">
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => save.mutate()}
-              disabled={save.isPending || isLoading}
-              className="bg-primary hover:bg-primary/90"
-            >
-              {save.isPending ? "Guardando…" : "Guardar permisos"}
-            </Button>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Members tab ────────────────────────────────────────────────────────────
-
 function MembersTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("AGENT");
-  const [permMember, setPermMember] = useState<any | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["/api/workspaces/current/members"],
     queryFn: () => api.getMembers(),
   });
 
-  const { data: invData } = useQuery({
-    queryKey: ["/api/invitations"],
-    queryFn: () => api.listInvitations(),
-  });
-
   const invite = useMutation({
-    mutationFn: () => api.createInvitation({ email, role }),
+    mutationFn: () => api.inviteUser({ email, role }),
     onSuccess: () => {
-      toast({ title: "Invitación enviada", description: `Enviamos un email a ${email}.` });
-      qc.invalidateQueries({ queryKey: ["/api/invitations"] });
+      toast({ title: "Invitación enviada" });
+      qc.invalidateQueries({ queryKey: ["/api/workspaces/current/members"] });
       setOpen(false);
       setEmail("");
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const resend = useMutation({
-    mutationFn: (id: string) => api.resendInvitation(id),
-    onSuccess: () => {
-      toast({ title: "Invitación reenviada" });
-      qc.invalidateQueries({ queryKey: ["/api/invitations"] });
-    },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const revoke = useMutation({
-    mutationFn: (id: string) => api.revokeInvitation(id),
-    onSuccess: () => {
-      toast({ title: "Invitación revocada" });
-      qc.invalidateQueries({ queryKey: ["/api/invitations"] });
-    },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
   const members = Array.isArray(data) ? data : [];
-  const invitations = Array.isArray(invData) ? invData : [];
-  const pendingInvitations = invitations.filter((i: any) => i.status === "PENDING");
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-muted-foreground">
-          {members.length} miembro(s)
-          {pendingInvitations.length > 0 && ` · ${pendingInvitations.length} pendiente(s)`}
-        </p>
+        <p className="text-sm text-muted-foreground">{members.length} miembro(s)</p>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="bg-primary hover:bg-primary/90">
@@ -743,15 +828,12 @@ function MembersTab() {
             <div className="space-y-3 pt-2">
               <div>
                 <Label>Email</Label>
-                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" className="mt-1 bg-[hsl(var(--bg-elevated))] border-border" />
-                <p className="text-[11px] text-muted-foreground mt-1.5">
-                  Recibirá un email con un enlace único para crear su cuenta.
-                </p>
+                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
               </div>
               <div>
                 <Label>Rol</Label>
                 <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger className="mt-1 bg-[hsl(var(--bg-elevated))] border-border"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-card border-border">
                     {["ADMIN", "AGENT", "VIEWER"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                   </SelectContent>
@@ -768,95 +850,21 @@ function MembersTab() {
       {isLoading ? <div className="text-muted-foreground text-sm">Cargando...</div> : (
         <div className="space-y-2">
           {members.map((m: any) => (
-            <div key={m.id} className="flex items-center justify-between p-3 rounded-[4px] bg-card border border-border">
+            <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
               <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-[hsl(var(--bg-elevated))] text-xs">{m.name?.[0]?.toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="bg-elevated text-xs">{m.name?.[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="text-sm font-medium">{m.name}</p>
                   <p className="text-xs text-muted-foreground">{m.email}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className={ROLE_COLORS[m.role] ?? ""}>{m.role}</Badge>
-                {!m.is_owner && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => setPermMember(m)}
-                    title="Permisos granulares"
-                  >
-                    <Lock className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
+              <Badge variant="outline" className={ROLE_COLORS[m.role] ?? ""}>{m.role}</Badge>
             </div>
           ))}
         </div>
       )}
-
-      {/* Pending invitations */}
-      {pendingInvitations.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Invitaciones pendientes
-          </h3>
-          <div className="space-y-2">
-            {pendingInvitations.map((inv: any) => (
-              <div
-                key={inv.id}
-                className="flex items-center justify-between p-3 rounded-[4px] bg-card border border-border"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-8 w-8 rounded-[4px] bg-[hsl(var(--bg-elevated))] flex items-center justify-center shrink-0">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{inv.email}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      Enviada {new Date(inv.last_sent_at).toLocaleDateString()}
-                      {inv.send_count > 1 && ` · ${inv.send_count} envíos`}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="outline" className={ROLE_COLORS[inv.role] ?? ""}>
-                    {inv.role}
-                  </Badge>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => resend.mutate(inv.id)}
-                    disabled={resend.isPending}
-                    title="Reenviar invitación"
-                  >
-                    <RotateCw className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs hover:bg-red-500/10 hover:text-red-400"
-                    onClick={() => revoke.mutate(inv.id)}
-                    disabled={revoke.isPending}
-                    title="Revocar invitación"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <PermissionsDialog
-        member={permMember}
-        open={!!permMember}
-        onClose={() => setPermMember(null)}
-      />
     </div>
   );
 }
@@ -939,7 +947,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           className="mt-1 bg-[hsl(var(--elevated))] border-border"
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Si lo dejás vacío, PymeHub enruta por <span className="font-mono">{fromEmail || "from_email"}</span>. Si usás un buzón distinto para recibir, ponelo aquí.
+                        Si lo dejás vacío, PymesHub enruta por <span className="font-mono">{fromEmail || "from_email"}</span>. Si usás un buzón distinto para recibir, ponelo aquí.
         </p>
       </div>
 
@@ -951,7 +959,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
 
       <div className="space-y-3 rounded-lg border border-border bg-[hsl(var(--elevated))] p-3 text-xs">
         <div>
-          <p className="font-medium text-foreground">Recepción de correos en PymeHub</p>
+                      <p className="font-medium text-foreground">Recepción de correos en PymesHub</p>
           <p className="mt-1 text-muted-foreground">
             Resend debe mandar los correos entrantes a este webhook para que aparezcan en el inbox del workspace.
           </p>
@@ -1551,7 +1559,7 @@ function DepartmentsTab() {
                 <SelectTrigger><SelectValue placeholder="Seleccionar usuario" /></SelectTrigger>
                 <SelectContent>
                   {allMembers.map((m: any) => (
-                    <SelectItem key={m.user?.id ?? m.id} value={m.user?.id ?? m.id}>
+                    <SelectItem key={m.user?.id || m.id} value={m.user?.id || m.id}>
                       {m.user?.name ?? m.name} ({m.user?.email ?? m.email})
                     </SelectItem>
                   ))}
@@ -2119,13 +2127,18 @@ function AiTab() {
   const [apiKey, setApiKey]     = useState("");
   const [showKey, setShowKey]   = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
+  const [agentReadEnabled, setAgentReadEnabled] = useState(false);
+  const [agentActionsEnabled, setAgentActionsEnabled] = useState(false);
 
   useEffect(() => {
     if (workspace) {
       setProvider(workspace.ai_provider ?? "");
       setModel(workspace.ai_model ?? "");
+      const s = workspace.settings_json || {};
+      setAgentReadEnabled(s.ai_agent_enabled === true);
+      setAgentActionsEnabled(s.ai_agent_actions_enabled === true);
     }
-  }, [workspace?.ai_provider, workspace?.ai_model]);
+  }, [workspace?.ai_provider, workspace?.ai_model, workspace?.settings_json]);
 
   useEffect(() => {
     setTestResult(null);
@@ -2136,6 +2149,10 @@ function AiTab() {
       ai_provider: provider || undefined,
       ai_model:    model    || undefined,
       ai_api_key:  apiKey   || undefined,
+      settings_json: {
+        ai_agent_enabled: agentReadEnabled,
+        ai_agent_actions_enabled: agentActionsEnabled,
+      },
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/workspaces/current"] });
@@ -2173,7 +2190,7 @@ function AiTab() {
     <div className="space-y-6 max-w-lg">
       <div>
         <p style={{ fontSize: "13px", color: "hsl(var(--fg-2))", lineHeight: 1.6 }}>
-          PymeHub usa tu propia API key — tú controlas el costo. La clave se guarda encriptada y nunca se expone.
+                          PymesHub usa tu propia API key — tú controlas el costo. La clave se guarda encriptada y nunca se expone.
         </p>
       </div>
 
@@ -2279,36 +2296,147 @@ function AiTab() {
   );
 }
 
+function ApiTokensTab() {
+  const { toast } = useToast();
+  const { data: tokens = [], isLoading, refetch } = useQuery({
+    queryKey: ['api-tokens'],
+    queryFn: api.getApiTokens,
+  });
+
+  const createToken = useMutation({
+    mutationFn: (name: string) => api.createApiToken(name),
+    onSuccess: (data: any) => {
+      refetch();
+      setNewToken(data?.token || null);
+      toast({ title: 'Token creado' });
+    },
+    onError: (err: any) => toast({ title: 'Error', description: err?.message, variant: 'destructive' }),
+  });
+
+  const revokeToken = useMutation({
+    mutationFn: (id: string) => api.revokeApiToken(id),
+    onSuccess: () => { refetch(); toast({ title: 'Token revocado' }); },
+    onError: (err: any) => toast({ title: 'Error', description: err?.message, variant: 'destructive' }),
+  });
+
+  const [name, setName] = useState('');
+  const [newToken, setNewToken] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">API Keys</h2>
+          <p className="text-sm text-muted-foreground mt-1">Tokens de acceso para aplicaciones externas.</p>
+        </div>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button size="sm"><Plus className="h-4 w-4 mr-1" />Nuevo Token</Button>
+          </DialogTrigger>
+          <DialogContent className="bg-card border-border max-w-md">
+            <DialogHeader><DialogTitle className="text-foreground">Generar API Key</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-foreground">Nombre</Label>
+                <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: App de facturación" className="bg-[hsl(var(--elevated))] border-border" />
+              </div>
+              <Button className="w-full" disabled={createToken.isPending || !name.trim()} onClick={() => { createToken.mutate(name.trim()); setName(''); }}>
+                {createToken.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null} Generar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {newToken && (
+        <div className="rounded-lg p-4 border border-yellow-500/30 bg-yellow-500/5 space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            <span className="text-sm font-semibold text-yellow-400">¡Guardá este token! No se mostrará de nuevo.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-black/30 rounded px-3 py-2 text-xs text-yellow-200 break-all font-mono">{newToken}</code>
+            <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(newToken); toast({ title: 'Copiado' }); }}><Copy className="h-4 w-4" /></Button>
+          </div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-muted-foreground py-4"><Loader2 className="h-4 w-4 animate-spin" /><span className="text-sm">Cargando...</span></div>
+      ) : tokens.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Sin API keys creadas aún. Requiere plan Enterprise.</p>
+      ) : (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-[hsl(var(--elevated))]"><tr><th className="text-left px-4 py-2 text-muted-foreground font-medium">Nombre</th><th className="text-left px-4 py-2 text-muted-foreground font-medium">Creado</th><th className="text-left px-4 py-2 text-muted-foreground font-medium">Último uso</th><th className="text-right px-4 py-2 text-muted-foreground font-medium"></th></tr></thead>
+            <tbody>
+              {tokens.map((t: any) => (
+                <tr key={t.id} className="border-t border-border hover:bg-[hsl(var(--elevated))] transition-colors">
+                  <td className="px-4 py-2.5 text-foreground font-medium">{t.name}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground text-xs">{t.created_at ? new Date(t.created_at).toLocaleDateString() : '-'}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground text-xs">{t.last_used_at ? new Date(t.last_used_at).toLocaleString() : 'Nunca'}</td>
+                  <td className="px-4 py-2.5 text-right"><Button variant="ghost" size="sm" onClick={() => { if (confirm('¿Revocar?')) revokeToken.mutate(t.id); }}><Trash2 className="h-4 w-4 text-red-400" /></Button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Settings() {
   const { user } = useAuth();
+  const { messages } = useI18n();
+  const copy = messages.settings;
   const isPlatformAdmin = user?.is_platform_admin === true;
 
   return (
     <div className="p-6 space-y-6">
-      <PageHeader title="Configuración" />
+      <ModuleHero module="settings">
+        <div className="px-6 py-5 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{copy.pageTitle}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Gestiona tu workspace, equipo e integraciones</p>
+          </div>
+        </div>
+      </ModuleHero>
       <Tabs defaultValue="workspace">
-        <TabsList className="bg-card border border-border">
+        <TabsList className="bg-card border border-border overflow-x-auto flex-nowrap scrollbar-none">
           <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">
-            <Building2 className="h-4 w-4 mr-2" />Workspace
+            <Building2 className="h-4 w-4 mr-2" />{copy.tabs.workspace}
           </TabsTrigger>
           <TabsTrigger value="members" className="data-[state=active]:bg-elevated">
-            <Users className="h-4 w-4 mr-2" />Miembros
+            <Users className="h-4 w-4 mr-2" />{copy.tabs.members}
           </TabsTrigger>
           <TabsTrigger value="channels" className="data-[state=active]:bg-elevated">
-            <PlugZap className="h-4 w-4 mr-2" />Canales
+            <PlugZap className="h-4 w-4 mr-2" />{copy.tabs.channels}
           </TabsTrigger>
           <TabsTrigger value="departments" className="data-[state=active]:bg-elevated">
-            <Layers className="h-4 w-4 mr-2" />Departamentos
+            <Layers className="h-4 w-4 mr-2" />{copy.tabs.departments}
           </TabsTrigger>
           <TabsTrigger value="integrations" className="data-[state=active]:bg-elevated">
-            <Plug className="h-4 w-4 mr-2" />Integraciones
+            <Plug className="h-4 w-4 mr-2" />{copy.tabs.integrations}
           </TabsTrigger>
           <TabsTrigger value="ai" className="data-[state=active]:bg-elevated">
-            <BrainCircuit className="h-4 w-4 mr-2" />Inteligencia Artificial
+            <BrainCircuit className="h-4 w-4 mr-2" />{copy.tabs.ai}
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="data-[state=active]:bg-elevated">
+            <CreditCard className="h-4 w-4 mr-2" />{copy.tabs.billing}
+          </TabsTrigger>
+          <TabsTrigger value="routing" className="data-[state=active]:bg-elevated">
+            <Shuffle className="h-4 w-4 mr-2" />{copy.tabs.routing}
+          </TabsTrigger>
+          <TabsTrigger value="apitokens" className="data-[state=active]:bg-elevated">
+            <Key className="h-4 w-4 mr-2" />{copy.tabs.apiTokens}
+          </TabsTrigger>
+          <TabsTrigger value="saml" className="data-[state=active]:bg-elevated">
+            <Shield className="h-4 w-4 mr-2" />SAML SSO
           </TabsTrigger>
           {isPlatformAdmin && (
             <TabsTrigger value="platform" className="data-[state=active]:bg-elevated">
-              <ShieldCheck className="h-4 w-4 mr-2" />Plataforma
+              <ShieldCheck className="h-4 w-4 mr-2" />{copy.tabs.platform}
             </TabsTrigger>
           )}
         </TabsList>
@@ -2320,6 +2448,10 @@ export default function Settings() {
             <TabsContent value="departments"><DepartmentsTab /></TabsContent>
             <TabsContent value="integrations"><IntegrationsTab /></TabsContent>
             <TabsContent value="ai"><AiTab /></TabsContent>
+            <TabsContent value="billing"><BillingPage /></TabsContent>
+            <TabsContent value="routing"><RoutingRulesTab /></TabsContent>
+            <TabsContent value="apitokens"><ApiTokensTab /></TabsContent>
+            <TabsContent value="saml"><SamlConfig /></TabsContent>
             {isPlatformAdmin && (
               <TabsContent value="platform"><PlatformTab /></TabsContent>
             )}

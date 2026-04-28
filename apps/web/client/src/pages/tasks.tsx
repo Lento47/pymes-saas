@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -11,13 +12,12 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TaskSheet } from "@/components/tasks/TaskSheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CheckSquare, Plus, AlertTriangle, Check, Loader2, MoreHorizontal, Pencil, Trash, Search, Calendar, Clock } from "lucide-react";
+import { CheckSquare, Plus, AlertTriangle, Check, MoreHorizontal, Pencil, Trash, Search, Calendar, Clock } from "lucide-react";
 import { format, isPast, isToday, isTomorrow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -26,14 +26,14 @@ function getInitials(name: string) {
 }
 
 function DueDateLabel({ dateStr }: { dateStr?: string }) {
-  if (!dateStr) return <span className="text-muted-foreground">—</span>;
+  if (!dateStr) return <span className="text-white/40">—</span>;
   const date = new Date(dateStr);
   const overdue = isPast(date) && !isToday(date);
   const today = isToday(date);
   const tomorrow = isTomorrow(date);
   const label = today ? "Hoy" : tomorrow ? "Mañana" : format(date, "dd MMM");
   return (
-    <span className={cn("flex items-center gap-1 text-xs", overdue ? "text-red-400" : today ? "text-amber-400" : "text-muted-foreground")}>
+    <span className={cn("flex items-center gap-1 text-xs", overdue ? "text-red-400" : today ? "text-amber-400" : "text-white/40")}>
       {overdue ? <AlertTriangle className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
       {label}
     </span>
@@ -54,6 +54,8 @@ const PRIORITY_OPTIONS = ["ALL", "LOW", "MEDIUM", "HIGH", "URGENT"];
 
 export default function TasksPage() {
   useRequireAuth();
+  const { messages } = useI18n();
+  const t = messages.tasks;
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
@@ -139,7 +141,8 @@ export default function TasksPage() {
   return (
     <TooltipProvider>
       <div>
-        <PageHeader title="Tareas" description="Gestiona y da seguimiento a tus tareas">
+        <PageHeader title={t.title} description="Gestiona y da seguimiento a tus tareas">
+
           <Button
             size="sm"
             className="h-8 text-xs"
@@ -154,9 +157,10 @@ export default function TasksPage() {
           </Button>
         </PageHeader>
 
+        <div className="px-4 md:px-6 py-4 space-y-4">
         {/* Overdue banner */}
         {overdueList.length > 0 && (
-          <div className="flex items-center gap-2.5 mb-4 px-3.5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400" data-testid="alert-overdue">
+          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400" data-testid="alert-overdue">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             <span className="text-xs">
               Tienes <strong>{overdueList.length}</strong> tarea{overdueList.length > 1 ? "s" : ""} vencida{overdueList.length > 1 ? "s" : ""} que requieren atención.
@@ -167,7 +171,7 @@ export default function TasksPage() {
         {/* Filters */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
             <Input
               placeholder="Buscar tareas..."
               value={search}
@@ -203,7 +207,7 @@ export default function TasksPage() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-xs text-muted-foreground"
+              className="h-8 text-xs text-white/40"
               onClick={() => { setStatusFilter("ALL"); setPriorityFilter("ALL"); setSearch(""); }}
             >
               Limpiar
@@ -214,18 +218,18 @@ export default function TasksPage() {
         {isLoading ? (
           <PageLoader />
         ) : taskList.length === 0 ? (
-          <EmptyState icon={CheckSquare} title="Sin tareas" description="Crea una tarea para empezar." />
+          <EmptyState icon={CheckSquare} title={t.noTasks} description="Crea una tarea para empezar." />
         ) : (
-          <div className="rounded-lg border border-border overflow-hidden bg-card">
-            <Table>
+          <div className="rounded-lg border border-border overflow-x-auto bg-card">
+            <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="w-8" />
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Título</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Estado</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Prioridad</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Vencimiento</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Asignado a</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium">Título</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium">Estado</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium">Prioridad</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium">Vencimiento</TableHead>
+                  <TableHead className="text-[11px] text-white/40 font-medium">Asignado a</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -268,11 +272,11 @@ export default function TasksPage() {
                         <div className="flex items-start gap-2">
                           <PriorityDot priority={task.priority} />
                           <div>
-                            <div className={cn("text-sm font-medium", task.status === "DONE" ? "line-through text-muted-foreground" : "text-foreground")}>
+                            <div className={cn("text-sm font-medium", task.status === "DONE" ? "line-through text-white/40" : "text-foreground")}>
                               {task.title}
                             </div>
                             {task.description && (
-                              <div className="text-[11px] text-muted-foreground truncate max-w-[240px]">{task.description}</div>
+                              <div className="text-[11px] text-white/40 truncate max-w-[240px]">{task.description}</div>
                             )}
                           </div>
                         </div>
@@ -280,7 +284,7 @@ export default function TasksPage() {
                       <TableCell>
                         <StatusBadge status={task.status} type="task" />
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs text-white/40">
                         {PRIORITY_LABELS[task.priority] || task.priority?.toLowerCase() || "—"}
                       </TableCell>
                       <TableCell>
@@ -289,13 +293,13 @@ export default function TasksPage() {
                       <TableCell>
                         {assigneeName ? (
                           <div className="flex items-center gap-1.5">
-                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold text-muted-foreground shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold text-white/40 shrink-0">
                               {getInitials(assigneeName)}
                             </div>
-                            <span className="text-xs text-muted-foreground truncate max-w-[80px]">{assigneeName}</span>
+                            <span className="text-xs text-white/40 truncate max-w-[80px]">{assigneeName}</span>
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground/50">Sin asignar</span>
+                          <span className="text-xs text-white/20">Sin asignar</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -334,76 +338,17 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* Create / Edit Dialog */}
-        <Dialog open={showCreate} onOpenChange={setShowCreate}>
-          <DialogContent className="bg-card border-border sm:max-w-[420px]" data-testid="dialog-create-task">
-            <DialogHeader>
-              <DialogTitle className="text-sm">{editingId ? "Editar tarea" : "Nueva tarea"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Título</Label>
-                <Input
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="h-8 text-xs bg-background border-border"
-                  placeholder="¿Qué hay que hacer?"
-                  data-testid="input-task-title"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Descripción <span className="text-muted-foreground/50">(opcional)</span></Label>
-                <Input
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="h-8 text-xs bg-background border-border"
-                  placeholder="Detalles adicionales..."
-                  data-testid="input-task-description"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Prioridad</Label>
-                  <Select value={form.priority} onValueChange={(val) => setForm({ ...form, priority: val })}>
-                    <SelectTrigger className="h-8 text-xs bg-background border-border" data-testid="select-new-task-priority">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
-                        <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Fecha límite</Label>
-                  <Input
-                    type="date"
-                    value={form.dueDate}
-                    onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                    className="h-8 text-xs bg-background border-border"
-                    data-testid="input-task-due-date"
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setShowCreate(false)} className="h-8 text-xs">
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => createMutation.mutate(form)}
-                disabled={createMutation.isPending || !form.title.trim()}
-                data-testid="button-save-task"
-              >
-                {createMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                {editingId ? "Guardar cambios" : "Crear tarea"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        </div>{/* end px-4 content wrapper */}
+
+        {/* Create / Edit Sheet */}
+        <TaskSheet
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          editingId={editingId}
+          initialData={form}
+          onSave={(data) => createMutation.mutate(data)}
+          isSaving={createMutation.isPending}
+        />
       </div>
     </TooltipProvider>
   );

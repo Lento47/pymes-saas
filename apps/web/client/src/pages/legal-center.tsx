@@ -2,14 +2,14 @@ import { Link } from "wouter";
 import { ArrowLeft, ExternalLink, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { getPublicDocumentation, getDocumentationBySlug } from "@/lib/documentation";
+import { getDocumentationByCategory, getDocumentationBySlug } from "@/lib/documentation";
 
 interface LegalDocumentPageProps {
   slug?: string;
 }
 
 export function LegalCenterPage() {
-  const docs = getPublicDocumentation();
+  const docs = getDocumentationByCategory("legal").filter(e => e.visibility === "public");
 
   return (
     <div className="min-h-screen bg-[hsl(var(--bg))] px-6 py-10">
@@ -20,7 +20,7 @@ export function LegalCenterPage() {
               <ShieldCheck className="h-5 w-5 text-sky-300" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white">Centro legal de PymeHub</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Centro legal de PymesHub</h1>
               <p className="text-sm text-muted-foreground">
                 Acceso rápido a los documentos externos y operativos que deben estar visibles para clientes.
               </p>
@@ -36,20 +36,19 @@ export function LegalCenterPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {docs.map((doc) => (
             <Link key={doc.slug} href={`/legal/${doc.slug}`}>
-              <div className="cursor-pointer rounded-xl border border-border bg-card p-4 transition-colors hover:bg-white/[0.03]">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">{doc.title}</p>
-                    <p className="text-xs text-muted-foreground">{doc.summary}</p>
+              <div className="group cursor-pointer rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 shrink-0 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
+                    <ShieldCheck className="h-4 w-4" />
                   </div>
-                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
-                    Público
-                  </Badge>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white group-hover:text-white/90">{doc.title}</h3>
+                    <p className="mt-1 text-xs leading-5 text-white/40">{doc.summary}</p>
+                  </div>
                 </div>
-                <div className="mt-3 text-xs text-muted-foreground">{doc.repoPath}</div>
               </div>
             </Link>
           ))}
@@ -119,17 +118,6 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                   </li>
                 ))}
               </ul>
-            </div>
-
-            <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <ExternalLink className="h-4 w-4 text-sky-300" />
-                Fuente maestra
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Ruta fuente en el paquete documental:{" "}
-                <span className="font-mono text-foreground">{doc.repoPath}</span>
-              </p>
             </div>
           </CardContent>
         </Card>

@@ -1,16 +1,19 @@
 import { Switch, Route, Router, Redirect } from "wouter";
-import { useHashLocation } from "wouter/use-hash-location";
+import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
+import { I18nProvider } from "@/components/providers/i18n-provider";
 import { useAuth } from "@/hooks/use-auth";
 
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
+import Register from "@/pages/register";
 import AcceptInvite from "@/pages/accept-invite";
+import Pricing from "@/pages/pricing";
 import Dashboard from "@/pages/dashboard";
 import Inbox from "@/pages/inbox";
 import Conversation from "@/pages/conversation";
@@ -20,34 +23,56 @@ import Tasks from "@/pages/tasks";
 import Documents from "@/pages/documents";
 import Invoices from "@/pages/invoices";
 import Automations from "@/pages/automations";
+import Notifications from "@/pages/notifications";
 import Pipeline from "@/pages/pipeline";
 import Settings from "@/pages/settings";
 import Billing from "@/pages/billing";
 import HelpPage from "@/pages/help";
 import HelpDocumentPage from "@/pages/help-document";
+import DocumentationCenterPage from "@/pages/documentation";
+import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import NotFound from "@/pages/not-found";
+import AdminDashboard from "@/pages/admin/dashboard";
+import AdminWorkspaces from "@/pages/admin/workspaces";
+import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
+import AdminUsers from "@/pages/admin/users";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, initialized, user } = useAuth();
+  if (!initialized || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
   if (!isAuthenticated) return <Redirect to="/login" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
 
+function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, initialized } = useAuth();
+  if (!initialized || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  if (!isAuthenticated) return <Redirect to="/login" />;
+  if (!user?.is_platform_admin) return <Redirect to="/" />;
+  return <AppSidebar>{children}</AppSidebar>;
+}
+
 function RootRoute() {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? (
-    <ProtectedLayout><Dashboard /></ProtectedLayout>
-  ) : (
-    <Landing />
-  );
+  const { isAuthenticated, user, initialized } = useAuth();
+  if (!initialized) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  if (!isAuthenticated) return <Landing />;
+  return <ProtectedLayout><Dashboard /></ProtectedLayout>;
 }
 
 function AppRouter() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
       <Route path="/accept-invite" component={AcceptInvite} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/documentation">
+        {() => <DocumentationCenterPage />}
+      </Route>
+      <Route path="/documentation/:slug">
+        {(params) => <DocumentationDocumentPage slug={params.slug} />}
+      </Route>
       <Route path="/legal">
         {() => <LegalCenterPage />}
       </Route>
@@ -81,6 +106,9 @@ function AppRouter() {
       <Route path="/automations">
         {() => <ProtectedLayout><Automations /></ProtectedLayout>}
       </Route>
+      <Route path="/notifications">
+        {() => <ProtectedLayout><Notifications /></ProtectedLayout>}
+      </Route>
       <Route path="/pipeline">
         {() => <ProtectedLayout><Pipeline /></ProtectedLayout>}
       </Route>
@@ -89,6 +117,18 @@ function AppRouter() {
       </Route>
       <Route path="/settings/billing">
         {() => <ProtectedLayout><Billing /></ProtectedLayout>}
+      </Route>
+      <Route path="/admin">
+        {() => <PlatformAdminLayout><AdminDashboard /></PlatformAdminLayout>}
+      </Route>
+      <Route path="/admin/workspaces">
+        {() => <PlatformAdminLayout><AdminWorkspaces /></PlatformAdminLayout>}
+      </Route>
+      <Route path="/admin/workspaces/:slug">
+        {(params) => <PlatformAdminLayout><AdminWorkspaceDetail slug={params.slug} /></PlatformAdminLayout>}
+      </Route>
+      <Route path="/admin/users">
+        {() => <PlatformAdminLayout><AdminUsers /></PlatformAdminLayout>}
       </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}
@@ -102,15 +142,19 @@ function AppRouter() {
 }
 
 export default function App() {
+  normalizeInitialLocation();
+
   return (
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Router hook={useHashLocation}>
-            <AppRouter />
-          </Router>
-        </TooltipProvider>
+        <I18nProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router hook={useWorkspaceHashLocation}>
+              <AppRouter />
+            </Router>
+          </TooltipProvider>
+        </I18nProvider>
       </QueryClientProvider>
     </AppErrorBoundary>
   );

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
-import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug } from "@/lib/api";
-import { connectSocket, disconnectSocket } from "./use-socket";
+import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug, getRefreshToken } from "@/lib/api";
+import { connectSocket, disconnectSocket, getSocket } from "./use-socket";
+import { queryClient } from "@/lib/queryClient";
 
 export interface AuthUser {
   id: string;
@@ -8,30 +9,80 @@ export interface AuthUser {
   name: string;
   role: string;
   is_platform_admin?: boolean;
-  workspace: { id: string; name: string; slug: string; plan: string };
+  workspace: {
+    id: string;
+    name: string;
+    slug: string;
+    plan: string;
+    timezone?: string;
+    locale?: string;
+    status?: string;
+  };
 }
 
 // Estado global en módulo (compartido entre llamadas a useAuth)
 let _user: AuthUser | null = null;
 let _listeners: Array<() => void> = [];
-const LS_USER_KEY = "pymes_user";
 let _hydratePromise: Promise<AuthUser | null> | null = null;
-
-try {
-  const storedUser = localStorage.getItem(LS_USER_KEY);
-  _user = storedUser ? JSON.parse(storedUser) : null;
-} catch {
-  _user = null;
-}
-
-// Auto-reconnect WebSocket when the page reloads with an existing session
-// (login() only runs on explicit login, not on refresh)
-if (isLoggedIn()) {
-  connectSocket();
-}
+let _isRestoring = false;
+let _restorePromise: Promise<void> | null = null;
 
 function notifyListeners() {
   _listeners.forEach(fn => fn());
+}
+
+// Mantener el usuario en memoria sincronizado cuando otros miembros del workspace
+// cambian algo (p. ej. el nombre del workspace). El servidor emite 'workspace:updated'
+// al room `workspace:<id>`.
+let _wsUpdatedAttached = false;
+function attachWorkspaceUpdateListener() {
+  const socket = getSocket();
+  if (!socket || _wsUpdatedAttached) return;
+  _wsUpdatedAttached = true;
+  socket.on("workspace:updated", (workspace: any) => {
+    queryClient.setQueryData(["/api/workspaces/current"], workspace);
+    if (!_user || !workspace?.id || _user.workspace?.id !== workspace.id) return;
+    _user = {
+      ..._user,
+      workspace: {
+        ..._user.workspace,
+        name: workspace.name ?? _user.workspace.name,
+        slug: workspace.slug ?? _user.workspace.slug,
+        plan: workspace.plan ?? _user.workspace.plan,
+        timezone: workspace.timezone ?? _user.workspace.timezone,
+        locale: workspace.locale ?? _user.workspace.locale,
+        status: workspace.status ?? _user.workspace.status,
+      },
+    };
+    notifyListeners();
+  });
+}
+
+// On page load, if we have a stored refresh token, restore the session silently
+const _storedRefreshToken = getRefreshToken();
+if (_storedRefreshToken && !isLoggedIn()) {
+  _isRestoring = true;
+  _restorePromise = (async () => {
+    try {
+      const r = await api.refresh(_storedRefreshToken);
+      setAuthState(r.access_token, getWorkspaceSlug()!, r.refresh_token);
+      const me = await api.getMe();
+      _user = me;
+      // Update slug from actual user data in case it changed
+      setAuthState(r.access_token, me.workspace.slug, r.refresh_token);
+      connectSocket();
+      attachWorkspaceUpdateListener();
+    } catch {
+      clearAuthState();
+      _user = null;
+    } finally {
+      _isRestoring = false;
+      notifyListeners();
+    }
+  })();
+} else if (isLoggedIn()) {
+  connectSocket();
+  attachWorkspaceUpdateListener();
 }
 
 async function hydrateUser() {
@@ -42,12 +93,10 @@ async function hydrateUser() {
     try {
       const me = await api.getMe();
       _user = me;
-      try { localStorage.setItem(LS_USER_KEY, JSON.stringify(me)); } catch { /* ignore */ }
       notifyListeners();
       return me;
     } catch {
       _user = null;
-      try { localStorage.removeItem(LS_USER_KEY); } catch { /* ignore */ }
       notifyListeners();
       return null;
     } finally {
@@ -79,8 +128,14 @@ export function useAuth() {
     }
   }, []);
 
-  const login = async (email: string, password: string, workspaceSlug: string) => {
+  const login = async (email: string, password: string, workspaceSlug?: string) => {
     const res = await api.login(email, password, workspaceSlug);
+    applyAuthResult(res);
+    return res;
+  };
+
+  const register = async (data: { name: string; email: string; password: string }) => {
+    const res = await api.register(data);
     applyAuthResult(res);
     return res;
   };
@@ -94,28 +149,31 @@ export function useAuth() {
   const logout = async () => {
     try { await api.logout(); } catch { /* best-effort */ }
     disconnectSocket(); // ← WebSocket se corta al hacer logout
+    _wsUpdatedAttached = false; // permitir re-attach en el próximo login
     clearAuthState();
     _user = null;
-    try { localStorage.removeItem(LS_USER_KEY); } catch { /* ignore */ }
     notifyListeners();
-    window.location.hash = "#/login";
+    history.pushState(null, "", "/login");
+    window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
   const switchWorkspace = async (workspaceSlug: string) => {
     const res = await api.switchWorkspace(workspaceSlug);
     setAuthState(res.access_token, workspaceSlug, res.refresh_token);
     _user = { ..._user!, role: res.role, workspace: res.workspace };
-    try { localStorage.setItem(LS_USER_KEY, JSON.stringify(_user)); } catch { /* ignore */ }
     notifyListeners();
     // Reload to re-fetch all queries with new workspace context
-    window.location.hash = "#/";
+    history.replaceState(null, "", "/");
     window.location.reload();
   };
 
   return {
     user: _user,
     isAuthenticated: isLoggedIn(),
+    isRestoring: _isRestoring,
+    workspaceSlug: getWorkspaceSlug(),
     login,
+    register,
     acceptInvite,
     logout,
     switchWorkspace,
@@ -126,7 +184,8 @@ export function useAuth() {
 export function useRequireAuth() {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
-    window.location.hash = "#/login";
+    history.replaceState(null, "", "/login");
+    window.dispatchEvent(new PopStateEvent("popstate"));
   }
   return { isAuthenticated };
 }
@@ -145,7 +204,7 @@ export function setSessionTtlDays(days: number): void {
 function applyAuthResult(res: { access_token: string; refresh_token?: string; user: AuthUser }) {
   setAuthState(res.access_token, res.user.workspace.slug, res.refresh_token);
   _user = res.user;
-  try { localStorage.setItem(LS_USER_KEY, JSON.stringify(res.user)); } catch { /* ignore */ }
   connectSocket();
+  attachWorkspaceUpdateListener();
   notifyListeners();
 }

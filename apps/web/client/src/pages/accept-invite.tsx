@@ -20,9 +20,8 @@ type InvitePreview = {
   };
 };
 
-function parseTokenFromHash() {
-  const [, query = ""] = window.location.hash.split("?");
-  return new URLSearchParams(query).get("token") ?? "";
+function parseTokenFromUrl() {
+  return new URLSearchParams(window.location.search).get("token") ?? "";
 }
 
 function parseError(err: unknown): string {
@@ -35,7 +34,7 @@ function parseError(err: unknown): string {
 export default function AcceptInvitePage() {
   const { acceptInvite, isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const token = useMemo(() => parseTokenFromHash(), []);
+  const token = useMemo(() => parseTokenFromUrl(), []);
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -72,7 +71,8 @@ export default function AcceptInvitePage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      window.location.hash = "#/";
+      history.replaceState(null, "", "/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
     }
   }, [isAuthenticated]);
 
@@ -90,7 +90,8 @@ export default function AcceptInvitePage() {
         preview?.requires_account_setup ? password : undefined,
       );
       toast({ title: "Invitación aceptada", description: "Tu acceso ya está listo." });
-      window.location.hash = "#/";
+      history.replaceState(null, "", "/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
     } catch (err) {
       setError(parseError(err));
     } finally {

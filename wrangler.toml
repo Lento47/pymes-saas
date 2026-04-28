@@ -1,30 +1,27 @@
 name = "pymeshubsaas"
-main = "index.js"
+main = "worker/index.js"
 compatibility_date = "2024-01-01"
-pages_build_output_dir = "apps/web/dist/public"
 
-[env.production]
-name = "pymeshubsaas-prod"
-routes = [
-  { pattern = "pymeshub.lat", zone_name = "pymeshub.lat" },
-  { pattern = "www.pymeshub.lat", zone_name = "pymeshub.lat" }
-]
+[vars]
+API_URL = "https://api.pymeshub.lat"
+OPENAI_AGENT_WORKFLOW_ID = "wf_69ee50a4431881908f0c86097bc88c0b0e1d93fe68eecbd2"
 
-[build]
-command = "pnpm install --frozen-lockfile && cd apps/web && pnpm run build"
-watch_paths = ["apps/web/**/*.{ts,tsx,css}"]
+[assets]
+directory = "./apps/web/dist/public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
 
-[[build.upload.rules]]
-type = "CompiledContentType"
-globs = ["**/*.wasm"]
-fallthrough = true
+[observability]
+enabled = false
+head_sampling_rate = 1
 
-[[build.upload.rules]]
-type = "text/javascript"
-globs = ["**/*.js"]
-fallthrough = true
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
 
-[[build.upload.rules]]
-type = "application/typescript"
-globs = ["**/*.ts"]
-fallthrough = true
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1

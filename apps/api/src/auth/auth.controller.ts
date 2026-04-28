@@ -37,6 +37,7 @@ export class AuthController {
   }
 
   /** POST /auth/login */
+  @Throttle({ auth: { ttl: 15 * 60_000, limit: 10 } })
   @Post('login')
   @Throttle({ auth: { limit: 5, ttl: 900_000 } })
   @HttpCode(HttpStatus.OK)
@@ -48,6 +49,7 @@ export class AuthController {
   }
 
   /** POST /auth/register */
+  @Throttle({ auth: { ttl: 15 * 60_000, limit: 10 } })
   @Post('register')
   @Throttle({ auth: { limit: 3, ttl: 3600_000 } })
   @HttpCode(HttpStatus.CREATED)
@@ -63,6 +65,7 @@ export class AuthController {
   }
 
   /** POST /auth/accept-invite */
+  @Throttle({ auth: { ttl: 15 * 60_000, limit: 10 } })
   @Post('accept-invite')
   @Throttle({ auth: { limit: 10, ttl: 600_000 } })
   @HttpCode(HttpStatus.OK)

@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
+import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api } from "@/lib/api";
 import {
   LayoutDashboard,
@@ -18,23 +22,30 @@ import {
   LogOut,
   ChevronDown,
   Check,
+  Shield,
+  BellRing,
 } from "lucide-react";
 
 const NAV = [
-  { path: "/",            icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/inbox",       icon: Inbox,           label: "Bandeja",   badge: "unread" },
-  { path: "/contacts",    icon: Users,           label: "Contactos" },
-  { path: "/tasks",       icon: CheckSquare,     label: "Tareas",    badge: "overdue" },
-  { path: "/documents",   icon: FileText,        label: "Archivos" },
-  { path: "/invoices",    icon: Receipt,         label: "Facturas" },
-  { path: "/pipeline",   icon: KanbanSquare,    label: "Pipeline" },
-  { path: "/automations", icon: Zap,             label: "Automatizaciones" },
+  { path: "/", icon: LayoutDashboard, key: "dashboard" as const },
+  { path: "/inbox", icon: Inbox, key: "inbox" as const, badge: "unread" as const },
+  { path: "/contacts", icon: Users, key: "contacts" as const },
+  { path: "/tasks", icon: CheckSquare, key: "tasks" as const, badge: "overdue" as const },
+  { path: "/documents", icon: FileText, key: "documents" as const },
+  { path: "/invoices", icon: Receipt, key: "invoices" as const },
+  { path: "/pipeline", icon: KanbanSquare, key: "pipeline" as const },
+  { path: "/automations", icon: Zap, key: "automations" as const },
+  { path: "/notifications", icon: BellRing, key: "notifications" as const },
 ];
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, switchWorkspace } = useAuth();
+  const { messages } = useI18n();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
+  const copy = messages.sidebar;
+
+  useNotificationsSocket(); // Monta el listener de notificaciones en tiempo real
 
   const { data: myWorkspaces } = useQuery({
     queryKey: ["/api/auth/my-workspaces"],
@@ -55,7 +66,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
   const unreadCount  = unreadData?.count ?? 0;
   const overdueCount = Array.isArray(overdueData) ? overdueData.length : 0;
-  const ws = user?.workspace?.name ?? "Workspace";
+  const ws = user?.workspace?.name ?? copy.workspaceFallback;
   const name = user?.name ?? user?.email ?? "—";
   const initials = name.slice(0, 2).toUpperCase();
   const multipleWorkspaces = Array.isArray(myWorkspaces) && myWorkspaces.length > 1;
@@ -73,9 +84,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         className="w-[200px] shrink-0 flex flex-col"
       >
         {/* Workspace header / switcher */}
-        <div className="relative shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+        <div className="relative shrink-0 flex items-center" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
           <button
-            className="w-full px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
+            className="flex-1 px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
             onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
             style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
           >
@@ -92,6 +103,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
             )}
           </button>
+
+          <NotificationBell />
 
           {wsMenuOpen && multipleWorkspaces && (
             <div
@@ -119,7 +132,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 py-2 overflow-y-auto">
-          {NAV.map(({ path, icon: Icon, label, badge: bk }) => {
+          {NAV.map(({ path, icon: Icon, key, badge: bk }) => {
             const active = isActive(path);
             const b = badge(bk);
             return (
@@ -138,7 +151,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     style={{ width: 14, height: 14 }}
                     strokeWidth={active ? 2.2 : 1.8}
                   />
-                  <span className="flex-1 truncate" style={{ fontSize: "13px" }}>{label}</span>
+                  <span className="flex-1 truncate" style={{ fontSize: "13px" }}>{copy.nav[key]}</span>
                   {b > 0 && (
                     <span
                       style={{
@@ -162,6 +175,21 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           {/* Divider */}
           <div className="my-2 mx-3" style={{ height: 1, background: "hsl(var(--border))" }} />
 
+          {user?.is_platform_admin && (
+            <Link href="/admin">
+              <div
+                className={cn(
+                  "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
+                  isActive("/admin") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
+                )}
+                style={isActive("/admin") ? { background: "hsl(var(--bg-active))" } : undefined}
+              >
+                <Shield style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
+                <span style={{ fontSize: "13px" }}>Platform Admin</span>
+              </div>
+            </Link>
+          )}
+
           <Link href="/settings">
             <div
               className={cn(
@@ -171,7 +199,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               style={isActive("/settings") ? { background: "hsl(var(--bg-active))" } : undefined}
             >
               <Settings style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>Configuración</span>
+              <span style={{ fontSize: "13px" }}>{copy.settings}</span>
             </div>
           </Link>
 
@@ -184,10 +212,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               style={isActive("/help") ? { background: "hsl(var(--bg-active))" } : undefined}
             >
               <CircleHelp style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>Ayuda</span>
+              <span style={{ fontSize: "13px" }}>{copy.help}</span>
             </div>
           </Link>
         </nav>
+
+        <div className="px-3 pb-3">
+          <LanguageSwitcher className="w-full justify-between" />
+        </div>
 
         {/* User row */}
         <div
@@ -215,7 +247,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             onClick={logout}
             style={{ color: "hsl(var(--fg-3))", padding: "4px" }}
             className="hover:text-white transition-colors shrink-0 rounded"
-            title="Cerrar sesión"
+            title={copy.logout}
           >
             <LogOut style={{ width: 13, height: 13 }} />
           </button>

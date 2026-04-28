@@ -13,15 +13,12 @@ export function getSocket(): Socket | null {
  * Inicializa la conexión WebSocket con el token JWT actual.
  * Llamar una sola vez al hacer login (en App.tsx o en el hook useAuth).
  */
-// Tauri desktop: NestJS sidecar always on localhost:4000
-// Dev: connect directly to NestJS to avoid Vite proxy WS issues
-// Production web: co-located, use origin
-const _isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
-const WS_URL = _isTauri
-  ? 'http://localhost:4000'
-  : import.meta.env.DEV
+// In dev, connect directly to the NestJS port.
+// In production, use VITE_API_URL (e.g. https://api.pymeshub.lat) so the
+// WebSocket goes to Railway, not to the Cloudflare Pages static host.
+const WS_URL = import.meta.env.DEV
   ? `${window.location.protocol}//${window.location.hostname}:4000`
-  : window.location.origin;
+  : (import.meta.env.VITE_API_URL as string | undefined) ?? window.location.origin;
 
 export function connectSocket() {
   if (_socket?.connected) return _socket;

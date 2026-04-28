@@ -1,53 +1,42 @@
 import { reportClientError } from "@/lib/error-reporting";
-// In Tauri desktop mode, the WebView is served from http://tauri.localhost
-// and the NestJS sidecar runs locally on port 4000.
-const _isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
-const API_BASE = _isTauri
-  ? 'http://localhost:4000'
-  : ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
-const LS_TOKEN_KEY = "pymes_token";
-const LS_SLUG_KEY = "pymes_slug";
-const LS_EXPIRY_KEY = "pymes_token_expiry";
-const LS_REFRESH_KEY = "pymes_refresh_token";
+const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ??
+  ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
-// ── In-memory state (hydrated from localStorage on load) ─────────────────────
+// ── Auth state (tokens in-memory only; slug in sessionStorage for reload support) ──
 let _token: string | null = null;
 let _workspaceSlug: string | null = null;
-
-function _loadFromStorage() {
-  try {
-    _token = localStorage.getItem(LS_TOKEN_KEY);
-    _workspaceSlug = localStorage.getItem(LS_SLUG_KEY);
-  } catch { /* localStorage may be unavailable in some environments */ }
-}
-
-// Hydrate on module load
-_loadFromStorage();
+let _refreshToken: string | null = null;
 
 export function setAuthState(token: string, slug: string, refreshToken?: string) {
   _token = token;
   _workspaceSlug = slug;
+  if (refreshToken) _refreshToken = refreshToken;
   try {
-    localStorage.setItem(LS_TOKEN_KEY, token);
-    localStorage.setItem(LS_SLUG_KEY, slug);
-    if (refreshToken) localStorage.setItem(LS_REFRESH_KEY, refreshToken);
+    sessionStorage.setItem('pymes_slug', slug);
+    if (refreshToken) sessionStorage.setItem('pymes_refresh', refreshToken);
   } catch { /* ignore */ }
 }
 
 export function clearAuthState() {
   _token = null;
   _workspaceSlug = null;
+  _refreshToken = null;
   try {
-    localStorage.removeItem(LS_TOKEN_KEY);
-    localStorage.removeItem(LS_SLUG_KEY);
-    localStorage.removeItem(LS_EXPIRY_KEY);
-    localStorage.removeItem(LS_REFRESH_KEY);
+    sessionStorage.removeItem('pymes_slug');
+    sessionStorage.removeItem('pymes_refresh');
   } catch { /* ignore */ }
 }
 
 export function getAuthToken() { return _token; }
-export function getWorkspaceSlug() { return _workspaceSlug; }
+export function getWorkspaceSlug() {
+  if (_workspaceSlug) return _workspaceSlug;
+  try { return sessionStorage.getItem('pymes_slug') || null; } catch { return null; }
+}
+export function getRefreshToken() {
+  if (_refreshToken) return _refreshToken;
+  try { return sessionStorage.getItem('pymes_refresh') || null; } catch { return null; }
+}
 export function isLoggedIn() { return !!_token; }
 
 /**
@@ -68,23 +57,22 @@ async function _tryRefresh(): Promise<boolean> {
 
   _refreshPromise = (async () => {
     try {
-      const stored = localStorage.getItem(LS_REFRESH_KEY);
-      if (!stored) return false;
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) return false;
 
       const res = await fetch(`${API_BASE}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: stored }),
+        body: JSON.stringify({ refresh_token: refreshToken }),
       });
 
       if (!res.ok) return false;
-
       const data = await res.json();
       _token = data.access_token;
-      try {
-        localStorage.setItem(LS_TOKEN_KEY, data.access_token);
-        if (data.refresh_token) localStorage.setItem(LS_REFRESH_KEY, data.refresh_token);
-      } catch { }
+      if (data.refresh_token) {
+        _refreshToken = data.refresh_token;
+        try { sessionStorage.setItem('pymes_refresh', data.refresh_token); } catch { /* ignore */ }
+      }
       return true;
     } catch {
       return false;
@@ -96,26 +84,16 @@ async function _tryRefresh(): Promise<boolean> {
   return _refreshPromise;
 }
 
-/** Public request — no auth headers. Used for invitation verify/accept. */
-async function requestPublic<T>(
-  method: string,
-  path: string,
-  data?: unknown
-): Promise<T> {
-  const headers: Record<string, string> = {};
-  if (data) headers["Content-Type"] = "application/json";
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-  });
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+export async function restoreSession(): Promise<boolean> {
+  const slug = getWorkspaceSlug();
+  if (slug) _workspaceSlug = slug;
+
+  const refreshToken = getRefreshToken();
+  if (refreshToken) {
+    _refreshToken = refreshToken;
+    return _tryRefresh();
   }
-  const ct = res.headers.get("content-type");
-  if (ct && ct.includes("application/json")) return res.json();
-  return {} as T;
+  return false;
 }
 
 async function request<T>(
@@ -193,47 +171,9 @@ async function request<T>(
   return {} as T;
 }
 
-async function requestBlob(
-  path: string,
-): Promise<{ blob: Blob; contentDisposition: string | null }> {
-  const buildHeaders = (): Record<string, string> => {
-    const h: Record<string, string> = {};
-    if (_token) h["Authorization"] = `Bearer ${_token}`;
-    if (_workspaceSlug) h["x-workspace-slug"] = _workspaceSlug;
-    return h;
-  };
-
-  let res = await fetch(`${API_BASE}${path}`, {
-    method: "GET",
-    headers: buildHeaders(),
-  });
-
-  if (res.status === 401 && !path.includes("/auth/refresh")) {
-    const refreshed = await _tryRefresh();
-    if (refreshed) {
-      res = await fetch(`${API_BASE}${path}`, { method: "GET", headers: buildHeaders() });
-    }
-    if (!refreshed || res.status === 401) {
-      clearAuthState();
-      window.location.hash = "#/login";
-      throw new Error("401: Sesión expirada.");
-    }
-  }
-
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
-  }
-
-  return {
-    blob: await res.blob(),
-    contentDisposition: res.headers.get("content-disposition"),
-  };
-}
-
 export const api = {
   getInvitePreview: (token: string) =>
-    request<any>("GET", `/api/auth/invite-preview?token=${encodeURIComponent(token)}`),
+    request<any>("POST", "/api/auth/invite-preview", { token }),
   acceptInvite: (data: { token: string; name?: string; password?: string }) =>
     request<any>("POST", "/api/auth/accept-invite", data),
   login: async (email: string, password: string, workspaceSlug: string) => {
@@ -320,7 +260,6 @@ export const api = {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return request<any>("GET", `/api/documents${qs}`);
   },
-  downloadDocument: (id: string) => requestBlob(`/api/documents/${id}/download`),
   uploadDocument: (formData: FormData) => request<any>("POST", "/api/documents/upload", formData, { isFormData: true }),
   deleteDocument: (id: string) => request<any>("DELETE", `/api/documents/${id}`),
   getAutomations: () => request<any>("GET", "/api/automations"),
@@ -331,29 +270,16 @@ export const api = {
   getWorkspace: () => request<any>("GET", "/api/workspaces/current"),
   updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   testAiConnection: (data: any) => request<any>("POST", "/api/workspaces/current/ai/test", data),
+  createCheckout: (priceId: string) => request<any>("POST", "/api/billing/checkout", { priceId }),
+  getBillingPrices: () => request<any>("GET", "/api/billing/prices"),
+  getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
+  getBillingInvoices: () => request<any>("GET", "/api/billing/invoices"),
   getApiKeys: () => request<any>("GET", "/api/workspaces/current/api-keys"),
   updateApiKeys: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   getMembers: () => request<any>("GET", "/api/workspaces/current/members"),
   inviteUser: (data: any) => request<any>("POST", "/api/workspaces/current/members/invite", data),
   changeMemberRole: (userId: string, newRole: string) => request<any>("PATCH", `/api/workspaces/current/members/${userId}/role`, { role: newRole }),
   removeMember: (userId: string) => request<any>("DELETE", `/api/workspaces/current/members/${userId}`),
-  // Invitations (real signed-token flow)
-  listInvitations: () => request<any>("GET", "/api/invitations"),
-  createInvitation: (data: { email: string; role: string; department_ids?: string[] }) =>
-    request<any>("POST", "/api/invitations", data),
-  resendInvitation: (id: string) => request<any>("POST", `/api/invitations/${id}/resend`),
-  revokeInvitation: (id: string) => request<any>("DELETE", `/api/invitations/${id}`),
-  verifyInvitationToken: (token: string) =>
-    requestPublic<any>("GET", `/api/invitations/verify?token=${encodeURIComponent(token)}`),
-  acceptInvitation: (data: { token: string; password: string; name?: string }) =>
-    requestPublic<any>("POST", "/api/invitations/accept", data),
-  // Granular permissions
-  getPermissionsCatalog: () =>
-    request<any>("GET", "/api/workspaces/current/permissions/catalog"),
-  getMemberPermissions: (userId: string) =>
-    request<any>("GET", `/api/workspaces/current/members/${userId}/permissions`),
-  updateMemberPermissions: (userId: string, permissions: Record<string, boolean | null>) =>
-    request<any>("PATCH", `/api/workspaces/current/members/${userId}/permissions`, { permissions }),
   updateUser: (userId: string, data: any) => request<any>("PATCH", `/api/users/${userId}`, data),
   getChannels: () => request<any>("GET", "/api/channels"),
   createChannel: (data: any) => request<any>("POST", "/api/channels", data),
@@ -413,10 +339,8 @@ export const api = {
   getMyWorkspaces: () => request<any>("GET", "/api/auth/my-workspaces"),
   switchWorkspace: (workspace_slug: string) =>
     request<any>("POST", "/api/auth/switch-workspace", { workspace_slug }),
-  // Billing
-  getBillingPrices: () => request<Record<string, string | null>>("GET", "/api/billing/prices"),
-  createCheckout: (priceId: string) =>
-    request<{ transactionId: string; checkoutUrl: string | null }>("POST", "/api/billing/checkout", { priceId }),
+  register: (data: { email: string; name: string; password: string }) =>
+    request<any>("POST", "/api/auth/register", data),
   // Platform admin
   platformListWorkspaces: () => request<any>("GET", "/api/platform/workspaces"),
   platformGetWorkspaceBilling: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}/billing`),
@@ -433,4 +357,15 @@ export const api = {
     const qs = email ? `?email=${encodeURIComponent(email)}` : "";
     return request<any>("GET", `/api/platform/users${qs}`);
   },
+  platformCreateUser: (data: { email: string; name: string; password: string; is_platform_admin?: boolean }) =>
+    request<any>("POST", "/api/platform/users", data),
+  platformUpdateUserPassword: (userId: string, password: string) =>
+    request<any>("PATCH", `/api/platform/users/${userId}/password`, { password }),
+  platformResetUserPassword: (userId: string) =>
+    request<any>("POST", `/api/platform/users/${userId}/reset-password`),
+  platformUpdateUserStatus: (userId: string, status: string) =>
+    request<any>("PATCH", `/api/platform/users/${userId}/status`, { status }),
+  platformDeleteUser: (userId: string) => request<any>("DELETE", `/api/platform/users/${userId}`),
+  platformGetStats: () => request<any>("GET", "/api/platform/stats"),
+  platformToggleAdmin: (userId: string) => request<any>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
 };

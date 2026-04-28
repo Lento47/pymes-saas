@@ -1,0 +1,459 @@
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { api } from '@/lib/api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import {
+  Send,
+  Trash2,
+  Sparkles,
+  X,
+  ArrowUp,
+  Loader2,
+  CheckCircle2,
+  UserPlus,
+  ClipboardCheck,
+  TrendingUp,
+} from 'lucide-react';
+
+type Message = {
+  id: string;
+  role: 'user' | 'agent' | 'system' | 'tool';
+  content: string;
+  isStreaming?: boolean;
+};
+
+type ToolCall = {
+  id: string;
+  name: string;
+  status: 'running' | 'done';
+};
+
+type FormField = {
+  name: string;
+  label: string;
+  type: 'text' | 'email' | 'select' | 'date' | 'number';
+  required: boolean;
+  placeholder?: string;
+  options?: string[];
+};
+
+type EmbeddedForm = {
+  id: string;
+  title: string;
+  icon: any;
+  tool: string;
+  fields: FormField[];
+  values: Record<string, string>;
+  isSubmitting: boolean;
+  result?: string;
+  error?: string;
+};
+
+const QUICK_FORMS: { label: string; icon: any; tool: string; title: string; fields: FormField[] }[] = [
+  {
+    label: 'Contacto', icon: UserPlus, tool: 'create_contact', title: 'Nuevo Contacto',
+    fields: [
+      { name: 'full_name', label: 'Nombre completo', type: 'text', required: true, placeholder: 'Ej: Juan Pérez' },
+      { name: 'email', label: 'Email', type: 'email', required: false, placeholder: 'juan@ejemplo.com' },
+      { name: 'phone', label: 'Teléfono', type: 'text', required: false, placeholder: '8888-0000' },
+      { name: 'type', label: 'Tipo', type: 'select', required: false, options: ['CUSTOMER', 'LEAD', 'SUPPLIER', 'PARTNER'] },
+    ],
+  },
+  {
+    label: 'Tarea', icon: ClipboardCheck, tool: 'create_task', title: 'Nueva Tarea',
+    fields: [
+      { name: 'title', label: 'Título', type: 'text', required: true, placeholder: 'Ej: Llamar al cliente' },
+      { name: 'description', label: 'Descripción', type: 'text', required: false, placeholder: 'Detalles...' },
+      { name: 'priority', label: 'Prioridad', type: 'select', required: false, options: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] },
+      { name: 'due_date', label: 'Fecha límite', type: 'date', required: false },
+    ],
+  },
+  {
+    label: 'Deal', icon: TrendingUp, tool: 'create_deal', title: 'Nuevo Deal',
+    fields: [
+      { name: 'title', label: 'Título', type: 'text', required: true, placeholder: 'Ej: Venta de software' },
+      { name: 'stage_id', label: 'ID del Stage', type: 'text', required: true, placeholder: 'ID de la etapa del pipeline' },
+      { name: 'value', label: 'Valor', type: 'number', required: false, placeholder: '50000' },
+    ],
+  },
+];
+
+const SUGGESTIONS = [
+  { text: '¿Cómo están mis ventas este mes?', sub: 'Métricas' },
+  { text: 'Analiza mis indicadores clave del negocio', sub: 'Insights' },
+  { text: '¿Qué tareas pendientes tengo urgentes?', sub: 'Tareas' },
+  { text: 'Dame recomendaciones para mejorar cobros', sub: 'Facturación' },
+];
+
+export default function Agent() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [conversationId, setConversationId] = useState<string | undefined>();
+  const [error, setError] = useState<string | null>(null);
+  const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
+  const [activeForm, setActiveForm] = useState<EmbeddedForm | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useEffect(() => { scrollToBottom(); }, [messages]);
+  useEffect(() => { if (!isStreaming && inputRef.current) inputRef.current.focus(); }, [isStreaming]);
+  useEffect(() => {
+    const done = localStorage.getItem('pymeshub_onboarding_done');
+    if (done && Date.now() - parseInt(done) < 60000) setShowWelcome(true);
+  }, []);
+
+  const handleSend = useCallback(async (text?: string) => {
+    const messageText = (text ?? input).trim();
+    if (!messageText || isStreaming) return;
+    setError(null);
+
+    const userMessage: Message = { id: crypto.randomUUID(), role: 'user', content: messageText };
+    const agentMessage: Message = { id: crypto.randomUUID(), role: 'agent', content: '', isStreaming: true };
+
+    setMessages(prev => [...prev, userMessage, agentMessage]);
+    setToolCalls([]);
+    setInput('');
+    setIsStreaming(true);
+
+    try {
+      const response = await api.createAgentStream(messageText, conversationId);
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'response.output_text.delta') {
+              setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, content: m.content + (data.delta || '') } : m));
+            } else if (data.type === 'response.output_item.added' && data.item?.type === 'function_call') {
+              setToolCalls(prev => [...prev, { id: data.item.id || data.item.call_id, name: data.item.name || 'tool', status: 'running' }]);
+            } else if (data.type === 'response.output_item.done' && data.item) {
+              setToolCalls(prev => prev.map(t => t.id === (data.item.id || data.item.call_id) ? { ...t, status: 'done' } : t));
+            } else if (data.type === 'response.completed' && data.response?.id) {
+              setConversationId(data.response.id);
+            } else if (data.type === 'error') {
+              setError(data.error?.message || 'Error del agente');
+            }
+          } catch {}
+        }
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Error');
+      setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, role: 'system', content: err?.message || 'Error', isStreaming: false } : m));
+    } finally {
+      setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, isStreaming: false } : m));
+      setIsStreaming(false);
+    }
+  }, [input, isStreaming, conversationId]);
+
+  const handleNewConversation = () => {
+    setMessages([]); setConversationId(undefined); setError(null);
+    setInput(''); setActiveForm(null); inputRef.current?.focus();
+  };
+
+  const openForm = (formDef: typeof QUICK_FORMS[0]) => {
+    const values: Record<string, string> = {};
+    formDef.fields.forEach(f => { values[f.name] = ''; });
+    setActiveForm({ id: crypto.randomUUID(), title: formDef.title, icon: formDef.icon, tool: formDef.tool, fields: formDef.fields, values, isSubmitting: false });
+  };
+
+  const updateFormValue = (name: string, value: string) => {
+    setActiveForm(prev => prev ? { ...prev, values: { ...prev.values, [name]: value } } : null);
+  };
+
+  const submitForm = async () => {
+    if (!activeForm || activeForm.isSubmitting) return;
+    setActiveForm(prev => prev ? { ...prev, isSubmitting: true } : null);
+    try {
+      const args: Record<string, any> = {};
+      for (const f of activeForm.fields) {
+        const v = activeForm.values[f.name]?.trim();
+        if (f.required && !v) { setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: `"${f.label}" es requerido` } : null); return; }
+        if (v) args[f.name] = f.type === 'number' ? parseFloat(v) : v;
+      }
+      const result = await api.executeAgentTool(activeForm.tool, args);
+      setActiveForm(prev => prev ? { ...prev, isSubmitting: false, result: JSON.stringify(result, null, 2) } : null);
+    } catch (err: any) {
+      setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: err?.message || 'Error' } : null);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+
+  const hasMessages = messages.length > 0;
+
+  return (
+    <div className="flex flex-col h-full relative overflow-hidden" style={{ background: '#0a0a0f' }}>
+      {/* Ambient background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[180px] opacity-[0.03]"
+          style={{ background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)' }} />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[150px] opacity-[0.03]"
+          style={{ background: 'radial-gradient(circle, #a78bfa 0%, transparent 70%)' }} />
+      </div>
+
+      {/* Header */}
+      <header className="relative shrink-0 flex items-center justify-between px-6 py-2.5 border-b border-white/[0.04]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+            <Sparkles style={{ width: 13, height: 13, color: 'white' }} />
+          </div>
+          <h1 className="text-[13px] font-semibold text-white/90 tracking-tight">Asistente IA</h1>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white/30"
+            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.15)' }}>
+            {isStreaming ? 'Respondiendo' : 'GPT-5.4'}
+          </span>
+        </div>
+        {hasMessages && (
+          <button onClick={handleNewConversation}
+            className="p-1.5 rounded-lg text-white/20 hover:text-white/50 hover:bg-white/[0.04] transition-all duration-200"
+            title="Nueva conversación">
+            <Trash2 style={{ width: 14, height: 14 }} />
+          </button>
+        )}
+      </header>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto scroll-smooth">
+        {!hasMessages ? (
+          <div className="flex flex-col items-center justify-center h-full px-6">
+            {showWelcome && (
+              <div className="mb-6 px-4 py-3 rounded-2xl text-center max-w-sm animate-fade-in"
+                style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.1)' }}>
+                <p className="text-sm font-medium text-white/80">🐾 ¡Hubby te da la bienvenida!</p>
+                <p className="text-xs text-white/40 mt-1">Preguntame lo que necesites sobre tu negocio.</p>
+              </div>
+            )}
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+              <Sparkles style={{ width: 24, height: 24, color: 'white' }} />
+            </div>
+            <h2 className="text-xl font-semibold text-white mb-1.5 tracking-tight">Asistente IA</h2>
+            <p className="text-sm text-white/30 text-center mb-10 max-w-sm leading-relaxed">
+              Tu agente inteligente para consultas, análisis y automatizaciones.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-md">
+              {SUGGESTIONS.map(({ text, sub }, i) => (
+                <button key={i} onClick={() => handleSend(text)} disabled={isStreaming}
+                  className="group relative text-left px-4 py-3 rounded-xl transition-all duration-300 disabled:opacity-30"
+                  style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.2)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)'; }}>
+                  <span className="block text-[13px] text-white/70 group-hover:text-white/90 transition-colors leading-snug">{text}</span>
+                  <span className="block text-[10px] text-white/20 mt-0.5">{sub}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-[720px] mx-auto px-4 py-6 space-y-5">
+            {messages.map((msg, idx) => (
+              <div key={msg.id}
+                className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
+                style={{ animationDelay: `${idx * 30}ms`, animationFillMode: 'both' }}>
+                {msg.role !== 'user' && (
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ background: msg.role === 'system' ? 'rgba(239,68,68,0.15)' : msg.role === 'tool' ? 'rgba(245,158,11,0.15)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                    {msg.role === 'system' ? (
+                      <span className="text-[11px]">!</span>
+                    ) : msg.role === 'tool' ? (
+                      <span className="text-[11px]">⚡</span>
+                    ) : (
+                      <Sparkles style={{ width: 12, height: 12, color: 'white' }} />
+                    )}
+                  </div>
+                )}
+
+                <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
+                  msg.role === 'user' ? 'rounded-tr-md' : 'rounded-tl-md'
+                }`}
+                  style={msg.role === 'user' ? {
+                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                    color: 'white',
+                    boxShadow: '0 2px 12px rgba(99,102,241,0.15)',
+                  } : msg.role === 'system' ? {
+                    background: 'rgba(239,68,68,0.06)',
+                    border: '1px solid rgba(239,68,68,0.12)',
+                    color: '#fca5a5',
+                  } : {
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    color: '#e4e4e7',
+                  }}>
+                  {msg.role === 'user' ? (
+                    <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
+                  ) : msg.isStreaming && !msg.content ? (
+                    <div className="flex items-center gap-1.5 py-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse" style={{ animationDelay: '200ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse" style={{ animationDelay: '400ms' }} />
+                    </div>
+                  ) : (
+                    <div className="text-[14px] leading-relaxed prose prose-invert prose-sm max-w-none break-words
+                      [&_*]:text-inherit
+                      [&_code]:bg-white/[0.04] [&_code]:rounded [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[13px]
+                      [&_pre]:bg-white/[0.03] [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-[13px] [&_pre]:border [&_pre]:border-white/[0.05]
+                      [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5
+                      [&_strong]:text-white/90 [&_em]:text-white/70">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      {msg.isStreaming && (
+                        <span className="inline-block w-[2px] h-[16px] ml-0.5 align-text-bottom rounded-full animate-pulse"
+                          style={{ background: '#a78bfa' }} />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Tool call chips */}
+            {toolCalls.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pl-10 animate-fade-in">
+                {toolCalls.map(tc => (
+                  <span key={tc.id}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium transition-all duration-500"
+                    style={{
+                      background: tc.status === 'running' ? 'rgba(99,102,241,0.08)' : 'rgba(34,197,94,0.08)',
+                      border: `1px solid ${tc.status === 'running' ? 'rgba(99,102,241,0.15)' : 'rgba(34,197,94,0.15)'}`,
+                      color: tc.status === 'running' ? '#a5b4fc' : '#86efac',
+                    }}>
+                    {tc.status === 'running' ? (
+                      <Loader2 style={{ width: 10, height: 10 }} className="animate-spin" />
+                    ) : (
+                      <CheckCircle2 style={{ width: 10, height: 10 }} />
+                    )}
+                    {tc.name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Embedded form */}
+            {activeForm && (
+              <div className="flex justify-start pl-10 animate-fade-in">
+                <div className="w-full max-w-sm rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <activeForm.icon style={{ width: 14, height: 14, color: '#a78bfa' }} />
+                    <span className="text-[13px] font-medium text-white/80">{activeForm.title}</span>
+                    <button onClick={() => setActiveForm(null)} className="ml-auto p-0.5 rounded hover:bg-white/5 text-white/20">
+                      <X style={{ width: 12, height: 12 }} />
+                    </button>
+                  </div>
+                  {!activeForm.result && !activeForm.error && (
+                    <div className="space-y-2">
+                      {activeForm.fields.map(f => (
+                        <div key={f.name}>
+                          <label className="block text-[11px] font-medium mb-1 text-white/30">{f.label}{f.required ? ' *' : ''}</label>
+                          {f.type === 'select' ? (
+                            <select value={activeForm.values[f.name]} onChange={e => updateFormValue(f.name, e.target.value)} disabled={activeForm.isSubmitting}
+                              className="w-full rounded-lg px-3 py-1.5 text-[13px] outline-none disabled:opacity-40 text-white/80"
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                              <option value="" className="bg-[#111]">Seleccionar...</option>
+                              {f.options?.map(o => <option key={o} value={o} className="bg-[#111]">{o}</option>)}
+                            </select>
+                          ) : (
+                            <input type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'email' ? 'email' : 'text'}
+                              value={activeForm.values[f.name]} onChange={e => updateFormValue(f.name, e.target.value)} placeholder={f.placeholder} disabled={activeForm.isSubmitting}
+                              className="w-full rounded-lg px-3 py-1.5 text-[13px] outline-none disabled:opacity-40 text-white/80 placeholder:text-white/15"
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }} />
+                          )}
+                        </div>
+                      ))}
+                      <button onClick={submitForm} disabled={activeForm.isSubmitting}
+                        className="w-full mt-2 py-1.5 rounded-lg text-[13px] font-medium text-white transition-all duration-200 disabled:opacity-50 hover:opacity-90"
+                        style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>
+                        {activeForm.isSubmitting ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin mx-auto" /> : 'Enviar'}
+                      </button>
+                    </div>
+                  )}
+                  {activeForm.result && (
+                    <div className="rounded-lg p-3" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.12)' }}>
+                      <span className="text-[11px] font-medium text-green-400">✓ Creado</span>
+                      <pre className="text-[11px] text-green-300/70 mt-1 whitespace-pre-wrap">{activeForm.result}</pre>
+                    </div>
+                  )}
+                  {activeForm.error && (
+                    <div className="rounded-lg p-3" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)' }}>
+                      <span className="text-[11px] font-medium text-red-400">Error</span>
+                      <p className="text-[11px] text-red-300/70 mt-1">{activeForm.error}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl animate-fade-in"
+                style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)', color: '#fca5a5' }}>
+                <span className="text-[13px]">{error}</span>
+                <button onClick={() => setError(null)} className="ml-auto p-0.5 rounded hover:bg-white/5 text-white/30"><X style={{ width: 10, height: 10 }} /></button>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="relative shrink-0 px-4 pb-5 pt-2">
+        <div className="max-w-[720px] mx-auto">
+          {/* Quick actions */}
+          <div className="flex items-center gap-1.5 mb-2.5 flex-wrap justify-center">
+            {QUICK_FORMS.map(qf => (
+              <button key={qf.tool} onClick={() => openForm(qf)} disabled={isStreaming || !!activeForm}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 disabled:opacity-20 hover:scale-[1.02]"
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}>
+                <qf.icon style={{ width: 11, height: 11, color: '#a78bfa' }} />
+                {qf.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Input bar */}
+          <div className="relative flex items-end gap-2 rounded-2xl px-4 py-3 transition-all duration-300 focus-within:border-indigo-500/30"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.3), 0 0 0 1px rgba(99,102,241,0)',
+            }}>
+            <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
+              placeholder="Preguntame algo..."
+              disabled={isStreaming} rows={1}
+              className="flex-1 resize-none bg-transparent text-[14px] outline-none disabled:opacity-30 text-white/80 placeholder:text-white/20"
+              style={{ maxHeight: '120px' }}
+              onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }} />
+            <button onClick={() => handleSend()} disabled={!input.trim() || isStreaming}
+              className="p-2 rounded-xl transition-all duration-200 shrink-0 disabled:opacity-20"
+              style={{ background: input.trim() && !isStreaming ? '#6366f1' : 'transparent', color: input.trim() && !isStreaming ? 'white' : 'rgba(255,255,255,0.2)' }}>
+              {isStreaming ? <Loader2 style={{ width: 15, height: 15 }} className="animate-spin" /> : <ArrowUp style={{ width: 15, height: 15 }} />}
+            </button>
+          </div>
+
+          <p className="text-[10px] text-center mt-2 text-white/15">
+            HubbyAgent puede consultar datos, analizar documentos y ejecutar tareas.
+          </p>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.4s ease-out; }
+      `}</style>
+    </div>
+  );
+}

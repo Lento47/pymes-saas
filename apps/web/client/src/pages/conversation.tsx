@@ -5,6 +5,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ConversationNotes } from "@/components/conversation/conversation-notes";
 import { PriorityDot } from "@/components/shared/priority-dot";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRoute, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
-import { ArrowLeft, Coins, ExternalLink, CheckCircle2, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2 } from "lucide-react";
+import { ArrowLeft, Coins, ExternalLink, CheckCircle2, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, Info } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +65,7 @@ export default function ConversationPage() {
   const [message, setMessage] = useState("");
   const [showDelete, setShowDelete] = useState(false);
   const [showContactDialog, setShowContactDialog] = useState(false);
+  const [showMobilePanel, setShowMobilePanel] = useState(false);
   const [showCreateInvoiceDialog, setShowCreateInvoiceDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState("");
@@ -386,8 +388,8 @@ export default function ConversationPage() {
 
   return (
     <TooltipProvider>
-      <div className="flex gap-4 h-[calc(100vh-80px)]">
-        <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex flex-col md:flex-row gap-4 h-[calc(100dvh-80px)] md:h-[calc(100dvh-80px)]">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           <div className="flex items-center gap-3 pb-3 border-b border-border mb-3">
             <Link href="/inbox">
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid="button-back">
@@ -408,6 +410,16 @@ export default function ConversationPage() {
                 </h2>
                 <StatusBadge status={conversation.status} type="conversation" />
                 <PriorityDot priority={conversation.priority} showLabel />
+                {conversation.sla_breached && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                    SLA
+                  </span>
+                )}
+                {conversation.first_response_at && !conversation.sla_breached && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                    ✓ {Math.round((new Date(conversation.first_response_at).getTime() - new Date(conversation.created_at).getTime()) / 60000)}m
+                  </span>
+                )}
               </div>
               {assignedMember && (
                 <div className="text-[11px] text-muted-foreground mt-0.5">
@@ -418,6 +430,21 @@ export default function ConversationPage() {
             </div>
 
             <div className="flex items-center gap-1">
+              {/* Mobile: toggle contact/invoice panel */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn("md:hidden h-8 w-8 p-0", showMobilePanel && "bg-muted")}
+                    onClick={() => setShowMobilePanel(v => !v)}
+                  >
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Contacto e información</TooltipContent>
+              </Tooltip>
+
               <Tooltip>
                 <Select onValueChange={(val) => assignMutation.mutate(val)}>
                   <TooltipTrigger asChild>
@@ -426,7 +453,7 @@ export default function ConversationPage() {
                     </SelectTrigger>
                   </TooltipTrigger>
                   <SelectContent>
-                    {memberList.map((m: any) => (
+                    {memberList.filter((m: any) => m.user?.id || m.userId || m.id).map((m: any) => (
                       <SelectItem key={m.user?.id || m.userId || m.id} value={m.user?.id || m.userId || m.id}>
                         {m.user?.name || m.name || m.email}
                       </SelectItem>
@@ -589,7 +616,14 @@ export default function ConversationPage() {
           </div>
         </div>
 
-        <div className="w-[280px] shrink-0 flex flex-col gap-3 overflow-y-auto" data-testid="contact-info-panel">
+        <div
+          className={cn(
+            "flex flex-col gap-3 overflow-y-auto pb-14 md:pb-0",
+            "md:w-[280px] md:shrink-0 md:flex",
+            showMobilePanel ? "flex" : "hidden md:flex"
+          )}
+          data-testid="contact-info-panel"
+        >
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Contacto</h3>
@@ -782,6 +816,11 @@ export default function ConversationPage() {
               )}
             </div>
           </div>
+
+          <ConversationNotes
+            conversationId={id}
+            initialNotes={conversation?.notes}
+          />
 
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">

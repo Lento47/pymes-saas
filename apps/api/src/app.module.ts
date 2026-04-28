@@ -33,6 +33,7 @@ import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
 // ApiTokensModule — API token management for Enterprise plan
 import { HaciendaModule } from './hacienda/hacienda.module';
+import { PaddleModule } from './paddle/paddle.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { HealthModule } from './health/health.module';
 import { AiModule } from './ai/ai.module';
@@ -93,6 +94,7 @@ import { TelegramModule } from './telegram/telegram.module';
     // Telegram module
     TelegramModule,
     PlatformModule,
+    PaddleModule,
 
     WorkersModule,
     EventsModule,

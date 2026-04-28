@@ -39,6 +39,7 @@ enum BillingProvider {
   PADDLE
   BAC
   CUSTOM
+  PADDLE
 }
 
 enum BillingInterval {
