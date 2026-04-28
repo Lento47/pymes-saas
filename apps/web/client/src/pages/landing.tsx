@@ -452,7 +452,6 @@ export default function Landing() {
         <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#d5ff63]/12 blur-[130px]" />
         <div className="absolute right-[20%] top-[30%] h-72 w-72 rounded-full bg-[#4F6EF7]/8 blur-[100px]" />
         <div className="absolute left-[38%] top-[-4rem] h-64 w-64 rounded-full bg-[#CBFF47]/5 blur-[90px]" />
-        <div className="marketing-grid absolute inset-x-0 bottom-0 h-[36rem] opacity-50" />
       </div>
 
       <main className="relative z-10">
