@@ -348,12 +348,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* ── Top Bar ── */}
         <header className="shrink-0 flex items-center gap-3 px-4 lg:px-6 py-3 border-b border-border/40 bg-background/80 backdrop-blur-sm relative z-40">
-          {/* Menu toggle (Mobile) */}
-          {isMobile && !sidebarOpen && (
+          {/* Menu toggle */}
+          {!sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(true)}
               className={cn(
-                "p-2 rounded-lg transition-all duration-200 lg:hidden shrink-0",
+                "p-2 rounded-lg transition-all duration-200 shrink-0",
                 "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
               )}
               title="Abrir menú"
