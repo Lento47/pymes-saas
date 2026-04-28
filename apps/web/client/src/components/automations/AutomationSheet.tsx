@@ -80,7 +80,6 @@ export function AutomationSheet({
       name: name.trim(),
       description: description.trim() || undefined,
       trigger_type: triggerType,
-      action_type: actionType,
       trigger_config_json: channelId ? { channel_id: channelId } : {},
       action_config_json: { value: actionValue, type: actionType },
     };
