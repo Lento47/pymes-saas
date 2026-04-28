@@ -6,716 +6,300 @@ import { useI18n } from "@/components/providers/i18n-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import {
-  Plus, ArrowRight, Activity, Bell, Search,
-  Users, CheckSquare, FileText, MessageCircle, TrendingUp,
-  Receipt, Zap, BarChart4, Clock, ChevronDown, Sparkles,
-  ShieldCheck, TriangleAlert, CircleAlert, Info, UserPlus,
-  KanbanSquare,
+  TrendingUp, Receipt, CheckSquare, BarChart4, ChevronDown, Sparkles, ArrowRight,
+  ShieldCheck, TriangleAlert, CircleAlert, Info, Plus, FileText, MessageCircle,
 } from "lucide-react";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { es } from "date-fns/locale";
 
 const STATUS_BG = "https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/statusBackground.png";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types ──
 interface PipelineDealSummary { value: string | null; currency: string; }
 interface PipelineStageSummary { id: string; name: string; color: string; deals: PipelineDealSummary[]; }
+function sumPipelineValue(deals: PipelineDealSummary[]) { return deals.reduce((s, d) => { const n = d.value ? parseFloat(d.value) : 0; return isFinite(n) ? s + n : s; }, 0); }
+function fmtMoney(n: number, cur: string) { return new Intl.NumberFormat("es-CR", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(n); }
+function timeAgo(date: string) { try { return formatDistanceToNowStrict(new Date(date), { addSuffix: true }); } catch { return ""; } }
 
-function sumPipelineValue(deals: PipelineDealSummary[]) {
-  return deals.reduce((s, d) => { const n = d.value ? parseFloat(d.value) : 0; return isFinite(n) ? s + n : s; }, 0);
-}
-function fmtMoney(n: number, cur: string) {
-  return new Intl.NumberFormat("es-CR", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(n);
-}
-function timeAgo(date: string) {
-  try { return formatDistanceToNowStrict(new Date(date), { addSuffix: true }); }
-  catch { return ""; }
-}
-
-// ── Revenue area chart ────────────────────────────────────────────────────────
-function RevenueChart({ monthlyRevenue, changePct }: { monthlyRevenue: number; changePct: number }) {
+// ── Clean revenue chart ──
+function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  const W = 500, H = 110;
-
-  // Use current month dates
+  const W = 400, H = 80;
   const now = new Date();
+  const points = 30;
   const monthName = now.toLocaleString("es-CR", { month: "short" });
-  const year = now.getFullYear();
-  const daysInMonth = new Date(year, now.getMonth() + 1, 0).getDate();
   const today = now.getDate();
-  const points = Math.min(daysInMonth, 31);
 
-  // Generate proportional data points based on actual revenue
   const ys = Array.from({ length: points }, (_, i) => {
-    // Revenue grows proportionally through the month
-    const dayProgress = (i + 1) / daysInMonth;
-    const expectedRevenue = monthlyRevenue * dayProgress;
-    const noise = monthlyRevenue > 0 ? Math.sin(i * 0.3) * (monthlyRevenue * 0.05) : 0;
-    const value = Math.max(0, expectedRevenue + noise);
-    // Scale to chart height (log scale for better visualization)
-    const maxVal = monthlyRevenue || 1;
-    const scaled = (value / maxVal) * (H * 0.8) + H * 0.1;
-    return H - Math.min(H - 5, Math.max(5, scaled));
+    const progress = (i + 1) / points;
+    const val = progress * (monthlyRevenue || 1);
+    const noise = Math.sin(i * 0.4) * (monthlyRevenue || 1) * 0.05;
+    return H - Math.max(5, Math.min(H - 3, ((val + noise) / (monthlyRevenue || 1)) * H * 0.7 + H * 0.2));
   });
-  const xs = ys.map((_, i) => (i / (ys.length - 1)) * W);
+  const xs = ys.map((_, i) => (i / (points - 1)) * W);
   const activeIdx = hoverIdx ?? Math.min(today - 1, points - 1);
 
-  // Generate week labels from actual dates
-  const weekLabels = Array.from({ length: Math.min(5, Math.ceil(points / 7)) }, (_, w) => {
-    const d = Math.min(w * 7 + 1, daysInMonth);
-    return `${monthName} ${d}`;
-  });
-
-  let d = `M ${xs[0]} ${ys[0]}`;
-  for (let i = 1; i < xs.length; i++) {
-    const cx = (xs[i - 1] + xs[i]) / 2;
-    d += ` C ${cx} ${ys[i - 1]}, ${cx} ${ys[i]}, ${xs[i]} ${ys[i]}`;
-  }
-  const area = `${d} L ${W} ${H} L 0 ${H} Z`;
-
-  // Tooltip date
-  const tooltipDay = Math.min(Math.round((activeIdx / (points - 1)) * daysInMonth), daysInMonth) || 1;
-  const tooltipRevenue = monthlyRevenue > 0
-    ? Math.round(monthlyRevenue * (activeIdx + 1) / points)
-    : 0;
+  const pathD = `M ${xs[0]} ${ys[0]} ` + xs.slice(1).map((x, i) => `L ${x} ${ys[i + 1]}`).join(" ");
+  const areaD = pathD + ` L ${W} ${H} L 0 ${H} Z`;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full cursor-pointer" style={{ height: 140 }}
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * W;
-        const idx = Math.round((x / W) * (points - 1));
-        setHoverIdx(Math.max(0, Math.min(points - 1, idx)));
-      }}
-      onMouseLeave={() => setHoverIdx(null)}
-      onTouchMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = ((e.touches[0].clientX - rect.left) / rect.width) * W;
-        const idx = Math.round((x / W) * (points - 1));
-        setHoverIdx(Math.max(0, Math.min(points - 1, idx)));
-      }}
-    >
-      <defs>
-        <linearGradient id="rev-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#8b7cf6" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#8b7cf6" stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-      {[25, 50, 75, 100].map(y => (
-        <line key={y} x1="0" y1={y} x2={W} y2={y} stroke="hsl(var(--border))" strokeWidth="1" />
-      ))}
-      <path d={area} fill="url(#rev-fill)" />
-      <path d={d} fill="none" stroke="#8b7cf6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {/* Today indicator line */}
-      <line x1={xs[Math.min(today - 1, points - 1)]} y1="0" x2={xs[Math.min(today - 1, points - 1)]} y2={H} stroke="#8b7cf6" strokeWidth="1" strokeDasharray="4 2" opacity="0.5" />
-      {/* Active dot */}
-      <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="5" fill="#8b7cf6" />
-      <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="9" fill="#8b7cf6" fillOpacity="0.15" />
-      {/* Tooltip */}
-      <rect x={Math.max(0, Math.min(W - 90, xs[activeIdx] - 45))} y={Math.max(0, ys[activeIdx] - 38)} width="90" height="24" rx="6" fill="#1e1b4b" />
-      <text x={Math.max(45, Math.min(W - 45, xs[activeIdx]))} y={Math.max(16, ys[activeIdx] - 22)} textAnchor="middle" fill="white" fontSize="10" fontWeight="600">
-        {monthName} {tooltipDay} · ₡{tooltipRevenue.toLocaleString()}
-      </text>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-full"
+      onMouseMove={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setHoverIdx(Math.round(((e.clientX - rect.left) / rect.width) * (points - 1))); }}
+      onMouseLeave={() => setHoverIdx(null)}>
+      <defs><linearGradient id="rfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.15" /><stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.01" /></linearGradient></defs>
+      {monthlyRevenue === 0 ? (
+        <text x={W / 2} y={H / 2} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="11" opacity="0.5">Track your first invoice to see revenue here.</text>
+      ) : (
+        <>
+          <path d={areaD} fill="url(#rfill)" />
+          <path d={pathD} fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="3" fill="hsl(var(--primary))" />
+          {hoverIdx !== null && (
+            <text x={Math.min(W - 35, Math.max(35, xs[activeIdx]))} y={Math.max(14, ys[activeIdx] - 8)} textAnchor="middle" fill="hsl(var(--foreground))" fontSize="10" fontWeight="500">
+              {monthName} {Math.round((activeIdx / points) * 30) || 1}
+            </text>
+          )}
+        </>
+      )}
     </svg>
   );
 }
 
-// ── Metric card ───────────────────────────────────────────────────────────────
-function MetricCard({ label, value, currency, subLabel, icon: Icon, iconBg, loading }: {
-  label: string; value: any; currency?: string; subLabel?: string;
-  icon: any; iconBg: string; loading?: boolean;
-}) {
-  return (
-    <div className="relative rounded-2xl overflow-hidden bg-foreground/[0.015] border border-border/[0.6] p-5 hover:shadow-md transition-shadow"
-      style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center" }}>
-      <div className="absolute inset-0 bg-background/[0.88] rounded-2xl" />
-      <div className="relative">
-        <div className="flex items-start justify-between mb-3">
-          <p className="text-sm font-medium text-foreground/75">{label}</p>
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
-            <Icon className="w-4 h-4" />
-          </div>
-        </div>
-        {loading ? <Skeleton className="h-7 w-20" /> : (
-          <>
-            <p className="text-2xl font-bold text-foreground">
-              {currency}{typeof value === "number" ? value.toLocaleString("es-ES") : value}
-            </p>
-            {subLabel && <p className="text-xs text-muted-foreground/80 mt-1">{subLabel}</p>}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Priority badge ────────────────────────────────────────────────────────────
-function PriorityBadge({ priority }: { priority: string }) {
-  const { messages } = useI18n();
-  const dash = messages.dashboard;
-  const map: Record<string, string> = {
-    HIGH:   "bg-red-500/15 text-red-400",
-    MEDIUM: "bg-yellow-500/15 text-yellow-400",
-    LOW:    "bg-foreground/[0.015] text-white/40",
-  };
-  const labels: Record<string, string> = { HIGH: dash.high, MEDIUM: dash.medium, LOW: dash.low };
-  return (
-    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${map[priority] ?? map.LOW}`}>
-      {labels[priority] ?? priority}
-    </span>
-  );
-}
-
-// ── Section card ──────────────────────────────────────────────────────────────
-function Card({ title, linkTo, linkLabel, headerExtra, loading, empty, children }: {
-  title?: string; linkTo?: string; linkLabel?: string; headerExtra?: React.ReactNode;
-  loading?: boolean; empty?: boolean; children?: React.ReactNode;
-}) {
-  return (
-    <div className="bg-foreground/[0.015] rounded-2xl border border-border/[0.6] overflow-hidden">
-      {(title || linkTo || headerExtra) && (
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border/[0.6]">
-          <h3 className="font-semibold text-foreground text-sm">{title}</h3>
-          <div className="flex items-center gap-2">
-            {headerExtra}
-            {linkTo && (
-              <Link href={linkTo}>
-                <a className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 font-medium">
-                  {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
-                </a>
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
-      {loading
-        ? <div className="px-5 py-4 space-y-3">{[0,1,2].map(i => <Skeleton key={i} className="h-4 w-full" />)}</div>
-        : empty
-        ? <div className="px-5 py-8 text-center text-sm text-muted-foreground/50">Sin datos aún</div>
-        : <div>{children}</div>
-      }
-    </div>
-  );
-}
-
-// ── Insight severity → visual ─────────────────────────────────────────────────
-const INSIGHT_STYLES: Record<string, { Icon: any; ring: string; iconColor: string; bg: string }> = {
-  danger:   { Icon: CircleAlert,  ring: "#ef4444", iconColor: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
-  warning:  { Icon: TriangleAlert,ring: "#f59e0b", iconColor: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
-  positive: { Icon: ShieldCheck, ring: "#22c55e", iconColor: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
-  info:     { Icon: Info,         ring: "#818cf8", iconColor: "#818cf8", bg: "rgba(129,140,248,0.12)" },
+// ── Insight styles ──
+const INSIGHT_STYLES: Record<string, { Icon: any; color: string; bg: string }> = {
+  danger:   { Icon: CircleAlert,    color: "#ef4444", bg: "bg-red-500/10 dark:bg-red-500/[0.12]" },
+  warning:  { Icon: TriangleAlert, color: "#f59e0b", bg: "bg-amber-500/10 dark:bg-amber-500/[0.12]" },
+  positive: { Icon: ShieldCheck,   color: "#22c55e", bg: "bg-emerald-500/10 dark:bg-emerald-500/[0.12]" },
+  info:     { Icon: Info,          color: "#818cf8", bg: "bg-indigo-500/10 dark:bg-indigo-500/[0.12]" },
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
 export default function DashboardPage() {
   useRequireAuth();
   const { user } = useAuth();
+  const { messages } = useI18n();
+  const dash = messages.dashboard;
   const [activeTab, setActiveTab] = useState<"tasks" | "messages">("tasks");
 
-  const { data: todayStats,       isLoading: statsLoading    } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
+  const { data: todayStats, isLoading: statsLoading } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
   const { data: workspaceStats } = useQuery({ queryKey: ["/api/workspaces/current/stats"], queryFn: api.getWorkspaceStats, refetchInterval: 60000 });
-  const { data: conversations,    isLoading: convsLoading    } = useQuery({ queryKey: ["/api/conversations", "dash"],           queryFn: () => api.getConversations({ limit: "10" }) });
-  const { data: tasks,            isLoading: tasksLoading    } = useQuery({ queryKey: ["/api/tasks", "dash"],                   queryFn: () => api.getTasks({ limit: "10" }) });
-  const { data: overdueInvoices,  isLoading: invoicesLoading } = useQuery({ queryKey: ["/api/invoices", "overdue-widget"],      queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }), refetchInterval: 60000 });
-  const { data: pipelineStagesData, isLoading: pipelineLoading } = useQuery({ queryKey: ["/api/pipeline/stages", "dash"],       queryFn: () => api.getPipelineStages(), refetchInterval: 60000 });
+  const { data: conversations, isLoading: convsLoading } = useQuery({ queryKey: ["/api/conversations", "dash"], queryFn: () => api.getConversations({ limit: "10" }) });
+  const { data: tasks, isLoading: tasksLoading } = useQuery({ queryKey: ["/api/tasks", "dash"], queryFn: () => api.getTasks({ limit: "10" }) });
+  const { data: overdueInvoices, isLoading: invoicesLoading } = useQuery({ queryKey: ["/api/invoices", "overdue-widget"], queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }), refetchInterval: 60000 });
+  const { data: pipelineStagesData, isLoading: pipelineLoading } = useQuery({ queryKey: ["/api/pipeline/stages", "dash"], queryFn: () => api.getPipelineStages(), refetchInterval: 60000 });
   const { data: insights } = useQuery({ queryKey: ["/api/insights"], queryFn: api.getInsights, staleTime: 3 * 60 * 1000 });
 
-  // Parsed lists
-  const convList    = Array.isArray(conversations)   ? conversations   : conversations?.data   ?? [];
-  const taskList    = Array.isArray(tasks)            ? tasks           : tasks?.data           ?? [];
-  const invoiceList = Array.isArray(overdueInvoices)  ? overdueInvoices : overdueInvoices?.data ?? [];
+  const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
+  const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
+  const invoiceList = Array.isArray(overdueInvoices) ? overdueInvoices : overdueInvoices?.data ?? [];
   const stageList: PipelineStageSummary[] = Array.isArray(pipelineStagesData) ? pipelineStagesData : pipelineStagesData?.data ?? [];
   const insightList: any[] = Array.isArray(insights) ? insights : [];
 
-  const { messages } = useI18n();
-  const dash = messages.dashboard;
-
   const revenueChange = workspaceStats?.revenue_change_pct ?? 0;
   const revenueStr = revenueChange >= 0 ? `↑ ${revenueChange}%` : `↓ ${Math.abs(revenueChange)}%`;
-  const revenueClass = revenueChange >= 0 ? "text-green-500" : "text-red-500";
+  const revenueClass = revenueChange >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
   const activeConvs = workspaceStats?.activeConversations ?? 0;
   const pipelineStatus = activeConvs > 0 ? dash.active : dash.empty;
-  const stageRows = stageList
-    .map(s => ({ id: s.id, name: s.name, color: s.color || "#8b7cf6", dealCount: s.deals?.length ?? 0, totalValue: sumPipelineValue(s.deals ?? []), currency: s.deals?.find(d => d.currency)?.currency ?? "CRC" }))
-    .filter(s => s.dealCount > 0).slice(0, 5);
-  const maxDeals    = Math.max(...stageRows.map(s => s.dealCount), 1);
+  const stageRows = stageList.map(s => ({ id: s.id, name: s.name, color: s.color || "hsl(var(--primary))", dealCount: s.deals?.length ?? 0, totalValue: sumPipelineValue(s.deals ?? []), currency: s.deals?.find(d => d.currency)?.currency ?? "CRC" })).filter(s => s.dealCount > 0).slice(0, 5);
+  const maxDeals = Math.max(...stageRows.map(s => s.dealCount), 1);
   const totalPipeline = stageRows.reduce((s, r) => s + r.totalValue, 0);
   const firstCurrency = stageRows[0]?.currency ?? "CRC";
-
-  // Derived counts
-  const overdueCount  = invoiceList.length;
+  const overdueCount = invoiceList.length;
   const overdueAmount = invoiceList.reduce((s: number, i: any) => s + (i.amount || 0), 0);
-  const urgentTasks   = taskList.filter((t: any) => t.priority === "HIGH").length;
-  const pipelineDeals = stageList.reduce((s, st) => s + (st.deals?.length ?? 0), 0);
-
-  // AI banner
-  const _insightSummary = insightList.slice(0, 3).map((i: any) => `${i.severity}: ${i.title}`).join("; ");
-  const aiPromptReady   = !statsLoading && !tasksLoading && !invoicesLoading && !pipelineLoading;
-  const { data: bannerAI } = useQuery({
-    queryKey: ["/api/ai/banner", overdueCount, urgentTasks, pipelineDeals, _insightSummary],
-      queryFn: () => api.askAssistant(
-        `You are a smart business assistant. Write exactly 2 short lines IN SPANISH for a dashboard status banner: ` +
-        `Line 1: a title (max 6 words, friendly tone, in Spanish). Line 2: a subtitle (max 12 words, actionable, in Spanish). ` +
-        `Reply in this exact format: TITLE|||SUBTITLE — no markdown, no extra text. ` +
-        `Business snapshot: overdue invoices=${overdueCount}, urgent tasks=${urgentTasks}, pipeline deals=${pipelineDeals}, monthly revenue trend=+18%. ` +
-        `Alerts: ${_insightSummary || "none"}.`
-    ),
-    enabled: aiPromptReady,
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  });
-  const [bannerTitle, bannerSubtitle] = (() => {
-    const raw: string = bannerAI?.reply ?? "";
-    const parts = raw.split("|||");
-    return (parts.length === 2 && parts[0].trim() && parts[1].trim())
-      ? [parts[0].trim(), parts[1].trim()]
-      : [dash.bannerFallbackTitle, dash.bannerFallbackSubtitle];
-  })();
-
-  // Activity feed: merge conversations + invoices sorted by date
-  const activityItems = [
-    ...convList.slice(0, 3).map((c: any) => ({
-      id: `c-${c.id}`, type: "message" as const,
-      title: `${dash.newMessageFrom} ${c.contact?.full_name || dash.unknownContact}`,
-      sub: c.subject || dash.noSubject,
-      date: c.updated_at, amount: null,
-    })),
-    ...invoiceList.slice(0, 2).map((i: any) => ({
-      id: `i-${i.id}`, type: "invoice" as const,
-      title: `${dash.invoiceOverdue} #${i.id?.slice(0, 8)}`,
-      sub: i.client_name || dash.client,
-      date: i.due_date, amount: i.amount,
-    })),
-  ].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 5);
+  const urgentTasks = taskList.filter((t: any) => t.priority === "HIGH").length;
 
   const greeting = () => {
     const h = new Date().getHours();
     return h < 12 ? dash.morning : h < 19 ? dash.afternoon : dash.evening;
   };
 
+  const monthName = new Date().toLocaleString("es-CR", { month: "long", year: "numeric" });
+
   return (
     <div className="min-h-full bg-background">
-
-      {/* ── Page header ─────────────────────────────────────────────── */}
-      <div className="px-4 md:px-8 pt-4 md:pt-7 pb-5 flex items-start justify-between gap-3 max-w-[1400px] mx-auto">
-        <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-bold text-foreground truncate">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact} 👋</h1>
-          <p className="text-sm text-white/40 mt-0.5">{bannerSubtitle || dash.subtitle}</p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/[0.6] bg-foreground/[0.015] text-sm text-muted-foreground/50 min-w-[200px]">
-            <Search className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">{dash.search}</span>
-            <span className="text-xs text-muted-foreground/40 font-mono">⌘ K</span>
+      {/* ── Greeting + Summary Ribbon ── */}
+      <div className="px-6 pt-5 pb-3">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-[22px] font-medium text-foreground tracking-tight">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact}</h1>
+            <p className="text-[13px] text-muted-foreground/60 mt-0.5">{dash.subtitle}</p>
           </div>
-          <button className="p-2.5 rounded-xl border border-border/[0.6] bg-foreground/[0.015] text-white/40 hover:bg-foreground/[0.03] transition">
-            <Bell className="w-5 h-5" />
-          </button>
-          <button className="p-2.5 rounded-xl bg-primary text-white hover:opacity-90 transition">
-            <Plus className="w-5 h-5" />
-          </button>
+        </div>
+
+        {/* Status banner with image */}
+        <div className="relative rounded-xl overflow-hidden border border-border/60 mb-4" style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center right" }}>
+          <div className="flex items-center gap-4 px-5 py-3 relative">
+            <div className="w-8 h-8 rounded-lg bg-background/60 backdrop-blur-sm flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex items-center gap-6 flex-1 overflow-x-auto text-[13px]">
+              <div className="flex items-center gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.revenue}</span><span className={`font-semibold ${revenueClass}`}>{revenueStr}</span><span className="text-muted-foreground/40 text-[11px]">{dash.vsLastMonth}</span></div>
+              <div className="w-px h-5 bg-border/60 shrink-0" />
+              <div className="flex items-center gap-2 shrink-0"><span className="text-muted-foreground/60">{overdueCount} {dash.invoices}</span><span className="font-semibold text-foreground/80">{dash.pending}</span></div>
+              <div className="w-px h-5 bg-border/60 shrink-0" />
+              <div className="flex items-center gap-2 shrink-0"><span className="text-muted-foreground/60">{urgentTasks} {dash.tasks}</span><span className="font-semibold text-foreground/80">{dash.urgent}</span></div>
+              <div className="w-px h-5 bg-border/60 shrink-0" />
+              <div className="flex items-center gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.pipeline}</span><span className={`font-semibold ${activeConvs > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>{pipelineStatus}</span></div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="px-3 md:px-8 pb-8 max-w-[1400px] mx-auto space-y-4">
-
-        {/* ── Status banner ───────────────────────────────────────── */}
-        <div className="rounded-2xl overflow-hidden border border-border/40 relative"
-          style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center right", minHeight: 96 }}>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-4 md:px-7 md:py-5 relative">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-foreground/[0.04] backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-sm">
-                <Activity className="w-5 h-5 md:w-7 md:h-7 text-primary" />
-              </div>
-              <div className="min-w-0">
-                {!bannerAI && aiPromptReady ? (
-                  <><div className="h-5 w-36 rounded bg-foreground/[0.04] animate-pulse mb-1.5" /><div className="h-3.5 w-44 rounded bg-foreground/[0.04] animate-pulse" /></>
-                ) : (
-                  <><h2 className="text-[15px] md:text-[17px] font-bold text-gray-900 leading-snug">{bannerTitle}</h2><p className="text-sm text-gray-700 mt-0.5">{bannerSubtitle}</p></>
-                )}
+      {/* ── 2-Column Grid ── */}
+      <div className="px-6 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* ── Left: Revenue + Today (8 col) ── */}
+        <div className="lg:col-span-8 space-y-5">
+          {/* Revenue Overview */}
+          <div className="rounded-xl border border-border/60 bg-card/40 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-medium text-foreground">{dash.revenueOverview}</h2>
+                <span className="text-[11px] text-muted-foreground/50">{monthName}</span>
               </div>
             </div>
-            <div className="hidden sm:block h-12 w-px bg-foreground/[0.04] flex-shrink-0" />
-            <div className="flex items-center gap-4 overflow-x-auto scrollbar-none -mx-1 px-1">
-              {[
-                { bg: "linear-gradient(135deg,#8b7cf6,#a78bfa)", Icon: TrendingUp, label: dash.revenue, value: revenueStr, sub: dash.vsLastMonth, valueClass: revenueClass },
-                { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8)", Icon: Receipt, label: `${overdueCount} ${dash.invoices}`, value: dash.pending, sub: "", valueClass: "text-gray-800" },
-                { bg: "linear-gradient(135deg,#64748b,#94a3b8)", Icon: CheckSquare, label: `${urgentTasks} ${dash.tasks}`, value: dash.urgent, sub: "", valueClass: "text-gray-800" },
-                { bg: "linear-gradient(135deg,#7c3aed,#a78bfa)", Icon: BarChart4, label: dash.pipeline, value: pipelineStatus, sub: "", valueClass: activeConvs > 0 ? "text-green-600" : "text-gray-400" },
-              ].map(({ bg, Icon, label, value, sub, valueClass }, i, arr) => (
-                <div key={label} className="flex items-center gap-3 flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: bg }}>
-                      <Icon className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-600 font-medium">{label}</p>
-                      <p className={`text-sm font-bold ${valueClass}`}>{value}</p>
-                      {sub && <p className="text-xs text-gray-500">{sub}</p>}
-                    </div>
-                  </div>
-                  {i < arr.length - 1 && <div className="h-10 w-px bg-foreground/[0.04] ml-3" />}
-                </div>
+            <div className="flex items-end gap-6">
+              <div className="shrink-0">
+                <p className="text-[28px] font-medium text-foreground tracking-tight leading-none">₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}</p>
+                <p className={`text-[13px] mt-1 ${revenueClass}`}>{workspaceStats?.revenue_change_pct ?? 0}% {dash.vsLastMonth}</p>
+              </div>
+              <div className="flex-1 h-[80px]">
+                <RevenueChart monthlyRevenue={workspaceStats?.monthly_revenue ?? 0} />
+              </div>
+            </div>
+          </div>
+
+          {/* Today: Tasks + Messages */}
+          <div className="rounded-xl border border-border/60 bg-card/40 overflow-hidden">
+            <div className="flex items-center border-b border-border/60">
+              {(["tasks", "messages"] as const).map(tab => (
+                <button key={tab} onClick={() => setActiveTab(tab)}
+                  className={`px-5 py-3 text-[13px] font-medium transition-colors relative ${activeTab === tab ? "text-foreground" : "text-muted-foreground/50 hover:text-muted-foreground"}`}>
+                  {tab === "tasks" ? dash.tasks : dash.newMessages}
+                  {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-full" />}
+                </button>
               ))}
             </div>
+            <div className="divide-y divide-border/60">
+              {activeTab === "tasks" ? (
+                taskList.length === 0 ? (
+                  <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/50">{dash.noTasks}</div>
+                ) : taskList.slice(0, 5).map((task: any) => (
+                  <div key={task.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className="w-[18px] h-[18px] rounded-full border-2 border-border/60 cursor-pointer hover:border-primary/50 transition-colors shrink-0" />
+                    <span className="flex-1 text-[13px] text-foreground truncate">{task.title}</span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${task.priority === "HIGH" ? "bg-red-500/10 text-red-600 dark:text-red-400" : task.priority === "MEDIUM" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "bg-slate-500/10 text-slate-600 dark:text-slate-400"}`}>
+                      {task.priority === "HIGH" ? dash.high : task.priority === "MEDIUM" ? dash.medium : dash.low}
+                    </span>
+                    {task.due_date && <span className="text-[11px] text-muted-foreground/50">{format(new Date(task.due_date), "MMM d", { locale: es })}</span>}
+                  </div>
+                ))
+              ) : (
+                convList.length === 0 ? (
+                  <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/50">{dash.noMessagesToday}</div>
+                ) : convList.slice(0, 5).map((conv: any) => (
+                  <Link key={conv.id} href={`/inbox/${conv.id}`}>
+                    <div className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.02] transition-colors cursor-pointer">
+                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">
+                        {conv.contact?.full_name?.charAt(0) || "?"}
+                      </div>
+                      <span className="flex-1 text-[13px] text-foreground truncate">{conv.contact?.full_name || dash.unknownContact}</span>
+                      <span className="text-[11px] text-muted-foreground/50">{conv.updated_at && format(new Date(conv.updated_at), "HH:mm")}</span>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+            <div className="px-5 py-2.5 border-t border-border/60 text-right">
+              <Link href={activeTab === "tasks" ? "/tasks" : "/inbox"} className="text-[12px] text-primary hover:text-primary/80 font-medium">
+                {activeTab === "tasks" ? dash.viewAllTasks : dash.viewAll} <ArrowRight className="w-3 h-3 inline ml-0.5" />
+              </Link>
+            </div>
           </div>
         </div>
 
-        {/* ── Metric cards ────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
-
-          {/* 1 — Revenue: gradient hero */}
-          <div className="col-span-2 md:col-span-1 rounded-2xl p-5 flex flex-col justify-between min-h-[110px]"
-            style={{ background: "linear-gradient(135deg,rgba(139,124,246,0.22) 0%,rgba(91,92,240,0.12) 100%)", border: "1px solid rgba(139,124,246,0.28)" }}>
-            <div className="flex items-start justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/80/70">{dash.revenueThisMonth}</p>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-primary/20 text-primary/80">
-                <TrendingUp className="w-3.5 h-3.5" />
-              </div>
+        {/* ── Right: Pipeline + Activity + Insights + Quick Actions (4 col) ── */}
+        <div className="lg:col-span-4 space-y-5">
+          {/* Pipeline */}
+          <div className="rounded-xl border border-border/60 bg-card/40 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-foreground">{dash.pipelineOverview}</h2>
+              <Link href="/pipeline" className="text-[11px] text-primary hover:text-primary/80">{dash.viewPipeline} →</Link>
             </div>
-            {statsLoading ? <Skeleton className="h-8 w-24 mt-2" /> : (
-              <>
-                <p className="text-[1.75rem] font-bold text-white tracking-tight leading-none mt-2">
-                  ₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}
-                </p>
-                <div className="mt-2 flex items-center gap-1.5">
-                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${(workspaceStats?.revenue_change_pct ?? 0) >= 0 ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
-                    {(workspaceStats?.revenue_change_pct ?? 0) >= 0 ? "+" : ""}{workspaceStats?.revenue_change_pct ?? 0}%
-                  </span>
-                  <span className="text-[11px] text-muted-foreground/50">{dash.vsLastMonth}</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* 2 — Outstanding: amber alert */}
-          <div className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px]"
-            style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.20)" }}>
-            <div className="flex items-start justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-400/60">{dash.outstanding}</p>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-amber-500/15 text-amber-400">
-                <Receipt className="w-3.5 h-3.5" />
+            {pipelineLoading ? <Skeleton className="h-16 w-full" /> : stageRows.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-[13px] text-muted-foreground/70">You don't have any opportunities yet.</p>
+                <p className="text-[11px] text-muted-foreground/40 mt-1">Create your first opportunity to track potential deals.</p>
+                <Link href="/pipeline"><button className="mt-3 text-[12px] px-4 py-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors">{dash.newOpportunity}</button></Link>
               </div>
-            </div>
-            {invoicesLoading ? <Skeleton className="h-7 w-20 mt-2" /> : (
-              <>
-                <p className="text-2xl font-bold text-foreground mt-2 tracking-tight">₡{overdueAmount.toLocaleString("es-ES")}</p>
-                <span className={`mt-2 self-start text-[10px] font-medium px-2 py-0.5 rounded-full ${overdueCount > 0 ? "bg-amber-500/15 text-amber-300" : "bg-foreground/[0.04] text-muted-foreground/50"}`}>
-                  {overdueCount} {overdueCount === 1 ? dash.invoices.toLowerCase() : dash.invoices.toLowerCase()} {dash.pending.toLowerCase()}
-                </span>
-              </>
-            )}
-          </div>
-
-          {/* 3 — Pipeline: blue with bottom bar */}
-          <div className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px] overflow-hidden relative"
-            style={{ background: "rgba(14,165,233,0.06)", border: "1px solid rgba(14,165,233,0.18)" }}>
-            <div className="absolute bottom-0 inset-x-0 h-0.5 bg-gradient-to-r from-sky-500/60 via-blue-400/40 to-transparent" />
-            <div className="flex items-start justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-400/60">{dash.pipelineValue}</p>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-sky-500/15 text-sky-400">
-                <BarChart4 className="w-3.5 h-3.5" />
-              </div>
-            </div>
-            {pipelineLoading ? <Skeleton className="h-7 w-20 mt-2" /> : (
-              <>
-                <p className="text-2xl font-bold text-foreground mt-2 tracking-tight">₡{totalPipeline.toLocaleString("es-ES")}</p>
-                <p className="text-[11px] text-sky-400/50 mt-1.5">{dash.potentialRevenue}</p>
-              </>
-            )}
-          </div>
-
-          {/* 4 — Messages: minimal with live indicator */}
-          <div
-            className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px] bg-foreground/[0.015] border border-border">
-            <div className="flex items-start justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/50">{dash.newMessages}</p>
-              <div className="flex items-center gap-1">
-                {(todayStats?.received_messages ?? 0) > 0 && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                )}
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-foreground/[0.05] text-white/40">
-                  <MessageCircle className="w-3.5 h-3.5" />
-                </div>
-              </div>
-            </div>
-            {statsLoading ? <Skeleton className="h-7 w-12 mt-2" /> : (
-              <>
-                <p className="text-[2.25rem] font-bold text-foreground leading-none mt-1">{todayStats?.received_messages ?? 0}</p>
-                <p className="text-[11px] text-white/25 mt-2">{(todayStats?.received_messages ?? 0) > 0 ? `${(todayStats?.received_messages ?? 0)} ${dash.today}` : dash.noMessagesToday}</p>
-              </>
-            )}
-          </div>
-
-          {/* 5 — Tasks: teal completion */}
-          <div className="rounded-2xl p-4 flex flex-col justify-between min-h-[110px]"
-            style={{ background: "rgba(20,184,166,0.07)", border: "1px solid rgba(20,184,166,0.20)" }}>
-            <div className="flex items-start justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-teal-400/60">{dash.tasksToday}</p>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-teal-500/15 text-teal-400">
-                <Clock className="w-3.5 h-3.5" />
-              </div>
-            </div>
-            {tasksLoading ? <Skeleton className="h-7 w-16 mt-2" /> : (
-              <>
-                <p className="text-2xl font-bold text-foreground mt-2 tracking-tight">{taskList.length}</p>
-                <div className="mt-2 flex items-center gap-1.5">
-                  {taskList.length === 0
-                    ? <span className="text-[11px] text-teal-400/60">✓ {dash.allCaughtUp}</span>
-                    : <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${urgentTasks > 0 ? "bg-red-500/15 text-red-400" : "bg-teal-500/15 text-teal-300"}`}>{urgentTasks > 0 ? `${urgentTasks} ${dash.urgent}` : dash.allCaughtUp}</span>
-                  }
-                </div>
-              </>
-            )}
-          </div>
-
-        </div>
-
-        {/* ── Main grid ───────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-
-          {/* ── Left col: Revenue + Tasks/Messages (5) ── */}
-          <div className="lg:col-span-5 space-y-4">
-
-            {/* Revenue overview */}
-            <Card title={dash.revenueOverview}
-              headerExtra={
-                <span className="text-xs text-white/40 bg-foreground/[0.015] px-2.5 py-1.5 rounded-lg font-medium">
-                  {new Date().toLocaleString("es-CR", { month: "long", year: "numeric" })}
-                </span>
-              }
-            >
-              <div className="px-5 pt-4 pb-3">
-                <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-2xl font-bold text-foreground">₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}</span>
-                  <span className="text-sm text-green-500 font-medium">{workspaceStats?.revenue_change_pct ?? 0}% {dash.vsLastMonth}</span>
-                </div>
-                <RevenueChart monthlyRevenue={workspaceStats?.monthly_revenue ?? 0} changePct={workspaceStats?.revenue_change_pct ?? 0} />
-                <div className="flex justify-between text-xs text-muted-foreground/50 mt-2 px-1">
-                  {(() => {
-                    const now = new Date();
-                    const month = now.toLocaleString("es-CR", { month: "short" });
-                    const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-                    const step = Math.max(1, Math.floor(days / 5));
-                    return Array.from({ length: Math.min(5, Math.ceil(days / step)) }, (_, i) => {
-                      const d = Math.min(i * step + 1, days);
-                      return <span key={d}>{month} {d}</span>;
-                    });
-                  })()}
-                </div>
-              </div>
-            </Card>
-
-            {/* Tasks / Messages */}
-            <Card
-              linkTo={activeTab === "tasks" ? "/tasks" : "/inbox"}
-              linkLabel={activeTab === "tasks" ? `${dash.viewAllTasks} →` : `${dash.viewAll} →`}
-              headerExtra={
-                <div className="flex gap-0.5 border-b border-transparent">
-                  {(["tasks", "messages"] as const).map(tab => (
-                    <button key={tab} onClick={() => setActiveTab(tab)}
-                      className={`px-4 py-2 text-sm font-medium transition capitalize ${
-                        activeTab === tab ? "text-primary border-b-2 border-primary" : "text-white/40 hover:text-foreground"
-                      }`}>
-                      {tab === "tasks" ? dash.tasks : dash.newMessages}
-                    </button>
-                  ))}
-                </div>
-              }
-            >
-              <div className="divide-y divide-border/[0.5]">
-                {activeTab === "tasks" ? (
-                  taskList.length === 0
-                    ? <p className="px-5 py-6 text-sm text-center text-muted-foreground/50">{dash.noTasks}</p>
-                    : taskList.slice(0, 5).map((task: any) => (
-                        <div key={task.id} className="flex items-center gap-3 px-5 py-3">
-                          <input type="checkbox" className="w-4 h-4 rounded border-border/[0.6] cursor-pointer accent-primary" />
-                          <p className="flex-1 text-sm font-medium text-foreground truncate">{task.title}</p>
-                          <PriorityBadge priority={task.priority} />
-                          {task.due_date && (
-                            <span className="text-xs text-muted-foreground/50 whitespace-nowrap">
-                              {format(new Date(task.due_date), "MMM d", { locale: es })}
-                            </span>
-                          )}
-                        </div>
-                      ))
-                ) : (
-                  convList.length === 0
-                    ? <p className="px-5 py-6 text-sm text-center text-muted-foreground/50">{dash.noMessages}</p>
-                    : convList.slice(0, 5).map((conv: any) => (
-                        <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                          <a className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.015] transition">
-                            <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-semibold text-primary flex-shrink-0">
-                              {conv.contact?.full_name?.charAt(0) || "?"}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">{conv.contact?.full_name || dash.unknownContact}</p>
-                              <p className="text-xs text-muted-foreground/50 truncate">{conv.subject || dash.noSubject}</p>
-                            </div>
-                            <span className="text-xs text-muted-foreground/50 whitespace-nowrap">{conv.updated_at && format(new Date(conv.updated_at), "HH:mm")}</span>
-                          </a>
-                        </Link>
-                      ))
-                )}
-              </div>
-            </Card>
-          </div>
-
-          {/* ── Middle col: Pipeline + Recent activity (4) ── */}
-          <div className="lg:col-span-4 space-y-4">
-
-            {/* Pipeline overview */}
-            <Card title={dash.pipelineOverview} linkTo="/pipeline" linkLabel={dash.viewPipeline + " →"} loading={pipelineLoading} empty={!pipelineLoading && stageRows.length === 0}>
-              <div className="px-5 py-4 space-y-3.5">
+            ) : (
+              <div className="space-y-3">
                 {stageRows.map(stage => (
-                  <div key={stage.id} className="flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-foreground/85">{stage.name}</span>
-                          <span className="text-xs text-muted-foreground/50">{stage.dealCount} {dash.deals}</span>
-                        </div>
-                        <span className="text-xs font-semibold text-foreground/75">
-                          {stage.totalValue > 0 ? fmtMoney(stage.totalValue, stage.currency) : "—"}
-                        </span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-foreground/[0.015] overflow-hidden">
-                        <div className="h-full rounded-full transition-all"
-                          style={{ width: `${Math.max((stage.dealCount / maxDeals) * 100, 6)}%`, backgroundColor: stage.color }} />
-                      </div>
+                  <div key={stage.id} className="space-y-1.5">
+                    <div className="flex justify-between text-[12px]">
+                      <span className="text-foreground/80">{stage.name}</span>
+                      <span className="text-muted-foreground">{stage.dealCount} {dash.deals} · {stage.totalValue > 0 ? fmtMoney(stage.totalValue, stage.currency) : "—"}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${Math.max((stage.dealCount / maxDeals) * 100, 8)}%`, backgroundColor: stage.color }} />
                     </div>
                   </div>
                 ))}
-                {stageRows.length > 0 && (
-                  <div className="pt-3 border-t border-border/[0.6] flex items-center justify-between">
-                    <span className="text-sm font-semibold text-foreground/75">{dash.totalPipelineValue}</span>
-                    <span className="text-sm font-bold text-foreground">{fmtMoney(totalPipeline, firstCurrency)}</span>
-                  </div>
-                )}
+                <div className="pt-2 border-t border-border/60 flex justify-between text-[13px]">
+                  <span className="text-muted-foreground">{dash.totalPipelineValue}</span>
+                  <span className="font-medium text-foreground">{fmtMoney(totalPipeline, firstCurrency)}</span>
+                </div>
               </div>
-            </Card>
+            )}
+          </div>
 
-            {/* Recent activity */}
-            <Card title={dash.recentActivity} linkTo="/inbox" linkLabel={`${dash.viewAll} →`}>
-              <div className="divide-y divide-border/[0.5]">
-                {activityItems.length === 0 && (
-                  <p className="px-5 py-6 text-sm text-center text-muted-foreground/50">{dash.noRecentActivity}</p>
-                )}
-                {activityItems.map(item => {
-                  const isMsg = item.type === "message";
+          {/* AI Insights */}
+          <div className="rounded-xl border border-border/60 bg-card/40 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="w-[15px] h-[15px] text-primary" />
+              <h2 className="text-sm font-medium text-foreground">{dash.aiInsights}</h2>
+            </div>
+            <div className="space-y-3">
+              {(insightList.length === 0 ? [
+                { severity: "positive", title: dash.insightNoAlerts, desc: dash.insightNoAlertsDesc },
+                { severity: "warning", title: `${overdueCount} ${dash.insightAlertsInvoices}`, desc: dash.insightAlertsDesc },
+                { severity: "info", title: dash.insightFollowUp, desc: dash.insightFollowUpDesc },
+              ] : insightList.slice(0, 3).map((ins: any) => ({ severity: ins.severity, title: ins.title, desc: ins.suggestion })))
+                .map((ins, i) => {
+                  const st = INSIGHT_STYLES[ins.severity] ?? INSIGHT_STYLES.info;
                   return (
-                    <div key={item.id} className="flex items-center gap-3 px-5 py-3.5">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isMsg ? "bg-primary/15" : "bg-green-500/15"}`}>
-                        {isMsg
-                          ? <MessageCircle className="w-4 h-4 text-primary" />
-                          : <Receipt className="w-4 h-4 text-green-400" />}
+                    <div key={i} className="flex items-start gap-3">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${st.bg}`}>
+                        <st.Icon className="w-3.5 h-3.5" style={{ color: st.color }} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
-                        <p className="text-xs text-muted-foreground/50 truncate">{item.sub}</p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        {item.amount != null && (
-                          <p className="text-xs font-semibold text-green-400">€{item.amount.toLocaleString("es-ES")}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground/50">{item.date ? timeAgo(item.date) : ""}</p>
+                      <div>
+                        <p className="text-[13px] font-medium text-foreground">{ins.title}</p>
+                        <p className="text-[11px] text-muted-foreground/60 mt-0.5">{ins.desc}</p>
                       </div>
                     </div>
                   );
                 })}
-              </div>
-            </Card>
+            </div>
           </div>
 
-          {/* ── Right col: AI Insights + Quick actions (3) ── */}
-          <div className="lg:col-span-3 space-y-4">
-
-            {/* AI Insights panel */}
-            <div className="rounded-2xl overflow-hidden flex flex-col"
-              style={{ background: "linear-gradient(160deg,#1e1b4b 0%,#312e81 55%,#4c1d95 100%)" }}>
-              <div className="px-5 pt-5 pb-3 flex-1">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-6 h-6 rounded-lg bg-violet-500/30 flex items-center justify-center">
-                    <Sparkles className="w-3.5 h-3.5 text-violet-300" />
+          {/* Quick Actions */}
+          <div className="rounded-xl border border-border/60 bg-card/40 p-5">
+            <h2 className="text-sm font-medium text-foreground mb-4">{dash.quickActions}</h2>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: dash.newInvoice, href: "/invoices", Icon: Receipt },
+                { label: dash.addContact, href: "/contacts", Icon: Plus },
+                { label: dash.newOpportunity, href: "/pipeline", Icon: BarChart4 },
+                { label: dash.sendMessage, href: "/inbox", Icon: MessageCircle },
+                { label: dash.uploadDocument, href: "/documents", Icon: FileText },
+                { label: dash.automation, href: "/automations", Icon: Sparkles },
+              ].map(({ label, href, Icon }) => (
+                <Link key={label} href={href}>
+                  <div className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-lg hover:bg-foreground/[0.03] transition-colors cursor-pointer">
+                    <Icon className="w-[16px] h-[16px] text-muted-foreground/60" />
+                    <span className="text-[10px] text-muted-foreground/70 text-center leading-tight">{label}</span>
                   </div>
-                  <span className="text-sm font-semibold text-white">{dash.aiInsights}</span>
-                </div>
-
-                <div className="space-y-2">
-                  {insightList.length === 0 ? (
-                    // Placeholder insights that match the screenshot style
-                    [
-                      { severity: "positive", title: dash.insightNoAlerts,       suggestion: dash.insightNoAlertsDesc },
-                      { severity: "warning",  title: `${overdueCount || 0} ${dash.insightAlertsInvoices}`, suggestion: dash.insightAlertsDesc },
-                      { severity: "info",     title: dash.insightFollowUp, suggestion: dash.insightFollowUpDesc },
-                    ].map((ins, i) => {
-                      const st = INSIGHT_STYLES[ins.severity] ?? INSIGHT_STYLES.info;
-                      return (
-                        <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-foreground/[0.04]">
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: st.bg }}>
-                            <st.Icon className="w-3.5 h-3.5" style={{ color: st.ring }} />
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-white leading-snug">{ins.title}</p>
-                            <p className="text-xs text-muted-foreground/80 mt-0.5 leading-snug">{ins.suggestion}</p>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    insightList.slice(0, 4).map((ins: any, i: number) => {
-                      const st = INSIGHT_STYLES[ins.severity] ?? INSIGHT_STYLES.info;
-                      return (
-                        <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-foreground/[0.04]">
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: st.bg }}>
-                            <st.Icon className="w-3.5 h-3.5" style={{ color: st.ring }} />
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-white leading-snug">{ins.title}</p>
-                            <p className="text-xs text-muted-foreground/80 mt-0.5 leading-snug">{ins.suggestion}</p>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              {/* Open Copilot button */}
-              <div className="px-5 pb-5 pt-3">
-                <button
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition hover:opacity-90"
-                  style={{ background: "linear-gradient(90deg,#8b7cf6 0%,#a78bfa 100%)" }}
-                >
-                  <Zap className="w-4 h-4" /> {dash.openCopilot}
-                </button>
-              </div>
+                </Link>
+              ))}
             </div>
-
-            {/* Quick actions */}
-            <div className="bg-foreground/[0.015] rounded-2xl border border-border/[0.6] p-5">
-              <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">{dash.quickActions}</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { Icon: Receipt,     label: dash.newInvoice,      href: "/invoices",    bg: "bg-primary/15",  ic: "text-primary" },
-                  { Icon: UserPlus,    label: dash.addContact,      href: "/contacts",    bg: "bg-blue-500/15",    ic: "text-blue-400"   },
-                  { Icon: KanbanSquare,label: dash.newOpportunity,  href: "/pipeline",    bg: "bg-violet-500/15",  ic: "text-violet-400" },
-                  { Icon: MessageCircle,label: dash.sendMessage,     href: "/inbox",       bg: "bg-green-500/15",   ic: "text-green-400"  },
-                  { Icon: FileText,    label: dash.uploadDocument,      href: "/documents",   bg: "bg-orange-500/15",  ic: "text-orange-400" },
-                  { Icon: Zap,         label: dash.automation,       href: "/automations", bg: "bg-pink-500/15",    ic: "text-pink-400"   },
-                ].map(({ Icon, label, href, bg, ic }) => (
-                  <Link key={href + label} href={href}>
-                    <a className="flex flex-col items-center gap-2 py-3 px-1 rounded-xl hover:bg-foreground/[0.015] transition group">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg}`}>
-                        <Icon className={`w-5 h-5 ${ic}`} />
-                      </div>
-                      <span className="text-xs font-medium text-muted-foreground text-center leading-tight">{label}</span>
-                    </a>
-                  </Link>
-                ))}
-              </div>
-            </div>
-
           </div>
         </div>
       </div>
