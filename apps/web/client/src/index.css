@@ -182,6 +182,11 @@ html.dark .marketing-grid {
   0%, 100% { opacity: 0.45; transform: scale(1); }
   50% { opacity: 0.8; transform: scale(1.04); }
 }
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
 .animate-float-y { animation: float-y 7s ease-in-out infinite; }
 .animate-drift-x { animation: drift-x 11s ease-in-out infinite; }
 .animate-pulse-halo { animation: pulse-halo 6s ease-in-out infinite; }
+.animate-marquee { animation: marquee 30s linear infinite; }
