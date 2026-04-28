@@ -56,6 +56,11 @@ export const translations = {
       settings: "Settings",
       help: "Help",
       logout: "Log out",
+      groups: {
+        work: "Work",
+        operations: "Operations",
+        assistants: "Assistants",
+      },
     },
     landing: {
       nav: {
@@ -586,6 +591,11 @@ export const translations = {
       settings: "Configuración",
       help: "Ayuda",
       logout: "Cerrar sesión",
+      groups: {
+        work: "Trabajo",
+        operations: "Operaciones",
+        assistants: "Asistentes",
+      },
     },
     landing: {
       nav: {
