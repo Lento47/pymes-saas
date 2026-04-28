@@ -29,6 +29,9 @@ function toCreateContactPayload(form: {
   type: string;
 }) {
   const full = [form.firstName, form.lastName].filter(Boolean).join(" ").trim();
+  if (form.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    throw new Error("El email no tiene un formato válido.");
+  }
   return {
     type: form.type,
     full_name: full || "Sin nombre",
@@ -77,10 +80,11 @@ export default function ContactsPage() {
       toast({ title: editingId ? "Contact updated" : "Contact created" });
     },
     onError: (err: any) => {
+      const apiMsg = Array.isArray(err?.message) ? err.message.join(", ") : err?.message ?? "";
       const { isPlanLimit, message } = parsePlanError(err);
       toast({
-        title: isPlanLimit ? "🔒 Límite de plan alcanzado" : (editingId ? "Failed to update contact" : "Failed to create contact"),
-        description: message,
+        title: isPlanLimit ? "Límite de plan alcanzado" : (editingId ? "Error al actualizar contacto" : "Error al crear contacto"),
+        description: isPlanLimit ? message : apiMsg || "Revisá los campos e intentá de nuevo.",
         variant: "destructive",
       });
     },
