@@ -442,12 +442,12 @@ export default function Landing() {
               alt=""
               aria-hidden="true"
               loading="eager"
-              className="block h-auto w-full max-w-none opacity-[0.92]"
+              className="block h-auto w-full max-w-none opacity-100"
             />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,28,88,0.10),transparent_44%),linear-gradient(180deg,rgba(4,8,26,0.04)_0%,rgba(5,9,29,0.18)_24%,rgba(5,9,29,0.64)_78%,#05091d_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(67,56,202,0.15),transparent_44%),linear-gradient(180deg,rgba(55,48,163,0.08)_0%,rgba(67,56,202,0.25)_24%,rgba(79,56,220,0.50)_78%,#3d1f7d_100%)]" />
           </div>
         </div>
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0.04)_0%,rgba(5,9,29,0.06)_22%,rgba(5,9,29,0.18)_44%,rgba(5,9,29,0.42)_64%,#05091d_86%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(67,56,202,0.08)_0%,rgba(79,56,220,0.12)_22%,rgba(88,39,232,0.28)_44%,rgba(102,51,237,0.48)_64%,#3d1f7d_86%)]" />
         <div className="animate-drift-x absolute left-[-10rem] top-[8rem] h-80 w-80 rounded-full bg-[#5771ff]/16 blur-[110px]" />
         <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#d5ff63]/12 blur-[130px]" />
         <div className="absolute right-[20%] top-[30%] h-72 w-72 rounded-full bg-[#4F6EF7]/8 blur-[100px]" />
@@ -571,7 +571,7 @@ export default function Landing() {
                   className="absolute inset-x-0 top-full z-20 pt-4 pointer-events-auto"
                   data-nav-dropdown
                 >
-                  <div className="bg-[#0a1022]/98 backdrop-blur-xl border border-white/[0.07] rounded-2xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)_inset]">
+                  <div className="bg-[#3d1f7d]/98 backdrop-blur-xl border border-white/[0.07] rounded-2xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)_inset]">
                     {/* Header row */}
                     <div className="flex items-center justify-between px-6 pt-5 pb-2">
                       <div>
@@ -670,7 +670,7 @@ export default function Landing() {
 
               {/* Mini hero dashboard mockup */}
               <div ref={revealMockup} className="mx-auto mt-14 max-w-2xl reveal-up" style={{ transitionDelay: "120ms" }}>
-                <div className="glass-panel luminous-border rounded-[24px] p-4 shadow-[0_40px_100px_rgba(0,0,0,0.55)]">
+                <div className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 luminous-border rounded-[24px] p-4 shadow-[0_40px_100px_rgba(0,0,0,0.55)]">
                   <div className="mb-3 flex items-center gap-2 px-1">
                     {["#ff5f57","#febc2e","#28c840"].map((c, i) => (
                       <span key={i} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
@@ -709,7 +709,7 @@ export default function Landing() {
               <Carousel opts={{ align: "start", loop: true }}>
                 <CarouselContent>
                   <CarouselItem className="basis-full">
-                    <article className="glass-panel rounded-[30px] p-6">
+                    <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[30px] p-6">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
                         <img
                           src="/landing-icons/world.png"
@@ -721,7 +721,7 @@ export default function Landing() {
                       <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                         {copy.overview.inbox.title}
                       </h2>
-                      <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
+                      <p className="mt-3 text-sm leading-7 text-white/85">
                         {copy.overview.inbox.description}
                       </p>
 
@@ -731,10 +731,10 @@ export default function Landing() {
                             key={signal.label}
                             className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
                           >
-                            <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
+                            <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/95">
                               {signal.label}
                             </span>
-                            <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
+                            <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/90">
                               {signal.value}
                             </span>
                           </div>
@@ -764,7 +764,7 @@ export default function Landing() {
                   </CarouselItem>
 
                   <CarouselItem className="basis-full">
-                    <article className="glass-panel rounded-[34px] px-6 py-7">
+                    <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[34px] px-6 py-7">
                       <div className="flex flex-col gap-6">
                         <div>
                           <div className="flex items-center gap-3">
@@ -826,7 +826,7 @@ export default function Landing() {
                   </CarouselItem>
 
                   <CarouselItem className="basis-full">
-                    <article className="glass-panel rounded-[30px] p-6">
+                    <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[30px] p-6">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
                         <img
                           src="/landing-icons/Smart-automations.png"
@@ -838,7 +838,7 @@ export default function Landing() {
                       <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                         {copy.overview.automations.title}
                       </h2>
-                      <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
+                      <p className="mt-3 text-sm leading-7 text-white/85">
                         {copy.overview.automations.description}
                       </p>
 
@@ -867,7 +867,7 @@ export default function Landing() {
 
             {/* Desktop Grid */}
             <div ref={revealCards} className="reveal-up hidden md:grid mt-16 grid gap-6 xl:grid-cols-[0.95fr_1.7fr_0.95fr]">
-              <article className="glass-panel rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
+              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
                   <img
                     src="/landing-icons/world.png"
@@ -879,7 +879,7 @@ export default function Landing() {
                 <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                   {copy.overview.inbox.title}
                 </h2>
-                <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
+                <p className="mt-3 text-sm leading-7 text-white/85">
                   {copy.overview.inbox.description}
                 </p>
 
@@ -901,10 +901,10 @@ export default function Landing() {
                             className="h-2 w-2 shrink-0 rounded-full"
                             style={{ background: channelColors[signal.label] ?? "#fff", boxShadow: `0 0 8px ${channelColors[signal.label] ?? "#fff"}88` }}
                           />
-                          <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
+                          <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/95">
                             {signal.label}
                           </span>
-                          <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
+                          <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/90">
                             {signal.value}
                           </span>
                         </div>
@@ -934,7 +934,7 @@ export default function Landing() {
                 </div>
               </article>
 
-              <article className="glass-panel rounded-[34px] px-6 py-7 md:px-8 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
+              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[34px] px-6 py-7 md:px-8 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
                 <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="flex items-center gap-3">
@@ -994,7 +994,7 @@ export default function Landing() {
                 </div>
               </article>
 
-              <article className="glass-panel rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
+              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
                   <img
                     src="/landing-icons/Smart-automations.png"
@@ -1006,7 +1006,7 @@ export default function Landing() {
                 <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                   {copy.overview.automations.title}
                 </h2>
-                <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
+                <p className="mt-3 text-sm leading-7 text-white/85">
                   {copy.overview.automations.description}
                 </p>
 
