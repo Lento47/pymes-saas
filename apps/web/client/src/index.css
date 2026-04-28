@@ -15,7 +15,7 @@
   --fg:           220 10% 15%;    /* #22262b — primary text */
   --fg-2:         220 8% 46%;    /* #6d727a — secondary text */
   --fg-3:         220 6% 65%;    /* #a0a5ac — disabled / placeholder */
-  --accent:       214 89% 52%;   /* #1a73e8 — accent blue */
+  --accent:       237 70% 60%;   /* #6b7dff — accent indigo */
   --accent-fg:    0 0% 100%;
   --danger:       0 72% 45%;
   --danger-fg:    0 0% 100%;
@@ -51,10 +51,10 @@
   --sidebar-accent:    var(--bg-active);
   --sidebar-accent-foreground: var(--fg);
   --sidebar-ring:      var(--accent);
-  --chart-1:           214 89% 52%;
+  --chart-1:           237 70% 60%;
   --chart-2:           145 63% 42%;
   --chart-3:           38 95% 54%;
-  --chart-4:           262 60% 62%;
+  --chart-4:           270 60% 62%;
   --chart-5:           0 72% 51%;
   --radius: 0.5rem;
 }
@@ -71,7 +71,7 @@ html.dark {
   --fg:           0 0% 93%;
   --fg-2:         0 0% 62%;
   --fg-3:         0 0% 42%;
-  --accent:       214 89% 52%;
+  --accent:       237 75% 65%;   /* indigo — brighter for dark */
   --accent-fg:    0 0% 100%;
   --danger:       0 72% 51%;
   --success:      145 63% 42%;
