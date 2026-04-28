@@ -195,11 +195,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               {/* Background glow effect */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300" style={{ background: "radial-gradient(circle at top-right, rgba(255,255,255,0.3))" }}></div>
 
-              {/* Workspace Avatar */}
-              <div className="relative w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 shadow-sm group-hover:shadow-md transition-shadow lg:hidden">
-                <Building2 className="w-4 h-4 text-white/80" />
-              </div>
-
               {/* Workspace Name */}
               <div className="flex-1 min-w-0 relative z-10">
                 <p className="text-sm font-bold text-white truncate leading-tight drop-shadow-sm">{ws}</p>
