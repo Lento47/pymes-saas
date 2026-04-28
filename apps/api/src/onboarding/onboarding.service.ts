@@ -15,30 +15,35 @@ export class OnboardingService {
   }
 
   async createProject(workspaceId: string, data: any) {
-    return this.prisma.onboardingProject.create({
-      data: {
-        workspace: { connect: { id: workspaceId } },
-        plan_key: data.plan_key ?? 'BUSINESS_PLUS',
-        owner_user_id: data.owner_user_id,
-        target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : null,
-        checklist: data.checklist ?? [],
-        notes: data.notes,
-        success_criteria: data.success_criteria,
-      },
-    });
+    const createData: any = {
+      workspace: { connect: { id: workspaceId } },
+      plan_key: data.plan_key ?? 'BUSINESS_PLUS',
+      target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : null,
+      checklist: data.checklist ?? [],
+      notes: data.notes,
+      success_criteria: data.success_criteria,
+    };
+    // Only set owner_user_id if provided as a valid string
+    if (typeof data.owner_user_id === 'string' && data.owner_user_id) {
+      createData.owner_user_id = data.owner_user_id;
+    }
+    return this.prisma.onboardingProject.create({ data: createData });
   }
 
   async updateProject(workspaceId: string, data: any) {
+    const updateData: any = {
+      status: data.status,
+      target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : undefined,
+      checklist: data.checklist ?? undefined,
+      notes: data.notes,
+      success_criteria: data.success_criteria,
+    };
+    if (typeof data.owner_user_id === 'string') {
+      updateData.owner_user_id = data.owner_user_id;
+    }
     return this.prisma.onboardingProject.update({
       where: { workspace_id: workspaceId },
-      data: {
-        owner_user_id: data.owner_user_id,
-        status: data.status,
-        target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : undefined,
-        checklist: data.checklist ?? undefined,
-        notes: data.notes,
-        success_criteria: data.success_criteria,
-      },
+      data: updateData,
     });
   }
 
