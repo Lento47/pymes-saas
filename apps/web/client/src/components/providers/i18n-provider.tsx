@@ -3,6 +3,7 @@ import {
   startTransition,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -56,23 +57,21 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const workspaceLocale = user?.workspace?.locale;
   const [locale, setLocaleState] = useState<SupportedLocale>(() => resolveInitialLocale(workspaceLocale));
+  const manuallySet = useRef(false);
 
+  // Only set from workspace locale on first load, not on manual changes
   useEffect(() => {
-    if (!workspaceLocale) return;
+    if (!workspaceLocale || manuallySet.current) return;
 
     const nextLocale = normalizeLocale(workspaceLocale);
     if (nextLocale === locale) return;
 
-    try {
-      localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
-    } catch {
-      // Ignore localStorage write issues.
-    }
+    try { localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale); } catch {}
 
     startTransition(() => {
       setLocaleState(nextLocale);
     });
-  }, [locale, workspaceLocale]);
+  }, [workspaceLocale]);
 
   useEffect(() => {
     document.documentElement.lang = intlLocales[locale];
@@ -86,6 +85,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const setLocale = (nextLocale: SupportedLocale) => {
     if (nextLocale === locale) return;
+    manuallySet.current = true;
 
     startTransition(() => {
       setLocaleState(nextLocale);
