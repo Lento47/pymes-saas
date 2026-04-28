@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import { Switch, Route, Router, Redirect } from "wouter";
 import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -40,14 +41,14 @@ import AdminUsers from "@/pages/admin/users";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, initialized, user } = useAuth();
-  if (!initialized || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  if (!initialized || (isAuthenticated && !user)) return <div className="flex flex-col items-center justify-center min-h-screen bg-[#05091d] gap-3"><Loader2 className="w-6 h-6 text-white/40 animate-spin" /><span className="text-white/30 text-sm">Cargando...</span></div>;
   if (!isAuthenticated) return <Redirect to="/login" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
 
 function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, initialized } = useAuth();
-  if (!initialized || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  if (!initialized || (isAuthenticated && !user)) return <div className="flex flex-col items-center justify-center min-h-screen bg-[#05091d] gap-3"><Loader2 className="w-6 h-6 text-white/40 animate-spin" /><span className="text-white/30 text-sm">Cargando...</span></div>;
   if (!isAuthenticated) return <Redirect to="/login" />;
   if (!user?.is_platform_admin) return <Redirect to="/" />;
   return <AppSidebar>{children}</AppSidebar>;
@@ -55,7 +56,7 @@ function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
 
 function RootRoute() {
   const { isAuthenticated, user, initialized } = useAuth();
-  if (!initialized) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  if (!initialized) return <div className="flex flex-col items-center justify-center min-h-screen bg-[#05091d] gap-3"><Loader2 className="w-6 h-6 text-white/40 animate-spin" /><span className="text-white/30 text-sm">Cargando...</span></div>;
   if (!isAuthenticated) return <Landing />;
   return <ProtectedLayout><Dashboard /></ProtectedLayout>;
 }

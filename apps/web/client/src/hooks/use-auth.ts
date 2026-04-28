@@ -64,11 +64,11 @@ if (_storedRefreshToken && !isLoggedIn()) {
   _isRestoring = true;
   _restorePromise = (async () => {
     try {
-      const r = await api.refresh(_storedRefreshToken);
+      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000));
+      const r = await Promise.race([api.refresh(_storedRefreshToken), timeout]) as any;
       setAuthState(r.access_token, getWorkspaceSlug()!, r.refresh_token);
-      const me = await api.getMe();
+      const me = await Promise.race([api.getMe(), timeout]) as any;
       _user = me;
-      // Update slug from actual user data in case it changed
       setAuthState(r.access_token, me.workspace.slug, r.refresh_token);
       connectSocket();
       attachWorkspaceUpdateListener();
@@ -167,10 +167,13 @@ export function useAuth() {
     window.location.reload();
   };
 
+  const initialized = !_isRestoring && (!isLoggedIn() || !!_user);
+
   return {
     user: _user,
     isAuthenticated: isLoggedIn(),
     isRestoring: _isRestoring,
+    initialized,
     workspaceSlug: getWorkspaceSlug(),
     login,
     register,
