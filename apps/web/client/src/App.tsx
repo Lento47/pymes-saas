@@ -135,7 +135,7 @@ function AppRouter() {
         {() => <PlatformAdminLayout><AdminWorkspaces /></PlatformAdminLayout>}
       </Route>
       <Route path="/admin/workspaces/:slug">
-        {(params) => <PlatformAdminLayout><AdminWorkspaceDetail slug={params.slug} /></PlatformAdminLayout>}
+        {() => <PlatformAdminLayout><AdminWorkspaceDetail /></PlatformAdminLayout>}
       </Route>
       <Route path="/admin/users">
         {() => <PlatformAdminLayout><AdminUsers /></PlatformAdminLayout>}

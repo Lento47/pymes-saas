@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Zap, ArrowRight, CheckCircle2, GitBranch, Search, X } from "lucide-react";
+import { Plus, Trash2, Zap, ArrowRight, CheckCircle2, GitBranch, Search, X, LayoutTemplate } from "lucide-react";
 import { AutomationSheet } from "@/components/automations/AutomationSheet";
+import TemplateBrowser from "@/components/templates/template-browser";
 
 function triggerLabel(t: string) { return t.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()); }
 
@@ -18,6 +19,7 @@ export default function AutomationsPage() {
   const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [editingAuto, setEditingAuto] = useState<any>(null);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,6 +88,9 @@ export default function AutomationsPage() {
           <span className="text-[11px] text-muted-foreground">{automations?.length || 0} activas</span>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setTemplateOpen(true)} className="gap-1.5 rounded-xl text-[12px]">
+            <LayoutTemplate className="w-[13px] h-[13px]" />Plantillas
+          </Button>
           <Button onClick={() => { setEditingAuto(null); setCreateOpen(true); }} size="sm" className="gap-1.5 rounded-xl text-[12px]">
             <Plus className="w-[13px] h-[13px]" />Nueva
           </Button>
@@ -215,6 +220,7 @@ export default function AutomationsPage() {
           </DialogContent>
         </Dialog>
       )}
+      <TemplateBrowser open={templateOpen} onClose={() => setTemplateOpen(false)} type="automation" />
     </div>
   );
 }

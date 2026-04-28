@@ -19,9 +19,11 @@ import {
   Send,
   Sparkles,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
+import CsvImportModal from "@/components/import/csv-import-modal";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
@@ -146,6 +148,7 @@ export default function InvoicesPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
@@ -549,6 +552,14 @@ export default function InvoicesPage() {
           onClick={() => setShowGuide(true)}
         >
           <BookOpen className="w-3.5 h-3.5 mr-1.5" /> Guía Hacienda
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={() => setImportOpen(true)}
+        >
+          <Upload className="w-3.5 h-3.5 mr-1.5" /> Import CSV
         </Button>
         <Button
           size="sm"
@@ -1249,6 +1260,7 @@ export default function InvoicesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} entityType="invoices" />
     </div>
   );
 }

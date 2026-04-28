@@ -1,4 +1,4 @@
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, formatDistanceToNowStrict } from "date-fns";
 import type { InboxConversation } from "../types";
 import { AvatarFallback } from "@/components/shared/avatar-fallback";
 import { ChannelBadge } from "@/components/shared/channel-badge";
@@ -56,6 +56,23 @@ export function ConversationListItem({
             {!conversation.assigned_user && (
               <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300">
                 Sin asignar
+              </span>
+            )}
+            {/* WhatsApp 24h service window indicator */}
+            {conversation.channel?.type === "WHATSAPP" && conversation.is_service_window_open !== undefined && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                  conversation.is_service_window_open
+                    ? "bg-emerald-500/10 text-emerald-300"
+                    : "bg-red-500/10 text-red-300"
+                }`}
+                title={
+                  conversation.is_service_window_open && conversation.service_window_expires_at
+                    ? `Ventana cierra en ${formatDistanceToNowStrict(new Date(conversation.service_window_expires_at))}`
+                    : "Ventana de 24h cerrada — requiere template"
+                }
+              >
+                {conversation.is_service_window_open ? "Ventana abierta" : "Template requerido"}
               </span>
             )}
           </div>

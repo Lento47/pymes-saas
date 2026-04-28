@@ -17,8 +17,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Link } from "wouter";
-import { Users, Plus, Search, Loader2, MoreHorizontal, Pencil, Trash } from "lucide-react";
+import { Users, Plus, Search, Loader2, MoreHorizontal, Pencil, Trash, Upload } from "lucide-react";
 import { format } from "date-fns";
+import CsvImportModal from "@/components/import/csv-import-modal";
 
 function toCreateContactPayload(form: {
   firstName: string;
@@ -59,6 +60,7 @@ export default function ContactsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", company: "", type: "CUSTOMER" });
+  const [importOpen, setImportOpen] = useState(false);
 
   const params: Record<string, string> = {};
   if (search) params.q = search;
@@ -112,6 +114,9 @@ export default function ContactsPage() {
           setShowCreate(true);
         }} data-testid="button-create-contact">
           <Plus className="w-3.5 h-3.5 mr-1.5" /> New Contact
+        </Button>
+        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setImportOpen(true)}>
+          <Upload className="w-3.5 h-3.5 mr-1.5" /> Import CSV
         </Button>
       </PageHeader>
 
@@ -278,6 +283,7 @@ export default function ContactsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} entityType="contacts" />
     </div>
   );
 }

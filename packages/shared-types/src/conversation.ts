@@ -1,6 +1,7 @@
 export enum ChannelType {
   EMAIL = 'EMAIL',
   WHATSAPP = 'WHATSAPP',
+  TELEGRAM = 'TELEGRAM',
   FORM = 'FORM',
   API = 'API',
   MANUAL = 'MANUAL',

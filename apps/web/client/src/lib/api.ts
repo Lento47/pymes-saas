@@ -371,6 +371,7 @@ export const api = {
   platformDeleteUser: (userId: string) => request<any>("DELETE", `/api/platform/users/${userId}`),
   platformGetStats: () => request<any>("GET", "/api/platform/stats"),
   platformToggleAdmin: (userId: string) => request<any>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
+  platformGetWorkspaceBySlug: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}`),
   // AI / Agent
   askAssistant: (prompt: string) => request<any>("POST", "/api/workspaces/current/ai/assist", { prompt }),
   createAgentStream: (message: string, conversationId?: string) => request<any>("POST", "/api/ai/agent/stream", { message, conversationId }),
@@ -385,8 +386,43 @@ export const api = {
     const qs = workspaceSlug ? `?slug=${encodeURIComponent(workspaceSlug)}` : "";
     return request<any>("GET", `/api/auth/saml/status${qs}`);
   },
+  getSamlConfig: (workspaceId: string) => request<any>("GET", `/api/auth/saml/config/${workspaceId}`),
+  upsertSamlConfig: (workspaceId: string, data: any) => request<any>("PUT", `/api/auth/saml/config/${workspaceId}`, data),
+  enableSaml: (workspaceId: string) => request<any>("POST", `/api/auth/saml/config/${workspaceId}/enable`),
+  disableSaml: (workspaceId: string) => request<any>("POST", `/api/auth/saml/config/${workspaceId}/disable`),
   // API Tokens
   getApiTokens: () => request<any>("GET", "/api/workspaces/current/api-tokens"),
   createApiToken: (name: string) => request<any>("POST", "/api/workspaces/current/api-tokens", { name }),
   revokeApiToken: (id: string) => request<any>("DELETE", `/api/workspaces/current/api-tokens/${id}`),
+  // Enterprise
+  getEnterpriseConfig: (workspaceId: string) => request<any>("GET", `/api/enterprise/config/${workspaceId}`),
+  upsertEnterpriseConfig: (workspaceId: string, data: any) => request<any>("PUT", `/api/enterprise/config/${workspaceId}`, data),
+  getEnterpriseCapabilities: () => request<any>("GET", "/api/enterprise/capabilities"),
+  // Contact Sales
+  submitContactSales: (data: any) => request<any>("POST", "/api/contact-sales", data),
+  // Feature Flags
+  getFeatureFlags: (workspaceId: string) => request<any>("GET", `/api/feature-flags/check/${workspaceId}`),
+  // Usage
+  getUsage: (workspaceId: string) => request<any>("GET", `/api/usage/${workspaceId}`),
+  // Message Templates
+  getMessageTemplates: (workspaceId: string, channel?: string) => {
+    const qs = channel ? `?channel=${encodeURIComponent(channel)}` : "";
+    return request<any>("GET", `/api/message-templates/${workspaceId}${qs}`);
+  },
+  getApprovedTemplates: (workspaceId: string, channel?: string) =>
+    request<any>("GET", `/api/message-templates/${workspaceId}/approved?channel=${channel ?? 'WHATSAPP'}`),
+  // Onboarding
+  getOnboardingProject: (workspaceId: string) => request<any>("GET", `/api/onboarding/${workspaceId}`),
+  upsertOnboardingProject: (workspaceId: string, data: any) => request<any>("POST", `/api/onboarding/${workspaceId}`, data),
+  updateOnboardingChecklist: (workspaceId: string, data: any) => request<any>("PUT", `/api/onboarding/${workspaceId}/checklist`, data),
+  // SLA
+  getSlaPolicies: () => request<any>("GET", "/api/sla/policies"),
+  getSlaAssignment: (workspaceId: string) => request<any>("GET", `/api/sla/assignment/${workspaceId}`),
+  assignSlaPolicy: (workspaceId: string, data: any) => request<any>("POST", `/api/sla/assignment/${workspaceId}`, data),
+  // Templates
+  listSystemTemplates: (type: string, category?: string) => {
+    const qs = new URLSearchParams({ type });
+    if (category) qs.set("category", category);
+    return request<any>("GET", `/api/templates/system?${qs}`);
+  },
 };

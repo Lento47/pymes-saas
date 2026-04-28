@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Plus, User, Calendar, DollarSign, Trash2, Trophy, GripVertical, KanbanSquare } from "lucide-react";
+import { Plus, User, Calendar, DollarSign, Trash2, Trophy, GripVertical, KanbanSquare, Upload } from "lucide-react";
 import { useLocation } from "wouter";
 import { DealSheet } from "@/components/pipeline/DealSheet";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import CsvImportModal from "@/components/import/csv-import-modal";
 
 interface Deal { id: string; title: string; value: string | null; currency: string; priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT"; status: "OPEN" | "WON" | "LOST"; closing_date: string | null; notes: string | null; stage_id: string; contact: { id: string; full_name: string; company_name?: string | null } | null; assigned_user: { id: string; name: string } | null; created_at: string; }
 
@@ -93,6 +94,7 @@ export default function PipelinePage() {
   const qc = useQueryClient(); const { toast } = useToast();
   const { data: stages = [], isLoading } = useQuery({ queryKey: ["/api/pipeline/stages"], queryFn: () => api.getPipelineStages() as Promise<Stage[]>, staleTime: 15000 });
   const [modalOpen, setModalOpen] = useState(false); const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [defaultStage, setDefaultStage] = useState<string>();
   const moveMut = useMutation({ mutationFn: ({ dealId, stageId }: { dealId: string; stageId: string }) => api.moveDeal(dealId, stageId), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }) });
 
@@ -107,10 +109,15 @@ export default function PipelinePage() {
           <h1 className="text-[15px] font-semibold text-foreground">Pipeline</h1>
           <span className="text-[11px] text-muted-foreground/40 ml-1">{stages?.length || 0} etapas</span>
         </div>
-        <Button onClick={() => { setEditingDeal(null); setDefaultStage(undefined); setModalOpen(true); }}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1.5 rounded-xl text-[12px]">
+            <Upload style={{ width: 13, height: 13 }} />Import CSV
+          </Button>
+          <Button onClick={() => { setEditingDeal(null); setDefaultStage(undefined); setModalOpen(true); }}
           size="sm" className="gap-1.5 rounded-xl text-[12px]" style={{ background: '#8b7cf6', color: 'hsl(var(--fg))' }}>
           <Plus style={{ width: 13, height: 13 }} />Nuevo deal
         </Button>
+        </div>
       </header>
 
       {isLoading ? (
@@ -127,6 +134,7 @@ export default function PipelinePage() {
       )}
 
       <DealSheet open={modalOpen} onClose={() => setModalOpen(false)} stages={stages} deal={editingDeal} defaultStageId={defaultStage} />
+      <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} entityType="pipeline" />
     </div>
   );
 }

@@ -21,10 +21,11 @@ import { SUPPORTED_LOCALES, normalizeLocale, type SupportedLocale } from "@/lib/
 import {
   Building2, Users, PlugZap, UserPlus, Plus, Plug,
   Mail, MessageCircle, Radio, Eye, EyeOff, ExternalLink,
-  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard, Shuffle, Loader2, Key, Copy, Shield, Send,
+  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard, Shuffle, Loader2, Key, Copy, Shield, Send, Crown,
 } from "lucide-react";
 import BillingPage from "@/pages/billing";
 import { SamlConfig } from "@/components/settings/saml-config";
+import EnterpriseSettingsTab from "@/components/settings/enterprise-settings";
 import { ModuleHero } from "@/components/shared/module-hero";
 
 function RoutingRulesTab() {
@@ -2498,6 +2499,9 @@ export default function Settings() {
           <TabsTrigger value="saml" className="data-[state=active]:bg-elevated">
             <Shield className="h-4 w-4 mr-2" />SAML SSO
           </TabsTrigger>
+          <TabsTrigger value="enterprise" className="data-[state=active]:bg-elevated">
+            <Crown className="h-4 w-4 mr-2" />Enterprise
+          </TabsTrigger>
           {isPlatformAdmin && (
             <TabsTrigger value="platform" className="data-[state=active]:bg-elevated">
               <ShieldCheck className="h-4 w-4 mr-2" />{copy.tabs.platform}
@@ -2516,6 +2520,7 @@ export default function Settings() {
             <TabsContent value="routing"><RoutingRulesTab /></TabsContent>
             <TabsContent value="apitokens"><ApiTokensTab /></TabsContent>
             <TabsContent value="saml"><SamlConfig /></TabsContent>
+            <TabsContent value="enterprise"><EnterpriseSettingsTab /></TabsContent>
             {isPlatformAdmin && (
               <TabsContent value="platform"><PlatformTab /></TabsContent>
             )}

@@ -5,3 +5,6 @@ export * from './conversation';
 export * from './task';
 export * from './invoice';
 export * from './automation';
+export * from './enterprise';
+export * from './operations';
+export * from './message';

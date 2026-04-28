@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { es } from "date-fns/locale";
+import OnboardingTour from "@/components/shared/onboarding-tour";
+import QuickStartChecklist from "@/components/shared/quick-start-checklist";
 
 const STATUS_BG = "https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/statusBackground.png";
 
@@ -116,6 +118,14 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-full bg-background">
+      {/* Quick Start Checklist */}
+      <div className="px-6 pt-4">
+        <QuickStartChecklist
+          progress={workspaceStats?.settings?.quick_start_progress ?? {}}
+          onDismiss={() => {}}
+        />
+      </div>
+
       {/* ── Greeting + Summary Ribbon ── */}
       <div className="px-6 pt-5 pb-3">
         <div className="flex items-center justify-between mb-4">
@@ -303,6 +313,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      <OnboardingTour />
     </div>
   );
 }
