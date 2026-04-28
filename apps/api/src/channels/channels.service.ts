@@ -77,7 +77,17 @@ export class ChannelsService {
 
   async remove(workspaceId: string, id: string) {
     await this.assertOwnership(workspaceId, id);
+    const channel = await this.prisma.channel.findFirst({ where: { id } });
+
+    // Clean up webhooks/integrations before deletion
+    if (channel?.type === 'TELEGRAM') {
+      await this.telegramService.removeWebhook(id).catch((err) => {
+        this.logger.warn(`Failed to remove Telegram webhook during deletion: ${(err as Error).message}`);
+      });
+    }
+
     await this.prisma.channel.delete({ where: { id } });
+    this.logger.log(`Channel ${id} (${channel?.type}) deleted from workspace ${workspaceId}`);
     return { message: 'Canal eliminado.' };
   }
 
@@ -88,6 +98,15 @@ export class ChannelsService {
 
   async disconnect(workspaceId: string, id: string) {
     await this.assertOwnership(workspaceId, id);
+    const channel = await this.prisma.channel.findFirst({ where: { id } });
+
+    // Remove Telegram webhook if it's a Telegram channel
+    if (channel?.type === 'TELEGRAM') {
+      this.telegramService.removeWebhook(id).catch((err) => {
+        this.logger.warn(`Failed to remove Telegram webhook: ${(err as Error).message}`);
+      });
+    }
+
     return this.prisma.channel.update({ where: { id }, data: { status: 'INACTIVE' } });
   }
 

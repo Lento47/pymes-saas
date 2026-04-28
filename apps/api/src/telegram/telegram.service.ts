@@ -1,14 +1,26 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { MessagesService } from '../conversations/messages.service';
 import { Telegraf } from 'telegraf';
 
+interface TelegramWebhookInfo {
+  url: string;
+  has_custom_certificate: boolean;
+  pending_update_count: number;
+  ip_address?: string;
+  last_error_date?: number;
+  last_error_message?: string;
+  max_connections: number;
+  allowed_updates?: string[];
+}
+
 @Injectable()
 export class TelegramService {
   private readonly logger = new Logger(TelegramService.name);
   private bots = new Map<string, Telegraf>();
+  private webhookCache = new Map<string, { url: string; timestamp: number }>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -17,75 +29,181 @@ export class TelegramService {
     private readonly config: ConfigService,
   ) {}
 
-  async registerWebhook(workspaceId: string, channelId: string) {
+  /**
+   * Get bot token from encrypted config
+   */
+  private async getBotToken(channelId: string): Promise<string | null> {
     const channel = await this.prisma.channel.findFirst({
-      where: { id: channelId, workspace_id: workspaceId, type: 'TELEGRAM' },
-      select: { config_json: true, id: true },
+      where: { id: channelId, type: 'TELEGRAM' },
+      select: { config_json: true },
     });
 
-    if (!channel?.config_json) return;
+    if (!channel?.config_json) return null;
 
     const cfg = channel.config_json as any;
-    const token = cfg.bot_token_enc
-      ? this.crypto.decrypt(cfg.bot_token_enc)
+    return cfg.bot_token_encrypted
+      ? this.crypto.decrypt(cfg.bot_token_encrypted)
       : cfg.bot_token;
+  }
 
-    if (!token) {
-      this.logger.warn(`No bot token for Telegram channel ${channelId}`);
-      return;
-    }
-
-    const existing = this.bots.get(channelId);
-    if (existing) {
-      await existing.telegram.deleteWebhook();
-    }
-
-    const bot = new Telegraf(token);
-    const baseUrl = this.config.get<string>('APP_URL') || 'https://api.pymeshub.lat';
-    const webhookUrl = `${baseUrl}/api/inbound/telegram/webhook/${channelId}`;
-
+  /**
+   * Validate token with Telegram API
+   */
+  private async validateToken(token: string): Promise<boolean> {
     try {
-      await bot.telegram.setWebhook(webhookUrl);
-      this.bots.set(channelId, bot);
-      this.logger.log(`Telegram webhook set for channel ${channelId} → ${webhookUrl}`);
+      const bot = new Telegraf(token);
+      const me = await bot.telegram.getMe();
+      this.logger.log(`Token validated for bot: @${me.username}`);
+      return true;
     } catch (err) {
-      this.logger.error(`Failed to set Telegram webhook: ${(err as Error).message}`);
+      this.logger.warn(`Invalid token: ${(err as Error).message}`);
+      return false;
     }
   }
 
-  async processUpdate(channelId: string, update: any) {
+  /**
+   * Register webhook for Telegram bot
+   * Called when channel is configured or manually triggered
+   */
+  async registerWebhook(workspaceId: string, channelId: string): Promise<void> {
     const channel = await this.prisma.channel.findFirst({
-      where: { id: channelId, type: 'TELEGRAM' },
-      select: { id: true, workspace_id: true, config_json: true },
+      where: { id: channelId, workspace_id: workspaceId, type: 'TELEGRAM' },
+      select: { config_json: true, id: true, workspace_id: true },
     });
 
-    if (!channel) return;
-
-    const message = update?.message || update?.edited_message;
-    if (!message?.text && !message?.caption && !message?.photo && !message?.document && !message?.video && !message?.audio) return;
-
-    const from = message.from;
-    const chat = message.chat;
-    const text = message.text || message.caption || '';
-    const senderName = from?.first_name
-      ? `${from.first_name}${from.last_name ? ' ' + from.last_name : ''}`
-      : (from?.username || `Telegram ${from?.id}`);
-
-    const senderRef = `tg:${from?.id}`;
-    const conversationRef = `tg:${chat?.id}`;
-
-    const attachments: any[] = [];
-    if (message.photo) {
-      attachments.push({ type: 'photo', file_id: message.photo[message.photo.length - 1]?.file_id });
-    } else if (message.document) {
-      attachments.push({ type: 'document', file_id: message.document.file_id, file_name: message.document.file_name });
-    } else if (message.video) {
-      attachments.push({ type: 'video', file_id: message.video.file_id, file_name: message.video.file_name });
-    } else if (message.audio) {
-      attachments.push({ type: 'audio', file_id: message.audio.file_id });
+    if (!channel) {
+      throw new NotFoundException(`Telegram channel ${channelId} not found`);
     }
 
+    const token = await this.getBotToken(channelId);
+    if (!token) {
+      throw new BadRequestException('No bot token configured for this channel');
+    }
+
+    // Validate token before registering webhook
+    const isValid = await this.validateToken(token);
+    if (!isValid) {
+      throw new BadRequestException('Invalid or expired Telegram bot token');
+    }
+
+    // Remove existing webhook if any
+    await this.removeWebhook(channelId).catch(() => {});
+
+    const bot = new Telegraf(token);
+    const baseUrl = this.config.get<string>('APP_URL');
+    if (!baseUrl) {
+      throw new BadRequestException('APP_URL not configured');
+    }
+
+    const webhookUrl = `${baseUrl}/api/inbound/telegram/webhook/${channelId}`;
+
     try {
+      // Set webhook with optional parameters
+      await bot.telegram.setWebhook(webhookUrl, {
+        allowed_updates: ['message', 'edited_message', 'callback_query'],
+        max_connections: 40,
+      });
+
+      // Store bot instance for later use
+      this.bots.set(channelId, bot);
+      this.webhookCache.set(channelId, { url: webhookUrl, timestamp: Date.now() });
+
+      this.logger.log(`✓ Telegram webhook registered: channel=${channelId}, url=${webhookUrl}`);
+    } catch (err) {
+      this.logger.error(`✗ Failed to register webhook: ${(err as Error).message}`);
+      throw new BadRequestException(`Failed to register webhook: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Process incoming Telegram update
+   */
+  async processUpdate(channelId: string, update: any): Promise<void> {
+    try {
+      const channel = await this.prisma.channel.findFirst({
+        where: { id: channelId, type: 'TELEGRAM', status: 'ACTIVE' },
+        select: { id: true, workspace_id: true, config_json: true },
+      });
+
+      if (!channel) {
+        this.logger.warn(`Channel ${channelId} not found or inactive`);
+        return;
+      }
+
+      const message = update?.message || update?.edited_message;
+      if (!message) {
+        return; // Ignore non-message updates
+      }
+
+      // Check if message has content
+      const hasContent = !!(message.text || message.caption || message.photo || message.document || message.video || message.audio || message.voice);
+      if (!hasContent) {
+        return;
+      }
+
+      const from = message.from;
+      const chat = message.chat;
+
+      if (!from || !chat) {
+        this.logger.warn('Invalid message structure: missing from or chat');
+        return;
+      }
+
+      const text = message.text || message.caption || '';
+      const senderName = from.first_name
+        ? `${from.first_name}${from.last_name ? ' ' + from.last_name : ''}`
+        : (from.username || `Telegram User ${from.id}`);
+
+      const senderRef = `tg:${from.id}`;
+      const conversationRef = `tg:${chat.id}`;
+
+      // Extract attachments
+      const attachments: any[] = [];
+      if (message.photo && message.photo.length > 0) {
+        const largestPhoto = message.photo[message.photo.length - 1];
+        attachments.push({
+          type: 'photo',
+          file_id: largestPhoto.file_id,
+          width: largestPhoto.width,
+          height: largestPhoto.height,
+        });
+      }
+      if (message.document) {
+        attachments.push({
+          type: 'document',
+          file_id: message.document.file_id,
+          file_name: message.document.file_name,
+          mime_type: message.document.mime_type,
+          file_size: message.document.file_size,
+        });
+      }
+      if (message.video) {
+        attachments.push({
+          type: 'video',
+          file_id: message.video.file_id,
+          duration: message.video.duration,
+          width: message.video.width,
+          height: message.video.height,
+        });
+      }
+      if (message.audio) {
+        attachments.push({
+          type: 'audio',
+          file_id: message.audio.file_id,
+          duration: message.audio.duration,
+          performer: message.audio.performer,
+          title: message.audio.title,
+        });
+      }
+      if (message.voice) {
+        attachments.push({
+          type: 'voice',
+          file_id: message.voice.file_id,
+          duration: message.voice.duration,
+        });
+      }
+
+      // Create inbound message
       await this.messagesService.receiveInbound(
         channel.workspace_id,
         channel.id,
@@ -97,55 +215,114 @@ export class TelegramService {
           conversation_ref: conversationRef,
           raw_payload: update,
           attachments: attachments.length > 0 ? attachments : undefined,
+          metadata: {
+            telegram_user_id: from.id,
+            telegram_chat_id: chat.id,
+            telegram_chat_type: chat.type,
+            is_edited: !!update.edited_message,
+          },
         },
       );
     } catch (err) {
-      this.logger.error(`Telegram inbound error: ${(err as Error).message}`);
+      this.logger.error(`Error processing Telegram update: ${(err as Error).message}`);
+      // Don't throw - Telegram expects 200 OK regardless
     }
   }
 
-  async removeWebhook(channelId: string) {
-    const bot = this.bots.get(channelId);
-    if (bot) {
-      await bot.telegram.deleteWebhook().catch(() => {});
+  /**
+   * Remove webhook for channel
+   */
+  async removeWebhook(channelId: string): Promise<void> {
+    const token = await this.getBotToken(channelId);
+    if (!token) return;
+
+    try {
+      const bot = new Telegraf(token);
+      await bot.telegram.deleteWebhook();
       this.bots.delete(channelId);
+      this.webhookCache.delete(channelId);
+      this.logger.log(`✓ Telegram webhook removed for channel ${channelId}`);
+    } catch (err) {
+      this.logger.error(`Failed to remove webhook: ${(err as Error).message}`);
     }
   }
 
-  async sendMessage(channelId: string, chatId: string, text: string) {
-    const bot = this.bots.get(channelId);
-    if (!bot) {
-      this.logger.warn(`No bot instance for channel ${channelId}`);
-      return;
+  /**
+   * Send message to Telegram chat
+   */
+  async sendMessage(channelId: string, chatId: string, text: string): Promise<any> {
+    if (!text || !chatId) {
+      throw new BadRequestException('Missing text or chatId');
     }
-    await bot.telegram.sendMessage(chatId, text);
-  }
 
-  async getWebhookStatus(channelId: string) {
-    const channel = await this.prisma.channel.findFirst({
-      where: { id: channelId, type: 'TELEGRAM' },
-      select: { config_json: true },
-    });
-
-    if (!channel?.config_json) return null;
-
-    const cfg = channel.config_json as any;
-    const token = cfg.bot_token_encrypted
-      ? this.crypto.decrypt(cfg.bot_token_encrypted)
-      : cfg.bot_token;
-
+    const token = await this.getBotToken(channelId);
     if (!token) {
-      this.logger.warn(`No bot token for channel ${channelId}`);
+      throw new NotFoundException('No bot token configured');
+    }
+
+    try {
+      const bot = new Telegraf(token);
+      const result = await bot.telegram.sendMessage(chatId, text, {
+        parse_mode: 'HTML',
+      });
+      this.logger.log(`✓ Message sent to chat ${chatId} in channel ${channelId}`);
+      return result;
+    } catch (err) {
+      this.logger.error(`Failed to send message: ${(err as Error).message}`);
+      throw new BadRequestException(`Failed to send message: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Get webhook status for debugging
+   */
+  async getWebhookStatus(channelId: string): Promise<TelegramWebhookInfo | null> {
+    const token = await this.getBotToken(channelId);
+    if (!token) {
+      this.logger.warn(`No token for channel ${channelId}`);
       return null;
     }
 
     try {
       const bot = new Telegraf(token);
       const info = await bot.telegram.getWebhookInfo();
-      return info;
+      return info as TelegramWebhookInfo;
     } catch (err) {
       this.logger.error(`Failed to get webhook info: ${(err as Error).message}`);
       return null;
     }
+  }
+
+  /**
+   * Get bot info (name, username, etc.)
+   */
+  async getBotInfo(channelId: string): Promise<any | null> {
+    const token = await this.getBotToken(channelId);
+    if (!token) return null;
+
+    try {
+      const bot = new Telegraf(token);
+      const me = await bot.telegram.getMe();
+      return {
+        id: me.id,
+        is_bot: me.is_bot,
+        first_name: me.first_name,
+        username: me.username,
+        can_join_groups: me.can_join_groups,
+        can_read_all_group_messages: me.can_read_all_group_messages,
+        supports_inline_queries: me.supports_inline_queries,
+      };
+    } catch (err) {
+      this.logger.error(`Failed to get bot info: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Clear bot instance cache
+   */
+  async clearBotCache(channelId: string): Promise<void> {
+    this.bots.delete(channelId);
+    this.webhookCache.delete(channelId);
   }
 }
