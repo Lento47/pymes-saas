@@ -178,22 +178,22 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               </div>
 
               {/* Vertical Chevrons (^ ˅) */}
-              {multipleWorkspaces && (
-                <div className="flex flex-col items-center justify-center shrink-0 gap-0.5">
-                  <ChevronDown
-                    className={cn(
-                      "w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-300 rotate-180",
-                      wsMenuOpen && "text-primary/70"
-                    )}
-                  />
-                  <ChevronDown
-                    className={cn(
-                      "w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-300",
-                      wsMenuOpen && "text-primary/70"
-                    )}
-                  />
-                </div>
-              )}
+              <div className="flex flex-col items-center justify-center shrink-0 gap-0.5">
+                <ChevronDown
+                  className={cn(
+                    "w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-300 rotate-180",
+                    multipleWorkspaces && wsMenuOpen && "text-primary/70",
+                    !multipleWorkspaces && "opacity-30 cursor-default"
+                  )}
+                />
+                <ChevronDown
+                  className={cn(
+                    "w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-300",
+                    multipleWorkspaces && wsMenuOpen && "text-primary/70",
+                    !multipleWorkspaces && "opacity-30 cursor-default"
+                  )}
+                />
+              </div>
             </button>
 
             {/* ── Workspace Menu ── */}
