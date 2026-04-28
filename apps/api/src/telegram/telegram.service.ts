@@ -26,8 +26,8 @@ export class TelegramService {
     if (!channel?.config_json) return;
 
     const cfg = channel.config_json as any;
-    const token = cfg.bot_token_enc
-      ? this.crypto.decrypt(cfg.bot_token_enc)
+    const token = cfg.bot_token_encrypted
+      ? this.crypto.decrypt(cfg.bot_token_encrypted)
       : cfg.bot_token;
 
     if (!token) {
