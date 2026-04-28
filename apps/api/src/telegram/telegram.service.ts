@@ -5,7 +5,7 @@ import { CryptoService } from '../common/crypto/crypto.service';
 import { MessagesService } from '../conversations/messages.service';
 import { Telegraf } from 'telegraf';
 
-interface TelegramWebhookInfo {
+export interface TelegramWebhookInfo {
   url: string;
   has_custom_certificate: boolean;
   pending_update_count: number;
