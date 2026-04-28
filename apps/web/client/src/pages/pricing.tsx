@@ -59,7 +59,7 @@ export default function PricingPage() {
 
             {/* Billing Toggle */}
             <div className="mt-10 flex items-center justify-center gap-4">
-              <span className={cn(isAnnual ? 'text-white/60' : 'text-white')}>
+              <span className={cn(isAnnual ? 'text-white/85' : 'text-white')}>
                 Monthly
               </span>
               <button
@@ -78,7 +78,7 @@ export default function PricingPage() {
                   )}
                 />
               </button>
-              <span className={cn(isAnnual ? 'text-white' : 'text-white/60')}>
+              <span className={cn(isAnnual ? 'text-white' : 'text-white/85')}>
                 Annual
               </span>
               {isAnnual && (
@@ -150,7 +150,7 @@ export default function PricingPage() {
                           <td key={tier.name} className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center">
                               {isBusinessPlus ? (
-                                <span className="font-semibold text-white/60 italic">Custom</span>
+                                <span className="font-semibold text-white/85 italic">Custom</span>
                               ) : (
                                 <>
                                   <Check className="h-4 w-4 text-[#dfff4a]" />
@@ -217,7 +217,7 @@ export default function PricingPage() {
               </button>
             </div>
             {copy.cta?.note && (
-              <p className="mt-6 text-sm text-white/50">
+              <p className="mt-6 text-sm text-white/75">
                 {copy.cta.note}
               </p>
             )}
