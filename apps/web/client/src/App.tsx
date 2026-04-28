@@ -1,5 +1,4 @@
-import { Switch, Route, Router, Redirect, useLocation } from "wouter";
-import { useEffect } from "react";
+import { Switch, Route, Router, Redirect } from "wouter";
 import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
@@ -13,11 +12,6 @@ import { useAuth } from "@/hooks/use-auth";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
-import Product from "@/pages/product";
-import Platform from "@/pages/platform";
-import Workflows from "@/pages/workflows";
-import InsightsPage from "@/pages/insights-page";
-import SecurityPage from "@/pages/security-page";
 import AcceptInvite from "@/pages/accept-invite";
 import Pricing from "@/pages/pricing";
 import Dashboard from "@/pages/dashboard";
@@ -29,8 +23,8 @@ import Tasks from "@/pages/tasks";
 import Documents from "@/pages/documents";
 import Invoices from "@/pages/invoices";
 import Automations from "@/pages/automations";
+import Notifications from "@/pages/notifications";
 import Pipeline from "@/pages/pipeline";
-import Agent from "@/pages/agent";
 import Settings from "@/pages/settings";
 import Billing from "@/pages/billing";
 import HelpPage from "@/pages/help";
@@ -39,32 +33,29 @@ import DocumentationCenterPage from "@/pages/documentation";
 import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import NotFound from "@/pages/not-found";
-import ChatPageView from "@/pages/chat";
-import AgentPage from "@/pages/agent";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminWorkspaces from "@/pages/admin/workspaces";
 import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
 import AdminUsers from "@/pages/admin/users";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isRestoring, user } = useAuth();
-  const [loc] = useLocation();
-  useEffect(() => { window.scrollTo(0, 0); }, [loc]);
-  if (isRestoring) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  const { isAuthenticated, initialized, user } = useAuth();
+  if (!initialized || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
   if (!isAuthenticated) return <Redirect to="/login" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
 
 function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, isRestoring } = useAuth();
-  if (isRestoring) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  const { user, isAuthenticated, initialized } = useAuth();
+  if (!initialized || (isAuthenticated && !user)) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
   if (!isAuthenticated) return <Redirect to="/login" />;
+  if (!user?.is_platform_admin) return <Redirect to="/" />;
   return <AppSidebar>{children}</AppSidebar>;
 }
 
 function RootRoute() {
-  const { isAuthenticated, user, isRestoring } = useAuth();
-  if (isRestoring) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
+  const { isAuthenticated, user, initialized } = useAuth();
+  if (!initialized) return <div className="flex items-center justify-center min-h-screen bg-[#05091d]" />;
   if (!isAuthenticated) return <Landing />;
   return <ProtectedLayout><Dashboard /></ProtectedLayout>;
 }
@@ -74,11 +65,6 @@ function AppRouter() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
-      <Route path="/product" component={Product} />
-      <Route path="/platform" component={Platform} />
-      <Route path="/workflows" component={Workflows} />
-      <Route path="/insights" component={InsightsPage} />
-      <Route path="/security" component={SecurityPage} />
       <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/documentation">
@@ -120,8 +106,8 @@ function AppRouter() {
       <Route path="/automations">
         {() => <ProtectedLayout><Automations /></ProtectedLayout>}
       </Route>
-      <Route path="/agent">
-        {() => <ProtectedLayout><Agent /></ProtectedLayout>}
+      <Route path="/notifications">
+        {() => <ProtectedLayout><Notifications /></ProtectedLayout>}
       </Route>
       <Route path="/pipeline">
         {() => <ProtectedLayout><Pipeline /></ProtectedLayout>}
@@ -149,12 +135,6 @@ function AppRouter() {
       </Route>
       <Route path="/help/:slug">
         {(params) => <ProtectedLayout><HelpDocumentPage slug={params.slug} /></ProtectedLayout>}
-      </Route>
-      <Route path="/chat">
-        {() => <ProtectedLayout><ChatPageView /></ProtectedLayout>}
-      </Route>
-      <Route path="/agent">
-        {() => <ProtectedLayout><AgentPage /></ProtectedLayout>}
       </Route>
       <Route component={NotFound} />
     </Switch>

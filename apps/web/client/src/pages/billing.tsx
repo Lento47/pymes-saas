@@ -1,481 +1,615 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/hooks/use-auth';
-import { usePaddle, getPaddle } from '@/hooks/use-paddle';
-import { useLocation } from 'wouter';
-import { api, getAuthToken } from '@/lib/api';
-import { ModuleHero } from '@/components/shared/module-hero';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useAuth, useRequireAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { api } from "@/lib/api";
+import { PageHeader } from "@/components/shared/page-header";
+import { PageLoader } from "@/components/shared/loading-spinner";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { queryClient } from "@/lib/queryClient";
+import {
+  Crown, ArrowUpRight, ArrowDownRight, Check, Loader2, Info,
+  Users, Zap, Receipt, FolderOpen, Database, TrendingUp,
+} from "lucide-react";
 
-const PRICING_TIERS = [
+const PLAN_ORDER = ["FREE", "STARTER", "GROWTH", "ENTERPRISE"] as const;
+
+interface PlanTier {
+  key: string;
+  name: string;
+  description: string;
+  monthlyCRC: number;
+  monthlyUSD: number;
+  usersLabel: string;
+  highlights: string[];
+  limits: { label: string; value: string; icon: typeof Users }[];
+  popular: boolean;
+  priceIdMonthly: string | null;
+  priceIdAnnual: string | null;
+}
+
+const PLAN_TIERS: PlanTier[] = [
   {
-    name: 'Starter',
-    monthlyUSD: 25,
+    key: "FREE",
+    name: "Free",
+    description: "Para empezar a organizar tu operación sin costo.",
+    monthlyCRC: 0,
+    monthlyUSD: 0,
+    usersLabel: "1 usuario",
+    highlights: [
+      "CRM básico",
+      "Dashboard",
+      "Facturación básica",
+      "5 automatizaciones",
+    ],
+    limits: [
+      { label: "Contactos", value: "500", icon: Users },
+      { label: "Facturas/mes", value: "50", icon: Receipt },
+      { label: "Automatizaciones", value: "5", icon: Zap },
+      { label: "Documentos", value: "50", icon: FolderOpen },
+      { label: "Almacenamiento", value: "100 MB", icon: Database },
+    ],
+    popular: false,
+    priceIdMonthly: null,
+    priceIdAnnual: null,
+  },
+  {
+    key: "STARTER",
+    name: "Starter",
+    description: "Ideal para negocios que necesitan más capacidad y control.",
     monthlyCRC: 12900,
-    features: ['500 Contacts', '100 invoices/month', '5 Automations', '1 User'],
-    priceId: import.meta.env.VITE_PADDLE_PRICE_STARTER_MONTHLY as string | undefined,
+    monthlyUSD: 25,
+    usersLabel: "hasta 10 usuarios",
+    highlights: [
+      "Todo lo de Free",
+      "Pipeline de ventas",
+      "Roles de usuario",
+      "Canales (Email)",
+      "25 automatizaciones",
+    ],
+    limits: [
+      { label: "Contactos", value: "5,000", icon: Users },
+      { label: "Facturas/mes", value: "200", icon: Receipt },
+      { label: "Automatizaciones", value: "25", icon: Zap },
+      { label: "Documentos", value: "500", icon: FolderOpen },
+      { label: "Almacenamiento", value: "1 GB", icon: Database },
+    ],
+    popular: false,
+    priceIdMonthly: null,
+    priceIdAnnual: null,
   },
   {
-    name: 'Growth',
-    monthlyUSD: 59,
+    key: "GROWTH",
+    name: "Growth",
+    description: "Para equipos en crecimiento que necesitan flujos avanzados.",
     monthlyCRC: 29900,
-    features: ['2,500 Contacts', '500 invoices/month', '25 Automations', '5 Users'],
+    monthlyUSD: 59,
+    usersLabel: "hasta 50 usuarios",
+    highlights: [
+      "Todo lo de Starter",
+      "WhatsApp inbox",
+      "Editor JSON de automatizaciones",
+      "Prompt builder IA (3/día)",
+      "Reportes avanzados",
+    ],
+    limits: [
+      { label: "Contactos", value: "50,000", icon: Users },
+      { label: "Facturas/mes", value: "1,000", icon: Receipt },
+      { label: "Automatizaciones", value: "100", icon: Zap },
+      { label: "Documentos", value: "5,000", icon: FolderOpen },
+      { label: "Almacenamiento", value: "10 GB", icon: Database },
+    ],
     popular: true,
-    priceId: import.meta.env.VITE_PADDLE_PRICE_GROWTH_MONTHLY as string | undefined,
+    priceIdMonthly: null,
+    priceIdAnnual: null,
   },
   {
-    name: 'Business',
-    monthlyUSD: 119,
+    key: "ENTERPRISE",
+    name: "Business",
+    description: "Control avanzado para operaciones que no pueden frenar.",
     monthlyCRC: 59900,
-    features: ['15,000 Contacts', '2,000 invoices/month', '100 Automations', '15 Users'],
-    priceId: import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY as string | undefined,
+    monthlyUSD: 119,
+    usersLabel: "hasta 50 usuarios",
+    highlights: [
+      "Todo lo de Growth",
+      "Prompt builder IA ilimitado",
+      "API access",
+      "Audit logs",
+      "SLA garantizado",
+    ],
+    limits: [
+      { label: "Contactos", value: "Ilimitado", icon: Users },
+      { label: "Facturas/mes", value: "Ilimitado", icon: Receipt },
+      { label: "Automatizaciones", value: "Ilimitado", icon: Zap },
+      { label: "Documentos", value: "Ilimitado", icon: FolderOpen },
+      { label: "Almacenamiento", value: "Ilimitado", icon: Database },
+    ],
+    popular: false,
+    priceIdMonthly: null,
+    priceIdAnnual: null,
+  },
+  {
+    key: "ENTERPRISE",
+    name: "Business+",
+    description: "Para pymes con operaciones avanzadas y necesidades a medida.",
+    monthlyCRC: 0,
+    monthlyUSD: 0,
+    usersLabel: "usuarios personalizados",
+    highlights: [
+      "Todo lo de Business",
+      "SSO / SAML",
+      "Contrato personalizado",
+      "Onboarding dedicado",
+      "Soporte prioritario 24/7",
+    ],
+    limits: [
+      { label: "Contactos", value: "Personalizado", icon: Users },
+      { label: "Facturas/mes", value: "Personalizado", icon: Receipt },
+      { label: "Automatizaciones", value: "Personalizado", icon: Zap },
+      { label: "Documentos", value: "Personalizado", icon: FolderOpen },
+      { label: "Almacenamiento", value: "Personalizado", icon: Database },
+    ],
+    popular: false,
+    priceIdMonthly: null,
+    priceIdAnnual: null,
   },
 ];
 
-const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  ACTIVE: { label: 'Active', variant: 'default' },
-  TRIALING: { label: 'Trial', variant: 'secondary' },
-  PAST_DUE: { label: 'Past Due', variant: 'destructive' },
-  UNPAID: { label: 'Unpaid', variant: 'destructive' },
-  CANCELLED: { label: 'Cancelled', variant: 'outline' },
-  EXPIRED: { label: 'Expired', variant: 'outline' },
-  MANUAL: { label: 'Active', variant: 'default' },
+const PLAN_BADGE: Record<string, string> = {
+  FREE: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
+  STARTER: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+  GROWTH: "border-violet-500/20 bg-violet-500/10 text-violet-400",
+  ENTERPRISE: "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",
 };
 
-export default function BillingPage({ standalone = false }: { standalone?: boolean }) {
+const PLAN_CARD_BORDER: Record<string, string> = {
+  FREE: "border-border/60",
+  STARTER: "border-amber-500/20",
+  GROWTH: "border-violet-500/20",
+  ENTERPRISE: "border-yellow-500/20",
+};
+
+type PlanRelation = "upgrade" | "current" | "downgrade";
+
+function getPlanRelation(currentPlan: string, tierKey: string): PlanRelation {
+  const currentIdx = PLAN_ORDER.indexOf(currentPlan as any);
+  const tierIdx = PLAN_ORDER.indexOf(tierKey as any);
+  if (tierIdx < 0 || currentIdx < 0) return tierIdx >= currentIdx ? "upgrade" : "downgrade";
+  if (tierIdx > currentIdx) return "upgrade";
+  if (tierIdx === currentIdx) return "current";
+  return "downgrade";
+}
+
+function formatCRC(n: number): string {
+  return n === 0 ? "₡0" : `₡${n.toLocaleString("es-CR")}`;
+}
+
+async function fetchSubscription(workspaceSlug: string) {
+  const res = await fetch(`/api/workspaces/${workspaceSlug}/subscription`);
+  if (!res.ok) throw new Error("Failed to fetch subscription");
+  return res.json();
+}
+
+export default function BillingPage() {
+  useRequireAuth();
   const { user, isAuthenticated } = useAuth();
-  const paddle = usePaddle();
-  const [location] = useLocation();
-  const params = new URLSearchParams(location.split('?')[1]);
-  const success = params.get('success') || params.get('paddle');
-  const canceled = params.get('canceled');
-  const planParam = params.get('plan');
-  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
-
-  const { data: subscription, isLoading: subscriptionLoading } = useQuery({
-    queryKey: ['subscription'],
-    queryFn: api.getSubscription,
-    enabled: isAuthenticated,
-    retry: false,
-  });
-
-  const { data: portalLink, isLoading: portalLoading } = useQuery({
-    queryKey: ['billingPortal'],
-    queryFn: api.getBillingPortal,
-    enabled: isAuthenticated,
-    retry: false,
-  });
-
-  const { data: invoices, isLoading: invoicesLoading } = useQuery({
-    queryKey: ['billingInvoices'],
-    queryFn: api.getBillingInvoices,
-    enabled: isAuthenticated,
-    retry: false,
-  });
-
-  const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { mutate: syncSubscription, isPending: syncPending, data: syncResult } = useMutation({
-    mutationFn: (args?: { customerId?: string; subscriptionId?: string }) =>
-      api.syncSubscription(args?.customerId, args?.subscriptionId),
+  const [location] = useLocation();
+  const [intervals, setIntervals] = useState<Record<string, "monthly" | "annual">>({});
+  const params = new URLSearchParams(location.split("?")[1]);
+  const success = params.get("success");
+  const canceled = params.get("canceled");
+  const workspaceSlug = user?.workspace?.slug;
+
+  const currentPlan = user?.workspace?.plan ?? "FREE";
+  const planBadge = PLAN_BADGE[currentPlan] || PLAN_BADGE.FREE;
+
+  const { data: subscription, isLoading: subLoading } = useQuery({
+    queryKey: ["subscription", workspaceSlug],
+    queryFn: () => fetchSubscription(workspaceSlug || ""),
+    enabled: !!workspaceSlug && isAuthenticated,
+  });
+
+  const { data: pricesData } = useQuery({
+    queryKey: ["/api/billing/prices"],
+    queryFn: api.getBillingPrices,
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  const priceIds: Record<string, string | null> = pricesData || {};
+
+  const checkoutMutation = useMutation({
+    mutationFn: (priceId: string) => api.createCheckout(priceId),
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['subscription'] });
-      queryClient.invalidateQueries({ queryKey: ['billingInvoices'] });
-      if (data?.synced) {
-        toast({ title: 'Sincronizado', description: `Plan: ${data.plan}, Estado: ${data.status}` });
+      if (data?.checkoutUrl) {
+        window.open(data.checkoutUrl, "_blank");
       }
+      toast({ title: "Redirigiendo a Paddle para completar el pago..." });
     },
     onError: (err: any) => {
-      toast({ title: 'Error de sincronización', description: err?.message, variant: 'destructive' });
+      toast({ title: "Error al iniciar checkout", description: err.message, variant: "destructive" });
     },
   });
 
-  const handleSync = () => {
-    syncSubscription({});
-  };
+  const handleCheckout = (tier: PlanTier) => {
+    const interval = intervals[tier.key] ?? "monthly";
+    const priceKey = interval === "annual" ? `${tier.key.toLowerCase()}_annual` : `${tier.key.toLowerCase()}_monthly`;
+    const priceId = priceIds[priceKey] || tier.key === "FREE" ? null : null;
 
-  // If auto-sync fails, prompt for manual ID
-  useEffect(() => {
-    if (syncResult && !syncResult.synced) {
-      const reason = syncResult?.reason || 'Unknown error';
-      const id = prompt(`Sync failed: ${reason}\n\nEnter Subscription ID (sub_) or Customer ID (ctm_):`);
-      if (!id) return;
-      if (id.startsWith('sub_')) {
-        syncSubscription({ subscriptionId: id });
+    if (!priceId) {
+      if (tier.key === "ENTERPRISE") {
+        toast({ title: "Contactá a ventas", description: "El plan Business+ requiere contacto directo con nuestro equipo." });
       } else {
-        syncSubscription({ customerId: id });
+        toast({ title: "No disponible", description: "Este plan aún no está configurado para checkout automático." });
       }
+      return;
     }
-  }, [syncResult]);
-
-  // Auto-trigger upgrade when ?plan=growth|starter|business is in the URL
-  const autoUpgradeTier = planParam
-    ? PRICING_TIERS.find((t) => t.name.toLowerCase() === planParam.toLowerCase())
-    : null;
-
-  const handleOpenCheckout = async (tier: typeof PRICING_TIERS[number]) => {
-    setCheckoutLoading(tier.name);
-    try {
-      await paddle!.Checkout.open({
-        items: [{ priceId: tier.priceId!, quantity: 1 }],
-        customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
-        settings: {
-          displayMode: 'overlay',
-          theme: 'dark',
-          locale: 'en',
-          successUrl: `${window.location.origin}/settings/billing?success=true`,
-        },
-      });
-    } finally {
-      setCheckoutLoading(null);
-    }
+    checkoutMutation.mutate(priceId);
   };
-
-  useEffect(() => {
-    if (autoUpgradeTier && paddle && autoUpgradeTier.priceId) {
-      handleOpenCheckout(autoUpgradeTier);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!autoUpgradeTier, !!paddle]);
 
   if (!isAuthenticated) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Please log in to view billing information.</p>
+      <div className="flex items-center justify-center min-h-screen bg-[#0c0c0e]">
+        <p className="text-muted-foreground text-sm">Inicia sesión para ver la facturación.</p>
       </div>
     );
   }
 
-  const statusInfo = subscription?.status ? STATUS_LABELS[subscription.status] : null;
-  const workspaceSlug = user?.workspace?.slug;
-
-  // Map backend plan names to PRICING_TIERS display names
-  const planDisplayName = (plan: string | undefined) => {
-    if (plan?.toUpperCase() === 'ENTERPRISE') return 'Business';
-    return plan?.toLowerCase() || 'free';
-  };
-
   return (
-    <div className="space-y-6 max-w-4xl">
-      {standalone && (
-        <ModuleHero module="billing">
-          <div className="px-6 py-5">
-            <h1 className="text-xl font-bold text-gray-900">Billing & Subscription</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Manage your plan and payment method</p>
-          </div>
-        </ModuleHero>
-      )}
-      {!standalone && (
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Billing & Subscription</h1>
-          <p className="text-muted-foreground mt-1">Manage your plan and payment method</p>
+    <div className="min-h-full" style={{ background: "hsl(var(--bg))" }}>
+      <PageHeader
+        title="Facturación y plan"
+        description="Gestiona tu plan actual, explora nuevas opciones y accede a tu historial."
+      >
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className={`text-[10px] px-2 py-0.5 border ${planBadge}`}>
+            Plan {currentPlan}
+          </Badge>
         </div>
-      )}
+      </PageHeader>
 
-      {success && (
-        <Alert className="border-green-500/30 bg-green-500/10">
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
-          <AlertDescription className="text-green-400">
-            Payment successful! Your subscription has been updated.
-          </AlertDescription>
-        </Alert>
-      )}
+      <div className="px-6 py-6 space-y-6">
+        {/* Success / Cancel alerts */}
+        {success && (
+          <Alert className="border-emerald-500/20 bg-emerald-500/5">
+            <AlertDescription className="text-emerald-400 text-xs">
+              Pago exitoso. Tu suscripción fue actualizada.
+            </AlertDescription>
+          </Alert>
+        )}
+        {canceled && (
+          <Alert className="border-amber-500/20 bg-amber-500/5">
+            <AlertDescription className="text-amber-400 text-xs">
+              El pago fue cancelado. Tu suscripción no fue modificada.
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {canceled && (
-        <Alert className="border-yellow-500/30 bg-yellow-500/10">
-          <AlertDescription className="text-yellow-400">
-            Payment was canceled. Your subscription remains unchanged.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Current Plan */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-foreground">Current Plan</CardTitle>
-              <CardDescription className="text-muted-foreground mt-1">Your active subscription details</CardDescription>
+        {/* Current plan info card */}
+        <div
+          className="rounded-xl border p-5"
+          style={{
+            borderColor: currentPlan === "FREE" ? "hsl(var(--border))" : "hsl(var(--accent) / 0.3)",
+            background: currentPlan === "FREE"
+              ? "hsl(var(--bg-card) / 0.5)"
+              : "linear-gradient(135deg, hsl(var(--accent) / 0.06), hsl(var(--bg-card) / 0.4))",
+          }}
+        >
+          {subLoading ? (
+            <div className="flex items-center gap-2 py-2">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Cargando suscripción...</span>
             </div>
-            {statusInfo && (
-              <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {subscriptionLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Loading subscription info...</span>
-            </div>
-          ) : (
-            <>
-              <div className="rounded-lg border border-border bg-[hsl(var(--elevated))] px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Plan</p>
-                  <p className="text-lg font-semibold text-foreground capitalize">
-                    {planDisplayName(subscription?.plan)}
-                  </p>
-                </div>
-                {(() => {
-                  const displayPlan = planDisplayName(subscription?.plan);
-                  const planPrice = PRICING_TIERS.find((t) => t.name.toUpperCase() === displayPlan.toUpperCase())?.monthlyUSD;
-                  if (planPrice) {
-                    return (
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Price</p>
-                        <p className="text-lg font-semibold text-foreground">
-                          ${planPrice}
-                          <span className="text-sm font-normal text-muted-foreground">/month</span>
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-
-              {subscription?.current_period_start && subscription?.current_period_end && (
-                <div className="text-sm text-muted-foreground">
-                  Billing period:{' '}
-                  <span className="text-foreground">
-                    {new Date(subscription.current_period_start).toLocaleDateString()} –{' '}
-                    {new Date(subscription.current_period_end).toLocaleDateString()}
+          ) : subscription ? (
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm font-semibold text-foreground">
+                    Plan {subscription.plan || currentPlan}
                   </span>
+                  <Badge variant="outline" className={`text-[9px] px-1.5 py-0 border ${planBadge}`}>
+                    Activo
+                  </Badge>
                 </div>
-              )}
-
-              {subscription?.trial_ends_at && (
-                <div className="text-sm text-blue-400">
-                  Trial ends: {new Date(subscription.trial_ends_at).toLocaleDateString()}
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-1">
+                <p className="text-xs text-muted-foreground">
+                  ${subscription.monthly_price || 0}/mes
+                  {subscription.trial_ends_at && (
+                    <span className="text-amber-400 ml-2">
+                      · Trial vence {new Date(subscription.trial_ends_at).toLocaleDateString("es-CR")}
+                    </span>
+                  )}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Período: {new Date(subscription.current_period_start).toLocaleDateString("es-CR")} –{" "}
+                  {new Date(subscription.current_period_end).toLocaleDateString("es-CR")}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
                 <Button
-                  onClick={() => portalLink?.url && window.open(portalLink.url, '_blank')}
+                  size="sm"
                   variant="outline"
-                  disabled={portalLoading || !portalLink?.url}
-                  className="gap-2"
-                >
-                  {portalLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ExternalLink className="h-4 w-4" />
-                  )}
-                  Manage Subscription
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={handleSync}
-                  disabled={syncPending}
-                >
-                  {syncPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    'Sync'
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    const el = document.getElementById('upgrade-plans');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  className="h-8 text-xs"
+                  onClick={async () => {
+                    try {
+                      const { url } = await api.getBillingPortal();
+                      if (url) window.open(url, "_blank");
+                    } catch {
+                      toast({ title: "Portal no disponible", variant: "destructive" });
+                    }
                   }}
                 >
-                  View Plans
+                  Gestionar suscripción
                 </Button>
               </div>
-            </>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 py-1">
+              <Crown className="w-4 h-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">
+                Sin suscripción activa. Elige un plan para empezar.
+              </p>
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Available Plans */}
-      <div id="upgrade-plans" className="space-y-4">
-        <h2 className="text-xl font-semibold text-foreground">Available Plans</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {PRICING_TIERS.map((tier) => {
-            const isCurrent = planDisplayName(subscription?.plan).toUpperCase() === tier.name.toUpperCase();
-            return (
-              <Card
-                key={tier.name}
-                className={`bg-card border-border relative ${tier.popular ? 'ring-1 ring-primary' : ''}`}
-              >
-                {tier.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground text-xs px-2">Most Popular</Badge>
+        {/* Plan tier cards grid */}
+        <div>
+          <h2 className="text-sm font-semibold text-foreground mb-4">Planes disponibles</h2>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {PLAN_TIERS.filter((t) => t.name !== "Business+").map((tier) => {
+              const relation = getPlanRelation(currentPlan, tier.key);
+              const isCurrent = relation === "current";
+              const isUpgrade = relation === "upgrade";
+              const isDowngrade = relation === "downgrade";
+              const interval = intervals[tier.key] ?? "monthly";
+
+              return (
+                <div
+                  key={tier.key + tier.name}
+                  className={`rounded-xl border p-5 transition-all duration-200 hover:border-accent/30 ${
+                    isCurrent
+                      ? "border-accent/30 bg-accent/[0.03] ring-1 ring-accent/10"
+                      : `border-border/60 bg-card/40 hover:bg-card/60`
+                  }`}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-foreground">{tier.name}</span>
+                        {tier.popular && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border border-violet-500/20 bg-violet-500/10 text-violet-400">
+                            Popular
+                          </Badge>
+                        )}
+                        {isCurrent && (
+                          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 border ${planBadge}`}>
+                            Actual
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{tier.description}</p>
+                    </div>
                   </div>
-                )}
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-foreground">{tier.name}</CardTitle>
-                  <CardDescription className="mt-2">
-                    <div className="text-2xl font-bold text-foreground">
-                      ${tier.monthlyUSD}
-                      <span className="text-sm text-muted-foreground font-normal">/month</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      ₡{tier.monthlyCRC.toLocaleString()}/month
-                    </div>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ul className="space-y-2">
-                    {tier.features.map((feature) => (
-                      <li key={feature} className="text-sm text-muted-foreground flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                        {feature}
+
+                  {/* Price */}
+                  <div className="mb-4">
+                    {tier.monthlyCRC === 0 && tier.name === "Free" ? (
+                      <div className="text-2xl font-bold text-foreground">Gratis</div>
+                    ) : (
+                      <>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-bold text-foreground">
+                            {formatCRC(tier.monthlyCRC)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">/mes</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          ${tier.monthlyUSD}/mes
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Limits */}
+                  <div className="space-y-2 mb-4">
+                    {tier.limits.map((lim) => {
+                      const Icon = lim.icon;
+                      return (
+                        <div key={lim.label} className="flex items-center gap-2 text-[11px]">
+                          <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-muted-foreground">{lim.label}:</span>
+                          <span className="text-foreground font-medium ml-auto">{lim.value}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Highlights */}
+                  <ul className="space-y-1.5 mb-4">
+                    {tier.highlights.map((h) => (
+                      <li key={h} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                        <Check className="w-3 h-3 text-emerald-400 flex-shrink-0 mt-0.5" />
+                        {h}
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    className="w-full"
-                    variant={isCurrent ? 'outline' : 'default'}
-                    disabled={isCurrent || checkoutLoading === tier.name}
-                    onClick={async () => {
-                      if (isCurrent) return;
 
-                      // Prevent duplicate subscriptions
-                      const activeStatuses = ['TRIALING', 'ACTIVE', 'PAST_DUE'];
-                      if (subscription?.status && activeStatuses.includes(subscription.status)) {
-                        toast({
-                          title: 'Suscripción activa',
-                          description: 'Ya tenés una suscripción activa. Usá "Manage Subscription" para administrarla.',
-                          variant: 'default',
-                        });
-                        return;
-                      }
+                  {/* Action button */}
+                  {isCurrent ? (
+                    <Button size="sm" className="w-full h-8 text-xs" variant="outline" disabled>
+                      <Check className="w-3.5 h-3.5 mr-1.5" /> Plan actual
+                    </Button>
+                  ) : isUpgrade ? (
+                    <Button
+                      size="sm"
+                      className="w-full h-8 text-xs gap-1.5"
+                      onClick={() => handleCheckout(tier)}
+                      disabled={checkoutMutation.isPending}
+                    >
+                      {checkoutMutation.isPending ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      )}
+                      Mejorar a {tier.name}
+                    </Button>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Button size="sm" className="w-full h-8 text-xs" variant="ghost" disabled>
+                        <ArrowDownRight className="w-3.5 h-3.5 mr-1.5" /> Plan inferior
+                      </Button>
+                      <p className="text-center text-[10px] text-muted-foreground">
+                        Los downgrades aplican al final del período actual.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
-                      if (!tier.priceId) {
-                        console.warn('[Billing Upgrade] No priceId for', tier.name, '— redirecting to /pricing');
-                        window.location.href = '/pricing';
-                        return;
-                      }
+            {/* Business+ card (separate, wider or different style) */}
+            {(() => {
+              const tier = PLAN_TIERS.find((t) => t.name === "Business+")!;
+              const isCurrent = currentPlan === "ENTERPRISE";
+              return (
+                <div
+                  className={`rounded-xl border p-5 transition-all duration-200 md:col-span-2 xl:col-span-1 ${
+                    isCurrent
+                      ? "border-yellow-500/30 bg-yellow-500/[0.03] ring-1 ring-yellow-500/10"
+                      : "border-yellow-500/20 bg-gradient-to-br from-yellow-500/[0.03] to-card/40 hover:border-yellow-500/30"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-foreground">{tier.name}</span>
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 border border-yellow-500/20 bg-yellow-500/10 text-yellow-400">
+                          Enterprise
+                        </Badge>
+                        {isCurrent && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border border-yellow-500/20 bg-yellow-500/10 text-yellow-400">
+                            Actual
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{tier.description}</p>
+                    </div>
+                  </div>
 
-                      let checkoutPaddle = paddle;
-                      if (!checkoutPaddle) {
-                        console.log('[Billing Upgrade] Paddle not yet ready, polling getPaddle()...');
-                        setCheckoutLoading(tier.name);
-                        const started = Date.now();
-                        for (let i = 0; i < 50; i++) {
-                          await new Promise((r) => setTimeout(r, 200));
-                          checkoutPaddle = getPaddle();
-                          if (checkoutPaddle) break;
-                        }
-                        if (!checkoutPaddle) {
-                          console.error('[Billing Upgrade] getPaddle() still null after 10s — redirecting to /pricing');
-                          setCheckoutLoading(null);
-                          window.location.href = '/pricing';
-                          return;
-                        }
-                        console.log('[Billing Upgrade] Paddle acquired after', ((Date.now() - started) / 1000).toFixed(1), 's');
-                      }
+                  <div className="mb-4">
+                    <div className="text-2xl font-bold text-foreground">Personalizado</div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Precio a medida según tus necesidades</p>
+                  </div>
 
-                      setCheckoutLoading(tier.name);
-                      try {
-                        await checkoutPaddle.Checkout.open({
-                          items: [{ priceId: tier.priceId, quantity: 1 }],
-                          customData: { workspaceSlug: workspaceSlug ?? null, plan: tier.name.toLowerCase() },
-                          settings: {
-                            displayMode: 'overlay',
-                            theme: 'dark',
-                            locale: 'en',
-                            successUrl: `${window.location.origin}/settings/billing?success=true`,
-                          },
-                        });
-                      } finally {
-                        setCheckoutLoading(null);
-                      }
-                    }}
-                  >
-                    {checkoutLoading === tier.name ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Redirecting...
-                      </>
-                    ) : isCurrent ? (
-                      'Current Plan'
-                    ) : (
-                      'Upgrade'
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  <ul className="space-y-1.5 mb-4">
+                    {tier.highlights.map((h) => (
+                      <li key={h} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                        <Check className="w-3 h-3 text-yellow-400 flex-shrink-0 mt-0.5" />
+                        {h}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {isCurrent ? (
+                    <Button size="sm" className="w-full h-8 text-xs" variant="outline" disabled>
+                      <Check className="w-3.5 h-3.5 mr-1.5" /> Plan actual
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="w-full h-8 text-xs gap-1.5 bg-yellow-600 hover:bg-yellow-700 text-white"
+                      onClick={() => toast({ title: "Contactá a ventas", description: "Escribinos a ventas@pymehub.com para armar tu plan Business+ a medida." })}
+                    >
+                      Contactar a ventas
+                    </Button>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Downgrade explanation banner */}
+          <div className="mt-4 rounded-lg border border-border/60 bg-card/30 p-3 flex items-start gap-2">
+            <Info className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground">
+              <span className="text-foreground font-medium">Importante:</span> Los cambios de plan (upgrade o downgrade) se facturan de forma prorrateada. Si mejoras a un plan superior, solo pagarás la diferencia por los días restantes del período. Si bajas de plan, el cambio aplica al final del período de facturación actual.
+            </p>
+          </div>
+        </div>
+
+        {/* Billing history */}
+        <div>
+          <h2 className="text-sm font-semibold text-foreground mb-3">Historial de facturación</h2>
+          <BillingHistory />
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Billing History */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-foreground">Billing History</CardTitle>
-          <CardDescription className="text-muted-foreground">Your recent invoices and payments</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {invoicesLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-4">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Loading invoices...</span>
+function BillingHistory() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/billing/invoices"],
+    queryFn: api.getBillingInvoices,
+    retry: false,
+    staleTime: 30000,
+  });
+
+  const invoices = Array.isArray(data) ? data : data?.data || [];
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-border/60 bg-card/40 p-6 text-center">
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground mx-auto" />
+      </div>
+    );
+  }
+
+  if (invoices.length === 0) {
+    return (
+      <div className="rounded-xl border border-border/60 bg-card/40 p-6 text-center">
+        <Receipt className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
+        <p className="text-xs text-muted-foreground">
+          Aún no hay facturas. La primera aparecerá después de tu primer pago.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/40 overflow-hidden">
+      <div className="divide-y divide-border/60">
+        {invoices.map((inv: any) => (
+          <div key={inv.id} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors">
+            <div>
+              <div className="text-xs font-medium text-foreground">
+                {inv.number || inv.receipt_number || `Factura #${inv.id?.slice(0, 8)}`}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                {inv.created_at ? new Date(inv.created_at).toLocaleDateString("es-CR") : ""}
+                {inv.status ? ` · ${inv.status}` : ""}
+              </div>
             </div>
-          ) : invoices?.length > 0 ? (
-            <div className="space-y-3">
-              {invoices.map((inv: any) => (
-                <div
-                  key={inv.id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--elevated))] px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{inv.number}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {inv.plan_name} — {inv.plan_interval === 'MONTHLY' ? 'Monthly' : 'Annual'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(inv.issued_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-foreground">
-                        {inv.currency === 'CRC' ? '₡' : '$'}{inv.total.toLocaleString()}
-                      </p>
-                      <Badge variant={inv.status === 'PAID' ? 'default' : inv.status === 'DRAFT' ? 'secondary' : 'outline'}>
-                        {inv.status}
-                      </Badge>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          const token = getAuthToken();
-                          const res = await fetch(`/api/billing/invoices/${inv.id}/pdf`, {
-                            headers: { Authorization: `Bearer ${token}` },
-                          });
-                          const blob = await res.blob();
-                          const url = URL.createObjectURL(blob);
-                          window.open(url, '_blank');
-                        } catch {
-                          // fallback
-                        }
-                      }}
-                    >
-                      PDF
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-foreground">
+                {inv.amount ? `₡${Number(inv.amount).toLocaleString("es-CR")}` : ""}
+              </span>
+              {inv.pdf_url && (
+                <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => window.open(inv.pdf_url, "_blank")}>
+                  PDF
+                </Button>
+              )}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No invoices yet. Your first invoice will appear after your first payment.</p>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

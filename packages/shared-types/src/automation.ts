@@ -31,3 +31,18 @@ export enum DealStatus {
   WON = 'WON',
   LOST = 'LOST',
 }
+
+export const NOTIFICATION_TYPES = {
+  TASK_COMPLETED: 'task_completed',
+  TASK_OVERDUE: 'task_overdue',
+  NEW_MESSAGE: 'new_message',
+  AI_TASK_CREATED: 'AI_TASK_CREATED',
+  DEAL_CREATED: 'deal_created',
+  DEAL_STAGE_CHANGED: 'deal_stage_changed',
+  DEAL_WON: 'deal_won',
+  INVOICE_PAID: 'invoice_paid',
+  PAYMENT_RECEIVED: 'payment_received',
+  INVOICE_OVERDUE: 'invoice_overdue',
+  AUTOMATION: 'automation',
+  CONVERSATION_NO_REPLY: 'conversation_no_reply',
+} as const;

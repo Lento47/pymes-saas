@@ -1,11 +1,5 @@
 import { reportClientError } from "@/lib/error-reporting";
 
-const FILE = "lib/api.ts";
-
-function logError(context: string, err: unknown) {
-  console.error(`[${FILE}] ${context}:`, err instanceof Error ? err.message : err);
-}
-
 const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ??
   ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
@@ -91,20 +85,15 @@ async function _tryRefresh(): Promise<boolean> {
 }
 
 export async function restoreSession(): Promise<boolean> {
-  try {
-    const slug = getWorkspaceSlug();
-    if (slug) _workspaceSlug = slug;
+  const slug = getWorkspaceSlug();
+  if (slug) _workspaceSlug = slug;
 
-    const refreshToken = getRefreshToken();
-    if (refreshToken) {
-      _refreshToken = refreshToken;
-      return _tryRefresh();
-    }
-    return false;
-  } catch (err) {
-    logError("restoreSession failed", err);
-    return false;
+  const refreshToken = getRefreshToken();
+  if (refreshToken) {
+    _refreshToken = refreshToken;
+    return _tryRefresh();
   }
+  return false;
 }
 
 async function request<T>(
@@ -187,12 +176,10 @@ export const api = {
     request<any>("POST", "/api/auth/invite-preview", { token }),
   acceptInvite: (data: { token: string; name?: string; password?: string }) =>
     request<any>("POST", "/api/auth/accept-invite", data),
-  login: async (email: string, password: string, workspaceSlug?: string) => {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (workspaceSlug) headers["x-workspace-slug"] = workspaceSlug;
+  login: async (email: string, password: string, workspaceSlug: string) => {
     const r = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
-      headers,
+      headers: { "Content-Type": "application/json", "x-workspace-slug": workspaceSlug },
       body: JSON.stringify({ email, password }),
     });
     if (!r.ok) {
@@ -215,15 +202,6 @@ export const api = {
     return r.json() as Promise<{ access_token: string; refresh_token: string; user: any }>;
   },
   logout: () => request<any>("POST", "/api/auth/logout"),
-  refresh: async (token: string): Promise<{ access_token: string; refresh_token: string }> => {
-    const res = await fetch(`${API_BASE}/api/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: token }),
-    });
-    if (!res.ok) throw new Error("Session expired");
-    return res.json();
-  },
   getMe: () => request<any>("GET", "/api/auth/me"),
   generateSummary: () => request<any>("POST", "/api/summaries/generate"),
   getDailySummaries: (params?: Record<string, string>) => {
@@ -290,19 +268,13 @@ export const api = {
   updateAutomation: (id: string, data: any) => request<any>("PATCH", `/api/automations/${id}`, data),
   deleteAutomation: (id: string) => request<any>("DELETE", `/api/automations/${id}`),
   getWorkspace: () => request<any>("GET", "/api/workspaces/current"),
-  getSubscription: () => request<any>("GET", "/api/workspaces/current/subscription"),
-  getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
-  getBillingInvoices: () => request<any>("GET", "/api/billing/invoices"),
-  getBillingInvoicePdf: (id: string) => request<any>("GET", `/api/billing/invoices/${id}/pdf`),
-  syncSubscription: (customerId?: string, subscriptionId?: string) =>
-    request<any>("POST", "/api/billing/sync", { customerId, subscriptionId }),
   updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   testAiConnection: (data: any) => request<any>("POST", "/api/workspaces/current/ai/test", data),
+  createCheckout: (priceId: string) => request<any>("POST", "/api/billing/checkout", { priceId }),
+  getBillingPrices: () => request<any>("GET", "/api/billing/prices"),
+  getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
+  getBillingInvoices: () => request<any>("GET", "/api/billing/invoices"),
   getApiKeys: () => request<any>("GET", "/api/workspaces/current/api-keys"),
-  // API Tokens (Enterprise)
-  getApiTokens: () => request<any>("GET", "/api/workspaces/current/api-tokens"),
-  createApiToken: (name: string) => request<any>("POST", "/api/workspaces/current/api-tokens", { name }),
-  revokeApiToken: (id: string) => request<any>("DELETE", `/api/workspaces/current/api-tokens/${id}`),
   updateApiKeys: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   getMembers: () => request<any>("GET", "/api/workspaces/current/members"),
   inviteUser: (data: any) => request<any>("POST", "/api/workspaces/current/members/invite", data),
@@ -334,8 +306,6 @@ export const api = {
     request<any>('POST', `/api/channels/${id}/configure-email`, data),
   configureWhatsApp: (id: string, data: { access_token: string; phone_number_id: string; waba_id: string }) =>
     request<any>('POST', `/api/channels/${id}/configure-whatsapp`, data),
-  configureTelegram: (id: string, data: { bot_token: string }) =>
-    request<any>('POST', `/api/channels/${id}/configure-telegram`, data),
   // Departments
   getDepartments: () => request<any>("GET", "/api/departments"),
   createDepartment: (data: any) => request<any>("POST", "/api/departments", data),
@@ -347,8 +317,6 @@ export const api = {
   removeDepartmentMember: (id: string, userId: string) =>
     request<any>("DELETE", `/api/departments/${id}/members/${userId}`),
   getInsights: () => request<any>("GET", "/api/insights"),
-  askAssistant: (input: string) =>
-    request<any>("POST", "/api/workspaces/current/ai/assist", { input }).catch(() => null),
   validateTaxpayer: (identificacion: string) =>
     request<any>("POST", "/api/hacienda/validate-taxpayer", { identificacion }),
   searchCabys: (params?: Record<string, string>) => {
@@ -400,33 +368,4 @@ export const api = {
   platformDeleteUser: (userId: string) => request<any>("DELETE", `/api/platform/users/${userId}`),
   platformGetStats: () => request<any>("GET", "/api/platform/stats"),
   platformToggleAdmin: (userId: string) => request<any>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
-  createAgentStream: async (input: string, conversationId?: string) => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (_token) headers['Authorization'] = `Bearer ${_token}`;
-    if (_workspaceSlug) headers['x-workspace-slug'] = _workspaceSlug;
-
-    const res = await fetch(`${API_BASE}/api/agent/stream`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ input, conversation_id: conversationId }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text);
-    }
-
-    return res;
-  },
-  executeAgentTool: (tool: string, args?: any) =>
-    request<any>("POST", "/api/agent/execute", { tool, arguments: args }),
-  // Routing rules
-  getRoutingRules: () => request<any>("GET", "/api/routing-rules"),
-  createRoutingRule: (data: any) => request<any>("POST", "/api/routing-rules", data),
-  updateRoutingRule: (id: string, data: any) => request<any>("PATCH", `/api/routing-rules/${id}`, data),
-  deleteRoutingRule: (id: string) => request<any>("DELETE", `/api/routing-rules/${id}`),
-  // SAML SSO
-  checkSamlStatus: (slug: string) => request<any>("GET", `/api/auth/saml/status/${slug}`),
 };
