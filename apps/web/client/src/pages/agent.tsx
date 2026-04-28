@@ -242,7 +242,7 @@ export default function Agent() {
               style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
               <Sparkles style={{ width: 24, height: 24, color: 'hsl(var(--fg))' }} />
             </div>
-            <h2 className="text-xl font-semibold text-white mb-1.5 tracking-tight">Asistente IA</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-1.5 tracking-tight">Asistente IA</h2>
             <p className="text-sm text-muted-foreground/50 text-center mb-10 max-w-sm leading-relaxed">
               Tu agente inteligente para consultas, análisis y automatizaciones.
             </p>
@@ -375,7 +375,7 @@ export default function Agent() {
                         </div>
                       ))}
                       <button onClick={submitForm} disabled={activeForm.isSubmitting}
-                        className="w-full mt-2 py-1.5 rounded-lg text-[13px] font-medium text-white transition-all duration-200 disabled:opacity-50 hover:opacity-90"
+                        className="w-full mt-2 py-1.5 rounded-lg text-[13px] font-medium text-foreground transition-all duration-200 disabled:opacity-50 hover:opacity-90"
                         style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>
                         {activeForm.isSubmitting ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin mx-auto" /> : 'Enviar'}
                       </button>
