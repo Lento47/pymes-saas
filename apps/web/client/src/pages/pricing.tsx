@@ -93,7 +93,7 @@ export default function PricingPage() {
         {/* Pricing Cards */}
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
-            <div className="grid gap-8 lg:grid-cols-4">
+            <div className="grid gap-4 md:gap-8 lg:grid-cols-4">
               {PRICING_TIERS.map((tier) => (
                 <PricingCard
                   key={tier.name}
@@ -224,13 +224,13 @@ export default function PricingPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">
+                    <th className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 text-left text-sm font-semibold text-white/80">
                       Feature
                     </th>
                     {PRICING_TIERS.map((tier) => (
                       <th
                         key={tier.name}
-                        className="px-6 py-4 text-center text-sm font-semibold text-white"
+                        className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 text-center text-sm font-semibold text-white"
                       >
                         {tier.name}
                       </th>
@@ -246,11 +246,11 @@ export default function PricingPage() {
                     { label: 'Storage', key: 'storageGB' },
                   ].map((row) => (
                     <tr key={row.key} className="hover:bg-indigo-900/10 transition">
-                      <td className="px-6 py-4 text-sm text-white/80">{row.label}</td>
+                      <td className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 text-sm text-white/80">{row.label}</td>
                       {PRICING_TIERS.map((tier) => {
                         const isBusinessPlus = tier.name === 'Business+';
                         return (
-                          <td key={tier.name} className="px-6 py-4 text-center">
+                          <td key={tier.name} className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 text-center">
                             <div className="flex items-center justify-center">
                               {isBusinessPlus ? (
                                 <span className="font-semibold text-white/85 italic">Custom</span>

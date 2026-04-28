@@ -71,7 +71,7 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
     <div className={cn(
       'relative rounded-3xl border transition-all backdrop-blur-md p-8',
       tier.popular
-        ? 'border-[#dfff4a]/40 bg-indigo-900/30 shadow-[0_8px_40px_rgba(223,255,74,0.15)] scale-105'
+        ? 'border-[#dfff4a]/40 bg-indigo-900/30 shadow-[0_8px_40px_rgba(223,255,74,0.15)] md:scale-105'
         : 'border-border bg-indigo-900/10 hover:bg-indigo-900/15 hover:border-white/20'
     )}>
       {/* Popular Badge */}

@@ -178,7 +178,7 @@ function PerformanceChart({ labels }: { labels: readonly string[] }) {
 
 function OrbitGraphic() {
   return (
-    <div className="relative mx-auto mt-8 h-56 w-56">
+    <div className="relative mx-auto mt-8 h-40 w-40 sm:h-48 sm:w-48 md:h-56 md:w-56">
       <div className="absolute inset-0 rounded-full border border-[#5f72ff]/30" />
       <div className="absolute inset-5 rounded-full border border-[#5f72ff]/25" />
       <div className="absolute inset-11 rounded-full border border-[#5f72ff]/20" />
@@ -881,7 +881,7 @@ export default function Landing() {
                       </div>
                     </div>
 
-                      <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-indigo-400/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
+                      <div className="mt-8 h-[12rem] sm:h-[14rem] md:h-[18rem] w-full rounded-[28px] border border-indigo-400/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
                         <PerformanceChart labels={copy.overview.performance.chartDays} />
                       </div>
 
