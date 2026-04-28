@@ -61,7 +61,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
         </Button>
       </DialogTrigger>
       <DialogContent className="border-border bg-[#0D1424]">
-        <DialogHeader><DialogTitle className="text-white">Nueva conversación</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="text-foreground">Nueva conversación</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-2">
           <div>
             <Label className="text-slate-300">Canal <span className="text-red-400">*</span></Label>

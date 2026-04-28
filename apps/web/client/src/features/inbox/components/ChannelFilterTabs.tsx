@@ -21,7 +21,7 @@ export function ChannelFilterTabs({
               "flex h-8 items-center gap-2 rounded-full px-3 text-xs font-medium transition-all",
               isActive
                 ? "bg-gradient-to-r from-brand-indigo to-brand-violet text-white shadow-glow"
-                : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
+                : "text-slate-400 hover:bg-foreground/[0.06] hover:text-slate-100"
             )}
           >
             {icon}
