@@ -11,10 +11,10 @@ export function StatusFilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as ConversationStatusFilter)}>
-      <SelectTrigger className="h-9 w-[150px] rounded-control border-white/10 bg-white/[0.04] text-xs text-slate-300">
+      <SelectTrigger className="h-9 w-[150px] rounded-control border-border bg-foreground/[0.04] text-xs text-slate-300">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent className="border-white/10 bg-[#0D1424]">
+      <SelectContent className="border-border bg-[#0D1424]">
         {STATUS_OPTIONS.map((s) => (
           <SelectItem key={s} value={s}>
             {s === "ALL" ? "Todos los estados" : s}

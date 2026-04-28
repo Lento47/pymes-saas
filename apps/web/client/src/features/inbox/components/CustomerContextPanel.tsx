@@ -8,7 +8,7 @@ export function CustomerContextPanel({
 }) {
   if (!conversation) {
     return (
-      <aside className="rounded-panel border border-white/10 bg-[#0D1424] p-5">
+      <aside className="rounded-panel border border-border bg-[#0D1424] p-5">
         <p className="text-sm text-slate-500 text-center mt-8">
           Seleccioná una conversación para ver el contexto del cliente.
         </p>
@@ -19,8 +19,8 @@ export function CustomerContextPanel({
   const contact = conversation.contact;
 
   return (
-    <aside className="min-h-0 overflow-y-auto rounded-panel border border-white/10 bg-[#0D1424] p-4 shadow-panel space-y-4">
-      <section className="rounded-card border border-white/10 bg-white/[0.03] p-4">
+    <aside className="min-h-0 overflow-y-auto rounded-panel border border-border bg-[#0D1424] p-4 shadow-panel space-y-4">
+      <section className="rounded-card border border-border bg-foreground/[0.03] p-4">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
           Información del contacto
         </p>
@@ -43,7 +43,7 @@ export function CustomerContextPanel({
         </div>
       </section>
 
-      <section className="rounded-card border border-white/10 bg-white/[0.03] p-4">
+      <section className="rounded-card border border-border bg-foreground/[0.03] p-4">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
           Actividad reciente
         </p>

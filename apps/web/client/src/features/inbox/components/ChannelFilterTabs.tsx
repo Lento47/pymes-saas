@@ -10,7 +10,7 @@ export function ChannelFilterTabs({
   onChange: (tab: ChannelTab) => void;
 }) {
   return (
-    <div className="flex w-fit items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1">
+    <div className="flex w-fit items-center gap-1 rounded-full border border-border bg-foreground/[0.04] p-1">
       {CHANNEL_TABS.map(({ id, label, icon }) => {
         const isActive = id === active;
         return (

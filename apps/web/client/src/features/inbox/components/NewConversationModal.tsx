@@ -60,16 +60,16 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
           <Plus className="h-3.5 w-3.5 mr-1.5" />Nueva
         </Button>
       </DialogTrigger>
-      <DialogContent className="border-white/10 bg-[#0D1424]">
+      <DialogContent className="border-border bg-[#0D1424]">
         <DialogHeader><DialogTitle className="text-white">Nueva conversación</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-2">
           <div>
             <Label className="text-slate-300">Canal <span className="text-red-400">*</span></Label>
             <Select value={channelId} onValueChange={setChannelId}>
-              <SelectTrigger className="mt-1 border-white/10 bg-white/[0.04] text-slate-200">
+              <SelectTrigger className="mt-1 border-border bg-foreground/[0.04] text-slate-200">
                 <SelectValue placeholder="Seleccioná un canal activo" />
               </SelectTrigger>
-              <SelectContent className="border-white/10 bg-[#0D1424]">
+              <SelectContent className="border-border bg-[#0D1424]">
                 {activeChannels.length === 0
                   ? <SelectItem value="-" disabled>Sin canales activos</SelectItem>
                   : activeChannels.map((c: any) => (
@@ -82,10 +82,10 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
           <div>
             <Label className="text-slate-300">Contacto</Label>
             <Select value={contactId} onValueChange={setContactId}>
-              <SelectTrigger className="mt-1 border-white/10 bg-white/[0.04] text-slate-200">
+              <SelectTrigger className="mt-1 border-border bg-foreground/[0.04] text-slate-200">
                 <SelectValue placeholder="Seleccioná un contacto (opcional)" />
               </SelectTrigger>
-              <SelectContent className="border-white/10 bg-[#0D1424]">
+              <SelectContent className="border-border bg-[#0D1424]">
                 <SelectItem value="none">Sin contacto</SelectItem>
                 {contactList.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>
@@ -101,7 +101,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
               value={subject}
               onChange={e => setSubject(e.target.value)}
               placeholder="ej. Consulta sobre factura #123"
-              className="mt-1 border-white/10 bg-white/[0.04] text-slate-200"
+              className="mt-1 border-border bg-foreground/[0.04] text-slate-200"
             />
           </div>
           <Button

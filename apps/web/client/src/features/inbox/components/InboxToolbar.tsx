@@ -20,7 +20,7 @@ export function InboxToolbar(props: InboxToolbarProps) {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   return (
-    <div className="border-b border-white/10 px-3 md:px-4 py-2 md:py-3">
+    <div className="border-b border-border px-3 md:px-4 py-2 md:py-3">
       {/* Mobile: search + actions bar */}
       <div className="md:hidden space-y-2">
         <div className="flex items-center gap-2">
@@ -30,12 +30,12 @@ export function InboxToolbar(props: InboxToolbarProps) {
               value={props.search}
               onChange={(e) => props.onSearchChange(e.target.value)}
               placeholder="Buscar..."
-              className="h-9 rounded-control border-white/10 bg-white/[0.04] pl-9 text-sm text-slate-100 placeholder:text-slate-500"
+              className="h-9 rounded-control border-border bg-foreground/[0.04] pl-9 text-sm text-slate-100 placeholder:text-slate-500"
             />
           </div>
           <button
             onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-            className="h-9 w-9 flex items-center justify-center rounded-control border border-white/10 bg-white/[0.04] text-slate-400 shrink-0"
+            className="h-9 w-9 flex items-center justify-center rounded-control border border-border bg-foreground/[0.04] text-slate-400 shrink-0"
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
@@ -60,7 +60,7 @@ export function InboxToolbar(props: InboxToolbarProps) {
               value={props.search}
               onChange={(e) => props.onSearchChange(e.target.value)}
               placeholder="Buscar conversaciones..."
-              className="h-10 rounded-control border-white/10 bg-white/[0.04] pl-9 text-sm text-slate-100 placeholder:text-slate-500"
+              className="h-10 rounded-control border-border bg-foreground/[0.04] pl-9 text-sm text-slate-100 placeholder:text-slate-500"
             />
           </div>
           <ChannelFilterTabs active={props.channelTab} onChange={props.onChannelTabChange} />

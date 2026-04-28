@@ -32,7 +32,7 @@ export function ConversationListItem({
         "w-full rounded-2xl border p-3 text-left transition-all",
         selected
           ? "border-brand-indigo/50 bg-brand-indigo/15 shadow-glow"
-          : "border-transparent bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.045]",
+          : "border-transparent bg-foreground/[0.015] hover:border-border hover:bg-white/[0.045]",
       ].join(" ")}
     >
       <div className="flex gap-3">

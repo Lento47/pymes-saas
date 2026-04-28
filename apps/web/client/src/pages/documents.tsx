@@ -28,14 +28,14 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function getFileIcon(mimeType?: string) {
-  if (!mimeType) return <FileText className="w-4 h-4 text-white/40" />;
+  if (!mimeType) return <FileText className="w-4 h-4 text-muted-foreground/60" />;
   if (mimeType.includes("image")) return <FileImage className="w-4 h-4 text-blue-400" />;
   if (mimeType.includes("pdf")) return <FileText className="w-4 h-4 text-red-400" />;
   if (mimeType.includes("sheet") || mimeType.includes("excel") || mimeType.includes("csv"))
     return <FileSpreadsheet className="w-4 h-4 text-emerald-400" />;
   if (mimeType.includes("word") || mimeType.includes("document"))
     return <FileText className="w-4 h-4 text-blue-400" />;
-  return <FileText className="w-4 h-4 text-white/40" />;
+  return <FileText className="w-4 h-4 text-muted-foreground/60" />;
 }
 
 function getMimeLabel(mimeType?: string) {
@@ -179,14 +179,14 @@ export default function DocumentsPage() {
         >
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
             {uploadMutation.isPending
-              ? <Loader2 className="w-5 h-5 animate-spin text-white/40" />
-              : <CloudUpload className="w-5 h-5 text-white/40" />}
+              ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/60" />
+              : <CloudUpload className="w-5 h-5 text-muted-foreground/60" />}
           </div>
           <div className="text-center">
             <p className="text-sm font-medium text-foreground">
               {uploadMutation.isPending ? "Subiendo archivo..." : "Arrastra un archivo aquí"}
             </p>
-            <p className="text-xs text-white/40 mt-0.5">o haz clic para seleccionar — PDF, Word, Excel, imágenes</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">o haz clic para seleccionar — PDF, Word, Excel, imágenes</p>
           </div>
         </div>
       )}
@@ -195,7 +195,7 @@ export default function DocumentsPage() {
       {docList.length > 0 && (
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
             <Input
               placeholder="Buscar archivos..."
               value={search}
@@ -218,7 +218,7 @@ export default function DocumentsPage() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-xs text-white/40"
+              className="h-8 text-xs text-muted-foreground/60"
               onClick={() => { setStatusFilter("ALL"); setSearch(""); }}
             >
               Limpiar
@@ -244,7 +244,7 @@ export default function DocumentsPage() {
       {isLoading ? (
         <PageLoader />
       ) : docList.length === 0 && (search || statusFilter !== "ALL") ? (
-        <div className="text-center py-12 text-white/40 text-sm">
+        <div className="text-center py-12 text-muted-foreground/60 text-sm">
           No se encontraron archivos con ese filtro.
         </div>
       ) : docList.length > 0 ? (
@@ -252,11 +252,11 @@ export default function DocumentsPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-[11px] text-white/40 font-medium">Archivo</TableHead>
-                <TableHead className="text-[11px] text-white/40 font-medium">Tipo</TableHead>
-                <TableHead className="text-[11px] text-white/40 font-medium">Estado</TableHead>
-                <TableHead className="text-[11px] text-white/40 font-medium">Subido por</TableHead>
-                <TableHead className="text-[11px] text-white/40 font-medium">Fecha</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Archivo</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Tipo</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Estado</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Subido por</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Fecha</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -279,20 +279,20 @@ export default function DocumentsPage() {
                           >
                             {doc.file_name || doc.filename || doc.name || "Sin nombre"}
                           </button>
-                          {fileSize && <div className="text-[10px] text-white/40">{fileSize}</div>}
+                          {fileSize && <div className="text-[10px] text-muted-foreground/60">{fileSize}</div>}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs text-white/40">{getMimeLabel(mime)}</span>
+                      <span className="text-xs text-muted-foreground/60">{getMimeLabel(mime)}</span>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={doc.status} type="document" />
                     </TableCell>
-                    <TableCell className="text-xs text-white/40">
+                    <TableCell className="text-xs text-muted-foreground/60">
                       {uploaderName || "—"}
                     </TableCell>
-                    <TableCell className="text-xs text-white/40">
+                    <TableCell className="text-xs text-muted-foreground/60">
                       {dateStr ? (
                         <span title={format(new Date(dateStr), "dd/MM/yyyy HH:mm")}>
                           {formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: es })}
