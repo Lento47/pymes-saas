@@ -1042,16 +1042,16 @@ export default function Landing() {
             </div>
 
             <div ref={revealTrust} className="reveal-up mt-16 border-t border-border pt-10">
-              <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-[#95a0cc]/44">
+              <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-white/75">
                 {copy.trustTitle}
               </p>
               <div className="relative mt-7 overflow-hidden">
-                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-[linear-gradient(to_right,#05091d,transparent)]" />
-                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-[linear-gradient(to_left,#05091d,transparent)]" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-[linear-gradient(to_right,#3d1f7d,transparent)]" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-[linear-gradient(to_left,#3d1f7d,transparent)]" />
                 <div className="flex animate-marquee items-center gap-12 whitespace-nowrap">
                   {[...copy.trustSignals, ...copy.trustSignals].map((signal, i) => (
-                    <span key={i} className="font-marketing text-lg font-semibold tracking-[-0.02em] text-white/38 inline-flex items-center gap-2">
-                      <span className="h-1 w-1 rounded-full bg-[#4F6EF7]/50" />
+                    <span key={i} className="font-marketing text-lg font-semibold tracking-[-0.02em] text-white/85 inline-flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-indigo-400/80" />
                       {signal}
                     </span>
                   ))}
