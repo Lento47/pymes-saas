@@ -34,6 +34,8 @@ import DocumentationCenterPage from "@/pages/documentation";
 import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import NotFound from "@/pages/not-found";
+import Chat from "@/pages/chat";
+import Agent from "@/pages/agent";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminWorkspaces from "@/pages/admin/workspaces";
 import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
@@ -109,6 +111,12 @@ function AppRouter() {
       </Route>
       <Route path="/notifications">
         {() => <ProtectedLayout><Notifications /></ProtectedLayout>}
+      </Route>
+      <Route path="/chat">
+        {() => <ProtectedLayout><Chat /></ProtectedLayout>}
+      </Route>
+      <Route path="/agent">
+        {() => <ProtectedLayout><Agent /></ProtectedLayout>}
       </Route>
       <Route path="/pipeline">
         {() => <ProtectedLayout><Pipeline /></ProtectedLayout>}

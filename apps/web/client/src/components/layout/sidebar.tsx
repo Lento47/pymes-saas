@@ -24,6 +24,8 @@ import {
   Check,
   Shield,
   BellRing,
+  Bot,
+  MessageCircle,
 } from "lucide-react";
 
 const NAV = [
@@ -36,6 +38,8 @@ const NAV = [
   { path: "/pipeline", icon: KanbanSquare, key: "pipeline" as const },
   { path: "/automations", icon: Zap, key: "automations" as const },
   { path: "/notifications", icon: BellRing, key: "notifications" as const },
+  { path: "/chat", icon: MessageCircle, key: "chat" as const },
+  { path: "/agent", icon: Bot, key: "agent" as const },
 ];
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
