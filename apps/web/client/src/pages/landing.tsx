@@ -468,7 +468,7 @@ export default function Landing() {
                   "luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7 transition-all duration-300",
                   scrolled
                     ? "bg-[rgba(5,9,29,0.88)] backdrop-blur-[32px] border border-border/[0.8] shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
-                    : "glass-panel"
+                    : "bg-slate-900/40 backdrop-blur-md border border-white/10"
                 )}
                 data-nav-item
               >
@@ -539,7 +539,7 @@ export default function Landing() {
               </nav>
 
               {mobileMenuOpen && (
-                <div className="md:hidden mt-2 glass-panel luminous-border rounded-[28px] p-4" data-mobile-menu>
+                <div className="md:hidden mt-2 bg-slate-900/40 backdrop-blur-md border border-white/10 luminous-border rounded-[28px] p-4" data-mobile-menu>
                   <div className="space-y-2">
                     <Link href="/pricing">
                       <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
@@ -614,7 +614,7 @@ export default function Landing() {
             </div>
 
             <div className="mx-auto max-w-4xl pt-16 text-center md:pt-20">
-              <div className="glass-panel-soft inline-flex items-center gap-3 rounded-full px-5 py-2.5 text-sm text-white/84">
+              <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 inline-flex items-center gap-3 rounded-full px-5 py-2.5 text-sm text-white/84">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_14px_rgba(223,255,74,0.85)]" />
                 {copy.intro}
               </div>
@@ -729,7 +729,7 @@ export default function Landing() {
                         {copy.overview.inbox.signals.map((signal) => (
                           <div
                             key={signal.label}
-                            className="glass-panel-soft grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
+                            className="bg-slate-800/30 backdrop-blur-sm border border-white/5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
                           >
                             <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
                               {signal.label}
@@ -757,7 +757,7 @@ export default function Landing() {
                         })}
                       </div>
 
-                      <div className="glass-panel-soft mt-8 rounded-full px-4 py-3 text-sm text-white/70">
+                      <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 mt-8 rounded-full px-4 py-3 text-sm text-white/70">
                         {copy.overview.inbox.footer}
                       </div>
                     </article>
@@ -801,7 +801,7 @@ export default function Landing() {
                           </div>
                       </div>
 
-                      <div className="glass-panel-soft rounded-2xl px-4 py-3 text-sm text-white/72">
+                      <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 rounded-2xl px-4 py-3 text-sm text-white/72">
                           {copy.overview.performance.timeframe}
                       </div>
                     </div>
@@ -812,7 +812,7 @@ export default function Landing() {
 
                       <div className="mt-7 grid gap-3 sm:grid-cols-3">
                         {copy.overview.performance.stats.map(({ label, value }) => (
-                          <div key={label} className="glass-panel-soft rounded-2xl px-4 py-4">
+                          <div key={label} className="bg-slate-800/30 backdrop-blur-sm border border-white/5 rounded-2xl px-4 py-4">
                             <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
                               {label}
                             </p>
@@ -844,7 +844,7 @@ export default function Landing() {
 
                       <OrbitGraphic />
 
-                      <div className="glass-panel-soft mt-3 rounded-2xl px-4 py-4">
+                      <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 mt-3 rounded-2xl px-4 py-4">
                         <div className="flex items-center justify-between">
                           <span className="font-marketing text-sm font-semibold text-white/84">
                             {copy.overview.automations.statusLabel}
@@ -895,7 +895,7 @@ export default function Landing() {
                       {copy.overview.inbox.signals.map((signal) => (
                         <div
                           key={signal.label}
-                          className="glass-panel-soft flex items-center gap-3 rounded-2xl px-4 py-3"
+                          className="bg-slate-800/30 backdrop-blur-sm border border-white/5 flex items-center gap-3 rounded-2xl px-4 py-3"
                         >
                           <span
                             className="h-2 w-2 shrink-0 rounded-full"
@@ -929,7 +929,7 @@ export default function Landing() {
                   })}
                 </div>
 
-                <div className="glass-panel-soft mt-8 rounded-full px-4 py-3 text-sm text-white/70">
+                <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 mt-8 rounded-full px-4 py-3 text-sm text-white/70">
                   {copy.overview.inbox.footer}
                 </div>
               </article>
@@ -971,7 +971,7 @@ export default function Landing() {
                     </div>
                 </div>
 
-                <div className="glass-panel-soft rounded-2xl px-4 py-3 text-sm text-white/72">
+                <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 rounded-2xl px-4 py-3 text-sm text-white/72">
                     {copy.overview.performance.timeframe}
                 </div>
               </div>
@@ -982,7 +982,7 @@ export default function Landing() {
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
                   {copy.overview.performance.stats.map(({ label, value }) => (
-                    <div key={label} className="glass-panel-soft rounded-2xl px-4 py-4">
+                    <div key={label} className="bg-slate-800/30 backdrop-blur-sm border border-white/5 rounded-2xl px-4 py-4">
                       <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
                         {label}
                       </p>
@@ -1027,7 +1027,7 @@ export default function Landing() {
                   ))}
                 </div>
 
-                <div className="glass-panel-soft mt-3 rounded-2xl px-4 py-4">
+                <div className="bg-slate-800/30 backdrop-blur-sm border border-white/5 mt-3 rounded-2xl px-4 py-4">
                   <div className="flex items-center justify-between">
                     <span className="font-marketing text-sm font-semibold text-white/84">
                       {copy.overview.automations.statusLabel}
