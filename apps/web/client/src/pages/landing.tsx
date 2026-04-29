@@ -622,7 +622,7 @@ export default function Landing() {
                 {copy.intro}
               </div>
 
-              <h1 className="font-marketing mt-6 md:mt-8 text-[2.8rem] leading-[0.92] tracking-[-0.06em] font-extrabold text-white sm:text-5xl md:text-6xl lg:text-[7.2rem]">
+              <h1 className="font-marketing mt-6 md:mt-8 text-3xl leading-[1.1] tracking-[-0.03em] font-extrabold text-white sm:text-4xl md:text-5xl lg:text-6xl">
                 {copy.title[0]}
                 <br />
                 {copy.title[1]}
