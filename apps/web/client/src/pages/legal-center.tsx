@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, Clock, ExternalLink, Mail, ShieldCheck } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Badge } from "@/components/ui/badge";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { Footer } from "@/components/marketing/footer";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { getDocumentationByCategory, getDocumentationBySlug } from "@/lib/documentation";
+import { LEGAL_CONTENT } from "@/data/legal/legal-content";
 import { cn } from "@/lib/utils";
 
 interface LegalDocumentPageProps {
@@ -189,6 +192,7 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
   const currentIndex = LEGAL_SLUGS.indexOf(slug ?? "");
   const prevDoc = currentIndex > 0 ? LEGAL_SLUGS[currentIndex - 1] : null;
   const nextDoc = currentIndex < LEGAL_SLUGS.length - 1 ? LEGAL_SLUGS[currentIndex + 1] : null;
+  const markdown = slug ? LEGAL_CONTENT[slug] : "";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
@@ -266,42 +270,63 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                         {copy.publicBadge}
                       </Badge>
                     </div>
-                    <h1 className="font-marketing mt-6 text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">
-                      {doc.title}
-                    </h1>
-                    <p className="mt-4 text-base leading-7 text-[#c9d0f5]/68">
-                      {doc.summary}
-                    </p>
                   </div>
                 </div>
 
-                <div className="mt-10 space-y-8">
-                  <section>
-                    <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#dfff4a]/72">
-                      {copy.purpose}
-                    </h2>
-                    <p className="mt-3 text-sm leading-7 text-[#bcc5ee]/68">{doc.purpose}</p>
-                  </section>
-
-                  <section>
-                    <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#dfff4a]/72">
-                      {copy.coverage}
-                    </h2>
-                    <ul className="mt-3 space-y-3">
-                      {doc.highlights.map((item, idx) => (
-                        <li
-                          key={item}
-                          className="flex items-start gap-3 rounded-xl border border-white/[0.05] bg-white/[0.01] px-4 py-3"
-                        >
-                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#dfff4a]/10 text-[10px] font-semibold text-[#dfff4a]/70">
-                            {idx + 1}
-                          </span>
-                          <span className="text-sm leading-6 text-[#bcc5ee]/74">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                </div>
+                {/* Markdown content */}
+                {markdown ? (
+                  <div className="mt-8 rounded-[28px] border border-white/[0.06] bg-white/[0.01] px-6 py-8 md:px-10 md:py-12">
+                    <div className="
+                      prose prose-sm md:prose-base
+                      prose-headings:font-marketing prose-headings:tracking-[-0.02em] prose-headings:text-white
+                      prose-h1:text-3xl prose-h1:font-bold prose-h1:mt-0 prose-h1:mb-6
+                      prose-h2:text-xl prose-h2:font-semibold prose-h2:mt-10 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-white/[0.06]
+                      prose-h3:text-base prose-h3:font-semibold prose-h3:mt-8 prose-h3:mb-3
+                      prose-p:text-[#bcc5ee]/78 prose-p:leading-7
+                      prose-a:text-[#dfff4a]/80 prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-[#dfff4a]
+                      prose-strong:text-white/90 prose-strong:font-semibold
+                      prose-ul:text-[#bcc5ee]/78 prose-ol:text-[#bcc5ee]/78
+                      prose-li:my-1
+                      prose-code:text-[#dfff4a]/70 prose-code:bg-white/[0.04] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+                      prose-pre:bg-white/[0.02] prose-pre:border prose-pre:border-white/[0.06]
+                      prose-table:text-[#bcc5ee]/78 prose-th:text-white/80 prose-th:font-semibold prose-td:border-white/[0.06] prose-th:border-white/[0.06]
+                      prose-blockquote:border-l-[#dfff4a]/30 prose-blockquote:text-[#bcc5ee]/60
+                      prose-hr:border-white/[0.06]
+                      max-w-none
+                    ">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {markdown}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-8 space-y-8">
+                    <section>
+                      <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#dfff4a]/72">
+                        {copy.purpose}
+                      </h2>
+                      <p className="mt-3 text-sm leading-7 text-[#bcc5ee]/68">{doc.purpose}</p>
+                    </section>
+                    <section>
+                      <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#dfff4a]/72">
+                        {copy.coverage}
+                      </h2>
+                      <ul className="mt-3 space-y-3">
+                        {doc.highlights.map((item, idx) => (
+                          <li
+                            key={item}
+                            className="flex items-start gap-3 rounded-xl border border-white/[0.05] bg-white/[0.01] px-4 py-3"
+                          >
+                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#dfff4a]/10 text-[10px] font-semibold text-[#dfff4a]/70">
+                              {idx + 1}
+                            </span>
+                            <span className="text-sm leading-6 text-[#bcc5ee]/74">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  </div>
+                )}
 
                 {/* Previous / Next navigation */}
                 <div className="mt-16 flex items-center justify-between border-t border-white/[0.05] pt-8">
