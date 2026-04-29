@@ -10,15 +10,14 @@ const PRODUCT_LINKS = [
   { href: "/documentation/trust-center-overview", key: "security" },
 ] as const;
 
-const DEV_LINKS = [
-  { href: "#", key: "systemStatus" },
-  { href: "#", key: "changelog" },
-  { href: "#", key: "sdks" },
+const RESOURCES_LINKS = [
+  { href: "/documentation/support-policy", key: "support" },
+  { href: "/documentation/platform-overview", key: "platform" },
+  { href: "/legal", key: "legalHub" },
 ] as const;
 
 const COMPANY_LINKS = [
   { href: "/product", key: "about" },
-  { href: "#", key: "blog" },
   { href: "mailto:soporte@pymeshub.lat", key: "contact" },
 ] as const;
 
@@ -60,13 +59,13 @@ export function Footer({ className }: { className?: string }) {
             </ul>
           </div>
 
-          {/* Column 2 — Desarrollo */}
+          {/* Column 2 — Recursos */}
           <div>
             <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
               {f.colDev}
             </h3>
             <ul className="mt-4 space-y-3">
-              {DEV_LINKS.map(({ href, key }) => (
+              {RESOURCES_LINKS.map(({ href, key }) => (
                 <li key={key}>
                   <Link href={href}>
                     <a className="text-sm text-white/56 transition hover:text-white/90">
