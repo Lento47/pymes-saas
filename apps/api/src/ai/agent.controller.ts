@@ -44,6 +44,10 @@ export class AgentController {
   ) {
     await this.planLimits.enforcePlanTier(workspaceId, 'ENTERPRISE', 'HubbyAgent');
     const input = dto.message || dto.input;
+    if (!input || typeof input !== 'string') {
+      res.status(400).json({ error: 'Se requiere message o input' });
+      return;
+    }
     const conversationId = dto.conversationId || dto.conversation_id;
     const result = await this.agentService.streamWorkflow(
       workspaceId,
