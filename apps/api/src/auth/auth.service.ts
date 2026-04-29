@@ -163,7 +163,19 @@ export class AuthService {
       },
     });
 
-    // Auto-populate demo data (fire-and-forget — does not block registration)
+    // ──────────────────────────────────────────────────────────────────────
+    // IMPORTANTE — DATA DEMO AUTOMATICA EN CADA REGISTRO (DEV ONLY)
+    //
+    // HOY CADA NUEVO WORKSPACE RECIBE CONTACTOS, FACTURAS, CONVERSACIONES
+    // Y AUTOMATIZACIONES FAKE. UTIL EN DEV/SANDBOX PARA QUE LA UI SE VEA
+    // POBLADA AL ENTRAR.
+    //
+    // AL PASAR A PRODUCCION:
+    //   - REMOVER ESTA LLAMADA, O
+    //   - GATEAR DETRAS DE FEATURE FLAG (`ENABLE_DEMO_DATA=true`), O
+    //   - MOVER A UNA OPCION OPT-IN EN EL ONBOARDING.
+    // EN PROD INFLA LA BD CON DATA QUE EL USUARIO NO PIDIO.
+    // ──────────────────────────────────────────────────────────────────────
     this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch((err) => {
       // Silent — demo data population failures are non-critical
     });

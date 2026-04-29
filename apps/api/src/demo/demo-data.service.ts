@@ -1,6 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 
+// ───────────────────────────────────────────────────────────────────────────
+// IMPORTANTE — SERVICIO DE DATA DEMO (DEV/SANDBOX)
+//
+// ESTE SERVICIO INSERTA CONTACTOS, FACTURAS, CONVERSACIONES Y AUTOMATIZACIONES
+// FALSAS EN CADA WORKSPACE NUEVO. DIRECCIONES TIPO `ventas@acmecorp.com`,
+// `admin@elsabor.cr`, NUMEROS FAKE, CANALES "WhatsApp Demo", ETC.
+//
+// USO ACTUAL: SE LLAMA AUTOMATICAMENTE EN `auth.service.ts:register()` PARA
+// QUE LA UI NO ESTE VACIA EN DEV.
+//
+// AL PASAR A PRODUCCION:
+//   - DESCONECTAR LA LLAMADA EN `auth.service.ts` (VER COMENTARIO AHI), O
+//   - GATEAR ESTE MODULO DETRAS DE `ENABLE_DEMO_DATA=true` EN AppModule, O
+//   - ELIMINAR EL MODULO COMPLETO SI NO SE USARA EN PROD.
+// ESTA DATA NO DEBE LLEGAR A USUARIOS REALES — INFLA LA BD Y CONFUNDE.
+// ───────────────────────────────────────────────────────────────────────────
 @Injectable()
 export class DemoDataService {
   private readonly logger = new Logger(DemoDataService.name);

@@ -46,6 +46,9 @@ export class WorkspacesService {
       ai_message_finance_opt_in: settings.ai_message_finance_opt_in === true,
       ai_provider: settings.ai_provider ?? null,
       ai_model: settings.ai_model ?? null,
+      // IMPORTANTE — DEFAULT A `staging` PARA DEV. EN PROD, CADA WORKSPACE
+      // DEBE FIJAR EXPLICITAMENTE `hacienda_environment='production'` EN
+      // SUS SETTINGS, SINO LAS FACTURAS VAN AL AMBIENTE STAGING DE HACIENDA.
       hacienda_environment: settings.hacienda_environment ?? 'staging',
       hacienda_callback_url: settings.hacienda_callback_url ?? null,
       hacienda_username_set: !!(settings.hacienda_username),

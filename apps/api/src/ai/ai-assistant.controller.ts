@@ -16,6 +16,13 @@ export class AiAssistantController {
     }
 
     try {
+      // ────────────────────────────────────────────────────────────────
+      // IMPORTANTE — EL FALLBACK CONTIENE `YOUR_ACCOUNT` (PLACEHOLDER).
+      // SI NO ESTA SETEADO `CLOUDFLARE_AI_CHAT_URL` EN PROD, ESTA URL
+      // FALLARA SILENCIOSAMENTE Y EL CHAT IA NO RESPONDERA.
+      // EN PROD CONFIGURAR EN RAILWAY:
+      //   `CLOUDFLARE_AI_CHAT_URL=https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/ai/run/@cf/meta/llama-3-8b-instruct`
+      // ────────────────────────────────────────────────────────────────
       const url = process.env.CLOUDFLARE_AI_CHAT_URL || 'https://api.cloudflare.com/client/v4/accounts/YOUR_ACCOUNT/ai/run/@cf/meta/llama-3-8b-instruct';
       const res = await fetch(url, {
         method: 'POST',

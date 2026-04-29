@@ -37,6 +37,14 @@ async function bootstrap() {
   }));
 
   // ✅ SECURITY: Strict CORS configuration with origin validation
+  // ──────────────────────────────────────────────────────────────────────
+  // IMPORTANTE — ORIGENES CORS:
+  //   PROD  → SOLO `pymeshub.lat` Y `www.pymeshub.lat`. SI SE AGREGA UN
+  //           DOMINIO NUEVO (ej. `app.pymeshub.lat`), AGREGARLO ACA O EN
+  //           `CORS_ORIGIN` EN RAILWAY (FORMATO: COMA-SEPARADO).
+  //   DEV   → LOCALHOST EN VARIOS PUERTOS + `tauri://localhost` (DESKTOP).
+  //           ESTAS URLS NUNCA DEBEN ACTIVARSE EN PROD — `NODE_ENV` LO GUARDA.
+  // ──────────────────────────────────────────────────────────────────────
   const corsOrigins =
     process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) ??
     (process.env.NODE_ENV === 'production'
