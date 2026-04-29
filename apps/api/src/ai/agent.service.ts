@@ -4,6 +4,7 @@ import { CryptoService } from '../common/crypto/crypto.service';
 import { parseJsonValue } from '../common/prisma/json';
 import { InsightsService } from '../insights/insights.service';
 import { SearchService } from '../search/search.service';
+import { DocsService } from '../docs/docs.service';
 import { Agent, tool, run as agentRun, Runner } from '@openai/agents';
 import { z } from 'zod';
 
@@ -16,6 +17,7 @@ export class AgentService {
     private readonly crypto: CryptoService,
     private readonly insights: InsightsService,
     private readonly searchService: SearchService,
+    private readonly docsService: DocsService,
   ) {}
 
   async getAgentApiKey(workspaceId: string): Promise<string | null> {
@@ -36,6 +38,7 @@ export class AgentService {
     const prisma = this.prisma;
     const insights = this.insights;
     const searchSvc = this.searchService;
+    const docsSvc = this.docsService;
 
     return [
       // ── Workspace ──
@@ -271,6 +274,17 @@ export class AgentService {
             prisma.workspaceUser.findMany({ where: { workspace_id: workspaceId }, select: { id: true, role: true, user: { select: { id: true, name: true, email: true } } }, take: 20 }),
           ]);
           return { workspace: ws, members };
+        },
+      }),
+
+      // ── Docs ──
+      tool({
+        name: 'search_pymeshub_docs',
+        description: 'Search official PymesHub documentation for help articles, guides, policies, and product information. Use this when the user asks how something works or needs documentation.',
+        parameters: z.object({ query: z.string().describe('Search query for PymesHub documentation') }),
+        execute: async ({ query }: { query: string }) => {
+          const results = docsSvc.search(query);
+          return { query, results, total: results.length };
         },
       }),
     ];
