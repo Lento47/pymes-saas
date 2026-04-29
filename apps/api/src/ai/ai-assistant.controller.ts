@@ -1,15 +1,21 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 @Controller('workspaces/current/ai')
 @UseGuards(JwtAuthGuard)
 export class AiAssistantController {
+  constructor(
+    private readonly planLimits: PlanLimitsService,
+  ) {}
+
   @Post('assist')
   async assist(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() body: { input: string },
   ) {
+    await this.planLimits.enforceAiAccess(workspaceId);
     const token = process.env.CLOUDFLARE_AI_TOKEN;
     if (!token) {
       return { reply: '' };

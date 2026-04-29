@@ -210,6 +210,22 @@ export class PlanLimitsService {
     }
   }
 
+  async enforceAiAccess(workspaceId: string): Promise<void> {
+    const ws = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { plan: true, settings_json: true },
+    });
+
+    if (ws.plan === 'ENTERPRISE' || ws.plan === 'BUSINESS_PLUS') return;
+
+    const settings = (ws.settings_json as Record<string, any>) ?? {};
+    if (settings.ai_assistant_active) return;
+
+    throw new ForbiddenException(
+      'El Asistente IA requiere el add-on de IA activo o plan ENTERPRISE.',
+    );
+  }
+
   // ── evaluatePlanLimit — centralized reusable evaluation ──────────────────
 
   async evaluatePlanLimit(

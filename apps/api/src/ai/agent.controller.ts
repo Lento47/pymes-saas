@@ -27,10 +27,11 @@ export class AgentController {
 
   @Post('execute')
   @Roles('ADMIN', 'AGENT', 'VIEWER')
-  executeTool(
+  async executeTool(
     @Body() body: { tool: string; arguments?: Record<string, any> },
     @CurrentUser('workspace_id') workspaceId: string,
   ) {
+    await this.planLimits.enforceAiAccess(workspaceId);
     return this.toolsService.execute(workspaceId, body.tool, body.arguments || {});
   }
 
@@ -42,7 +43,7 @@ export class AgentController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    await this.planLimits.enforcePlanTier(workspaceId, 'ENTERPRISE', 'HubbyAgent');
+    await this.planLimits.enforceAiAccess(workspaceId);
     const input = dto.message || dto.input;
     if (!input || typeof input !== 'string') {
       res.status(400).json({ error: 'Se requiere message o input' });
