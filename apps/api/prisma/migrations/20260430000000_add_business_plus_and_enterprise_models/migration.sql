@@ -10,23 +10,21 @@ ALTER TYPE "WorkspacePlan" ADD VALUE IF NOT EXISTS 'BUSINESS_PLUS';
 -- ============================================================
 -- 2. Add WhatsApp service window fields to conversations
 -- ============================================================
-ALTER TABLE "conversations"
-  ADD COLUMN IF NOT EXISTS "last_customer_message_at" TIMESTAMP(3),
-  ADD COLUMN IF NOT EXISTS "service_window_expires_at" TIMESTAMP(3),
-  ADD COLUMN IF NOT EXISTS "is_service_window_open" BOOLEAN NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS "requires_template_for_outbound" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "conversations" ADD COLUMN IF NOT EXISTS "last_customer_message_at" TIMESTAMP(3);
+ALTER TABLE "conversations" ADD COLUMN IF NOT EXISTS "service_window_expires_at" TIMESTAMP(3);
+ALTER TABLE "conversations" ADD COLUMN IF NOT EXISTS "is_service_window_open" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "conversations" ADD COLUMN IF NOT EXISTS "requires_template_for_outbound" BOOLEAN NOT NULL DEFAULT false;
 
 -- ============================================================
 -- 3. Add WhatsApp/Telegram cost tracking to messages
 -- ============================================================
-ALTER TABLE "messages"
-  ADD COLUMN IF NOT EXISTS "message_type" TEXT,
-  ADD COLUMN IF NOT EXISTS "cost_category" TEXT,
-  ADD COLUMN IF NOT EXISTS "cost_estimate" DOUBLE PRECISION DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS "cost_currency" TEXT DEFAULT 'CRC',
-  ADD COLUMN IF NOT EXISTS "telegram_chat_id" TEXT,
-  ADD COLUMN IF NOT EXISTS "telegram_user_id" TEXT,
-  ADD COLUMN IF NOT EXISTS "telegram_message_id" TEXT;
+ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "message_type" TEXT;
+ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "cost_category" TEXT;
+ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "cost_estimate" DOUBLE PRECISION DEFAULT 0;
+ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "cost_currency" TEXT DEFAULT 'CRC';
+ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "telegram_chat_id" TEXT;
+ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "telegram_user_id" TEXT;
+ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "telegram_message_id" TEXT;
 
 -- ============================================================
 -- 4. Create CapabilityStatus enum

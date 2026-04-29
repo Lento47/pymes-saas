@@ -28,6 +28,7 @@ export class MessagesService {
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 50) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
+      select: { id: true },
     });
     if (!conv) throw new NotFoundException('Conversación no encontrada.');
 
@@ -62,6 +63,7 @@ export class MessagesService {
   ) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
+      select: { id: true },
     });
     if (!conv) throw new NotFoundException('Conversación no encontrada.');
 
@@ -125,6 +127,11 @@ export class MessagesService {
         },
       },
       orderBy: { last_message_at: 'desc' },
+      select: {
+        id: true, assigned_user_id: true, subject: true,
+        contact_id: true, first_response_at: true, status: true,
+        workspace_id: true, channel_id: true,
+      },
     });
 
     if (!conversation) {
@@ -156,6 +163,11 @@ export class MessagesService {
           status: 'NEW',
           priority: 'MEDIUM',
         },
+        select: {
+          id: true, assigned_user_id: true, subject: true,
+          contact_id: true, first_response_at: true,
+          workspace_id: true, channel_id: true, status: true,
+        },
       });
     }
 
@@ -178,7 +190,7 @@ export class MessagesService {
       data: {
         last_message_at: new Date(),
         updated_at: new Date(),
-        // WhatsApp 24h service window tracking
+        // WhatsApp 24h service window tracking (safe if columns exist, skipped otherwise)
         ...(channel.type === 'WHATSAPP'
           ? {
               last_customer_message_at: new Date(),
@@ -192,6 +204,18 @@ export class MessagesService {
           ? { first_response_at: new Date() }
           : {}),
       },
+      select: { id: true },
+    }).catch((err: any) => {
+      // Silently skip if columns don't exist yet (migration pending)
+      if (err?.code === 'P2025' || err?.message?.includes('column')) {
+        // Fallback: update only existing columns
+        return this.prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { last_message_at: new Date(), updated_at: new Date() },
+          select: { id: true },
+        });
+      }
+      throw err;
     });
 
     // Emitir en tiempo real
@@ -271,6 +295,7 @@ export class MessagesService {
       data: {
         category: result.category,
       },
+      select: { id: true },
     });
 
     // Create task for HIGH or CRITICAL urgency if task_title is provided

@@ -61,7 +61,14 @@ export class ConversationsService {
         skip,
         take: limit,
         orderBy: { last_message_at: 'desc' },
-        include: {
+        // Explicit select — avoids querying columns not yet in DB (migration pending)
+        select: {
+          id: true, workspace_id: true, channel_id: true, contact_id: true,
+          subject: true, status: true, priority: true, category: true,
+          assigned_user_id: true, last_message_at: true, department_id: true,
+          first_response_at: true, resolved_at: true,
+          sla_breached: true, sla_target_hours: true,
+          created_at: true, updated_at: true,
           contact:       { select: { id: true, full_name: true, company_name: true, email: true } },
           channel:       { select: { id: true, name: true, type: true } },
           assigned_user: { select: { id: true, name: true, avatar_url: true } },
@@ -98,7 +105,10 @@ export class ConversationsService {
         category:         dto.category,
         assigned_user_id: dto.assigned_user_id,
       },
-      include: {
+      select: {
+        id: true, workspace_id: true, channel_id: true, contact_id: true,
+        subject: true, status: true, priority: true, category: true,
+        assigned_user_id: true, department_id: true,
         channel: { select: { id: true, name: true, type: true } },
         contact: { select: { id: true, full_name: true } },
       },
@@ -119,7 +129,14 @@ export class ConversationsService {
   async findOne(workspaceId: string, id: string) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id, workspace_id: workspaceId },
-      include: {
+      // Explicit select — avoids querying columns not yet in DB
+      select: {
+        id: true, workspace_id: true, channel_id: true, contact_id: true,
+        subject: true, status: true, priority: true, category: true,
+        assigned_user_id: true, last_message_at: true, department_id: true,
+        first_response_at: true, resolved_at: true,
+        sla_breached: true, sla_target_hours: true,
+        created_at: true, updated_at: true,
         channel:       { select: { id: true, name: true, type: true, provider: true } },
         contact:       { select: { id: true, full_name: true, company_name: true, email: true, phone: true } },
         assigned_user: { select: { id: true, name: true, avatar_url: true } },
@@ -168,6 +185,7 @@ export class ConversationsService {
         ...(dto.notes !== undefined && { notes: dto.notes }),
         updated_at: new Date(),
       },
+      select: { id: true },
     });
 
     if (dto.status !== undefined) {
@@ -196,6 +214,7 @@ export class ConversationsService {
     return this.prisma.conversation.update({
       where: { id },
       data: { assigned_user_id: userId, status: 'OPEN', updated_at: new Date() },
+      select: { id: true },
     });
   }
 
@@ -210,6 +229,7 @@ export class ConversationsService {
     return this.prisma.conversation.update({
       where: { id },
       data: { status: 'RESOLVED', updated_at: new Date() },
+      select: { id: true },
     }).then(updated => {
       this.slaService.trackResolution(id).catch(err =>
         this.logger.warn(`SLA resolution error: ${(err as Error).message}`),
@@ -234,6 +254,7 @@ export class ConversationsService {
     await this.prisma.conversation.update({
       where: { id: conversationId },
       data:  { last_message_at: new Date(), status: 'OPEN', updated_at: new Date() },
+      select: { id: true },
     });
   }
 }
