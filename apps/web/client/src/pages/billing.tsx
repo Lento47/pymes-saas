@@ -280,28 +280,8 @@ export default function BillingPage() {
       return;
     }
 
-    // PATH DE CAMBIO DE PLAN — USUARIO YA PAGA, SOLO CAMBIAMOS EL PRECIO.
-    // PADDLE PRORRATEA: COBRA LA DIFERENCIA INMEDIATAMENTE EN UPGRADE,
-    // PROGRAMA EL DOWNGRADE PARA EL PROXIMO PERIODO (CERO COBRO HOY).
-    if (hasActiveSubscription) {
-      setLoading(tier.key);
-      try {
-        await api.changePlan(priceId);
-        toast({ title: "Plan actualizado", description: "Tu plan fue cambiado correctamente." });
-        // REFRESCAR SUBSCRIPCION + WORKSPACE PARA QUE LA UI MUESTRE EL NUEVO PLAN
-        await queryClient.invalidateQueries({ queryKey: ["subscription", workspaceSlug] });
-        await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      } catch (err: any) {
-        toast({ title: "Error al cambiar plan", description: err?.message || "Intentá de nuevo.", variant: "destructive" });
-      } finally {
-        setLoading(null);
-      }
-      return;
-    }
-
-    // PATH DE CHECKOUT NUEVO — PRIMERA SUBSCRIPCION DEL WORKSPACE.
-    // EL OVERLAY DE PADDLE COBRA EL MES COMPLETO Y, AL CONFIRMARSE EL PAGO,
-    // EL WEBHOOK `subscription.activated` ACTUALIZA `workspace.plan`.
+    // PATH DE CHECKOUT — TODOS LOS UPGRADES PASAN POR EL OVERLAY DE PADDLE Y COBRAN.
+    // PADDLE PRORRATEA: UPGRADE COBRA LA DIFERENCIA, DOWNGRADE APLICA AL PROX PERIODO.
     if (!paddle) {
       toast({ title: "Paddle no disponible", description: "El sistema de pagos no está listo. Intentá de nuevo." });
       return;

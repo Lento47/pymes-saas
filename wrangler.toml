@@ -5,6 +5,14 @@ compatibility_date = "2024-01-01"
 [vars]
 API_URL = "https://api.pymeshub.lat"
 OPENAI_AGENT_WORKFLOW_ID = "wf_69ee50a4431881908f0c86097bc88c0b0e1d93fe68eecbd2"
+VITE_PADDLE_CLIENT_TOKEN = "test_5e8c6bb9ac0caa99c0d4d7675f4"
+VITE_PADDLE_ENVIRONMENT = "sandbox"
+VITE_PADDLE_PRICE_STARTER_MONTHLY = "pri_01kq0w7bt8n3hdyayate39wrvx"
+VITE_PADDLE_PRICE_STARTER_ANNUAL = "pri_01kq1c25yej2mxjvjn07fhv2fw"
+VITE_PADDLE_PRICE_GROWTH_MONTHLY = "pri_01kq0we4j1wf2pgmh3w14arc6c"
+VITE_PADDLE_PRICE_GROWTH_ANNUAL = "pri_01kq1bqs2v3hkx3d0mx4wkxsvg"
+VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY = "pri_01kq0wjzkyncpwaj33m1fppppj"
+VITE_PADDLE_PRICE_ENTERPRISE_ANNUAL = "pri_01kq1bgffcm5jp82ytctx9necr"
 
 [assets]
 directory = "./apps/web/dist/public"
