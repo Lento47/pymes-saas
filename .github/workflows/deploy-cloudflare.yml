@@ -7,7 +7,36 @@ on:
     branches: [main-web]
 
 jobs:
+  branch-guard:
+    name: Branch-path guard
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify no forbidden paths
+        run: |
+          echo "==> Branch-path guard for main-web"
+          FORBIDDEN=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^apps/api/|^pnpm-lock\.yaml$' || true)
+          if [ -n "$FORBIDDEN" ]; then
+            echo "::error::main-web MUST NOT contain apps/api/** or pnpm-lock.yaml changes"
+            echo "Forbidden files:"
+            echo "$FORBIDDEN"
+            exit 1
+          fi
+          SHARED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^packages/shared-types/' || true)
+          if [ -n "$SHARED" ]; then
+            echo "::warning::shared-types change detected — ensure this is also pushed to main-api"
+          fi
+          echo "==> Branch-path guard passed"
+
   build-and-deploy:
+    needs: branch-guard
+    if: |
+      always() &&
+      (needs.branch-guard.result == 'success' || needs.branch-guard.result == 'skipped')
     runs-on: ubuntu-latest
     environment: production
 

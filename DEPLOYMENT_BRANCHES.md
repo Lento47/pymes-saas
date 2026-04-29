@@ -272,6 +272,38 @@ docker run -p 4000:4000 pymeshub-api
 
 ---
 
+## 🛡️ Branch-Path Guards
+
+CI enforces branch-path isolation on `main-web` and `main-api`:
+
+| Branch | Forbidden paths | CI behavior |
+|--------|----------------|-------------|
+| `main-web` | `apps/api/**`, `pnpm-lock.yaml` | `branch-guard` job fails the build |
+| `main-api` | `apps/web/**` | `branch-guard` job fails the build |
+
+Both branches emit a CI warning (not a block) when `packages/shared-types/**` files appear in a single-branch push.
+
+### Pre-push checklist
+
+Before pushing to a deploy branch, run:
+
+```bash
+bash scripts/check-deploy-branch.sh
+```
+
+This validates branch-scope, runs `prisma generate` (API only), and performs a target smoke build.
+
+## 📦 shared-types Convention
+
+`packages/shared-types/**` changes affect both frontend and backend:
+
+1. Push shared-types as a **separate minimal commit** to `main-api`
+2. Push the **same commit** to `main-web`
+3. Never bundle shared-types inside a large feature commit on one branch
+4. Layer feature code on top after shared-types lands on both branches
+
+---
+
 ## 💡 Tips
 
 1. **Keep branches clean** - Only deploy ready code to these branches
