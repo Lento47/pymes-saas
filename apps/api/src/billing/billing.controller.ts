@@ -34,10 +34,12 @@ export class BillingController {
         user.email,
       );
 
+      const appUrl = this.configService.get<string>('CORS_ORIGIN')?.split(',')[0] || 'https://pymeshub.lat';
       const result = await this.paddleService.createTransaction(
         user.workspace_id,
         customerId,
         dto.priceId,
+        `${appUrl}/settings/billing?paddle=success`,
       );
 
       return result;

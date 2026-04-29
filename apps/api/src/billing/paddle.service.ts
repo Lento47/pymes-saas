@@ -82,12 +82,14 @@ export class PaddleService {
     workspaceId: string,
     customerId: string,
     priceId: string,
+    successUrl?: string,
   ) {
     const paddle = this.requireClient();
 
     const transaction = await paddle.transactions.create({
       items: [{ priceId, quantity: 1 }],
       customerId,
+      checkout: successUrl ? { url: successUrl } : undefined,
     });
 
     // Store the transaction for reference
