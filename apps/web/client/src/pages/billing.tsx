@@ -197,7 +197,7 @@ function formatCRC(n: number): string {
 }
 
 async function fetchSubscription(workspaceSlug: string) {
-  const res = await fetch(`/api/workspaces/${workspaceSlug}/subscription`);
+  const res = await fetch(`/api/workspaces/current/subscription`);
   if (!res.ok) throw new Error("Failed to fetch subscription");
   return res.json();
 }
