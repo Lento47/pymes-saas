@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth, useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { usePaddle } from "@/hooks/use-paddle";
 import { api } from "@/lib/api";
 import { ADD_ONS } from "@/data/pricing.data";
 import { PageHeader } from "@/components/shared/page-header";
@@ -206,10 +207,12 @@ export default function BillingPage() {
   useRequireAuth();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const paddle = usePaddle();
   const [location] = useLocation();
   const [intervals, setIntervals] = useState<Record<string, "monthly" | "annual">>({});
+  const [loading, setLoading] = useState<string | null>(null);
   const params = new URLSearchParams(location.split("?")[1]);
-  const success = params.get("success");
+  const success = params.get("paddle") === "success";
   const canceled = params.get("canceled");
   const workspaceSlug = user?.workspace?.slug;
 
@@ -229,56 +232,75 @@ export default function BillingPage() {
     retry: false,
   });
 
-  const priceIds: Record<string, string | null> = pricesData || {};
+  // Map Paddle price IDs from env vars (same as pricing page)
+  const paddlePriceIds: Record<string, string> = {
+    starter_monthly: import.meta.env.VITE_PADDLE_PRICE_STARTER_MONTHLY || "",
+    starter_annual: import.meta.env.VITE_PADDLE_PRICE_STARTER_ANNUAL || "",
+    growth_monthly: import.meta.env.VITE_PADDLE_PRICE_GROWTH_MONTHLY || "",
+    growth_annual: import.meta.env.VITE_PADDLE_PRICE_GROWTH_ANNUAL || "",
+  };
 
-  const checkoutMutation = useMutation({
-    mutationFn: (priceId: string) => api.createCheckout(priceId),
-    onSuccess: (data: any) => {
-      if (data?.checkoutUrl) {
-        window.open(data.checkoutUrl, "_blank");
-        toast({ title: "Redirigiendo a Paddle para completar el pago..." });
-      } else {
-        toast({ title: "Checkout no disponible", description: "No se pudo generar el enlace de pago. Intentá de nuevo.", variant: "destructive" });
-      }
-    },
-    onError: (err: any) => {
-      const msg = err?.message ?? "Error desconocido";
-      if (msg.includes("401") || msg.includes("Unauthorized")) {
-        toast({ title: "Sesión expirada", description: "Tu sesión expiró. Refrescá la página e intentá de nuevo.", variant: "destructive" });
-      } else {
-        toast({ title: "Error al iniciar checkout", description: msg, variant: "destructive" });
-      }
-    },
-  });
-
-  const handleCheckout = (tier: PlanTier) => {
+  const handleCheckout = async (tier: PlanTier) => {
     const interval = intervals[tier.key] ?? "monthly";
-    const priceKey = interval === "annual" ? `${tier.key.toLowerCase()}_annual` : `${tier.key.toLowerCase()}_monthly`;
-    const priceId = tier.key === "FREE" ? null : priceIds[priceKey] ?? null;
+    const priceKey = `${tier.key.toLowerCase()}_${interval}`;
+    const priceId = paddlePriceIds[priceKey] || null;
 
     if (!priceId) {
       if (tier.key === "BUSINESS_PLUS") {
         toast({ title: "Contactá a ventas", description: "El plan Business+ requiere contacto directo con nuestro equipo." });
+      } else if (tier.key === "FREE") {
+        toast({ title: "Plan gratuito", description: "Ya estás en el plan Free." });
       } else {
         toast({ title: "No disponible", description: "Este plan aún no está configurado para checkout automático." });
       }
       return;
     }
-    checkoutMutation.mutate(priceId);
-  };
 
-  const handleExtraSeatCheckout = () => {
-    const priceId =
-      priceIds[EXTRA_SEAT_ADD_ON?.priceKeyMonthly || "extra_user_monthly"] ??
-      priceIds[EXTRA_SEAT_ADD_ON?.priceKeyAnnual || "extra_user_annual"] ??
-      null;
-
-    if (!priceId) {
-      window.location.href = "mailto:legal@pymeshub.lat?subject=Extra%20seat%20for%20PyMesHub";
+    if (!paddle) {
+      toast({ title: "Paddle no disponible", description: "El sistema de pagos no está listo. Intentá de nuevo." });
       return;
     }
 
-    checkoutMutation.mutate(priceId);
+    setLoading(tier.key);
+    try {
+      await paddle.Checkout.open({
+        items: [{ priceId, quantity: 1 }],
+        customData: {
+          workspaceSlug: user?.workspace?.slug ?? null,
+          plan: tier.key.toLowerCase(),
+        },
+        settings: {
+          displayMode: 'overlay',
+          theme: 'dark',
+          locale: 'es',
+          successUrl: `${window.location.origin}/settings/billing?paddle=success`,
+        },
+      });
+    } catch (err: any) {
+      if (err?.message !== 'Checkout closed') {
+        toast({ title: "Error", description: err?.message || "No se pudo abrir el checkout.", variant: "destructive" });
+      }
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleExtraSeatCheckout = async () => {
+    const priceId = import.meta.env.VITE_PADDLE_PRICE_EXTRA_SEAT || null;
+    if (!priceId || !paddle) {
+      window.location.href = "mailto:legal@pymeshub.lat?subject=Extra%20seat%20for%20PyMesHub";
+      return;
+    }
+    setLoading("extra");
+    try {
+      await paddle.Checkout.open({
+        items: [{ priceId, quantity: 1 }],
+        customData: { workspaceSlug: user?.workspace?.slug ?? null },
+        settings: { displayMode: 'overlay', theme: 'dark', locale: 'es', successUrl: `${window.location.origin}/settings/billing?paddle=success` },
+      });
+    } catch (err: any) {
+      if (err?.message !== 'Checkout closed') toast({ title: "Error", description: err?.message, variant: "destructive" });
+    } finally { setLoading(null); }
   };
 
   if (!isAuthenticated) {
@@ -422,9 +444,9 @@ export default function BillingPage() {
                   size="sm"
                   className="h-9 text-xs"
                   onClick={handleExtraSeatCheckout}
-                  disabled={checkoutMutation.isPending}
+                      disabled={!!loading}
                 >
-                  {checkoutMutation.isPending ? (
+                  {loading ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <ArrowUpRight className="mr-1.5 h-3.5 w-3.5" />
@@ -532,9 +554,9 @@ export default function BillingPage() {
                       size="sm"
                       className="w-full h-8 text-xs gap-1.5"
                       onClick={() => handleCheckout(tier)}
-                      disabled={checkoutMutation.isPending}
+                      disabled={!!loading}
                     >
-                      {checkoutMutation.isPending ? (
+                      {loading ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
                         <ArrowUpRight className="w-3.5 h-3.5" />
