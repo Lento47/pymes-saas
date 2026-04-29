@@ -10,6 +10,19 @@ import { ApiRolesGuard } from '../api-tokens/api-roles.guard';
 import { RequireApiRole } from '../api-tokens/api-roles.decorator';
 import { ApiRole } from '../api-tokens/api-token.guard';
 
+// ───────────────────────────────────────────────────────────────────────────
+// IMPORTANTE — PADDLE ESTA EN SANDBOX.
+//
+// CUANDO SE PASE A PRODUCCION, ROTAR EN RAILWAY:
+//   - PADDLE_API_KEY              → API KEY DE PROD
+//   - PADDLE_ENVIRONMENT=production
+//   - PADDLE_WEBHOOK_SECRET       → SECRETO DE PROD
+//   - PADDLE_PRICE_*_MONTHLY/ANNUAL → PRICE IDs DE PROD
+//   (LOS DE SANDBOX NO FUNCIONAN EN PROD Y VICEVERSA).
+//
+// LO QUE NO ES IMPORTANTE: EL CODIGO DE ESTE ARCHIVO NO CAMBIA AL PASAR A
+// PROD — TODA LA CONFIGURACION VIVE EN ENV VARS.
+// ───────────────────────────────────────────────────────────────────────────
 @Controller('billing')
 export class BillingController {
   constructor(
@@ -18,6 +31,8 @@ export class BillingController {
     private readonly configService: ConfigService,
   ) {}
 
+  // PRIMERA COMPRA — CHECKOUT NUEVO. SI EL WORKSPACE YA TIENE SUBSCRIPCION,
+  // USAR `/change-plan` EN VEZ (PRORRATEADO).
   @Post('checkout')
   @UseGuards(JwtAuthGuard)
   async createCheckout(
@@ -47,6 +62,39 @@ export class BillingController {
       if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException(
         `Checkout failed: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // CAMBIO DE PLAN — USAR PARA UPGRADE/DOWNGRADE DE UNA SUBSCRIPCION EXISTENTE.
+  //
+  // IMPORTANTE — REGLAS DE COBRO:
+  //   - UPGRADE  → COBRA LA DIFERENCIA PRORRATEADA HOY MISMO.
+  //   - DOWNGRADE → NO COBRA. ENTRA EN VIGOR EN EL PROXIMO CICLO. EL PLAN
+  //                 ACTUAL (CARO) SIGUE ACTIVO HASTA QUE TERMINE EL PERIODO
+  //                 YA PAGADO.
+  //
+  // SI EL WORKSPACE NO TIENE SUBSCRIPCION ACTIVA, ESTE ENDPOINT FALLARA Y
+  // EL FRONTEND DEBE USAR `/checkout` (CHECKOUT NUEVO).
+  // ────────────────────────────────────────────────────────────────────────
+  @Post('change-plan')
+  @UseGuards(JwtAuthGuard)
+  async changePlan(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: { priceId: string },
+  ) {
+    if (!dto?.priceId) {
+      throw new BadRequestException('priceId is required');
+    }
+
+    try {
+      const result = await this.paddleService.changePlan(user.workspace_id, dto.priceId);
+      return result;
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException(
+        `Plan change failed: ${(error as Error).message}`,
       );
     }
   }

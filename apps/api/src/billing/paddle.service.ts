@@ -5,6 +5,23 @@ import { Paddle, Environment, LogLevel, type EventEntity } from '@paddle/paddle-
 import { BillingInvoiceService } from './billing-invoice.service';
 import { Resend } from 'resend';
 
+// ───────────────────────────────────────────────────────────────────────────
+// IMPORTANTE — CONFIGURACION DE PADDLE
+//
+// PADDLE ESTA EN SANDBOX HOY. AL PASAR A PROD, EN RAILWAY ROTAR:
+//   - PADDLE_API_KEY (DE PROD)
+//   - PADDLE_ENVIRONMENT=production
+//   - PADDLE_WEBHOOK_SECRET (DE PROD)
+//   - PADDLE_PRICE_STARTER_MONTHLY / _ANNUAL
+//   - PADDLE_PRICE_GROWTH_MONTHLY  / _ANNUAL
+//   - PADDLE_PRICE_ENTERPRISE_MONTHLY / _ANNUAL
+//
+// EL FRONTEND LEE ESTOS PRICE IDs VIA `GET /api/billing/prices` — NO LOS
+// LEE DE SUS PROPIAS ENV VARS. ASI HAY UNA SOLA FUENTE DE VERDAD.
+//
+// LO QUE NO ES IMPORTANTE: EL CODIGO DE ESTE ARCHIVO NO CAMBIA AL PASAR A
+// PROD. SOLO SE TOCAN LAS ENV VARS.
+// ───────────────────────────────────────────────────────────────────────────
 @Injectable()
 export class PaddleService {
   private paddle: Paddle | null = null;
@@ -139,6 +156,103 @@ export class PaddleService {
   }
 
   // ── Subscription management ──────────────────────────────────────────────
+
+  // ────────────────────────────────────────────────────────────────────────
+  // CAMBIO DE PLAN PARA SUSCRIPCION YA EXISTENTE — PRORRATEADO POR PADDLE.
+  //
+  // IMPORTANTE — REGLAS DE NEGOCIO:
+  //   - UPGRADE (PLAN MAS CARO): PADDLE COBRA LA DIFERENCIA INMEDIATAMENTE
+  //     (`prorationBillingMode: 'prorated_immediately'`).
+  //   - DOWNGRADE (PLAN MAS BARATO O IGUAL): NO SE COBRA NADA HOY. EL
+  //     CAMBIO ENTRA EN VIGOR EN EL SIGUIENTE PERIODO DE FACTURACION
+  //     (`prorationBillingMode: 'do_not_bill'` + `effectiveFrom: 'next_billing_period'`).
+  //
+  // SE USA EN VEZ DE CHECKOUT NUEVO CUANDO EL WORKSPACE YA TIENE
+  // `provider_subscription_id`. EL FRONT DECIDE EL PATH (createCheckout VS
+  // changePlan) MIRANDO `subscription.provider_subscription_id`.
+  //
+  // PADDLE EN SANDBOX. AL PASAR A PROD, ESTA RUTA NO CAMBIA — SOLO LOS
+  // ENV VARS (PADDLE_API_KEY, PADDLE_ENVIRONMENT, PADDLE_PRICE_*).
+  // ────────────────────────────────────────────────────────────────────────
+  async changePlan(workspaceId: string, newPriceId: string) {
+    const paddle = this.requireClient();
+
+    if (!newPriceId) {
+      throw new Error('newPriceId is required');
+    }
+
+    const sub = await this.prisma.workspaceSubscription.findFirst({
+      where: { workspace_id: workspaceId },
+      select: {
+        id: true,
+        plan: true,
+        provider_subscription_id: true,
+        status: true,
+      },
+    });
+
+    if (!sub?.provider_subscription_id) {
+      throw new Error('No active Paddle subscription. Use /billing/checkout for first-time purchase.');
+    }
+
+    // CONSULTA EL ITEM_ID ACTUAL EN PADDLE (NECESARIO PARA EL UPDATE).
+    const paddleSub = await paddle.subscriptions.get(sub.provider_subscription_id);
+    const currentItem = paddleSub.items?.[0];
+    if (!currentItem?.price?.id) {
+      throw new Error('Could not read current Paddle subscription items');
+    }
+
+    // SI ES EL MISMO PRICE — NO HACER NADA.
+    if (currentItem.price.id === newPriceId) {
+      return { updated: false, plan: sub.plan, status: sub.status, prorated: false };
+    }
+
+    // CLASIFICAR UPGRADE VS DOWNGRADE COMPARANDO PLANES INTERNOS.
+    const newPlan = this.mapPaddlePriceToPlan(newPriceId);
+    const planRank: Record<string, number> = { FREE: 0, STARTER: 1, GROWTH: 2, ENTERPRISE: 3 };
+    const isDowngrade = (planRank[newPlan] ?? 0) <= (planRank[sub.plan] ?? 0);
+
+    // IMPORTANTE — DOWNGRADE NO COBRA HOY:
+    //   prorationBillingMode='do_not_bill' EVITA EL CARGO INMEDIATO,
+    //   effectiveFrom='next_billing_period' AGENDA EL CAMBIO PARA EL CICLO
+    //   SIGUIENTE. EL USUARIO DISFRUTA EL PLAN ACTUAL (CARO) HASTA QUE
+    //   TERMINE EL PERIODO YA PAGADO.
+    // UPGRADE COBRA INMEDIATAMENTE LA DIFERENCIA PRORRATEADA.
+    const updated = await paddle.subscriptions.update(sub.provider_subscription_id, {
+      items: [{ priceId: newPriceId, quantity: 1 }],
+      prorationBillingMode: isDowngrade ? 'do_not_bill' : 'prorated_immediately',
+      ...(isDowngrade ? { scheduledChange: { action: 'change', effectiveAt: 'next_billing_period' } as any } : {}),
+    } as any);
+
+    // ACTUALIZA NUESTRO REGISTRO LOCAL. EL WEBHOOK `subscription.updated`
+    // TAMBIEN LLEGARA Y SOBREESCRIBIRA — ESTO ES SOLO PARA UI INMEDIATA.
+    // NOTA: EN DOWNGRADE, EL `plan` LOCAL NO CAMBIA HASTA QUE EL WEBHOOK
+    // CONFIRME EL CAMBIO EN EL PROXIMO CICLO. NO TOCAR `workspace.plan` AQUI
+    // SI ES DOWNGRADE.
+    const status = this.mapPaddleStatus(updated.status);
+    if (!isDowngrade) {
+      await this.prisma.workspaceSubscription.update({
+        where: { id: sub.id },
+        data: { plan: newPlan, status: status as any },
+      });
+      await this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { plan: newPlan },
+      });
+      this.logger.log(`Plan upgraded immediately: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
+    } else {
+      this.logger.log(`Plan downgrade scheduled for next period: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
+    }
+
+    return {
+      updated: true,
+      plan: isDowngrade ? sub.plan : newPlan, // PARA UI: SI ES DOWNGRADE, EL PLAN ACTUAL SIGUE VIGENTE HASTA EL PROXIMO CICLO
+      scheduled_plan: isDowngrade ? newPlan : null,
+      status,
+      prorated: !isDowngrade,
+      effective: isDowngrade ? 'next_billing_period' : 'immediate',
+    };
+  }
 
   async cancelSubscription(workspaceId: string) {
     const paddle = this.requireClient();
