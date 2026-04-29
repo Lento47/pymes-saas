@@ -29,6 +29,8 @@ export interface AddOn {
   description: string;
   priceKeyMonthly?: string;
   priceKeyAnnual?: string;
+  /** True for add-ons where the customer picks a quantity (e.g. extra users). */
+  quantifiable?: boolean;
 }
 
 export interface FAQ {
@@ -184,6 +186,7 @@ export const ADD_ONS: AddOn[] = [
     description: 'Agrega otro compañero sin cambiar de plan',
     priceKeyMonthly: 'extra_user_monthly',
     priceKeyAnnual: 'extra_user_annual',
+    quantifiable: true,
   },
   {
     key: 'whatsapp_premium',
