@@ -11,6 +11,13 @@ import { z } from 'zod';
 @Injectable()
 export class AgentService {
   private readonly logger = new Logger(AgentService.name);
+  private currentSessionId: string | null = null;
+
+  private static readonly WRITE_TOOLS = new Set([
+    'create_contact', 'update_contact', 'create_task', 'update_task',
+    'create_deal', 'move_deal', 'reply_conversation',
+    'create_automation', 'toggle_automation',
+  ]);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -19,6 +26,31 @@ export class AgentService {
     private readonly searchService: SearchService,
     private readonly docsService: DocsService,
   ) {}
+
+  private async logToolCall(
+    agentType: string,
+    toolName: string,
+    input: any,
+    output: any,
+    riskLevel: string,
+  ): Promise<void> {
+    if (!this.currentSessionId) return;
+    try {
+      await this.prisma.agentToolCall.create({
+        data: {
+          session_id: this.currentSessionId,
+          agent_type: agentType,
+          tool_name: toolName,
+          input_json: input as any,
+          output_json: output as any,
+          risk_level: riskLevel,
+          allowed: true,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to log tool call ${toolName}: ${(err as Error).message}`);
+    }
+  }
 
   async getAgentApiKey(workspaceId: string): Promise<string | null> {
     const ws = await this.prisma.workspace.findUnique({
@@ -49,178 +81,6 @@ export class AgentService {
       }),
       tool({
         name: 'get_stats', description: 'Get workspace statistics: counts of contacts, tasks, invoices, conversations',
-        parameters: z.object({}),
-        execute: async () => {
-          const [contacts, tasks, invoices, conversations] = await Promise.all([
-            prisma.contact.count({ where: { workspace_id: workspaceId } }),
-            prisma.task.count({ where: { workspace_id: workspaceId } }),
-            prisma.invoice.count({ where: { workspace_id: workspaceId } }),
-            prisma.conversation.count({ where: { workspace_id: workspaceId } }),
-          ]);
-          return { stats: { contacts, tasks, invoices, conversations } };
-        },
-      }),
-      tool({
-        name: 'get_insights', description: 'Get AI-generated business insights: trends, risks, recommendations for the workspace',
-        parameters: z.object({}),
-        execute: async () => ({ insights: await insights.getInsights(workspaceId) }),
-      }),
-      tool({
-        name: 'search', description: 'Full-text search across contacts, conversations, tasks, and documents',
-        parameters: z.object({ q: z.string().describe('Search query'), types: z.string().optional().nullable().describe('Comma-separated: contact,conversation,task,document') }),
-        execute: async ({ q, types }) => {
-          const typeArr = types ? types.split(',').map((t: string) => t.trim()) : [];
-          return { results: await searchSvc.search(workspaceId, q, typeArr, 10) };
-        },
-      }),
-
-      // ── Contacts ──
-      tool({
-        name: 'list_contacts', description: 'List all contacts in the workspace. Optional search filter.',
-        parameters: z.object({ search: z.string().optional().nullable() }),
-        execute: async ({ search }) => {
-          const where: any = { workspace_id: workspaceId };
-          if (search) where.full_name = { contains: search, mode: 'insensitive' };
-          return { contacts: await prisma.contact.findMany({ where, select: { id: true, full_name: true, email: true, phone: true, type: true }, take: 50 }) };
-        },
-      }),
-      tool({
-        name: 'create_contact', description: 'Create a new contact in PyMesHub. Requires full_name. Optional: email, phone, company_name, type.',
-        parameters: z.object({
-          full_name: z.string().describe('Full name of the contact'),
-          email: z.string().optional().nullable(),
-          phone: z.string().optional().nullable(),
-          company_name: z.string().optional().nullable(),
-          type: z.enum(['CUSTOMER','LEAD','SUPPLIER','PARTNER']).optional().nullable().default('CUSTOMER'),
-        }),
-        execute: async (args) => ({
-          contact: await prisma.contact.create({
-            data: {
-              workspace_id: workspaceId,
-              full_name: args.full_name,
-              email: args.email || undefined,
-              phone: args.phone || undefined,
-              company_name: args.company_name || undefined,
-              type: (args.type as any) || 'CUSTOMER',
-            },
-          }),
-        }),
-      }),
-      tool({
-        name: 'update_contact', description: 'Update an existing contact in PyMesHub',
-        parameters: z.object({
-          id: z.string().describe('Contact ID'),
-          full_name: z.string().optional().nullable(),
-          email: z.string().optional().nullable(),
-          phone: z.string().optional().nullable(),
-          company_name: z.string().optional().nullable(),
-          type: z.enum(['CUSTOMER','LEAD','SUPPLIER','PARTNER']).optional().nullable(),
-        }),
-        execute: async (args) => {
-          const data: any = {};
-          if (args.full_name !== undefined) data.full_name = args.full_name;
-          if (args.email !== undefined) data.email = args.email;
-          if (args.phone !== undefined) data.phone = args.phone;
-          if (args.company_name !== undefined) data.company_name = args.company_name;
-          if (args.type !== undefined) data.type = args.type;
-          return { contact: await prisma.contact.update({ where: { id: args.id }, data }) };
-        },
-      }),
-
-      // ── Tasks ──
-      tool({
-        name: 'list_tasks', description: 'List all tasks. Filter by status (TODO, IN_PROGRESS, DONE, BLOCKED).',
-        parameters: z.object({ status: z.string().optional().nullable() }),
-        execute: async ({ status }) => {
-          const where: any = { workspace_id: workspaceId };
-          if (status) where.status = status;
-          return { tasks: await prisma.task.findMany({ where, select: { id: true, title: true, status: true, priority: true, due_at: true }, take: 50, orderBy: { created_at: 'desc' } }) };
-        },
-      }),
-      tool({
-        name: 'create_task', description: 'Create a new task in the workspace',
-        parameters: z.object({ title: z.string(), description: z.string().optional().nullable(), priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable().default('MEDIUM'), due_date: z.string().optional().nullable() }),
-        execute: async (args) => ({
-          task: await prisma.task.create({ data: { workspace_id: workspaceId, title: args.title, description: args.description || '', priority: args.priority || 'MEDIUM', due_at: args.due_date ? new Date(args.due_date) : undefined, status: 'TODO' } }),
-        }),
-      }),
-      tool({
-        name: 'update_task', description: 'Update an existing task',
-        parameters: z.object({ id: z.string(), title: z.string().optional().nullable(), description: z.string().optional().nullable(), status: z.enum(['TODO','IN_PROGRESS','DONE','BLOCKED']).optional().nullable(), priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable(), due_date: z.string().optional().nullable() }),
-        execute: async (args) => {
-          const data: any = {};
-          if (args.title !== undefined) data.title = args.title;
-          if (args.description !== undefined) data.description = args.description;
-          if (args.status !== undefined) data.status = args.status;
-          if (args.priority !== undefined) data.priority = args.priority;
-          if (args.due_date !== undefined) data.due_at = new Date(args.due_date);
-          return { task: await prisma.task.update({ where: { id: args.id }, data }) };
-        },
-      }),
-
-      // ── Invoices ──
-      tool({
-        name: 'list_invoices', description: 'List all invoices with amounts, statuses, and due dates',
-        parameters: z.object({}),
-        execute: async () => ({ invoices: await prisma.invoice.findMany({ where: { workspace_id: workspaceId }, select: { id: true, number: true, amount: true, status: true, due_date: true }, take: 50, orderBy: { created_at: 'desc' } }) }),
-      }),
-
-      // ── Conversations ──
-      tool({
-        name: 'list_conversations', description: 'List conversations. Filter by status (NEW, OPEN, PENDING, RESOLVED, CLOSED).',
-        parameters: z.object({ status: z.string().optional().nullable() }),
-        execute: async ({ status }) => {
-          const where: any = { workspace_id: workspaceId };
-          if (status) where.status = status;
-          return { conversations: await prisma.conversation.findMany({ where, select: { id: true, subject: true, status: true, priority: true, created_at: true }, take: 50, orderBy: { created_at: 'desc' } }) };
-        },
-      }),
-      tool({
-        name: 'get_conversation_detail', description: 'Get conversation details and full message history',
-        parameters: z.object({ id: z.string() }),
-        execute: async ({ id }) => {
-          const [conv, messages] = await Promise.all([
-            prisma.conversation.findFirst({ where: { id, workspace_id: workspaceId }, select: { id: true, subject: true, status: true, priority: true, category: true, created_at: true, contact: { select: { full_name: true, email: true } } } }),
-            prisma.message.findMany({ where: { conversation_id: id, workspace_id: workspaceId }, select: { id: true, direction: true, body_text: true, sender_name: true, sent_at: true }, take: 100, orderBy: { sent_at: 'asc' } }),
-          ]);
-          if (!conv) throw new Error(`Conversation "${id}" not found`);
-          return { conversation: conv, messages };
-        },
-      }),
-      tool({
-        name: 'reply_conversation', description: 'Send a reply to a conversation. Use ONLY if user explicitly asks.',
-        parameters: z.object({ id: z.string(), text: z.string() }),
-        execute: async ({ id, text }) => ({
-          message: await prisma.message.create({ data: { workspace_id: workspaceId, conversation_id: id, direction: 'OUTBOUND', body_text: text, sender_name: 'HubbyAgent' } }),
-        }),
-      }),
-
-      // ── Automations ──
-      tool({
-        name: 'list_automations', description: 'List all workflow automations and their statuses',
-        parameters: z.object({}),
-        execute: async () => ({ automations: await prisma.automation.findMany({ where: { workspace_id: workspaceId }, select: { id: true, name: true, enabled: true, trigger_type: true }, take: 50 }) }),
-      }),
-      tool({
-        name: 'create_automation', description: 'Create a new workflow automation rule',
-        parameters: z.object({ name: z.string(), trigger_type: z.string() }),
-        execute: async (args: any) => ({
-          automation: await prisma.automation.create({ data: { workspace_id: workspaceId, name: args.name, description: '', trigger_type: args.trigger_type, trigger_config_json: args.trigger_config || args.trigger_config_json || {}, action_config_json: args.action_config || args.action_config_json || {} } }),
-        }),
-      }),
-      tool({
-        name: 'toggle_automation', description: 'Enable or disable an automation rule',
-        parameters: z.object({ id: z.string(), enabled: z.boolean().optional().nullable() }),
-        execute: async ({ id, enabled }) => {
-          const existing = await prisma.automation.findFirst({ where: { id, workspace_id: workspaceId } });
-          if (!existing) throw new Error(`Automation "${id}" not found`);
-          return { automation: await prisma.automation.update({ where: { id }, data: { enabled: enabled !== undefined ? enabled : !existing.enabled } }) };
-        },
-      }),
-
-      // ── Billing (read-only) ──
-      tool({
-        name: 'get_billing', description: 'Get subscription and billing info (READ-ONLY)',
         parameters: z.object({}),
         execute: async () => {
           const [sub, ws] = await Promise.all([
@@ -330,6 +190,12 @@ export class AgentService {
 
     const tools = this.createTools(workspaceId);
 
+    // Create agent session for audit trail
+    const session = await this.prisma.agentSession.create({
+      data: { workspace_id: workspaceId, agent_type: 'hubby', status: 'ACTIVE' },
+    });
+    this.currentSessionId = session.id;
+
     const agent = new Agent({
       name: 'HubbyAgent',
       instructions: `Eres HubbyAgent de PyMesHub. Si el usuario pide CREAR, ACTUALIZAR, ELIMINAR o CONSULTAR datos, usás tus herramientas. Si solo saluda o conversa, respondés normal.
@@ -372,6 +238,24 @@ REGLAS:
       })();
 
       this.logger.log(`Agent response length: ${finalOutput.length}, preview: ${finalOutput.slice(0, 100)}`);
+
+      // Log tool calls from agent result
+      try {
+        const rawItems = (result as any).rawResponses ?? (result as any).newItems ?? [];
+        for (const item of rawItems) {
+          if (item.type === 'function_call' || item.type === 'function_call_output') {
+            const toolName = item.name || item.function_name || 'unknown';
+            const isWrite = AgentService.WRITE_TOOLS.has(toolName);
+            await this.logToolCall('hubby', toolName,
+              item.arguments ? JSON.parse(typeof item.arguments === 'string' ? item.arguments : '{}') : {},
+              item.output || item.return_value || {},
+              isWrite ? 'medium' : 'low',
+            );
+          }
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to extract tool calls: ${(err as Error).message}`);
+      }
 
       const encoder = new TextEncoder();
       const stream = new ReadableStream({

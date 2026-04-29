@@ -1528,7 +1528,7 @@ enum EscalationStatus {
 model AgentSession {
   id           String             @id @default(cuid())
   workspace_id String
-  user_id      String
+  user_id      String?
   agent_type   String             // "router", "docs", "onboarding", "inbox", "billing", "troubleshooting", "escalation"
   status       AgentSessionStatus @default(ACTIVE)
   metadata_json Json?             @db.JsonB // { plan, role, locale, page_context }
@@ -1537,7 +1537,7 @@ model AgentSession {
   updated_at DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   messages  AgentMessage[]
   toolCalls AgentToolCall[]
   escalations AgentEscalation[]

@@ -8,7 +8,7 @@ CREATE TYPE "EscalationStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOS
 CREATE TABLE "agent_sessions" (
     "id" TEXT NOT NULL,
     "workspace_id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "user_id" TEXT,
     "agent_type" TEXT NOT NULL,
     "status" "AgentSessionStatus" NOT NULL DEFAULT 'ACTIVE',
     "metadata_json" JSONB,
