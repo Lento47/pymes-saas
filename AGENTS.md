@@ -109,3 +109,10 @@ Optional: `OPENAI_API_KEY`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`
 - **Deployment is real.** `main-api` deploys to Railway (production). `main-web` deploys to Cloudflare Pages (production). Both trigger auto-deploys on push.
 - **Always patch vulnerabilities.** Security issues must be fixed immediately and pushed to the relevant branch. Never leave a known vulnerability unpatched.
 - **Do NOT make cross-branch edits.** `main-api` is `apps/api/` only. `main-web` is `apps/web/` only. Cross-cutting changes (shared types) must be committed to both branches separately.
+
+## Database safety (CRITICAL)
+
+- **ALWAYS create backups** before any schema change, migration, or data modification.
+- **NEVER delete anything in the database.** Not rows, not tables, not columns. If something needs removal, explain why and ask for explicit permission.
+- **Soft-delete only.** If a feature or data must be deprecated, use `deleted_at` flags, `archived` statuses, or disable flags. Never hard-delete production data.
+- **Migrations must be additive.** New columns, new tables, new enum values are safe. Dropping columns, dropping tables, or removing enum values requires permission.
