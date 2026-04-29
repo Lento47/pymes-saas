@@ -349,9 +349,9 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     audience: "Cliente",
     repoPath: "docs/legal/cookies-policy.md",
     highlights: [
-      "Cookies estrictamente necesarias para el funcionamiento",
-      "Cookies de analítica, preferencias y marketing",
-      "Banner de consentimiento granular y retiro en cualquier momento",
+      "Cookies estrictamente necesarias para sesión y seguridad",
+      "Cookies de analítica (Google Analytics) con consentimiento",
+      "Banner de consentimiento granular con preferencias",
       "Lista de cookies por categoría, proveedor, finalidad y duración",
     ],
   },
