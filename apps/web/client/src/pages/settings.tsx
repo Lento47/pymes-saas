@@ -254,6 +254,10 @@ function WorkspaceTab() {
     canton: "",
     district: "",
     address_detail: "",
+    // IMPORTANTE — DEFAULT `staging` ES PARA DEV/PRUEBAS DE FACTURACION.
+    // CUANDO EL CLIENTE QUIERA EMITIR FACTURAS REALES A HACIENDA, DEBE
+    // CAMBIAR ESTE CAMPO A `production` EN SUS SETTINGS. SI SE QUEDA EN
+    // STAGING, LAS FACTURAS NO TIENEN VALIDEZ FISCAL.
     hacienda_environment: "staging",
     hacienda_callback_url: "",
     hacienda_client_id: "",

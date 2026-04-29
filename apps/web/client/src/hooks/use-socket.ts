@@ -13,9 +13,19 @@ export function getSocket(): Socket | null {
  * Inicializa la conexión WebSocket con el token JWT actual.
  * Llamar una sola vez al hacer login (en App.tsx o en el hook useAuth).
  */
-// In dev, connect directly to the NestJS port.
-// In production, use VITE_API_URL (e.g. https://api.pymeshub.lat) so the
-// WebSocket goes to Railway, not to the Cloudflare Pages static host.
+// ───────────────────────────────────────────────────────────────────────────
+// IMPORTANTE — URL DEL WEBSOCKET
+//
+// DEV: EL HOOK ASUME QUE EL BACKEND NESTJS CORRE EN `:4000` EN EL MISMO HOST
+//      DEL FRONTEND (CONFIGURACION DEFAULT DE `pnpm dev`). SI ALGUIEN CORRE
+//      EL BACKEND EN OTRO PUERTO, ESTO ROMPE — AGREGAR `VITE_WS_URL` SI HACE
+//      FALTA SER FLEXIBLE.
+//
+// PROD: USA `VITE_API_URL` (ej. `https://api.pymeshub.lat`) PARA QUE EL WS
+//       VAYA A RAILWAY, NO A CLOUDFLARE PAGES (QUE ES SOLO ESTATICO).
+//       SI `VITE_API_URL` NO ESTA SETEADO EN CLOUDFLARE, CAE A
+//       `window.location.origin` QUE NO TIENE WS — LA UI EN VIVO NO FUNCIONA.
+// ───────────────────────────────────────────────────────────────────────────
 const WS_URL = import.meta.env.DEV
   ? `${window.location.protocol}//${window.location.hostname}:4000`
   : (import.meta.env.VITE_API_URL as string | undefined) ?? window.location.origin;
