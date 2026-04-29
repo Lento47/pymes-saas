@@ -52,7 +52,7 @@ export default function PricingPage() {
         {/* Hero Section */}
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-4xl text-center">
-            <h1 className="font-marketing text-5xl font-extrabold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl">
+            <h1 className="font-marketing text-3xl font-extrabold leading-[1.1] tracking-[-0.03em] text-white sm:text-4xl md:text-5xl">
               {copy.hero?.title || 'Planes que crecen contigo'}
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-white/70 md:text-xl">

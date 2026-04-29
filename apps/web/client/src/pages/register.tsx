@@ -192,7 +192,7 @@ export default function RegisterPage() {
               <div className="mt-10 space-y-7">
                 <div className="text-center">
                   <CheckCircle2 className="mx-auto h-12 w-12 text-[#dfff4a]" />
-                  <h1 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-white md:text-[3.1rem]">
+                  <h1 className="font-marketing mt-5 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl md:text-4xl">
                     {reg.workspaceCreated}
                   </h1>
                   <p className="mx-auto mt-4 max-w-md text-base leading-8 text-[#c9d0f5]/72">
@@ -238,7 +238,7 @@ export default function RegisterPage() {
             ) : (
               <>
                 <div className="mt-10 text-center">
-                  <h1 className="font-marketing text-4xl font-semibold tracking-[-0.04em] text-white md:text-[3.1rem]">
+                  <h1 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl md:text-4xl">
                     {reg.createAccount}
                   </h1>
                   <p className="mx-auto mt-4 max-w-md text-base leading-8 text-[#c9d0f5]/72">

@@ -203,7 +203,7 @@ export default function LoginPage() {
             ) : (
               <>
             <div className="mt-10 text-center">
-              <h1 className="font-marketing text-4xl font-semibold tracking-[-0.04em] text-white md:text-[3.45rem]">
+              <h1 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl md:text-4xl">
                 {copy.welcome}
               </h1>
               <p className="mx-auto mt-4 max-w-md text-base leading-8 text-white/85">
