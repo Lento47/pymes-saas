@@ -43,10 +43,12 @@ export class AgentController {
     @Res() res: Response,
   ) {
     await this.planLimits.enforcePlanTier(workspaceId, 'ENTERPRISE', 'HubbyAgent');
+    const input = dto.message || dto.input;
+    const conversationId = dto.conversationId || dto.conversation_id;
     const result = await this.agentService.streamWorkflow(
       workspaceId,
-      dto.input,
-      dto.conversation_id,
+      input,
+      conversationId,
     );
 
     if ('error' in result) {

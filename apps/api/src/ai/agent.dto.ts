@@ -6,7 +6,15 @@ export class AgentStreamDto {
 
   @IsOptional()
   @IsString()
+  message?: string;
+
+  @IsOptional()
+  @IsString()
   conversation_id?: string;
+
+  @IsOptional()
+  @IsString()
+  conversationId?: string;
 
   @IsOptional()
   @IsArray()
