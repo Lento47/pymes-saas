@@ -1,5 +1,5 @@
 # =============================================================================
-# PR Checks — NestJS SaaS
+# PR Checks — Branch-aware validation
 # =============================================================================
 name: PR Checks
 
@@ -19,18 +19,18 @@ jobs:
   pr-validation:
     name: PR Validation & Build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Check PR description is not empty
         id: check-description
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
         run: |
           if [ -z "$(echo "$PR_BODY" | tr -d '[:space:]')" ]; then
             echo "::error::La descripción del Pull Request está vacía."
@@ -38,8 +38,55 @@ jobs:
             exit 1
           else
             echo "description_ok=true" >> "$GITHUB_OUTPUT"
-            echo "Descripción del PR: OK"
+            echo "Descripción del PR: OK (target branch: $PR_BASE)"
           fi
+
+      - name: Branch-path guard
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          echo "==> Branch-path guard for PR targeting $PR_BASE"
+          CHANGED=$(git diff --name-only origin/$PR_BASE...HEAD)
+          if [ "$PR_BASE" = "main-web" ]; then
+            FORBIDDEN=$(echo "$CHANGED" | grep -E '^apps/api/|^pnpm-lock\.yaml$' || true)
+            if [ -n "$FORBIDDEN" ]; then
+              echo "::error::main-web MUST NOT contain apps/api/** or pnpm-lock.yaml"
+              echo "Forbidden files:"
+              echo "$FORBIDDEN"
+              exit 1
+            fi
+            SHARED=$(echo "$CHANGED" | grep -E '^packages/shared-types/' || true)
+            if [ -n "$SHARED" ]; then
+              echo "::warning::shared-types change detected — ensure this is also pushed to main-api"
+            fi
+          elif [ "$PR_BASE" = "main-api" ]; then
+            FORBIDDEN=$(echo "$CHANGED" | grep -E '^apps/web/' || true)
+            if [ -n "$FORBIDDEN" ]; then
+              echo "::error::main-api MUST NOT contain apps/web/**"
+              echo "Forbidden files:"
+              echo "$FORBIDDEN"
+              exit 1
+            fi
+            SHARED=$(echo "$CHANGED" | grep -E '^packages/shared-types/' || true)
+            if [ -n "$SHARED" ]; then
+              echo "::warning::shared-types change detected — ensure this is also pushed to main-web"
+            fi
+          fi
+          echo "==> Branch-path guard passed"
+
+      - name: Determine build target
+        id: target
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if [ "$PR_BASE" = "main-web" ]; then
+            echo "type=web" >> "$GITHUB_OUTPUT"
+          elif [ "$PR_BASE" = "main-api" ]; then
+            echo "type=api" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=api" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Target build: ${{ steps.target.outputs.type }}"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -56,44 +103,60 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma Client
-        run: pnpm exec prisma generate
-
-      - name: TypeScript build
-        id: ts-build
+      - name: Build (main-web)
+        if: steps.target.outputs.type == 'web'
+        id: web-build
+        working-directory: apps/web
         run: |
           set +e
           BUILD_OUTPUT=$(pnpm run build 2>&1)
           BUILD_EXIT_CODE=$?
           set -e
-
           {
             echo "build_output<<ENDOFBUILD"
             echo "$BUILD_OUTPUT"
             echo "ENDOFBUILD"
           } >> "$GITHUB_OUTPUT"
-
           echo "build_exit_code=$BUILD_EXIT_CODE" >> "$GITHUB_OUTPUT"
-
           if [ "$BUILD_EXIT_CODE" -ne 0 ]; then
-            echo "::error::El build de TypeScript falló. Ver detalles abajo."
+            echo "::error::El build de la web app falló."
           fi
+          exit $BUILD_EXIT_CODE
 
+      - name: Build (main-api / default)
+        if: steps.target.outputs.type == 'api'
+        id: api-build
+        working-directory: apps/api
+        run: |
+          pnpm exec prisma generate
+          set +e
+          BUILD_OUTPUT=$(pnpm run build 2>&1)
+          BUILD_EXIT_CODE=$?
+          set -e
+          {
+            echo "build_output<<ENDOFBUILD"
+            echo "$BUILD_OUTPUT"
+            echo "ENDOFBUILD"
+          } >> "$GITHUB_OUTPUT"
+          echo "build_exit_code=$BUILD_EXIT_CODE" >> "$GITHUB_OUTPUT"
+          if [ "$BUILD_EXIT_CODE" -ne 0 ]; then
+            echo "::error::El build de la API falló."
+          fi
           exit $BUILD_EXIT_CODE
 
       - name: Comment on PR if build fails
-        if: failure() && steps.ts-build.outcome == 'failure'
+        if: failure() && (steps.web-build.outcome == 'failure' || steps.api-build.outcome == 'failure')
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const buildOutput = `${{ steps.ts-build.outputs.build_output }}`;
+            const buildOutput = `${{ steps.web-build.outputs.build_output || steps.api-build.outputs.build_output }}`;
             const sha = context.sha.substring(0, 7);
 
             const body = [
-              `## ❌ Build fallido en \`${sha}\``,
+              `## Build fallido en \`${sha}\``,
               '',
-              'El build de TypeScript encontró errores. Por favor corrígelos antes de mergear.',
+              'El build encontró errores. Por favor corrígelos antes de mergear.',
               '',
               '<details>',
               '<summary>Ver output del build</summary>',
@@ -136,6 +199,6 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: botComment.id,
-                body: `## ✅ Build corregido en \`${sha}\`\n\nEl build de TypeScript pasa correctamente.\n\n> *Generado automáticamente por el workflow \`PR Checks\`*`,
+                body: `## Build corregido en \`${sha}\`\n\nEl build pasa correctamente.\n\n> *Generado automáticamente por el workflow \`PR Checks\`*`,
               });
             }
