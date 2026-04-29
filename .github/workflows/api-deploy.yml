@@ -54,6 +54,9 @@ jobs:
             type=sha,format=long,prefix=
             type=raw,value=latest
 
+      - name: Copy lockfile into API context
+        run: cp pnpm-lock.yaml apps/api/
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
