@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug, getRefreshToken } from "@/lib/api";
+import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug, getRefreshToken, isSessionTimedOut } from "@/lib/api";
 import { connectSocket, disconnectSocket, getSocket } from "./use-socket";
 import { queryClient } from "@/lib/queryClient";
 
@@ -61,25 +61,37 @@ function attachWorkspaceUpdateListener() {
 // On page load, if we have a stored refresh token, restore the session silently
 const _storedRefreshToken = getRefreshToken();
 if (_storedRefreshToken && !isLoggedIn()) {
-  _isRestoring = true;
-  _restorePromise = (async () => {
-    try {
-      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000));
-      const r = await Promise.race([api.refresh(_storedRefreshToken), timeout]) as any;
-      setAuthState(r.access_token, getWorkspaceSlug()!, r.refresh_token);
-      const me = await Promise.race([api.getMe(), timeout]) as any;
-      _user = me;
-      setAuthState(r.access_token, me.workspace.slug, r.refresh_token);
-      connectSocket();
-      attachWorkspaceUpdateListener();
-    } catch {
-      clearAuthState();
-      _user = null;
-    } finally {
-      _isRestoring = false;
-      notifyListeners();
-    }
-  })();
+  // Check inactivity timeout — if user was inactive >10min, don't restore
+  if (isSessionTimedOut()) {
+    clearAuthState();
+    _isRestoring = false;
+  } else {
+    _isRestoring = true;
+    _restorePromise = (async () => {
+      try {
+        const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000));
+        const r = await Promise.race([api.refresh(_storedRefreshToken), timeout]) as any;
+        setAuthState(r.access_token, getWorkspaceSlug()!, r.refresh_token);
+        const me = await Promise.race([api.getMe(), timeout]) as any;
+        _user = me;
+        setAuthState(r.access_token, me.workspace.slug, r.refresh_token);
+        connectSocket();
+        attachWorkspaceUpdateListener();
+      } catch {
+        clearAuthState();
+        _user = null;
+        // If restore fails and we have a slug, redirect to login
+        const slug = getWorkspaceSlug();
+        if (slug) {
+          history.replaceState(null, "", "/login");
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        }
+      } finally {
+        _isRestoring = false;
+        notifyListeners();
+      }
+    })();
+  }
 } else if (isLoggedIn()) {
   connectSocket();
   attachWorkspaceUpdateListener();
@@ -126,6 +138,17 @@ export function useAuth() {
     if (isLoggedIn() && (!_user || hasWorkspaceMismatch)) {
       void hydrateUser();
     }
+  }, []);
+
+  // Auto-logout after 10 minutes of inactivity
+  useEffect(() => {
+    if (!isLoggedIn()) return;
+    const interval = setInterval(() => {
+      if (isSessionTimedOut()) {
+        logout();
+      }
+    }, 30000); // check every 30s
+    return () => clearInterval(interval);
   }, []);
 
   const login = async (email: string, password: string, workspaceSlug?: string) => {

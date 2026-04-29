@@ -3,18 +3,28 @@ import { reportClientError } from "@/lib/error-reporting";
 const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ??
   ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
-// ── Auth state (tokens in-memory only; slug in sessionStorage for reload support) ──
+// ── Auth state ──
 let _token: string | null = null;
 let _workspaceSlug: string | null = null;
 let _refreshToken: string | null = null;
+
+// Session timeout: 10 minutes of inactivity
+const INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
+
+function getStorage(): Storage {
+  // Use localStorage for cross-session persistence
+  try { return localStorage; } catch { return sessionStorage; }
+}
 
 export function setAuthState(token: string, slug: string, refreshToken?: string) {
   _token = token;
   _workspaceSlug = slug;
   if (refreshToken) _refreshToken = refreshToken;
+  updateLastActivity();
   try {
-    sessionStorage.setItem('pymes_slug', slug);
-    if (refreshToken) sessionStorage.setItem('pymes_refresh', refreshToken);
+    const s = getStorage();
+    s.setItem('pymes_slug', slug);
+    if (refreshToken) s.setItem('pymes_refresh', refreshToken);
   } catch { /* ignore */ }
 }
 
@@ -23,19 +33,21 @@ export function clearAuthState() {
   _workspaceSlug = null;
   _refreshToken = null;
   try {
-    sessionStorage.removeItem('pymes_slug');
-    sessionStorage.removeItem('pymes_refresh');
+    const s = getStorage();
+    s.removeItem('pymes_slug');
+    s.removeItem('pymes_refresh');
+    s.removeItem('pymes_last_activity');
   } catch { /* ignore */ }
 }
 
 export function getAuthToken() { return _token; }
 export function getWorkspaceSlug() {
   if (_workspaceSlug) return _workspaceSlug;
-  try { return sessionStorage.getItem('pymes_slug') || null; } catch { return null; }
+  try { return getStorage().getItem('pymes_slug') || null; } catch { return null; }
 }
 export function getRefreshToken() {
   if (_refreshToken) return _refreshToken;
-  try { return sessionStorage.getItem('pymes_refresh') || null; } catch { return null; }
+  try { return getStorage().getItem('pymes_refresh') || null; } catch { return null; }
 }
 export function isLoggedIn() { return !!_token; }
 
@@ -429,3 +441,42 @@ export const api = {
     return request<any>("GET", `/api/templates/system?${qs}`);
   },
 };
+
+// ── Session activity tracking ────────────────────────────────────────────
+
+export function updateLastActivity() {
+  try {
+    getStorage().setItem('pymes_last_activity', String(Date.now()));
+  } catch {}
+}
+
+export function isSessionTimedOut(): boolean {
+  try {
+    const ts = getStorage().getItem('pymes_last_activity');
+    if (!ts) return true;
+    return (Date.now() - parseInt(ts, 10)) > INACTIVITY_TIMEOUT_MS;
+  } catch {
+    return true;
+  }
+}
+
+export function getInactivityMs(): number {
+  try {
+    const ts = getStorage().getItem('pymes_last_activity');
+    if (!ts) return INACTIVITY_TIMEOUT_MS;
+    return Date.now() - parseInt(ts, 10);
+  } catch {
+    return INACTIVITY_TIMEOUT_MS;
+  }
+}
+
+// Track user activity to keep session alive
+if (typeof window !== 'undefined') {
+  const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'mousemove'];
+  let throttleTimer: ReturnType<typeof setTimeout> | null = null;
+  const onActivity = () => {
+    if (throttleTimer) return;
+    throttleTimer = setTimeout(() => { throttleTimer = null; updateLastActivity(); }, 5000);
+  };
+  events.forEach(evt => window.addEventListener(evt, onActivity, { passive: true }));
+}
