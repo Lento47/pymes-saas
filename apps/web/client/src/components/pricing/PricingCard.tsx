@@ -92,12 +92,12 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
       {/* Pricing */}
       <div className="mt-6">
         {isEnterprise ? (
-          <div className="text-3xl font-bold text-white">Custom Pricing</div>
+          <div className="text-3xl font-bold text-white">Precio personalizado</div>
         ) : (
           <>
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-bold text-white">${price}</span>
-              <span className="text-muted-foreground">/{isAnnual ? 'year' : 'month'}</span>
+              <span className="text-muted-foreground">/{isAnnual ? 'año' : 'mes'}</span>
             </div>
             <div className="mt-2 text-sm text-muted-foreground">
               ₡{priceCRC.toLocaleString()} / {isAnnual ? 'año' : 'mes'}
@@ -129,7 +129,7 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
       {/* Features List */}
       <div className="mt-8 border-t border-border pt-8">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
-          Features
+          Incluye
         </div>
         <div className="space-y-3">
           {tier.features.map((feature, index) => (
@@ -144,19 +144,19 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
       {/* Limits */}
       <div className="mt-8 border-t border-border pt-8">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
-          Limits
+          Límites
         </div>
         {isEnterprise ? (
           <div className="text-sm text-foreground/75 italic">
-            Contact Sales for custom limits tailored to your business needs
+            Contactá a ventas para límites a la medida de tu negocio
           </div>
         ) : (
           <div className="space-y-2 text-sm text-foreground/75">
-            <div>Contacts: <span className="text-white font-semibold">{tier.limits.contacts.toLocaleString()}</span></div>
-            <div>Invoices/month: <span className="text-white font-semibold">{tier.limits.invoicesPerMonth.toLocaleString()}</span></div>
-            <div>Automations: <span className="text-white font-semibold">{tier.limits.automations}</span></div>
-            <div>Storage: <span className="text-white font-semibold">{tier.limits.storageGB} GB</span></div>
-            <div>Locations: <span className="text-white font-semibold">{tier.limits.locations}</span></div>
+            <div>Contactos: <span className="text-white font-semibold">{tier.limits.contacts.toLocaleString()}</span></div>
+            <div>Facturas/mes: <span className="text-white font-semibold">{tier.limits.invoicesPerMonth.toLocaleString()}</span></div>
+            <div>Automatizaciones: <span className="text-white font-semibold">{tier.limits.automations}</span></div>
+            <div>Almacenamiento: <span className="text-white font-semibold">{tier.limits.storageGB} GB</span></div>
+            <div>Ubicaciones: <span className="text-white font-semibold">{tier.limits.locations}</span></div>
           </div>
         )}
       </div>

@@ -38,10 +38,10 @@ export default function PricingPage() {
               <div className="flex items-center gap-2 sm:gap-4">
                 <LanguageSwitcher variant="marketing" />
                 <Link href="/login" className="font-marketing whitespace-nowrap text-sm font-medium text-white/78 transition hover:text-white">
-                  Log in
+                  Ingresar
                 </Link>
                 <Link href="/login" className="glow-button font-marketing inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
-                  Get Started
+                  Comenzar
                   <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Link>
               </div>
@@ -53,16 +53,16 @@ export default function PricingPage() {
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-4xl text-center">
             <h1 className="font-marketing text-5xl font-extrabold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl">
-              {copy.hero?.title || 'Simple, transparent pricing'}
+              {copy.hero?.title || 'Planes que crecen contigo'}
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-white/70 md:text-xl">
-              {copy.hero?.subtitle || 'Choose the plan that fits your business. Scale as you grow.'}
+              {copy.hero?.subtitle || 'Pagá solo por lo que usás. Cancelá cuando quieras.'}
             </p>
 
             {/* Billing Toggle */}
             <div className="mt-10 flex items-center justify-center gap-4">
               <span className={cn(isAnnual ? 'text-white/85' : 'text-white')}>
-                Monthly
+                Mensual
               </span>
               <button
                 onClick={() => setIsAnnual(!isAnnual)}
@@ -81,11 +81,11 @@ export default function PricingPage() {
                 />
               </button>
               <span className={cn(isAnnual ? 'text-white' : 'text-white/85')}>
-                Annual
+                Anual
               </span>
               {isAnnual && (
                 <span className="ml-2 inline-block rounded-full bg-[#dfff4a]/20 px-3 py-1 text-xs font-semibold text-[#dfff4a]">
-                  Save 15%
+                  ~2 meses gratis
                 </span>
               )}
             </div>
@@ -113,14 +113,14 @@ export default function PricingPage() {
             <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
                 <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-white md:text-4xl">
-                  {copy.addOns?.title || 'Add capacity when you need it'}
+                  {copy.addOns?.title || 'Suma capacidad cuando la necesites'}
                 </h2>
                 <p className="mt-3 max-w-2xl text-base leading-7 text-white/75">
-                  {copy.addOns?.subtitle || 'Keep your base plan simple, then add seats or advanced capabilities as your operation grows.'}
+                  {copy.addOns?.subtitle || 'Mantené tu plan base simple y agregá usuarios pagados conforme crece tu equipo.'}
                 </p>
               </div>
               <p className="rounded-full border border-[#dfff4a]/25 bg-[#dfff4a]/10 px-4 py-2 text-sm font-semibold text-[#efff8a]">
-                {copy.addOns?.note || 'Extra seats are available for paid plans'}
+                  {copy.addOns?.note || 'Usuarios extra disponibles para planes pagados'}
               </p>
             </div>
 
@@ -144,7 +144,7 @@ export default function PricingPage() {
                       </h3>
                       {isSeat && (
                         <span className="rounded-full bg-[#dfff4a] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#071126]">
-                          {copy.addOns?.seatBadge || 'Seat'}
+                          {copy.addOns?.seatBadge || 'Usuario'}
                         </span>
                       )}
                     </div>
@@ -157,11 +157,11 @@ export default function PricingPage() {
                           ${addOn.monthlyUSD}
                         </span>
                         <span className="pb-1 text-xs font-semibold text-white/65">
-                          / {copy.addOns?.month || 'month'}
+                          / {copy.addOns?.month || 'mes'}
                         </span>
                       </div>
                       <div className="mt-2 text-xs font-semibold text-white/65">
-                        ₡{addOn.monthlyCRC.toLocaleString()} / {copy.addOns?.month || 'month'}
+                        ₡{addOn.monthlyCRC.toLocaleString()} / {copy.addOns?.month || 'mes'}
                       </div>
                     </div>
                   </article>
@@ -176,37 +176,37 @@ export default function PricingPage() {
           <div className="mx-auto max-w-7xl">
             <div className="text-center mb-16">
               <h2 className="font-marketing text-3xl md:text-4xl font-bold tracking-[-0.04em] text-white">
-                Clear ROI at Every Level
+                ROI claro en cada nivel
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-white/75">
-                Pay only for what you need. Scale up as your business grows and see immediate improvements in customer response times and revenue.
+                Pagá solo por lo que necesitás. Escalá conforme crece tu negocio y ve mejoras inmediatas en tiempos de respuesta e ingresos.
               </p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
               {/* Starter */}
               <div className="bg-indigo-900/20 border border-indigo-400/15 rounded-2xl p-6 transition-all hover:bg-indigo-900/30">
-                <div className="text-sm font-semibold text-white/75 mb-3">STARTER PLAN</div>
+                <div className="text-sm font-semibold text-white/75 mb-3">                PLAN STARTER</div>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <span className="text-[#dfff4a] font-bold mt-0.5">+</span>
                     <div className="text-sm">
-                      <p className="text-white font-semibold">Save 5-10 hours/week</p>
-                      <p className="text-white/60 text-xs mt-1">Automated message routing & basic responses</p>
+                      <p className="text-white font-semibold">Ahorrá 5-10 horas/semana</p>
+                      <p className="text-white/60 text-xs mt-1">Enrutamiento automático de mensajes y respuestas básicas</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="text-[#dfff4a] font-bold mt-0.5">+</span>
                     <div className="text-sm">
-                      <p className="text-white font-semibold">Respond 3x faster</p>
-                      <p className="text-white/60 text-xs mt-1">Unified inbox for WhatsApp, Email & more</p>
+                      <p className="text-white font-semibold">Respondé 3x más rápido</p>
+                      <p className="text-white/60 text-xs mt-1">Bandeja unificada para WhatsApp, Email y más</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="text-[#dfff4a] font-bold mt-0.5">+</span>
                     <div className="text-sm">
-                      <p className="text-white font-semibold">Ideal for teams 1-5</p>
-                      <p className="text-white/60 text-xs mt-1">Perfect to start improving customer ops</p>
+                      <p className="text-white font-semibold">Ideal para equipos de 1-5</p>
+                      <p className="text-white/60 text-xs mt-1">Perfecto para empezar a mejorar la operación</p>
                     </div>
                   </div>
                 </div>
@@ -214,30 +214,30 @@ export default function PricingPage() {
 
               {/* Growth */}
               <div className="bg-gradient-to-br from-[#dfff4a]/20 to-indigo-900/20 border border-[#dfff4a]/40 rounded-2xl p-6 ring-1 ring-[#dfff4a]/20 transition-all hover:from-[#dfff4a]/30 hover:to-indigo-900/30 relative">
-                <div className="absolute -top-3 left-6 bg-[#dfff4a] text-[#051127] px-3 py-1 rounded-full text-xs font-bold">
-                  Most Popular ROI
-                </div>
-                <div className="text-sm font-semibold text-[#dfff4a] mb-3 mt-2">GROWTH PLAN</div>
+                  <div className="absolute -top-3 left-6 bg-[#dfff4a] text-[#051127] px-3 py-1 rounded-full text-xs font-bold">
+                    ROI más popular
+                  </div>
+                  <div className="text-sm font-semibold text-[#dfff4a] mb-3 mt-2">PLAN GROWTH</div>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <span className="text-[#dfff4a] font-bold mt-0.5">→</span>
                     <div className="text-sm">
-                      <p className="text-white font-semibold">+25-40% faster billing</p>
-                      <p className="text-white/60 text-xs mt-1">Automated invoicing & payment tracking</p>
+                      <p className="text-white font-semibold">+25-40% facturación más rápida</p>
+                      <p className="text-white/60 text-xs mt-1">Facturación automatizada y seguimiento de pagos</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="text-[#dfff4a] font-bold mt-0.5">→</span>
                     <div className="text-sm">
-                      <p className="text-white font-semibold">$500-1000/month revenue gain</p>
-                      <p className="text-white/60 text-xs mt-1">Recover lost invoices, reduce payment delays</p>
+                      <p className="text-white font-semibold">$500-1000/mes en ingresos recuperados</p>
+                      <p className="text-white/60 text-xs mt-1">Recuperá facturas perdidas, reducí demoras de pago</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="text-[#dfff4a] font-bold mt-0.5">→</span>
                     <div className="text-sm">
-                      <p className="text-white font-semibold">Best for teams 5-50</p>
-                      <p className="text-white/60 text-xs mt-1">Scale operations without hiring</p>
+                      <p className="text-white font-semibold">Mejor para equipos de 5-50</p>
+                      <p className="text-white/60 text-xs mt-1">Escalá operaciones sin contratar más</p>
                     </div>
                   </div>
                 </div>
@@ -245,27 +245,27 @@ export default function PricingPage() {
 
               {/* Business+ */}
               <div className="bg-indigo-900/20 border border-indigo-400/15 rounded-2xl p-6 transition-all hover:bg-indigo-900/30">
-                <div className="text-sm font-semibold text-white/75 mb-3">BUSINESS+ PLAN</div>
+                <div className="text-sm font-semibold text-white/75 mb-3">PLAN BUSINESS+</div>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <span className="text-[#dfff4a] font-bold mt-0.5">↑</span>
                     <div className="text-sm">
-                      <p className="text-white font-semibold">Custom integrations</p>
-                      <p className="text-white/60 text-xs mt-1">Sync with your existing CRM & tools</p>
+                      <p className="text-white font-semibold">Integraciones personalizadas</p>
+                      <p className="text-white/60 text-xs mt-1">Sincronizá con tu CRM y herramientas existentes</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="text-[#dfff4a] font-bold mt-0.5">↑</span>
                     <div className="text-sm">
-                      <p className="text-white font-semibold">Dedicated support & training</p>
-                      <p className="text-white/60 text-xs mt-1">Maximize adoption & ROI across team</p>
+                      <p className="text-white font-semibold">Soporte y capacitación dedicados</p>
+                      <p className="text-white/60 text-xs mt-1">Maximizá adopción y ROI en todo el equipo</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="text-[#dfff4a] font-bold mt-0.5">↑</span>
                     <div className="text-sm">
-                      <p className="text-white font-semibold">For enterprise teams</p>
-                      <p className="text-white/60 text-xs mt-1">Unlimited customization & growth</p>
+                      <p className="text-white font-semibold">Para equipos enterprise</p>
+                      <p className="text-white/60 text-xs mt-1">Personalización y crecimiento sin límites</p>
                     </div>
                   </div>
                 </div>
@@ -279,11 +279,11 @@ export default function PricingPage() {
           <div className="mx-auto max-w-7xl">
             <div className="text-center">
               <h2 className="font-marketing text-4xl font-bold tracking-[-0.04em] text-white">
-                {copy.comparison?.title || 'Compare All Features'}
-              </h2>
-              <p className="mx-auto mt-4 max-w-2xl text-white/70">
-                {copy.comparison?.subtitle || 'See what features are included in each plan'}
-              </p>
+              {copy.comparison?.title || 'Qué incluye cada plan'}
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-white/70">
+              {copy.comparison?.subtitle || 'Todos los planes traen bandeja unificada, facturas y automatizaciones.'}
+            </p>
             </div>
 
             <div className="mt-16 overflow-x-auto rounded-xl border border-indigo-400/20 bg-indigo-900/10">
@@ -291,7 +291,7 @@ export default function PricingPage() {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 text-left text-sm font-semibold text-white/80">
-                      Feature
+                      Función
                     </th>
                     {PRICING_TIERS.map((tier) => (
                       <th
@@ -305,11 +305,11 @@ export default function PricingPage() {
                 </thead>
                 <tbody className="divide-y divide-white/10">
                   {[
-                    { label: 'Team Members', key: 'users' },
-                    { label: 'Contacts', key: 'contacts' },
-                    { label: 'Invoices/Month', key: 'invoicesPerMonth' },
-                    { label: 'Automations', key: 'automations' },
-                    { label: 'Storage', key: 'storageGB' },
+                    { label: 'Miembros del equipo', key: 'users' },
+                    { label: 'Contactos', key: 'contacts' },
+                    { label: 'Facturas/mes', key: 'invoicesPerMonth' },
+                    { label: 'Automatizaciones', key: 'automations' },
+                    { label: 'Almacenamiento', key: 'storageGB' },
                   ].map((row) => (
                     <tr key={row.key} className="hover:bg-indigo-900/10 transition">
                       <td className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 text-sm text-white/80">{row.label}</td>
@@ -319,7 +319,7 @@ export default function PricingPage() {
                           <td key={tier.name} className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 text-center">
                             <div className="flex items-center justify-center">
                               {isBusinessPlus ? (
-                                <span className="font-semibold text-white/85 italic">Custom</span>
+                                 <span className="font-semibold text-white/85 italic">Personalizado</span>
                               ) : (
                                 <>
                                   <Check className="h-4 w-4 text-[#dfff4a]" />
@@ -349,10 +349,10 @@ export default function PricingPage() {
           <div className="mx-auto max-w-3xl">
             <div className="text-center">
               <h2 className="font-marketing text-4xl font-bold tracking-[-0.04em] text-white">
-                Frequently Asked Questions
+                Preguntas frecuentes
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-white/70">
-                Have a question? We've got answers.
+                ¿Tenés dudas? Acá están las respuestas.
               </p>
             </div>
 
@@ -366,23 +366,23 @@ export default function PricingPage() {
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="glass-panel luminous-border mx-auto max-w-3xl rounded-3xl p-8 text-center md:p-12">
             <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-white md:text-4xl">
-              {copy.cta?.title || 'Ready to get started?'}
+              {copy.cta?.title || '¿Listo para empezar?'}
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-white/70">
               {copy.cta?.subtitle ||
-                'Join hundreds of businesses using PymeHub to manage customer operations.'}
+                'Cientos de negocios ya usan PymeHub para gestionar sus operaciones.'}
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <button
                 onClick={() => navigate('/login?plan=growth')}
                 className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#dfff4a] to-[#7ff4d2] px-8 py-3 text-[#051127] font-semibold transition hover:translate-y-[-1px]">
-                {copy.cta?.primary || 'Start Free Trial'}
+                {copy.cta?.primary || 'Empezar prueba gratuita'}
                 <ArrowRight className="h-4 w-4" />
               </button>
               <a
                 href={earlyAccessHref}
                 className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/20 bg-indigo-900/20 px-8 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-indigo-900/30">
-                {copy.cta?.secondary || 'Schedule a Demo'}
+                {copy.cta?.secondary || 'Agendar demo'}
               </a>
             </div>
             {copy.cta?.note && (
