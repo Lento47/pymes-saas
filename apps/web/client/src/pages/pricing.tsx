@@ -5,6 +5,7 @@ import { PRICING_TIERS, ADD_ONS, FAQS } from '@/data/pricing.data';
 import { PricingCard } from '@/components/pricing/PricingCard';
 import { FAQSection } from '@/components/pricing/FAQSection';
 import { Button } from '@/components/ui/button';
+import { Footer } from '@/components/marketing/footer';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { BrandLockup } from '@/components/marketing/brand-lockup';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
@@ -18,7 +19,7 @@ export default function PricingPage() {
   const earlyAccessHref = 'mailto:legal@pymeshub.lat?subject=Quiero%20acceso%20anticipado';
 
   return (
-    <div className="dark marketing-canvas relative min-h-screen overflow-hidden text-white">
+    <div className="dark marketing-canvas relative min-h-screen text-white">
       {/* Background Effects */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0)_0%,rgba(5,9,29,0.10)_42%,#05091d_96%)]" />
@@ -31,11 +32,11 @@ export default function PricingPage() {
         {/* Navigation */}
         <section className="px-4 pb-8 pt-6 md:px-8">
           <div className="mx-auto max-w-7xl">
-            <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7">
+            <nav className="glass-panel luminous-border flex flex-wrap items-center justify-between gap-2 rounded-full px-5 py-4 md:px-7">
               <Link href="/">
                 <BrandLockup compact />
               </Link>
-              <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                 <LanguageSwitcher variant="marketing" />
                 <Link href="/login" className="font-marketing whitespace-nowrap text-sm font-medium text-white/78 transition hover:text-white">
                   Ingresar
@@ -393,6 +394,8 @@ export default function PricingPage() {
           </div>
         </section>
       </main>
+
+      <Footer />
     </div>
   );
 }
