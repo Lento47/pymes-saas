@@ -14,6 +14,8 @@ export default defineConfig({
     'import.meta.env.VITE_PADDLE_PRICE_GROWTH_ANNUAL': JSON.stringify(process.env.VITE_PADDLE_PRICE_GROWTH_ANNUAL || 'pri_01kq1bqs2v3hkx3d0mx4wkxsvg'),
     'import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY': JSON.stringify(process.env.VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY || 'pri_01kq0wjzkyncpwaj33m1fppppj'),
     'import.meta.env.VITE_PADDLE_PRICE_ENTERPRISE_ANNUAL': JSON.stringify(process.env.VITE_PADDLE_PRICE_ENTERPRISE_ANNUAL || 'pri_01kq1bgffcm5jp82ytctx9necr'),
+    'import.meta.env.VITE_PADDLE_PRICE_AI_ASSISTANT_MONTHLY': JSON.stringify(process.env.VITE_PADDLE_PRICE_AI_ASSISTANT_MONTHLY || ''),
+    'import.meta.env.VITE_PADDLE_PRICE_AI_ASSISTANT_ANNUAL': JSON.stringify(process.env.VITE_PADDLE_PRICE_AI_ASSISTANT_ANNUAL || ''),
   },
   resolve: {
     dedupe: ["react", "react-dom"],

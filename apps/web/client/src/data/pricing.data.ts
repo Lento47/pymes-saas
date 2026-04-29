@@ -29,6 +29,8 @@ export interface AddOn {
   description: string;
   priceKeyMonthly?: string;
   priceKeyAnnual?: string;
+  paddlePriceIdMonthly?: string;
+  paddlePriceIdAnnual?: string;
 }
 
 export interface FAQ {
@@ -205,6 +207,8 @@ export const ADD_ONS: AddOn[] = [
     monthlyUSD: 39,
     monthlyCRC: 19900,
     description: 'Sugerencias y automatizaciones con inteligencia artificial',
+    paddlePriceIdMonthly: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PADDLE_PRICE_AI_ASSISTANT_MONTHLY) || undefined,
+    paddlePriceIdAnnual: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PADDLE_PRICE_AI_ASSISTANT_ANNUAL) || undefined,
   },
   {
     key: 'approvals_signature',

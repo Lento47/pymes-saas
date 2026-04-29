@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check, Loader2 } from 'lucide-react';
 import { PRICING_TIERS, ADD_ONS, FAQS } from '@/data/pricing.data';
 import { PricingCard } from '@/components/pricing/PricingCard';
 import { FAQSection } from '@/components/pricing/FAQSection';
@@ -9,6 +9,8 @@ import { Footer } from '@/components/marketing/footer';
 import { useI18n } from '@/components/providers/i18n-provider';
 import { BrandLockup } from '@/components/marketing/brand-lockup';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
+import { usePaddle } from '@/hooks/use-paddle';
+import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 
 export default function PricingPage() {
@@ -16,6 +18,9 @@ export default function PricingPage() {
   const [isAnnual, setIsAnnual] = useState(false);
   const { messages } = useI18n();
   const copy = messages.pricing || {};
+  const paddle = usePaddle();
+  const { user, isAuthenticated } = useAuth();
+  const [addOnLoading, setAddOnLoading] = useState<string | null>(null);
   const earlyAccessHref = 'mailto:legal@pymeshub.lat?subject=Quiero%20acceso%20anticipado';
 
   return (
@@ -131,6 +136,38 @@ export default function PricingPage() {
                   copy.addOns?.items as Record<string, { name: string; description: string }> | undefined
                 )?.[addOn.key];
                 const isSeat = addOn.key === 'extra_user';
+                const priceId = addOn.paddlePriceIdMonthly;
+                const isLoading = addOnLoading === addOn.key;
+
+                const handleAddOnPurchase = async () => {
+                  if (!priceId || !paddle) {
+                    navigate('/login?plan=growth');
+                    return;
+                  }
+                  if (isAuthenticated) {
+                    navigate('/settings/billing');
+                    return;
+                  }
+                  setAddOnLoading(addOn.key);
+                  try {
+                    await paddle.Checkout.open({
+                      items: [{ priceId, quantity: 1 }],
+                      customData: {
+                        workspaceSlug: user?.workspace?.slug ?? null,
+                        addon: addOn.key,
+                      },
+                      settings: {
+                        displayMode: 'overlay',
+                        theme: 'dark',
+                        locale: 'en',
+                        successUrl: `${window.location.origin}/login?addon=${addOn.key}`,
+                      },
+                    });
+                  } finally {
+                    setAddOnLoading(null);
+                  }
+                };
+
                 return (
                   <article
                     key={addOn.key}
@@ -165,6 +202,24 @@ export default function PricingPage() {
                         ₡{addOn.monthlyCRC.toLocaleString()} / {copy.addOns?.month || 'mes'}
                       </div>
                     </div>
+                    <button
+                      onClick={handleAddOnPurchase}
+                      disabled={isLoading}
+                      className={cn(
+                        'mt-4 w-full rounded-full px-4 py-2.5 text-sm font-semibold transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed',
+                        isSeat
+                          ? 'glow-button bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] text-[#051127] hover:translate-y-[-1px]'
+                          : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/[0.08]'
+                      )}>
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          {isSeat ? 'Agregar' : 'Comprar'}
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </>
+                      )}
+                    </button>
                   </article>
                 );
               })}
