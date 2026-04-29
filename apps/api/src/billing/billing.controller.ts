@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Post, RawBodyRequest, Req, Res, UseGuards, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Param, Post, RawBodyRequest, Req, Res, UseGuards, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { PaddleService } from './paddle.service';
 import { BillingInvoiceService } from './billing-invoice.service';
+import { ChangePlanDto } from './dto/change-plan.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -25,6 +26,8 @@ import { ApiRole } from '../api-tokens/api-token.guard';
 // ───────────────────────────────────────────────────────────────────────────
 @Controller('billing')
 export class BillingController {
+  private readonly logger = new Logger(BillingController.name);
+
   constructor(
     private readonly paddleService: PaddleService,
     private readonly billingInvoice: BillingInvoiceService,
@@ -60,9 +63,8 @@ export class BillingController {
       return result;
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
-      throw new InternalServerErrorException(
-        `Checkout failed: ${(error as Error).message}`,
-      );
+      this.logger.error(`Checkout failed for workspace=${user.workspace_id}:`, error);
+      throw new InternalServerErrorException('No se pudo iniciar el checkout. Intentalo de nuevo o contacta a soporte.');
     }
   }
 
@@ -82,20 +84,14 @@ export class BillingController {
   @UseGuards(JwtAuthGuard)
   async changePlan(
     @CurrentUser() user: AuthUser,
-    @Body() dto: { priceId: string },
+    @Body() dto: ChangePlanDto,
   ) {
-    if (!dto?.priceId) {
-      throw new BadRequestException('priceId is required');
-    }
-
     try {
-      const result = await this.paddleService.changePlan(user.workspace_id, dto.priceId);
-      return result;
+      return await this.paddleService.changePlan(user.workspace_id, dto.priceId);
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
-      throw new InternalServerErrorException(
-        `Plan change failed: ${(error as Error).message}`,
-      );
+      this.logger.error(`Plan change failed for workspace=${user.workspace_id}:`, error);
+      throw new InternalServerErrorException('No se pudo cambiar el plan. Intentalo de nuevo o contacta a soporte.');
     }
   }
 

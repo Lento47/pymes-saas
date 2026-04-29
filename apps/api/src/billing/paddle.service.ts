@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { Paddle, Environment, LogLevel, type EventEntity } from '@paddle/paddle-node-sdk';
 import { BillingInvoiceService } from './billing-invoice.service';
+import { PLAN_ORDER } from '../common/plan-limits/plan-limits.service';
 import { Resend } from 'resend';
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -208,9 +209,11 @@ export class PaddleService {
     }
 
     // CLASIFICAR UPGRADE VS DOWNGRADE COMPARANDO PLANES INTERNOS.
+    // PLAN_ORDER (FUENTE UNICA EN plan-limits) INCLUYE BUSINESS Y BUSINESS_PLUS.
     const newPlan = this.mapPaddlePriceToPlan(newPriceId);
-    const planRank: Record<string, number> = { FREE: 0, STARTER: 1, GROWTH: 2, ENTERPRISE: 3 };
-    const isDowngrade = (planRank[newPlan] ?? 0) <= (planRank[sub.plan] ?? 0);
+    const newRank = PLAN_ORDER.indexOf(newPlan as typeof PLAN_ORDER[number]);
+    const currentRank = PLAN_ORDER.indexOf(sub.plan as typeof PLAN_ORDER[number]);
+    const isDowngrade = newRank <= currentRank;
 
     // IMPORTANTE — PADDLE RECHAZA 'prorated_immediately' CUANDO LA SUSCRIPCION
     // ESTA EN TRIAL. EN ESE CASO SIEMPRE HAY QUE USAR 'do_not_bill'.
@@ -244,14 +247,18 @@ export class PaddleService {
     const status = this.mapPaddleStatus(updated.status);
     const shouldUpdateNow = !isDowngrade || isTrialing;
     if (shouldUpdateNow) {
-      await this.prisma.workspaceSubscription.update({
-        where: { id: sub.id },
-        data: { plan: newPlan, status: status as any },
-      });
-      await this.prisma.workspace.update({
-        where: { id: workspaceId },
-        data: { plan: newPlan },
-      });
+      // ATOMICO — SI UNA UPDATE FALLA, NINGUNA SE APLICA Y EL WEBHOOK
+      // POSTERIOR (subscription.updated) RECONCILIA EL ESTADO.
+      await this.prisma.$transaction([
+        this.prisma.workspaceSubscription.update({
+          where: { id: sub.id },
+          data: { plan: newPlan, status: status as any },
+        }),
+        this.prisma.workspace.update({
+          where: { id: workspaceId },
+          data: { plan: newPlan },
+        }),
+      ]);
       if (isTrialing) {
         this.logger.log(`Plan changed during trial (no charge now): workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
       } else {
