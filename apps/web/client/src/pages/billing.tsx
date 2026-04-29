@@ -197,10 +197,11 @@ function formatCRC(n: number): string {
   return n === 0 ? "₡0" : `₡${n.toLocaleString("es-CR")}`;
 }
 
-async function fetchSubscription(workspaceSlug: string) {
-  const res = await fetch(`/api/workspaces/current/subscription`);
-  if (!res.ok) throw new Error("Failed to fetch subscription");
-  return res.json();
+// IMPORTANTE: ANTES SE USABA `fetch()` CRUDO AQUI, LO QUE CAUSABA 401 PORQUE
+// NO INCLUIA EL HEADER DE AUTH. AHORA USAMOS `api.getSubscription()` QUE PASA
+// EL JWT AUTOMATICAMENTE. NO REVERTIR.
+async function fetchSubscription(_workspaceSlug: string) {
+  return api.getSubscription();
 }
 
 export default function BillingPage() {
@@ -232,13 +233,33 @@ export default function BillingPage() {
     retry: false,
   });
 
-  // Map Paddle price IDs from env vars (same as pricing page)
+  // ────────────────────────────────────────────────────────────────────────
+  // IMPORTANTE — FUENTE DE VERDAD DE LOS PRICE IDs:
+  // SIEMPRE LEEMOS DESDE EL BACKEND (`api.getBillingPrices()` => pricesData),
+  // NO DESDE `import.meta.env.VITE_PADDLE_PRICE_*`. ASI SOLO HAY QUE
+  // CONFIGURAR PADDLE EN UN LUGAR (RAILWAY: PADDLE_PRICE_*_MONTHLY/ANNUAL).
+  // SI ALGUN DIA SE QUIERE DUPLICAR EN EL FRONT, OK — PERO MANTENER EL
+  // BACKEND COMO FALLBACK PRIMARIO.
+  // PADDLE ESTA EN SANDBOX. CAMBIAR A PROD: ROTAR PADDLE_API_KEY,
+  // PADDLE_WEBHOOK_SECRET, PADDLE_PRICE_*, Y PADDLE_ENVIRONMENT=production
+  // EN RAILWAY.
+  // ────────────────────────────────────────────────────────────────────────
   const paddlePriceIds: Record<string, string> = {
-    starter_monthly: import.meta.env.VITE_PADDLE_PRICE_STARTER_MONTHLY || "",
-    starter_annual: import.meta.env.VITE_PADDLE_PRICE_STARTER_ANNUAL || "",
-    growth_monthly: import.meta.env.VITE_PADDLE_PRICE_GROWTH_MONTHLY || "",
-    growth_annual: import.meta.env.VITE_PADDLE_PRICE_GROWTH_ANNUAL || "",
+    starter_monthly: pricesData?.starter_monthly || "",
+    starter_annual: pricesData?.starter_annual || "",
+    growth_monthly: pricesData?.growth_monthly || "",
+    growth_annual: pricesData?.growth_annual || "",
+    enterprise_monthly: pricesData?.enterprise_monthly || "",
+    enterprise_annual: pricesData?.enterprise_annual || "",
+    business_monthly: pricesData?.enterprise_monthly || "", // ALIAS — `BUSINESS` (UI) MAPEA A `enterprise_*` (BACKEND)
+    business_annual: pricesData?.enterprise_annual || "",
   };
+
+  // ¿EL WORKSPACE YA TIENE SUBSCRIPCION ACTIVA EN PADDLE?
+  // SI SI → CAMBIO DE PLAN (PRORRATEADO) VIA BACKEND.
+  // SI NO → CHECKOUT NUEVO VIA OVERLAY DE PADDLE.
+  const hasActiveSubscription = !!subscription?.provider_subscription_id
+    && subscription.status !== 'CANCELLED';
 
   const handleCheckout = async (tier: PlanTier) => {
     const interval = intervals[tier.key] ?? "monthly";
@@ -251,11 +272,36 @@ export default function BillingPage() {
       } else if (tier.key === "FREE") {
         toast({ title: "Plan gratuito", description: "Ya estás en el plan Free." });
       } else {
+        // IMPORTANTE: ESTE TOAST SOLO DEBERIA APARECER SI EL BACKEND NO TIENE
+        // CONFIGURADAS LAS VARIABLES PADDLE_PRICE_* EN RAILWAY. NO ES UN BUG
+        // DEL FRONT.
         toast({ title: "No disponible", description: "Este plan aún no está configurado para checkout automático." });
       }
       return;
     }
 
+    // PATH DE CAMBIO DE PLAN — USUARIO YA PAGA, SOLO CAMBIAMOS EL PRECIO.
+    // PADDLE PRORRATEA: COBRA LA DIFERENCIA INMEDIATAMENTE EN UPGRADE,
+    // PROGRAMA EL DOWNGRADE PARA EL PROXIMO PERIODO (CERO COBRO HOY).
+    if (hasActiveSubscription) {
+      setLoading(tier.key);
+      try {
+        await api.changePlan(priceId);
+        toast({ title: "Plan actualizado", description: "Tu plan fue cambiado correctamente." });
+        // REFRESCAR SUBSCRIPCION + WORKSPACE PARA QUE LA UI MUESTRE EL NUEVO PLAN
+        await queryClient.invalidateQueries({ queryKey: ["subscription", workspaceSlug] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      } catch (err: any) {
+        toast({ title: "Error al cambiar plan", description: err?.message || "Intentá de nuevo.", variant: "destructive" });
+      } finally {
+        setLoading(null);
+      }
+      return;
+    }
+
+    // PATH DE CHECKOUT NUEVO — PRIMERA SUBSCRIPCION DEL WORKSPACE.
+    // EL OVERLAY DE PADDLE COBRA EL MES COMPLETO Y, AL CONFIRMARSE EL PAGO,
+    // EL WEBHOOK `subscription.activated` ACTUALIZA `workspace.plan`.
     if (!paddle) {
       toast({ title: "Paddle no disponible", description: "El sistema de pagos no está listo. Intentá de nuevo." });
       return;

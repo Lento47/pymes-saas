@@ -282,10 +282,24 @@ export const api = {
   getWorkspace: () => request<any>("GET", "/api/workspaces/current"),
   updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   testAiConnection: (data: any) => request<any>("POST", "/api/workspaces/current/ai/test", data),
+  // ────────────────────────────────────────────────────────────────────────
+  // BILLING — IMPORTANTE: TODOS LOS HELPERS DE BILLING DEBEN USAR `request<>()`
+  // QUE INCLUYE EL HEADER `Authorization: Bearer ...`. NO USAR `fetch()` CRUDO
+  // CONTRA RUTAS PROTEGIDAS — DEVOLVERA 401.
+  // PADDLE ESTA EN SANDBOX. CAMBIAR A PROD EXIGE: (1) ROTAR PADDLE_API_KEY EN
+  // RAILWAY, (2) ROTAR PADDLE_WEBHOOK_SECRET, (3) ACTUALIZAR
+  // PADDLE_PRICE_*_MONTHLY/ANNUAL CON LOS NUEVOS IDs DE PROD,
+  // (4) PADDLE_ENVIRONMENT=production.
+  // ────────────────────────────────────────────────────────────────────────
   createCheckout: (priceId: string) => request<any>("POST", "/api/billing/checkout", { priceId }),
   getBillingPrices: () => request<any>("GET", "/api/billing/prices"),
   getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
   getBillingInvoices: () => request<any>("GET", "/api/billing/invoices"),
+  // SUBSCRIPCION ACTUAL DEL WORKSPACE — USAR ESTE HELPER, NO `fetch()` CRUDO.
+  getSubscription: () => request<any>("GET", "/api/workspaces/current/subscription"),
+  // CAMBIO DE PLAN CON PRORRATEO PARA SUBSCRIPCION YA EXISTENTE.
+  // SI NO HAY SUBSCRIPCION ACTIVA → USAR createCheckout (PADDLE OVERLAY).
+  changePlan: (priceId: string) => request<any>("POST", "/api/billing/change-plan", { priceId }),
   getApiKeys: () => request<any>("GET", "/api/workspaces/current/api-keys"),
   updateApiKeys: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   getMembers: () => request<any>("GET", "/api/workspaces/current/members"),
