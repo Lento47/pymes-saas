@@ -23,7 +23,7 @@ const INCLUDE = {
   channel: { select: { id: true, name: true, type: true } },
 } as const;
 
-@Controller('routing-rules')
+@Controller('routing/rules')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class RoutingController {
   constructor(private readonly prisma: PrismaService) {}
