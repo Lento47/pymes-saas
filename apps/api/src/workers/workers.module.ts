@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, Logger } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
+import IORedis from 'ioredis';
 
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AiModule } from '../ai/ai.module';
@@ -13,6 +14,42 @@ import { AutomationProcessor } from './processors/automation.processor';
 import { FollowupProcessor } from './processors/followup.processor';
 import { SummaryProcessor } from './processors/summary.processor';
 
+const logger = new Logger('WorkersModule');
+let redisWarned = false;
+
+function createRedisConnection(config: ConfigService) {
+  const host = config.get<string>('REDIS_HOST', 'localhost');
+  const port = config.get<number>('REDIS_PORT', 6379);
+  const password = config.get<string>('REDIS_PASSWORD');
+
+  const redis = new IORedis({
+    host,
+    port,
+    password,
+    maxRetriesPerRequest: null,
+    enableOfflineQueue: false,
+    lazyConnect: true,
+    retryStrategy: (times: number) => {
+      if (times > 3) return null;
+      return Math.min(times * 500, 2000);
+    },
+    reconnectOnError: () => false,
+  });
+
+  redis.on('error', (err: any) => {
+    if (err?.code === 'ECONNREFUSED') {
+      if (!redisWarned) {
+        logger.warn('Redis not available — background jobs disabled, using fallback rate limiting');
+        redisWarned = true;
+      }
+    } else {
+      logger.error(`Redis error: ${err?.message ?? err}`);
+    }
+  });
+
+  return redis;
+}
+
 @Module({
   imports: [
     NotificationsModule,
@@ -21,17 +58,7 @@ import { SummaryProcessor } from './processors/summary.processor';
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.get<string>('REDIS_HOST', 'localhost'),
-          port: config.get<number>('REDIS_PORT', 6379),
-          password: config.get<string>('REDIS_PASSWORD'),
-          maxRetriesPerRequest: null,
-          enableOfflineQueue: false,
-          retryStrategy: (times: number) => {
-            if (times > 10) return null;
-            return Math.min(times * 200, 5000);
-          },
-        },
+        connection: createRedisConnection(config),
       }),
     }),
     BullModule.registerQueue(
