@@ -119,7 +119,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-full bg-background">
       {/* Quick Start Checklist */}
-      <div className="px-6 pt-4">
+      <div className="px-4 sm:px-6 pt-3 sm:pt-4">
         <QuickStartChecklist
           progress={workspaceStats?.settings?.quick_start_progress ?? {}}
           onDismiss={() => {}}
@@ -127,35 +127,35 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Greeting + Summary Ribbon ── */}
-      <div className="px-6 pt-5 pb-3">
+      <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-[22px] font-medium text-foreground tracking-tight">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact}</h1>
-            <p className="text-[13px] text-muted-foreground/60 mt-0.5">{dash.subtitle}</p>
+            <h1 className="text-[18px] sm:text-[22px] font-medium text-foreground tracking-tight">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact}</h1>
+            <p className="text-[11px] sm:text-[13px] text-muted-foreground/60 mt-0.5">{dash.subtitle}</p>
           </div>
         </div>
 
         {/* Status banner with image */}
         <div className="relative rounded-xl overflow-hidden border border-border/60 mb-4" style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center right" }}>
-          <div className="flex items-center gap-4 px-5 py-3 relative">
+          <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 relative">
             <div className="flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 text-primary/80" />
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary/80" />
             </div>
-            <div className="flex items-center gap-6 flex-1 overflow-x-auto text-[13px]">
-              <div className="flex items-center gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.revenue}</span><span className={`font-semibold ${revenueClass}`}>{revenueStr}</span><span className="text-muted-foreground/40 text-[11px]">{dash.vsLastMonth}</span></div>
-              <div className="w-px h-5 bg-border/60 shrink-0" />
-              <div className="flex items-center gap-2 shrink-0"><span className="text-muted-foreground/60">{overdueCount} {dash.invoices}</span><span className="font-semibold text-foreground/80">{dash.pending}</span></div>
-              <div className="w-px h-5 bg-border/60 shrink-0" />
-              <div className="flex items-center gap-2 shrink-0"><span className="text-muted-foreground/60">{urgentTasks} {dash.tasks}</span><span className="font-semibold text-foreground/80">{dash.urgent}</span></div>
-              <div className="w-px h-5 bg-border/60 shrink-0" />
-              <div className="flex items-center gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.pipeline}</span><span className={`font-semibold ${activeConvs > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>{pipelineStatus}</span></div>
+            <div className="flex items-center gap-3 sm:gap-6 flex-1 flex-wrap text-[11px] sm:text-[13px]">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.revenue}</span><span className={`font-semibold ${revenueClass}`}>{revenueStr}</span><span className="text-muted-foreground/40 text-[10px] sm:text-[11px]">{dash.vsLastMonth}</span></div>
+              <div className="w-px h-4 sm:h-5 bg-border/60 shrink-0" />
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{overdueCount} {dash.invoices}</span><span className="font-semibold text-foreground/80">{dash.pending}</span></div>
+              <div className="w-px h-4 sm:h-5 bg-border/60 shrink-0" />
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{urgentTasks} {dash.tasks}</span><span className="font-semibold text-foreground/80">{dash.urgent}</span></div>
+              <div className="w-px h-4 sm:h-5 bg-border/60 shrink-0" />
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.pipeline}</span><span className={`font-semibold ${activeConvs > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>{pipelineStatus}</span></div>
             </div>
           </div>
         </div>
       </div>
 
       {/* ── 2-Column Grid ── */}
-      <div className="px-6 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="px-4 sm:px-6 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
         {/* ── Left: Revenue + Today (8 col) ── */}
         <div className="lg:col-span-8 space-y-5">
           {/* Revenue Overview */}
