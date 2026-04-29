@@ -46,7 +46,11 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, initialized, user } = useAuth();
   if (!initialized || (isAuthenticated && !user)) return <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-3"><Loader2 className="w-6 h-6 text-muted-foreground animate-spin" /><span className="text-muted-foreground text-sm">Cargando...</span></div>;
   if (!isAuthenticated) return <Redirect to="/login" />;
-  return <AppSidebar>{children}</AppSidebar>;
+  return (
+    <ThemeProvider>
+      <AppSidebar>{children}</AppSidebar>
+    </ThemeProvider>
+  );
 }
 
 function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
@@ -54,7 +58,11 @@ function PlatformAdminLayout({ children }: { children: React.ReactNode }) {
   if (!initialized || (isAuthenticated && !user)) return <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-3"><Loader2 className="w-6 h-6 text-muted-foreground animate-spin" /><span className="text-muted-foreground text-sm">Cargando...</span></div>;
   if (!isAuthenticated) return <Redirect to="/login" />;
   if (!user?.is_platform_admin) return <Redirect to="/" />;
-  return <AppSidebar>{children}</AppSidebar>;
+  return (
+    <ThemeProvider>
+      <AppSidebar>{children}</AppSidebar>
+    </ThemeProvider>
+  );
 }
 
 function RootRoute() {
@@ -158,14 +166,12 @@ export default function App() {
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
-          <ThemeProvider>
           <TooltipProvider>
             <Toaster />
             <Router hook={useWorkspaceHashLocation}>
               <AppRouter />
             </Router>
           </TooltipProvider>
-          </ThemeProvider>
         </I18nProvider>
       </QueryClientProvider>
     </AppErrorBoundary>
