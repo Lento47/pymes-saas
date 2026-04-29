@@ -136,8 +136,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Status banner with image */}
-        <div className="relative rounded-xl overflow-hidden border border-border/60 mb-4" style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center right" }}>
-          <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 relative">
+        <div className="relative rounded-xl overflow-hidden border border-border/60 mb-4 min-h-[72px] sm:min-h-[88px]" style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center" }}>
+          <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5 relative h-full">
             <div className="flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary/80" />
             </div>
