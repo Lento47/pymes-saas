@@ -116,3 +116,46 @@ Optional: `OPENAI_API_KEY`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`
 - **NEVER delete anything in the database.** Not rows, not tables, not columns. If something needs removal, explain why and ask for explicit permission.
 - **Soft-delete only.** If a feature or data must be deprecated, use `deleted_at` flags, `archived` statuses, or disable flags. Never hard-delete production data.
 - **Migrations must be additive.** New columns, new tables, new enum values are safe. Dropping columns, dropping tables, or removing enum values requires permission.
+
+## Railway architecture (CRITICAL)
+
+The Railway project runs 3 independent containers connected via private DNS:
+
+| Service | Image | Internal DNS | Port | Notes |
+|---|---|---|---|---|
+| `pymes-saasAPI` | Dockerfile | `pymes-saasapi.railway.internal` | 4000 (internal), 8080 (public via Cloudflare) | NestJS app, auto-deploys on push to `main-api` |
+| `Postgres` | `postgres-ssl:18` | `postgres.railway.internal` | 5432 | Provisioned via Railway, `DATABASE_URL` auto-generated |
+| `Redis` | `redis:8.6.2` | `redis.railway.internal` | 6379 | Requires `--requirepass` auth via `REDIS_PASSWORD` |
+
+**How they connect:**
+- **API → Postgres**: via `DATABASE_URL` env var → `PrismaService` (pg Pool adapter at runtime) + `prisma.config.ts` via `env("DATABASE_URL")` (for CLI tools)
+- **API → Redis**: via `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD` env vars → `WorkersModule` (BullMQ) + `RedisThrottlerStorage`
+
+**Critical env vars on pymes-saasAPI:**
+- `DATABASE_URL` — MUST NOT be `localhost`. Railway sets this automatically.
+- `REDIS_HOST` — MUST be `redis.railway.internal` or equivalent private DNS name
+- `REDIS_PASSWORD` — Redis has `--requirepass`, must be set
+- `PORT` — Railway sets this dynamically (maps to container port)
+
+**Build flow:** Dockerfile → `pnpm install` → `prisma generate` → `nest build` → `entrypoint.sh` → `prisma migrate deploy` → `node dist/src/main`
+
+**Health check:** `GET /api/health`, 300s timeout on Railway
+
+**Do NOT hardcode `localhost` for database or Redis URLs.** Use environment variables. On Railway these services are separate containers, never at localhost.
+
+## Tool limitations (PowerShell environment)
+
+The development shell is **PowerShell** on Windows. Several common Unix tools are NOT available:
+
+| Tool | Status | Alternative |
+|---|---|---|
+| `gh` (GitHub CLI) | Not available | Use Git directly or GitHub web UI |
+| `pg` / `psql` | Not available | Use Prisma Studio or Railway CLI |
+| `rg` (ripgrep) | Not available | Use `Select-String` or built-in search tools |
+| `glob` (glob patterns) | Use dedicated Glob tool | Already available in the toolset |
+| `uname` | Not available | Windows is the platform |
+
+Use `pnpm` scripts defined in `package.json` wherever possible instead of direct CLI tools.
+- For DB operations: `pnpm --filter saas-api db:studio` (Prisma Studio)
+- For tests: `pnpm test:api`
+- For build: `pnpm build:api` or `pnpm build:web`
