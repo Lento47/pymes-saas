@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -13,7 +13,7 @@
       // Apply saved theme before page renders to prevent flash
       (function() {
         var t = (function() { try { var v = localStorage.getItem('pymeshub-theme'); return v === 'light' ? v : 'dark'; } catch(e) { return 'dark'; } })();
-        document.documentElement.classList.toggle('dark', t === 'dark');
+        document.documentElement.classList.toggle('light', t === 'light');
         document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#070B14' : '#f2f3f5');
       })();
     </script>
