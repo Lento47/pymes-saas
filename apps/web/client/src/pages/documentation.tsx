@@ -1,6 +1,7 @@
-import { BookOpen, ExternalLink } from "lucide-react";
+import { BookOpen, ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { Footer } from "@/components/marketing/footer";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import {
@@ -106,9 +107,72 @@ export default function DocumentationCenterPage() {
                 </section>
               );
             })}
+            {/* Legal y Cumplimiento — bridge section */}
+            <section className="mt-20 border-t border-white/[0.06] pt-16">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#dfff4a]/8">
+                  <ShieldCheck className="h-5 w-5 text-[#dfff4a]" />
+                </div>
+                <div>
+                  <h2 className="font-marketing text-lg font-semibold tracking-[-0.02em] text-white">
+                    Legal y Cumplimiento
+                  </h2>
+                  <p className="text-sm text-white/40">
+                    Documentos legales que rigen el uso de la Plataforma en Costa Rica.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  {
+                    href: "/legal/terms-of-service",
+                    title: "Términos del Servicio",
+                    desc: "Reglas de acceso, uso, licencia, pagos y responsabilidad contractual.",
+                  },
+                  {
+                    href: "/legal/privacy-policy",
+                    title: "Política de Privacidad",
+                    desc: "Cómo protegemos los datos personales procesados en PymeHub.",
+                  },
+                  {
+                    href: "/legal/cookies-policy",
+                    title: "Política de Cookies",
+                    desc: "Tipos de cookies, finalidad, duración y gestión del consentimiento.",
+                  },
+                ].map((item) => (
+                  <Link key={item.href} href={item.href}>
+                    <a className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-white group-hover:text-white/90">
+                            {item.title}
+                          </h3>
+                          <p className="mt-1 text-xs leading-5 text-white/40">{item.desc}</p>
+                        </div>
+                      </div>
+                    </a>
+                  </Link>
+                ))}
+              </div>
+
+              <div className="mt-6 text-center">
+                <Link href="/legal">
+                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
+                    <ExternalLink className="h-4 w-4" />
+                    Ver todos los documentos legales
+                  </a>
+                </Link>
+              </div>
+            </section>
           </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

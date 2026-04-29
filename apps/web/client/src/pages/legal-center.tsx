@@ -1,146 +1,347 @@
-import { Link } from "wouter";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "wouter";
+import { ArrowLeft, Clock, ExternalLink, Mail, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { Footer } from "@/components/marketing/footer";
+import { useI18n } from "@/components/providers/i18n-provider";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { getDocumentationByCategory, getDocumentationBySlug } from "@/lib/documentation";
+import { cn } from "@/lib/utils";
 
 interface LegalDocumentPageProps {
   slug?: string;
 }
 
+const LEGAL_SLUGS = [
+  "terms-of-service",
+  "privacy-policy",
+  "data-processing-addendum",
+  "acceptable-use-policy",
+  "billing-refunds-policy",
+  "subprocessors-notice",
+  "whatsapp-ai-policy",
+  "cookies-policy",
+];
+
 export function LegalCenterPage() {
-  const docs = getDocumentationByCategory("legal").filter(e => e.visibility === "public");
+  const { messages, locale } = useI18n();
+  const copy = messages.legalCenter;
+  const docs = getDocumentationByCategory("legal").filter((e) => e.visibility === "public");
+
+  useEffect(() => {
+    document.title = "PymeHub | " + copy.title;
+  }, [locale, copy.title]);
 
   return (
-    <div className="min-h-screen bg-[hsl(var(--bg))] px-6 py-10 text-foreground">
-      <div className="mx-auto max-w-5xl space-y-8">
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 p-2">
-              <ShieldCheck className="h-5 w-5 text-sky-300" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white">Centro legal de PyMesHub</h1>
-              <p className="text-sm leading-6 text-[#d3dafb]/76">
-                Documentos públicos para revisar condiciones, privacidad, uso aceptable y tratamiento de datos antes de solicitar acceso.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 text-sm">
-            <Link href="/login">
-              <div className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/12 bg-card px-3 py-2 text-sm text-foreground transition hover:bg-white/[0.06]">
-                <ArrowLeft className="h-4 w-4" />
-                Volver a login
-              </div>
-            </Link>
-          </div>
-        </div>
+    <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-[-10rem] top-[4rem] h-72 w-72 rounded-full bg-[#5870ff]/12 blur-[120px]" />
+        <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#dfff4a]/10 blur-[150px]" />
+        <div className="marketing-grid absolute inset-x-0 bottom-0 h-[32rem] opacity-40" />
+      </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {docs.map((doc) => (
-            <Link key={doc.slug} href={`/legal/${doc.slug}`}>
-              <div className="group h-full cursor-pointer rounded-xl border border-white/12 bg-[hsl(var(--card))] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.22)] transition-all duration-200 hover:border-white/20 hover:bg-[hsl(var(--elevated))]">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-200 transition-colors group-hover:bg-sky-500/16 group-hover:text-white">
-                    <ShieldCheck className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-white">{doc.title}</h3>
-                    <p className="mt-1 text-xs leading-5 text-[#d3dafb]/72">{doc.summary}</p>
-                  </div>
-                </div>
+      <div className="relative z-10 px-4 pb-16 pt-6 md:px-8 md:pb-24">
+        <div className="mx-auto max-w-7xl">
+          <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7">
+            <BrandLockup compact />
+
+            <div className="flex items-center gap-2 md:gap-4">
+              <LanguageSwitcher variant="marketing" />
+              <Link href="/documentation">
+                <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                  {copy.backToDocs}
+                </a>
+              </Link>
+              <Link href="/">
+                <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                  {copy.backToLanding}
+                </a>
+              </Link>
+            </div>
+          </nav>
+
+          <section className="mx-auto max-w-4xl pt-16 text-center md:pt-20">
+            <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+              {copy.eyebrow}
+            </p>
+            <h1 className="font-marketing mt-5 text-5xl font-extrabold leading-[0.98] tracking-[-0.05em] text-white sm:text-6xl md:text-[5rem]">
+              {copy.title}
+            </h1>
+            <p className="mx-auto mt-7 max-w-3xl text-lg leading-8 text-[#c9d0f5]/76 md:text-xl">
+              {copy.description}
+            </p>
+          </section>
+
+          {/* Two-column layout: sidebar TOC + content grid */}
+          <div className="mx-auto mt-16 grid max-w-7xl gap-12 lg:grid-cols-[240px_1fr]">
+            {/* Sticky sidebar */}
+            <aside className="hidden lg:block">
+              <div className="sticky top-12">
+                <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.2em] text-white/40 mb-4">
+                  {copy.sidebarTitle}
+                </h3>
+                <nav className="space-y-1">
+                  {docs.map((doc) => (
+                    <Link key={doc.slug} href={`/legal/${doc.slug}`}>
+                      <a className="block rounded-lg px-3 py-2 text-sm text-white/52 transition hover:bg-white/[0.04] hover:text-white/85">
+                        {doc.title}
+                      </a>
+                    </Link>
+                  ))}
+                </nav>
               </div>
-            </Link>
-          ))}
+            </aside>
+
+            {/* Main content area */}
+            <div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {docs.map((doc) => (
+                  <Link key={doc.slug} href={`/legal/${doc.slug}`}>
+                    <a className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
+                          <ShieldCheck className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-white group-hover:text-white/90">
+                            {doc.title}
+                          </h3>
+                          <p className="mt-1 text-xs leading-5 text-white/40">
+                            {doc.summary}
+                          </p>
+                        </div>
+                      </div>
+                    </a>
+                  </Link>
+                ))}
+              </div>
+
+              <div className="mt-12 rounded-2xl border border-white/[0.06] bg-white/[0.01] p-6 text-center">
+                <Mail className="mx-auto h-5 w-5 text-white/30" />
+                <p className="mt-3 text-sm text-white/50">
+                  {copy.contactPrivacy}{" "}
+                  <a href="mailto:privacidad@pymeshub.lat" className="text-[#dfff4a]/80 underline underline-offset-4 transition hover:text-[#dfff4a]">
+                    privacidad@pymeshub.lat
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }
 
 export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
+  const { messages, locale } = useI18n();
+  const copy = messages.legalCenter;
   const doc = slug ? getDocumentationBySlug(slug) : undefined;
+  const legalDocs = getDocumentationByCategory("legal").filter((e) => e.visibility === "public");
+  const [location] = useLocation();
+
+  useEffect(() => {
+    if (doc) {
+      document.title = "PymeHub | " + doc.title;
+    } else {
+      document.title = "PymeHub | " + copy.notFoundTitle;
+    }
+  }, [locale, doc, copy.notFoundTitle]);
 
   if (!doc || doc.visibility !== "public") {
     return (
-      <div className="min-h-screen bg-[hsl(var(--bg))] px-6 py-10 text-foreground">
-        <div className="mx-auto max-w-3xl space-y-4">
-          <h1 className="text-2xl font-semibold text-white">Documento no disponible</h1>
-          <Link href="/legal">
-            <div className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/12 bg-card px-3 py-2 text-sm text-foreground transition hover:bg-white/[0.06]">
-              <ArrowLeft className="h-4 w-4" />
-              Volver al centro legal
-            </div>
-          </Link>
+      <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute left-[-10rem] top-[4rem] h-72 w-72 rounded-full bg-[#5870ff]/12 blur-[120px]" />
+          <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#dfff4a]/10 blur-[150px]" />
         </div>
+        <div className="relative z-10 px-4 pb-16 pt-6 md:px-8 md:pb-24">
+          <div className="mx-auto max-w-7xl">
+            <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7">
+              <BrandLockup compact />
+              <div className="flex items-center gap-2 md:gap-4">
+                <LanguageSwitcher variant="marketing" />
+                <Link href="/legal">
+                  <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    {copy.backToLegal}
+                  </a>
+                </Link>
+              </div>
+            </nav>
+            <div className="mx-auto max-w-3xl pt-20 text-center">
+              <h1 className="font-marketing text-4xl font-semibold tracking-[-0.04em] text-white md:text-6xl">
+                {copy.notFoundTitle}
+              </h1>
+              <p className="mt-4 text-lg leading-7 text-[#c9d0f5]/60">
+                {copy.notFoundDescription}
+              </p>
+            </div>
+          </div>
+        </div>
+        <Footer />
       </div>
     );
   }
 
+  const currentIndex = LEGAL_SLUGS.indexOf(slug ?? "");
+  const prevDoc = currentIndex > 0 ? LEGAL_SLUGS[currentIndex - 1] : null;
+  const nextDoc = currentIndex < LEGAL_SLUGS.length - 1 ? LEGAL_SLUGS[currentIndex + 1] : null;
+
   return (
-    <div className="min-h-screen bg-[hsl(var(--bg))] px-6 py-10 text-foreground">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div className="space-y-3">
-          <Link href="/legal">
-            <div className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/12 bg-card px-3 py-2 text-sm text-foreground transition hover:bg-white/[0.06]">
-              <ArrowLeft className="h-4 w-4" />
-              Volver al centro legal
+    <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-[-10rem] top-[4rem] h-72 w-72 rounded-full bg-[#5870ff]/12 blur-[120px]" />
+        <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#dfff4a]/10 blur-[150px]" />
+      </div>
+
+      <div className="relative z-10 px-4 pb-16 pt-6 md:px-8 md:pb-24">
+        <div className="mx-auto max-w-7xl">
+          <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7">
+            <BrandLockup compact />
+            <div className="flex items-center gap-2 md:gap-4">
+              <LanguageSwitcher variant="marketing" />
+              <Link href="/legal">
+                <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                  {copy.backToLegal}
+                </a>
+              </Link>
+              <Link href="/documentation">
+                <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                  {copy.backToDocs}
+                </a>
+              </Link>
             </div>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-white">{doc.title}</h1>
-            <p className="mt-2 text-sm leading-6 text-[#d3dafb]/76">{doc.summary}</p>
+          </nav>
+
+          {/* Two-column layout */}
+          <div className="mx-auto mt-12 grid max-w-7xl gap-12 lg:grid-cols-[240px_1fr]">
+            {/* Sticky sidebar TOC */}
+            <aside className="hidden lg:block">
+              <div className="sticky top-12">
+                <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.2em] text-white/40 mb-4">
+                  {copy.sidebarTitle}
+                </h3>
+                <nav className="space-y-1">
+                  {legalDocs.map((legalDoc) => {
+                    const isActive = legalDoc.slug === slug;
+                    return (
+                      <Link key={legalDoc.slug} href={`/legal/${legalDoc.slug}`}>
+                        <a
+                          className={cn(
+                            "block rounded-lg px-3 py-2 text-sm transition",
+                            isActive
+                              ? "bg-white/[0.06] text-[#dfff4a] font-medium"
+                              : "text-white/48 hover:bg-white/[0.04] hover:text-white/80",
+                          )}
+                        >
+                          {legalDoc.title}
+                        </a>
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+            </aside>
+
+            {/* Main content */}
+            <div className="mx-auto w-full max-w-3xl">
+              <Link href="/legal">
+                <a className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
+                  <ArrowLeft className="h-4 w-4" />
+                  {copy.backToLegal}
+                </a>
+              </Link>
+
+              <article className="mt-8">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))]">
+                        <ShieldCheck className="h-5 w-5 text-white/80" />
+                      </div>
+                      <Badge variant="outline" className="border-sky-500/30 bg-sky-500/10 text-sky-300">
+                        {copy.publicBadge}
+                      </Badge>
+                    </div>
+                    <h1 className="font-marketing mt-6 text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">
+                      {doc.title}
+                    </h1>
+                    <p className="mt-4 text-base leading-7 text-[#c9d0f5]/68">
+                      {doc.summary}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-10 space-y-8">
+                  <section>
+                    <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#dfff4a]/72">
+                      {copy.purpose}
+                    </h2>
+                    <p className="mt-3 text-sm leading-7 text-[#bcc5ee]/68">{doc.purpose}</p>
+                  </section>
+
+                  <section>
+                    <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#dfff4a]/72">
+                      {copy.coverage}
+                    </h2>
+                    <ul className="mt-3 space-y-3">
+                      {doc.highlights.map((item, idx) => (
+                        <li
+                          key={item}
+                          className="flex items-start gap-3 rounded-xl border border-white/[0.05] bg-white/[0.01] px-4 py-3"
+                        >
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#dfff4a]/10 text-[10px] font-semibold text-[#dfff4a]/70">
+                            {idx + 1}
+                          </span>
+                          <span className="text-sm leading-6 text-[#bcc5ee]/74">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                </div>
+
+                {/* Previous / Next navigation */}
+                <div className="mt-16 flex items-center justify-between border-t border-white/[0.05] pt-8">
+                  {prevDoc ? (
+                    <Link href={`/legal/${prevDoc}`}>
+                      <a className="group flex items-center gap-2 text-sm text-white/50 transition hover:text-white/80">
+                        <ArrowLeft className="h-4 w-4" />
+                        Anterior
+                      </a>
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                  {nextDoc ? (
+                    <Link href={`/legal/${nextDoc}`}>
+                      <a className="group flex items-center gap-2 text-sm text-white/50 transition hover:text-white/80">
+                        Siguiente
+                        <ArrowLeft className="h-4 w-4 rotate-180" />
+                      </a>
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                </div>
+
+                <div className="mt-8 rounded-xl border border-white/[0.06] bg-white/[0.01] p-5 text-center">
+                  <p className="text-sm text-white/45">
+                    {copy.contactPrivacy}{" "}
+                    <a href="mailto:privacidad@pymeshub.lat" className="text-[#dfff4a]/75 underline underline-offset-4 transition hover:text-[#dfff4a]">
+                      privacidad@pymeshub.lat
+                    </a>
+                  </p>
+                </div>
+              </article>
+            </div>
           </div>
         </div>
-
-        <Card className="border-white/12 bg-card shadow-[0_22px_70px_rgba(0,0,0,0.26)]">
-          <CardContent className="space-y-6 pt-6">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
-                Documento público
-              </Badge>
-              <Badge variant="outline" className="border-border bg-[hsl(var(--elevated))] text-foreground">
-                {doc.audience}
-              </Badge>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">Propósito</p>
-              <p className="text-sm leading-6 text-[#d3dafb]/76">{doc.purpose}</p>
-            </div>
-
-            {!doc.sections && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Cobertura principal</p>
-                <ul className="space-y-2 text-sm text-[#d3dafb]/76">
-                {doc.highlights.map((item) => (
-                  <li key={item} className="rounded-lg border border-white/10 bg-[hsl(var(--elevated))] px-3 py-2">
-                    {item}
-                  </li>
-                ))}
-                </ul>
-              </div>
-            )}
-
-            {doc.sections && (
-              <div className="space-y-8">
-                {doc.sections.map((section) => (
-                  <section key={section.title} className="space-y-3 border-t border-white/10 pt-6 first:border-t-0 first:pt-0">
-                    <h2 className="text-base font-semibold tracking-tight text-white">{section.title}</h2>
-                    <div className="space-y-3">
-                      {section.body.map((paragraph) => (
-                        <p key={paragraph} className="text-sm leading-7 text-[#d3dafb]/80">
-                          {paragraph}
-                        </p>
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
+
+      <Footer />
     </div>
   );
 }

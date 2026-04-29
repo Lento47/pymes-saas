@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { Footer } from "@/components/marketing/footer";
 import { LandingHubby } from "@/components/shared/landing-hubby";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
@@ -60,8 +61,8 @@ function MarketingMenuAction({
   const classes = cn(
     "group block rounded-xl px-4 py-3 text-left transition-all duration-200",
     featured
-      ? "bg-foreground/[0.04] hover:bg-white/[0.08] border border-border/[0.8]"
-      : "hover:bg-foreground/[0.04]"
+      ? "bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06]"
+      : "hover:bg-white/[0.04]"
   );
 
   const content = (
@@ -71,7 +72,7 @@ function MarketingMenuAction({
           "flex h-8 w-8 items-center justify-center rounded-lg shrink-0",
           featured
             ? "bg-[#dfff4a]/10 text-[#dfff4a]"
-            : "bg-white/[0.06] text-white/75 group-hover:text-white/80"
+            : "bg-white/[0.06] text-white/50 group-hover:text-white/80"
         )}>
           <Icon className="h-4 w-4" />
         </div>
@@ -79,7 +80,7 @@ function MarketingMenuAction({
           <h3 className="font-marketing text-sm font-semibold tracking-[-0.01em] text-white group-hover:text-white/90">
             {title}
           </h3>
-          <p className="mt-0.5 text-xs leading-5 text-white/85">{description}</p>
+          <p className="mt-0.5 text-xs leading-5 text-white/40">{description}</p>
         </div>
       </div>
     </>
@@ -178,7 +179,7 @@ function PerformanceChart({ labels }: { labels: readonly string[] }) {
 
 function OrbitGraphic() {
   return (
-    <div className="relative mx-auto mt-8 h-40 w-40 sm:h-48 sm:w-48 md:h-56 md:w-56">
+    <div className="relative mx-auto mt-8 h-56 w-56">
       <div className="absolute inset-0 rounded-full border border-[#5f72ff]/30" />
       <div className="absolute inset-5 rounded-full border border-[#5f72ff]/25" />
       <div className="absolute inset-11 rounded-full border border-[#5f72ff]/20" />
@@ -216,13 +217,9 @@ export default function Landing() {
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [showStickyCTA, setShowStickyCTA] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 60);
-      setShowStickyCTA(window.scrollY > 400);
-    };
+    const onScroll = () => setScrolled(window.scrollY > 60);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -437,7 +434,7 @@ export default function Landing() {
   };
 
   return (
-    <div className="dark marketing-canvas relative overflow-hidden">
+    <div className="relative overflow-hidden bg-[#05091d] text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-0 -translate-x-1/2 overflow-hidden">
           <div className="relative w-[max(1536px,100vw,calc(100vh*1.5))]">
@@ -446,16 +443,17 @@ export default function Landing() {
               alt=""
               aria-hidden="true"
               loading="eager"
-              className="block h-auto w-full max-w-none opacity-100"
+              className="block h-auto w-full max-w-none opacity-[0.92]"
             />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(67,56,202,0.15),transparent_44%),linear-gradient(180deg,rgba(55,48,163,0.08)_0%,rgba(67,56,202,0.25)_24%,rgba(79,56,220,0.50)_78%,#3d1f7d_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,28,88,0.10),transparent_44%),linear-gradient(180deg,rgba(4,8,26,0.04)_0%,rgba(5,9,29,0.18)_24%,rgba(5,9,29,0.64)_78%,#05091d_100%)]" />
           </div>
         </div>
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(67,56,202,0.08)_0%,rgba(79,56,220,0.12)_22%,rgba(88,39,232,0.28)_44%,rgba(102,51,237,0.48)_64%,#3d1f7d_86%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0.04)_0%,rgba(5,9,29,0.06)_22%,rgba(5,9,29,0.18)_44%,rgba(5,9,29,0.42)_64%,#05091d_86%)]" />
         <div className="animate-drift-x absolute left-[-10rem] top-[8rem] h-80 w-80 rounded-full bg-[#5771ff]/16 blur-[110px]" />
         <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#d5ff63]/12 blur-[130px]" />
         <div className="absolute right-[20%] top-[30%] h-72 w-72 rounded-full bg-[#4F6EF7]/8 blur-[100px]" />
         <div className="absolute left-[38%] top-[-4rem] h-64 w-64 rounded-full bg-[#CBFF47]/5 blur-[90px]" />
+        <div className="marketing-grid absolute inset-x-0 bottom-0 h-[36rem] opacity-50" />
       </div>
 
       <main className="relative z-10">
@@ -470,8 +468,8 @@ export default function Landing() {
                 className={cn(
                   "luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7 transition-all duration-300",
                   scrolled
-                    ? "bg-[rgba(5,9,29,0.88)] backdrop-blur-[32px] border border-border/[0.8] shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
-                    : "bg-indigo-900/40 backdrop-blur-md border border-indigo-400/20"
+                    ? "bg-[rgba(5,9,29,0.88)] backdrop-blur-[32px] border border-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
+                    : "glass-panel"
                 )}
                 data-nav-item
               >
@@ -486,12 +484,12 @@ export default function Landing() {
                       onClick={() =>
                         setActiveMenu((current) => (current === item.key ? null : item.key))
                       }
-                      className="font-marketing text-sm font-medium text-white/85 transition hover:text-white"
+                      className="font-marketing text-sm font-medium text-white/78 transition hover:text-white"
                     >
                       {copy.nav[item.key]}
                       <ChevronDown
                         className={cn(
-                          "ml-1 inline h-4 w-4 text-white/70 transition",
+                          "ml-1 inline h-4 w-4 text-white/55 transition",
                           activeMenu === item.key && "rotate-180 text-white"
                         )}
                       />
@@ -505,23 +503,23 @@ export default function Landing() {
                   </div>
                   <div className="hidden md:flex items-center gap-4">
                     <Link href="/pricing">
-                      <a className="font-marketing text-sm font-medium text-white/85 transition hover:text-white">
+                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
                         {copy.nav.pricing}
                       </a>
                     </Link>
                     <Link href="/documentation">
-                      <a className="font-marketing text-sm font-medium text-white/85 transition hover:text-white">
+                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
                         {copy.nav.documentation}
                       </a>
                     </Link>
                     <Link href="/product">
-                      <a className="font-marketing text-sm font-medium text-white/85 transition hover:text-white">
+                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
                         {copy.nav.platform}
                       </a>
                     </Link>
                   </div>
                   <Link href="/login">
-                    <a className="font-marketing hidden sm:block text-sm font-medium text-white/85 transition hover:text-white">
+                    <a className="font-marketing hidden sm:block text-sm font-medium text-white/78 transition hover:text-white">
                       {copy.nav.logIn}
                     </a>
                   </Link>
@@ -534,7 +532,7 @@ export default function Landing() {
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="md:hidden text-white/85 transition hover:text-white flex-shrink-0"
+                    className="md:hidden text-white/78 transition hover:text-white flex-shrink-0"
                   >
                     {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                   </button>
@@ -542,20 +540,20 @@ export default function Landing() {
               </nav>
 
               {mobileMenuOpen && (
-                <div className="md:hidden mt-2 bg-indigo-900/40 backdrop-blur-md border border-indigo-400/20 luminous-border rounded-[28px] p-4" data-mobile-menu>
+                <div className="md:hidden mt-2 glass-panel luminous-border rounded-[28px] p-4" data-mobile-menu>
                   <div className="space-y-2">
                     <Link href="/pricing">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/85 transition hover:text-white hover:bg-white/5 rounded-lg">
+                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.pricing}
                       </a>
                     </Link>
                     <Link href="/documentation">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/85 transition hover:text-white hover:bg-white/5 rounded-lg">
+                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.documentation}
                       </a>
                     </Link>
                     <Link href="/login">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/85 transition hover:text-white hover:bg-white/5 rounded-lg">
+                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.logIn}
                       </a>
                     </Link>
@@ -574,11 +572,11 @@ export default function Landing() {
                   className="absolute inset-x-0 top-full z-20 pt-4 pointer-events-auto"
                   data-nav-dropdown
                 >
-                  <div className="bg-[#3d1f7d]/98 backdrop-blur-xl border border-white/[0.07] rounded-2xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)_inset]">
+                  <div className="bg-[#0a1022]/98 backdrop-blur-xl border border-white/[0.07] rounded-2xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)_inset]">
                     {/* Header row */}
                     <div className="flex items-center justify-between px-6 pt-5 pb-2">
                       <div>
-                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
+                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30">
                           {dropdownMenus[activeMenu].eyebrow}
                         </p>
                         <h2 className="font-marketing mt-1 text-xl font-semibold tracking-[-0.02em] text-white">
@@ -590,7 +588,7 @@ export default function Landing() {
                     <div className="grid gap-3 p-4 pt-2 lg:grid-cols-[1fr_1.5fr]">
                       {/* Left: featured */}
                       <div>
-                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70 px-1 pb-2">
+                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-white/25 px-1 pb-2">
                           {copy.menus[activeMenu].featuredLabel}
                         </p>
                         <MarketingMenuAction
@@ -617,48 +615,48 @@ export default function Landing() {
             </div>
 
             <div className="mx-auto max-w-4xl pt-16 text-center md:pt-20">
-              <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 inline-flex items-center gap-3 rounded-full px-5 py-2.5 text-sm text-white/90">
+              <div className="glass-panel-soft inline-flex items-center gap-3 rounded-full px-5 py-2.5 text-sm text-white/84">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_14px_rgba(223,255,74,0.85)]" />
                 {copy.intro}
               </div>
 
-              <h1 className="font-marketing mt-6 md:mt-8 text-3xl leading-[1.1] tracking-[-0.03em] font-extrabold text-white sm:text-4xl md:text-5xl lg:text-6xl">
+              <h1 className="font-marketing mt-6 md:mt-8 text-[2.5rem] leading-[0.94] tracking-[-0.05em] font-extrabold text-white sm:text-5xl md:text-6xl lg:text-[6.8rem]">
                 {copy.title[0]}
                 <br />
                 {copy.title[1]}
               </h1>
 
-              <p className="mt-4 md:mt-6 text-lg leading-8 tracking-tight text-white/90 sm:text-xl md:text-2xl font-medium">
+              <p
+                className="soft-glow mt-4 md:mt-5 text-[1.6rem] font-medium leading-[0.95] tracking-[-0.045em] text-[#e7ff5a] sm:text-4xl md:text-[4.1rem]"
+                style={{
+                  fontFamily:
+                    'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                }}
+              >
                 {copy.subtitle}
               </p>
 
-              <p className="mx-auto mt-6 md:mt-8 max-w-3xl text-base leading-7 md:text-lg md:leading-8 text-white/90 md:text-xl">
+              <p className="mx-auto mt-6 md:mt-8 max-w-3xl text-base leading-7 md:text-lg md:leading-8 text-[#c9d0f5]/78 md:text-xl">
                 {copy.description}
               </p>
 
-              <div className="mt-10 md:mt-14 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5">
+              <div className="mt-8 md:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                 <Link href="/login">
-                  <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-7 md:px-9 py-4 md:py-4.5 text-base md:text-lg font-bold text-[#071126] transition hover:translate-y-[-2px] shadow-[0_8px_24px_rgba(223,255,74,0.3)]">
+                  <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 md:px-8 py-3.5 md:py-4 text-sm md:text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
                     {copy.primaryCta}
-                    <ArrowRight className="h-5 w-5" />
+                    <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
                   </a>
                 </Link>
                 <Link href="/product">
-                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border-2 border-white/30 bg-white/5 backdrop-blur-sm px-7 md:px-8 py-4 md:py-4.5 text-base md:text-lg font-semibold text-white transition hover:border-white/50 hover:bg-white/10">
+                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
                     {copy.secondaryCta}
                   </a>
                 </Link>
               </div>
 
-              <div className="mt-8 flex items-center justify-center gap-2">
-                <div className="flex gap-3 text-xs md:text-sm text-white/80">
-                  <span>✓ {copy.note.split('. ')[0]}</span>
-                  <span>•</span>
-                  <span>✓ {copy.note.split('. ')[1]}</span>
-                  <span>•</span>
-                  <span>✓ {copy.note.split('. ')[2]}</span>
-                </div>
-              </div>
+              <p className="mt-5 text-sm text-[#c9d0f5]/52">
+                {copy.note}
+              </p>
 
               <div className="mt-8 flex items-center justify-center gap-3">
                 <div className="flex -space-x-2">
@@ -666,19 +664,19 @@ export default function Landing() {
                     <span key={i} className="h-7 w-7 rounded-full border-2 border-[#05091d]" style={{ background: c, opacity: 0.88 }} />
                   ))}
                 </div>
-                <p className="text-sm text-white/80">
+                <p className="text-sm text-[#c9d0f5]/60">
                   Trusted by <span className="font-semibold text-white/80">200+ SMEs</span> across LATAM
                 </p>
               </div>
 
               {/* Mini hero dashboard mockup */}
               <div ref={revealMockup} className="mx-auto mt-14 max-w-2xl reveal-up" style={{ transitionDelay: "120ms" }}>
-                <div className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 luminous-border rounded-[24px] p-4 shadow-[0_40px_100px_rgba(0,0,0,0.55)]">
+                <div className="glass-panel luminous-border rounded-[24px] p-4 shadow-[0_40px_100px_rgba(0,0,0,0.55)]">
                   <div className="mb-3 flex items-center gap-2 px-1">
                     {["#ff5f57","#febc2e","#28c840"].map((c, i) => (
                       <span key={i} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
                     ))}
-                    <span className="ml-2 text-xs text-white/70 font-marketing">PymesHub — Inbox</span>
+                    <span className="ml-2 text-xs text-white/30 font-marketing">PymesHub — Inbox</span>
                   </div>
                   <div className="space-y-2">
                     {[
@@ -686,105 +684,33 @@ export default function Landing() {
                       { ch: "EM", color: "#4F6EF7", name: "Carlos Ríos", msg: "Follow-up scheduled for Friday", time: "14m", dot: false },
                       { ch: "WA", color: "#25D366", name: "Beatriz Salas", msg: "Proposal accepted — pipeline updated", time: "1h", dot: true },
                     ].map((row) => (
-                      <div key={row.name} className="flex items-center gap-3 rounded-xl bg-foreground/[0.03] px-3 py-2.5 hover:bg-white/[0.06] transition-colors">
+                      <div key={row.name} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5 hover:bg-white/[0.06] transition-colors">
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: row.color + "22", color: row.color }}>{row.ch}</span>
                         <div className="min-w-0 flex-1">
                           <p className="font-marketing text-xs font-semibold text-white/90">{row.name}</p>
-                          <p className="truncate text-[11px] text-white/85">{row.msg}</p>
+                          <p className="truncate text-[11px] text-white/40">{row.msg}</p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <span className="text-[10px] text-white/70">{row.time}</span>
+                          <span className="text-[10px] text-white/30">{row.time}</span>
                           {row.dot && <span className="h-1.5 w-1.5 rounded-full bg-[#CBFF47] shadow-[0_0_6px_rgba(203,255,71,0.8)]" />}
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 flex items-center justify-between rounded-xl bg-foreground/[0.015] px-3 py-2">
-                    <span className="text-xs text-white/70">3 active threads · avg reply 6 min</span>
+                  <div className="mt-3 flex items-center justify-between rounded-xl bg-white/[0.02] px-3 py-2">
+                    <span className="text-xs text-white/30">3 active threads · avg reply 6 min</span>
                     <span className="rounded-full bg-[#CBFF47]/10 px-2 py-0.5 text-[10px] font-semibold text-[#CBFF47]">SLA 94%</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Value Props Grid - Mobile & Desktop */}
-            <div className="mt-16">
-              {/* Desktop: 3-column grid */}
-              <div className="hidden md:grid grid-cols-3 gap-6">
-                {/* Inbox/Communication */}
-                <div className="group bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl p-6 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300 group-hover:bg-indigo-400/25">
-                    <img src="/landing-icons/world.png" alt="" className="h-6 w-6" aria-hidden="true" />
-                  </div>
-                  <h3 className="font-marketing mt-4 text-xl font-bold tracking-[-0.02em] text-white">
-                    {copy.overview.inbox.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-white/75">
-                    {copy.overview.inbox.description}
-                  </p>
-                  <div className="mt-5 space-y-2">
-                    {copy.overview.inbox.signals.slice(0, 3).map((signal) => (
-                      <div key={signal.label} className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-300/60" />
-                        <span className="text-xs font-medium text-white/70">{signal.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Performance/Analytics */}
-                <div className="group bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl p-6 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300 group-hover:bg-indigo-400/25">
-                    <img src="/landing-icons/performance.png" alt="" className="h-6 w-6" aria-hidden="true" />
-                  </div>
-                  <h3 className="font-marketing mt-4 text-xl font-bold tracking-[-0.02em] text-white">
-                    {copy.overview.performance.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-white/75">
-                    {copy.overview.performance.description}
-                  </p>
-                  <div className="mt-5 space-y-2">
-                    {copy.overview.performance.stats.slice(0, 3).map(({ label }) => (
-                      <div key={label} className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-300/60" />
-                        <span className="text-xs font-medium text-white/70">{label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Automations */}
-                <div className="group bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl p-6 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300 group-hover:bg-indigo-400/25">
-                    <img src="/landing-icons/Smart-automations.png" alt="" className="h-6 w-6" aria-hidden="true" />
-                  </div>
-                  <h3 className="font-marketing mt-4 text-xl font-bold tracking-[-0.02em] text-white">
-                    {copy.overview.automations.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-white/75">
-                    {copy.overview.automations.description}
-                  </p>
-                  <div className="mt-5 space-y-2">
-                    {[
-                      { step: "New lead", action: "Assign agent" },
-                      { step: "Proposal sent", action: "Schedule reminder" },
-                      { step: "Invoice issued", action: "Send follow-up" },
-                    ].map((chip) => (
-                      <div key={chip.step} className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-300/60" />
-                        <span className="text-xs font-medium text-white/70">{chip.step}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Mobile Carousel */}
-              <div className="md:hidden">
-                <Carousel opts={{ align: "start", loop: true }}>
+            {/* Mobile Carousel */}
+            <div className="md:hidden mt-16">
+              <Carousel opts={{ align: "start", loop: true }}>
                 <CarouselContent>
                   <CarouselItem className="basis-full">
-                    <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[30px] p-6">
+                    <article className="glass-panel rounded-[30px] p-6">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
                         <img
                           src="/landing-icons/world.png"
@@ -793,10 +719,10 @@ export default function Landing() {
                           aria-hidden="true"
                         />
                       </div>
-                      <h2 className="font-marketing mt-6 text-3xl font-bold tracking-[-0.04em] text-white">
+                      <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                         {copy.overview.inbox.title}
                       </h2>
-                      <p className="mt-3 text-sm leading-7 text-white/85">
+                      <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
                         {copy.overview.inbox.description}
                       </p>
 
@@ -804,12 +730,12 @@ export default function Landing() {
                         {copy.overview.inbox.signals.map((signal) => (
                           <div
                             key={signal.label}
-                            className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
+                            className="glass-panel-soft grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
                           >
-                            <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/95">
+                            <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
                               {signal.label}
                             </span>
-                            <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/90">
+                            <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
                               {signal.value}
                             </span>
                           </div>
@@ -832,14 +758,14 @@ export default function Landing() {
                         })}
                       </div>
 
-                      <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 mt-8 rounded-full px-4 py-3 text-sm text-white/85">
+                      <div className="glass-panel-soft mt-8 rounded-full px-4 py-3 text-sm text-white/70">
                         {copy.overview.inbox.footer}
                       </div>
                     </article>
                   </CarouselItem>
 
                   <CarouselItem className="basis-full">
-                    <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[34px] px-6 py-7">
+                    <article className="glass-panel rounded-[34px] px-6 py-7">
                       <div className="flex flex-col gap-6">
                         <div>
                           <div className="flex items-center gap-3">
@@ -852,21 +778,21 @@ export default function Landing() {
                               />
                             </div>
                             <div>
-                              <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-white">
+                              <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
                                 {copy.overview.performance.title}
                               </h2>
-                              <p className="text-sm text-white/85">
+                              <p className="text-sm text-[#bcc5ee]/64">
                                 {copy.overview.performance.description}
                               </p>
                             </div>
                           </div>
 
                           <div className="mt-8">
-                            <p className="text-sm uppercase tracking-[0.25em] text-white/85">
+                            <p className="text-sm uppercase tracking-[0.25em] text-[#aeb6df]/42">
                               {copy.overview.performance.metricLabel}
                             </p>
                             <div className="mt-2 flex items-end gap-3">
-                              <span className="font-marketing text-5xl font-semibold tracking-[-0.04em] text-white">
+                              <span className="font-marketing text-5xl font-semibold tracking-[-0.04em]">
                                 2.45M
                               </span>
                               <span className="rounded-full border border-[#dfff4a]/30 bg-[#dfff4a]/10 px-3 py-1 text-sm font-semibold text-[#dfff4a]">
@@ -876,19 +802,19 @@ export default function Landing() {
                           </div>
                       </div>
 
-                      <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 rounded-2xl px-4 py-3 text-sm text-white/80">
+                      <div className="glass-panel-soft rounded-2xl px-4 py-3 text-sm text-white/72">
                           {copy.overview.performance.timeframe}
                       </div>
                     </div>
 
-                      <div className="mt-8 h-[12rem] sm:h-[14rem] md:h-[18rem] w-full rounded-[28px] border border-indigo-400/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
+                      <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
                         <PerformanceChart labels={copy.overview.performance.chartDays} />
                       </div>
 
                       <div className="mt-7 grid gap-3 sm:grid-cols-3">
                         {copy.overview.performance.stats.map(({ label, value }) => (
-                          <div key={label} className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 rounded-2xl px-4 py-4">
-                            <p className="text-xs uppercase tracking-[0.22em] text-white/85">
+                          <div key={label} className="glass-panel-soft rounded-2xl px-4 py-4">
+                            <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
                               {label}
                             </p>
                             <p className="font-marketing mt-2 text-2xl font-semibold tracking-[-0.03em] text-white/90">
@@ -901,7 +827,7 @@ export default function Landing() {
                   </CarouselItem>
 
                   <CarouselItem className="basis-full">
-                    <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-[30px] p-6">
+                    <article className="glass-panel rounded-[30px] p-6">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
                         <img
                           src="/landing-icons/Smart-automations.png"
@@ -910,18 +836,18 @@ export default function Landing() {
                           aria-hidden="true"
                         />
                       </div>
-                      <h2 className="font-marketing mt-6 text-3xl font-bold tracking-[-0.04em] text-white">
+                      <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                         {copy.overview.automations.title}
                       </h2>
-                      <p className="mt-3 text-sm leading-7 text-white/85">
+                      <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
                         {copy.overview.automations.description}
                       </p>
 
                       <OrbitGraphic />
 
-                      <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 mt-3 rounded-2xl px-4 py-4">
+                      <div className="glass-panel-soft mt-3 rounded-2xl px-4 py-4">
                         <div className="flex items-center justify-between">
-                          <span className="font-marketing text-sm font-semibold text-white/90">
+                          <span className="font-marketing text-sm font-semibold text-white/84">
                             {copy.overview.automations.statusLabel}
                           </span>
                           <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
@@ -934,28 +860,27 @@ export default function Landing() {
                   </CarouselItem>
                 </CarouselContent>
                 <div className="flex justify-center gap-2 mt-4">
-                  <CarouselPrevious className="relative position-static mx-0 text-white hover:text-white/85" />
-                  <CarouselNext className="relative position-static mx-0 text-white hover:text-white/85" />
+                  <CarouselPrevious className="relative position-static mx-0" />
+                  <CarouselNext className="relative position-static mx-0" />
                 </div>
               </Carousel>
-              </div>
             </div>
 
             {/* Desktop Grid */}
-            <div ref={revealCards} className="reveal-up hidden md:grid mt-20 grid gap-6 grid-cols-1 lg:grid-cols-3">
-              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl p-6 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300">
+            <div ref={revealCards} className="reveal-up hidden md:grid mt-16 grid gap-6 xl:grid-cols-[0.95fr_1.7fr_0.95fr]">
+              <article className="glass-panel rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
                   <img
                     src="/landing-icons/world.png"
                     alt=""
-                    className="h-6 w-6 object-contain"
+                    className="h-full w-full object-contain"
                     aria-hidden="true"
                   />
                 </div>
-                <h2 className="font-marketing mt-6 text-2xl font-bold tracking-[-0.03em] text-white">
+                <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                   {copy.overview.inbox.title}
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-white/75">
+                <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
                   {copy.overview.inbox.description}
                 </p>
 
@@ -971,16 +896,16 @@ export default function Landing() {
                       {copy.overview.inbox.signals.map((signal) => (
                         <div
                           key={signal.label}
-                          className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 flex items-center gap-3 rounded-2xl px-4 py-3"
+                          className="glass-panel-soft flex items-center gap-3 rounded-2xl px-4 py-3"
                         >
                           <span
                             className="h-2 w-2 shrink-0 rounded-full"
                             style={{ background: channelColors[signal.label] ?? "#fff", boxShadow: `0 0 8px ${channelColors[signal.label] ?? "#fff"}88` }}
                           />
-                          <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/95">
+                          <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
                             {signal.label}
                           </span>
-                          <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/90">
+                          <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
                             {signal.value}
                           </span>
                         </div>
@@ -1005,35 +930,35 @@ export default function Landing() {
                   })}
                 </div>
 
-                <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 mt-8 rounded-full px-4 py-3 text-sm text-white/85">
+                <div className="glass-panel-soft mt-8 rounded-full px-4 py-3 text-sm text-white/70">
                   {copy.overview.inbox.footer}
                 </div>
               </article>
 
-              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl px-6 py-7 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
-                <div className="flex flex-col gap-6">
+              <article className="glass-panel rounded-[34px] px-6 py-7 md:px-8 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
+                <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(98,118,255,0.34),rgba(82,97,241,0.16))] p-2 text-[#dfe6ff]">
                         <img
                           src="/landing-icons/performance.png"
                           alt=""
-                          className="h-6 w-6 object-contain"
+                          className="h-full w-full object-contain"
                           aria-hidden="true"
                         />
                       </div>
-                      <div className="min-w-0">
-                        <h2 className="font-marketing text-2xl font-bold tracking-[-0.03em] text-white">
+                      <div>
+                        <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
                           {copy.overview.performance.title}
                         </h2>
-                        <p className="mt-1 text-sm text-white/75">
+                        <p className="text-sm text-[#bcc5ee]/64">
                           {copy.overview.performance.description}
                         </p>
                       </div>
                     </div>
 
                     <div className="mt-8">
-                      <p className="text-sm uppercase tracking-[0.25em] text-white/85">
+                      <p className="text-sm uppercase tracking-[0.25em] text-[#aeb6df]/42">
                         {copy.overview.performance.metricLabel}
                       </p>
                       <div className="mt-2 flex items-end gap-3">
@@ -1047,19 +972,19 @@ export default function Landing() {
                     </div>
                 </div>
 
-                <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 rounded-2xl px-4 py-3 text-sm text-white/80">
+                <div className="glass-panel-soft rounded-2xl px-4 py-3 text-sm text-white/72">
                     {copy.overview.performance.timeframe}
                 </div>
               </div>
 
-                <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-indigo-400/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
+                <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
                   <PerformanceChart labels={copy.overview.performance.chartDays} />
                 </div>
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
                   {copy.overview.performance.stats.map(({ label, value }) => (
-                    <div key={label} className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 rounded-2xl px-4 py-4">
-                      <p className="text-xs uppercase tracking-[0.22em] text-white/85">
+                    <div key={label} className="glass-panel-soft rounded-2xl px-4 py-4">
+                      <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
                         {label}
                       </p>
                       <p className="font-marketing mt-2 text-2xl font-semibold tracking-[-0.03em] text-white/90">
@@ -1070,19 +995,19 @@ export default function Landing() {
                 </div>
               </article>
 
-              <article className="bg-indigo-900/20 backdrop-blur-md border border-indigo-400/15 rounded-2xl p-6 transition-all duration-300 hover:bg-indigo-900/30 hover:border-indigo-400/30 hover:shadow-[0_20px_60px_rgba(79,110,247,0.2)]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-300">
+              <article className="glass-panel rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
                   <img
                     src="/landing-icons/Smart-automations.png"
                     alt=""
-                    className="h-6 w-6 object-contain"
+                    className="h-full w-full object-contain"
                     aria-hidden="true"
                   />
                 </div>
-                <h2 className="font-marketing mt-6 text-2xl font-bold tracking-[-0.03em] text-white">
+                <h2 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                   {copy.overview.automations.title}
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-white/75">
+                <p className="mt-3 text-sm leading-7 text-[#b9c1e8]/72">
                   {copy.overview.automations.description}
                 </p>
 
@@ -1094,7 +1019,7 @@ export default function Landing() {
                     { step: "Proposal sent", action: "Schedule reminder", color: "#CBFF47" },
                     { step: "Invoice issued", action: "Send follow-up", color: "#25D366" },
                   ].map((chip) => (
-                    <div key={chip.step} className="flex items-center gap-2 rounded-xl bg-foreground/[0.03] px-3 py-2">
+                    <div key={chip.step} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
                       <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: chip.color, boxShadow: `0 0 6px ${chip.color}99` }} />
                       <span className="font-marketing text-xs text-white/60">{chip.step}</span>
                       <span className="text-white/20 text-xs">→</span>
@@ -1103,9 +1028,9 @@ export default function Landing() {
                   ))}
                 </div>
 
-                <div className="bg-indigo-800/30 backdrop-blur-sm border border-indigo-300/10 mt-3 rounded-2xl px-4 py-4">
+                <div className="glass-panel-soft mt-3 rounded-2xl px-4 py-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-marketing text-sm font-semibold text-white/90">
+                    <span className="font-marketing text-sm font-semibold text-white/84">
                       {copy.overview.automations.statusLabel}
                     </span>
                     <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
@@ -1117,32 +1042,17 @@ export default function Landing() {
               </article>
             </div>
 
-            <div ref={revealTrust} className="reveal-up mt-16 border-t border-border pt-10">
-              <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-white/75">
+            <div ref={revealTrust} className="reveal-up mt-16 border-t border-white/10 pt-10">
+              <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-[#95a0cc]/44">
                 {copy.trustTitle}
               </p>
-              {copy.trustDescription && (
-                <p className="mx-auto mt-4 max-w-3xl text-center text-sm leading-6 text-white/75">
-                  {copy.trustDescription}
-                </p>
-              )}
-              {copy.trustOffer && (
-                <p className="mx-auto mt-3 max-w-3xl text-center text-sm font-semibold leading-6 text-[#efff8a]">
-                  {copy.trustOffer}
-                </p>
-              )}
-              {copy.trustFootnote && (
-                <p className="mt-2 text-center text-xs text-white/65">
-                  {copy.trustFootnote}
-                </p>
-              )}
               <div className="relative mt-7 overflow-hidden">
-                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-[linear-gradient(to_right,#3d1f7d,transparent)]" />
-                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-[linear-gradient(to_left,#3d1f7d,transparent)]" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-[linear-gradient(to_right,#05091d,transparent)]" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-[linear-gradient(to_left,#05091d,transparent)]" />
                 <div className="flex animate-marquee items-center gap-12 whitespace-nowrap">
                   {[...copy.trustSignals, ...copy.trustSignals].map((signal, i) => (
-                    <span key={i} className="font-marketing text-lg font-semibold tracking-[-0.02em] text-white/85 inline-flex items-center gap-2">
-                      <span className="h-1 w-1 rounded-full bg-indigo-400/80" />
+                    <span key={i} className="font-marketing text-lg font-semibold tracking-[-0.02em] text-white/38 inline-flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-[#4F6EF7]/50" />
                       {signal}
                     </span>
                   ))}
@@ -1154,27 +1064,7 @@ export default function Landing() {
 
       </main>
 
-      {/* Sticky Mobile CTA */}
-      <div className={cn(
-        "fixed bottom-0 left-0 right-0 md:hidden z-40 transition-all duration-300 ease-out",
-        showStickyCTA ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
-      )}>
-        <div className="bg-gradient-to-t from-[#3d1f7d] via-[#3d1f7d]/95 to-[#3d1f7d]/90 backdrop-blur-md border-t border-indigo-400/20 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-white mb-1">{copy.primaryCta}</p>
-              <p className="text-xs text-white/70">No credit card required</p>
-            </div>
-            <Link href="/login">
-              <a className="glow-button inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-5 py-2.5 text-sm font-bold text-[#071126] transition hover:scale-105 shadow-[0_4px_12px_rgba(223,255,74,0.3)]">
-                Start
-                <ArrowRight className="h-4 w-4" />
-              </a>
-            </Link>
-          </div>
-        </div>
-      </div>
-
+      <Footer />
       <LandingHubby />
     </div>
   );
