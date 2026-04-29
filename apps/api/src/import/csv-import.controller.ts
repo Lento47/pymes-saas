@@ -48,4 +48,37 @@ export class CsvImportController {
     if (!data.mapping || !data.rows?.length) throw new BadRequestException('Mapping y rows requeridos');
     return this.csvImport.importContacts(workspaceId, data.mapping, data.rows);
   }
+
+  // ─── Invoice CSV Import ───────────────────────────────────────────
+
+  @Post('invoices/parse/:workspaceId')
+  @Roles('ADMIN', 'OWNER')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  async parseInvoicesCsv(@UploadedFile() file: Express.Multer.File, @Param('workspaceId') workspaceId: string) {
+    if (!file) throw new BadRequestException('Archivo CSV requerido');
+    const { headers, rows } = this.csvImport.parseCsv(file.buffer);
+
+    const suggestedMapping: Record<string, string> = {};
+    for (const h of headers) {
+      const lower = h.toLowerCase().trim();
+      if (lower.includes('numero') || lower.includes('number')) suggestedMapping.number = h;
+      else if (lower.includes('monto') || lower.includes('amount') || lower.includes('total')) suggestedMapping.amount = h;
+      else if (lower.includes('cliente') || lower.includes('contact') || lower.includes('nombre')) suggestedMapping.contact_name = h;
+      else if (lower.includes('fecha') || lower.includes('venc')) suggestedMapping.due_date = h;
+      else if (lower.includes('moneda') || lower.includes('currency')) suggestedMapping.currency = h;
+      else if (lower.includes('descrip')) suggestedMapping.description = h;
+    }
+
+    return { headers, suggestedMapping, rows: rows.slice(0, 8), totalRows: rows.length };
+  }
+
+  @Post('invoices/confirm/:workspaceId')
+  @Roles('ADMIN', 'OWNER')
+  async confirmInvoicesImport(
+    @Param('workspaceId') workspaceId: string,
+    @Body() data: { mapping: Record<string, string>; rows: Record<string, string>[] },
+  ) {
+    if (!data.mapping || !data.rows?.length) throw new BadRequestException('Mapping y rows requeridos');
+    return this.csvImport.importInvoices(workspaceId, data.mapping, data.rows);
+  }
 }

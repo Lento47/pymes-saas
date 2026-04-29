@@ -91,6 +91,91 @@ export class CsvImportService {
     return { imported, skipped, errors };
   }
 
+  /** Import invoices from CSV with column mapping */
+  async importInvoices(
+    workspaceId: string,
+    mapping: ColumnMapping,
+    rows: Record<string, string>[],
+  ): Promise<{ imported: number; skipped: number; errors: { row: number; reason: string }[] }> {
+    const errors: { row: number; reason: string }[] = [];
+    let imported = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      try {
+        const amount = parseFloat(this.getMapped(mapping, rows[i], 'amount', '0'));
+        if (isNaN(amount) || amount <= 0) {
+          errors.push({ row: i + 1, reason: 'Monto inválido' });
+          skipped++;
+          continue;
+        }
+
+        const evalResult = await this.planLimits.evaluatePlanLimit(workspaceId, 'invoices_per_month', 1);
+        if (!evalResult.allowed) {
+          errors.push({ row: i + 1, reason: evalResult.message ?? 'Límite de facturas alcanzado' });
+          skipped++;
+          continue;
+        }
+
+        const number = this.getMapped(mapping, rows[i], 'number', `CSV-${Date.now()}-${i}`);
+        const dueDate = this.getMapped(mapping, rows[i], 'due_date', '');
+        const contactName = this.getMapped(mapping, rows[i], 'contact_name', '');
+        const currency = this.getMapped(mapping, rows[i], 'currency', 'CRC');
+        const description = this.getMapped(mapping, rows[i], 'description', '');
+
+        // Try to match contact by name or email
+        let contactId: string | null = null;
+        if (contactName) {
+          const contact = await this.prisma.contact.findFirst({
+            where: {
+              workspace_id: workspaceId,
+              OR: [
+                { full_name: { contains: contactName, mode: 'insensitive' as any } },
+                { company_name: { contains: contactName, mode: 'insensitive' as any } },
+              ],
+            },
+            select: { id: true },
+          });
+          contactId = contact?.id ?? null;
+        }
+
+        // If no contact match, create a basic one
+        if (!contactId) {
+          const c = await this.prisma.contact.create({
+            data: {
+              workspace_id: workspaceId,
+              full_name: contactName || 'Cliente CSV',
+              type: 'CUSTOMER',
+            },
+          });
+          contactId = c.id;
+        }
+
+        await this.prisma.invoice.create({
+          data: {
+            workspace_id: workspaceId,
+            contact_id: contactId,
+            number,
+            amount,
+            currency,
+            status: 'DRAFT',
+            due_date: dueDate ? new Date(dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            issue_date: new Date(),
+            description: description || undefined,
+            document_type: 'FACTURA_ELECTRONICA',
+          },
+        });
+        imported++;
+      } catch (err: any) {
+        errors.push({ row: i + 1, reason: err.message ?? 'Error desconocido' });
+        skipped++;
+      }
+    }
+
+    this.logger.log(`CSV invoice import: ${imported} imported, ${skipped} skipped`);
+    return { imported, skipped, errors };
+  }
+
   private getMapped(mapping: ColumnMapping, row: Record<string, string>, targetField: string, defaultValue: string): string {
     const csvCol = mapping[targetField];
     if (!csvCol) return defaultValue;
