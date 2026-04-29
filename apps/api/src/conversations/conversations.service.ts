@@ -62,8 +62,9 @@ export class ConversationsService {
         take: limit,
         orderBy: { last_message_at: 'desc' },
         // Explicit select — avoids querying columns not yet in DB (migration pending)
-        select: {
-          id: true, workspace_id: true, channel_id: true, contact_id: true,
+      select: {
+        // Explicit column selection avoids querying WhatsApp window columns not yet in DB
+        id: true, workspace_id: true, channel_id: true, contact_id: true,
           subject: true, status: true, priority: true, category: true,
           assigned_user_id: true, last_message_at: true, department_id: true,
           first_response_at: true, resolved_at: true,
