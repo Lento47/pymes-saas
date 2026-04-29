@@ -163,9 +163,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       {/* ── Left Sidebar ── */}
       <aside
         className={cn(
-          "flex flex-col shrink-0 border-r border-border/60 bg-sidebar transition-all duration-300 ease-out",
-          sidebarOpen ? "w-[260px]" : "w-0 lg:w-[260px]",
-          isMobile && "fixed left-0 top-0 h-screen z-50 shadow-lg"
+          "flex flex-col shrink-0 border-r border-border/60 bg-sidebar transition-all duration-300 ease-out overflow-hidden",
+          sidebarOpen ? "w-[260px]" : "w-0 border-r-0",
+          isMobile && "fixed left-0 top-0 h-screen z-50 shadow-lg",
+          isMobile && sidebarOpen && "w-[260px] border-r",
         )}
       >
         {/* ── Mobile Close Button ── */}
