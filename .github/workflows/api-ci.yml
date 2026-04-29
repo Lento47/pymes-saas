@@ -7,10 +7,12 @@ on:
   push:
     branches:
       - main
+      - main-api
       - develop
   pull_request:
     branches:
       - main
+      - main-api
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -28,6 +30,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Info — Context
+        run: |
+          echo "🔍 CI Context"
+          echo "  Branch:    ${{ github.ref_name }}"
+          echo "  Commit:    ${{ github.sha }}"
+          echo "  Actor:     ${{ github.actor }}"
+          echo "  Event:     ${{ github.event_name }}"
+          echo "  Runner:    $(uname -m)"
+          echo "  Node:      $(node -v)"
+          echo "  pnpm:      $(pnpm -v 2>/dev/null || echo 'not installed yet')"
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -41,7 +54,10 @@ jobs:
           cache-dependency-path: apps/api/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --loglevel verbose
+
+      - name: Info — Prisma version
+        run: pnpm exec prisma --version
 
       - name: Generate Prisma Client
         run: pnpm exec prisma generate
@@ -79,6 +95,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Info — Context
+        run: |
+          echo "🔍 CI Context"
+          echo "  Branch:    ${{ github.ref_name }}"
+          echo "  Commit:    ${{ github.sha }}"
+          echo "  DB Host:   localhost:5432"
+          echo "  DB Name:   test_db"
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -92,7 +116,7 @@ jobs:
           cache-dependency-path: apps/api/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --loglevel verbose
 
       - name: Generate Prisma Client
         run: pnpm exec prisma generate
@@ -100,5 +124,5 @@ jobs:
       - name: Run Prisma migrations
         run: pnpm exec prisma migrate deploy
 
-      - name: Run tests
-        run: pnpm test
+      - name: Run tests (verbose)
+        run: pnpm test -- --verbose --detectOpenHandles

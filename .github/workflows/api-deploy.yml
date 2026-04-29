@@ -32,6 +32,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Info — Context
+        run: |
+          echo "🔍 Deploy Context"
+          echo "  Branch:    ${{ github.ref_name }}"
+          echo "  Commit:    ${{ github.sha }}"
+          echo "  Actor:     ${{ github.actor }}"
+          echo "  Image:     ${{ env.IMAGE }}"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -66,6 +74,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Verbose build output
+          build-args: |
+            BUILDKIT_PROGRESS=plain
 
   deploy:
     name: Deploy to Production
@@ -91,27 +102,43 @@ jobs:
             set -euo pipefail
             IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/api"
 
+            echo "============================================"
+            echo "==> 🔍 Deploy Info"
+            echo "    Image:    ${IMAGE}"
+            echo "    SHA:      ${{ github.sha }}"
+            echo "    Time:     $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "    Host:     $(hostname)"
+            echo "============================================"
+
             echo "==> Autenticando en ghcr.io..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
-              -u ${{ github.actor }} --password-stdin
+              -u ${{ github.actor }} --password-stdin 2>&1 | tail -1
 
             echo "==> Pulling nueva imagen..."
-            docker pull "${IMAGE}:${{ github.sha }}"
+            docker pull "${IMAGE}:${{ github.sha }}" 2>&1
 
-            echo "==> Actualizando imagen latest localmente..."
-            docker tag "${IMAGE}:${{ github.sha }}" "${IMAGE}:latest"
+            echo "==> Imagen actual:"
+            docker images "${IMAGE}" --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"
 
             echo "==> Actualizando stack con zero-downtime..."
             cd /opt/app
-            docker compose pull api
-            docker compose up -d --no-deps api
+            docker compose pull api 2>&1
+            docker compose up -d --no-deps api 2>&1
+
+            echo "==> Estado de contenedores:"
+            docker compose ps
 
             echo "==> Ejecutando migraciones Prisma..."
-            docker exec api pnpm exec prisma migrate deploy
+            docker exec api pnpm exec prisma migrate deploy 2>&1
 
-            echo "==> Deploy completado exitosamente."
-            echo "    Imagen: ghcr.io/${{ github.repository }}/api:${{ github.sha }}"
+            echo "==> Logs recientes del contenedor:"
+            docker logs api --tail 20
+
+            echo "============================================"
+            echo "==> ✅ Deploy completado exitosamente."
+            echo "    Imagen: ${IMAGE}:${{ github.sha }}"
             echo "    Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "============================================"
 
       - name: Verify deployment health
         uses: appleboy/ssh-action@v1.0.3
@@ -129,14 +156,18 @@ jobs:
             count=0
 
             echo "==> Health check: esperando que la API responda..."
-            until curl -sf "${APP_URL}/api/health" > /dev/null 2>&1; do
+            until curl -sv "${APP_URL}/api/health" 2>&1 | tee /tmp/health.log | grep -q "200\|ok\|healthy"; do
               count=$((count + 1))
               if [ "$count" -ge "$MAX_RETRIES" ]; then
                 echo "ERROR: Health check falló después de $((MAX_RETRIES * RETRY_INTERVAL))s."
+                echo "Último intento:"
+                cat /tmp/health.log
+                echo "Logs del contenedor:"
+                docker logs api --tail 30
                 exit 1
               fi
               echo "    Intento $count/$MAX_RETRIES — reintentando en ${RETRY_INTERVAL}s..."
               sleep "$RETRY_INTERVAL"
             done
 
-            echo "==> API respondiendo correctamente. Deploy exitoso."
+            echo "==> ✅ API respondiendo correctamente. Deploy exitoso."
