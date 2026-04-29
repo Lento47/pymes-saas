@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { queryClient } from "@/lib/queryClient";
+import { HelpButton } from "@/components/shared/help-button";
 import {
   Crown, ArrowUpRight, ArrowDownRight, Check, Loader2, Info,
   Users, Zap, Receipt, FolderOpen, Database, TrendingUp,
@@ -721,6 +722,8 @@ function BillingHistory() {
           </div>
         ))}
       </div>
+
+      <HelpButton page="Facturación" />
     </div>
   );
 }

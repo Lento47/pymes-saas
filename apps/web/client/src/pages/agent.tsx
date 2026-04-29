@@ -10,6 +10,7 @@ import {
   ArrowUp,
   Loader2,
   CheckCircle2,
+  LifeBuoy,
   UserPlus,
   ClipboardCheck,
   TrendingUp,
@@ -94,6 +95,8 @@ export default function Agent() {
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
   const [activeForm, setActiveForm] = useState<EmbeddedForm | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [escalating, setEscalating] = useState(false);
+  const [escalated, setEscalated] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -191,6 +194,23 @@ export default function Agent() {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+
+  const handleEscalate = async () => {
+    if (escalating || escalated) return;
+    setEscalating(true);
+    try {
+      const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+      await api.escalateToSupport(
+        lastUserMsg?.content || 'Escalación desde el Asistente IA',
+        'MEDIUM',
+      );
+      setEscalated(true);
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo crear la escalación');
+    } finally {
+      setEscalating(false);
+    }
   };
 
   const hasMessages = messages.length > 0;
@@ -412,6 +432,25 @@ export default function Agent() {
       {/* Input */}
       <div className="relative shrink-0 px-4 pb-5 pt-2">
         <div className="max-w-[720px] mx-auto">
+          {/* Escalation */}
+          <div className="flex justify-center mb-2">
+            <button onClick={handleEscalate} disabled={escalating || escalated}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-medium transition-all duration-200 disabled:opacity-40 hover:scale-[1.02]"
+              style={{
+                background: escalated ? 'hsl(var(--success) / 0.10)' : 'hsl(var(--warning)/0.08)',
+                border: escalated ? '1px solid hsl(var(--success)/0.2)' : '1px solid hsl(var(--warning)/0.12)',
+                color: escalated ? 'hsl(var(--success))' : 'hsl(var(--warning)/0.8)',
+              }}>
+              {escalated ? (
+                <><CheckCircle2 style={{ width: 11, height: 11 }} /> Ticket creado</>
+              ) : escalating ? (
+                <><Loader2 style={{ width: 11, height: 11 }} className="animate-spin" /> Creando ticket...</>
+              ) : (
+                <><LifeBuoy style={{ width: 11, height: 11 }} /> Escalar a soporte humano</>
+              )}
+            </button>
+          </div>
+
           {/* Quick actions */}
           <div className="flex items-center gap-1.5 mb-2.5 flex-wrap justify-center">
             {QUICK_FORMS.map(qf => (

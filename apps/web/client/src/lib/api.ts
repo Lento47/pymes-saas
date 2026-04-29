@@ -415,6 +415,8 @@ export const api = {
   askAssistant: (prompt: string) => request<any>("POST", "/api/workspaces/current/ai/assist", { prompt }),
   createAgentStream: (message: string, conversationId?: string) => request<any>("POST", "/api/agent/stream", { message, conversationId }),
   executeAgentTool: (tool: string, args?: any) => request<any>("POST", "/api/agent/tool", { tool, args }),
+  escalateToSupport: (summary: string, severity?: string, evidence?: Record<string, any>) =>
+    request<any>("POST", "/api/agent/escalate", { summary, severity, evidence }),
   // Routing rules
   getRoutingRules: () => request<any>("GET", "/api/routing/rules"),
   createRoutingRule: (data: any) => request<any>("POST", "/api/routing/rules", data),
