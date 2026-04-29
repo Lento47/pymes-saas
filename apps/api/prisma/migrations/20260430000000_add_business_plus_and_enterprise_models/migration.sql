@@ -359,26 +359,26 @@ ALTER TABLE "contact_sales_inquiries" ADD CONSTRAINT "contact_sales_inquiries_wo
 -- ============================================================
 
 -- SLA policies
-INSERT INTO "sla_policies" ("id", "key", "name", "support_window", "first_response_target_minutes", "resolution_target_hours", "uptime_target_percent", "applies_to_plan", "requires_contract", "description")
+INSERT INTO "sla_policies" ("id", "key", "name", "support_window", "first_response_target_minutes", "resolution_target_hours", "uptime_target_percent", "applies_to_plan", "requires_contract", "description", "created_at", "updated_at")
 VALUES
-  (gen_random_uuid(), 'standard', 'Standard SLA', 'Mon-Fri 8am-6pm CST', 240, 24, 99.0, 'BUSINESS_PLUS', false, 'Standard business-hours support with 4h first response target and 24h resolution target.'),
-  (gen_random_uuid(), 'priority', 'Priority SLA', 'Mon-Sat 7am-10pm CST', 60, 8, 99.5, 'BUSINESS_PLUS', false, 'Priority support with 1h first response target, 8h resolution, and extended hours.'),
-  (gen_random_uuid(), 'custom', 'Custom SLA', NULL, NULL, NULL, NULL, 'BUSINESS_PLUS', true, 'Fully customized SLA defined by contract terms.')
+  (gen_random_uuid(), 'standard', 'Standard SLA', 'Mon-Fri 8am-6pm CST', 240, 24, 99.0, 'BUSINESS_PLUS', false, 'Standard business-hours support with 4h first response target and 24h resolution target.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'priority', 'Priority SLA', 'Mon-Sat 7am-10pm CST', 60, 8, 99.5, 'BUSINESS_PLUS', false, 'Priority support with 1h first response target, 8h resolution, and extended hours.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'custom', 'Custom SLA', NULL, NULL, NULL, NULL, 'BUSINESS_PLUS', true, 'Fully customized SLA defined by contract terms.', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT ("key") DO NOTHING;
 
 -- Business+ capabilities
-INSERT INTO "business_plus_capabilities" ("id", "key", "name", "description", "status", "visible_on_pricing", "visible_in_admin", "requires_sales_approval", "requires_setup")
+INSERT INTO "business_plus_capabilities" ("id", "key", "name", "description", "status", "visible_on_pricing", "visible_in_admin", "requires_sales_approval", "requires_setup", "created_at", "updated_at")
 VALUES
-  (gen_random_uuid(), 'custom_limits', 'Custom Limits', 'Configurable plan limits per workspace', 'BEHIND_FEATURE_FLAG', true, true, false, true),
-  (gen_random_uuid(), 'sso_saml', 'SSO / SAML', 'Single Sign-On via SAML 2.0', 'PARTIAL', true, true, false, true),
-  (gen_random_uuid(), 'sla_options', 'SLA Options', 'Service Level Agreements with defined response/resolution targets', 'PARTIAL', true, true, false, false),
-  (gen_random_uuid(), 'dedicated_onboarding', 'Dedicated Onboarding', 'Personalized onboarding with project tracking', 'ROADMAP', true, true, true, true),
-  (gen_random_uuid(), 'custom_workflows', 'Custom Workflows', 'Tailored workflow automations', 'PARTIAL', true, true, true, true),
-  (gen_random_uuid(), 'advanced_security', 'Advanced Security', 'Enhanced security controls and compliance features', 'PARTIAL', true, true, false, true),
-  (gen_random_uuid(), 'dedicated_support', 'Dedicated Support', 'Priority support channel with named contacts', 'DISABLED', true, true, true, false),
-  (gen_random_uuid(), 'custom_contract', 'Custom Contract', 'Negotiated contract terms and billing arrangements', 'DISABLED', true, true, true, false),
-  (gen_random_uuid(), 'custom_data_migration', 'Custom Data Migration', 'Structured data import and migration assistance', 'REQUIRES_CONFIGURATION', false, true, true, true),
-  (gen_random_uuid(), 'advanced_reporting', 'Advanced Reporting', 'Custom reports and analytics dashboards', 'PARTIAL', false, true, false, false),
-  (gen_random_uuid(), 'admin_configuration', 'Admin-Level Configuration', 'Enterprise admin controls and workspace management', 'PARTIAL', false, true, false, false),
-  (gen_random_uuid(), 'omnichannel_routing', 'Omnichannel Routing', 'Cross-channel conversation routing rules', 'PARTIAL', false, true, false, false)
+  (gen_random_uuid(), 'custom_limits', 'Custom Limits', 'Configurable plan limits per workspace', 'BEHIND_FEATURE_FLAG', true, true, false, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'sso_saml', 'SSO / SAML', 'Single Sign-On via SAML 2.0', 'PARTIAL', true, true, false, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'sla_options', 'SLA Options', 'Service Level Agreements with defined response/resolution targets', 'PARTIAL', true, true, false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'dedicated_onboarding', 'Dedicated Onboarding', 'Personalized onboarding with project tracking', 'ROADMAP', true, true, true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'custom_workflows', 'Custom Workflows', 'Tailored workflow automations', 'PARTIAL', true, true, true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'advanced_security', 'Advanced Security', 'Enhanced security controls and compliance features', 'PARTIAL', true, true, false, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'dedicated_support', 'Dedicated Support', 'Priority support channel with named contacts', 'DISABLED', true, true, true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'custom_contract', 'Custom Contract', 'Negotiated contract terms and billing arrangements', 'DISABLED', true, true, true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'custom_data_migration', 'Custom Data Migration', 'Structured data import and migration assistance', 'REQUIRES_CONFIGURATION', false, true, true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'advanced_reporting', 'Advanced Reporting', 'Custom reports and analytics dashboards', 'PARTIAL', false, true, false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'admin_configuration', 'Admin-Level Configuration', 'Enterprise admin controls and workspace management', 'PARTIAL', false, true, false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (gen_random_uuid(), 'omnichannel_routing', 'Omnichannel Routing', 'Cross-channel conversation routing rules', 'PARTIAL', false, true, false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT ("key") DO NOTHING;
