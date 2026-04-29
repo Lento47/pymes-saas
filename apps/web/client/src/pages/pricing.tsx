@@ -198,9 +198,6 @@ export default function PricingPage() {
                           / {copy.addOns?.month || 'mes'}
                         </span>
                       </div>
-                      <div className="mt-2 text-xs font-semibold text-white/65">
-                        ₡{addOn.monthlyCRC.toLocaleString()} / {copy.addOns?.month || 'mes'}
-                      </div>
                     </div>
                     <button
                       onClick={handleAddOnPurchase}

@@ -1,9 +1,7 @@
 export interface PricingTier {
   name: string;
   monthlyUSD: number;
-  monthlyCRC: number;
   annualUSD: number;
-  annualCRC: number;
   description: string;
   users: number;
   features: string[];
@@ -25,7 +23,6 @@ export interface AddOn {
   key: string;
   name: string;
   monthlyUSD: number;
-  monthlyCRC: number;
   description: string;
   priceKeyMonthly?: string;
   priceKeyAnnual?: string;
@@ -42,9 +39,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     name: 'Starter',
     monthlyUSD: 25,
-    monthlyCRC: 12900,
     annualUSD: 250,
-    annualCRC: 129000,
     description: 'Empieza a organizar tus clientes y facturas',
     users: 1,
     features: [
@@ -70,9 +65,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     name: 'Growth',
     monthlyUSD: 59,
-    monthlyCRC: 29900,
     annualUSD: 590,
-    annualCRC: 299000,
     description: 'El mejor plan para negocios que quieren control',
     users: 5,
     features: [
@@ -103,9 +96,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     name: 'Business',
     monthlyUSD: 119,
-    monthlyCRC: 59900,
     annualUSD: 1190,
-    annualCRC: 599000,
     description: 'Control avanzado para equipos en crecimiento',
     users: 15,
     features: [
@@ -137,9 +128,7 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     name: 'Business+',
     monthlyUSD: 0,
-    monthlyCRC: 0,
     annualUSD: 0,
-    annualCRC: 0,
     description: 'Para pymes con operaciones avanzadas',
     users: 999,
     features: [
@@ -182,7 +171,6 @@ export const ADD_ONS: AddOn[] = [
     key: 'extra_user',
     name: 'Usuario extra',
     monthlyUSD: 8,
-    monthlyCRC: 4000,
     description: 'Agrega otro compañero sin cambiar de plan',
     priceKeyMonthly: 'extra_user_monthly',
     priceKeyAnnual: 'extra_user_annual',
@@ -191,21 +179,18 @@ export const ADD_ONS: AddOn[] = [
     key: 'whatsapp_premium',
     name: 'WhatsApp Premium',
     monthlyUSD: 19,
-    monthlyCRC: 9900,
     description: 'Analíticas y funciones avanzadas de WhatsApp',
   },
   {
     key: 'advanced_inventory',
     name: 'Inventario avanzado',
     monthlyUSD: 29,
-    monthlyCRC: 14900,
     description: 'Gestión completa de inventario y seguimiento',
   },
   {
     key: 'ai_assistant',
     name: 'Asistente IA',
     monthlyUSD: 29,
-    monthlyCRC: 14900,
     description: 'Sugerencias y automatizaciones con inteligencia artificial',
     paddlePriceIdMonthly: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PADDLE_PRICE_AI_ASSISTANT_MONTHLY) || undefined,
     paddlePriceIdAnnual: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PADDLE_PRICE_AI_ASSISTANT_ANNUAL) || undefined,
@@ -214,7 +199,6 @@ export const ADD_ONS: AddOn[] = [
     key: 'approvals_signature',
     name: 'Aprobaciones y firma digital',
     monthlyUSD: 25,
-    monthlyCRC: 12900,
     description: 'Flujos de aprobación y firma digital integrada',
   },
 ];

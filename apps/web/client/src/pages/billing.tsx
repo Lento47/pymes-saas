@@ -24,7 +24,6 @@ interface PlanTier {
   key: string;
   name: string;
   description: string;
-  monthlyCRC: number;
   monthlyUSD: number;
   usersLabel: string;
   highlights: string[];
@@ -39,7 +38,6 @@ const PLAN_TIERS: PlanTier[] = [
     key: "FREE",
     name: "Free",
     description: "Para empezar a organizar tu operación sin costo.",
-    monthlyCRC: 0,
     monthlyUSD: 0,
     usersLabel: "1 usuario",
     highlights: [
@@ -63,7 +61,6 @@ const PLAN_TIERS: PlanTier[] = [
     key: "STARTER",
     name: "Starter",
     description: "Ideal para dueños que empiezan a ordenar clientes y facturas.",
-    monthlyCRC: 12900,
     monthlyUSD: 25,
     usersLabel: "1 usuario incluido",
     highlights: [
@@ -88,7 +85,6 @@ const PLAN_TIERS: PlanTier[] = [
     key: "GROWTH",
     name: "Growth",
     description: "Para equipos en crecimiento que necesitan flujos avanzados.",
-    monthlyCRC: 29900,
     monthlyUSD: 59,
     usersLabel: "5 usuarios incluidos",
     highlights: [
@@ -113,7 +109,6 @@ const PLAN_TIERS: PlanTier[] = [
     key: "BUSINESS",
     name: "Business",
     description: "Control avanzado para operaciones que no pueden frenar.",
-    monthlyCRC: 59900,
     monthlyUSD: 119,
     usersLabel: "15 usuarios incluidos",
     highlights: [
@@ -139,7 +134,6 @@ const PLAN_TIERS: PlanTier[] = [
     key: "BUSINESS_PLUS",
     name: "Business+",
     description: "Para pymes con operaciones avanzadas y necesidades a medida.",
-    monthlyCRC: 0,
     monthlyUSD: 0,
     usersLabel: "usuarios personalizados",
     highlights: [
@@ -191,10 +185,6 @@ function getPlanRelation(currentPlan: string, tierKey: string): PlanRelation {
   if (tierIdx > currentIdx) return "upgrade";
   if (tierIdx === currentIdx) return "current";
   return "downgrade";
-}
-
-function formatCRC(n: number): string {
-  return n === 0 ? "₡0" : `₡${n.toLocaleString("es-CR")}`;
 }
 
 // IMPORTANTE: ANTES SE USABA `fetch()` CRUDO AQUI, LO QUE CAUSABA 401 PORQUE
@@ -459,11 +449,8 @@ export default function BillingPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="rounded-lg border border-border/70 bg-card/60 px-4 py-3">
                   <div className="text-lg font-bold text-foreground">
-                    {formatCRC(EXTRA_SEAT_ADD_ON.monthlyCRC)}
+                    ${EXTRA_SEAT_ADD_ON.monthlyUSD}
                     <span className="ml-1 text-xs font-medium text-muted-foreground">/usuario/mes</span>
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    ${EXTRA_SEAT_ADD_ON.monthlyUSD}/user/month
                   </div>
                 </div>
                 <Button
@@ -526,20 +513,15 @@ export default function BillingPage() {
 
                   {/* Price */}
                   <div className="mb-4">
-                    {tier.monthlyCRC === 0 && tier.name === "Free" ? (
+                    {tier.monthlyUSD === 0 && tier.name === "Free" ? (
                       <div className="text-2xl font-bold text-foreground">Gratis</div>
                     ) : (
-                      <>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-bold text-foreground">
-                            {formatCRC(tier.monthlyCRC)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">/mes</span>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          ${tier.monthlyUSD}/mes
-                        </p>
-                      </>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold text-foreground">
+                          ${tier.monthlyUSD}
+                        </span>
+                        <span className="text-xs text-muted-foreground">/mes</span>
+                      </div>
                     )}
                     <p className="mt-2 text-[11px] font-medium text-foreground">
                       {tier.usersLabel}

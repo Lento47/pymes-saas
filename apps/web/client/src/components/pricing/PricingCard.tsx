@@ -20,7 +20,6 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
   const [contactOpen, setContactOpen] = useState(false);
 
   const price = isAnnual ? tier.annualUSD : tier.monthlyUSD;
-  const priceCRC = isAnnual ? tier.annualCRC : tier.monthlyCRC;
   const isEnterprise = tier.name === 'Business+';
 
   const priceId = isAnnual ? tier.paddlePriceIdAnnual : tier.paddlePriceIdMonthly;
@@ -101,14 +100,6 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
               <span className="text-5xl font-bold text-white">${price}</span>
               <span className="text-muted-foreground">/{isAnnual ? 'año' : 'mes'}</span>
             </div>
-              <div className="mt-2 text-sm text-muted-foreground">
-                ₡{priceCRC.toLocaleString()} / {isAnnual ? 'año' : 'mes'}
-              </div>
-              {isAnnual && !isEnterprise && (
-                <div className="mt-1 text-xs text-muted-foreground/70">
-                  Equivale a ₡{Math.round(priceCRC / 12).toLocaleString()}/mes
-                </div>
-              )}
           </>
         )}
       </div>
