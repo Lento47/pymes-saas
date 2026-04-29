@@ -7,6 +7,7 @@ export interface PricingTier {
   description: string;
   users: number;
   features: string[];
+  featureStatuses?: Record<string, string>; // Business+ capability status per feature
   limits: {
     contacts: number;
     invoicesPerMonth: number;
@@ -150,6 +151,16 @@ export const PRICING_TIERS: PricingTier[] = [
       'Soporte dedicado',
       'Contrato personalizado',
     ],
+    featureStatuses: {
+      'Límites personalizados': 'Parcial',
+      'SSO / SAML': 'Parcial',
+      'Opciones de SLA': 'Parcial',
+      'Onboarding dedicado': 'Próximamente',
+      'Flujos personalizados': 'Parcial',
+      'Seguridad avanzada': 'Parcial',
+      'Soporte dedicado': 'Próximamente',
+      'Contrato personalizado': 'Próximamente',
+    },
     limits: {
       contacts: 999999,
       invoicesPerMonth: 999999,

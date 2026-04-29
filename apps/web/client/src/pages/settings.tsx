@@ -1293,10 +1293,10 @@ function ChannelsTab() {
         <div className="space-y-2">
           {channels.map((ch: any) => {
             const Icon = CHANNEL_ICONS[ch.type] ?? Radio;
-            const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP");
+            const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
             const canConnect = ch.status !== "ACTIVE" && !needsConfig;
             const isActive = ch.status === "ACTIVE";
-            const canEdit = isActive && (ch.type === "EMAIL" || ch.type === "WHATSAPP");
+            const canEdit = isActive && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
 
             return (
               <div key={ch.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">

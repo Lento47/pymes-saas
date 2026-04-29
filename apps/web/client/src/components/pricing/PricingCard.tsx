@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { usePaddle } from '@/hooks/use-paddle';
 import { useAuth } from '@/hooks/use-auth';
 import { useState } from 'react';
+import ContactSalesModal from './contact-sales-modal';
 
 interface PricingCardProps {
   tier: PricingTier;
@@ -16,6 +17,7 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
   const paddle = usePaddle();
   const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
 
   const price = isAnnual ? tier.annualUSD : tier.monthlyUSD;
   const priceCRC = isAnnual ? tier.annualCRC : tier.monthlyCRC;
@@ -59,7 +61,7 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
 
     // Enterprise with no price ID → contact sales
     if (isEnterprise) {
-      window.location.href = 'mailto:legal@pymeshub.lat?subject=Business%2B%20pricing';
+      setContactOpen(true);
       return;
     }
 
@@ -99,9 +101,14 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
               <span className="text-5xl font-bold text-white">${price}</span>
               <span className="text-muted-foreground">/{isAnnual ? 'año' : 'mes'}</span>
             </div>
-            <div className="mt-2 text-sm text-muted-foreground">
-              ₡{priceCRC.toLocaleString()} / {isAnnual ? 'año' : 'mes'}
-            </div>
+              <div className="mt-2 text-sm text-muted-foreground">
+                ₡{priceCRC.toLocaleString()} / {isAnnual ? 'año' : 'mes'}
+              </div>
+              {isAnnual && !isEnterprise && (
+                <div className="mt-1 text-xs text-muted-foreground/70">
+                  Equivale a ₡{Math.round(priceCRC / 12).toLocaleString()}/mes
+                </div>
+              )}
           </>
         )}
       </div>
@@ -132,12 +139,22 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
           Incluye
         </div>
         <div className="space-y-3">
-          {tier.features.map((feature, index) => (
-            <div key={index} className="flex gap-3">
-              <Check className="h-4 w-4 flex-shrink-0 text-[#dfff4a]" />
-              <span className="text-sm text-foreground/85">{feature}</span>
-            </div>
-          ))}
+          {tier.features.map((feature, index) => {
+            const status = tier.featureStatuses?.[feature];
+            return (
+              <div key={index} className="flex gap-3">
+                <Check className="h-4 w-4 flex-shrink-0 text-[#dfff4a]" />
+                <span className="text-sm text-foreground/85">{feature}</span>
+                {status && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                    status === 'Parcial' ? 'bg-amber-500/10 text-amber-300' : 'bg-zinc-500/10 text-zinc-400'
+                  }`}>
+                    {status}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -160,6 +177,7 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
           </div>
         )}
       </div>
+      <ContactSalesModal open={contactOpen} onClose={() => setContactOpen(false)} />
     </div>
   );
 }

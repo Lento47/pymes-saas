@@ -374,8 +374,8 @@ export const api = {
   platformGetWorkspaceBySlug: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}`),
   // AI / Agent
   askAssistant: (prompt: string) => request<any>("POST", "/api/workspaces/current/ai/assist", { prompt }),
-  createAgentStream: (message: string, conversationId?: string) => request<any>("POST", "/api/ai/agent/stream", { message, conversationId }),
-  executeAgentTool: (tool: string, args?: any) => request<any>("POST", "/api/ai/agent/execute-tool", { tool, args }),
+  createAgentStream: (message: string, conversationId?: string) => request<any>("POST", "/api/agent/stream", { message, conversationId }),
+  executeAgentTool: (tool: string, args?: any) => request<any>("POST", "/api/agent/tool", { tool, args }),
   // Routing rules
   getRoutingRules: () => request<any>("GET", "/api/routing/rules"),
   createRoutingRule: (data: any) => request<any>("POST", "/api/routing/rules", data),
