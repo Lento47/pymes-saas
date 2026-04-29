@@ -21,8 +21,11 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
         lazyConnect: true,
         retryStrategy: (times) => Math.min(times * 100, 3000),
       });
+      this.redis.on('error', () => {
+        // Silently suppress — fallback to in-memory below
+      });
       this.redis.connect().catch(() => {
-        this.redis = null; // Fallback to in-memory on connection failure
+        this.redis = null;
       });
     } catch {
       this.redis = null;
