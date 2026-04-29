@@ -56,15 +56,15 @@ function Field({
   rightAdornment?: React.ReactNode;
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-1.5">
       <label
         htmlFor={id}
-        className="font-marketing block text-sm font-medium text-white/95"
+        className="font-marketing block text-xs font-medium text-white/80"
       >
         {label}
       </label>
-      <div className="group flex items-center gap-3 rounded-[20px] border border-indigo-400/25 bg-indigo-900/30 backdrop-blur-sm px-4 py-4 shadow-[0_4px_20px_rgba(79,56,220,0.10)] transition focus-within:border-indigo-400/50 focus-within:bg-indigo-900/40 focus-within:shadow-[0_8px_32px_rgba(79,56,220,0.20)]">
-        <span className="text-white/75">{icon}</span>
+      <div className="group flex items-center gap-2.5 rounded-2xl border border-indigo-400/25 bg-indigo-900/30 backdrop-blur-sm px-3.5 py-2.5 shadow-[0_4px_20px_rgba(79,56,220,0.10)] transition focus-within:border-indigo-400/50 focus-within:bg-indigo-900/40 focus-within:shadow-[0_8px_32px_rgba(79,56,220,0.20)]">
+        <span className="text-white/60 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>
         <input
           id={id}
           data-testid={`input-${id}`}
@@ -73,11 +73,11 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required={required}
-          className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-white/50 md:text-[15px]"
+          className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40"
         />
         {rightAdornment}
       </div>
-      {hint && <p className="text-xs leading-6 text-white/70">{hint}</p>}
+      {hint && <p className="text-xs leading-5 text-white/70">{hint}</p>}
     </div>
   );
 }
@@ -161,8 +161,8 @@ export default function LoginPage() {
       </div>
 
       <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
-        <div className="w-full max-w-[34rem]">
-          <div className="mb-8 flex items-center justify-between gap-4">
+        <div className="w-full max-w-[26rem]">
+          <div className="mb-5 flex items-center justify-between gap-4">
             <Link href="/">
               <a className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/85 transition hover:text-white">
                 <ArrowLeft className="h-4 w-4" />
@@ -173,8 +173,8 @@ export default function LoginPage() {
             <LanguageSwitcher variant="marketing" />
           </div>
 
-          <div className="bg-indigo-950/50 backdrop-blur-xl border border-indigo-400/20 rounded-[34px] px-6 py-8 md:px-10 md:py-10">
-            <BrandLockup className="justify-center" textClassName="text-xl tracking-[0.32em]" />
+          <div className="bg-indigo-950/50 backdrop-blur-xl border border-indigo-400/20 rounded-[28px] px-6 py-7 md:px-8 md:py-8">
+            <BrandLockup className="justify-center" textClassName="text-base tracking-[0.28em]" />
 
             {workspaceOptions.length > 0 ? (
               <div className="mt-10">
@@ -202,16 +202,16 @@ export default function LoginPage() {
               </div>
             ) : (
               <>
-            <div className="mt-10 text-center">
-              <h1 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl md:text-4xl">
+            <div className="mt-6 text-center">
+              <h1 className="font-marketing text-xl font-semibold tracking-[-0.02em] text-white">
                 {copy.welcome}
               </h1>
-              <p className="mx-auto mt-4 max-w-md text-base leading-8 text-white/85">
+              <p className="mx-auto mt-2 max-w-xs text-[13px] leading-6 text-white/70">
                 {copy.description}
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-10 space-y-6">
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <Field
                 id="email"
                 label={copy.email}
@@ -247,7 +247,7 @@ export default function LoginPage() {
                 type="submit"
                 disabled={loading}
                 data-testid="button-login"
-                className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
+                className="glow-button font-marketing inline-flex w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-5 py-2.5 text-sm font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading && <Loader2 className="h-5 w-5 animate-spin" />}
                 {copy.logIn}
@@ -255,21 +255,21 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-8">
-              <div className="flex items-center gap-4">
+            <div className="mt-5">
+              <div className="flex items-center gap-3">
                 <div className="h-px flex-1 bg-indigo-400/20" />
-                <span className="text-sm text-white/70">{copy.forgot}</span>
+                <span className="text-xs text-white/50">{copy.forgot}</span>
                 <div className="h-px flex-1 bg-indigo-400/20" />
               </div>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
                 <Link href="/accept-invite">
-                  <a className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/95 transition hover:border-white/18 hover:text-white">
+                  <a className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-2xl px-4 py-2.5 text-xs font-semibold text-white/85 transition hover:border-white/18 hover:text-white">
                     {copy.acceptInvite}
                   </a>
                 </Link>
                 <Link href="/legal">
-                  <a className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/95 transition hover:border-white/18 hover:text-white">
+                  <a className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-2xl px-4 py-2.5 text-xs font-semibold text-white/85 transition hover:border-white/18 hover:text-white">
                     {copy.legalCenter}
                   </a>
                 </Link>
@@ -278,7 +278,7 @@ export default function LoginPage() {
             </>
             )}
 
-            <div className="mt-10 flex flex-col items-center gap-4 text-center">
+            <div className="mt-6 flex flex-col items-center gap-3 text-center">
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/80">
                 <Link href="/legal/terms-and-conditions">
                   <a className="transition hover:text-white/82">{copy.terms}</a>
