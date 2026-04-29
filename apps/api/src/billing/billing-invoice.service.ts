@@ -19,21 +19,27 @@ export class BillingInvoiceService {
       planInterval: string;
       seats: number;
       amount: number;
+      // OPCIONAL — SI EL CALLER YA TIENE EL DESGLOSE DE PADDLE, PASAR
+      // subtotal+taxAmount EVITA RECALCULAR Y CONTAR IVA DOS VECES.
+      subtotal?: number;
+      taxAmount?: number;
+      taxRate?: number;
       currency?: string;
       notes?: string;
       status?: string;
     },
   ) {
     const currency = params.currency || 'USD';
-    const taxRate = currency === 'CRC' ? 13 : 0;
-    const taxAmount = Math.round(params.amount * (taxRate / 100) * 100) / 100;
-    const total = Math.round((params.amount + taxAmount) * 100) / 100;
+    const subtotal = params.subtotal ?? params.amount;
+    const taxRate = params.taxRate ?? (currency === 'CRC' ? 13 : 0);
+    const taxAmount = params.taxAmount ?? Math.round(subtotal * (taxRate / 100) * 100) / 100;
+    const total = Math.round((subtotal + taxAmount) * 100) / 100;
 
     const lineItems = [{
       description: `Plan ${params.planName} — ${params.planInterval === 'MONTHLY' ? 'Mensual' : 'Anual'}`,
       quantity: 1,
-      unitPrice: params.amount,
-      total: params.amount,
+      unitPrice: subtotal,
+      total: subtotal,
     }];
 
     const number = await this.nextNumber();
@@ -50,7 +56,7 @@ export class BillingInvoiceService {
         plan_interval: params.planInterval,
         seats: params.seats,
         line_items: lineItems as any,
-        subtotal: params.amount,
+        subtotal,
         tax_rate: taxRate,
         tax_amount: taxAmount,
         total,

@@ -679,11 +679,23 @@ export class PaddleService {
     }
   }
 
+  // Currencies that do NOT use 2-decimal minor units (Paddle still sends in minor units,
+  // but the divisor is 1, not 100). Add more as needed.
+  private static readonly ZERO_DECIMAL_CURRENCIES = new Set(['JPY', 'KRW', 'CLP', 'ISK', 'VND', 'XAF', 'XOF']);
+
+  private parsePaddleAmount(raw: unknown, currency: string): number {
+    const minor = parseInt(String(raw ?? '0'), 10);
+    if (Number.isNaN(minor)) return 0;
+    const divisor = PaddleService.ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase()) ? 1 : 100;
+    return Math.round((minor / divisor) * 100) / 100;
+  }
+
   private async handleTransactionCompleted(data: any): Promise<void> {
     const subscriptionId = data.subscriptionId || data.subscription_id;
     if (!subscriptionId) return;
 
-    this.logger.log(`Transaction completed for subscription ${subscriptionId}`);
+    const transactionId: string | undefined = data.id || data.transactionId;
+    this.logger.log(`Transaction completed: tx=${transactionId} sub=${subscriptionId}`);
 
     const sub = await this.prisma.workspaceSubscription.findFirst({
       where: { provider_subscription_id: subscriptionId },
@@ -703,83 +715,123 @@ export class PaddleService {
       data: { status: 'ACTIVE' },
     });
 
-    // Auto-generate billing invoice PDF
-    const amount = data.details?.totals?.total || data.totals?.total || data.amount || 0;
-    const currency = data.currencyCode || data.currency_code || 'USD';
-    const interval = data.billingPeriod?.interval || 'MONTHLY';
+    // DEDUPE — `transaction.completed` y `transaction.paid` pueden disparar por
+    // la misma compra. Marcamos la factura con `[paddle_tx:<id>]` en notes y
+    // saltamos si ya existe.
+    const txMarker = transactionId ? `[paddle_tx:${transactionId}]` : null;
+    if (txMarker) {
+      const dup = await this.prisma.billingInvoice.findFirst({
+        where: { workspace_id: sub.workspace_id, notes: { contains: txMarker } },
+        select: { id: true, number: true },
+      });
+      if (dup) {
+        this.logger.log(`Invoice already exists for tx=${transactionId} (invoice ${dup.number}), skipping`);
+        return;
+      }
+    }
 
+    // PADDLE MANDA TOTALES EN MINOR UNITS COMO STRING ("5000" = $50.00).
+    const currency = (data.currencyCode || data.currency_code || 'USD').toUpperCase();
+    const totals = data.details?.totals ?? data.totals ?? {};
+    const subtotal = this.parsePaddleAmount(totals.subtotal, currency);
+    const taxAmount = this.parsePaddleAmount(totals.tax, currency);
+    const total = this.parsePaddleAmount(totals.total ?? totals.grandTotal, currency);
+    const fallbackAmount = this.parsePaddleAmount(data.amount, currency);
+    const interval = data.billingPeriod?.interval || data.billing_period?.interval || 'MONTHLY';
+    const planInterval: 'MONTHLY' | 'ANNUAL' =
+      interval === 'month' ? 'MONTHLY' : interval === 'year' ? 'ANNUAL' : 'MONTHLY';
+
+    // Owner para el cliente y el email
+    const owner = await this.prisma.workspaceUser.findFirst({
+      where: { workspace_id: sub.workspace_id, is_owner: true },
+      select: { user: { select: { email: true, name: true } } },
+    });
+    const clientName = owner?.user?.name || sub.workspace?.name || 'Cliente';
+    const clientEmail = owner?.user?.email || '';
+
+    let invoiceId: string | null = null;
     try {
-      await this.billingInvoice.generateForSubscription(
+      const invoice = await this.billingInvoice.generateForSubscription(
         sub.workspace_id,
         sub.id,
         {
-          clientName: sub.workspace?.name || 'Cliente',
-          clientEmail: '',
+          clientName,
+          clientEmail,
           planName: sub.plan,
-          planInterval: interval === 'month' ? 'MONTHLY' : interval === 'year' ? 'ANNUAL' : 'MONTHLY',
+          planInterval,
           seats: 1,
-          amount: parseFloat(String(amount)),
+          // Si Paddle no mando subtotal explicito, usa total (sin IVA recalculado).
+          amount: subtotal || total || fallbackAmount,
+          subtotal: subtotal || total || fallbackAmount,
+          taxAmount: subtotal ? taxAmount : 0,
+          taxRate: subtotal && taxAmount ? Math.round((taxAmount / subtotal) * 10000) / 100 : 0,
           currency,
-          notes: `Pago procesado — ${new Date().toISOString()}`,
+          notes: txMarker ? `Pago procesado · ${txMarker}` : 'Pago procesado',
         },
       );
-
-      // Send invoice email notification
-      this.sendInvoiceEmail(sub.workspace_id, amount, currency, sub.plan).catch(err =>
-        this.logger.warn(`Invoice email failed: ${err.message}`),
-      );
+      invoiceId = invoice.id;
     } catch (err) {
-      this.logger.error(`Failed to generate billing invoice for workspace ${sub.workspace_id}: ${(err as Error).message}`);
+      this.logger.error(`Failed to create billing invoice for workspace ${sub.workspace_id}: ${(err as Error).message}`);
+      return;
     }
+
+    // Email con PDF adjunto — fire-and-forget, no bloquea el webhook.
+    this.sendInvoiceEmail(invoiceId, clientEmail, owner?.user?.name ?? null).catch((err) =>
+      this.logger.warn(`Invoice email failed for invoice ${invoiceId}: ${err.message}`),
+    );
   }
 
-  private async sendInvoiceEmail(workspaceId: string, amount: number, currency: string, plan: string) {
+  private async sendInvoiceEmail(invoiceId: string, to: string, recipientName: string | null) {
     const apiKey = this.configService.get<string>('RESEND_API_KEY');
     if (!apiKey) {
       this.logger.warn('RESEND_API_KEY not configured, skipping invoice email');
       return;
     }
-
-    const resend = new Resend(apiKey);
-    const ws = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { name: true },
-    });
-
-    const owner = await this.prisma.workspaceUser.findFirst({
-      where: { workspace_id: workspaceId, is_owner: true },
-      select: { user: { select: { email: true, name: true } } },
-    });
-
-    const to = owner?.user?.email;
     if (!to) {
-      this.logger.warn(`No owner email found for workspace ${workspaceId}, skipping invoice email`);
+      this.logger.warn(`No recipient email for invoice ${invoiceId}, skipping`);
       return;
     }
 
-    const monthName = new Date().toLocaleString('es-CR', { month: 'long', year: 'numeric' });
-    const formattedAmount = currency === 'CRC'
-      ? `₡${amount.toLocaleString('es-CR')}`
-      : `$${amount.toLocaleString('en-US')}`;
+    // Genera el PDF y los datos para el cuerpo del email.
+    const { buffer, filename } = await this.billingInvoice.getPdfBuffer(invoiceId);
+    const inv = await this.prisma.billingInvoice.findUniqueOrThrow({
+      where: { id: invoiceId },
+      select: { number: true, plan_name: true, total: true, currency: true, issued_at: true },
+    });
 
+    const formattedTotal = inv.currency === 'CRC'
+      ? `₡${inv.total.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : `$${inv.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const monthName = inv.issued_at.toLocaleString('es-CR', { month: 'long', year: 'numeric' });
+
+    const resend = new Resend(apiKey);
     try {
       await resend.emails.send({
-        from: 'PyMesHub <billing@pymeshub.lat>',
+        from: 'PymeHub <billing@pymeshub.lat>',
         to,
-        subject: `Factura PyMesHub — ${plan} (${monthName})`,
-        html: `<div style="font-family:sans-serif;max-width:500px;margin:0 auto">
-          <h2 style="color:#6366f1">PyMesHub</h2>
-          <p>Hola ${owner?.user?.name || ''},</p>
-          <p>Tu pago por <strong>${formattedAmount}</strong> fue procesado para el plan <strong>${plan}</strong>.</p>
-          <p>Periodo: ${monthName}</p>
-          <p>Podés descargar tu factura desde <a href="https://pymeshub.lat/settings/billing">Configuración → Facturación</a>.</p>
-          <hr style="border-color:#e5e7eb;margin:16px 0"/>
-          <p style="color:#6b7280;font-size:12px">PyMesHub — Business OS para PYMEs</p>
+        subject: `Factura ${inv.number} — ${inv.plan_name} (${monthName})`,
+        html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111827">
+          <h2 style="color:#1a56db;margin:0 0 16px">PymeHub</h2>
+          <p>Hola${recipientName ? ` ${recipientName}` : ''},</p>
+          <p>Tu pago de <strong>${formattedTotal}</strong> por el plan <strong>${inv.plan_name}</strong> fue procesado correctamente.</p>
+          <p style="background:#f8fafc;padding:12px 16px;border-radius:6px;margin:16px 0">
+            <span style="color:#6b7280;font-size:12px;display:block">Numero de factura</span>
+            <strong style="font-size:14px">${inv.number}</strong>
+          </p>
+          <p>Adjuntamos la factura en PDF. Tambien podes descargarla desde <a href="https://pymeshub.lat/settings/billing" style="color:#1a56db">Configuracion → Facturacion</a>.</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0"/>
+          <p style="color:#9ca3af;font-size:11px">PymeHub — Plataforma SaaS para PYMEs · Costa Rica<br/>support@pymeshub.com · pymeshub.lat</p>
         </div>`,
+        attachments: [
+          {
+            filename,
+            content: buffer,
+          },
+        ],
       });
-      this.logger.log(`Invoice email sent to ${to} for workspace ${ws?.name}`);
+      this.logger.log(`Invoice email sent to ${to} (invoice ${inv.number}, ${buffer.length} bytes PDF)`);
     } catch (err) {
-      this.logger.error(`Failed to send invoice email: ${(err as Error).message}`);
+      this.logger.error(`Failed to send invoice email for ${inv.number}: ${(err as Error).message}`);
     }
   }
 
