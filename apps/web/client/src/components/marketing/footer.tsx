@@ -43,14 +43,14 @@ export function Footer({ className }: { className?: string }) {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Column 1 — Producto */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
               {f.colProduct}
             </h3>
             <ul className="mt-4 space-y-3">
               {PRODUCT_LINKS.map(({ href, key }) => (
                 <li key={key}>
                   <Link href={href}>
-                    <a className="text-sm text-white/56 transition hover:text-white/90">
+                    <a className="text-sm text-white/80 transition hover:text-white">
                       {f[key]}
                     </a>
                   </Link>
@@ -61,14 +61,14 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Column 2 — Recursos */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
               {f.colDev}
             </h3>
             <ul className="mt-4 space-y-3">
               {RESOURCES_LINKS.map(({ href, key }) => (
                 <li key={key}>
                   <Link href={href}>
-                    <a className="text-sm text-white/56 transition hover:text-white/90">
+                    <a className="text-sm text-white/80 transition hover:text-white">
                       {f[key]}
                     </a>
                   </Link>
@@ -79,14 +79,14 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Column 3 — Empresa */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
               {f.colCompany}
             </h3>
             <ul className="mt-4 space-y-3">
               {COMPANY_LINKS.map(({ href, key }) => (
                 <li key={key}>
                   <Link href={href}>
-                    <a className="text-sm text-white/56 transition hover:text-white/90">
+                    <a className="text-sm text-white/80 transition hover:text-white">
                       {f[key]}
                     </a>
                   </Link>
@@ -97,14 +97,14 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Column 4 — Legal */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
               {f.colLegal}
             </h3>
             <ul className="mt-4 space-y-3">
               {LEGAL_LINKS.map(({ href, key }) => (
                 <li key={key}>
                   <Link href={href}>
-                    <a className="text-sm text-white/56 transition hover:text-white/90">
+                    <a className="text-sm text-white/80 transition hover:text-white">
                       {f[key]}
                     </a>
                   </Link>
@@ -120,18 +120,18 @@ export function Footer({ className }: { className?: string }) {
             <BrandLockup compact markClassName="h-6 w-6" textClassName="text-xs tracking-[0.18em]" />
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-white/36">
+          <div className="flex items-center gap-2 text-xs text-white/60">
             <Mail className="h-3.5 w-3.5" />
             <span>soporte@pymeshub.lat</span>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-white/30">
-            <ShieldCheck className="h-3.5 w-3.5 text-white/25" />
+          <div className="flex items-center gap-2 text-xs text-white/45">
+            <ShieldCheck className="h-3.5 w-3.5 text-white/40" />
             <span>{f.compliance}</span>
           </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-white/20">
+        <p className="mt-6 text-center text-xs text-white/40">
           &copy; 2026 PymeHub. {f.rights}.
         </p>
       </div>
