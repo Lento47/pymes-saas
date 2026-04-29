@@ -55,6 +55,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { ContactSalesModule } from './contact-sales/contact-sales.module';
 import { UsageMeteringModule } from './usage-metering/usage-metering.module';
 import { MessageTemplatesModule } from './message-templates/message-templates.module';
+import { ProductMetricsModule } from './common/metrics/product-metrics.module';
 
 @Module({
   imports: [
@@ -118,6 +119,9 @@ import { MessageTemplatesModule } from './message-templates/message-templates.mo
     ContactSalesModule,
     UsageMeteringModule,
     MessageTemplatesModule,
+
+    // Metrics
+    ProductMetricsModule,
 
     // Demo & Templates
     DemoModule,
