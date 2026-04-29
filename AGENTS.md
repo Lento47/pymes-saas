@@ -110,6 +110,7 @@ Optional: `OPENAI_API_KEY`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`
 - **Never use `set -e` in entrypoint.sh.** A failing migration must not prevent the app from starting. Use `|| echo` or `|| true` after migration commands so the container stays alive. A dead container means healthcheck fails and Railway marks the deploy as failed.
 - **Do NOT change Dockerfile.api or CI workflow files unless mandatory.** These configs are proven to work. If the deploy works, don't touch them. Only change them when the build/runtime environment actually changes (e.g., new workspace packages).
 - **Always patch vulnerabilities.** Security issues must be fixed immediately and pushed to the relevant branch. Never leave a known vulnerability unpatched.
+- **Always patch vulnerabilities.** Security issues must be fixed immediately and pushed to the relevant branch. Never leave a known vulnerability unpatched.
 - **Do NOT make cross-branch edits.** `main-api` is `apps/api/` only. `main-web` is `apps/web/` only. Cross-cutting changes (shared types) must be committed to both branches separately.
 
 ## Database safety (CRITICAL)
