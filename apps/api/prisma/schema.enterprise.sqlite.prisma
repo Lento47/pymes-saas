@@ -54,6 +54,7 @@ model Workspace {
   locale       String          @default("en")
   status String @default("ACTIVE")
   plan String   @default("FREE")
+  extra_user_seats Int @default(0)
   settings_json String?
 
   created_at DateTime @default(now())

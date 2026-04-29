@@ -80,6 +80,25 @@ export class BillingController {
     return this.paddleService.getAvailablePrices();
   }
 
+  @Post('addons/extra-users/checkout')
+  @UseGuards(JwtAuthGuard)
+  async checkoutExtraUsers(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: { quantity: number },
+  ) {
+    const quantity = Number(dto?.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new BadRequestException('quantity must be a positive integer');
+    }
+    try {
+      return await this.paddleService.checkoutExtraUserSeats(user.workspace_id, quantity);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Extra users checkout failed: ${(error as Error).message}`,
+      );
+    }
+  }
+
   @Get('portal')
   @UseGuards(JwtAuthGuard)
   async getBillingPortal(@CurrentUser() user: AuthUser) {

@@ -118,12 +118,29 @@ export class PlanLimitsService {
     return ws.plan;
   }
 
+  private async getWorkspacePlanAndSeats(workspaceId: string): Promise<{ plan: string; extraSeats: number }> {
+    const ws = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { plan: true, extra_user_seats: true },
+    });
+    return { plan: ws.plan, extraSeats: ws.extra_user_seats ?? 0 };
+  }
+
+  async getSeatLimit(workspaceId: string): Promise<{ limit: number; used: number; plan: string; extraSeats: number }> {
+    const { plan, extraSeats } = await this.getWorkspacePlanAndSeats(workspaceId);
+    const baseLimit = this.getLimits(plan).users;
+    const limit = baseLimit === Infinity ? Infinity : baseLimit + extraSeats;
+    const used = await this.prisma.workspaceUser.count({ where: { workspace_id: workspaceId } });
+    return { limit, used, plan, extraSeats };
+  }
+
   // ── Public check methods (used by services) ─────────────────────────────
 
   async checkUserLimit(workspaceId: string): Promise<void> {
-    const plan = await this.getWorkspacePlan(workspaceId);
-    const limit = this.getLimits(plan).users;
-    if (limit === Infinity) return;
+    const { plan, extraSeats } = await this.getWorkspacePlanAndSeats(workspaceId);
+    const baseLimit = this.getLimits(plan).users;
+    if (baseLimit === Infinity) return;
+    const limit = baseLimit + extraSeats;
 
     const current = await this.prisma.workspaceUser.count({ where: { workspace_id: workspaceId } });
     if (current >= limit) {

@@ -271,6 +271,12 @@ export const api = {
   updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   testAiConnection: (data: any) => request<any>("POST", "/api/workspaces/current/ai/test", data),
   createCheckout: (priceId: string) => request<any>("POST", "/api/billing/checkout", { priceId }),
+  checkoutExtraUsers: (quantity: number) =>
+    request<{ checkoutUrl?: string | null; updated?: boolean; transactionId?: string }>(
+      "POST",
+      "/api/billing/addons/extra-users/checkout",
+      { quantity },
+    ),
   getBillingPrices: () => request<any>("GET", "/api/billing/prices"),
   getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
   getBillingInvoices: () => request<any>("GET", "/api/billing/invoices"),

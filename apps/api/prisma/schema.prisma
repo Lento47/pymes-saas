@@ -217,6 +217,7 @@ model Workspace {
   locale       String          @default("en")
   status       WorkspaceStatus @default(ACTIVE)
   plan         WorkspacePlan   @default(FREE)
+  extra_user_seats Int         @default(0)
   settings_json Json?          @db.JsonB
 
   created_at DateTime @default(now())

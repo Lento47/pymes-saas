@@ -22,10 +22,15 @@ export interface PricingTier {
 }
 
 export interface AddOn {
+  key: 'extra_user' | 'whatsapp_premium' | 'advanced_inventory' | 'ai_assistant' | 'approvals_signature';
   name: string;
   monthlyUSD: number;
   monthlyCRC: number;
   description: string;
+  /** Whether this add-on is purchasable today. */
+  available: boolean;
+  /** Whether the user can pick a quantity (e.g. extra users). */
+  quantifiable?: boolean;
 }
 
 export interface FAQ {
@@ -163,34 +168,45 @@ export const PRICING_TIERS: PricingTier[] = [
 
 export const ADD_ONS: AddOn[] = [
   {
-    name: 'Extra user',
+    key: 'extra_user',
+    name: 'Usuario extra',
     monthlyUSD: 8,
     monthlyCRC: 4000,
-    description: 'Add one additional user to your workspace',
+    description: 'Agrega otro compañero sin cambiar de plan.',
+    available: true,
+    quantifiable: true,
   },
   {
+    key: 'whatsapp_premium',
     name: 'WhatsApp Premium',
     monthlyUSD: 19,
     monthlyCRC: 9900,
-    description: 'Advanced WhatsApp features and analytics',
+    description: 'Analíticas y funciones avanzadas de WhatsApp',
+    available: false,
   },
   {
-    name: 'Advanced Inventory',
+    key: 'advanced_inventory',
+    name: 'Inventario avanzado',
     monthlyUSD: 29,
     monthlyCRC: 14900,
-    description: 'Full inventory management and tracking',
+    description: 'Gestión completa de inventario y seguimiento',
+    available: false,
   },
   {
-    name: 'AI Assistant',
+    key: 'ai_assistant',
+    name: 'Asistente IA',
     monthlyUSD: 39,
     monthlyCRC: 19900,
-    description: 'AI-powered suggestions and automations',
+    description: 'Sugerencias y automatizaciones con inteligencia artificial',
+    available: false,
   },
   {
-    name: 'Approvals & Digital Signature',
+    key: 'approvals_signature',
+    name: 'Aprobaciones y firma digital',
     monthlyUSD: 25,
     monthlyCRC: 12900,
-    description: 'Approval workflows and digital signature flow',
+    description: 'Flujos de aprobación y firma digital integrada',
+    available: false,
   },
 ];
 

@@ -82,11 +82,12 @@ export class PaddleService {
     workspaceId: string,
     customerId: string,
     priceId: string,
+    quantity = 1,
   ) {
     const paddle = this.requireClient();
 
     const transaction = await paddle.transactions.create({
-      items: [{ priceId, quantity: 1 }],
+      items: [{ priceId, quantity }],
       customerId,
     });
 
@@ -108,6 +109,86 @@ export class PaddleService {
       transactionId: transaction.id,
       checkoutUrl: transaction.checkout?.url ?? null,
     };
+  }
+
+  // ── Add-ons (Extra users) ────────────────────────────────────────────────
+
+  /**
+   * Checkout / update for the "Extra user" add-on.
+   * If the workspace already has an active Paddle subscription, the add-on is
+   * added/updated as a line item on that subscription (immediate proration).
+   * Otherwise a Paddle transaction is created so the user can pay standalone.
+   *
+   * Returns either { checkoutUrl } for new transactions, or { updated: true } when
+   * an existing subscription was modified. The webhook will sync extra_user_seats.
+   */
+  async checkoutExtraUserSeats(
+    workspaceId: string,
+    quantity: number,
+  ): Promise<{ checkoutUrl?: string | null; updated?: boolean; transactionId?: string }> {
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new Error('quantity must be a positive integer');
+    }
+
+    const priceId = this.configService.get<string>('PADDLE_PRICE_EXTRA_USER_MONTHLY');
+    if (!priceId) {
+      throw new Error('PADDLE_PRICE_EXTRA_USER_MONTHLY is not configured');
+    }
+
+    const paddle = this.requireClient();
+
+    const sub = await this.prisma.workspaceSubscription.findFirst({
+      where: { workspace_id: workspaceId },
+      select: { id: true, provider_customer_id: true, provider_subscription_id: true },
+    });
+
+    if (sub?.provider_subscription_id) {
+      const current: any = await paddle.subscriptions.get(sub.provider_subscription_id);
+      const items: Array<{ priceId: string; quantity: number }> = (current.items ?? []).map((it: any) => ({
+        priceId: it.price?.id ?? it.priceId,
+        quantity: it.quantity ?? 1,
+      })).filter((it: any) => !!it.priceId);
+
+      const idx = items.findIndex((it) => it.priceId === priceId);
+      if (idx >= 0) items[idx].quantity = quantity;
+      else items.push({ priceId, quantity });
+
+      await (paddle as any).subscriptions.update(sub.provider_subscription_id, {
+        items,
+        prorationBillingMode: 'prorated_immediately',
+      });
+
+      return { updated: true };
+    }
+
+    if (!sub?.provider_customer_id) {
+      throw new Error('No Paddle customer for workspace — start a plan checkout first');
+    }
+
+    const transaction = await paddle.transactions.create({
+      items: [{ priceId, quantity }],
+      customerId: sub.provider_customer_id,
+    });
+
+    return {
+      transactionId: transaction.id,
+      checkoutUrl: transaction.checkout?.url ?? null,
+    };
+  }
+
+  /**
+   * Returns the count of "Extra user" seats in a Paddle subscription payload.
+   * Returns null if the add-on price ID isn't configured.
+   */
+  private extractExtraUserSeats(items: any[] | undefined | null): number {
+    const priceId = this.configService.get<string>('PADDLE_PRICE_EXTRA_USER_MONTHLY');
+    if (!priceId || !Array.isArray(items)) return 0;
+    let qty = 0;
+    for (const it of items) {
+      const id = it?.price?.id ?? it?.priceId;
+      if (id === priceId) qty += it?.quantity ?? 0;
+    }
+    return qty;
   }
 
   // ── Customer Portal ──────────────────────────────────────────────────────
@@ -236,9 +317,10 @@ export class PaddleService {
         return { synced: false, reason: 'No active/trialing subscription found' };
       }
 
-      const plan = this.mapPaddlePriceToPlan(
-        activeSub.items?.[0]?.price?.id || '',
-      );
+      const items: any[] = activeSub.items || [];
+      const planItem = items.find((it) => this.mapPaddlePriceToPlan(it?.price?.id || '') !== 'FREE') || items[0];
+      const plan = this.mapPaddlePriceToPlan(planItem?.price?.id || '');
+      const extraSeats = this.extractExtraUserSeats(items);
       const status = this.mapPaddleStatus(activeSub.status);
 
       const existing = await this.prisma.workspaceSubscription.findFirst({
@@ -292,10 +374,10 @@ export class PaddleService {
 
       await this.prisma.workspace.update({
         where: { id: workspaceId },
-        data: { plan },
+        data: { plan, extra_user_seats: extraSeats },
       });
 
-      this.logger.log(`Synced (by customerId ${customerId}) workspace ${workspaceId}: plan=${plan}`);
+      this.logger.log(`Synced (by customerId ${customerId}) workspace ${workspaceId}: plan=${plan}, extraSeats=${extraSeats}`);
       return { synced: true, plan, status, customerId };
     } catch (err) {
       this.logger.error(`syncByCustomerId failed for ${customerId}:`, err);
@@ -313,9 +395,10 @@ export class PaddleService {
 
     try {
       const paddleSub = await paddle.subscriptions.get(providerSubscriptionId);
-      const plan = this.mapPaddlePriceToPlan(
-        paddleSub.items?.[0]?.price?.id || '',
-      );
+      const items: any[] = paddleSub.items || [];
+      const planItem = items.find((it) => this.mapPaddlePriceToPlan((it as any)?.price?.id || '') !== 'FREE') || items[0];
+      const plan = this.mapPaddlePriceToPlan((planItem as any)?.price?.id || '');
+      const extraSeats = this.extractExtraUserSeats(items);
       const status = this.mapPaddleStatus(paddleSub.status);
 
       const existing = await this.prisma.workspaceSubscription.findFirst({
@@ -370,10 +453,10 @@ export class PaddleService {
 
       await this.prisma.workspace.update({
         where: { id: workspaceId },
-        data: { plan },
+        data: { plan, extra_user_seats: extraSeats },
       });
 
-      this.logger.log(`Synced subscription for workspace ${workspaceId}: plan=${plan}`);
+      this.logger.log(`Synced subscription for workspace ${workspaceId}: plan=${plan}, extraSeats=${extraSeats}`);
       return { synced: true, plan, status };
     } catch (err) {
       this.logger.error(`syncExistingSubscription failed for ${providerSubscriptionId}:`, err);
@@ -461,9 +544,16 @@ export class PaddleService {
     const customerId = data.customerId || data.customer_id;
     if (!customerId) return;
 
+    // Pick the first item that maps to a known plan; fall back to first item.
+    const items: any[] = data.items || [];
+    const planItem = items.find((it) => {
+      const id = it?.price?.id || it?.priceId || '';
+      return this.mapPaddlePriceToPlan(id) !== 'FREE';
+    }) || items[0];
     const plan = this.mapPaddlePriceToPlan(
-      data.items?.[0]?.price?.id || data.items?.[0]?.priceId || '',
+      planItem?.price?.id || planItem?.priceId || '',
     );
+    const extraSeats = this.extractExtraUserSeats(items);
 
     const status = this.mapPaddleStatus(data.status);
     const customData = data.customData || data.custom_data || {};
@@ -512,7 +602,7 @@ export class PaddleService {
     if (workspaceId) {
       await this.prisma.workspace.update({
         where: { id: workspaceId },
-        data: { plan },
+        data: { plan, extra_user_seats: extraSeats },
       });
     }
   }
@@ -534,7 +624,7 @@ export class PaddleService {
 
       await this.prisma.workspace.update({
         where: { id: sub.workspace_id },
-        data: { plan: 'FREE' },
+        data: { plan: 'FREE', extra_user_seats: 0 },
       });
     }
   }
@@ -653,6 +743,7 @@ export class PaddleService {
       growth_annual: this.configService.get<string>('PADDLE_PRICE_GROWTH_ANNUAL') ?? null,
       enterprise_monthly: this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_MONTHLY') ?? null,
       enterprise_annual: this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_ANNUAL') ?? null,
+      extra_user_monthly: this.configService.get<string>('PADDLE_PRICE_EXTRA_USER_MONTHLY') ?? null,
     };
   }
 

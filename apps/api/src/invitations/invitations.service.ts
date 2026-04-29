@@ -17,6 +17,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { RefreshTokenService } from '../auth/refresh-token.service';
 import { AuditService } from '../audit/audit.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { parseJsonStringArray, serializeJson } from '../common/prisma/enterprise-sqlite-json';
@@ -33,6 +34,7 @@ export class InvitationsService {
     private readonly refreshTokenService: RefreshTokenService,
     private readonly audit: AuditService,
     private readonly config: ConfigService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -204,6 +206,28 @@ export class InvitationsService {
       });
       if (membership) {
         throw new ConflictException('Ese usuario ya es miembro de este workspace.');
+      }
+    }
+
+    // Enforce seat limit (plan base + paid extra seats). Members + non-resolved invitations.
+    const { limit, plan } = await this.planLimits.getSeatLimit(workspaceId);
+    if (limit !== Infinity) {
+      const memberCount = await this.prisma.workspaceUser.count({
+        where: { workspace_id: workspaceId },
+      });
+      const pendingInvites = await this.prisma.invitation.count({
+        where: {
+          workspace_id: workspaceId,
+          accepted_at: null,
+          revoked_at: null,
+          expires_at: { gt: new Date() },
+          email: { not: email },
+        },
+      });
+      if (memberCount + pendingInvites + 1 > limit) {
+        throw new ForbiddenException(
+          `Tu plan ${plan} permite ${limit} miembros (incluyendo invitaciones pendientes). Compra "Usuario extra" o haz upgrade para invitar a más personas.`,
+        );
       }
     }
 
