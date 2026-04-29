@@ -822,7 +822,7 @@ export const translations = {
       trustTitle: "No venimos a venderte humo. Venimos a construir contigo.",
       trustDescription:
         "PyMesHub está en beta cerrada. No tenemos 500 clientes todavía, pero tenemos un equipo obsesionado con ahorrarle horas y dólares a las pymes latinas.",
-      trustOffer: "Si te sumas ahora, obtienes acceso gratis de por vida al plan que elijas cuando lancemos.",
+      trustOffer: "Si te sumas ahora, ayudas a definir el producto y accedes con condiciones preferentes cuando lancemos.",
       trustFootnote: "Solo pedimos 15 minutos de tu tiempo para entender tu operación real.",
       trustSignals: ["Beta cerrada", "Primeros 50 negocios", "Acceso anticipado gratis", "Construido con operadores"],
       platform: {
