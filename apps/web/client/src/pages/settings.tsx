@@ -2456,6 +2456,11 @@ export default function Settings() {
   const { messages } = useI18n();
   const copy = messages.settings;
   const isPlatformAdmin = user?.is_platform_admin === true;
+  const plan = user?.workspace?.plan ?? 'FREE';
+  const isPlanAtLeast = (min: string) => {
+    const order = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
+    return order.indexOf(plan) >= order.indexOf(min);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -2493,15 +2498,21 @@ export default function Settings() {
           <TabsTrigger value="routing" className="data-[state=active]:bg-elevated">
             <Shuffle className="h-4 w-4 mr-2" />{copy.tabs.routing}
           </TabsTrigger>
-          <TabsTrigger value="apitokens" className="data-[state=active]:bg-elevated">
-            <Key className="h-4 w-4 mr-2" />{copy.tabs.apiTokens}
-          </TabsTrigger>
-          <TabsTrigger value="saml" className="data-[state=active]:bg-elevated">
-            <Shield className="h-4 w-4 mr-2" />SAML SSO
-          </TabsTrigger>
-          <TabsTrigger value="enterprise" className="data-[state=active]:bg-elevated">
-            <Crown className="h-4 w-4 mr-2" />Enterprise
-          </TabsTrigger>
+          {isPlanAtLeast('BUSINESS') && (
+            <TabsTrigger value="apitokens" className="data-[state=active]:bg-elevated">
+              <Key className="h-4 w-4 mr-2" />{copy.tabs.apiTokens}
+            </TabsTrigger>
+          )}
+          {isPlanAtLeast('BUSINESS') && (
+            <TabsTrigger value="saml" className="data-[state=active]:bg-elevated">
+              <Shield className="h-4 w-4 mr-2" />SAML SSO
+            </TabsTrigger>
+          )}
+          {isPlanAtLeast('BUSINESS_PLUS') && (
+            <TabsTrigger value="enterprise" className="data-[state=active]:bg-elevated">
+              <Crown className="h-4 w-4 mr-2" />Enterprise
+            </TabsTrigger>
+          )}
           {isPlatformAdmin && (
             <TabsTrigger value="platform" className="data-[state=active]:bg-elevated">
               <ShieldCheck className="h-4 w-4 mr-2" />{copy.tabs.platform}
@@ -2518,9 +2529,9 @@ export default function Settings() {
             <TabsContent value="ai"><AiTab /></TabsContent>
             <TabsContent value="billing"><BillingPage /></TabsContent>
             <TabsContent value="routing"><RoutingRulesTab /></TabsContent>
-            <TabsContent value="apitokens"><ApiTokensTab /></TabsContent>
-            <TabsContent value="saml"><SamlConfig /></TabsContent>
-            <TabsContent value="enterprise"><EnterpriseSettingsTab /></TabsContent>
+            {isPlanAtLeast('BUSINESS') && <TabsContent value="apitokens"><ApiTokensTab /></TabsContent>}
+            {isPlanAtLeast('BUSINESS') && <TabsContent value="saml"><SamlConfig /></TabsContent>}
+            {isPlanAtLeast('BUSINESS_PLUS') && <TabsContent value="enterprise"><EnterpriseSettingsTab /></TabsContent>}
             {isPlatformAdmin && (
               <TabsContent value="platform"><PlatformTab /></TabsContent>
             )}

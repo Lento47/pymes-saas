@@ -50,6 +50,13 @@ interface NavGroup {
   items: NavItem[];
 }
 
+// Plan minimum for each nav item (items not listed are available to all)
+const PLAN_MIN: Record<string, string> = {
+  pipeline: 'STARTER',
+  chat: 'ENTERPRISE',
+  agent: 'ENTERPRISE',
+};
+
 const NAV_GROUPS: NavGroup[] = [
   {
     key: "work",
@@ -269,7 +276,13 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 <span>{(copy.groups as any)[group.key]}</span>
               </div>
               <div className="space-y-1">
-                {group.items.map(({ path, icon: Icon, key, badge: bk }) => {
+                {group.items.filter(({ key }) => {
+                  const minPlan = PLAN_MIN[key];
+                  if (!minPlan) return true;
+                  const plan = user?.workspace?.plan ?? 'FREE';
+                  const order = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
+                  return order.indexOf(plan) >= order.indexOf(minPlan);
+                }).map(({ path, icon: Icon, key, badge: bk }) => {
                   const active = isActive(path);
                   const b = badgeVal(bk);
                   return (
