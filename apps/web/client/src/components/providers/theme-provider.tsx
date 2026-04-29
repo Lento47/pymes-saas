@@ -10,7 +10,7 @@ function getStoredTheme(): Theme {
   return "dark";
 }
 
-function applyTheme(theme: Theme) {
+export function applyTheme(theme: Theme) {
   const root = document.documentElement;
   if (theme === "light") {
     root.classList.add("light");
@@ -31,12 +31,9 @@ const ThemeContext = createContext<ThemeContextValue>({ theme: "dark", toggle: (
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
 
-  // Apply stored theme on mount; remove .light on unmount so public pages stay dark.
   useEffect(() => {
     applyTheme(theme);
-    return () => {
-      document.documentElement.classList.remove("light");
-    };
+    return () => { document.documentElement.classList.remove("light"); };
   }, []);
 
   const toggle = useCallback(() => {

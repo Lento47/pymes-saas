@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Switch, Route, Router, Redirect } from "wouter";
 import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
@@ -8,7 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
 import { I18nProvider } from "@/components/providers/i18n-provider";
-import { ThemeProvider } from "@/components/providers/theme-provider";
+import { ThemeProvider, applyTheme } from "@/components/providers/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
 
 import Landing from "@/pages/landing";
@@ -41,6 +42,15 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminWorkspaces from "@/pages/admin/workspaces";
 import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
 import AdminUsers from "@/pages/admin/users";
+
+// Removes .light from <html> the moment the user logs out, before any paint.
+function AuthThemeSyncer() {
+  const { isAuthenticated } = useAuth();
+  useEffect(() => {
+    if (!isAuthenticated) applyTheme("dark");
+  }, [isAuthenticated]);
+  return null;
+}
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, initialized, user } = useAuth();
@@ -166,6 +176,7 @@ export default function App() {
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
+          <AuthThemeSyncer />
           <TooltipProvider>
             <Toaster />
             <Router hook={useWorkspaceHashLocation}>
