@@ -1587,9 +1587,9 @@ model AgentToolCall {
 
 model AgentEscalation {
   id              String           @id @default(cuid())
-  session_id      String
+  session_id      String?
   workspace_id    String
-  user_id         String
+  user_id         String?
   severity        Priority         @default(MEDIUM)
   summary         String           @db.Text
   evidence_json   Json?            @db.JsonB // { steps_attempted, error_messages, context }
@@ -1600,7 +1600,7 @@ model AgentEscalation {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  session AgentSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  session AgentSession? @relation(fields: [session_id], references: [id], onDelete: Cascade)
 
   @@index([workspace_id])
   @@index([status])

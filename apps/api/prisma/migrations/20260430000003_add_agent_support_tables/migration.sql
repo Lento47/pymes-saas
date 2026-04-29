@@ -49,9 +49,9 @@ CREATE TABLE "agent_tool_calls" (
 -- CreateTable
 CREATE TABLE "agent_escalations" (
     "id" TEXT NOT NULL,
-    "session_id" TEXT NOT NULL,
+    "session_id" TEXT,
     "workspace_id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "user_id" TEXT,
     "severity" "Priority" NOT NULL DEFAULT 'MEDIUM',
     "summary" TEXT NOT NULL,
     "evidence_json" JSONB,

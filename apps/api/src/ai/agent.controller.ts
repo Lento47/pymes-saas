@@ -14,7 +14,9 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AgentService } from './agent.service';
 import { AgentToolsService } from './agent-tools.service';
 import { AgentStreamDto } from './agent.dto';
+import { CreateEscalationDto } from './agent-escalation.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { PrismaService } from '../common/prisma/prisma.service';
 
 @Controller('agent')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,7 +25,37 @@ export class AgentController {
     private readonly agentService: AgentService,
     private readonly toolsService: AgentToolsService,
     private readonly planLimits: PlanLimitsService,
+    private readonly prisma: PrismaService,
   ) {} 
+
+  @Post('escalate')
+  @Roles('ADMIN', 'AGENT', 'VIEWER')
+  async escalate(
+    @Body() dto: CreateEscalationDto,
+    @CurrentUser('workspace_id') workspaceId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    await this.planLimits.enforceAiAccess(workspaceId);
+
+    const escalation = await this.prisma.agentEscalation.create({
+      data: {
+        workspace_id: workspaceId,
+        user_id: userId,
+        summary: dto.summary,
+        severity: dto.severity || 'MEDIUM',
+        evidence_json: (dto.evidence as any) || undefined,
+        status: 'OPEN',
+      },
+    });
+
+    return {
+      id: escalation.id,
+      status: escalation.status,
+      severity: escalation.severity,
+      summary: escalation.summary,
+      created_at: escalation.created_at,
+    };
+  }
 
   @Post('execute')
   @Roles('ADMIN', 'AGENT', 'VIEWER')
