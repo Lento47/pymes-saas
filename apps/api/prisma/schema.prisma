@@ -250,6 +250,7 @@ model Workspace {
   billing_events       BillingEvent[]
   stripe_events        StripeEvent[]
   routing_rules        RoutingRule[]
+  agent_sessions       AgentSession[]
 
   // Business+ Enterprise relations
   enterprise_config    WorkspaceEnterpriseConfig?
@@ -292,6 +293,7 @@ model User {
   error_reports         ErrorReport[]
   assigned_deals        Deal[]              @relation("DealAssignee")
   billing_events        BillingEvent[]
+  agent_sessions        AgentSession[]
 
   // Business+ Enterprise relations
   onboarding_projects  OnboardingProject[]  @relation("OnboardingOwner")
@@ -1503,4 +1505,106 @@ model WorkspaceTemplate {
   @@index([industry])
   @@index([is_active])
   @@map("workspace_templates")
+}
+
+// ============================================================
+// AGENT SUPPORT — Multi-agent support & escalation system
+// ============================================================
+
+enum AgentSessionStatus {
+  ACTIVE
+  COMPLETED
+  ESCALATED
+  EXPIRED
+}
+
+enum EscalationStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model AgentSession {
+  id           String             @id @default(cuid())
+  workspace_id String
+  user_id      String
+  agent_type   String             // "router", "docs", "onboarding", "inbox", "billing", "troubleshooting", "escalation"
+  status       AgentSessionStatus @default(ACTIVE)
+  metadata_json Json?             @db.JsonB // { plan, role, locale, page_context }
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages  AgentMessage[]
+  toolCalls AgentToolCall[]
+  escalations AgentEscalation[]
+
+  @@index([workspace_id])
+  @@index([user_id])
+  @@index([status])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@map("agent_sessions")
+}
+
+model AgentMessage {
+  id         String   @id @default(cuid())
+  session_id String
+  role       String   // "user", "assistant", "system", "tool"
+  content    String   @db.Text
+  metadata_json Json?  @db.JsonB // { tool_calls, citations, confidence }
+
+  created_at DateTime @default(now())
+
+  session AgentSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+  @@index([session_id, created_at])
+  @@map("agent_messages")
+}
+
+model AgentToolCall {
+  id            String   @id @default(cuid())
+  session_id    String
+  agent_type    String    // which sub-agent made the call
+  tool_name     String
+  input_json    Json     @db.JsonB
+  output_json   Json?    @db.JsonB
+  risk_level    String?   // "low", "medium", "high", "critical"
+  allowed       Boolean  @default(true)
+  blocked_reason String?
+  executed_at   DateTime @default(now())
+
+  session AgentSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+  @@index([tool_name])
+  @@index([risk_level])
+  @@map("agent_tool_calls")
+}
+
+model AgentEscalation {
+  id              String           @id @default(cuid())
+  session_id      String
+  workspace_id    String
+  user_id         String
+  severity        Priority         @default(MEDIUM)
+  summary         String           @db.Text
+  evidence_json   Json?            @db.JsonB // { steps_attempted, error_messages, context }
+  status          EscalationStatus @default(OPEN)
+  resolved_by     String?          // user_id of resolving agent
+  resolution_note String?          @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  session AgentSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([status])
+  @@index([severity])
+  @@index([workspace_id, status])
+  @@map("agent_escalations")
 }
