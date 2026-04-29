@@ -236,11 +236,18 @@ export default function BillingPage() {
     onSuccess: (data: any) => {
       if (data?.checkoutUrl) {
         window.open(data.checkoutUrl, "_blank");
+        toast({ title: "Redirigiendo a Paddle para completar el pago..." });
+      } else {
+        toast({ title: "Checkout no disponible", description: "No se pudo generar el enlace de pago. Intentá de nuevo.", variant: "destructive" });
       }
-      toast({ title: "Redirigiendo a Paddle para completar el pago..." });
     },
     onError: (err: any) => {
-      toast({ title: "Error al iniciar checkout", description: err.message, variant: "destructive" });
+      const msg = err?.message ?? "Error desconocido";
+      if (msg.includes("401") || msg.includes("Unauthorized")) {
+        toast({ title: "Sesión expirada", description: "Tu sesión expiró. Refrescá la página e intentá de nuevo.", variant: "destructive" });
+      } else {
+        toast({ title: "Error al iniciar checkout", description: msg, variant: "destructive" });
+      }
     },
   });
 

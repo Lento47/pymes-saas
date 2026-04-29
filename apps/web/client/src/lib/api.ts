@@ -83,7 +83,7 @@ async function _tryRefresh(): Promise<boolean> {
       _token = data.access_token;
       if (data.refresh_token) {
         _refreshToken = data.refresh_token;
-        try { sessionStorage.setItem('pymes_refresh', data.refresh_token); } catch { /* ignore */ }
+        try { getStorage().setItem('pymes_refresh', data.refresh_token); } catch { /* ignore */ }
       }
       return true;
     } catch {
