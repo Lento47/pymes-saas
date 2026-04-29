@@ -650,10 +650,26 @@ export class PaddleService {
     }
 
     if (workspaceId) {
-      await this.prisma.workspace.update({
-        where: { id: workspaceId },
-        data: { plan },
-      });
+      const addonKey = customData?.addon || customData?.addon_key || undefined;
+      if (addonKey) {
+        const workspace = await this.prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { settings_json: true },
+        });
+        const settings = (workspace?.settings_json as Record<string, any>) ?? {};
+        settings[`${addonKey}_active`] = true;
+        settings[`${addonKey}_activated_at`] = new Date().toISOString();
+        await this.prisma.workspace.update({
+          where: { id: workspaceId },
+          data: { settings_json: settings as any },
+        });
+        this.logger.log(`Add-on activated: ${addonKey} for workspace ${workspaceId}`);
+      } else {
+        await this.prisma.workspace.update({
+          where: { id: workspaceId },
+          data: { plan },
+        });
+      }
     }
   }
 

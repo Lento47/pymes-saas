@@ -32,7 +32,6 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
 import { HaciendaModule } from './hacienda/hacienda.module';
-import { PaddleModule } from './paddle/paddle.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { HealthModule } from './health/health.module';
 import { AiModule } from './ai/ai.module';
@@ -93,7 +92,6 @@ import { ProductMetricsModule } from './common/metrics/product-metrics.module';
     InsightsModule,
     InvoicesModule,
     HaciendaModule,
-    PaddleModule,
     PipelineModule,
     AiModule,
     ErrorReportsModule,
