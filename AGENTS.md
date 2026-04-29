@@ -107,6 +107,7 @@ Optional: `OPENAI_API_KEY`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`
 - **Every fix MUST be pushed to the branch where the issue lives.** If the fix affects both frontend and backend, push to BOTH `main-api` AND `main-web`.
 - **Do NOT remove code to fix regressions.** If a change breaks something, fix it in-place. Never delete features to resolve a bug — patch the root cause.
 - **Deployment is real.** `main-api` deploys to Railway (production). `main-web` deploys to Cloudflare Pages (production). Both trigger auto-deploys on push.
+- **Never use `set -e` in entrypoint.sh.** A failing migration must not prevent the app from starting. Use `|| echo` or `|| true` after migration commands so the container stays alive. A dead container means healthcheck fails and Railway marks the deploy as failed.
 - **Always patch vulnerabilities.** Security issues must be fixed immediately and pushed to the relevant branch. Never leave a known vulnerability unpatched.
 - **Do NOT make cross-branch edits.** `main-api` is `apps/api/` only. `main-web` is `apps/web/` only. Cross-cutting changes (shared types) must be committed to both branches separately.
 
