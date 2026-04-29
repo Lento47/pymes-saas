@@ -26,14 +26,14 @@ function getInitials(name: string) {
 }
 
 function DueDateLabel({ dateStr }: { dateStr?: string }) {
-  if (!dateStr) return <span className="text-white/40">—</span>;
+  if (!dateStr) return <span className="text-muted-foreground">—</span>;
   const date = new Date(dateStr);
   const overdue = isPast(date) && !isToday(date);
   const today = isToday(date);
   const tomorrow = isTomorrow(date);
   const label = today ? "Hoy" : tomorrow ? "Mañana" : format(date, "dd MMM");
   return (
-    <span className={cn("flex items-center gap-1 text-xs", overdue ? "text-red-400" : today ? "text-amber-400" : "text-white/40")}>
+    <span className={cn("flex items-center gap-1 text-xs", overdue ? "text-red-400" : today ? "text-amber-400" : "text-muted-foreground")}>
       {overdue ? <AlertTriangle className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
       {label}
     </span>
@@ -176,7 +176,7 @@ export default function TasksPage() {
         {/* Filters */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <Input
               placeholder="Buscar tareas..."
               value={search}
@@ -212,7 +212,7 @@ export default function TasksPage() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-xs text-white/40"
+              className="h-8 text-xs text-muted-foreground"
               onClick={() => { setStatusFilter("ALL"); setPriorityFilter("ALL"); setSearch(""); }}
             >
               Limpiar
@@ -230,11 +230,11 @@ export default function TasksPage() {
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="w-8" />
-                  <TableHead className="text-[11px] text-white/40 font-medium">Título</TableHead>
-                  <TableHead className="text-[11px] text-white/40 font-medium">Estado</TableHead>
-                  <TableHead className="text-[11px] text-white/40 font-medium">Prioridad</TableHead>
-                  <TableHead className="text-[11px] text-white/40 font-medium">Vencimiento</TableHead>
-                  <TableHead className="text-[11px] text-white/40 font-medium">Asignado a</TableHead>
+                  <TableHead className="text-[11px] text-muted-foreground font-medium">Título</TableHead>
+                  <TableHead className="text-[11px] text-muted-foreground font-medium">Estado</TableHead>
+                  <TableHead className="text-[11px] text-muted-foreground font-medium">Prioridad</TableHead>
+                  <TableHead className="text-[11px] text-muted-foreground font-medium">Vencimiento</TableHead>
+                  <TableHead className="text-[11px] text-muted-foreground font-medium">Asignado a</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -277,11 +277,11 @@ export default function TasksPage() {
                         <div className="flex items-start gap-2">
                           <PriorityDot priority={task.priority} />
                           <div>
-                            <div className={cn("text-sm font-medium", task.status === "DONE" ? "line-through text-white/40" : "text-foreground")}>
+                            <div className={cn("text-sm font-medium", task.status === "DONE" ? "line-through text-muted-foreground" : "text-foreground")}>
                               {task.title}
                             </div>
                             {task.description && (
-                              <div className="text-[11px] text-white/40 truncate max-w-[240px]">{task.description}</div>
+                              <div className="text-[11px] text-muted-foreground truncate max-w-[240px]">{task.description}</div>
                             )}
                           </div>
                         </div>
@@ -289,7 +289,7 @@ export default function TasksPage() {
                       <TableCell>
                         <StatusBadge status={task.status} type="task" />
                       </TableCell>
-                      <TableCell className="text-xs text-white/40">
+                      <TableCell className="text-xs text-muted-foreground">
                         {PRIORITY_LABELS[task.priority] || task.priority?.toLowerCase() || "—"}
                       </TableCell>
                       <TableCell>
@@ -298,13 +298,13 @@ export default function TasksPage() {
                       <TableCell>
                         {assigneeName ? (
                           <div className="flex items-center gap-1.5">
-                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold text-white/40 shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold text-muted-foreground shrink-0">
                               {getInitials(assigneeName)}
                             </div>
-                            <span className="text-xs text-white/40 truncate max-w-[80px]">{assigneeName}</span>
+                            <span className="text-xs text-muted-foreground truncate max-w-[80px]">{assigneeName}</span>
                           </div>
                         ) : (
-                          <span className="text-xs text-white/20">Sin asignar</span>
+                          <span className="text-xs text-muted-foreground/60">Sin asignar</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
