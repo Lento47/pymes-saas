@@ -6,20 +6,6 @@ import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/telemetry/api-exception.filter';
 import { ErrorReportsService } from './error-reports/error-reports.service';
 
-// Suppress ioredis ECONNREFUSED when Redis is not available (dev / no Redis env)
-let redisWarned = false;
-process.on('uncaughtException', (err: any) => {
-  if (err?.code === 'ECONNREFUSED' && (err?.port === 6379 || err?.address === '127.0.0.1' || err?.address === '::1')) {
-    if (!redisWarned) {
-      console.warn('[Redis] Not available locally — background jobs disabled');
-      redisWarned = true;
-    }
-    return;
-  }
-  console.error('Uncaught exception:', err);
-  process.exit(1);
-});
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
