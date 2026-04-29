@@ -17,6 +17,7 @@ import { AgentStreamDto } from './agent.dto';
 import { CreateEscalationDto } from './agent-escalation.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { SupportRouterService } from './support-router.service';
 
 @Controller('agent')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -26,6 +27,7 @@ export class AgentController {
     private readonly toolsService: AgentToolsService,
     private readonly planLimits: PlanLimitsService,
     private readonly prisma: PrismaService,
+    private readonly router: SupportRouterService,
   ) {} 
 
   @Post('escalate')
@@ -81,11 +83,14 @@ export class AgentController {
       res.status(400).json({ error: 'Se requiere message o input' });
       return;
     }
+
+    const { agent, confidence } = this.router.classifyIntent(input);
     const conversationId = dto.conversationId || dto.conversation_id;
     const result = await this.agentService.streamWorkflow(
       workspaceId,
       input,
       conversationId,
+      agent,
     );
 
     if ('error' in result) {
@@ -98,6 +103,7 @@ export class AgentController {
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'X-Agent-Type': result.agent_type,
     });
 
     const reader = result.stream.getReader();

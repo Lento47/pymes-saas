@@ -5,6 +5,7 @@ import { parseJsonValue } from '../common/prisma/json';
 import { InsightsService } from '../insights/insights.service';
 import { SearchService } from '../search/search.service';
 import { DocsService } from '../docs/docs.service';
+import { SupportRouterService, AgentType } from './support-router.service';
 import { Agent, tool, run as agentRun, Runner } from '@openai/agents';
 import { z } from 'zod';
 
@@ -25,6 +26,7 @@ export class AgentService {
     private readonly insights: InsightsService,
     private readonly searchService: SearchService,
     private readonly docsService: DocsService,
+    private readonly router: SupportRouterService,
   ) {}
 
   private async logToolCall(
@@ -66,7 +68,12 @@ export class AgentService {
     return null;
   }
 
-  private createTools(workspaceId: string) {
+  classifyIntent(input: string): { agent: AgentType; confidence: number } {
+    return this.router.classifyIntent(input);
+  }
+
+  private createTools(workspaceId: string, agentType: AgentType = 'hubby') {
+    const allowedTools = new Set(this.router.getToolSet(agentType));
     const prisma = this.prisma;
     const insights = this.insights;
     const searchSvc = this.searchService;
@@ -147,14 +154,15 @@ export class AgentService {
           return { query, results, total: results.length };
         },
       }),
-    ];
+    ].filter((t: any) => allowedTools.has(t.name));
   }
 
   async streamWorkflow(
     workspaceId: string,
     input: string,
     conversationId?: string,
-  ): Promise<{ stream: ReadableStream; model: string } | { error: string }> {
+    agentType: AgentType = 'hubby',
+  ): Promise<{ stream: ReadableStream; model: string; agent_type: string } | { error: string }> {
     const apiKey = await this.getAgentApiKey(workspaceId);
     if (!apiKey) {
       return { error: 'API Key de OpenAI no configurada. Configúrala en Ajustes → IA.' };
@@ -188,11 +196,11 @@ export class AgentService {
       this.logger.warn(`Error building agent context: ${(err as Error).message}`);
     }
 
-    const tools = this.createTools(workspaceId);
+    const tools = this.createTools(workspaceId, agentType);
 
     // Create agent session for audit trail
     const session = await this.prisma.agentSession.create({
-      data: { workspace_id: workspaceId, agent_type: 'hubby', status: 'ACTIVE' },
+      data: { workspace_id: workspaceId, agent_type: agentType, status: 'ACTIVE' },
     });
     this.currentSessionId = session.id;
 
@@ -273,7 +281,7 @@ REGLAS:
         },
       });
 
-      return { stream, model };
+      return { stream, model, agent_type: agentType };
     } catch (err: any) {
       this.logger.error(`Agent SDK error: ${err.message}`);
       return { error: `Error del agente: ${err.message}` };
@@ -282,7 +290,7 @@ REGLAS:
 
   async streamPublic(
     input: string,
-  ): Promise<{ stream: ReadableStream; model: string } | { error: string }> {
+  ): Promise<{ stream: ReadableStream; model: string; agent_type: string } | { error: string }> {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return { error: 'OpenAI API key not configured on server.' };
@@ -345,7 +353,7 @@ REGLAS:
         },
       });
 
-      return { stream, model: 'gpt-4.1-mini' };
+      return { stream, model: 'gpt-4.1-mini', agent_type: 'hubby' };
     } catch (err: any) {
       this.logger.error(`Public agent error: ${err.message}`);
       return { error: `Error: ${err.message}` };
