@@ -13,6 +13,8 @@ VITE_PADDLE_PRICE_GROWTH_MONTHLY = "pri_01kq0we4j1wf2pgmh3w14arc6c"
 VITE_PADDLE_PRICE_GROWTH_ANNUAL = "pri_01kq1bqs2v3hkx3d0mx4wkxsvg"
 VITE_PADDLE_PRICE_ENTERPRISE_MONTHLY = "pri_01kq0wjzkyncpwaj33m1fppppj"
 VITE_PADDLE_PRICE_ENTERPRISE_ANNUAL = "pri_01kq1bgffcm5jp82ytctx9necr"
+VITE_PADDLE_PRICE_AI_ASSISTANT_MONTHLY = "pri_01kqdhgewjpryvfxen9e6xs30j"
+VITE_PADDLE_PRICE_AI_ASSISTANT_ANNUAL = "pri_01kqdhv10gq2h354ba8tmw9px0"
 
 [assets]
 directory = "./apps/web/dist/public"
