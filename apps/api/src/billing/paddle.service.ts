@@ -212,25 +212,38 @@ export class PaddleService {
     const planRank: Record<string, number> = { FREE: 0, STARTER: 1, GROWTH: 2, ENTERPRISE: 3 };
     const isDowngrade = (planRank[newPlan] ?? 0) <= (planRank[sub.plan] ?? 0);
 
+    // IMPORTANTE — PADDLE RECHAZA 'prorated_immediately' CUANDO LA SUSCRIPCION
+    // ESTA EN TRIAL. EN ESE CASO SIEMPRE HAY QUE USAR 'do_not_bill'.
+    // EL CAMBIO DE PLAN EN TRIAL ENTRA EN VIGOR SIN CARGO; EL COBRO OCURRE
+    // CUANDO EL TRIAL TERMINA (PADDLE LO MANEJA AUTOMATICAMENTE).
+    const isTrialing = paddleSub.status === 'trialing';
+
     // IMPORTANTE — DOWNGRADE NO COBRA HOY:
     //   prorationBillingMode='do_not_bill' EVITA EL CARGO INMEDIATO,
     //   effectiveFrom='next_billing_period' AGENDA EL CAMBIO PARA EL CICLO
     //   SIGUIENTE. EL USUARIO DISFRUTA EL PLAN ACTUAL (CARO) HASTA QUE
     //   TERMINE EL PERIODO YA PAGADO.
-    // UPGRADE COBRA INMEDIATAMENTE LA DIFERENCIA PRORRATEADA.
+    // UPGRADE (FUERA DE TRIAL) COBRA INMEDIATAMENTE LA DIFERENCIA PRORRATEADA.
+    const prorationBillingMode = (isDowngrade || isTrialing) ? 'do_not_bill' : 'prorated_immediately';
+
     const updated = await paddle.subscriptions.update(sub.provider_subscription_id, {
       items: [{ priceId: newPriceId, quantity: 1 }],
-      prorationBillingMode: isDowngrade ? 'do_not_bill' : 'prorated_immediately',
-      ...(isDowngrade ? { scheduledChange: { action: 'change', effectiveAt: 'next_billing_period' } as any } : {}),
+      prorationBillingMode,
+      ...(isDowngrade && !isTrialing ? { scheduledChange: { action: 'change', effectiveAt: 'next_billing_period' } as any } : {}),
     } as any);
 
     // ACTUALIZA NUESTRO REGISTRO LOCAL. EL WEBHOOK `subscription.updated`
     // TAMBIEN LLEGARA Y SOBREESCRIBIRA — ESTO ES SOLO PARA UI INMEDIATA.
-    // NOTA: EN DOWNGRADE, EL `plan` LOCAL NO CAMBIA HASTA QUE EL WEBHOOK
-    // CONFIRME EL CAMBIO EN EL PROXIMO CICLO. NO TOCAR `workspace.plan` AQUI
-    // SI ES DOWNGRADE.
+    //
+    // CASO DOWNGRADE (FUERA DE TRIAL): EL PLAN LOCAL NO CAMBIA AUN — EL
+    // USUARIO SIGUE EN EL PLAN CARO HASTA EL FIN DEL PERIODO ACTUAL.
+    //
+    // CASO TRIALING (UPGRADE O DOWNGRADE): EL NUEVO PLAN ENTRA EN VIGOR EN
+    // EL TRIAL, SIN CARGO. ACTUALIZAMOS LOCAL DE INMEDIATO PARA QUE LA UI
+    // REFLEJE EL PLAN CORRECTO. PADDLE COBRARA AL FINAL DEL TRIAL.
     const status = this.mapPaddleStatus(updated.status);
-    if (!isDowngrade) {
+    const shouldUpdateNow = !isDowngrade || isTrialing;
+    if (shouldUpdateNow) {
       await this.prisma.workspaceSubscription.update({
         where: { id: sub.id },
         data: { plan: newPlan, status: status as any },
@@ -239,18 +252,22 @@ export class PaddleService {
         where: { id: workspaceId },
         data: { plan: newPlan },
       });
-      this.logger.log(`Plan upgraded immediately: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
+      if (isTrialing) {
+        this.logger.log(`Plan changed during trial (no charge now): workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
+      } else {
+        this.logger.log(`Plan upgraded immediately: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
+      }
     } else {
       this.logger.log(`Plan downgrade scheduled for next period: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
     }
 
     return {
       updated: true,
-      plan: isDowngrade ? sub.plan : newPlan, // PARA UI: SI ES DOWNGRADE, EL PLAN ACTUAL SIGUE VIGENTE HASTA EL PROXIMO CICLO
-      scheduled_plan: isDowngrade ? newPlan : null,
+      plan: shouldUpdateNow ? newPlan : sub.plan, // PARA UI: EN DOWNGRADE NO TRIAL, EL PLAN ACTUAL SIGUE VIGENTE HASTA EL PROXIMO CICLO
+      scheduled_plan: !shouldUpdateNow ? newPlan : null,
       status,
-      prorated: !isDowngrade,
-      effective: isDowngrade ? 'next_billing_period' : 'immediate',
+      prorated: !isDowngrade && !isTrialing,
+      effective: shouldUpdateNow ? 'immediate' : 'next_billing_period',
     };
   }
 
