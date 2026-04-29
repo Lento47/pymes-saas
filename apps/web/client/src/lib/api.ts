@@ -419,6 +419,9 @@ export const api = {
   getSlaPolicies: () => request<any>("GET", "/api/sla/policies"),
   getSlaAssignment: (workspaceId: string) => request<any>("GET", `/api/sla/assignment/${workspaceId}`),
   assignSlaPolicy: (workspaceId: string, data: any) => request<any>("POST", `/api/sla/assignment/${workspaceId}`, data),
+  // Metrics
+  trackEvent: (event: string, category?: string, value?: number, metadata?: Record<string, string>) =>
+    request<any>("POST", "/api/metrics/event", { event, category, value, metadata }),
   // Templates
   listSystemTemplates: (type: string, category?: string) => {
     const qs = new URLSearchParams({ type });

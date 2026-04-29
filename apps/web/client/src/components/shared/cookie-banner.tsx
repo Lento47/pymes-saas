@@ -7,6 +7,7 @@ const STORAGE_KEY = "cookie_prefs";
 type Prefs = {
   essential: boolean; // always true
   analytics: boolean;
+  product_improvement: boolean;
 };
 type Consent = "accepted" | "rejected" | "custom";
 
@@ -25,7 +26,7 @@ function store(consent: Consent, prefs: Prefs) {
 export function CookieBanner() {
   const [visible, setVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [prefs, setPrefs] = useState<Prefs>({ essential: true, analytics: false });
+  const [prefs, setPrefs] = useState<Prefs>({ essential: true, analytics: false, product_improvement: false });
 
   useEffect(() => {
     const stored = getStored();
@@ -38,8 +39,8 @@ export function CookieBanner() {
 
   const apply = (choice: "accept_all" | "reject_non_essential" | "custom") => {
     const finalPrefs: Prefs =
-      choice === "accept_all" ? { essential: true, analytics: true }
-      : choice === "reject_non_essential" ? { essential: true, analytics: false }
+      choice === "accept_all" ? { essential: true, analytics: true, product_improvement: true }
+      : choice === "reject_non_essential" ? { essential: true, analytics: false, product_improvement: false }
       : prefs;
 
     const consent: Consent = choice === "accept_all" ? "accepted" : choice === "reject_non_essential" ? "rejected" : "custom";
@@ -130,6 +131,22 @@ export function CookieBanner() {
                   className={`w-9 h-5 rounded-full transition-colors flex items-center ${prefs.analytics ? "bg-amber-500/30 justify-end" : "bg-border justify-start"} px-0.5`}
                 >
                   <div className={`w-4 h-4 rounded-full transition-colors ${prefs.analytics ? "bg-amber-500" : "bg-muted-foreground/40"}`} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-3">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-sky-400" />
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Mejora del producto</p>
+                    <p className="text-[10px] text-muted-foreground">Datos anónimos de uso. Nunca información personal.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPrefs((p) => ({ ...p, product_improvement: !p.product_improvement }))}
+                  className={`w-9 h-5 rounded-full transition-colors flex items-center ${prefs.product_improvement ? "bg-sky-500/30 justify-end" : "bg-border justify-start"} px-0.5`}
+                >
+                  <div className={`w-4 h-4 rounded-full transition-colors ${prefs.product_improvement ? "bg-sky-500" : "bg-muted-foreground/40"}`} />
                 </button>
               </div>
             </div>
