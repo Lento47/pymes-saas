@@ -28,7 +28,7 @@ function toCreateContactPayload(form: {
   phone: string;
   company: string;
   type: string;
-}) {
+}, phonePrefix: string) {
   const full = [form.firstName, form.lastName].filter(Boolean).join(" ").trim();
   if (form.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
     throw new Error("El email no tiene un formato válido.");
@@ -37,7 +37,7 @@ function toCreateContactPayload(form: {
     type: form.type,
     full_name: full || "Sin nombre",
     ...(form.email?.trim() ? { email: form.email.trim() } : {}),
-    ...(form.phone?.trim() ? { phone: form.phone.trim() } : {}),
+    ...(form.phone?.trim() ? { phone: phonePrefix + form.phone.trim() } : {}),
     ...(form.company?.trim() ? { company_name: form.company.trim() } : {}),
   };
 }
@@ -60,6 +60,7 @@ export default function ContactsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", company: "", type: "CUSTOMER" });
+  const [phonePrefix, setPhonePrefix] = useState("+506");
   const [importOpen, setImportOpen] = useState(false);
 
   const params: Record<string, string> = {};
@@ -72,8 +73,10 @@ export default function ContactsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: Parameters<typeof toCreateContactPayload>[0]) =>
-      editingId ? api.updateContact(editingId, toCreateContactPayload(data)) : api.createContact(toCreateContactPayload(data)),
+    mutationFn: () => {
+      const payload = toCreateContactPayload(form, phonePrefix);
+      return editingId ? api.updateContact(editingId, payload) : api.createContact(payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       setShowCreate(false);
@@ -253,8 +256,35 @@ export default function ContactsPage() {
               <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="h-8 text-xs bg-background border-border" data-testid="input-contact-email" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground/60">Phone</Label>
-              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="h-8 text-xs bg-background border-border" data-testid="input-contact-phone" />
+              <Label className="text-xs text-muted-foreground/60">Teléfono</Label>
+              <div className="flex gap-1.5">
+                <select
+                  value={phonePrefix}
+                  onChange={(e) => setPhonePrefix(e.target.value)}
+                  className="h-8 w-20 rounded-md border border-border bg-background text-xs text-foreground px-1.5 shrink-0"
+                >
+                  <option value="+506">🇨🇷 +506</option>
+                  <option value="+1">🇺🇸 +1</option>
+                  <option value="+52">🇲🇽 +52</option>
+                  <option value="+57">🇨🇴 +57</option>
+                  <option value="+51">🇵🇪 +51</option>
+                  <option value="+54">🇦🇷 +54</option>
+                  <option value="+56">🇨🇱 +56</option>
+                  <option value="+507">🇵🇦 +507</option>
+                  <option value="+503">🇸🇻 +503</option>
+                  <option value="+502">🇬🇹 +502</option>
+                  <option value="+504">🇭🇳 +504</option>
+                  <option value="+505">🇳🇮 +505</option>
+                  <option value="+34">🇪🇸 +34</option>
+                  <option value="+44">🇬🇧 +44</option>
+                </select>
+                <Input
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="8888-7777"
+                  className="h-8 text-xs bg-background border-border flex-1"
+                />
+              </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground/60">Company</Label>
@@ -276,7 +306,7 @@ export default function ContactsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setShowCreate(false)} className="h-8 text-xs" data-testid="button-cancel">Cancel</Button>
-            <Button size="sm" className="h-8 text-xs" onClick={() => createMutation.mutate(form)} disabled={createMutation.isPending} data-testid="button-save-contact">
+            <Button size="sm" className="h-8 text-xs" onClick={() => createMutation.mutate()} disabled={createMutation.isPending} data-testid="button-save-contact">
               {createMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
               {editingId ? "Save Changes" : "Create"}
             </Button>
