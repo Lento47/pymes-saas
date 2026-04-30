@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Logger, Param, Post, RawBodyRequest, Req, Res, UseGuards, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Param, Post, Query, RawBodyRequest, Req, Res, UseGuards, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { PaddleService } from './paddle.service';
 import { BillingInvoiceService } from './billing-invoice.service';
 import { ChangePlanDto } from './dto/change-plan.dto';
 import { CreateCheckoutDto } from './dto/checkout.dto';
+import { FilterBillingInvoicesDto } from './dto/filter-billing-invoices.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -136,8 +137,11 @@ export class BillingController {
 
   @Get('invoices')
   @UseGuards(JwtAuthGuard)
-  async getInvoices(@CurrentUser() user: AuthUser) {
-    return this.billingInvoice.findByWorkspace(user.workspace_id);
+  async getInvoices(
+    @CurrentUser() user: AuthUser,
+    @Query() filters: FilterBillingInvoicesDto,
+  ) {
+    return this.billingInvoice.findByWorkspace(user.workspace_id, filters);
   }
 
   @Get('invoices/:id/pdf')

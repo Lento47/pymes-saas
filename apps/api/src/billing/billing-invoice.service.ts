@@ -104,11 +104,37 @@ export class BillingInvoiceService {
     return { buffer, filename: `invoice-${inv.number}.pdf` };
   }
 
-  async findByWorkspace(workspaceId: string) {
-    return this.prisma.billingInvoice.findMany({
-      where: { workspace_id: workspaceId },
-      orderBy: { issued_at: 'desc' },
-    });
+  async findByWorkspace(workspaceId: string, filters?: { page?: number; limit?: number; search?: string }) {
+    const page = filters?.page ?? 1;
+    const limit = Math.min(filters?.limit ?? 10, 100);
+    const skip = (page - 1) * limit;
+
+    const where: any = { workspace_id: workspaceId };
+
+    if (filters?.search) {
+      const s = filters.search;
+      where.OR = [
+        { number: { contains: s, mode: 'insensitive' } },
+        { client_name: { contains: s, mode: 'insensitive' } },
+        { plan_name: { contains: s, mode: 'insensitive' } },
+        { status: { contains: s, mode: 'insensitive' } },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.billingInvoice.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { issued_at: 'desc' },
+      }),
+      this.prisma.billingInvoice.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, pages: Math.ceil(total / limit) },
+    };
   }
 
   private async nextNumber(): Promise<string> {
