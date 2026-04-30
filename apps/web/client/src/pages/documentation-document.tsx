@@ -97,15 +97,15 @@ export default function DocumentationDocumentPage({
                   prose-h1:text-3xl prose-h1:font-bold prose-h1:mt-0 prose-h1:mb-6
                   prose-h2:text-xl prose-h2:font-semibold prose-h2:mt-10 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-white/[0.06]
                   prose-h3:text-base prose-h3:font-semibold prose-h3:mt-8 prose-h3:mb-3
-                  prose-p:text-[#bcc5ee]/78 prose-p:leading-7
+                  prose-p:text-white/75 prose-p:leading-7
                   prose-a:text-[#dfff4a]/80 prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-[#dfff4a]
                   prose-strong:text-white/90 prose-strong:font-semibold
-                  prose-ul:text-[#bcc5ee]/78 prose-ol:text-[#bcc5ee]/78
+                  prose-ul:text-white/70 prose-ol:text-white/70
                   prose-li:my-1
                   prose-code:text-[#dfff4a]/70 prose-code:bg-white/[0.04] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
                   prose-pre:bg-white/[0.02] prose-pre:border prose-pre:border-white/[0.06]
-                  prose-table:text-[#bcc5ee]/78 prose-th:text-white/80 prose-th:font-semibold prose-td:border-white/[0.06] prose-th:border-white/[0.06]
-                  prose-blockquote:border-l-[#dfff4a]/30 prose-blockquote:text-[#bcc5ee]/60
+                  prose-table:text-white/70 prose-th:text-white/80 prose-th:font-semibold prose-td:border-white/[0.06] prose-th:border-white/[0.06]
+                  prose-blockquote:border-l-[#dfff4a]/30 prose-blockquote:text-white/65
                   prose-hr:border-white/[0.06]
                   max-w-none
                 ">
