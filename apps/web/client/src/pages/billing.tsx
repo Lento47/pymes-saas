@@ -16,7 +16,7 @@ import { queryClient } from "@/lib/queryClient";
 import { HelpButton } from "@/components/shared/help-button";
 import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import {
-  Crown, ArrowUpRight, ArrowDownRight, Check, Loader2, Info,
+  Crown, ArrowUpRight, ArrowDownRight, Check, Loader2, Info, ExternalLink,
   Users, Zap, Receipt, FolderOpen, Database, TrendingUp,
 } from "lucide-react";
 
@@ -203,6 +203,15 @@ export default function BillingPage() {
   const paddle = usePaddle();
   const [location] = useLocation();
   const [intervals, setIntervals] = useState<Record<string, "monthly" | "annual">>({});
+  const openBillingPortal = async () => {
+    try {
+      const { url } = await api.getBillingPortal();
+      if (url) window.open(url, "_blank");
+    } catch {
+      toast({ title: "Portal no disponible", variant: "destructive" });
+    }
+  };
+
   const [loading, setLoading] = useState<string | null>(null);
   const params = new URLSearchParams(location.split("?")[1]);
   const success = params.get("paddle") === "success";
@@ -419,19 +428,12 @@ export default function BillingPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs"
-                  onClick={async () => {
-                    try {
-                      const { url } = await api.getBillingPortal();
-                      if (url) window.open(url, "_blank");
-                    } catch {
-                      toast({ title: "Portal no disponible", variant: "destructive" });
-                    }
-                  }}
-                >
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                onClick={openBillingPortal}
+              >
                   Gestionar suscripción
                 </Button>
               </div>
@@ -678,15 +680,26 @@ export default function BillingPage() {
 
         {/* Billing history */}
         <div>
-          <h2 className="text-sm font-semibold text-foreground mb-3">Historial de facturación</h2>
-          <BillingHistory />
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-foreground">Historial de facturación</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[10px]"
+              onClick={openBillingPortal}
+            >
+              <ExternalLink className="w-3 h-3 mr-1" />
+              Ver todas en Paddle
+            </Button>
+          </div>
+          <BillingHistory openBillingPortal={openBillingPortal} />
         </div>
       </div>
     </div>
   );
 }
 
-function BillingHistory() {
+function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }) {
   const { data, isLoading } = useQuery({
     queryKey: ["/api/billing/invoices"],
     queryFn: api.getBillingInvoices,
@@ -708,9 +721,18 @@ function BillingHistory() {
     return (
       <div className="rounded-xl border border-border/60 bg-card/40 p-6 text-center">
         <Receipt className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mb-3">
           Aún no hay facturas. La primera aparecerá después de tu primer pago.
         </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-[10px]"
+          onClick={openBillingPortal}
+        >
+          <ExternalLink className="w-3 h-3 mr-1" />
+          Ver facturas en Paddle
+        </Button>
       </div>
     );
   }
