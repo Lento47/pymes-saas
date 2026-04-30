@@ -151,16 +151,35 @@ async function main() {
   console.log(`==> PR body written to ${prBodyPath}`);
   console.log(`==> Total: ${files.length} related files, baseline: ${baseline.passed ? 'PASS' : 'FAIL'}`);
 
-  // Update fix case status for each fix case linked to this diagnostic
+  // Create fix case via API to get the fix case ID
+  let fixCaseId = null;
   try {
-    await updateFixStatus(CASE_ID, {
-      status: 'INVESTIGATING',
-      files_changed: files,
-      fix_summary: `Baseline ${baseline.passed ? 'passed' : 'failed'}. ${files.length} related files identified.`,
-      rollback_notes: 'Revert this commit on the fix branch.',
+    const createRes = await fetch(`${API_BASE}/agent/fix-cases`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ diagnostic_case_id: CASE_ID }),
     });
+    if (createRes.ok) {
+      const created = await createRes.json();
+      fixCaseId = created.id;
+      console.log(`==> Fix case created: ${fixCaseId}`);
+    }
   } catch (err) {
-    console.warn(`Warning: Failed to update fix status: ${err.message}`);
+    console.warn(`Warning: Failed to create fix case: ${err.message}`);
+  }
+
+  // Update fix case status with findings
+  if (fixCaseId) {
+    try {
+      await updateFixStatus(fixCaseId, {
+        status: 'INVESTIGATING',
+        files_changed: files,
+        fix_summary: `Baseline ${baseline.passed ? 'passed' : 'failed'}. ${files.length} related files identified.`,
+        rollback_notes: 'Revert this commit on the fix branch.',
+      });
+    } catch (err) {
+      console.warn(`Warning: Failed to update fix status: ${err.message}`);
+    }
   }
 
   // Output for GitHub Actions

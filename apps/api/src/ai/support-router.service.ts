@@ -74,7 +74,7 @@ export class SupportRouterService {
     ],
     troubleshooting: [
       'get_workspace', 'get_settings', 'get_stats', 'search',
-      'search_pymeshub_docs', 'list_conversations',
+      'search_pymeshub_docs', 'list_conversations', 'get_conversation_detail',
     ],
     escalation: ['search_pymeshub_docs'], // minimal tools, just documents for context
   };
