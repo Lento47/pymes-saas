@@ -95,7 +95,3 @@ jobs:
 
       - name: Build API
         run: cd apps/api && pnpm run build
-
-      - name: Lint API
-        run: cd apps/api && pnpm run lint
-        continue-on-error: true
