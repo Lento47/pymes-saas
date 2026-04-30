@@ -3,6 +3,8 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AiService } from '../../ai/ai.service';
+import { StorageService } from '../../common/storage/storage.service';
+import { OcrService } from '../../documents/ocr.service';
 import { stringifyJson } from '../../common/prisma/json';
 import { QUEUE_NAMES } from '../queues.constants';
 
@@ -46,6 +48,8 @@ export class DocumentProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiService: AiService,
+    private readonly storage: StorageService,
+    private readonly ocr: OcrService,
   ) {
     super();
   }
@@ -89,10 +93,34 @@ export class DocumentProcessor extends WorkerHost {
       mimeType: doc.mime_type,
       fileSizeKb: Math.round(doc.file_size / 1024),
       processed_at: startedAt.toISOString(),
+      ocr_extraction: false,
       ai_extraction: false,
     };
 
-    // 5. Intentar extracción IA si hay API key configurada
+    // 5. OCR real (PDF/imagen) si está habilitado y dependencia disponible
+    let ocrText: string | null = null;
+    if (this.ocr.isEnabled() && doc.storage_key && doc.storage_key !== 'pending') {
+      try {
+        ocrText = await this.ocr.extract(
+          doc.mime_type,
+          doc.file_size,
+          async () => {
+            const { stream } = await this.storage.read(doc.storage_key);
+            return this.ocr.streamToBuffer(stream);
+          },
+        );
+        if (ocrText) {
+          ocr_text = ocrText;
+          extractedData.ocr_extraction = true;
+          extractedData.ocr_chars = ocrText.length;
+        }
+      } catch (err) {
+        this.logger.warn(`OCR extraction failed for ${doc.file_name}: ${(err as Error).message}`);
+        extractedData.ocr_error = (err as Error).message;
+      }
+    }
+
+    // 6. Intentar extracción/resumen IA (puede combinarse con OCR text)
     try {
       const aiResult = await this.aiService.analyzeDocument(doc.workspace_id, {
         fileName: doc.file_name,
@@ -101,7 +129,10 @@ export class DocumentProcessor extends WorkerHost {
       });
 
       if (aiResult) {
-        ocr_text = aiResult.extractedText || ocr_text;
+        // Si OCR ya extrajo texto real, no lo sobrescribimos con texto inferido por IA
+        if (!ocrText && aiResult.extractedText) {
+          ocr_text = aiResult.extractedText;
+        }
         summary_text = aiResult.summary || summary_text;
         extractedData = {
           ...extractedData,
@@ -129,7 +160,7 @@ export class DocumentProcessor extends WorkerHost {
 
       const durationMs = Date.now() - startedAt.getTime();
       this.logger.log(
-        `Document job ${job.id} completed: document=${documentId}, docType=${docType}, ai=${extractedData.ai_extraction}, durationMs=${durationMs}`,
+        `Document job ${job.id} completed: document=${documentId}, docType=${docType}, ocr=${extractedData.ocr_extraction}, ai=${extractedData.ai_extraction}, durationMs=${durationMs}`,
       );
 
       return { documentId, docType, status: 'PROCESSED', durationMs };

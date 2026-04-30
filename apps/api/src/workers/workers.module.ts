@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 
 import { NotificationsModule } from '../notifications/notifications.module';
+import { OcrService } from '../documents/ocr.service';
 import { QUEUE_NAMES } from './queues.constants';
 import { QueueService } from './queue.service';
 import { ClassifierProcessor } from './processors/classifier.processor';
@@ -37,6 +38,7 @@ import { SummaryProcessor } from './processors/summary.processor';
   ],
   providers: [
     QueueService,
+    OcrService,
     ClassifierProcessor,
     DocumentProcessor,
     AutomationProcessor,
