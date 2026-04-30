@@ -128,16 +128,16 @@ export class DocsService {
     },
     {
       slug: 'whatsapp-ai-policy',
-      title: 'Política de WhatsApp e IA',
+      title: 'Política de Canales de Comunicación e IA',
       category: 'legal',
-      summary: 'Reglas de uso de canales WhatsApp y funcionalidades asistidas por inteligencia artificial.',
+      summary: 'Reglas de uso de WhatsApp, Telegram, correo electrónico, Signal (próximamente) y funcionalidades asistidas por inteligencia artificial.',
       sections: [
-        'Opt-in obligatorio y verificable para mensajes de WhatsApp.',
-        'Respeto de opt-out y ventana de 24 horas para mensajes libres.',
-        'Prohibición de datos sensibles en prompts de IA (tarjetas, credenciales, salud).',
+        'Opt-in obligatorio y verificable para mensajes en todos los canales.',
+        'Reglas específicas por canal: WhatsApp (ventana 24h, plantillas), Telegram (API Bot), correo electrónico.',
+        'Respeto de opt-out en cada canal.',
+        'Prohibición de datos sensibles en prompts de IA.',
         'Revisión humana obligatoria para decisiones de alto impacto.',
         'El cliente es responsable de validar outputs de IA antes de usarlos operativamente.',
-        'Las funcionalidades de IA se ofrecen como apoyo operativo, no como decisión final.',
       ],
     },
     {
