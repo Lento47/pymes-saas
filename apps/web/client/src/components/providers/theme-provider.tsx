@@ -1,46 +1,70 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 
-type Theme = "dark" | "light";
+export type Theme = "dark" | "light" | "claude" | "chatgpt" | "apple" | "samsung";
+
+const ALL_THEMES: Theme[] = ["dark", "light", "claude", "chatgpt", "apple", "samsung"];
+const BRAND_CLASSES = ["theme-claude", "theme-chatgpt", "theme-apple", "theme-samsung"];
 
 function getStoredTheme(): Theme {
   try {
     const stored = localStorage.getItem("pymeshub-theme");
-    if (stored === "light" || stored === "dark") return stored;
+    if (stored && ALL_THEMES.includes(stored as Theme)) return stored as Theme;
   } catch {}
   return "dark";
 }
 
-function applyTheme(theme: Theme) {
+export function applyThemeGlobally(theme: Theme) {
   const root = document.documentElement;
-  if (theme === "dark") {
-    root.classList.add("dark");
-  } else {
-    root.classList.remove("dark");
+  root.classList.remove("light");
+  BRAND_CLASSES.forEach(c => root.classList.remove(c));
+
+  if (theme === "light") {
+    root.classList.add("light");
+  } else if (theme !== "dark") {
+    root.classList.add(`theme-${theme}`);
   }
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#070B14" : "#f2f3f5");
+
+  const isDarkBase = theme === "dark" || BRAND_CLASSES.some(c => c === `theme-${theme}`);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", isDarkBase ? "#070B14" : "#f2f3f5");
   try { localStorage.setItem("pymeshub-theme", theme); } catch {}
+}
+
+function isLightBase(theme: Theme): boolean {
+  return theme === "light";
 }
 
 interface ThemeContextValue {
   theme: Theme;
+  setTheme: (t: Theme) => void;
   toggle: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextValue>({ theme: getStoredTheme(), toggle: () => {} });
+const ThemeContext = createContext<ThemeContextValue>({
+  theme: getStoredTheme(),
+  setTheme: () => {},
+  toggle: () => {},
+});
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(getStoredTheme);
+  const [theme, setThemeState] = useState<Theme>(getStoredTheme);
+
+  useEffect(() => {
+    applyThemeGlobally(theme);
+  }, [theme]);
+
+  const setTheme = useCallback((t: Theme) => {
+    setThemeState(t);
+  }, []);
 
   const toggle = useCallback(() => {
-    setTheme(prev => {
-      const next = prev === "dark" ? "light" : "dark";
-      applyTheme(next);
-      return next;
+    setThemeState(prev => {
+      if (prev === "dark") return "light";
+      return "dark";
     });
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggle }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggle }}>
       {children}
     </ThemeContext.Provider>
   );
