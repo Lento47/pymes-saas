@@ -33,6 +33,7 @@ import DocumentationCenterPage from "@/pages/documentation";
 import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import NotFound from "@/pages/not-found";
+import UltraPremiumShowcase from "@/pages/ultra-premium-showcase";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminWorkspaces from "@/pages/admin/workspaces";
 import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
@@ -76,6 +77,7 @@ function AppRouter() {
       <Route path="/legal">
         {() => <LegalCenterPage />}
       </Route>
+      <Route path="/showcase/ultra-premium" component={UltraPremiumShowcase} />
       <Route path="/legal/:slug">
         {(params) => <LegalDocumentPage slug={params.slug} />}
       </Route>
