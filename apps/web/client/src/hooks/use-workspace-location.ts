@@ -13,7 +13,10 @@ function readPathname(): string {
 }
 
 function stripSlug(path: string, slug: string | null): string {
-  if (!slug) return path;
+  if (!slug) {
+    try { slug = localStorage.getItem('pymes_last_slug'); } catch { /* ignore */ }
+    if (!slug) return path;
+  }
   const [pathPart, queryPart] = path.split("?");
   const prefix = `/${slug}`;
   let stripped = pathPart;

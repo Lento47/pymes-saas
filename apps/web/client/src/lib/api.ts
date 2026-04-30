@@ -36,6 +36,7 @@ export function setAuthState(token: string, slug: string, refreshToken?: string)
   updateLastActivity();
   try {
     const s = getStorage();
+    s.removeItem('pymes_last_slug');
     s.setItem('pymes_slug', slug);
     if (refreshToken) s.setItem('pymes_refresh', refreshToken);
   } catch { /* ignore */ }
@@ -43,10 +44,12 @@ export function setAuthState(token: string, slug: string, refreshToken?: string)
 
 export function clearAuthState() {
   _token = null;
+  const slug = _workspaceSlug;
   _workspaceSlug = null;
   _refreshToken = null;
   try {
     const s = getStorage();
+    if (slug) s.setItem('pymes_last_slug', slug);
     s.removeItem('pymes_slug');
     s.removeItem('pymes_refresh');
     s.removeItem('pymes_last_activity');
@@ -165,8 +168,9 @@ async function request<T>(
       res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body });
     }
     if (!refreshed || res.status === 401) {
+      history.pushState(null, "", "/login?expired=true");
+      window.dispatchEvent(new PopStateEvent("popstate"));
       clearAuthState();
-      window.location.hash = "#/login";
       throw new Error("401: Sesión expirada.");
     }
   }

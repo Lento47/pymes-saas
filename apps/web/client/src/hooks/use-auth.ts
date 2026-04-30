@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from "react";
 import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug, getRefreshToken, isSessionTimedOut } from "@/lib/api";
 
 function resetAuthAndTheme() {
+  history.pushState(null, "", "/login?expired=true");
+  window.dispatchEvent(new PopStateEvent("popstate"));
   clearAuthState();
   if (typeof document !== 'undefined') {
     document.documentElement.classList.remove('light');
@@ -88,12 +90,6 @@ if (_storedRefreshToken && !isLoggedIn()) {
       } catch {
         resetAuthAndTheme();
         _user = null;
-        // If restore fails and we have a slug, redirect to login
-        const slug = getWorkspaceSlug();
-        if (slug) {
-          history.replaceState(null, "", "/login");
-          window.dispatchEvent(new PopStateEvent("popstate"));
-        }
       } finally {
         _isRestoring = false;
         notifyListeners();
