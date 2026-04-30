@@ -22,7 +22,6 @@ import { Footer } from "@/components/marketing/footer";
 import { LandingHubby } from "@/components/shared/landing-hubby";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { ThemeSwitcher } from "@/components/shared/theme-switcher";
 import { cn } from "@/lib/utils";
 import {
   Carousel,
@@ -499,10 +498,6 @@ export default function Landing() {
                 </div>
 
                 <div className="flex items-center gap-1 md:gap-4 flex-shrink-0">
-                  <div className="hidden sm:flex items-center gap-2 md:gap-4">
-                    <LanguageSwitcher variant="marketing" />
-                    <ThemeSwitcher />
-                  </div>
                   <div className="hidden md:flex items-center gap-4">
                     <Link href="/pricing">
                       <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">

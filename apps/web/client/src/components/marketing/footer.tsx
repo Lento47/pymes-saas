@@ -1,6 +1,7 @@
 import { BookOpen, ExternalLink, FileText, Globe, Mail, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { cn } from "@/lib/utils";
 
@@ -129,6 +130,8 @@ export function Footer({ className }: { className?: string }) {
             <ShieldCheck className="h-3.5 w-3.5 text-white/25" />
             <span>{f.compliance}</span>
           </div>
+
+          <LanguageSwitcher variant="marketing" />
         </div>
 
         <p className="mt-6 text-center text-xs text-white/20">
