@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ChannelType, ConversationStatus, InvoiceStatus } from '@prisma/client';
+import { ChannelType, ConversationStatus, InvoiceStatus, WorkspaceUserRole } from '@prisma/client';
 import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -36,7 +36,7 @@ export class RemindersService {
 
     if (updated.count > 0) {
       const admins = await this.prisma.workspaceUser.findMany({
-        where: { workspace_id: workspaceId, role: { in: ['OWNER'] as any } },
+        where: { workspace_id: workspaceId, role: { in: [WorkspaceUserRole.OWNER] } },
         select: { user_id: true },
         take: 3,
       });

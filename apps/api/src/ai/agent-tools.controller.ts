@@ -1,7 +1,16 @@
 import { Body, Controller, Post, Req, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { timingSafeEqual } from 'crypto';
 import { AgentToolsService } from './agent-tools.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AgentToolDto } from './agent-tools.dto';
+
+function safeEqual(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 @Controller('agent')
 export class AgentToolsController {
@@ -19,7 +28,7 @@ export class AgentToolsController {
       throw new BadRequestException('PYMESHUB_FOUNDER_API_KEY not configured on server');
     }
 
-    if (token !== process.env.PYMESHUB_FOUNDER_API_KEY) {
+    if (!safeEqual(token, process.env.PYMESHUB_FOUNDER_API_KEY)) {
       throw new UnauthorizedException('Invalid API token');
     }
 

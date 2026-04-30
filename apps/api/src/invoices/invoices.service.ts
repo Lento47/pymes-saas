@@ -10,6 +10,7 @@ import {
   InvoiceDocumentType,
   InvoiceIssuanceMode,
   InvoiceStatus,
+  WorkspaceUserRole,
 } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { parseJsonValue } from '../common/prisma/json';
@@ -403,7 +404,7 @@ export class InvoicesService {
     // Notificar pago recibido
     const isPaid = result.newStatus === InvoiceStatus.PAID;
     const admins = await this.prisma.workspaceUser.findMany({
-      where: { workspace_id: workspaceId, role: { in: ['OWNER'] as any } },
+      where: { workspace_id: workspaceId, role: { in: [WorkspaceUserRole.OWNER] } },
       select: { user_id: true },
       take: 3,
     });
