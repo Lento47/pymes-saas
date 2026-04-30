@@ -7,12 +7,10 @@ on:
   push:
     branches:
       - main
-      - main-api
       - develop
   pull_request:
     branches:
       - main
-      - main-api
 
 concurrency:
   group: ci-${{ github.ref }}
