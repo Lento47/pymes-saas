@@ -299,7 +299,7 @@ export class AiService {
     const config = await this.getConfig(workspaceId);
     if (!config) return null;
 
-    const hasRealOcr = meta.ocrText && meta.ocrText.length > 50 && !meta.ocrText.startsWith('Documento:');
+    const hasRealOcr = meta.ocrText && meta.ocrText.length > 50 && !meta.ocrText.startsWith(meta.fileName);
 
     if (!hasRealOcr) {
       return null; // skip AI — no meaningful text to analyze
