@@ -279,6 +279,12 @@ export const api = {
   detectOverdueInvoices: () => request<any>("GET", "/api/invoices/overdue"),
   generateInvoiceReminder: (id: string) => request<any>("POST", `/api/invoices/${id}/reminder`),
   sendInvoiceReminder: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/reminder/send`, data),
+  validateInvoiceForHacienda: (id: string) => request<any>("POST", `/api/invoices/${id}/hacienda-validate`),
+  getInvoiceHaciendaErrorExplain: (id: string) => request<any>("GET", `/api/invoices/${id}/hacienda-error-explain`),
+  getInvoiceTemplates: (industry?: string) => {
+    const qs = industry ? `?industry=${encodeURIComponent(industry)}` : "";
+    return request<any>("GET", `/api/invoices/templates${qs}`);
+  },
   createTask: (data: any) => request<any>("POST", "/api/tasks", data),
   updateTask: (id: string, data: any) => request<any>("PATCH", `/api/tasks/${id}`, data),
   completeTask: (id: string) => request<any>("POST", `/api/tasks/${id}/complete`),

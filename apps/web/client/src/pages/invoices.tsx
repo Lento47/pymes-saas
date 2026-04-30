@@ -10,6 +10,7 @@ import {
   Eye,
   FileUp,
   HelpCircle,
+  Info,
   Loader2,
   Pencil,
   Plus,
@@ -440,6 +441,28 @@ export default function InvoicesPage() {
     onError: (err: any) => toast({ title: "Error Hacienda", description: getErrorMessage(err), variant: "destructive" }),
   });
 
+  const [showValidation, setShowValidation] = useState(false);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const validateHaciendaMutation = useMutation({
+    mutationFn: (id: string) => api.validateInvoiceForHacienda(id),
+    onSuccess: (data) => {
+      setValidationResult(data);
+      setShowValidation(true);
+    },
+    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+  });
+
+  const [showErrorExplain, setShowErrorExplain] = useState(false);
+  const [errorExplainData, setErrorExplainData] = useState<any>(null);
+  const explainErrorMutation = useMutation({
+    mutationFn: (id: string) => api.getInvoiceHaciendaErrorExplain(id),
+    onSuccess: (data) => {
+      setErrorExplainData(data);
+      setShowErrorExplain(true);
+    },
+    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+  });
+
   const generateReminderMutation = useMutation({
     mutationFn: (invoice: any) => api.generateInvoiceReminder(invoice.id),
     onSuccess: (reminder: any, invoice: any) => {
@@ -786,6 +809,30 @@ export default function InvoicesPage() {
                             >
                               <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", syncHaciendaMutation.isPending && "animate-spin")} />
                               Estado MH
+                            </Button>
+                          )}
+                          {invoice.issuance_mode === "HACIENDA" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-xs text-green-400 hover:text-green-300"
+                              onClick={() => validateHaciendaMutation.mutate(invoice.id)}
+                              disabled={validateHaciendaMutation.isPending}
+                            >
+                              {validateHaciendaMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
+                              Validar MH
+                            </Button>
+                          )}
+                          {invoice.hacienda_status === "RECHAZADO" && invoice.hacienda_last_error && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-xs text-amber-400 hover:text-amber-300"
+                              onClick={() => explainErrorMutation.mutate(invoice.id)}
+                              disabled={explainErrorMutation.isPending}
+                            >
+                              {explainErrorMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Info className="w-3.5 h-3.5 mr-1" />}
+                              Error MH
                             </Button>
                           )}
                           {invoice.status === "OVERDUE" && (
@@ -1266,6 +1313,75 @@ export default function InvoicesPage() {
         </DialogContent>
       </Dialog>
       <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} entityType="invoices" />
+
+      <Dialog open={showValidation} onOpenChange={setShowValidation}>
+        <DialogContent className="bg-card border-border sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              {validationResult?.valid ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <AlertTriangle className="w-4 h-4 text-amber-400" />}
+              Validación Hacienda — {validationResult?.valid ? "Listo para enviar" : "Requiere correcciones"}
+            </DialogTitle>
+          </DialogHeader>
+          {validationResult && (
+            <div className="space-y-3 text-xs max-h-[50vh] overflow-y-auto">
+              {validationResult.issues?.length > 0 && (
+                <div className="space-y-2">
+                  {validationResult.issues.map((issue: any, i: number) => (
+                    <div key={i} className={cn(
+                      "rounded-md border px-3 py-2",
+                      issue.severity === "error" ? "border-red-500/20 bg-red-500/5" : "border-amber-500/20 bg-amber-500/5",
+                    )}>
+                      <span className={issue.severity === "error" ? "text-red-400" : "text-amber-400"}>{issue.field}</span>
+                      <p className="text-muted-foreground mt-0.5">{issue.message}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {validationResult.ai_review && (
+                <div className="rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2">
+                  <span className="text-blue-400 font-medium">Revisión IA</span>
+                  <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{validationResult.ai_review}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowValidation(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showErrorExplain} onOpenChange={setShowErrorExplain}>
+        <DialogContent className="bg-card border-border sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <Info className="w-4 h-4 text-amber-400" />
+              Error de Hacienda explicado
+            </DialogTitle>
+          </DialogHeader>
+          {errorExplainData && (
+            <div className="space-y-3 text-xs">
+              <div className="rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2">
+                <span className="text-red-400 font-medium">Mensaje técnico</span>
+                <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{errorExplainData.technical_message?.slice(0, 500)}</p>
+              </div>
+              <div className="rounded-md border border-border/60 bg-background px-3 py-2">
+                <span className="text-foreground font-medium">Explicación</span>
+                <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{errorExplainData.plain_explanation}</p>
+              </div>
+              {errorExplainData.suggested_fix && (
+                <div className="rounded-md border border-green-500/20 bg-green-500/5 px-3 py-2">
+                  <span className="text-green-400 font-medium">Sugerencia para corregir</span>
+                  <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{errorExplainData.suggested_fix}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowErrorExplain(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

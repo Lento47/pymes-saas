@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
 } from "@/components/ui/sheet";
@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, HelpCircle } from "lucide-react";
+import { Loader2, HelpCircle, Search } from "lucide-react";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useCabysSearch } from "@/hooks/useCabysSearch";
+import { api } from "@/lib/api";
 
 const DOCUMENT_TYPES = ["FACTURA_ELECTRONICA", "TIQUETE_ELECTRONICO", "NOTA_CREDITO", "NOTA_DEBITO", "MENSAJE_RECEPTOR"];
 const ISSUANCE_MODES = ["MANUAL_ONLY", "HACIENDA"];
@@ -80,6 +82,19 @@ export function InvoiceSheet({
   const { messages } = useI18n();
   const t = messages.invoices;
   const isHacienda = initialData.issuance_mode === "HACIENDA";
+
+  const [cabysQuery, setCabysQuery] = useState("");
+  const [cabysOpen, setCabysOpen] = useState(false);
+  const { results: cabysResults, loading: cabysLoading } = useCabysSearch(cabysQuery);
+  const [templates, setTemplates] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.getInvoiceTemplates().then(data => {
+      setTemplates(Array.isArray(data) ? data : []);
+    }).catch(() => setTemplates([]));
+  }, []);
+
+  useEffect(() => { setCabysQuery(""); }, [initialData.cabys_code]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -235,6 +250,34 @@ export function InvoiceSheet({
               </p>
             ) : (
               <div className="space-y-3 pl-7">
+                {templates.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] text-muted-foreground">Usar plantilla</Label>
+                    <Select onValueChange={(v) => {
+                      const tpl = templates.find((t: any) => t.industry === v);
+                      if (tpl) {
+                        onChange({
+                          document_type: tpl.document_type,
+                          activity_code: tpl.activity_code,
+                          sale_condition: tpl.sale_condition,
+                          payment_method: tpl.payment_method,
+                          tax_rate: tpl.tax_rate,
+                          currency: tpl.currency,
+                          line_description: tpl.sample_line_description,
+                        });
+                      }
+                    }}>
+                      <SelectTrigger className="h-9 text-xs bg-background border-border">
+                        <SelectValue placeholder="Seleccionar plantilla..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map((tpl: any) => (
+                          <SelectItem key={tpl.industry} value={tpl.industry}>{tpl.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1">
@@ -279,7 +322,44 @@ export function InvoiceSheet({
                     <Label className="text-[11px] text-muted-foreground">CABYS</Label>
                     <FieldHelp meaning={HACIENDA_HELP.cabys_code} />
                   </div>
-                  <Input value={initialData.cabys_code} onChange={(e) => onChange({ cabys_code: e.target.value })} placeholder="Código CABYS" className="h-9 text-xs bg-background border-border" />
+                  <div className="relative">
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={initialData.cabys_code}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          onChange({ cabys_code: v });
+                          setCabysQuery(v);
+                          setCabysOpen(v.length >= 2);
+                        }}
+                        onFocus={() => { if (cabysQuery.length >= 2) setCabysOpen(true); }}
+                        onBlur={() => setTimeout(() => setCabysOpen(false), 200)}
+                        placeholder="Buscar código CABYS..."
+                        className="h-9 text-xs bg-background border-border pr-8"
+                      />
+                      {cabysLoading && <Loader2 className="absolute right-2.5 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                      {!cabysLoading && <Search className="absolute right-2.5 w-3.5 h-3.5 text-muted-foreground/40" />}
+                    </div>
+                    {cabysOpen && cabysResults.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 max-h-44 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                        {cabysResults.map((r: any) => (
+                          <button
+                            key={r.codigo}
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-[11px] hover:bg-accent/50 transition-colors border-b border-border/40 last:border-0"
+                            onMouseDown={() => {
+                              onChange({ cabys_code: r.codigo });
+                              setCabysOpen(false);
+                            }}
+                          >
+                            <span className="font-medium text-foreground">{r.codigo}</span>
+                            <span className="text-muted-foreground ml-2">{r.descripcion}</span>
+                            {r.impuesto && <span className="text-[10px] text-muted-foreground/60 ml-1">({r.impuesto}%)</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
