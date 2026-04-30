@@ -14,13 +14,13 @@ Para los efectos de la legislación costarricense (Ley N.º 8968 y su Reglamento
 
 | Proveedor | Función | Categorías de datos | Región de tratamiento |
 |-----------|---------|---------------------|-----------------------|
-| [Proveedor de infraestructura cloud] | Hosting, base de datos, almacenamiento de archivos, ejecución de workers | Datos de cuenta, workspace, mensajes, contactos, facturas, documentos, logs | [Región] |
+| Railway | Infraestructura cloud, base de datos PostgreSQL, almacenamiento de archivos, ejecución de workers | Datos de cuenta, workspace, mensajes, contactos, facturas, documentos, logs | EE.UU. (us-west) |
 
 ### Correo transaccional y notificaciones
 
 | Proveedor | Función | Categorías de datos | Región de tratamiento |
 |-----------|---------|---------------------|-----------------------|
-| [Proveedor de correo transaccional] | Envío de correos electrónicos transaccionales, notificaciones del sistema, alertas, invitaciones a workspace | Correo electrónico, nombre, contenido de notificaciones | [Región] |
+| Resend | Envío de correos electrónicos transaccionales, notificaciones del sistema, alertas, invitaciones a workspace | Correo electrónico, nombre, contenido de notificaciones | EE.UU. |
 
 ### Procesamiento de pagos
 
@@ -34,7 +34,7 @@ Paddle actúa como revendedor autorizado de productos digitales y procesador de 
 
 | Proveedor | Función | Categorías de datos | Región de tratamiento |
 |-----------|---------|---------------------|-----------------------|
-| [Proveedor de IA] | Modelos de lenguaje, clasificación de mensajes, resumen de conversaciones, extracción de datos de documentos, OCR, sugerencias de respuesta | Contenido de prompts, contexto operativo, fragmentos de conversaciones (sin datos de contacto del usuario final) | [Región] |
+| OpenAI | Modelos de lenguaje, clasificación de mensajes, resumen de conversaciones, extracción de datos de documentos, OCR, sugerencias de respuesta | Contenido de prompts, contexto operativo, fragmentos de conversaciones (sin datos de contacto del usuario final) | EE.UU. |
 
 PymeHub exige contractualmente a sus proveedores de IA que no utilicen los datos del Cliente para entrenar, afinar o mejorar sus modelos sin consentimiento explícito. El output generado por los modelos de IA se considera Customer Data del Cliente y no es reutilizado por el proveedor para fines incompatibles con la prestación del Servicio.
 
@@ -50,8 +50,8 @@ El uso de WhatsApp Business API está sujeto a las Business Terms, Business Solu
 
 | Proveedor | Función | Categorías de datos | Región de tratamiento |
 |-----------|---------|---------------------|-----------------------|
-| [Proveedor de analítica] | Analítica de uso, medición de rendimiento, embudos de conversión | Datos seudonimizados de sesión, páginas visitadas, eventos de interacción, tipo de navegador, sistema operativo | [Región] |
-| [Proveedor de monitoreo] | Monitoreo de disponibilidad, detección de errores, alertas de rendimiento | Metadatos técnicos, logs de servidor, IP de origen, códigos de error HTTP | [Región] |
+| Google Analytics | Analítica de uso, medición de rendimiento, embudos de conversión | Datos seudonimizados de sesión, páginas visitadas, eventos de interacción, tipo de navegador, sistema operativo | EE.UU. |
+| Sentry | Monitoreo de disponibilidad, detección de errores, alertas de rendimiento | Metadatos técnicos, logs de servidor, IP de origen, códigos de error HTTP | EE.UU. |
 
 Los proveedores de analítica y monitoreo no reciben datos que permitan identificar directamente a personas físicas ni acceden al contenido de conversaciones, documentos u otros datos de negocio del Cliente.
 

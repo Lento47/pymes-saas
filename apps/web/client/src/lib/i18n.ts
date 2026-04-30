@@ -594,6 +594,35 @@ export const translations = {
         secondary: "Schedule a Demo",
         note: "No card. No commitment. We will notify you when the beta is ready.",
       },
+      roi: {
+        title: "Clear ROI at every level",
+        subtitle: "Pay only for what you need. Scale as your business grows and see immediate improvements in response times and revenue.",
+        starter: {
+          label: "STARTER PLAN",
+          items: [
+            { title: "Save 5-10 hours/week", desc: "Automatic message routing and basic replies" },
+            { title: "Respond 3x faster", desc: "Unified inbox for WhatsApp, Email and more" },
+            { title: "Ideal for 1-5 person teams", desc: "Perfect to start improving your operation" },
+          ],
+        },
+        growth: {
+          label: "GROWTH PLAN",
+          badge: "Most popular ROI",
+          items: [
+            { title: "+25-40% faster invoicing", desc: "Automated invoicing and payment tracking" },
+            { title: "$500-1000/month in recovered revenue", desc: "Recover lost invoices, reduce payment delays" },
+            { title: "Best for 5-50 person teams", desc: "Scale operations without hiring more" },
+          ],
+        },
+        businessPlus: {
+          label: "BUSINESS+ PLAN",
+          items: [
+            { title: "Custom integrations", desc: "Sync with your CRM and existing tools" },
+            { title: "Dedicated support & training", desc: "Maximize adoption and ROI across the team" },
+            { title: "For enterprise teams", desc: "Unlimited customization and growth" },
+          ],
+        },
+      },
     },
     documentation: {
       eyebrow: "Documentation center",
@@ -1225,6 +1254,35 @@ export const translations = {
         primary: "Quiero mi acceso anticipado",
         secondary: "Agendar demo",
         note: "Sin tarjeta. Sin compromiso. Te avisamos cuando la beta esté lista.",
+      },
+      roi: {
+        title: "ROI claro en cada nivel",
+        subtitle: "Pagá solo por lo que necesitás. Escalá conforme crece tu negocio y ve mejoras inmediatas en tiempos de respuesta e ingresos.",
+        starter: {
+          label: "PLAN STARTER",
+          items: [
+            { title: "Ahorrá 5-10 horas/semana", desc: "Enrutamiento automático de mensajes y respuestas básicas" },
+            { title: "Respondé 3x más rápido", desc: "Bandeja unificada para WhatsApp, Email y más" },
+            { title: "Ideal para equipos de 1-5", desc: "Perfecto para empezar a mejorar la operación" },
+          ],
+        },
+        growth: {
+          label: "PLAN GROWTH",
+          badge: "ROI más popular",
+          items: [
+            { title: "+25-40% facturación más rápida", desc: "Facturación automatizada y seguimiento de pagos" },
+            { title: "$500-1000/mes en ingresos recuperados", desc: "Recuperá facturas perdidas, reducí demoras de pago" },
+            { title: "Mejor para equipos de 5-50", desc: "Escalá operaciones sin contratar más" },
+          ],
+        },
+        businessPlus: {
+          label: "PLAN BUSINESS+",
+          items: [
+            { title: "Integraciones personalizadas", desc: "Sincronizá con tu CRM y herramientas existentes" },
+            { title: "Soporte y capacitación dedicados", desc: "Maximizá adopción y ROI en todo el equipo" },
+            { title: "Para equipos enterprise", desc: "Personalización y crecimiento sin límites" },
+          ],
+        },
       },
     },
     documentation: {

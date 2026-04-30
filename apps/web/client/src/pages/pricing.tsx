@@ -229,98 +229,62 @@ export default function PricingPage() {
           <div className="mx-auto max-w-7xl">
             <div className="text-center mb-16">
               <h2 className="font-marketing text-3xl md:text-4xl font-bold tracking-[-0.04em] text-white">
-                ROI claro en cada nivel
+                {copy.roi?.title || 'ROI claro en cada nivel'}
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-white/75">
-                Pagá solo por lo que necesitás. Escalá conforme crece tu negocio y ve mejoras inmediatas en tiempos de respuesta e ingresos.
+                {copy.roi?.subtitle}
               </p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
               {/* Starter */}
               <div className="bg-indigo-900/20 border border-indigo-400/15 rounded-2xl p-6 transition-all hover:bg-indigo-900/30">
-                <div className="text-sm font-semibold text-white/75 mb-3">                PLAN STARTER</div>
+                <div className="text-sm font-semibold text-white/75 mb-3">{copy.roi?.starter?.label || 'PLAN STARTER'}</div>
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#dfff4a] font-bold mt-0.5">+</span>
-                    <div className="text-sm">
-                      <p className="text-white font-semibold">Ahorrá 5-10 horas/semana</p>
-                      <p className="text-white/60 text-xs mt-1">Enrutamiento automático de mensajes y respuestas básicas</p>
+                  {(copy.roi?.starter?.items as readonly any[] || []).map((item: any, i: number) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span className="text-[#dfff4a] font-bold mt-0.5">+</span>
+                      <div className="text-sm">
+                        <p className="text-white font-semibold">{item.title}</p>
+                        <p className="text-white/60 text-xs mt-1">{item.desc}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#dfff4a] font-bold mt-0.5">+</span>
-                    <div className="text-sm">
-                      <p className="text-white font-semibold">Respondé 3x más rápido</p>
-                      <p className="text-white/60 text-xs mt-1">Bandeja unificada para WhatsApp, Email y más</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#dfff4a] font-bold mt-0.5">+</span>
-                    <div className="text-sm">
-                      <p className="text-white font-semibold">Ideal para equipos de 1-5</p>
-                      <p className="text-white/60 text-xs mt-1">Perfecto para empezar a mejorar la operación</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
               {/* Growth */}
               <div className="bg-gradient-to-br from-[#dfff4a]/20 to-indigo-900/20 border border-[#dfff4a]/40 rounded-2xl p-6 ring-1 ring-[#dfff4a]/20 transition-all hover:from-[#dfff4a]/30 hover:to-indigo-900/30 relative">
                   <div className="absolute -top-3 left-6 bg-[#dfff4a] text-[#051127] px-3 py-1 rounded-full text-xs font-bold">
-                    ROI más popular
+                    {copy.roi?.growth?.badge || 'ROI más popular'}
                   </div>
-                  <div className="text-sm font-semibold text-[#dfff4a] mb-3 mt-2">PLAN GROWTH</div>
+                  <div className="text-sm font-semibold text-[#dfff4a] mb-3 mt-2">{copy.roi?.growth?.label || 'PLAN GROWTH'}</div>
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#dfff4a] font-bold mt-0.5">→</span>
-                    <div className="text-sm">
-                      <p className="text-white font-semibold">+25-40% facturación más rápida</p>
-                      <p className="text-white/60 text-xs mt-1">Facturación automatizada y seguimiento de pagos</p>
+                  {(copy.roi?.growth?.items as readonly any[] || []).map((item: any, i: number) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span className="text-[#dfff4a] font-bold mt-0.5">→</span>
+                      <div className="text-sm">
+                        <p className="text-white font-semibold">{item.title}</p>
+                        <p className="text-white/60 text-xs mt-1">{item.desc}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#dfff4a] font-bold mt-0.5">→</span>
-                    <div className="text-sm">
-                      <p className="text-white font-semibold">$500-1000/mes en ingresos recuperados</p>
-                      <p className="text-white/60 text-xs mt-1">Recuperá facturas perdidas, reducí demoras de pago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#dfff4a] font-bold mt-0.5">→</span>
-                    <div className="text-sm">
-                      <p className="text-white font-semibold">Mejor para equipos de 5-50</p>
-                      <p className="text-white/60 text-xs mt-1">Escalá operaciones sin contratar más</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
               {/* Business+ */}
               <div className="bg-indigo-900/20 border border-indigo-400/15 rounded-2xl p-6 transition-all hover:bg-indigo-900/30">
-                <div className="text-sm font-semibold text-white/75 mb-3">PLAN BUSINESS+</div>
+                <div className="text-sm font-semibold text-white/75 mb-3">{copy.roi?.businessPlus?.label || 'PLAN BUSINESS+'}</div>
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#dfff4a] font-bold mt-0.5">↑</span>
-                    <div className="text-sm">
-                      <p className="text-white font-semibold">Integraciones personalizadas</p>
-                      <p className="text-white/60 text-xs mt-1">Sincronizá con tu CRM y herramientas existentes</p>
+                  {(copy.roi?.businessPlus?.items as readonly any[] || []).map((item: any, i: number) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span className="text-[#dfff4a] font-bold mt-0.5">↑</span>
+                      <div className="text-sm">
+                        <p className="text-white font-semibold">{item.title}</p>
+                        <p className="text-white/60 text-xs mt-1">{item.desc}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#dfff4a] font-bold mt-0.5">↑</span>
-                    <div className="text-sm">
-                      <p className="text-white font-semibold">Soporte y capacitación dedicados</p>
-                      <p className="text-white/60 text-xs mt-1">Maximizá adopción y ROI en todo el equipo</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#dfff4a] font-bold mt-0.5">↑</span>
-                    <div className="text-sm">
-                      <p className="text-white font-semibold">Para equipos enterprise</p>
-                      <p className="text-white/60 text-xs mt-1">Personalización y crecimiento sin límites</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
