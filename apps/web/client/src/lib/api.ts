@@ -417,6 +417,8 @@ export const api = {
   executeAgentTool: (tool: string, args?: any) => request<any>("POST", "/api/agent/tool", { tool, args }),
   escalateToSupport: (summary: string, severity?: string, evidence?: Record<string, any>) =>
     request<any>("POST", "/api/agent/escalate", { summary, severity, evidence }),
+  runDiagnostic: (module: string, error_code?: string, trace_id?: string, user_description?: string) =>
+    request<any>("POST", "/api/agent/diagnose", { module, error_code, trace_id, user_description }),
   // Routing rules
   getRoutingRules: () => request<any>("GET", "/api/routing/rules"),
   createRoutingRule: (data: any) => request<any>("POST", "/api/routing/rules", data),
