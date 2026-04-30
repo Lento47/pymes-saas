@@ -27,6 +27,7 @@ import CsvImportModal from "@/components/import/csv-import-modal";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
+import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -569,6 +570,10 @@ export default function InvoicesPage() {
           <Plus className="w-3.5 h-3.5 mr-1.5" /> Nueva factura
         </Button>
       </PageHeader>
+
+      <div className="px-6 pb-2">
+        <DiagnosticButton module="invoices" />
+      </div>
 
       <div className="px-4 md:px-6 py-4 space-y-4">
         {(totalOverdue > 0 || overdueAmount > 0) && (

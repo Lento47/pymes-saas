@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/components/providers/i18n-provider";
+import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import {
@@ -124,6 +125,10 @@ export default function DashboardPage() {
           progress={workspaceStats?.settings?.quick_start_progress ?? {}}
           onDismiss={() => {}}
         />
+      </div>
+
+      <div className="px-4 sm:px-6 pb-1">
+        <DiagnosticButton module="dashboard" />
       </div>
 
       {/* ── Greeting + Summary Ribbon ── */}
