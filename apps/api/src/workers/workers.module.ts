@@ -6,6 +6,7 @@ import IORedis from 'ioredis';
 
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AiModule } from '../ai/ai.module';
+import { InvoicesModule } from '../invoices/invoices.module';
 import { StorageService } from '../common/storage/storage.service';
 import { QUEUE_NAMES } from './queues.constants';
 import { QueueService } from './queue.service';
@@ -14,6 +15,7 @@ import { DocumentProcessor } from './processors/document.processor';
 import { AutomationProcessor } from './processors/automation.processor';
 import { FollowupProcessor } from './processors/followup.processor';
 import { SummaryProcessor } from './processors/summary.processor';
+import { HaciendaProcessor } from './processors/hacienda.processor';
 
 const logger = new Logger('WorkersModule');
 let redisWarned = false;
@@ -55,6 +57,7 @@ function createRedisConnection(config: ConfigService) {
   imports: [
     NotificationsModule,
     AiModule,
+    InvoicesModule,
     ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       inject: [ConfigService],
@@ -77,6 +80,7 @@ function createRedisConnection(config: ConfigService) {
     AutomationProcessor,
     FollowupProcessor,
     SummaryProcessor,
+    HaciendaProcessor,
     StorageService,
   ],
   exports: [QueueService],

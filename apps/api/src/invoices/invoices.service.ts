@@ -1098,4 +1098,59 @@ export class InvoicesService {
       suggested_fix: aiResult?.suggested_fix ?? null,
     };
   }
+
+  async getXmlPreview(workspaceId: string, invoiceId: string) {
+    const invoice = await this.getInvoiceOrThrow(workspaceId, invoiceId);
+    if (invoice.issuance_mode !== InvoiceIssuanceMode.HACIENDA) {
+      throw new BadRequestException('La factura no está configurada para emisión Hacienda.');
+    }
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { workspace_tax_profile: true },
+    });
+
+    const referenceInvoice = invoice.reference_invoice_id
+      ? await this.prisma.invoice.findFirst({
+          where: { id: invoice.reference_invoice_id, workspace_id: workspaceId },
+          select: { clave: true, number: true, issue_date: true },
+        })
+      : null;
+
+    const lines = invoice.lines?.length ? invoice.lines : this.buildFallbackLines(invoice);
+    const xml = this.haciendaXmlBuilder.buildInvoiceXml({
+      invoice,
+      workspaceTaxProfile: workspace?.workspace_tax_profile ?? {},
+      contact: invoice.contact ?? {},
+      lines,
+      referenceInvoice,
+    });
+
+    return { xml };
+  }
+
+  async bulkSyncPendingHaciendaStatuses(workspaceId: string): Promise<number> {
+    const pending = await this.prisma.invoice.findMany({
+      where: {
+        workspace_id: workspaceId,
+        hacienda_status: { in: [HaciendaStatus.SUBMITTED, HaciendaStatus.RECIBIDO, HaciendaStatus.PROCESANDO] },
+        clave: { not: null },
+      },
+      select: { id: true, clave: true, hacienda_status: true },
+      take: 5,
+      orderBy: { hacienda_last_checked_at: 'asc' },
+    });
+
+    let updated = 0;
+    for (const inv of pending) {
+      try {
+        await this.syncHaciendaStatus(workspaceId, inv.id);
+        updated++;
+      } catch (err) {
+        this.logger.warn(`Auto-sync failed for invoice ${inv.id}: ${(err as Error).message}`);
+      }
+    }
+
+    return updated;
+  }
 }

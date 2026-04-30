@@ -196,4 +196,13 @@ export class InvoicesController {
   ) {
     return this.invoicesService.explainHaciendaError(workspaceId, id);
   }
+
+  @Get(':id/xml-preview')
+  @Roles(WorkspaceUserRole.AGENT)
+  getXmlPreview(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id', ValidateUUIDPipe) id: string,
+  ) {
+    return this.invoicesService.getXmlPreview(workspaceId, id);
+  }
 }

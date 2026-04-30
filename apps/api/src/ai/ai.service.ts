@@ -393,4 +393,33 @@ Responde con JSON puro (sin markdown):
       return null;
     }
   }
+
+  async explainInvoiceXml(
+    workspaceId: string,
+    xml: string,
+  ): Promise<{ sections: Array<{ name: string; explanation: string }>; summary: string } | null> {
+    const config = await this.getConfig(workspaceId);
+    if (!config) return null;
+
+    const system = `Eres un experto en facturación electrónica de Costa Rica (Hacienda). Explica el XML de una Factura Electrónica.
+Desglosa cada sección en español claro para una PYME.
+Responde con JSON puro (sin markdown):
+{
+  "sections": [
+    { "name": "nombre de la sección en español", "explanation": "qué contiene esta sección, qué valida Hacienda, 1-2 oraciones" }
+  ],
+  "summary": "resumen general de la factura en español, 2-3 oraciones"
+}`;
+
+    const user = `XML de Factura Electrónica de Costa Rica:\n\n${xml.slice(0, 6000)}`;
+
+    try {
+      const { text } = await this.chat(config, system, user, 600, 0.3);
+      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      return JSON.parse(clean);
+    } catch (err) {
+      this.logger.error(`Error explicando XML de factura: ${(err as Error).message}`);
+      return null;
+    }
+  }
 }
