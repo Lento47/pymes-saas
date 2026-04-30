@@ -18,6 +18,7 @@ import { CreateEscalationDto } from './agent-escalation.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { SupportRouterService } from './support-router.service';
+import { DiagnosticService } from './diagnostic.service';
 
 @Controller('agent')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -28,7 +29,26 @@ export class AgentController {
     private readonly planLimits: PlanLimitsService,
     private readonly prisma: PrismaService,
     private readonly router: SupportRouterService,
+    private readonly diagnostic: DiagnosticService,
   ) {} 
+
+  @Post('diagnose')
+  @Roles('ADMIN', 'AGENT', 'VIEWER')
+  async diagnose(
+    @Body() body: { module: string; error_code?: string; trace_id?: string; user_description?: string },
+    @CurrentUser('workspace_id') workspaceId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    const result = await this.diagnostic.diagnose({
+      workspace_id: workspaceId,
+      user_id: userId,
+      module: body.module || 'unknown',
+      error_code: body.error_code,
+      trace_id: body.trace_id,
+      user_description: body.user_description,
+    });
+    return result;
+  }
 
   @Post('escalate')
   @Roles('ADMIN', 'AGENT', 'VIEWER')

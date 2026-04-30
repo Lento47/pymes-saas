@@ -12,10 +12,11 @@ import { InsightsModule } from '../insights/insights.module';
 import { SearchModule } from '../search/search.module';
 import { DocsModule } from '../docs/docs.module';
 import { SupportRouterService } from './support-router.service';
+import { DiagnosticService } from './diagnostic.service';
 
 @Module({
   imports: [PrismaModule, CryptoModule, InsightsModule, SearchModule, DocsModule],
-  providers: [AiService, AgentService, AgentToolsService, SupportRouterService],
+  providers: [AiService, AgentService, AgentToolsService, SupportRouterService, DiagnosticService],
   controllers: [AgentController, AgentToolsController, AiAssistantController, PublicAgentController],
   exports: [AiService, AgentService, AgentToolsService],
 })

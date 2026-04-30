@@ -251,6 +251,7 @@ model Workspace {
   stripe_events        StripeEvent[]
   routing_rules        RoutingRule[]
   agent_sessions       AgentSession[]
+  diagnostic_cases     SupportDiagnosticCase[]
 
   // Business+ Enterprise relations
   enterprise_config    WorkspaceEnterpriseConfig?
@@ -1607,4 +1608,63 @@ model AgentEscalation {
   @@index([severity])
   @@index([workspace_id, status])
   @@map("agent_escalations")
+}
+
+// ============================================================
+// SUPPORT DIAGNOSTIC — In-app diagnostic cases & known issues
+// ============================================================
+
+model SupportDiagnosticCase {
+  id              String   @id @default(cuid())
+  workspace_id    String
+  user_id         String?
+  module          String    // "inbox", "billing", "settings", etc.
+  error_code      String?
+  trace_id        String?
+  category        String    // "USER_GUIDANCE", "PERMISSION_ISSUE", etc.
+  risk_level      String    // "low", "medium", "high", "critical"
+  status          String    @default("OPEN") // "OPEN", "INVESTIGATING", "RESOLVED", "ESCALATED"
+  title           String
+  user_description String?  @db.Text
+  safe_summary    String?   @db.Text
+  steps_json      Json?     @db.JsonB // reproduction_steps
+  evidence_json   Json?     @db.JsonB // collected evidence
+  resolution_json Json?     @db.JsonB // { resolution, workaround, escalated_to }
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([error_code])
+  @@index([category])
+  @@index([status])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@map("support_diagnostic_cases")
+}
+
+model SupportKnownIssue {
+  id              String   @id @default(cuid())
+  error_code      String   @unique
+  title           String
+  module          String
+  category        String
+  severity        String    // "low", "medium", "high", "critical"
+  description     String?  @db.Text
+  workaround      String?  @db.Text
+  fix_status      String   @default("OPEN") // "OPEN", "FIX_IN_PROGRESS", "FIXED", "WONT_FIX"
+  fix_pr_url      String?
+  affected_versions String?
+  fixed_in_version String?
+  is_active       Boolean  @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([error_code])
+  @@index([module])
+  @@index([severity])
+  @@index([fix_status])
+  @@map("support_known_issues")
 }
