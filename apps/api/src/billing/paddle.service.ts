@@ -651,7 +651,8 @@ export class PaddleService {
 
     if (workspaceId) {
       const addonKey = customData?.addon || customData?.addon_key || undefined;
-      if (addonKey) {
+      const validAddons = ['ai_assistant', 'whatsapp_premium', 'extra_user', 'advanced_inventory', 'approvals_signature'];
+      if (addonKey && validAddons.includes(addonKey)) {
         const workspace = await this.prisma.workspace.findUnique({
           where: { id: workspaceId },
           select: { settings_json: true },
@@ -694,11 +695,13 @@ export class PaddleService {
       });
       const settings = (ws?.settings_json as Record<string, any>) ?? {};
       let modified = false;
-      for (const key of Object.keys(settings)) {
-        if (key.endsWith('_active') || key.endsWith('_activated_at')) {
-          delete settings[key];
-          modified = true;
-        }
+      const addonKeys = ['ai_assistant_active', 'ai_assistant_activated_at',
+        'whatsapp_premium_active', 'whatsapp_premium_activated_at',
+        'extra_user_active', 'extra_user_activated_at',
+        'advanced_inventory_active', 'advanced_inventory_activated_at',
+        'approvals_signature_active', 'approvals_signature_activated_at'];
+      for (const key of addonKeys) {
+        if (key in settings) { delete settings[key]; modified = true; }
       }
       const updateData: any = { plan: 'FREE' };
       if (modified) {

@@ -82,7 +82,7 @@ export class StorageService {
       const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
       const response = await this.client.send(command);
       const body = await response.Body?.transformToByteArray();
-      if (!body) throw new Error('Empty response body');
+      if (!body) throw new InternalServerErrorException('Empty response body');
       return Buffer.from(body);
     } catch (err) {
       this.logger.error(`Error descargando archivo ${key}:`, err);
