@@ -39,27 +39,27 @@ export class AgentController {
   ) {} 
 
   @Get('diagnostic-cases/:id')
+  @Roles('ADMIN')
   async getDiagnosticCase(@Param('id') id: string) {
     const case_ = await this.fixService.getDiagnosticCaseForFix(id);
     if (!case_) throw new NotFoundException('Diagnostic case not found');
     return case_;
   }
 
-  @Patch('diagnostic-cases/:id')
-  async updateDiagnosticCase(
-    @Param('id') id: string,
+  @Patch('fix-cases/:id')
+  @Roles('ADMIN')
+  async updateFixCase(
+    @Param('id') fixCaseId: string,
     @Body() body: { status?: string; pr_url?: string; pr_number?: number; files_changed?: any; test_added?: any; fix_summary?: string; rollback_notes?: string; error_log?: string },
   ) {
-    return this.fixService.updateFixStatus(id, body);
+    return this.fixService.updateFixStatus(fixCaseId, body);
   }
 
   @Post('fix-cases')
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN')
   async createFixCase(
-    @CurrentUser('workspace_id') workspaceId: string,
     @Body('diagnostic_case_id') diagnosticCaseId: string,
   ) {
-    await this.planLimits.enforceAiAccess(workspaceId);
     return this.fixService.createFixCase(diagnosticCaseId);
   }
 

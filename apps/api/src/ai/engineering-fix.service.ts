@@ -17,7 +17,7 @@ export class EngineeringFixService {
       throw new Error(`Diagnostic case ${diagnosticCaseId} not found`);
     }
 
-    const branchName = `fix/${diagnostic.module}-${diagnostic.error_code || diagnostic.id.slice(0, 8)}`.toLowerCase().replace(/[^a-z0-9/-]/g, '-');
+    const branchName = `fix/${diagnostic.module}-${diagnostic.error_code || diagnostic.id.slice(0, 8)}-${diagnostic.id.slice(0, 6)}`.toLowerCase().replace(/[^a-z0-9/-]/g, '-');
 
     const fixCase = await this.prisma.engineeringFixCase.create({
       data: {
@@ -80,11 +80,9 @@ export class EngineeringFixService {
     if (data.rollback_notes) updateData.rollback_notes = data.rollback_notes;
     if (data.error_log) updateData.error_log = data.error_log;
 
-    await this.prisma.engineeringFixCase.update({
+    return this.prisma.engineeringFixCase.update({
       where: { id: fixCaseId },
       data: updateData,
     });
-
-    return this.prisma.engineeringFixCase.findUnique({ where: { id: fixCaseId } });
   }
 }
