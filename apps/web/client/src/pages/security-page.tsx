@@ -28,17 +28,16 @@ export default function SecurityPage() {
               <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70 md:text-lg">{copy.description || "Multi-tenant isolation, audit logs, SSO, encryption, DPA and more."}</p>
             </div>
             <div className="mt-16 grid gap-8 md:grid-cols-2">
-              {[{ icon: LockKeyhole, title: "Aislamiento Multi-tenant", desc: "Cada workspace tiene datos aislados a nivel de base de datos. El acceso cruzado es imposible por diseño." },
-                { icon: ShieldCheck, title: "Cifrado", desc: "Datos en tránsito con TLS 1.3. Datos en reposo cifrados. Secretos encriptados con AES-256-GCM." },
-                { icon: FileText, title: "DPA y Cumplimiento", desc: "Data Processing Addendum compatible con Ley 8968 de Costa Rica. Subencargados documentados públicamente." },
-                { icon: Key, title: "SSO Empresarial", desc: "SAML 2.0 Service Provider. Conectá Azure AD, Okta, PingOne o cualquier IdP compatible." },
-                { icon: Server, title: "Backups y DR", desc: "Backups diarios con retención por plan. Restauración bajo demanda. Réplicas en standby." },
-                { icon: Globe2, title: "Auditoría y Logs", desc: "Cada acción queda registrada: quién, qué, cuándo y desde dónde. API de auditoría disponible." }].map(({ icon: Icon, title, desc }) => (
+              {(copy.cards || [{ title: "Aislamiento Multi-tenant", desc: "Cada workspace tiene datos aislados a nivel de base de datos." }]).map(({ title, desc }: any, i: number) => {
+                const icons = [LockKeyhole, ShieldCheck, FileText, Key, Server, Globe2];
+                const Icon = icons[i % icons.length];
+                return (
                 <article key={title} className="glass-panel rounded-[28px] p-7 flex gap-5">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))] p-2 text-white/90"><Icon className="h-6 w-6" /></div>
-                  <div><h3 className="font-marketing text-xl font-semibold tracking-[-0.03em]">{title}</h3><p className="mt-3 text-sm leading-7 text-[#bcc5ee]/72">{desc}</p></div>
+                  <div><h3 className="font-marketing text-xl font-semibold tracking-[-0.03em]">{title}</h3><p className="mt-3 text-sm leading-7 text-white/75">{desc}</p></div>
                 </article>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>

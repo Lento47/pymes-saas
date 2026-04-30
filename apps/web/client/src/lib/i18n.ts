@@ -162,6 +162,14 @@ export const translations = {
                 "Document priorities, channels, and escalation rules before launch.",
             },
           ],
+          cards: [
+            { title: "Danger", desc: "Critical alerts that require immediate action.", example: "42% of tasks overdue" },
+            { title: "Alert", desc: "Situations that need attention soon.", example: "7 conversations without an assigned agent" },
+            { title: "Positive", desc: "Metrics that improved compared to previous period.", example: "22% more tasks completed" },
+            { title: "Info", desc: "Contextual data for planning.", example: "Message volume up 28%" },
+            { title: "AI + Humans", desc: "AI suggests, you decide. Human review on key decisions.", example: "Staffing recommendation" },
+            { title: "Trends", desc: "Month-over-month comparison to see real evolution.", example: "Revenue, contacts, conversations" },
+          ],
         },
         security: {
           eyebrow: "Trust and governance",
@@ -189,6 +197,14 @@ export const translations = {
               description:
                 "Expose support, SLA, and security overviews without hiding them behind login.",
             },
+          ],
+          cards: [
+            { title: "Multi-tenant Isolation", desc: "Each workspace has data isolated at the database level. Cross-access is impossible by design." },
+            { title: "Encryption", desc: "Data in transit via TLS 1.3. Data at rest encrypted. Secrets encrypted with AES-256-GCM." },
+            { title: "DPA & Compliance", desc: "Data Processing Addendum compatible with Costa Rica's Law 8968. Subcontractors publicly documented." },
+            { title: "Enterprise SSO", desc: "SAML 2.0 Service Provider. Connect Azure AD, Okta, PingOne, or any compatible IdP." },
+            { title: "Backups & DR", desc: "Daily backups with plan-based retention. On-demand restoration. Standby replicas." },
+            { title: "Audit & Logs", desc: "Every action is recorded: who, what, when, and from where. Audit API available." },
           ],
         },
       },
@@ -813,6 +829,14 @@ export const translations = {
                 "Documenta prioridades, canales y reglas de escalamiento antes del lanzamiento.",
             },
           ],
+          cards: [
+            { title: "Peligro", desc: "Alertas críticas que requieren acción inmediata.", example: "42% de tareas vencidas" },
+            { title: "Alerta", desc: "Situaciones que necesitan atención pronto.", example: "7 conversaciones sin agente asignado" },
+            { title: "Positivo", desc: "Métricas que mejoraron respecto al período anterior.", example: "22% más tareas completadas" },
+            { title: "Info", desc: "Datos contextuales para planificar.", example: "Volumen de mensajes subió 28%" },
+            { title: "IA + Humanos", desc: "La IA sugiere, vos decidís. Revisión humana en decisiones clave.", example: "Recomendación de staffing" },
+            { title: "Tendencias", desc: "Comparación mes a mes para ver evolución real.", example: "Ingresos, contactos, conversaciones" },
+          ],
         },
         security: {
           eyebrow: "Confianza y gobernanza",
@@ -840,6 +864,14 @@ export const translations = {
               description:
                 "Expón soporte, SLA y resúmenes de seguridad sin esconderlos detrás del login.",
             },
+          ],
+          cards: [
+            { title: "Aislamiento Multi-tenant", desc: "Cada workspace tiene datos aislados a nivel de base de datos. El acceso cruzado es imposible por diseño." },
+            { title: "Cifrado", desc: "Datos en tránsito con TLS 1.3. Datos en reposo cifrados. Secretos encriptados con AES-256-GCM." },
+            { title: "DPA y Cumplimiento", desc: "Data Processing Addendum compatible con Ley 8968 de Costa Rica. Subencargados documentados públicamente." },
+            { title: "SSO Empresarial", desc: "SAML 2.0 Service Provider. Conectá Azure AD, Okta, PingOne o cualquier IdP compatible." },
+            { title: "Backups y DR", desc: "Backups diarios con retención por plan. Restauración bajo demanda. Réplicas en standby." },
+            { title: "Auditoría y Logs", desc: "Cada acción queda registrada: quién, qué, cuándo y desde dónde. API de auditoría disponible." },
           ],
         },
       },

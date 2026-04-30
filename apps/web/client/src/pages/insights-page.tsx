@@ -28,19 +28,25 @@ export default function InsightsPage() {
               <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70 md:text-lg">{copy.description || "Stop guessing. Get severity-ranked alerts with suggested actions based on real operational data."}</p>
             </div>
             <div className="mt-16 grid gap-6 md:grid-cols-3">
-              {[{ icon: AlertTriangle, color: "#ef4444", title: "Peligro", desc: "Alertas críticas que requieren acción inmediata.", example: "42% de tareas vencidas" },
-                { icon: TrendingUp, color: "#f59e0b", title: "Alerta", desc: "Situaciones que necesitan atención pronto.", example: "7 conversaciones sin agente asignado" },
-                { icon: CheckCircle2, color: "#22c55e", title: "Positivo", desc: "Métricas que mejoraron respecto al período anterior.", example: "22% más tareas completadas" },
-                { icon: BarChart2, color: "#3b82f6", title: "Info", desc: "Datos contextuales para planificar.", example: "Volumen de mensajes subió 28%" },
-                { icon: BrainCircuit, color: "#8b5cf6", title: "IA + Humanos", desc: "La IA sugiere, vos decidís. Revisión humana en decisiones clave.", example: "Recomendación de staffing" },
-                { icon: ChartSpline, color: "#ec4899", title: "Tendencias", desc: "Comparación mes a mes para ver evolución real.", example: "Ingresos, contactos, conversaciones" }].map(({ icon: Icon, color, title, desc, example }) => (
+              {(copy.cards || [{ title: "Peligro", desc: "Alertas críticas", example: "" }]).map(({ title, desc, example }: any, i: number) => {
+                const iconDefs = [
+                  { Icon: AlertTriangle, color: "#ef4444" },
+                  { Icon: TrendingUp, color: "#f59e0b" },
+                  { Icon: CheckCircle2, color: "#22c55e" },
+                  { Icon: BarChart2, color: "#3b82f6" },
+                  { Icon: BrainCircuit, color: "#8b5cf6" },
+                  { Icon: ChartSpline, color: "#ec4899" },
+                ];
+                const { Icon, color } = iconDefs[i % iconDefs.length];
+                return (
                 <article key={title} className="glass-panel rounded-[28px] p-7">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl p-2" style={{ background: `${color}20` }}><Icon className="h-6 w-6" style={{ color }} /></div>
                   <h3 className="font-marketing mt-6 text-xl font-semibold tracking-[-0.03em]">{title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-[#bcc5ee]/72">{desc}</p>
-                  <p className="mt-4 text-xs font-mono px-2 py-1 rounded-lg inline-block" style={{ background: `${color}10`, color }}>{example}</p>
+                  <p className="mt-3 text-sm leading-7 text-white/75">{desc}</p>
+                  {example && <p className="mt-4 text-xs font-mono px-2 py-1 rounded-lg inline-block" style={{ background: `${color}10`, color }}>{example}</p>}
                 </article>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
