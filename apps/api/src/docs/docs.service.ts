@@ -119,7 +119,7 @@ export class DocsService {
       summary: 'Ciclos de cobro, renovación, impuestos, cancelación, downgrade y política de reembolsos.',
       sections: [
         'Planes: Starter ($25/mes), Growth ($59/mes), Business ($119/mes), Business+ (personalizado).',
-        'Add-ons disponibles: Usuario extra ($8/mes), WhatsApp Premium ($19/mes), Asistente IA ($29/mes), Inventario avanzado ($29/mes), Aprobaciones y firma digital ($25/mes).',
+        'Add-ons disponibles: Usuario extra ($8/mes), WhatsApp + Analíticas ($19/mes), Asistente IA ($29/mes), Inventario avanzado ($29/mes), Aprobaciones y firma digital ($25/mes).',
         'Ciclos de facturación mensual. Renovación automática salvo cancelación antes de la fecha de renovación.',
         'Pagos no reembolsables una vez iniciado el período, excepto cobro duplicado o error manifiesto.',
         'Impuestos aplicables según normativa costarricense. Paddle maneja la conversión de moneda.',
