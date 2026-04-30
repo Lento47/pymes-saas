@@ -318,4 +318,79 @@ Responde en formato JSON puro: { "extractedText": "<texto original>", "summary":
       return null;
     }
   }
+
+  async explainHaciendaError(
+    workspaceId: string,
+    errorMessage: string,
+  ): Promise<{ explanation: string; suggested_fix: string } | null> {
+    const config = await this.getConfig(workspaceId);
+    if (!config) return null;
+
+    const system = `Eres un experto en facturación electrónica de Costa Rica (Hacienda).
+El usuario recibió un error del API de Hacienda y necesita entenderlo en español sencillo.
+Responde con JSON puro (sin markdown):
+{
+  "explanation": "explicación clara en español de 2-3 oraciones de qué significa el error",
+  "suggested_fix": "paso a paso concreto para corregir el problema, en español, máximo 4 pasos"
+}`;
+
+    const user = `Error de Hacienda:\n${errorMessage.slice(0, 2000)}`;
+
+    try {
+      const { text } = await this.chat(config, system, user, 400, 0.3);
+      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      return JSON.parse(clean);
+    } catch (err) {
+      this.logger.error(`Error explicando error de Hacienda: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
+  async reviewInvoiceForHacienda(
+    workspaceId: string,
+    invoiceData: {
+      document_type: string;
+      activity_code?: string;
+      sale_condition?: string;
+      payment_method?: string;
+      cabys_code?: string;
+      tax_rate?: string;
+      line_description?: string;
+      currency?: string;
+      amount?: string;
+      contact_name?: string;
+    },
+  ): Promise<{ valid: boolean; issues: Array<{ field: string; severity: 'error' | 'warning'; message: string }>; ai_review: string } | null> {
+    const config = await this.getConfig(workspaceId);
+    if (!config) return null;
+
+    const system = `Eres un auditor de facturación electrónica de Costa Rica (Hacienda). Revisa los datos de una factura y detecta problemas.
+Reglas de Hacienda CR:
+- activity_code es obligatorio (código de actividad económica)
+- cabys_code es obligatorio por línea (catálogo CABYS)
+- tax_rate debe ser 0 o 13 (IVA en CR)
+- document_type debe ser válido
+- sale_condition: 01=contado, 02=crédito
+- payment_method: 01=efectivo, 02=tarjeta, 03=transferencia
+
+Responde con JSON puro (sin markdown):
+{
+  "valid": true|false,
+  "issues": [
+    { "field": "nombre del campo", "severity": "error" | "warning", "message": "descripción en español" }
+  ],
+  "ai_review": "revisión general en español de 2-3 oraciones resumiendo el estado de la factura"
+}`;
+
+    const user = `Datos de la factura a revisar:\n${JSON.stringify(invoiceData, null, 2)}`;
+
+    try {
+      const { text } = await this.chat(config, system, user, 500, 0.3);
+      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      return JSON.parse(clean);
+    } catch (err) {
+      this.logger.error(`Error revisando factura para Hacienda: ${(err as Error).message}`);
+      return null;
+    }
+  }
 }

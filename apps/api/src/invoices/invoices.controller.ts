@@ -56,6 +56,15 @@ export class InvoicesController {
     return this.remindersService.detectOverdue(workspaceId);
   }
 
+  @Get('templates')
+  @Roles(WorkspaceUserRole.AGENT)
+  getTemplates(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Query('industry') industry?: string,
+  ) {
+    return this.invoicesService.getInvoiceTemplates(workspaceId, industry);
+  }
+
   @Get(':id')
   @Roles(WorkspaceUserRole.AGENT)
   findOne(
@@ -168,5 +177,23 @@ export class InvoicesController {
     @Body() dto: { number?: string; description?: string; notes?: unknown[] },
   ) {
     return this.invoicesService.createReceiverMessage(workspaceId, id, dto);
+  }
+
+  @Post(':id/hacienda-validate')
+  @Roles(WorkspaceUserRole.AGENT)
+  validateForHacienda(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id', ValidateUUIDPipe) id: string,
+  ) {
+    return this.invoicesService.validateForHacienda(workspaceId, id);
+  }
+
+  @Get(':id/hacienda-error-explain')
+  @Roles(WorkspaceUserRole.AGENT)
+  explainHaciendaError(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id', ValidateUUIDPipe) id: string,
+  ) {
+    return this.invoicesService.explainHaciendaError(workspaceId, id);
   }
 }

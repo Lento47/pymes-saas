@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -22,9 +23,13 @@ import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { CreateInvoicePaymentDto } from './dto/create-invoice-payment.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AiService } from '../ai/ai.service';
+import { INVOICE_TEMPLATES, getTemplatesByIndustry, type InvoiceTemplate } from './invoice-templates.data';
 
 @Injectable()
 export class InvoicesService {
+  private readonly logger = new Logger(InvoicesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
@@ -33,6 +38,7 @@ export class InvoicesService {
     private readonly haciendaXmlBuilder: HaciendaXmlBuilderService,
     private readonly planLimits: PlanLimitsService,
     private readonly notificationsService: NotificationsService,
+    private readonly ai: AiService,
   ) {}
 
   async findAll(workspaceId: string, filters: FilterInvoicesDto) {
@@ -971,5 +977,125 @@ export class InvoicesService {
     if (!settings.hacienda_username) missing.push('usuario Hacienda');
     if (!settings.hacienda_password) missing.push('contraseña Hacienda');
     return missing;
+  }
+
+  async getInvoiceTemplates(workspaceId: string, industry?: string) {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { id: true },
+    });
+    if (!ws) throw new NotFoundException('Workspace no encontrado.');
+
+    return getTemplatesByIndustry(industry);
+  }
+
+  async validateForHacienda(workspaceId: string, invoiceId: string) {
+    const invoice = await this.getInvoiceOrThrow(workspaceId, invoiceId);
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: {
+        settings_json: true,
+        workspace_tax_profile: true,
+      },
+    });
+
+    const issues: Array<{ field: string; severity: 'error' | 'warning'; message: string }> = [];
+    let valid = true;
+
+    const taxProfile = workspace?.workspace_tax_profile;
+    const settings = parseJsonValue<Record<string, any>>(workspace?.settings_json ?? null, {});
+
+    const missingProfile = this.getMissingWorkspaceTaxProfileFields(taxProfile);
+    if (missingProfile.length > 0) {
+      valid = false;
+      missingProfile.forEach(f => issues.push({
+        field: 'perfil_fiscal',
+        severity: 'error',
+        message: `Falta completar en Ajustes → Facturación CR: ${f}`,
+      }));
+    }
+
+    const missingSettings = this.getMissingWorkspaceHaciendaSettings(settings);
+    if (missingSettings.length > 0) {
+      valid = false;
+      missingSettings.forEach(f => issues.push({
+        field: 'config_hacienda',
+        severity: 'error',
+        message: `Falta configurar en Ajustes → Facturación CR: ${f}`,
+      }));
+    }
+
+    if (!invoice.activity_code) {
+      valid = false;
+      issues.push({ field: 'activity_code', severity: 'error', message: 'El código de actividad económica es obligatorio.' });
+    }
+    if (!invoice.sale_condition) {
+      issues.push({ field: 'sale_condition', severity: 'warning', message: 'Condición de venta no definida (01=contado, 02=crédito).' });
+    }
+    if (!invoice.payment_method) {
+      issues.push({ field: 'payment_method', severity: 'warning', message: 'Medio de pago no definido.' });
+    }
+
+    if (invoice.lines && invoice.lines.length > 0) {
+      for (let i = 0; i < invoice.lines.length; i++) {
+        const line = invoice.lines[i];
+        if (!line.cabys_code) {
+          valid = false;
+          issues.push({ field: `linea_${i + 1}_cabys`, severity: 'error', message: `Línea ${i + 1}: falta código CABYS.` });
+        }
+        if (!line.tax_code) {
+          issues.push({ field: `linea_${i + 1}_tax`, severity: 'warning', message: `Línea ${i + 1}: código de impuesto no definido.` });
+        }
+      }
+    } else {
+      valid = false;
+      issues.push({ field: 'lineas', severity: 'error', message: 'La factura debe tener al menos una línea de detalle.' });
+    }
+
+    let ai_review: string | null = null;
+    try {
+      const firstLine = invoice.lines?.[0];
+      const result = await this.ai.reviewInvoiceForHacienda(workspaceId, {
+        document_type: invoice.document_type,
+        activity_code: invoice.activity_code ?? undefined,
+        sale_condition: invoice.sale_condition ?? undefined,
+        payment_method: invoice.payment_method ?? undefined,
+        cabys_code: firstLine?.cabys_code ?? undefined,
+        tax_rate: firstLine?.tax_rate != null ? String(firstLine.tax_rate) : undefined,
+        line_description: firstLine?.description ?? undefined,
+        currency: invoice.currency,
+        amount: invoice.amount != null ? String(invoice.amount) : undefined,
+        contact_name: invoice.contact?.full_name ?? undefined,
+      });
+      if (result) {
+        if (result.issues?.length) {
+          valid = false;
+          result.issues.forEach((issue: { field: string; severity: 'error' | 'warning'; message: string }) => issues.push(issue));
+        }
+        ai_review = result.ai_review || null;
+      }
+    } catch (err) {
+      this.logger.warn(`AI review failed for invoice ${invoiceId}: ${(err as Error).message}`);
+    }
+
+    return { valid, issues, ai_review };
+  }
+
+  async explainHaciendaError(workspaceId: string, invoiceId: string) {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, workspace_id: workspaceId },
+      select: { hacienda_last_error: true, hacienda_status: true },
+    });
+    if (!invoice) throw new NotFoundException('Factura no encontrada.');
+    if (!invoice.hacienda_last_error) throw new BadRequestException('Esta factura no tiene errores de Hacienda registrados.');
+
+    const aiResult = await this.ai.explainHaciendaError(workspaceId, invoice.hacienda_last_error);
+
+    return {
+      error_code: 'HACIENDA_RECHAZO',
+      technical_message: invoice.hacienda_last_error,
+      plain_explanation: aiResult?.explanation ?? 'No se pudo generar una explicación automática. Contactá soporte para más detalles.',
+      suggested_fix: aiResult?.suggested_fix ?? null,
+    };
   }
 }
