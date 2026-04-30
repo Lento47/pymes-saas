@@ -73,7 +73,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     ],
   },
   {
-    slug: "terms-and-conditions",
+    slug: "terms-of-service",
     title: "Términos y Condiciones de PyMesHub",
     summary: "Condiciones profesionales para el acceso anticipado, uso beta, cuentas, datos, integraciones, pagos futuros, propiedad intelectual y responsabilidad.",
     purpose: "Gobernar la relación contractual entre PyMesHub y cada cliente o usuario autorizado durante la etapa beta y el uso posterior de la Plataforma.",
