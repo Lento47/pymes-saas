@@ -87,16 +87,20 @@ export class DocumentProcessor extends WorkerHost implements OnModuleDestroy {
     } catch (err) {
       this.logger.error(`Document processing failed permanently for ${documentId}: ${(err as Error).message}`);
 
-      await this.prisma.document.update({
-        where: { id: documentId },
-        data: {
-          status: 'FAILED',
-          ocr_text: `Error: ${(err as Error).message}`.slice(0, 500),
-          updated_at: new Date(),
-        },
-      });
+      try {
+        await this.prisma.document.update({
+          where: { id: documentId },
+          data: {
+            status: 'FAILED',
+            ocr_text: `Error: ${(err as Error).message}`.slice(0, 500),
+            updated_at: new Date(),
+          },
+        });
+      } catch (dbErr) {
+        this.logger.error(`Failed to update FAILED status for ${documentId}: ${(dbErr as Error).message}`);
+      }
 
-      throw err; // re-throw so BullMQ marks job as failed
+      throw err;
     }
   }
 
@@ -121,6 +125,20 @@ export class DocumentProcessor extends WorkerHost implements OnModuleDestroy {
     } catch (err) {
       this.logger.warn(`File read/OCR failed for ${doc.file_name}: ${(err as Error).message}`);
       ocrFailed = true;
+
+      try {
+        await this.prisma.document.update({
+          where: { id: documentId },
+          data: {
+            status: 'FAILED',
+            ocr_text: `Download error: ${(err as Error).message}`.slice(0, 500),
+            updated_at: new Date(),
+          },
+        });
+      } catch (dbErr) {
+        this.logger.error(`Failed to update FAILED status: ${(dbErr as Error).message}`);
+      }
+      return { documentId, status: 'FAILED' };
     }
 
     if (!ocrText && !ocrFailed) {
@@ -130,7 +148,8 @@ export class DocumentProcessor extends WorkerHost implements OnModuleDestroy {
     let summaryText = '';
     let extractedData: any = {};
 
-    const hasRealOcr = !ocrFailed && ocrText.length > 50 && !ocrText.startsWith(doc.file_name);
+    const isFallback = ocrText.startsWith(doc.file_name + ' (') || ocrText.includes('KB)');
+    const hasRealOcr = !ocrFailed && ocrText.length > 50 && !isFallback;
 
     if (hasRealOcr) {
       try {
