@@ -285,6 +285,7 @@ export const api = {
     const qs = industry ? `?industry=${encodeURIComponent(industry)}` : "";
     return request<any>("GET", `/api/invoices/templates${qs}`);
   },
+  getInvoiceXmlPreview: (id: string) => request<any>("GET", `/api/invoices/${id}/xml-preview`),
   createTask: (data: any) => request<any>("POST", "/api/tasks", data),
   updateTask: (id: string, data: any) => request<any>("PATCH", `/api/tasks/${id}`, data),
   completeTask: (id: string) => request<any>("POST", `/api/tasks/${id}/complete`),

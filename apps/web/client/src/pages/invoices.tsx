@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   BookOpen,
   CheckCircle2,
+  Code2,
   Coins,
   Eye,
   FileUp,
@@ -32,6 +33,7 @@ import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { HaciendaChecklist, type ChecklistItem } from "@/components/shared/hacienda-checklist";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -463,6 +465,17 @@ export default function InvoicesPage() {
     onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
+  const [showXmlPreview, setShowXmlPreview] = useState(false);
+  const [xmlPreview, setXmlPreview] = useState<{ xml: string } | null>(null);
+  const xmlPreviewMutation = useMutation({
+    mutationFn: (id: string) => api.getInvoiceXmlPreview(id),
+    onSuccess: (data) => {
+      setXmlPreview(data);
+      setShowXmlPreview(true);
+    },
+    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+  });
+
   const generateReminderMutation = useMutation({
     mutationFn: (invoice: any) => api.generateInvoiceReminder(invoice.id),
     onSuccess: (reminder: any, invoice: any) => {
@@ -833,6 +846,18 @@ export default function InvoicesPage() {
                             >
                               {explainErrorMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Info className="w-3.5 h-3.5 mr-1" />}
                               Error MH
+                            </Button>
+                          )}
+                          {invoice.issuance_mode === "HACIENDA" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-xs"
+                              onClick={() => xmlPreviewMutation.mutate(invoice.id)}
+                              disabled={xmlPreviewMutation.isPending}
+                            >
+                              {xmlPreviewMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Code2 className="w-3.5 h-3.5 mr-1" />}
+                              XML
                             </Button>
                           )}
                           {invoice.status === "OVERDUE" && (
@@ -1379,6 +1404,53 @@ export default function InvoicesPage() {
           )}
           <DialogFooter>
             <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowErrorExplain(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showXmlPreview} onOpenChange={setShowXmlPreview}>
+        <DialogContent className="bg-card border-border sm:max-w-[680px] max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <Code2 className="w-4 h-4 text-blue-400" />
+              Vista previa XML — Factura Electrónica
+            </DialogTitle>
+          </DialogHeader>
+          {xmlPreview && (
+            <div className="flex-1 overflow-y-auto space-y-3 text-xs">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[10px]"
+                  onClick={() => navigator.clipboard.writeText(xmlPreview.xml)}
+                >
+                  Copiar XML
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[10px]"
+                  onClick={() => {
+                    const blob = new Blob([xmlPreview.xml], { type: "application/xml" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "factura-electronica.xml";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Descargar XML
+                </Button>
+              </div>
+              <pre className="rounded-md border border-border/60 bg-background p-3 text-[10px] text-muted-foreground whitespace-pre-wrap max-h-[300px] overflow-y-auto leading-relaxed">
+                {xmlPreview.xml}
+              </pre>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowXmlPreview(false)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
