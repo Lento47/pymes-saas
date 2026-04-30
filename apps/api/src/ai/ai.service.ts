@@ -294,24 +294,25 @@ export class AiService {
 
   async analyzeDocument(
     workspaceId: string,
-    meta: { fileName: string; mimeType: string; fileSize: number },
+    meta: { fileName: string; mimeType: string; fileSize: number; ocrText?: string },
   ): Promise<{ extractedText: string; summary: string; extractedData: any } | null> {
     const config = await this.getConfig(workspaceId);
     if (!config) return null;
 
-    const system = `Eres un asistente de extracción de documentos. Analiza la metadata del documento y genera:
-1. Un texto simulado de lo que podría contener el documento basado en su nombre y tipo.
-2. Un resumen breve en español del contenido inferido.
-3. Datos estructurados inferidos (ej: tipo de documento, categoría).
-Responde en formato JSON puro: { "extractedText": "...", "summary": "...", "extractedData": {...} }`;
+    const hasRealOcr = meta.ocrText && meta.ocrText.length > 10;
 
-    const user = `Analiza este documento:
-- Nombre: ${meta.fileName}
-- Tipo MIME: ${meta.mimeType}
-- Tamaño: ${(meta.fileSize / 1024).toFixed(1)} KB`;
+    const system = hasRealOcr
+      ? `Eres un asistente de extracción de documentos. Extrae y estructura la información del siguiente texto OCR.
+Responde en formato JSON puro: { "extractedText": "<texto original>", "summary": "<resumen en español>", "extractedData": { "docType": "<tipo>", "total": <monto si es factura>, "date": "<fecha si se encuentra>", "entities": [...] } }`
+      : `Eres un asistente de extracción de documentos. Solo tienes metadata del documento (no se pudo extraer texto).
+Responde en formato JSON puro: { "extractedText": "Texto no disponible", "summary": "<descripción basada en metadata>", "extractedData": { "docType": "<inferido del nombre>", "fileName": "${meta.fileName}" } }`;
+
+    const user = hasRealOcr
+      ? `Documento: ${meta.fileName} (${meta.mimeType}, ${(meta.fileSize / 1024).toFixed(1)} KB)\n\nTexto OCR extraído:\n${meta.ocrText!.slice(0, 4000)}`
+      : `Documento: ${meta.fileName} (${meta.mimeType}, ${(meta.fileSize / 1024).toFixed(1)} KB)`;
 
     try {
-      const { text } = await this.chat(config, system, user, 300, 0.3);
+      const { text } = await this.chat(config, system, user, 500, 0.3);
       const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
       return JSON.parse(clean);
     } catch {

@@ -6,6 +6,7 @@ import IORedis from 'ioredis';
 
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AiModule } from '../ai/ai.module';
+import { StorageService } from '../common/storage/storage.service';
 import { QUEUE_NAMES } from './queues.constants';
 import { QueueService } from './queue.service';
 import { ClassifierProcessor } from './processors/classifier.processor';
@@ -76,6 +77,7 @@ function createRedisConnection(config: ConfigService) {
     AutomationProcessor,
     FollowupProcessor,
     SummaryProcessor,
+    StorageService,
   ],
   exports: [QueueService],
 })

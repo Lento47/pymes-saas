@@ -75,6 +75,21 @@ export class StorageService {
     return getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
   }
 
+  // ── Descargar archivo como Buffer ─────────────────────────────────────────
+
+  async download(key: string): Promise<Buffer> {
+    try {
+      const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
+      const response = await this.client.send(command);
+      const body = await response.Body?.transformToByteArray();
+      if (!body) throw new Error('Empty response body');
+      return Buffer.from(body);
+    } catch (err) {
+      this.logger.error(`Error descargando archivo ${key}:`, err);
+      throw new InternalServerErrorException('Error al descargar el archivo del storage.');
+    }
+  }
+
   // ── Eliminar archivo ───────────────────────────────────────────────────────
 
   async delete(key: string): Promise<void> {
