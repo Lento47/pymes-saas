@@ -299,17 +299,16 @@ export class AiService {
     const config = await this.getConfig(workspaceId);
     if (!config) return null;
 
-    const hasRealOcr = meta.ocrText && meta.ocrText.length > 10;
+    const hasRealOcr = meta.ocrText && meta.ocrText.length > 50 && !meta.ocrText.startsWith('Documento:');
 
-    const system = hasRealOcr
-      ? `Eres un asistente de extracción de documentos. Extrae y estructura la información del siguiente texto OCR.
-Responde en formato JSON puro: { "extractedText": "<texto original>", "summary": "<resumen en español>", "extractedData": { "docType": "<tipo>", "total": <monto si es factura>, "date": "<fecha si se encuentra>", "entities": [...] } }`
-      : `Eres un asistente de extracción de documentos. Solo tienes metadata del documento (no se pudo extraer texto).
-Responde en formato JSON puro: { "extractedText": "Texto no disponible", "summary": "<descripción basada en metadata>", "extractedData": { "docType": "<inferido del nombre>", "fileName": "${meta.fileName}" } }`;
+    if (!hasRealOcr) {
+      return null; // skip AI — no meaningful text to analyze
+    }
 
-    const user = hasRealOcr
-      ? `Documento: ${meta.fileName} (${meta.mimeType}, ${(meta.fileSize / 1024).toFixed(1)} KB)\n\nTexto OCR extraído:\n${meta.ocrText!.slice(0, 4000)}`
-      : `Documento: ${meta.fileName} (${meta.mimeType}, ${(meta.fileSize / 1024).toFixed(1)} KB)`;
+    const system = `Eres un asistente de extracción de documentos. Extrae y estructura la información del siguiente texto obtenido por OCR.
+Responde en formato JSON puro: { "extractedText": "<texto original>", "summary": "<resumen conciso en español>", "extractedData": { "docType": "<tipo de documento>", "total": <monto numérico si es factura>, "date": "<fecha si se encuentra>", "entities": ["<nombres de empresas o personas>"] } }`;
+
+    const user = `Documento: ${meta.fileName} (${(meta.fileSize / 1024).toFixed(1)} KB)\n\nTexto extraído:\n${meta.ocrText!.slice(0, 4000)}`;
 
     try {
       const { text } = await this.chat(config, system, user, 500, 0.3);

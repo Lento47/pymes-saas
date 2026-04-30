@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { createWorker } from 'tesseract.js';
@@ -18,7 +18,7 @@ const TEXT_TYPES = ['text/plain', 'text/csv', 'application/json'];
 
 @Injectable()
 @Processor(QUEUE_NAMES.DOCUMENT)
-export class DocumentProcessor extends WorkerHost {
+export class DocumentProcessor extends WorkerHost implements OnModuleDestroy {
   private readonly logger = new Logger(DocumentProcessor.name);
   private tesseractWorker: any = null;
 
@@ -28,6 +28,13 @@ export class DocumentProcessor extends WorkerHost {
     private readonly storage: StorageService,
   ) {
     super();
+  }
+
+  async onModuleDestroy() {
+    if (this.tesseractWorker) {
+      await this.tesseractWorker.terminate();
+      this.logger.log('Tesseract worker terminated');
+    }
   }
 
   private async getTesseractWorker() {
@@ -52,6 +59,11 @@ export class DocumentProcessor extends WorkerHost {
       return;
     }
 
+    if (!doc.storage_key) {
+      this.logger.warn(`Document ${documentId} has no storage_key, skipping.`);
+      return;
+    }
+
     if (doc.status === 'PROCESSED') {
       this.logger.log(`Document ${documentId} already processed, skipping.`);
       return;
@@ -63,6 +75,7 @@ export class DocumentProcessor extends WorkerHost {
     });
 
     let ocrText = '';
+    let ocrFailed = false;
 
     try {
       const fileBuffer = await this.storage.download(doc.storage_key);
@@ -73,35 +86,42 @@ export class DocumentProcessor extends WorkerHost {
         ocrText = await this.ocrPdf(fileBuffer);
       } else if (TEXT_TYPES.some(t => doc.mime_type.startsWith(t))) {
         ocrText = fileBuffer.toString('utf-8').slice(0, 5000);
-      } else {
-        ocrText = `Documento: ${doc.file_name} (${doc.mime_type}, ${(doc.file_size / 1024).toFixed(1)} KB)`;
       }
     } catch (err) {
       this.logger.warn(`File read/OCR failed for ${doc.file_name}: ${(err as Error).message}`);
-      ocrText = `No se pudo extraer texto del documento ${doc.file_name}`;
+      ocrFailed = true;
     }
 
-    // AI structuring of extracted text
+    if (!ocrText && !ocrFailed) {
+      ocrText = `Documento: ${doc.file_name} (${doc.mime_type}, ${(doc.file_size / 1024).toFixed(1)} KB)`;
+    }
+
+    // AI structuring — only pass real OCR text, not error strings
     let summaryText = '';
     let extractedData: any = {};
 
-    try {
-      const aiResult = await this.aiService.analyzeDocument(doc.workspace_id, {
-        fileName: doc.file_name,
-        mimeType: doc.mime_type,
-        fileSize: doc.file_size,
-        ocrText,
-      });
-      if (aiResult) {
-        summaryText = aiResult.summary || '';
-        extractedData = aiResult.extractedData || {};
+    const hasRealOcr = !ocrFailed && ocrText.length > 50 && !ocrText.startsWith('Documento:');
+
+    if (hasRealOcr) {
+      try {
+        const aiResult = await this.aiService.analyzeDocument(doc.workspace_id, {
+          fileName: doc.file_name,
+          mimeType: doc.mime_type,
+          fileSize: doc.file_size,
+          ocrText,
+        });
+        if (aiResult) {
+          summaryText = aiResult.summary || '';
+          extractedData = aiResult.extractedData || {};
+        }
+      } catch (err) {
+        this.logger.warn(`AI analysis failed for ${doc.file_name}: ${(err as Error).message}`);
       }
-    } catch (err) {
-      this.logger.warn(`AI analysis failed for ${doc.file_name}: ${(err as Error).message}`);
     }
 
     if (!summaryText) {
-      summaryText = `Documento: ${doc.file_name}. Procesado el ${new Date().toLocaleDateString('es-CR')}.`;
+      const status = hasRealOcr ? 'OCR exitoso' : ocrFailed ? 'OCR fallido' : 'Sin OCR';
+      summaryText = `Documento: ${doc.file_name}. ${status}. Procesado el ${new Date().toLocaleDateString('es-CR')}.`;
     }
 
     await this.prisma.document.update({
@@ -115,7 +135,7 @@ export class DocumentProcessor extends WorkerHost {
       },
     });
 
-    this.logger.log(`Document ${documentId} processed — OCR: ${ocrText.length} chars`);
+    this.logger.log(`Document ${documentId} processed — OCR: ${ocrText.length} chars, AI-structured: ${hasRealOcr}`);
     return { documentId, status: 'PROCESSED' };
   }
 
@@ -126,19 +146,33 @@ export class DocumentProcessor extends WorkerHost {
   }
 
   private async ocrPdf(buffer: Buffer): Promise<string> {
-    // Try image-based OCR first (Tesseract on first page as image)
-    try {
-      const worker = await this.getTesseractWorker();
-      const { data } = await worker.recognize(buffer);
-      if (data.text?.trim()) return data.text.trim();
-    } catch { /* fallback to basic text extraction */ }
-
-    // Fallback: try to extract embedded text from PDF buffer
-    const text = buffer.toString('utf-8');
-    const matches = text.match(/\(([^)]+)\)\s*Tj/g);
-    if (matches) {
-      return matches.map(m => m.replace(/[()]|Tj/g, '').trim()).join(' ').slice(0, 5000);
+    // PDF processing: Tesseract cannot read raw PDF. Attempt to extract
+    // embedded text via basic content stream parsing for text-based PDFs.
+    // For scanned/image-based PDFs, use pdf-to-image conversion.
+    const header = buffer.slice(0, 5).toString('utf-8');
+    if (!header.startsWith('%PDF')) {
+      this.logger.warn('Not a valid PDF file');
+      return '';
     }
-    return `PDF: ${buffer.length} bytes — texto no extraído`;
+
+    const text = buffer.toString('utf-8');
+    // Try extracting text from PDF content streams (works for simple text PDFs)
+    const btBlocks: string[] = [];
+    const btRegex = /BT\s*([\s\S]*?)\s*ET/g;
+    let match;
+    while ((match = btRegex.exec(text)) !== null) {
+      const content = match[1];
+      const tjMatches = content.match(/\(([^)]*)\)\s*Tj/g);
+      if (tjMatches) {
+        btBlocks.push(tjMatches.map(m => m.replace(/[()]|Tj/g, '').trim()).join(' '));
+      }
+    }
+    if (btBlocks.length > 0) {
+      return btBlocks.join('\n').slice(0, 5000);
+    }
+
+    // For image-based/scanned PDFs, return a clear signal
+    this.logger.log(`PDF has no embedded text — likely a scanned document. OCR not available for PDF images yet.`);
+    return '';
   }
 }
