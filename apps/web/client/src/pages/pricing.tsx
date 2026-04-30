@@ -417,15 +417,16 @@ export default function PricingPage() {
 
         {/* CTA Section */}
         <section className="px-4 py-16 md:px-8 md:py-24">
-          <div className="glass-panel luminous-border mx-auto max-w-3xl rounded-3xl p-8 text-center md:p-12 relative overflow-hidden"
+          <div className="glass-panel luminous-border mx-auto max-w-3xl rounded-3xl relative overflow-hidden"
             style={{
               backgroundImage: 'url(https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/readytolunch.png)',
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
+              minHeight: '320px',
             }}>
             <div className="absolute inset-0 bg-[#05091d]/70" />
-            <div className="relative z-10">
+            <div className="relative z-10 p-8 text-center md:p-12">
             <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-white md:text-4xl">
               {copy.cta?.title || '¿Listo para empezar?'}
             </h2>
