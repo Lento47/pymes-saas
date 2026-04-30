@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
@@ -46,6 +46,7 @@ export class CreateInvoiceDto {
   @IsOptional()
   @IsString()
   @Length(1, 10)
+  @Transform(({ value }) => (value === '' ? undefined : value))
   currency?: string;
 
   @IsString()
@@ -72,6 +73,7 @@ export class CreateInvoiceDto {
   @IsOptional()
   @IsString()
   @Length(1, 20)
+  @Transform(({ value }) => (value === '' ? undefined : value))
   activity_code?: string;
 
   @IsOptional()
