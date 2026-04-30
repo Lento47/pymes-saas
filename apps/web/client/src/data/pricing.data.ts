@@ -177,9 +177,9 @@ export const ADD_ONS: AddOn[] = [
   },
   {
     key: 'whatsapp_premium',
-    name: 'WhatsApp Premium',
+    name: 'WhatsApp + Analíticas',
     monthlyUSD: 19,
-    description: 'Analíticas y funciones avanzadas de WhatsApp',
+    description: 'Reportes de conversaciones, tiempos de respuesta, métricas de canal y estadísticas avanzadas de WhatsApp',
   },
   {
     key: 'advanced_inventory',

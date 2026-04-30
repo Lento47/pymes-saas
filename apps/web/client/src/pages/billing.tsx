@@ -210,7 +210,7 @@ export default function BillingPage() {
   const addonParam = params.get("addon");
   const addonLabels: Record<string, string> = {
     ai_assistant: 'Asistente IA',
-    whatsapp_premium: 'WhatsApp Premium',
+    whatsapp_premium: 'WhatsApp + Analíticas',
     extra_user: 'Usuario extra',
     advanced_inventory: 'Inventario avanzado',
     approvals_signature: 'Aprobaciones y firma digital',
