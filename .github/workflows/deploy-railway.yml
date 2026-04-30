@@ -66,13 +66,13 @@ jobs:
         run: cd apps/api && pnpm exec prisma generate
 
       - name: Build API
-        run: cd apps/api && npm run build
+        run: cd apps/api && pnpm run build
 
       - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pymeshub_test
           JWT_SECRET: test-secret-for-ci-jwt-min-32-chars
-        run: cd apps/api && npm run test
+        run: cd apps/api && pnpm run test
 
       - name: Healthcheck — start API and verify /api/health
         env:
