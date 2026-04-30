@@ -22,6 +22,6 @@
     "@types/express": "^5.0.6"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["tesseract.js", "sharp"]
+    "onlyBuiltDependencies": ["tesseract.js", "sharp", "bcrypt"]
   }
 }
