@@ -1,145 +1,160 @@
-# Política de Privacidad de PymeHub
+# Politica de Privacidad de PymeHub
 
-Última actualización: Abril 2026.
+## 1. Proposito
 
-## 1. Responsable del tratamiento
+Esta Politica de Privacidad describe como `[NOMBRE_EMPRESA]` recopila, usa, comparte, conserva y protege datos personales en relacion con PymeHub. Su objetivo es informar de manera transparente el tratamiento de datos que se produce al navegar por `[DOMINIO]`, solicitar informacion comercial, contratar el servicio o utilizar sus funcionalidades.
 
-PymeHub S.A., cédula jurídica en trámite, con domicilio en San José, Costa Rica, es el responsable del tratamiento de los datos personales recolectados a través del sitio web, formularios, procesos de registro, cuentas de usuario, comunicaciones comerciales, soporte, facturación y cualquier interacción con la Plataforma.
+## 2. Alcance
 
-El canal de contacto para consultas de privacidad, solicitudes de titulares, ejercicio de derechos o reportes de incidentes es el correo electrónico: legal@[dominio].
+Esta politica aplica a:
 
-## 2. Datos que recopilamos
+- el sitio web y formularios de contacto o demo;
+- el registro y administracion de cuentas y workspaces;
+- el uso del inbox unificado, CRM, tareas, documentos, OCR, automatizaciones, insights, resúmenes IA, dashboards y soporte;
+- los tratamientos efectuados por `[NOMBRE_EMPRESA]` como responsable o encargado, segun corresponda al contexto.
 
-Podemos recopilar las siguientes categorías de datos personales:
+No regula los tratamientos que el cliente realice fuera de PymeHub ni las politicas de terceros que operen servicios integrados, aunque dichos terceros pueden participar como subprocesadores o proveedores auxiliares.
 
-**Datos de registro y cuenta:** nombre, apellido, correo electrónico, teléfono, empresa, cargo, país, nombre del workspace y cualquier dato proporcionado durante el proceso de registro o en formularios de contacto.
+## 3. Definiciones clave
 
-**Datos de uso de la Plataforma:** mensajes enviados y recibidos a través de canales integrados (WhatsApp, correo electrónico, formularios), contactos, leads, facturas, documentos, adjuntos, notas, tareas, registros de actividad, dirección IP, tipo de navegador, sistema operativo, páginas visitadas, acciones realizadas dentro de la Plataforma y cualquier otro dato generado durante la utilización del Servicio.
+- `Datos personales`: cualquier informacion relativa a una persona identificada o identificable.
+- `Responsable`: quien decide los fines y medios del tratamiento.
+- `Encargado`: quien trata datos por cuenta del responsable.
+- `Titular`: persona fisica a la que pertenecen los datos personales.
+- `Cliente`: empresa o persona que contrata o utiliza PymeHub.
+- `Subprocesador`: tercero que trata datos por cuenta de `[NOMBRE_EMPRESA]` para apoyar la prestacion del servicio.
 
-**Datos de facturación:** historial de pagos, método de pago tokenizado, detalles de suscripción, plan contratado, facturas emitidas y comprobantes fiscales.
+## 4. Identidad y rol de tratamiento
 
-**Datos de comunicación:** contenido de mensajes enviados a soporte, correos electrónicos, conversaciones con el equipo de PymeHub y cualquier información compartida voluntariamente durante interacciones comerciales o de asistencia.
+`[NOMBRE_EMPRESA]`, con domicilio en `[JURISDICCION]`, puede actuar:
 
-**Datos de integraciones:** cuando el Cliente conecta servicios de terceros (WhatsApp, pasarelas de pago, proveedores de correo electrónico o IA), PymeHub puede procesar datos de los clientes finales del Cliente en calidad de encargado del tratamiento, conforme al DPA aplicable.
+- como responsable, respecto de datos de navegacion, relacion comercial, soporte, seguridad, facturacion y administracion del servicio;
+- como encargado, respecto de datos que el cliente carga o gestiona dentro de PymeHub para sus propios fines.
 
-## 3. Finalidades del tratamiento
+El canal de contacto para privacidad es `[CORREO_LEGAL]`.
 
-Tratamos datos personales para las siguientes finalidades:
+## 5. Categorias de datos tratados
 
-- Crear, administrar y mantener cuentas de usuario y workspaces.
-- Prestar, operar, mantener y mejorar la Plataforma y sus funcionalidades.
-- Procesar pagos, emitir facturas y comprobantes fiscales, y cumplir con obligaciones tributarias y contables.
-- Proporcionar soporte técnico, atender consultas, resolver incidencias y gestionar reclamos.
-- Garantizar la seguridad de la Plataforma, prevenir fraudes, detectar usos no autorizados y proteger la integridad del Servicio y de los datos de todos los usuarios.
-- Enviar comunicaciones operativas, notificaciones del sistema, alertas de seguridad y avisos relacionados con la cuenta y el Servicio.
-- Cuando el usuario lo haya autorizado expresamente, enviar comunicaciones comerciales, promocionales, boletines informativos, invitaciones a eventos, demostraciones de producto o contacto por canales digitales.
-- Realizar análisis estadísticos, estudios de uso y mejoras del producto sobre datos agregados o anonimizados que no permitan identificar directamente a personas físicas.
+Dependiendo del uso del servicio, `[NOMBRE_EMPRESA]` puede tratar:
 
-## 4. Base de legitimación
+- datos de identificacion y contacto: nombre, correo, telefono, cargo, empresa;
+- datos de autenticacion y seguridad: hashes, sesiones, eventos de login, IP, user-agent, logs de acceso;
+- datos del workspace: miembros, roles, departamentos, canales, configuraciones, preferencias y limites de plan;
+- datos operativos cargados por el cliente: conversaciones, mensajes, tareas, contactos, notas, etiquetas, auditorias y notificaciones;
+- documentos y adjuntos: archivos cargados, metadatos, previews y texto extraido por OCR;
+- datos vinculados a IA: prompts, fragmentos de contexto, instrucciones, respuestas o salidas generadas;
+- datos de soporte, comerciales y de facturacion: tickets, reclamos, historial de pagos, datos fiscales y comunicaciones relacionadas.
 
-De conformidad con la Ley N.º 8968 de Protección de la Persona frente al Tratamiento de sus Datos Personales de Costa Rica y su Reglamento, PymeHub fundamenta el tratamiento de datos personales en las siguientes bases jurídicas:
+## 6. Finalidades del tratamiento
 
-- **Consentimiento expreso, libre, informado, específico e inequívoco** del titular, obtenido al momento de la recolección de los datos, para finalidades que lo requieran según la ley costarricense, incluyendo comunicaciones comerciales, cookies no esenciales y usos secundarios.
-- **Ejecución de una relación contractual o precontractual** para la creación de cuenta, prestación del Servicio, soporte y gestión de la relación comercial.
-- **Cumplimiento de obligaciones legales y regulatorias** aplicables a PymeHub, incluyendo facturación, conservación de registros contables, prevención de fraude y cumplimiento de requerimientos de autoridades competentes.
-- **Interés legítimo** de PymeHub en operar, proteger, auditar y mejorar razonablemente el Servicio, siempre que dicho interés no prevalezca sobre los derechos y libertades fundamentales del titular.
+Los datos pueden tratarse para:
 
-Cuando el tratamiento se base en el consentimiento, el titular podrá revocarlo en cualquier momento, sin que ello afecte la licitud del tratamiento realizado con anterioridad a la revocación.
+- registrar, autenticar y administrar cuentas;
+- crear y operar workspaces;
+- ejecutar funcionalidades contratadas del servicio;
+- almacenar y procesar documentos y adjuntos;
+- extraer texto mediante OCR;
+- generar insights, resúmenes o asistencias basadas en IA;
+- habilitar soporte, continuidad, monitoreo y seguridad;
+- emitir facturas, gestionar cobro y prevenir fraude;
+- responder solicitudes legales, de privacidad o auditoria;
+- cumplir obligaciones regulatorias, contables, fiscales o contractuales;
+- mejorar el servicio dentro de limites compatibles con la naturaleza de la relacion.
 
-## 5. Destinatarios y proveedores
+## 7. Base o fundamento del tratamiento
 
-No vendemos, alquilamos ni comercializamos datos personales. Podemos compartir datos con las siguientes categorías de destinatarios:
+El fundamento del tratamiento puede incluir, segun el caso:
 
-- **Proveedores de infraestructura y hosting** que almacenan y procesan datos en nombre de PymeHub para la operación del Servicio.
-- **Proveedores de procesamiento de pagos** (como Paddle) que gestionan transacciones, suscripciones y facturación.
-- **Proveedores de mensajería y comunicaciones** para el envío de correos transaccionales, notificaciones y mensajes a través de canales integrados.
-- **Proveedores de inteligencia artificial** que procesan datos para funcionalidades de clasificación, resumen, extracción de texto y asistencia operativa.
-- **Proveedores de analítica** que procesan datos seudonimizados o agregados para entender patrones de uso y mejorar la Plataforma.
-- **Autoridades competentes** cuando exista una obligación legal, requerimiento judicial o solicitud de autoridad que lo exija.
+- ejecucion de un contrato o de medidas precontractuales;
+- cumplimiento de obligaciones legales;
+- consentimiento, cuando sea exigible o se solicite expresamente;
+- interes legitimo en mantener seguridad, prevenir abuso, atender soporte y operar razonablemente el servicio.
 
-Todos los proveedores están sujetos a obligaciones contractuales de confidencialidad, seguridad y tratamiento limitado a las finalidades autorizadas. La lista actualizada de proveedores está disponible en el Aviso de Subencargados.
+Cuando el cliente actua como responsable respecto de datos que carga en PymeHub, es responsabilidad del cliente contar con una base valida para dicho tratamiento e informar a los titulares cuando corresponda.
 
-Cuando una integración es habilitada por el Cliente, los datos necesarios pueden ser enviados al proveedor correspondiente para ejecutar la funcionalidad solicitada. Cada proveedor puede estar sujeto a sus propios términos, políticas y regiones de tratamiento.
+## 8. Tratamientos en que el cliente es responsable
 
-## 6. Transferencias internacionales
+Cuando el cliente usa PymeHub para administrar conversaciones, documentos, contactos, tareas u otros datos de terceros, `[NOMBRE_EMPRESA]` tratara esos datos en calidad de encargado, siguiendo el contrato, la configuracion del servicio y las instrucciones documentadas del cliente en la medida aplicable.
 
-PymeHub puede transferir datos personales a proveedores ubicados fuera de Costa Rica para las finalidades descritas en esta Política. En todos los casos, PymeHub se asegura de que dichos proveedores ofrezcan un nivel de protección adecuado mediante:
+En esos supuestos, el cliente es responsable de:
 
-- Cláusulas contractuales estándar (SCCs) o mecanismos equivalentes de transferencia cuando sean aplicables.
-- Obligaciones contractuales de confidencialidad y seguridad.
-- Evaluación previa de las medidas de protección del proveedor y de la legislación del país de destino.
+- contar con base legal adecuada;
+- cumplir deberes de informacion frente a sus titulares;
+- definir tiempos de conservacion compatibles con su operacion y la ley aplicable;
+- no utilizar PymeHub para tratamientos prohibidos o sin habilitacion suficiente.
 
-Conforme al Reglamento costarricense, el envío de datos a encargados o proveedores de servicios que actúan por cuenta de PymeHub sin reutilizar los datos para fines propios no se considera una transferencia en el sentido más estricto, pero PymeHub aplica las salvaguardas descritas como política uniforme de protección.
+## 9. Destinatarios y subprocesadores
 
-## 7. Conservación de datos
+`[NOMBRE_EMPRESA]` puede compartir datos con proveedores que resulten razonablemente necesarios para la prestacion del servicio, incluyendo hosting, almacenamiento, correo transaccional, monitoreo, colas, IA, OCR o pagos. Dichos proveedores deben estar sujetos a obligaciones de confidencialidad y seguridad acordes al riesgo.
 
-Conservamos datos personales durante el tiempo necesario para cumplir con las finalidades para las que fueron recopilados, incluyendo:
+La lista operativa se mantiene en [`../security/subprocessors-list.md`](../security/subprocessors-list.md).
 
-- **Datos de cuenta:** mientras la cuenta o workspace esté activo, más un período adicional limitado para soporte, seguridad y defensa de reclamaciones.
-- **Datos de facturación:** por un mínimo de cinco años conforme a las obligaciones tributarias aplicables.
-- **Datos de comunicaciones y soporte:** hasta veinticuatro meses desde la última interacción, salvo que exista una obligación legal de conservación más extensa.
-- **Registros de seguridad y logs técnicos:** entre doce y veinticuatro meses según el riesgo y la finalidad del registro.
+## 10. Transferencias internacionales
 
-Una vez transcurridos los plazos de conservación, los datos serán eliminados, anonimizados o disociados de forma segura. Las copias de seguridad podrán conservar datos por un período adicional limitado antes de su rotación o eliminación técnica, bajo controles de acceso y eliminación programada.
+Algunos proveedores pueden tratar datos fuera de `[JURISDICCION]`. Cuando ello ocurra, `[NOMBRE_EMPRESA]` procurara implementar medidas contractuales y organizativas razonables, de acuerdo con la naturaleza de los datos, el proveedor involucrado y el marco juridico aplicable.
 
-En ningún caso se conservarán datos que puedan afectar al titular una vez transcurridos diez años desde la ocurrencia de los hechos, salvo norma especial que disponga lo contrario, en cumplimiento de la Ley N.º 8968.
+## 11. Conservacion y eliminacion
 
-## 8. Derechos del titular
+Los datos personales se conservaran:
 
-De conformidad con la Ley N.º 8968 y su Reglamento, el titular de los datos personales tiene los siguientes derechos:
+- durante la vigencia de la relacion contractual, cuando sean necesarios para prestar el servicio;
+- por el tiempo necesario para seguridad, soporte, auditoria, facturacion, defensa legal y cumplimiento;
+- durante los plazos tecnicos de backup y continuidad definidos internamente.
 
-- **Acceso:** conocer qué datos personales están siendo tratados por PymeHub, con qué finalidad y a quiénes han sido comunicados.
-- **Rectificación:** solicitar la corrección de datos inexactos, incompletos o desactualizados.
-- **Cancelación o supresión:** solicitar la eliminación de datos personales cuando hayan dejado de ser necesarios para la finalidad que motivó su recolección o cuando el tratamiento no se ajuste a la ley.
-- **Oposición:** oponerse al tratamiento de datos personales por motivos legítimos, salvo que exista una obligación legal o contractual que impida atender la oposición.
-- **Revocación del consentimiento:** retirar el consentimiento previamente otorgado para finalidades específicas, sin que ello afecte la licitud del tratamiento previo.
+Los detalles de retencion y supresion se complementan con [`../security/data-retention-and-deletion-policy.md`](../security/data-retention-and-deletion-policy.md).
 
-Para ejercer cualquiera de estos derechos, el titular puede enviar una solicitud por escrito al correo electrónico legal@[dominio], indicando su nombre, medio para recibir notificaciones y una descripción clara del derecho que desea ejercer.
+## 12. Derechos de los titulares
 
-PymeHub atenderá las solicitudes de forma gratuita dentro del plazo legal aplicable. Podrá solicitar información adicional razonable una sola vez para verificar la identidad del solicitante. En caso de negativa, PymeHub comunicará por escrito los motivos de la denegación.
+En la medida prevista por la ley aplicable, los titulares pueden solicitar acceso, rectificacion, actualizacion, oposicion, limitacion, revocacion o supresion. Cuando `[NOMBRE_EMPRESA]` actue como encargado, podra remitir la solicitud al cliente responsable, salvo que exista obligacion legal de responder directamente.
 
-Si la solicitud se refiere a datos que PymeHub trata por cuenta de un Cliente en calidad de encargado, PymeHub remitirá la solicitud al Cliente responsable o prestará asistencia técnica para su gestión, según corresponda.
+El flujo operativo de atencion se apoya en [`../templates/privacy-request-template.md`](../templates/privacy-request-template.md).
 
-## 9. Seguridad de los datos
+## 13. Revocacion y preferencias
 
-PymeHub aplica medidas de seguridad administrativas, físicas y lógicas apropiadas al riesgo, incluyendo pero no limitado a:
+Cuando el tratamiento se base en consentimiento, el titular podra revocarlo por medios razonables. La revocacion no afectara tratamientos previos legitimamente efectuados ni aquellos que deban mantenerse por contrato, seguridad o ley.
 
-- Control de acceso basado en roles con autenticación segura.
-- Cifrado de datos en tránsito mediante TLS 1.3 y en reposo mediante cifrado a nivel de base de datos y almacenamiento.
-- Segregación lógica multi-tenant con filtrado obligatorio por workspace en cada consulta.
-- Monitoreo continuo, registro de eventos de seguridad y detección de anomalías.
-- Gestión de vulnerabilidades con actualización periódica de dependencias y parches de seguridad.
-- Respaldos automatizados diarios con pruebas de restauración periódicas.
-- Capacitación obligatoria del personal con acceso a datos personales en materia de privacidad, seguridad y manejo de incidentes.
+## 14. Seguridad
 
-## 10. Notificación de vulneraciones
+PymeHub aplica controles razonables de seguridad, incluyendo:
 
-En caso de una vulneración de seguridad que afecte datos personales, PymeHub notificará al titular y a las autoridades competentes, cuando corresponda, dentro de los plazos establecidos por la legislación aplicable. La notificación incluirá como mínimo:
+- autenticacion y control de accesos por rol;
+- segregacion multi-tenant;
+- cifrado en transito;
+- logging y trazabilidad para eventos relevantes;
+- backups y medidas de continuidad;
+- gestion de incidentes y proveedores.
 
-- La naturaleza de la vulneración.
-- Las categorías y el número aproximado de datos potencialmente comprometidos.
-- Las medidas correctivas y preventivas adoptadas.
-- Un punto de contacto para obtener más información.
+No obstante, ninguna medida tecnica garantiza seguridad absoluta. Por ello, el servicio mantiene politicas internas de prevencion, deteccion, contencion e investigacion de incidentes.
 
-PymeHub exige contractualmente a sus proveedores y subencargados la notificación inmediata de cualquier incidente de seguridad que pueda afectar datos personales tratados por cuenta de PymeHub o de sus clientes.
+## 15. Incidentes de seguridad
 
-## 11. Menores de edad
+Si se detecta un incidente que pueda comprometer datos personales, `[NOMBRE_EMPRESA]` activara el proceso previsto en [`../security/incident-response-policy.md`](../security/incident-response-policy.md), evaluara el alcance y notificara cuando corresponda por ley, contrato o riesgo razonable para los afectados.
 
-La Plataforma no está dirigida a menores de dieciocho años. PymeHub no recopila intencionadamente datos personales de menores. Si un padre, madre o tutor tiene conocimiento de que un menor ha proporcionado datos personales a PymeHub sin el consentimiento debido, puede contactarnos para solicitar la eliminación de dichos datos.
+## 16. Menores de edad
 
-## 12. Cambios en esta Política
+PymeHub no esta diseñado como servicio principal para menores de edad. Los clientes no deben utilizar el servicio para tratar datos de menores sin base legal suficiente, controles adecuados y necesidad operativa licita.
 
-PymeHub se reserva el derecho de modificar esta Política de Privacidad en cualquier momento. Las modificaciones serán notificadas mediante:
+## 17. Cambios a esta politica
 
-- Publicación de la versión actualizada en el sitio web de la Plataforma.
-- Correo electrónico a la dirección registrada en la cuenta del usuario, cuando la modificación sea material.
+Esta politica puede actualizarse para reflejar cambios del producto, del marco normativo, de la operacion o de los proveedores. La version vigente debe publicarse con identificador y fecha. Cuando corresponda, PymeHub debera conservar evidencia de la aceptacion por el cliente o sus usuarios autorizados.
 
-Las modificaciones entrarán en vigor en la fecha indicada en la notificación. El uso continuado de la Plataforma después de la entrada en vigor de las modificaciones constituye la aceptación de la Política modificada.
+## 18. Evidencia y registros
 
-## 13. Contacto
+La operacion de privacidad debe poder conservar, como minimo:
 
-Para cualquier consulta, solicitud o comunicación relacionada con esta Política de Privacidad o con el tratamiento de datos personales:
+- version publicada de la politica;
+- fecha de entrada en vigor;
+- registro de aceptacion cuando aplique;
+- solicitudes recibidas de titulares o clientes;
+- respuestas y decisiones tomadas;
+- incidentes o eventos relevantes de privacidad.
 
-- **Correo electrónico:** legal@[dominio]
-- **Domicilio:** San José, Costa Rica
-- **Teléfono:** [TELÉFONO]
+## 19. Relacion con otros documentos
+
+Esta politica debe leerse junto con:
+
+- [`terms-and-conditions.md`](./terms-and-conditions.md)
+- [`data-processing-addendum.md`](./data-processing-addendum.md)
+- [`../security/data-retention-and-deletion-policy.md`](../security/data-retention-and-deletion-policy.md)
+- [`../security/subprocessors-list.md`](../security/subprocessors-list.md)
+- [`../product-compliance/privacy-ui-requirements.md`](../product-compliance/privacy-ui-requirements.md)

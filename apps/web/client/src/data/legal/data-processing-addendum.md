@@ -1,112 +1,163 @@
 # Data Processing Addendum (DPA) de PymeHub
 
-Última actualización: Abril 2026.
+## 1. Proposito
 
-## 1. Objeto y ámbito
+Este Data Processing Addendum regula el tratamiento de datos personales que `[NOMBRE_EMPRESA]` realiza por cuenta del cliente al prestar PymeHub. Su finalidad es fijar con claridad roles, instrucciones, medidas de seguridad, uso de subprocesadores, asistencia al cliente y reglas de finalizacion del tratamiento.
 
-El presente Data Processing Addendum regula el tratamiento de datos personales que PymeHub realiza por cuenta y siguiendo las instrucciones del Cliente en el marco de la prestación del Servicio. Este DPA forma parte integrante de los Términos de Servicio y permanece vigente mientras PymeHub trate datos personales por cuenta del Cliente.
+## 2. Alcance
 
-Para los efectos de este DPA, cuando la legislación costarricense aplicable utilice los términos "responsable" y "encargado", el Cliente actúa como responsable del tratamiento y PymeHub actúa como encargado del tratamiento respecto de los datos personales que el Cliente carga, conecta o instruye tratar en la Plataforma para sus propios fines empresariales.
+Este DPA aplica cuando el cliente actua como responsable del tratamiento respecto de datos personales que decide cargar o gestionar en PymeHub y `[NOMBRE_EMPRESA]` actua como encargado o subencargado para prestar el servicio.
 
-## 2. Definiciones
+## 3. Definiciones
 
-- **Datos personales:** toda información relativa a una persona física identificada o identificable, en los términos de la Ley N.º 8968 de Costa Rica.
-- **Tratamiento:** cualquier operación o conjunto de operaciones realizadas sobre datos personales, incluyendo recolección, registro, organización, conservación, adaptación, modificación, extracción, consulta, utilización, comunicación, difusión, almacenamiento, bloqueo, supresión o destrucción.
-- **Subencargado:** cualquier tercero contratado por PymeHub que trate datos personales por cuenta del Cliente en el marco de la prestación del Servicio.
-- **Instrucciones documentadas:** las instrucciones del Cliente comunicadas a PymeHub por escrito o a través de la configuración del Servicio, incluyendo estas en los Términos de Servicio y en el presente DPA.
+- `Responsable`: cliente que determina fines y medios del tratamiento.
+- `Encargado`: `[NOMBRE_EMPRESA]` cuando trata datos por cuenta del cliente.
+- `Subencargado`: tercero contratado por `[NOMBRE_EMPRESA]` para apoyar el servicio.
+- `Incidente de datos`: evento confirmado o razonablemente sospechado que comprometa datos personales tratados bajo este DPA.
 
-## 3. Duración y categorías de datos
+## 4. Roles de las partes
 
-El tratamiento de datos personales por cuenta del Cliente tendrá la duración del período de prestación del Servicio, más los períodos adicionales de conservación establecidos contractualmente, legalmente o técnicamente necesarios.
+El cliente actua como responsable respecto de los datos que decide incorporar a PymeHub. `[NOMBRE_EMPRESA]` actua como encargado al tratar esos datos para prestar el servicio. No obstante, `[NOMBRE_EMPRESA]` podra actuar como responsable independiente en actividades propias y necesarias como seguridad de la plataforma, facturacion, cumplimiento legal o defensa legal.
 
-Las categorías de datos personales tratados por cuenta del Cliente incluyen, según el uso que el Cliente haga de la Plataforma:
+## 5. Objeto y duracion del tratamiento
 
-- Datos de clientes finales del Cliente: nombre, correo electrónico, teléfono, contenido de mensajes y conversaciones, documentos, adjuntos, notas.
-- Datos de contacto: contactos, leads, proveedores gestionados por el Cliente en la Plataforma.
-- Datos transaccionales: facturas, comprobantes, historial de pagos y documentos fiscales generados por el Cliente.
-- Datos de uso: registros de actividad, logs de acceso y acciones realizadas por los usuarios del Cliente dentro de la Plataforma.
+`[NOMBRE_EMPRESA]` tratara datos personales durante la vigencia de la relacion contractual y por el tiempo adicional estrictamente necesario para:
 
-## 4. Obligaciones de PymeHub como encargado
+- completar obligaciones de cierre;
+- mantener backups residuales;
+- atender requerimientos legales;
+- conservar evidencia minima de seguridad o defensa legal.
 
-PymeHub se obliga a:
+## 6. Naturaleza y finalidad del tratamiento
 
-- Tratar los datos personales únicamente conforme a las instrucciones documentadas del Cliente, incluyendo las contenidas en los Términos de Servicio, este DPA y la configuración del Servicio.
-- No utilizar los datos personales para finalidades propias incompatibles con la prestación del Servicio, salvo que el Cliente lo autorice expresamente por escrito o que una ley aplicable lo exija.
-- Garantizar que el personal autorizado para tratar los datos personales se haya comprometido a respetar la confidencialidad o esté sujeto a una obligación legal de confidencialidad.
-- Aplicar las medidas de seguridad técnicas, administrativas y físicas descritas en la Sección 6 de este DPA.
-- Notificar al Cliente sin demora indebida en caso de una vulneración de seguridad que afecte datos personales tratados por cuenta del Cliente.
-- Asistir al Cliente en la medida de lo razonablemente posible en el cumplimiento de sus obligaciones como responsable del tratamiento, incluyendo la atención de solicitudes de titulares, la realización de evaluaciones de impacto y la notificación de vulneraciones a las autoridades.
-- Poner a disposición del Cliente la información necesaria para demostrar el cumplimiento de las obligaciones establecidas en este DPA.
+El tratamiento puede incluir:
 
-## 5. Subencargados
+- alojamiento y organizacion de datos;
+- acceso autenticado por usuarios autorizados;
+- indexacion, busqueda y recuperacion;
+- almacenamiento de documentos y metadatos;
+- OCR y extraccion de texto;
+- automatizaciones y notificaciones;
+- uso de funciones de IA para las capacidades contratadas;
+- exportacion, respaldo, supresion y soporte tecnico.
 
-El Cliente autoriza de forma general a PymeHub a contratar los subencargados listados en la página pública de Subencargados de la Plataforma.
+La finalidad del tratamiento es exclusivamente prestar, soportar, asegurar y mantener PymeHub conforme al contrato.
 
-PymeHub se obliga a:
+## 7. Categorias de datos y titulares
 
-- Notificar al Cliente la incorporación de nuevos subencargados o cambios materiales en los existentes con una antelación razonable, que no será inferior a quince días.
-- Imponer contractualmente a cada subencargado obligaciones de protección de datos sustancialmente equivalentes a las establecidas en este DPA.
-- Responder frente al Cliente por los actos y omisiones de sus subencargados en lo relativo al cumplimiento de este DPA.
+Los datos pueden referirse a:
 
-El Cliente podrá objetar, por motivos razonables de privacidad o seguridad, la incorporación de un nuevo subencargado dentro del plazo de notificación. Si PymeHub no puede razonablemente atender la objeción, las partes negociarán de buena fe una solución. Si no se alcanza una solución, el Cliente podrá resolver el contrato sin penalización.
+- usuarios del cliente;
+- clientes finales o prospectos del cliente;
+- proveedores, contactos y terceros incorporados por el cliente;
+- participantes de conversaciones y documentos.
 
-## 6. Medidas de seguridad
+Las categorias pueden incluir identificacion, contacto, historiales operativos, mensajes, documentos, adjuntos, metadatos, texto OCR, logs y eventos asociados al uso del servicio.
 
-PymeHub aplica las siguientes medidas de seguridad para proteger los datos personales tratados por cuenta del Cliente:
+## 8. Instrucciones documentadas
 
-**Medidas administrativas:**
-- Política de seguridad de la información documentada y revisada periódicamente.
-- Capacitación obligatoria del personal en materia de privacidad y seguridad.
-- Procedimientos de control de acceso y gestión de incidentes.
-- Auditorías internas periódicas de cumplimiento.
+`[NOMBRE_EMPRESA]` tratara los datos personales solo conforme a:
 
-**Medidas físicas:**
-- Control de acceso a las instalaciones donde se alojan los sistemas de tratamiento.
-- Protección contra accesos no autorizados, daños e interferencias a los sistemas físicos.
+- este DPA;
+- el contrato principal;
+- la configuracion y uso normal del servicio por el cliente;
+- instrucciones documentadas adicionales, siempre que sean licitas, tecnicamente viables y consistentes con el servicio contratado.
 
-**Medidas lógicas:**
-- Control de acceso basado en roles con autenticación segura y principio de menor privilegio.
-- Cifrado de datos en tránsito mediante TLS 1.3.
-- Cifrado de datos en reposo en bases de datos y almacenamiento.
-- Segregación lógica multi-tenant con filtrado obligatorio por workspace.
-- Monitoreo continuo de eventos de seguridad, registro de accesos y detección de anomalías.
-- Gestión de vulnerabilidades con actualización periódica de dependencias y parches de seguridad.
-- Respaldos automatizados diarios con pruebas de restauración periódicas.
-- Procedimientos documentados de respuesta a incidentes de seguridad.
+Si `[NOMBRE_EMPRESA]` considera que una instruccion infringe ley aplicable o compromete gravemente la seguridad o integridad del servicio, podra rechazarla o solicitar aclaracion.
 
-## 7. Notificación de incidentes de seguridad
+## 9. Obligaciones del cliente como responsable
 
-En caso de una vulneración de seguridad que afecte datos personales tratados por cuenta del Cliente, PymeHub notificará al Cliente sin demora indebida y, en todo caso, dentro de las cuarenta y ocho horas siguientes desde que tenga conocimiento razonable del incidente. La notificación incluirá como mínimo:
+El cliente declara y garantiza que:
 
-- La naturaleza de la vulneración.
-- Las categorías y el número aproximado de datos personales potencialmente afectados.
-- El nombre y los datos de contacto del punto de contacto de PymeHub para obtener más información.
-- Las medidas correctivas y preventivas adoptadas o propuestas.
+- tiene base valida para el tratamiento;
+- ha cumplido sus deberes de informacion frente a los titulares cuando aplique;
+- no instruira tratamientos ilicitos o incompatibles con la naturaleza del servicio;
+- definira correctamente usuarios, permisos y tiempos de retencion compatibles con sus obligaciones.
 
-PymeHub cooperará con el Cliente y le prestará asistencia razonable para que el Cliente pueda cumplir con sus obligaciones legales de notificación a los titulares de los datos y a las autoridades competentes.
+## 10. Confidencialidad del personal
 
-## 8. Asistencia en derechos de titulares
+`[NOMBRE_EMPRESA]` se asegurara de que su personal, contratistas y personas autorizadas para acceder a datos personales:
 
-Si PymeHub recibe una solicitud de un titular de datos relativa a datos personales tratados por cuenta del Cliente, PymeHub la remitirá al Cliente sin demora indebida. PymeHub no responderá directamente al titular, salvo que el Cliente lo autorice por escrito.
+- esten sujetos a deberes de confidencialidad;
+- accedan solo por necesidad legitima;
+- reciban instrucciones acordes a su rol;
+- no usen los datos para fines propios no autorizados.
 
-PymeHub prestará al Cliente asistencia razonable, teniendo en cuenta la naturaleza del tratamiento, para que el Cliente pueda cumplir con su obligación de atender las solicitudes de ejercicio de derechos de los titulares.
+## 11. Medidas tecnicas y organizativas
 
-## 9. Retorno y supresión de datos
+`[NOMBRE_EMPRESA]` aplicara medidas razonables y proporcionadas, incluyendo:
 
-Al terminar la prestación del Servicio, PymeHub suprimirá todos los datos personales tratados por cuenta del Cliente, salvo que una ley aplicable exija su conservación.
+- control de acceso por roles;
+- autenticacion y gestion de sesiones;
+- segregacion multi-tenant;
+- cifrado en transito y proteccion razonable del almacenamiento;
+- manejo controlado de secretos;
+- logs y trazabilidad;
+- monitoreo;
+- backups;
+- respuesta a incidentes.
 
-El Cliente dispondrá de un plazo razonable para exportar sus datos antes de la supresión. Transcurrido dicho plazo, PymeHub procederá a la eliminación segura de los datos, incluyendo copias de seguridad, en un plazo máximo de sesenta días, salvo que una obligación legal de conservación o la necesidad de preservar evidencia en una disputa legal requiera un plazo mayor.
+Las medidas concretas pueden evolucionar conforme cambien la arquitectura, riesgos y estado del servicio.
 
-Las copias de seguridad podrán conservar datos residuales por un período adicional limitado, bajo controles de acceso estrictos y con eliminación programada conforme a la política de rotación de respaldos de PymeHub.
+## 12. Subencargados
 
-## 10. Transferencias internacionales
+El cliente autoriza el uso de subencargados razonablemente necesarios para operar PymeHub. `[NOMBRE_EMPRESA]` impondrá a dichos terceros obligaciones apropiadas de confidencialidad y seguridad acordes al riesgo. La lista viva se mantiene en [`../security/subprocessors-list.md`](../security/subprocessors-list.md).
 
-PymeHub podrá transferir datos personales a subencargados ubicados fuera de Costa Rica para las finalidades del tratamiento autorizadas por el Cliente. En todos los casos, PymeHub se asegurará de que dichos subencargados ofrezcan un nivel de protección adecuado mediante cláusulas contractuales y salvaguardas apropiadas.
+Cuando el cliente requiera un control contractual adicional sobre subencargados, ello debera pactarse expresamente.
 
-## 11. Auditoría
+## 13. Transferencias internacionales
 
-PymeHub pondrá a disposición del Cliente la información necesaria para demostrar el cumplimiento de las obligaciones establecidas en este DPA. El Cliente podrá solicitar, con una antelación razonable y no más de una vez por año, una auditoría de las medidas de seguridad y cumplimiento de PymeHub. La auditoría será realizada por un tercero independiente y mutuamente aceptable, a costo del Cliente, salvo que la auditoría revele un incumplimiento material imputable a PymeHub, en cuyo caso PymeHub asumirá los costos razonables asociados.
+Si un subencargado o sistema auxiliar trata datos fuera de `[JURISDICCION]`, `[NOMBRE_EMPRESA]` procurara implementar salvaguardas contractuales u organizativas razonables segun la normativa y el riesgo aplicables.
 
-## 12. Responsabilidad contractual
+## 14. Asistencia al cliente
 
-La responsabilidad de PymeHub frente al Cliente en relación con el tratamiento de datos personales por cuenta del Cliente se regirá por las disposiciones de limitación de responsabilidad establecidas en los Términos de Servicio, sin perjuicio de la responsabilidad que pudiera derivarse de dolo, culpa grave o violación deliberada de las obligaciones de protección de datos.
+En la medida razonable y tecnicamente viable, `[NOMBRE_EMPRESA]` asistira al cliente para:
+
+- responder solicitudes de titulares;
+- investigar o gestionar incidentes de datos;
+- recuperar o exportar informacion;
+- entregar evidencia documental razonable sobre controles de seguridad del servicio.
+
+## 15. Incidentes de datos
+
+Ante un incidente confirmado que afecte datos personales tratados por cuenta del cliente, `[NOMBRE_EMPRESA]` notificara sin demora indebida y compartira, en la medida razonablemente disponible:
+
+- naturaleza general del incidente;
+- fecha de deteccion;
+- categorias de datos potencialmente afectadas;
+- medidas de contencion adoptadas;
+- acciones recomendadas al cliente, si existieran.
+
+## 16. Solicitudes de titulares
+
+Si `[NOMBRE_EMPRESA]` recibe directamente una solicitud de titular relativa a datos tratados por cuenta del cliente, podra:
+
+- remitirla al cliente;
+- informarle de su recepcion;
+- abstenerse de responder de fondo salvo que la ley exija hacerlo directamente o que el cliente lo instruya validamente.
+
+## 17. Devolucion, exportacion o supresion
+
+Al finalizar el servicio, `[NOMBRE_EMPRESA]` permitira exportar, devolver o suprimir los datos del cliente conforme al contrato, la politica de retencion y las limitaciones tecnicas razonables. Los datos residuales en backups o registros de seguridad podran conservarse hasta su expiracion normal o mientras exista obligacion legal legitima.
+
+## 18. Auditoria y evidencia
+
+Sujeto a seguridad, confidencialidad y no interferencia operativa, `[NOMBRE_EMPRESA]` podra proporcionar evidencia razonable del cumplimiento de este DPA, priorizando:
+
+- politicas vigentes;
+- cuestionarios de seguridad;
+- resúmenes de controles;
+- registros operativos pertinentes;
+- reuniones de aclaracion razonables.
+
+Las auditorias invasivas o de acceso directo a sistemas requeriran acuerdo especifico.
+
+## 19. Relacion con otros documentos
+
+Este DPA debe interpretarse junto con:
+
+- [`master-service-agreement.md`](./master-service-agreement.md)
+- [`privacy-policy.md`](./privacy-policy.md)
+- [`../security/subprocessors-list.md`](../security/subprocessors-list.md)
+- [`../security/incident-response-policy.md`](../security/incident-response-policy.md)
+- [`../security/data-retention-and-deletion-policy.md`](../security/data-retention-and-deletion-policy.md)
