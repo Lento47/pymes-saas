@@ -23,7 +23,7 @@ Aplica a:
 
 ## 4. Requisitos previos a facturar
 
-Antes de emitir comprobantes, `[NOMBRE_EMPRESA]` debe:
+Antes de emitir comprobantes, `Otnel` debe:
 
 - estar inscrita correctamente ante Tributacion;
 - contar con la actividad economica adecuada para software/SaaS y servicios relacionados;

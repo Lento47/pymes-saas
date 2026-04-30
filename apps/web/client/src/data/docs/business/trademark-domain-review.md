@@ -7,17 +7,17 @@ Este documento deja trazabilidad sobre la revision basica del nombre comercial `
 ## 2. Datos base
 
 - Nombre principal: `PymeHub`
-- Titular proyectado: `[NOMBRE_EMPRESA]`
+- Titular proyectado: `Otnel`
 - Jurisdiccion principal de analisis: Costa Rica
-- Fecha de revision: `[FECHA]`
-- Responsable: `[RESPONSABLE]`
+- Fecha de revision: `29 de Abril de 2026`
+- Responsable: `Lejzer Trana`
 
 ## 3. Dominios a revisar
 
-- `[DOMINIO]`
+- `pymeshub.com`
 - `[DOMINIO_ALTERNATIVO_1]`
 - `[DOMINIO_ALTERNATIVO_2]`
-
+(No tengo alternativo ni respaldo)
 ## 4. Alternativas de respaldo
 
 - `[ALTERNATIVA_1]`

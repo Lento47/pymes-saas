@@ -17,7 +17,7 @@ Este plan cubre:
 
 - Figura inicial seleccionada: `[POR_DEFINIR_PERSONA_FISICA_O_SOCIEDAD]`
 - Fecha objetivo de formalizacion o migracion: `[FECHA_OBJETIVO]`
-- Nombre legal proyectado: `[NOMBRE_EMPRESA]`
+- Nombre legal proyectado: `Otnel`
 - Nombre comercial del producto: `PymeHub`
 - Responsable de firma: `[REPRESENTANTE_LEGAL]`
 - Banco objetivo: `[BANCO_OBJETIVO]`

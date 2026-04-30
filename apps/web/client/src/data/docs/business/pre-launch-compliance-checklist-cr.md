@@ -16,7 +16,7 @@ Este checklist funciona como criterio formal de salida a operacion comercial. Ni
 | Area | Control | Estado | Evidencia / referencia | Responsable | Observaciones |
 | --- | --- | --- | --- | --- | --- |
 | Legal y societario | Figura operativa definida y documentada | `[ESTADO]` | `[EVIDENCIA]` | `[RESPONSABLE]` |  |
-| Legal y societario | `[NOMBRE_EMPRESA]` confirmado o placeholder controlado | `[ESTADO]` | `[EVIDENCIA]` | `[RESPONSABLE]` |  |
+| Legal y societario | `Otnel` confirmado o placeholder controlado | `[ESTADO]` | `[EVIDENCIA]` | `[RESPONSABLE]` |  |
 | Legal y societario | Dominio comercial revisado | `[ESTADO]` | `[EVIDENCIA]` | `[RESPONSABLE]` |  |
 | Legal y societario | Representante o firmante definido | `[ESTADO]` | `[EVIDENCIA]` | `[RESPONSABLE]` |  |
 | Legal y societario | Terminos, privacidad y MSA listos para publicacion o firma | `[ESTADO]` | `[EVIDENCIA]` | `[RESPONSABLE]` |  |

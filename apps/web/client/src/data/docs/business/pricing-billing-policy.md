@@ -95,7 +95,7 @@ La reactivacion requiere:
 - confirmacion de que los datos siguen disponibles;
 - definicion clara del nuevo periodo de servicio.
 
-`[NOMBRE_EMPRESA]` podra exigir el pago de saldos pendientes antes de reactivar.
+`Otnel` podra exigir el pago de saldos pendientes antes de reactivar.
 
 ## 11. Evidencia y control
 
