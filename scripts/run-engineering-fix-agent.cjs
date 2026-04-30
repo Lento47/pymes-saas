@@ -20,8 +20,6 @@ const path = require('path');
 
 const CASE_ID = process.env.CASE_ID;
 const API_BASE = process.env.API_BASE || 'http://localhost:4000/api';
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY || 'Lento47/pymes-saas';
 
 if (!CASE_ID) {
   console.error('CASE_ID env var required');
@@ -152,6 +150,18 @@ async function main() {
   fs.writeFileSync(prBodyPath, body);
   console.log(`==> PR body written to ${prBodyPath}`);
   console.log(`==> Total: ${files.length} related files, baseline: ${baseline.passed ? 'PASS' : 'FAIL'}`);
+
+  // Update fix case status for each fix case linked to this diagnostic
+  try {
+    await updateFixStatus(CASE_ID, {
+      status: 'INVESTIGATING',
+      files_changed: files,
+      fix_summary: `Baseline ${baseline.passed ? 'passed' : 'failed'}. ${files.length} related files identified.`,
+      rollback_notes: 'Revert this commit on the fix branch.',
+    });
+  } catch (err) {
+    console.warn(`Warning: Failed to update fix status: ${err.message}`);
+  }
 
   // Output for GitHub Actions
   const outputFile = process.env.GITHUB_OUTPUT;

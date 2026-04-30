@@ -52,10 +52,6 @@ jobs:
           git checkout -b "$BRANCH"
           echo "Branch: $BRANCH"
 
-      - name: Run typecheck
-        run: cd apps/api && pnpm run build 2>&1 | tail -5
-        continue-on-error: true
-
       - name: Open Pull Request
         uses: peter-evans/create-pull-request@v6
         with:

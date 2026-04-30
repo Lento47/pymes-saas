@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 
 @Injectable()
@@ -14,7 +14,7 @@ export class EngineeringFixService {
     });
 
     if (!diagnostic) {
-      throw new Error(`Diagnostic case ${diagnosticCaseId} not found`);
+      throw new NotFoundException(`Diagnostic case ${diagnosticCaseId} not found`);
     }
 
     const branchName = `fix/${diagnostic.module}-${diagnostic.error_code || diagnostic.id.slice(0, 8)}-${diagnostic.id.slice(0, 6)}`.toLowerCase().replace(/[^a-z0-9/-]/g, '-');
@@ -78,7 +78,7 @@ export class EngineeringFixService {
     if (data.test_added) updateData.test_added_json = data.test_added;
     if (data.fix_summary) updateData.fix_summary = data.fix_summary;
     if (data.rollback_notes) updateData.rollback_notes = data.rollback_notes;
-    if (data.error_log) updateData.error_log = data.error_log;
+    if (data.error_log !== undefined) updateData.error_log = data.error_log;
 
     return this.prisma.engineeringFixCase.update({
       where: { id: fixCaseId },
