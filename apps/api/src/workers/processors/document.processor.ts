@@ -11,6 +11,33 @@ interface DocumentJobData {
   workspaceId: string;
 }
 
+type DocumentType =
+  | 'invoice'
+  | 'receipt'
+  | 'contract'
+  | 'payment_proof'
+  | 'quote'
+  | 'statement'
+  | 'identification'
+  | 'general';
+
+const DOC_TYPE_PATTERNS: Array<{ type: DocumentType; regex: RegExp }> = [
+  { type: 'invoice',        regex: /factura|invoice|bill(?:ing)?/i },
+  { type: 'receipt',        regex: /recibo|receipt|ticket/i },
+  { type: 'contract',       regex: /contrato|contract|agreement|acuerdo/i },
+  { type: 'payment_proof',  regex: /comprobante.*pago|payment.*proof|transferencia/i },
+  { type: 'quote',          regex: /cotizaci[oó]n|presupuesto|quote|quotation/i },
+  { type: 'statement',      regex: /estado.*cuenta|statement|balance/i },
+  { type: 'identification', regex: /c[eé]dula|pasaporte|identificaci[oó]n|id\b/i },
+];
+
+function detectDocumentType(fileName: string): DocumentType {
+  for (const { type, regex } of DOC_TYPE_PATTERNS) {
+    if (regex.test(fileName)) return type;
+  }
+  return 'general';
+}
+
 @Injectable()
 @Processor(QUEUE_NAMES.DOCUMENT)
 export class DocumentProcessor extends WorkerHost {
@@ -50,16 +77,22 @@ export class DocumentProcessor extends WorkerHost {
       data: { status: 'PROCESSING' },
     });
 
-    // 4. AI-powered OCR and extraction
-    const isInvoice = /factura|invoice/i.test(doc.file_name);
-    const isContract = /contrato|contract/i.test(doc.file_name);
-    const docType = isInvoice ? 'invoice' : isContract ? 'contract' : 'general';
+    // 4. Detectar tipo y preparar fallbacks
+    const docType = detectDocumentType(doc.file_name);
+    const startedAt = new Date();
 
     let ocr_text = `Documento: ${doc.file_name} (${doc.mime_type}, ${(doc.file_size / 1024).toFixed(1)} KB)`;
-    let summary_text = `Documento tipo ${docType}: ${doc.file_name}. Procesado el ${new Date().toLocaleDateString('es-CR')}.`;
-    let extractedData: any = { docType, processed_at: new Date().toISOString() };
+    let summary_text = `Documento tipo ${docType}: ${doc.file_name}. Procesado el ${startedAt.toLocaleDateString('es-CR')}.`;
+    let extractedData: Record<string, any> = {
+      docType,
+      fileName: doc.file_name,
+      mimeType: doc.mime_type,
+      fileSizeKb: Math.round(doc.file_size / 1024),
+      processed_at: startedAt.toISOString(),
+      ai_extraction: false,
+    };
 
-    // Attempt AI extraction if API key is configured
+    // 5. Intentar extracción IA si hay API key configurada
     try {
       const aiResult = await this.aiService.analyzeDocument(doc.workspace_id, {
         fileName: doc.file_name,
@@ -70,31 +103,45 @@ export class DocumentProcessor extends WorkerHost {
       if (aiResult) {
         ocr_text = aiResult.extractedText || ocr_text;
         summary_text = aiResult.summary || summary_text;
-        extractedData = { ...extractedData, ...aiResult.extractedData };
+        extractedData = {
+          ...extractedData,
+          ...aiResult.extractedData,
+          ai_extraction: true,
+        };
       }
     } catch (err) {
       this.logger.warn(`AI extraction failed for ${doc.file_name}: ${(err as Error).message}`);
+      extractedData.ai_error = (err as Error).message;
     }
 
-    // 5. Actualizar documento con resultados
-    await this.prisma.document.update({
-      where: { id: documentId },
-      data: {
-        ocr_text,
-        summary_text,
-        status: 'PROCESSED',
-        extracted_data_json: stringifyJson({
-          docType,
-          processed_at: new Date().toISOString(),
-        }),
-        updated_at: new Date(),
-      },
-    });
+    // 6. Persistir resultados
+    try {
+      await this.prisma.document.update({
+        where: { id: documentId },
+        data: {
+          ocr_text,
+          summary_text,
+          status: 'PROCESSED',
+          extracted_data_json: stringifyJson(extractedData),
+          updated_at: new Date(),
+        },
+      });
 
-    this.logger.log(
-      `Document job ${job.id} completed: document=${documentId}, docType=${docType}`,
-    );
+      const durationMs = Date.now() - startedAt.getTime();
+      this.logger.log(
+        `Document job ${job.id} completed: document=${documentId}, docType=${docType}, ai=${extractedData.ai_extraction}, durationMs=${durationMs}`,
+      );
 
-    return { documentId, docType, status: 'PROCESSED' };
+      return { documentId, docType, status: 'PROCESSED', durationMs };
+    } catch (err) {
+      this.logger.error(
+        `Failed to persist processed document ${documentId}: ${(err as Error).message}`,
+      );
+      await this.prisma.document.update({
+        where: { id: documentId },
+        data: { status: 'FAILED', updated_at: new Date() },
+      }).catch(() => undefined);
+      throw err;
+    }
   }
 }
