@@ -1,9 +1,20 @@
-import { Body, Controller, Headers, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Headers, Logger, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
+
+function safeEqual(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 @Controller('hacienda/webhook')
 export class HaciendaWebhookController {
+  private readonly logger = new Logger(HaciendaWebhookController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
@@ -11,17 +22,23 @@ export class HaciendaWebhookController {
 
   @Post()
   async receiveCallback(
-    @Query('token') token: string | undefined,
+    @Headers('x-pymeshub-webhook-token') headerToken: string | undefined,
+    @Query('token') queryToken: string | undefined,
     @Body() payload: any,
     @Headers('user-agent') userAgent?: string,
   ) {
-    // Verify shared secret — set HACIENDA_WEBHOOK_SECRET and append ?token=<secret>
-    // to the callback URL registered with Hacienda.
+    // Shared-secret authentication. The secret MUST be configured; otherwise
+    // we refuse the call. Prefer the header (not logged in access logs) over
+    // the legacy querystring token; the querystring path remains for
+    // backwards compatibility with already-registered Hacienda callbacks.
     const expectedSecret = this.configService.get<string>('HACIENDA_WEBHOOK_SECRET');
-    if (expectedSecret) {
-      if (!token || token !== expectedSecret) {
-        throw new UnauthorizedException('Invalid webhook token');
-      }
+    if (!expectedSecret) {
+      this.logger.error('HACIENDA_WEBHOOK_SECRET not configured — refusing webhook');
+      throw new UnauthorizedException('Webhook secret not configured');
+    }
+    const supplied = headerToken || queryToken;
+    if (!supplied || !safeEqual(supplied, expectedSecret)) {
+      throw new UnauthorizedException('Invalid webhook token');
     }
 
     const clave = payload?.clave;

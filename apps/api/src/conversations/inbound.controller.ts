@@ -10,10 +10,20 @@ import {
   Post,
   Query,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MessagesService } from './messages.service';
 import { parseJsonValue } from '../common/prisma/json';
+
+function safeEqual(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 /**
  * Webhook público — sin JWT, accesible por proveedores externos.
@@ -159,8 +169,21 @@ export class InboundController {
   receiveWebhook(
     @Param('provider') provider: string,
     @Headers('x-workspace-id') workspaceId: string,
+    @Headers('x-pymeshub-webhook-token') token: string | undefined,
     @Body() payload: Record<string, any>,
   ) {
+    // Generic inbound endpoint — caller must present a shared secret. The
+    // X-Workspace-Id header is otherwise client-controlled and would let
+    // any HTTP caller inject messages into any workspace. For per-provider
+    // signed webhooks (WhatsApp, Telegram, Paddle, Resend, Hacienda) use
+    // the dedicated endpoints which verify provider HMAC signatures.
+    const expected = process.env.INBOUND_WEBHOOK_SECRET;
+    if (!expected) {
+      throw new UnauthorizedException('Generic inbound webhook is disabled (INBOUND_WEBHOOK_SECRET not configured)');
+    }
+    if (!safeEqual(token || '', expected)) {
+      throw new UnauthorizedException('Invalid webhook token');
+    }
     if (!workspaceId) {
       return { ok: false, reason: 'Missing X-Workspace-Id header' };
     }

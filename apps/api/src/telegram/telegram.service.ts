@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { MessagesService } from '../conversations/messages.service';
@@ -99,10 +100,23 @@ export class TelegramService {
 
     const webhookUrl = `${baseUrl}/api/inbound/telegram/webhook/${channelId}`;
 
+    // Generate a per-channel webhook secret so we can verify inbound updates
+    // via the X-Telegram-Bot-Api-Secret-Token header. Telegram requires the
+    // secret to be 1-256 chars, ASCII A-Z/a-z/0-9/_/-.
+    const webhookSecret = randomBytes(32).toString('hex');
+
     try {
       await bot.telegram.setWebhook(webhookUrl, {
         allowed_updates: ['message', 'edited_message', 'callback_query'],
         max_connections: 40,
+        secret_token: webhookSecret,
+      });
+
+      // Persist the secret on the channel config so the webhook handler can validate it.
+      const existing = (channel.config_json as any) || {};
+      await this.prisma.channel.update({
+        where: { id: channelId },
+        data: { config_json: { ...existing, webhook_secret: webhookSecret } as any },
       });
 
       this.bots.set(channelId, bot);
@@ -112,6 +126,28 @@ export class TelegramService {
     } catch (err) {
       this.logger.error(`Failed to register webhook: ${(err as Error).message}`);
       throw new BadRequestException(`Failed to register webhook: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Validate the X-Telegram-Bot-Api-Secret-Token header for an inbound webhook.
+   * Returns true if the header matches the per-channel stored secret.
+   */
+  async verifyWebhookSecret(channelId: string, suppliedSecret: string | undefined): Promise<boolean> {
+    if (!suppliedSecret) return false;
+    const channel = await this.prisma.channel.findFirst({
+      where: { id: channelId, type: 'TELEGRAM' },
+      select: { config_json: true },
+    });
+    const expected = (channel?.config_json as any)?.webhook_secret as string | undefined;
+    if (!expected) return false;
+    const a = Buffer.from(suppliedSecret, 'utf8');
+    const b = Buffer.from(expected, 'utf8');
+    if (a.length !== b.length) return false;
+    try {
+      return timingSafeEqual(a, b);
+    } catch {
+      return false;
     }
   }
 

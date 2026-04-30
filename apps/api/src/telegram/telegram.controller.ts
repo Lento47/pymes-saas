@@ -1,4 +1,4 @@
-import { Controller, Post, Param, Body, Get, UseGuards, HttpCode, Logger } from '@nestjs/common';
+import { Controller, Post, Param, Body, Get, Headers, UnauthorizedException, UseGuards, HttpCode, Logger } from '@nestjs/common';
 import { TelegramService } from './telegram.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -22,8 +22,16 @@ export class TelegramController {
   @HttpCode(200)
   async webhook(
     @Param('channelId') channelId: string,
+    @Headers('x-telegram-bot-api-secret-token') secretHeader: string | undefined,
     @Body() update: any,
   ) {
+    // Verify Telegram-supplied secret token before accepting the update.
+    // Without this, anyone who knows the channelId can inject fake updates.
+    const ok = await this.telegramService.verifyWebhookSecret(channelId, secretHeader);
+    if (!ok) {
+      throw new UnauthorizedException('Invalid Telegram webhook signature');
+    }
+
     // Process update asynchronously to respond quickly
     setImmediate(() => {
       this.telegramService.processUpdate(channelId, update).catch((err) => {
