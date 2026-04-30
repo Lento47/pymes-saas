@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { queryClient } from "@/lib/queryClient";
 import { HelpButton } from "@/components/shared/help-button";
+import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import {
   Crown, ArrowUpRight, ArrowDownRight, Check, Loader2, Info,
   Users, Zap, Receipt, FolderOpen, Database, TrendingUp,
@@ -340,6 +341,10 @@ export default function BillingPage() {
           </Badge>
         </div>
       </PageHeader>
+
+      <div className="px-6 pb-2">
+        <DiagnosticButton module="billing" />
+      </div>
 
       <div className="px-6 py-6 space-y-6">
         {/* Success / Cancel alerts */}
