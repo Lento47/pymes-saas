@@ -1,5 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { api, setAuthState, clearAuthState, isLoggedIn, getWorkspaceSlug, getRefreshToken, isSessionTimedOut } from "@/lib/api";
+
+function resetAuthAndTheme() {
+  clearAuthState();
+  if (typeof document !== 'undefined') {
+    document.documentElement.classList.remove('light');
+    try { localStorage.removeItem('pymeshub-theme'); } catch { /* ignore */ }
+  }
+}
 import { connectSocket, disconnectSocket, getSocket } from "./use-socket";
 import { queryClient } from "@/lib/queryClient";
 
@@ -63,7 +71,7 @@ const _storedRefreshToken = getRefreshToken();
 if (_storedRefreshToken && !isLoggedIn()) {
   // Check inactivity timeout — if user was inactive >10min, don't restore
   if (isSessionTimedOut()) {
-    clearAuthState();
+    resetAuthAndTheme();
     _isRestoring = false;
   } else {
     _isRestoring = true;
@@ -78,7 +86,7 @@ if (_storedRefreshToken && !isLoggedIn()) {
         connectSocket();
         attachWorkspaceUpdateListener();
       } catch {
-        clearAuthState();
+        resetAuthAndTheme();
         _user = null;
         // If restore fails and we have a slug, redirect to login
         const slug = getWorkspaceSlug();
@@ -173,7 +181,7 @@ export function useAuth() {
     try { await api.logout(); } catch { /* best-effort */ }
     disconnectSocket(); // ← WebSocket se corta al hacer logout
     _wsUpdatedAttached = false; // permitir re-attach en el próximo login
-    clearAuthState();
+    resetAuthAndTheme();
     _user = null;
     notifyListeners();
     history.pushState(null, "", "/login");
