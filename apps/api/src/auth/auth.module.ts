@@ -14,7 +14,15 @@ import { DemoModule } from '../demo/demo.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN ?? '30m') as any },
+      // Keep main-api's 30m expiry. Pin algorithm to HS256 to defeat
+      // algorithm-confusion attacks (alg=none / RS256-as-HS256). H3 fix.
+      signOptions: {
+        expiresIn: (process.env.JWT_EXPIRES_IN ?? '30m') as any,
+        algorithm: 'HS256',
+      },
+      verifyOptions: {
+        algorithms: ['HS256'],
+      },
     }),
     DemoModule,
   ],

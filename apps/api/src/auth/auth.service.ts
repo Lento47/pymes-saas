@@ -1,9 +1,17 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { InviteTokenPayload } from './invite-token.types';
@@ -774,12 +782,82 @@ export class AuthService {
     throw new InternalServerErrorException('Could not generate unique workspace slug.');
   }
 
-  async resetPassword(email: string, newPassword: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) throw new NotFoundException('Usuario no encontrado.');
+  /**
+   * Request a password-reset token. Always returns the same generic
+   * message — never reveals whether the email exists (H7). When the user
+   * does exist, a short-lived signed JWT is generated; the token's payload
+   * embeds a fingerprint of the current password hash so a successful
+   * reset invalidates all outstanding tokens (single-use without a DB
+   * jti table).
+   *
+   * TODO(ops): wire this to the transactional email pipeline so the link
+   * is delivered to the user's inbox. For now the token is logged; in
+   * production the log line MUST be scrubbed or replaced with email send.
+   */
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    const generic = { message: 'Si el correo existe, recibirás un enlace para restablecer tu contraseña.' };
 
-    if (newPassword.length < 8) {
+    if (!email || typeof email !== 'string') return generic;
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, password_hash: true, status: true },
+    });
+    if (!user || user.status !== 'ACTIVE') return generic;
+
+    const pwh = createHash('sha256').update(user.password_hash || '').digest('hex').slice(0, 16);
+    const token = this.jwtService.sign(
+      { sub: user.id, type: 'password-reset', pwh, jti: randomUUID() },
+      { expiresIn: '15m' },
+    );
+
+    // Avoid leaking the token to general logs in production.
+    if (process.env.NODE_ENV !== 'production') {
+      Logger.log(`Password reset token for ${email}: ${token}`, 'AuthService');
+    }
+
+    // TODO: dispatch via transactional email (Resend/SES) pointing to
+    // ${APP_URL}/reset-password?token=${token}.
+    return generic;
+  }
+
+  /**
+   * Complete a password reset using a token issued by requestPasswordReset.
+   * Requires:
+   *   - valid JWT signature
+   *   - type === 'password-reset'
+   *   - not expired
+   *   - the password-hash fingerprint embedded in the token still matches
+   *     the user's current hash (so once the password is reset, all
+   *     previously-issued tokens become invalid → single-use).
+   */
+  async resetPassword(token: string, newPassword: string) {
+    if (!token) throw new BadRequestException('Token requerido.');
+    if (!newPassword || newPassword.length < 8) {
       throw new BadRequestException('La contraseña debe tener al menos 8 caracteres.');
+    }
+
+    let payload: { sub: string; type?: string; pwh?: string };
+    try {
+      payload = this.jwtService.verify(token);
+    } catch {
+      throw new UnauthorizedException('Token inválido o expirado.');
+    }
+    if (payload?.type !== 'password-reset' || !payload.sub || !payload.pwh) {
+      throw new UnauthorizedException('Token inválido.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, password_hash: true, status: true },
+    });
+    if (!user || user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Token inválido.');
+    }
+
+    const currentPwh = createHash('sha256').update(user.password_hash || '').digest('hex').slice(0, 16);
+    if (currentPwh !== payload.pwh) {
+      // Password already changed since the token was issued.
+      throw new UnauthorizedException('Token ya utilizado o expirado.');
     }
 
     const password_hash = await bcrypt.hash(newPassword, 12);
@@ -787,6 +865,15 @@ export class AuthService {
       where: { id: user.id },
       data: { password_hash },
     });
+
+    // Revoke all existing refresh tokens for this user across workspaces
+    // so a stolen token cannot survive the password reset.
+    await this.prisma.refreshToken
+      .updateMany({
+        where: { user_id: user.id, revoked_at: null },
+        data: { revoked_at: new Date() },
+      })
+      .catch(() => undefined);
 
     return { message: 'Contraseña actualizada correctamente.' };
   }

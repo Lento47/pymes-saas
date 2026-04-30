@@ -122,15 +122,31 @@ export class AuthController {
     return { message: 'Sesión cerrada.' };
   }
 
-  /** POST /auth/reset-password — direct reset by email + new password */
+  /**
+   * POST /auth/request-password-reset — request a reset link.
+   * Always returns the same generic message regardless of whether the
+   * email exists (H7 — prevent email enumeration).
+   */
+  @Post('request-password-reset')
+  @Throttle({ auth: { limit: 5, ttl: 900_000 } })
+  @HttpCode(HttpStatus.OK)
+  requestPasswordReset(@Body('email') email: string) {
+    return this.authService.requestPasswordReset(email);
+  }
+
+  /**
+   * POST /auth/reset-password — complete a reset with a token issued by
+   * /auth/request-password-reset. Requires a valid, unexpired, single-use
+   * token (C1 fix — no longer allows arbitrary password change by email).
+   */
   @Post('reset-password')
-  @Throttle({ auth: { limit: 2, ttl: 900_000 } })
+  @Throttle({ auth: { limit: 5, ttl: 900_000 } })
   @HttpCode(HttpStatus.OK)
   resetPassword(
-    @Body('email') email: string,
+    @Body('token') token: string,
     @Body('newPassword') newPassword: string,
   ) {
-    return this.authService.resetPassword(email, newPassword);
+    return this.authService.resetPassword(token, newPassword);
   }
 
   /** GET /auth/my-workspaces — list all workspaces the user belongs to */
