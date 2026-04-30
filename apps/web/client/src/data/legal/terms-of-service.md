@@ -1,203 +1,218 @@
-# Master Service Agreement (MSA) de PymeHub
+# Términos de Servicio de PymeHub
 
-## 1. Proposito
+Versión vigente. Última actualización: Abril 2026.
 
-Este Master Service Agreement regula la relacion contractual B2B entre `[NOMBRE_EMPRESA]` y el cliente para la prestacion de PymeHub y de servicios asociados. Su objetivo es establecer, con mayor nivel de detalle que los terminos publicos, el marco base para ordenes de servicio, suscripciones, onboarding, soporte, tratamiento de datos, seguridad, responsabilidad y terminacion.
+## 1. Bienvenido a PymeHub
 
-## 2. Partes
+Estos Términos de Servicio regulan el acceso y uso de la Plataforma PymeHub, operada por PymeHub S.A., cédula jurídica en trámite, con domicilio en San José, Costa Rica, y correo electrónico de contacto legal@[dominio].
 
-Este acuerdo se celebra entre:
+PymeHub es una plataforma de customer operations diseñada para pequeñas y medianas empresas en Latinoamérica. Unifica conversaciones omnicanal —WhatsApp, correo electrónico y formularios—, gestión de contactos y leads, facturación, pipeline de ventas, gestión documental, automatizaciones inteligentes y gobernanza de workspace en un solo sistema operativo.
 
-- `[NOMBRE_EMPRESA]`, con domicilio en `[JURISDICCION]`, en calidad de proveedor del servicio; y
-- el cliente identificado en la orden de servicio, cotizacion aceptada, propuesta comercial o alta contractual correspondiente.
+La Plataforma se encuentra en etapa de lanzamiento y mejora continua. Esto significa que algunas funcionalidades pueden evolucionar, mejorarse o ampliarse con el tiempo, y que PymeHub se reserva el derecho de introducir, modificar o discontinuar funcionalidades específicas cuando sea necesario para mantener la calidad, seguridad y viabilidad del Servicio.
 
-## 3. Estructura contractual y jerarquia documental
+Al registrarte, acceder o utilizar la Plataforma, manifestás tu consentimiento expreso e inequívoco con estos Términos y te comprometés a cumplirlos. Si no estás de acuerdo con estos Términos, no debés utilizar la Plataforma.
 
-Este MSA se integra con los siguientes documentos:
+## 2. Aceptación de los Términos
 
-- orden de servicio, cotizacion o SOW aplicable;
-- Terminos y Condiciones;
-- Politica de Privacidad;
-- Data Processing Addendum, cuando aplique;
-- politicas operativas, de soporte o SLA expresamente incorporadas;
-- anexos de implementacion, onboarding o servicios profesionales.
+La aceptación de estos Términos se produce mediante cualquiera de los siguientes actos:
 
-En caso de contradiccion material, el orden de prevalencia sera:
+- Marcar la casilla de verificación correspondiente durante el proceso de registro.
+- Crear una cuenta en la Plataforma.
+- Acceder o utilizar la Plataforma después de que estos Términos hayan sido publicados o notificados.
 
-1. orden de servicio o SOW;
-2. DPA;
-3. este MSA;
-4. Terminos y Condiciones;
-5. politicas operativas o publicadas.
+PymeHub conservará evidencia electrónica razonable de la aceptación, incluyendo la versión vigente del documento en el momento de la aceptación, la fecha, la hora, la dirección IP y la cuenta de usuario asociada. Esta evidencia constituye un registro verificable de la manifestación de voluntad del Cliente, conforme a lo dispuesto en la Ley N.º 8454 de Certificados, Firmas Digitales y Documentos Electrónicos de Costa Rica.
 
-## 4. Definiciones clave
+El Cliente reconoce que la aceptación electrónica de estos Términos tiene el mismo valor y eficacia jurídica que la aceptación por escrito en soporte físico, en los términos del principio de equivalencia funcional reconocido por la legislación costarricense.
 
-- `Servicio`: acceso a PymeHub y a las funcionalidades contratadas.
-- `Suscripcion`: derecho de uso del servicio por el periodo contratado.
-- `Servicios profesionales`: onboarding, configuracion, migracion, capacitacion, integraciones o soporte adicional prestado fuera del servicio base.
-- `Datos del Cliente`: toda informacion cargada o generada por el cliente dentro de PymeHub.
-- `Usuario autorizado`: persona habilitada por el cliente para usar el servicio.
-- `Servicios de terceros`: herramientas externas de infraestructura, almacenamiento, correo, IA, monitoreo, pagos o similares.
+## 3. Elegibilidad y representación
 
-## 5. Objeto
+Podés utilizar la Plataforma si:
 
-El Proveedor prestara al cliente acceso a PymeHub como servicio SaaS para gestion operativa, incluyendo segun el plan contratado funciones de conversaciones, tareas, contactos, documentos, OCR, automatizaciones, resúmenes IA, reportes, notificaciones y administracion multi-tenant, asi como servicios complementarios expresamente acordados.
+- Sos mayor de dieciocho años.
+- Actuás en representación propia o de una organización, emprendimiento, pyme o actividad empresarial legítima.
+- No has sido suspendido o expulsado previamente de la Plataforma por incumplimiento de estos Términos.
 
-## 6. Provision del servicio
+Si aceptás estos Términos en nombre de una organización, declarás que tenés autorización suficiente para vincularla contractualmente. La organización será responsable por el uso que realicen sus usuarios, empleados, contratistas, agentes o representantes autorizados dentro del workspace, así como por el cumplimiento de estos Términos por parte de cada uno de ellos.
 
-El Proveedor:
+## 4. Cuenta, seguridad y acceso
 
-- habilitara el servicio conforme al plan contratado;
-- operara el servicio con esfuerzos comercialmente razonables;
-- podra introducir mejoras, actualizaciones, ajustes tecnicos o cambios de arquitectura compatibles con la naturaleza SaaS del producto;
-- procurara mantener medidas razonables de seguridad, continuidad y soporte.
+Para utilizar la Plataforma debés crear una cuenta proporcionando información veraz, completa y actualizada. Sos responsable de:
 
-Salvo acuerdo escrito, el Proveedor no se obliga a desarrollar funcionalidades a medida ni a mantener versiones inmoviles del producto.
+- Mantener la confidencialidad de tus credenciales de acceso.
+- Administrar correctamente los accesos y roles de los miembros de tu equipo dentro de tu workspace.
+- Notificar a PymeHub sin demora si detectás uso no autorizado de tu cuenta, pérdida de credenciales o cualquier actividad sospechosa.
+- Asegurarte de que cada persona que accede a tu workspace lo hace con las credenciales que le corresponden y no comparte sus accesos con terceros no autorizados.
 
-## 7. Onboarding e implementacion
+PymeHub podrá considerar válidas las acciones realizadas desde una cuenta autenticada con credenciales correctas, salvo que exista evidencia razonable de compromiso de seguridad notificado previamente por el Cliente.
 
-Salvo pacto distinto, el onboarding base comprende:
+PymeHub se reserva el derecho de suspender o restringir el acceso a la Plataforma cuando sea necesario para proteger la seguridad de la Plataforma, de otros usuarios, de los datos tratados o para cumplir con requerimientos legales aplicables.
 
-- creacion del workspace inicial;
-- habilitacion de un usuario `OWNER` o administrador principal;
-- configuracion inicial minima;
-- orientacion general sobre uso;
-- entrega o referencia a la documentacion vigente.
+## 5. Servicio — descripción y licencia
 
-No se consideran incluidos, salvo acuerdo especifico:
+PymeHub otorga al Cliente una licencia limitada, no exclusiva, intransferible y revocable para acceder y utilizar la Plataforma de conformidad con estos Términos, durante la vigencia de la relación contractual y conforme al plan contratado.
 
-- migraciones masivas complejas;
-- integraciones especiales;
-- parametrizaciones a medida;
-- capacitaciones extensas;
-- configuraciones fiscales o regulatorias propias del cliente.
+La Plataforma incluye, según el plan adquirido:
 
-## 8. Obligaciones del proveedor
+- Acceso a la bandeja omnicanal (WhatsApp, correo electrónico, formularios).
+- Gestión de contactos, leads y base de datos de clientes.
+- Emisión de facturas, notas de crédito y débito, y seguimiento de pagos.
+- Pipeline de ventas con etapas configurables.
+- Gestión documental con carga, clasificación y extracción de texto.
+- Automatizaciones configurables basadas en eventos del workspace.
+- Dashboard con métricas operativas y de negocio.
+- Control de acceso por roles (OWNER, ADMIN, AGENT, VIEWER).
+- Funcionalidades de inteligencia artificial como apoyo operativo.
 
-El Proveedor se obliga a:
+La licencia no incluye:
 
-- prestar el servicio conforme a este acuerdo y a la documentacion aplicable;
-- aplicar medidas razonables de seguridad y confidencialidad;
-- mantener canales de soporte conforme al nivel contratado;
-- preservar el aislamiento logico entre workspaces;
-- tratar los Datos del Cliente conforme al marco contractual aplicable;
-- notificar incidentes cuando corresponda por ley o contrato.
+- El derecho a sublicenciar, revender, alquilar o redistribuir la Plataforma.
+- El derecho a realizar ingeniería inversa, descompilar o extraer el código fuente.
+- El derecho a utilizar la Plataforma para desarrollar productos o servicios competidores.
+- El derecho a acceder a funcionalidades no incluidas en el plan contratado.
 
-## 9. Obligaciones del cliente
+## 6. Datos del cliente, privacidad y tratamiento de datos
 
-El cliente se obliga a:
+Los datos que el Cliente ingresa, conecta o procesa en la Plataforma —incluyendo mensajes, contactos, facturas, documentos, leads, notas y datos de sus clientes finales— pertenecen al Cliente o permanecen bajo su control. PymeHub no vende, comercializa ni utiliza esos datos para fines ajenos a la prestación, protección, soporte o mejora razonable de la Plataforma.
 
-- pagar puntualmente los importes aplicables;
-- proporcionar informacion correcta para contratacion y facturacion;
-- designar administradores responsables del workspace;
-- custodiar credenciales y asignar roles apropiados;
-- usar el servicio conforme a ley, contrato y politicas aplicables;
-- no cargar contenidos ilicitos ni usar el servicio para fines prohibidos;
-- mantener base juridica suficiente para los datos que trate mediante PymeHub;
-- colaborar razonablemente en soporte, investigaciones y validaciones necesarias.
+El tratamiento de datos personales se rige por los siguientes documentos, que forman parte integrante de estos Términos:
 
-## 10. Soporte y SLA
+- La **Política de Privacidad**, que describe cómo PymeHub trata los datos personales en su rol de responsable del tratamiento respecto de los datos necesarios para administrar la relación comercial, la facturación, el soporte, la seguridad y las comunicaciones propias.
+- El **Data Processing Addendum (DPA)** , que regula el tratamiento de los datos personales que PymeHub realiza por cuenta del Cliente en su rol de encargado del tratamiento, conforme a las instrucciones documentadas del Cliente.
 
-El soporte ordinario se rige por la politica de soporte y, en su caso, por el SLA aplicable. El soporte premium, tiempos reforzados, canales especiales, creditos o compromisos enterprise deberan constar expresamente por escrito.
+Cuando el Cliente conecta la Plataforma con servicios de terceros —WhatsApp, correo electrónico, facturación electrónica, pasarelas de pago, proveedores de inteligencia artificial u otros—, autoriza a PymeHub a acceder y procesar la información necesaria para ejecutar las funcionalidades habilitadas. El Cliente es responsable de cumplir las reglas, políticas y restricciones de cada proveedor integrado, incluyendo las políticas de Meta para WhatsApp Business y los términos de los proveedores de IA aplicables.
 
-## 11. Precio, facturacion e impuestos
+## 7. Integraciones de terceros
 
-Los montos, moneda, ciclo de facturacion, forma de cobro, renovacion y servicios adicionales constaran en la orden comercial. Salvo indicacion expresa, los importes no incluyen impuestos. El cliente entregara los datos fiscales necesarios para emitir comprobantes validos y atender requerimientos contables o tributarios aplicables.
+La Plataforma puede integrarse con servicios de terceros, incluyendo pero no limitado a:
 
-## 12. Vigencia y renovacion
+- **WhatsApp Business API** (Meta Platforms, Inc.) para mensajería empresarial, sujeto a las Business Terms, Business Solution Terms, Messaging Policy y términos adicionales de Meta.
+- **Paddle** como proveedor de procesamiento de pagos y revendedor autorizado de productos digitales.
+- **Proveedores de inteligencia artificial** (como OpenAI, Anthropic o Google Cloud) para funcionalidades de clasificación, resumen y asistencia operativa.
+- **Servicios de infraestructura cloud** para hosting, base de datos y almacenamiento.
 
-Este MSA entra en vigor desde su aceptacion o firma y se mantendra mientras exista una relacion comercial activa entre las partes. Cada suscripcion o servicio podra tener su propia vigencia especifica. Las renovaciones seguiran el ciclo contratado salvo cancelacion o no renovacion conforme al acuerdo comercial.
+PymeHub no es responsable por los actos, omisiones, disponibilidad, cambios de política o interrupciones de estos terceros. El Cliente acepta que la disponibilidad y funcionalidad de ciertas integraciones puede depender de factores fuera del control razonable de PymeHub.
 
-## 13. Cambios del servicio
+## 8. Obligaciones y restricciones del usuario
 
-El Proveedor podra modificar interfaces, funcionalidades, arquitectura o servicios de terceros utilizados por PymeHub cuando ello sea razonablemente necesario para operar, asegurar o evolucionar el servicio. Si el cambio es material para la experiencia contratada del cliente, debera comunicarse por medios razonables con antelacion compatible con el impacto.
+El Cliente se obliga a utilizar la Plataforma de forma lícita, ética y conforme a estos Términos. Queda expresamente prohibido:
 
-## 14. Datos del cliente y tratamiento
+- Utilizar la Plataforma para actividades ilegales, fraudulentas, engañosas, abusivas, discriminatorias o que infrinjan derechos de terceros.
+- Enviar spam, mensajes masivos no solicitados, comunicaciones no consentidas o cualquier forma de acoso a través de los canales de la Plataforma.
+- Almacenar, cargar o transmitir malware, virus, ransomware o cualquier código malicioso.
+- Vulnerar o intentar vulnerar la seguridad de la Plataforma, incluyendo pruebas de penetración no autorizadas, escaneo de puertos o explotación de vulnerabilidades.
+- Realizar scraping, minería de datos, extracción automatizada o cualquier forma de acceso masivo no autorizado a la Plataforma.
+- Someter la Plataforma a cargas excesivas, denegación de servicio o uso que degrade el rendimiento para otros clientes.
+- Utilizar salidas generadas por funcionalidades de IA como única base para decisiones médicas, legales, regulatorias, crediticias, laborales u otras de alto impacto, sin revisión humana competente.
+- Tratar datos sensibles, datos de salud, datos de menores, números completos de tarjetas de pago o credenciales de acceso en prompts, flujos de IA o canales de mensajería, salvo que exista una necesidad legítima, una base jurídica válida y las salvaguardas técnicas y organizativas adecuadas.
+- Subir, cargar o procesar datos de terceros sin contar con el consentimiento, la base legal o la autorización requerida por la normativa aplicable.
+- Desarrollar, entrenar o mejorar sistemas, modelos o productos competidores utilizando las salidas, datos o funcionalidades de la Plataforma.
 
-El cliente conserva la titularidad o control sobre sus Datos del Cliente. El Proveedor tratara tales datos en la medida necesaria para prestar el servicio, mantener seguridad, soporte, continuidad, facturacion y cumplimiento. Cuando proceda, las obligaciones especificas de tratamiento se regulan mediante el DPA.
+El incumplimiento de cualquiera de estas obligaciones podrá dar lugar a la suspensión o terminación del acceso a la Plataforma, sin perjuicio de las demás acciones legales que pudieran corresponder.
 
-## 15. Seguridad y respuesta a incidentes
+## 9. Planes, pagos y facturación
 
-El Proveedor aplicara controles razonables de seguridad acordes a la naturaleza del servicio, incluyendo control de accesos, segregacion multi-tenant, logging operativo, backups y procesos de respuesta a incidentes. El detalle operativo se documenta en las politicas internas del paquete documental.
+Los planes, precios, ciclos de facturación, límites y funcionalidades incluidas en cada plan se describen en la página de precios de PymeHub y en la Política de Facturación y Reembolsos. PymeHub se reserva el derecho de modificar los precios y los planes, notificando al Cliente con al menos treinta días de anticipación antes de que los cambios sean aplicables a su suscripción.
 
-## 16. Confidencialidad
+Los pagos se procesan a través de Paddle, que actúa como revendedor autorizado y procesador de pagos. El Cliente acepta los términos de Paddle para el procesamiento de pagos.
 
-Cada parte debera proteger la informacion confidencial de la otra con un nivel de cuidado no inferior al utilizado para su propia informacion sensible. Se considera confidencial, entre otros:
+Las suscripciones se renuevan automáticamente por períodos sucesivos de igual duración, salvo que el Cliente cancele la suscripción antes de la fecha de renovación indicada en su cuenta.
 
-- el contenido del servicio y su documentacion interna;
-- los Datos del Cliente;
-- credenciales, configuraciones, integraciones y tickets;
-- pricing no publico, propuestas y roadmap no publicado.
+El Cliente es responsable de verificar que los comprobantes fiscales, facturas electrónicas y documentos tributarios emitidos en relación con el Servicio cumplen con los requisitos de la normativa fiscal aplicable en su jurisdicción.
 
-Las obligaciones de confidencialidad no aplican a informacion publica, recibida licitamente de tercero, conocida previamente sin restriccion o revelada por mandato legal con aviso razonable cuando sea posible.
+## 10. Cancelación y reembolsos
 
-## 17. Propiedad intelectual
+La cancelación de la suscripción, las condiciones de reembolso, los downgrades de plan, los cargos por contracargo y las ventanas de cancelación se rigen por la Política de Facturación y Reembolsos, que forma parte integrante de estos Términos.
 
-El Servicio, su software, documentacion, marcas, procesos, arquitectura y mejoras pertenecen al Proveedor o a sus licenciantes. El cliente no adquiere propiedad sobre PymeHub por el mero pago de la suscripcion. Los Datos del Cliente siguen perteneciendo al cliente o a sus respectivos titulares, sin perjuicio de las autorizaciones tecnicas necesarias para operar el servicio.
+Salvo disposición legal imperativa en contrario o pacto expreso en contrario, los pagos realizados no son reembolsables una vez iniciado el período facturado correspondiente.
 
-## 18. Servicios de terceros
+## 11. Suspensión y terminación
 
-El cliente reconoce que PymeHub depende, en todo o en parte, de servicios de terceros. El Proveedor no sera responsable por interrupciones exclusivamente imputables a tales terceros, sin perjuicio de su deber de gestion razonable, mitigacion y comunicacion cuando el impacto sea relevante.
+PymeHub podrá suspender total o parcialmente el acceso a la Plataforma cuando concurra alguna de las siguientes circunstancias:
 
-## 19. OCR, automatizacion e IA
+- Incumplimiento material de estos Términos por parte del Cliente.
+- Uso de la Plataforma para actividades prohibidas según la Sección 8.
+- Falta de pago de las tarifas correspondientes en el plazo establecido.
+- Requerimiento legal, orden judicial o solicitud de autoridad competente.
+- Riesgo inminente para la seguridad, integridad o disponibilidad de la Plataforma, de los datos de otros clientes o de terceros.
 
-El cliente acepta que determinadas funciones del servicio operan con automatizaciones, OCR o IA y que sus resultados pueden no ser exactos o completos en todos los casos. Dichas funciones deben entenderse como herramientas de apoyo y no como sustituto de validacion humana en contextos sensibles, legales, fiscales o de alto impacto comercial.
+Salvo en casos de urgencia operativa, riesgo de seguridad o requerimiento legal que exija acción inmediata, PymeHub notificará al Cliente la causa de la suspensión y, cuando sea razonablemente posible, le otorgará una oportunidad de subsanación antes de proceder a la suspensión definitiva o terminación.
 
-## 20. Garantias y descargos
+El Cliente podrá dar por terminada la relación contractual en cualquier momento cancelando su cuenta a través de los mecanismos habilitados en la Plataforma o notificando por escrito a PymeHub.
 
-Salvo pacto expreso, el servicio se presta "tal cual" y "segun disponibilidad". El Proveedor no garantiza:
+Al terminar la relación contractual, el Cliente dispondrá de un plazo razonable para exportar sus datos. Transcurrido dicho plazo, PymeHub podrá eliminar los datos del Cliente de conformidad con el DPA y la Política de Privacidad, sin perjuicio de las obligaciones legales de conservación que pudieran aplicar.
 
-- compatibilidad absoluta con todos los sistemas del cliente;
-- ausencia total de errores o caidas;
-- exactitud perfecta en OCR, IA o automatizaciones;
-- aptitud para un uso no descrito o no contratado.
+## 12. Propiedad intelectual
 
-## 21. Suspensiones
+La Plataforma, incluyendo pero no limitado a su código fuente, diseño, interfaz, nombre, marca, documentación, estructura, algoritmos, procesos, metodologías y cualquier otro elemento constitutivo, es propiedad exclusiva de PymeHub y está protegida por las leyes de propiedad intelectual e industrial aplicables.
 
-El Proveedor podra suspender total o parcialmente el servicio por impago, uso prohibido, riesgo de seguridad, requerimiento legal o incumplimiento material. Cuando sea viable, debera comunicar la suspension y su causa general.
+El Cliente conserva todos los derechos de propiedad intelectual sobre los datos, contenidos, mensajes, documentos e información que carga, genera o procesa en la Plataforma. PymeHub no adquiere ningún derecho de propiedad sobre dichos datos más allá de los derechos limitados necesarios para prestar, proteger, soportar y mejorar razonablemente el Servicio.
 
-## 22. Terminacion
+El Cliente no podrá:
 
-Cualquiera de las partes podra terminar la relacion en los supuestos previstos contractualmente. El Proveedor podra terminar por incumplimiento material no subsanado, impago persistente, fraude, uso prohibido o imposibilidad legal. Tras la terminacion aplicaran las reglas de exportacion, retencion, borrado, cierre de acceso y pago de saldos pendientes.
+- Copiar, modificar, crear obras derivadas o distribuir la Plataforma sin autorización expresa.
+- Utilizar marcas, logotipos, nombres comerciales o cualquier signo distintivo de PymeHub sin autorización previa por escrito.
+- Eliminar, ocultar o alterar avisos de propiedad intelectual, marcas o atribuciones incluidas en la Plataforma.
 
-## 23. Limitacion de responsabilidad
+## 13. Limitación de responsabilidad
 
-En la maxima medida permitida por ley, la responsabilidad agregada del Proveedor no excedera el total efectivamente pagado por el cliente en los doce meses previos al hecho reclamado. No habra responsabilidad por danos indirectos, lucro cesante, perdida reputacional, perdida de negocio o daños especiales o punitivos, salvo prohibicion legal expresa.
+En la máxima medida permitida por la ley aplicable y sin perjuicio de los derechos irrenunciables que asisten a los consumidores conforme a la Ley N.º 7472 de Costa Rica:
 
-## 24. Indemnidad
+La Plataforma se proporciona "tal cual" y "según disponibilidad", sin garantías de ningún tipo, expresas o implícitas, incluyendo pero no limitado a garantías de comerciabilidad, adecuación para un propósito particular, ausencia de errores, disponibilidad ininterrumpida o compatibilidad con todos los sistemas de terceros.
 
-El cliente indemnizara al Proveedor frente a reclamaciones de terceros derivadas de:
+PymeHub no será responsable por:
 
-- uso ilicito o prohibido del servicio;
-- contenidos o datos cargados sin autorizacion suficiente;
-- incumplimiento de ley, contrato o derechos de terceros;
-- instrucciones del cliente que causen tratamiento indebido o riesgo no imputable al Proveedor.
+- Daños indirectos, incidentales, consecuentes, especiales o punitivos.
+- Pérdida de ingresos, beneficios, datos, uso, fondo de comercio u otras pérdidas intangibles.
+- Interrupciones del servicio causadas por fuerza mayor, eventos de terceros ajenos a PymeHub, fallas de conectividad del Cliente, configuraciones inadecuadas del Cliente o uso prohibido de la Plataforma.
 
-## 25. Fuerza mayor
+La responsabilidad agregada de PymeHub frente al Cliente por cualquier reclamación derivada de o relacionada con estos Términos o el uso de la Plataforma no excederá el monto total efectivamente pagado por el Cliente a PymeHub durante los doce meses inmediatamente anteriores al hecho generador de la responsabilidad.
 
-Ninguna parte respondera por retrasos o incumplimientos causados por eventos fuera de su control razonable, incluidos desastres, guerra, fallos generalizados de red, interrupciones graves de terceros, actos de autoridad, sabotaje o conflictos laborales significativos.
+Las limitaciones establecidas en esta sección no aplicarán en casos de:
 
-## 26. Evidencia y registros
+- Dolo o culpa grave de PymeHub.
+- Infracción deliberada de obligaciones de confidencialidad o protección de datos personales.
+- Violación de derechos de propiedad intelectual del Cliente.
+- Lesiones personales o muerte causadas por negligencia de PymeHub.
+- Responsabilidad que no pueda ser excluida o limitada por ley imperativa aplicable.
 
-La relacion contractual debe poder apoyarse en evidencia minima, incluyendo:
+## 14. Ley aplicable y resolución de disputas
 
-- ordenes de servicio o planes aceptados;
-- registros de alta y renovacion;
-- facturacion emitida;
-- tickets y comunicaciones relevantes;
-- aceptaciones documentales;
-- historial de incidentes materiales o suspensiones.
+Estos Términos se rigen e interpretan de conformidad con las leyes de la República de Costa Rica.
 
-## 27. Ley aplicable y jurisdiccion
+Para clientes que califiquen como consumidores conforme a la Ley N.º 7472 de Promoción de la Competencia y Defensa Efectiva del Consumidor, cualquier cláusula de estos Términos se interpretará de conformidad con la normativa costarricense de protección al consumidor, y serán nulas las cláusulas que contravengan dicha normativa. El Cliente consumidor no renuncia a los derechos que le confiere la ley.
 
-Este acuerdo se rige por las leyes de `[JURISDICCION]`. Toda controversia se sometera a la jurisdiccion competente de `[JURISDICCION]`, salvo que las partes acuerden expresamente otro mecanismo.
+Para clientes empresariales, las partes se comprometen a procurar una negociación de buena fe como primer mecanismo para resolver cualquier controversia derivada de estos Términos. Si la controversia no se resuelve mediante negociación directa, las partes se someterán a la jurisdicción de los tribunales competentes de San José, Costa Rica, con renuncia expresa a cualquier otro fuero que pudiera corresponderles.
 
-## 28. Relacion con otros documentos
+## 15. Modificaciones de los Términos
 
-Este MSA debe interpretarse junto con:
+PymeHub se reserva el derecho de modificar estos Términos en cualquier momento. Las modificaciones serán notificadas al Cliente mediante:
 
-- [`terms-and-conditions.md`](./terms-and-conditions.md)
-- [`privacy-policy.md`](./privacy-policy.md)
-- [`data-processing-addendum.md`](./data-processing-addendum.md)
-- [`../operations/support-policy.md`](../operations/support-policy.md)
-- [`../operations/sla.md`](../operations/sla.md)
+- Publicación de la versión actualizada en el sitio web de la Plataforma.
+- Correo electrónico a la dirección registrada en la cuenta del Cliente.
+- Aviso dentro de la Plataforma.
+
+Las modificaciones entrarán en vigor en la fecha indicada en la notificación, que no será inferior a quince días desde la comunicación, salvo que un cambio legal o regulatorio exija un plazo menor.
+
+El uso continuado de la Plataforma después de la entrada en vigor de las modificaciones constituye la aceptación de los Términos modificados. Si el Cliente no acepta las modificaciones, deberá cesar el uso de la Plataforma y cancelar su cuenta antes de que las modificaciones entren en vigor.
+
+Las modificaciones no tendrán efecto retroactivo y no afectarán derechos u obligaciones nacidos antes de su entrada en vigor.
+
+## 16. Disposiciones generales
+
+- **Acuerdo completo.** Estos Términos, junto con los documentos incorporados por referencia, constituyen el acuerdo completo entre las partes en relación con el objeto del mismo y reemplazan cualquier acuerdo, comunicación o propuesta anterior, oral o escrita.
+- **Divisibilidad.** Si cualquier disposición de estos Términos es declarada nula, inválida o ineficaz por un tribunal competente, dicha disposición se tendrá por no puesta y las demás disposiciones conservarán plena vigencia y efecto.
+- **No renuncia.** La falta de ejercicio por parte de PymeHub de cualquier derecho o disposición de estos Términos no constituirá una renuncia a dicho derecho o disposición.
+- **Cesión.** El Cliente no podrá ceder, transferir o delegar estos Términos ni sus derechos u obligaciones sin el consentimiento previo por escrito de PymeHub. PymeHub podrá ceder, transferir o delegar estos Términos sin restricción.
+- **Notificaciones.** Todas las notificaciones al Cliente se realizarán a través de la dirección de correo electrónico registrada en su cuenta o mediante avisos publicados en la Plataforma. Las notificaciones a PymeHub deberán dirigirse a legal@[dominio] o al domicilio indicado en la Sección 1.
+
+## 17. Contacto
+
+Para cualquier consulta, aclaración o comunicación relacionada con estos Términos:
+
+- **Correo electrónico:** legal@[dominio]
+- **Domicilio:** San José, Costa Rica
+- **Teléfono:** [TELÉFONO]
+
+---
+
+© 2026 PymeHub S.A. Todos los derechos reservados.
