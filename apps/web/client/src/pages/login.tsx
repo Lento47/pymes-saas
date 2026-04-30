@@ -94,10 +94,19 @@ export default function LoginPage() {
   const [workspaceOptions, setWorkspaceOptions] = useState<{ slug: string; name: string }[]>([]);
 
   const planParam = new URLSearchParams(window.location.search).get('plan');
+  const addonParam = new URLSearchParams(window.location.search).get('addon');
+
+  const buildTarget = () => {
+    const params = new URLSearchParams();
+    if (planParam) params.set('plan', planParam);
+    if (addonParam) params.set('addon', addonParam);
+    const qs = params.toString();
+    return qs ? `/settings/billing?${qs}` : '/';
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
-      const target = planParam ? `/settings/billing?plan=${planParam}` : "/";
+      const target = buildTarget();
       history.replaceState(null, "", target);
       window.dispatchEvent(new PopStateEvent("popstate"));
     }
@@ -119,7 +128,7 @@ export default function LoginPage() {
       }
 
       const res = await login(email, pass, preselectedSlug);
-      const target = planParam ? `/settings/billing?plan=${planParam}` : "/";
+      const target = buildTarget();
       history.replaceState(null, "", target);
       window.dispatchEvent(new PopStateEvent("popstate"));
     } catch (err: any) {

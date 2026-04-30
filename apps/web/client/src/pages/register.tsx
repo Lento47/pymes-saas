@@ -92,6 +92,18 @@ export default function RegisterPage() {
   const planParam = new URLSearchParams(
     window.location.hash.replace("#", "").split("?")[1] || "",
   ).get("plan");
+  const addonParam = new URLSearchParams(
+    window.location.hash.replace("#", "").split("?")[1] || "",
+  ).get("addon");
+
+  const buildTarget = () => {
+    const params = new URLSearchParams();
+    params.set('paddle', 'success');
+    if (planParam) params.set('plan', planParam);
+    if (addonParam) params.set('addon', addonParam);
+    const qs = params.toString();
+    return qs ? `/billing?${qs}` : '/';
+  };
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -138,7 +150,7 @@ export default function RegisterPage() {
   };
 
   const continueToWorkspace = () => {
-    const target = planParam ? `/billing?paddle=success&plan=${planParam}` : "/";
+    const target = buildTarget();
     history.replaceState(null, "", target);
     window.dispatchEvent(new PopStateEvent("popstate"));
   };

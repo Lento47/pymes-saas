@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useLocation } from 'wouter';
 import { api } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -97,6 +98,11 @@ export default function Agent() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [escalating, setEscalating] = useState(false);
   const [escalated, setEscalated] = useState(false);
+  const [location] = useLocation();
+  const pageContext = useMemo(() => {
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    return params.get('page') || null;
+  }, [location]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -471,7 +477,7 @@ export default function Agent() {
               boxShadow: '0 1px 3px hsl(var(--foreground) / 0.08), 0 0 0 1px hsl(var(--primary) / 0)',
             }}>
             <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
-              placeholder="Preguntame algo..."
+              placeholder={pageContext ? `Necesito ayuda con ${pageContext}...` : "Preguntame algo..."}
               disabled={isStreaming} rows={1}
               className="flex-1 resize-none bg-transparent text-[14px] outline-none disabled:opacity-30 text-foreground/85 placeholder:text-muted-foreground/40"
               style={{ maxHeight: '120px' }}

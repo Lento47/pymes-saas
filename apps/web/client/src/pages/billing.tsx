@@ -207,6 +207,14 @@ export default function BillingPage() {
   const params = new URLSearchParams(location.split("?")[1]);
   const success = params.get("paddle") === "success";
   const canceled = params.get("canceled");
+  const addonParam = params.get("addon");
+  const addonLabels: Record<string, string> = {
+    ai_assistant: 'Asistente IA',
+    whatsapp_premium: 'WhatsApp Premium',
+    extra_user: 'Usuario extra',
+    advanced_inventory: 'Inventario avanzado',
+    approvals_signature: 'Aprobaciones y firma digital',
+  };
   const workspaceSlug = user?.workspace?.slug;
 
   const currentPlan = user?.workspace?.plan ?? "FREE";
@@ -359,6 +367,13 @@ export default function BillingPage() {
           <Alert className="border-amber-500/20 bg-amber-500/5">
             <AlertDescription className="text-amber-400 text-xs">
               El pago fue cancelado. Tu suscripción no fue modificada.
+            </AlertDescription>
+          </Alert>
+        )}
+        {addonParam && (
+          <Alert className="border-[#dfff4a]/20 bg-[#dfff4a]/5">
+            <AlertDescription className="text-[#dfff4a] text-xs">
+              {addonLabels[addonParam] || addonParam} activado correctamente. Ya podés usar sus funciones.
             </AlertDescription>
           </Alert>
         )}
