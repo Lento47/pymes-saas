@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { parseJsonValue } from '../common/prisma/json';
@@ -120,7 +120,7 @@ export class AiService {
     if (!res.ok) {
       const errorText = await res.text();
       this.logger.error(`${config.provider} API error ${res.status}:`, errorText);
-      throw new Error('Failed to process with AI. Please try again later.');
+      throw new InternalServerErrorException('Failed to process with AI. Please try again later.');
     }
     const d = await res.json() as any;
     return { text: d.choices[0].message.content?.trim() ?? '', tokens: d.usage?.total_tokens ?? 0 };
@@ -152,7 +152,7 @@ export class AiService {
     if (!res.ok) {
       const errorText = await res.text();
       this.logger.error(`Anthropic API error ${res.status}:`, errorText);
-      throw new Error('Failed to process with AI. Please try again later.');
+      throw new InternalServerErrorException('Failed to process with AI. Please try again later.');
     }
     const d = await res.json() as any;
     return {
@@ -187,7 +187,7 @@ export class AiService {
     if (!res.ok) {
       const errorText = await res.text();
       this.logger.error(`Gemini API error ${res.status}:`, errorText);
-      throw new Error('Failed to process with AI. Please try again later.');
+      throw new InternalServerErrorException('Failed to process with AI. Please try again later.');
     }
     const d = await res.json() as any;
     return {
@@ -269,7 +269,7 @@ export class AiService {
     daysOverdue: number;
   }): Promise<PaymentReminderDraftResult> {
     const config = await this.getConfig(input.workspaceId);
-    if (!config) throw new Error('No hay API key de IA configurada. Configúrala en Ajustes → Inteligencia Artificial.');
+    if (!config) throw new BadRequestException('No hay API key de IA configurada. Configúrala en Ajustes → Inteligencia Artificial.');
 
     const isOverdue = input.daysOverdue > 0;
     const system = isOverdue
@@ -288,7 +288,7 @@ export class AiService {
     ].join('\n');
 
     const { text, tokens } = await this.chat(config, system, user, 200, 0.4);
-    if (!text) throw new Error('La IA devolvió un borrador vacío.');
+    if (!text) throw new BadRequestException('La IA devolvió un borrador vacío.');
     return { draft_text: text, tokens_used: tokens };
   }
 

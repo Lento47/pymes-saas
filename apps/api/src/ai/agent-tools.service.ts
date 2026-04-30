@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { InsightsService } from '../insights/insights.service';
 import { SearchService } from '../search/search.service';
@@ -60,7 +60,7 @@ export class AgentToolsService {
       case 'get_settings':
         return this.getSettings(workspaceId);
       default:
-        throw new Error(`Unknown tool: ${tool}`);
+        throw new BadRequestException(`Unknown tool: ${tool}`);
     }
   }
 
@@ -203,7 +203,7 @@ export class AgentToolsService {
 
   private async search(workspaceId: string, args: Record<string, any>) {
     const q = args.q || args.query || '';
-    if (!q) throw new Error('search requires a "q" argument');
+    if (!q) throw new BadRequestException('search requires a "q" argument');
     const typesArr = args.types ? (args.types as string).split(',').map((t: string) => t.trim()) : [];
     const results = await this.searchService.search(workspaceId, q, typesArr, 10);
     return { results };
@@ -211,7 +211,7 @@ export class AgentToolsService {
 
   private async getConversationDetail(workspaceId: string, args: Record<string, any>) {
     const id = args.id || args.conversation_id;
-    if (!id) throw new Error('get_conversation_detail requires "id" argument');
+    if (!id) throw new BadRequestException('get_conversation_detail requires "id" argument');
     const [conv, messages] = await Promise.all([
       this.prisma.conversation.findFirst({
         where: { id, workspace_id: workspaceId },
@@ -224,14 +224,14 @@ export class AgentToolsService {
         orderBy: { sent_at: 'asc' },
       }),
     ]);
-    if (!conv) throw new Error(`Conversation "${id}" not found`);
+    if (!conv) throw new BadRequestException(`Conversation "${id}" not found`);
     return { conversation: conv, messages };
   }
 
   private async replyConversation(workspaceId: string, args: Record<string, any>) {
     const id = args.id || args.conversation_id;
     const text = args.text || args.message;
-    if (!id || !text) throw new Error('reply_conversation requires "id" and "text"');
+    if (!id || !text) throw new BadRequestException('reply_conversation requires "id" and "text"');
     const msg = await this.prisma.message.create({
       data: {
         workspace_id: workspaceId,
@@ -246,7 +246,7 @@ export class AgentToolsService {
 
   private async createAutomation(workspaceId: string, args: Record<string, any>) {
     if (!args.name || !args.trigger_type) {
-      throw new Error('create_automation requires "name" and "trigger_type"');
+      throw new BadRequestException('create_automation requires "name" and "trigger_type"');
     }
     const auto = await this.prisma.automation.create({
       data: {
@@ -264,11 +264,11 @@ export class AgentToolsService {
   }
 
   private async toggleAutomation(workspaceId: string, args: Record<string, any>) {
-    if (!args.id) throw new Error('toggle_automation requires "id"');
+    if (!args.id) throw new BadRequestException('toggle_automation requires "id"');
     const existing = await this.prisma.automation.findFirst({
       where: { id: args.id, workspace_id: workspaceId },
     });
-    if (!existing) throw new Error(`Automation "${args.id}" not found`);
+    if (!existing) throw new BadRequestException(`Automation "${args.id}" not found`);
     const updated = await this.prisma.automation.update({
       where: { id: args.id },
       data: { enabled: args.enabled !== undefined ? args.enabled : !existing.enabled },
@@ -277,7 +277,7 @@ export class AgentToolsService {
   }
 
   private async updateTask(workspaceId: string, args: Record<string, any>) {
-    if (!args.id) throw new Error('update_task requires "id"');
+    if (!args.id) throw new BadRequestException('update_task requires "id"');
     const data: any = {};
     if (args.title !== undefined) data.title = args.title;
     if (args.description !== undefined) data.description = args.description;
@@ -293,7 +293,7 @@ export class AgentToolsService {
   }
 
   private async createDeal(workspaceId: string, args: Record<string, any>) {
-    if (!args.title || !args.stage_id) throw new Error('create_deal requires "title" and "stage_id"');
+    if (!args.title || !args.stage_id) throw new BadRequestException('create_deal requires "title" and "stage_id"');
     const deal = await this.prisma.deal.create({
       data: {
         workspace_id: workspaceId,
@@ -308,7 +308,7 @@ export class AgentToolsService {
   }
 
   private async moveDeal(workspaceId: string, args: Record<string, any>) {
-    if (!args.id || !args.stage_id) throw new Error('move_deal requires "id" and "stage_id"');
+    if (!args.id || !args.stage_id) throw new BadRequestException('move_deal requires "id" and "stage_id"');
     const deal = await this.prisma.deal.update({
       where: { id: args.id },
       data: { stage_id: args.stage_id },

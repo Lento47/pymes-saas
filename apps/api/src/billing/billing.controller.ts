@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { PaddleService } from './paddle.service';
 import { BillingInvoiceService } from './billing-invoice.service';
 import { ChangePlanDto } from './dto/change-plan.dto';
+import { CreateCheckoutDto } from './dto/checkout.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -40,12 +41,8 @@ export class BillingController {
   @UseGuards(JwtAuthGuard)
   async createCheckout(
     @CurrentUser() user: AuthUser,
-    @Body() dto: { priceId: string },
+    @Body() dto: CreateCheckoutDto,
   ) {
-    if (!dto.priceId) {
-      throw new BadRequestException('priceId is required');
-    }
-
     try {
       const customerId = await this.paddleService.createOrGetCustomer(
         user.workspace_id,

@@ -847,7 +847,7 @@ export class PaddleService {
         subject: `Factura ${inv.number} — ${inv.plan_name} (${monthName})`,
         html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111827">
           <h2 style="color:#1a56db;margin:0 0 16px">PymeHub</h2>
-          <p>Hola${recipientName ? ` ${recipientName}` : ''},</p>
+          <p>Hola${recipientName ? ` ${recipientName.replace(/[<>&"']/g, (c: string) => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]!))}` : ''},</p>
           <p>Tu pago de <strong>${formattedTotal}</strong> por el plan <strong>${inv.plan_name}</strong> fue procesado correctamente.</p>
           <p style="background:#f8fafc;padding:12px 16px;border-radius:6px;margin:16px 0">
             <span style="color:#6b7280;font-size:12px;display:block">Numero de factura</span>
