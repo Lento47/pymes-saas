@@ -688,9 +688,25 @@ export class PaddleService {
         data: { status: 'CANCELLED' },
       });
 
+      const ws = await this.prisma.workspace.findUnique({
+        where: { id: sub.workspace_id },
+        select: { settings_json: true },
+      });
+      const settings = (ws?.settings_json as Record<string, any>) ?? {};
+      let modified = false;
+      for (const key of Object.keys(settings)) {
+        if (key.endsWith('_active') || key.endsWith('_activated_at')) {
+          delete settings[key];
+          modified = true;
+        }
+      }
+      const updateData: any = { plan: 'FREE' };
+      if (modified) {
+        updateData.settings_json = settings as any;
+      }
       await this.prisma.workspace.update({
         where: { id: sub.workspace_id },
-        data: { plan: 'FREE' },
+        data: updateData,
       });
     }
   }
