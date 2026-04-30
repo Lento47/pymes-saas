@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { createWorker } from 'tesseract.js';
+import sharp from 'sharp';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AiService } from '../../ai/ai.service';
 import { StorageService } from '../../common/storage/storage.service';
@@ -146,33 +147,58 @@ export class DocumentProcessor extends WorkerHost implements OnModuleDestroy {
   }
 
   private async ocrPdf(buffer: Buffer): Promise<string> {
-    // PDF processing: Tesseract cannot read raw PDF. Attempt to extract
-    // embedded text via basic content stream parsing for text-based PDFs.
-    // For scanned/image-based PDFs, use pdf-to-image conversion.
     const header = buffer.slice(0, 5).toString('utf-8');
     if (!header.startsWith('%PDF')) {
       this.logger.warn('Not a valid PDF file');
       return '';
     }
 
+    // Attempt 1: Extract embedded text via PDF content stream parsing
+    const embeddedText = this.extractPdfEmbeddedText(buffer);
+    if (embeddedText.length > 100) {
+      this.logger.log(`PDF has embedded text (${embeddedText.length} chars)`);
+      return embeddedText;
+    }
+
+    // Attempt 2: Render first page as image and OCR it (scanned PDFs)
+    try {
+      this.logger.log('PDF has no embedded text — rendering first page as image for OCR');
+      const pngBuffer = await sharp(buffer, { pages: 1, density: 200 })
+        .png()
+        .toBuffer();
+      const worker = await this.getTesseractWorker();
+      const { data } = await worker.recognize(pngBuffer);
+      const text = data.text?.trim() || '';
+      this.logger.log(`PDF page rendered and OCR'd — ${text.length} chars`);
+      return text.slice(0, 5000);
+    } catch (err) {
+      this.logger.warn(`PDF image rendering failed: ${(err as Error).message}`);
+      return '';
+    }
+  }
+
+  private extractPdfEmbeddedText(buffer: Buffer): string {
     const text = buffer.toString('utf-8');
-    // Try extracting text from PDF content streams (works for simple text PDFs)
     const btBlocks: string[] = [];
     const btRegex = /BT\s*([\s\S]*?)\s*ET/g;
     let match;
     while ((match = btRegex.exec(text)) !== null) {
       const content = match[1];
+      // Extract text from Tj, TJ, and ' operators
       const tjMatches = content.match(/\(([^)]*)\)\s*Tj/g);
       if (tjMatches) {
         btBlocks.push(tjMatches.map(m => m.replace(/[()]|Tj/g, '').trim()).join(' '));
       }
+      // Also try TJ arrays
+      const tjArrayMatch = content.match(/\[([^\]]*)\]\s*TJ/);
+      if (tjArrayMatch) {
+        const arrContent = tjArrayMatch[1];
+        const strings = arrContent.match(/\(([^)]*)\)/g);
+        if (strings) {
+          btBlocks.push(strings.map(s => s.replace(/[()]/g, '').trim()).join(''));
+        }
+      }
     }
-    if (btBlocks.length > 0) {
-      return btBlocks.join('\n').slice(0, 5000);
-    }
-
-    // For image-based/scanned PDFs, return a clear signal
-    this.logger.log(`PDF has no embedded text — likely a scanned document. OCR not available for PDF images yet.`);
-    return '';
+    return btBlocks.join('\n').trim();
   }
 }
