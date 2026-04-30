@@ -17,7 +17,7 @@ import { HelpButton } from "@/components/shared/help-button";
 import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import {
   Crown, ArrowUpRight, ArrowDownRight, Check, Loader2, Info, ExternalLink,
-  Users, Zap, Receipt, FolderOpen, Database, TrendingUp,
+  Users, Zap, Receipt, FolderOpen, Database, TrendingUp, Search,
 } from "lucide-react";
 
 const PLAN_ORDER = ["FREE", "STARTER", "GROWTH", "BUSINESS", "BUSINESS_PLUS"] as const;
@@ -700,14 +700,18 @@ export default function BillingPage() {
 }
 
 function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
   const { data, isLoading } = useQuery({
-    queryKey: ["/api/billing/invoices"],
-    queryFn: api.getBillingInvoices,
+    queryKey: ["/api/billing/invoices", { page, search }],
+    queryFn: () => api.getBillingInvoices({ page, limit: 10, search: search || undefined }),
     retry: false,
     staleTime: 30000,
   });
 
-  const invoices = Array.isArray(data) ? data : data?.data || [];
+  const invoices = Array.isArray(data?.data) ? data.data : [];
+  const meta = data?.meta;
 
   if (isLoading) {
     return (
@@ -717,7 +721,7 @@ function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }
     );
   }
 
-  if (invoices.length === 0) {
+  if (invoices.length === 0 && !search) {
     return (
       <div className="rounded-xl border border-border/60 bg-card/40 p-6 text-center">
         <Receipt className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
@@ -739,31 +743,85 @@ function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }
 
   return (
     <div className="rounded-xl border border-border/60 bg-card/40 overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border/60">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Buscar por número, cliente, plan o estado..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="w-full h-8 pl-8 pr-3 rounded-md border border-border/60 bg-background/60 text-xs text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition-colors"
+          />
+        </div>
+      </div>
       <div className="divide-y divide-border/60">
-        {invoices.map((inv: any) => (
-          <div key={inv.id} className="flex items-center justify-between px-4 py-3 hover:bg-foreground/[0.015] transition-colors">
-            <div>
-              <div className="text-xs font-medium text-foreground">
-                {inv.number || inv.receipt_number || `Factura #${inv.id?.slice(0, 8)}`}
+        {invoices.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p className="text-xs text-muted-foreground">
+              No se encontraron facturas con "{search}".
+            </p>
+          </div>
+        ) : (
+          invoices.map((inv: any) => (
+            <div key={inv.id} className="flex items-center justify-between px-4 py-3 hover:bg-foreground/[0.015] transition-colors">
+              <div>
+                <div className="text-xs font-medium text-foreground">
+                  {inv.number || inv.receipt_number || `Factura #${inv.id?.slice(0, 8)}`}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {inv.created_at ? new Date(inv.created_at).toLocaleDateString("es-CR") : ""}
+                  {inv.status ? ` · ${inv.status}` : ""}
+                </div>
               </div>
-              <div className="text-[10px] text-muted-foreground">
-                {inv.created_at ? new Date(inv.created_at).toLocaleDateString("es-CR") : ""}
-                {inv.status ? ` · ${inv.status}` : ""}
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-foreground">
-                {inv.amount ? `₡${Number(inv.amount).toLocaleString("es-CR")}` : ""}
-              </span>
-              {inv.pdf_url && (
-                <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => window.open(inv.pdf_url, "_blank")}>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-medium text-foreground">
+                  {inv.amount ? `₡${Number(inv.amount).toLocaleString("es-CR")}` : ""}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[10px]"
+                  onClick={() => {
+                    const apiBase = import.meta.env.VITE_API_URL || '';
+                    window.open(`${apiBase}/api/billing/invoices/${inv.id}/pdf`, "_blank");
+                  }}
+                >
                   PDF
                 </Button>
-              )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
+
+      {meta && meta.pages > 1 && (
+        <div className="px-4 py-2.5 border-t border-border/60 flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground">
+            {meta.total} factura{meta.total !== 1 ? "s" : ""} · Página {meta.page} de {meta.pages}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[10px]"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Anterior
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[10px]"
+              disabled={page >= meta.pages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Siguiente
+            </Button>
+          </div>
+        </div>
+      )}
 
       <HelpButton page="Facturación" />
     </div>

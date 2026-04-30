@@ -307,7 +307,14 @@ export const api = {
   createCheckout: (priceId: string) => request<any>("POST", "/api/billing/checkout", { priceId }),
   getBillingPrices: () => request<any>("GET", "/api/billing/prices"),
   getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
-  getBillingInvoices: () => request<any>("GET", "/api/billing/invoices"),
+  getBillingInvoices: (params?: { page?: number; limit?: number; search?: string }) => {
+    const qs = params ? "?" + new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(params).filter(([, v]) => v !== undefined && v !== '')
+      ) as Record<string, string>
+    ).toString() : "";
+    return request<any>("GET", `/api/billing/invoices${qs}`);
+  },
   // SUBSCRIPCION ACTUAL DEL WORKSPACE — USAR ESTE HELPER, NO `fetch()` CRUDO.
   getSubscription: () => request<any>("GET", "/api/workspaces/current/subscription"),
   // CAMBIO DE PLAN CON PRORRATEO PARA SUBSCRIPCION YA EXISTENTE.
