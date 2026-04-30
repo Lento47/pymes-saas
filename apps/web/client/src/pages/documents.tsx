@@ -5,6 +5,8 @@ import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
+import { DiagnosticButton } from "@/components/shared/diagnostic-button";
+import { HelpButton } from "@/components/shared/help-button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
@@ -163,6 +165,10 @@ export default function DocumentsPage() {
           data-testid="input-file-upload"
         />
       </PageHeader>
+
+      <div className="px-6 pb-2">
+        <DiagnosticButton module="documents" />
+      </div>
 
       <div className="px-4 md:px-6 py-4 space-y-4">
       {/* Drag & drop zone — only shown when no docs or uploading */}
@@ -331,6 +337,7 @@ export default function DocumentsPage() {
         </div>
       ) : null}
       </div>{/* end px-4 content wrapper */}
+      <HelpButton page="Documentos" />
     </div>
   );
 }

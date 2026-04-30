@@ -5,6 +5,8 @@ import { openExternal } from "@/lib/platform";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/shared/page-header";
+import { DiagnosticButton } from "@/components/shared/diagnostic-button";
+import { HelpButton } from "@/components/shared/help-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -2476,6 +2478,9 @@ export default function Settings() {
           </div>
         </div>
       </ModuleHero>
+      <div className="px-6 pb-2">
+        <DiagnosticButton module="settings" />
+      </div>
       <Tabs defaultValue="workspace">
         <TabsList className="bg-card border border-border overflow-x-auto flex-nowrap scrollbar-none">
           <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">
@@ -2542,6 +2547,7 @@ export default function Settings() {
           </CardContent>
         </Card>
       </Tabs>
+      <HelpButton page="Configuración" />
     </div>
   );
 }

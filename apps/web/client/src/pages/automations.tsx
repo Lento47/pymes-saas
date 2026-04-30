@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Trash2, Zap, ArrowRight, CheckCircle2, GitBranch, Search, X, LayoutTemplate } from "lucide-react";
 import { AutomationSheet } from "@/components/automations/AutomationSheet";
 import TemplateBrowser from "@/components/templates/template-browser";
+import { DiagnosticButton } from "@/components/shared/diagnostic-button";
+import { HelpButton } from "@/components/shared/help-button";
 
 function triggerLabel(t: string) { return t.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()); }
 
@@ -96,6 +98,10 @@ export default function AutomationsPage() {
           </Button>
         </div>
       </header>
+
+      <div className="px-6 pb-2">
+        <DiagnosticButton module="automations" />
+      </div>
 
       {/* Search bar */}
       <div className="shrink-0 px-6 py-2 border-b border-border/60">
@@ -221,6 +227,7 @@ export default function AutomationsPage() {
         </Dialog>
       )}
       <TemplateBrowser open={templateOpen} onClose={() => setTemplateOpen(false)} type="automation" />
+      <HelpButton page="Automatizaciones" />
     </div>
   );
 }

@@ -10,6 +10,8 @@ import { ConversationThreadPanel } from "./components/ConversationThreadPanel";
 import { CustomerContextPanel } from "./components/CustomerContextPanel";
 import { buildConversationQueryParams, normalizeConversationResponse } from "./utils";
 import type { ChannelTab, ConversationStatusFilter } from "./types";
+import { DiagnosticButton } from "@/components/shared/diagnostic-button";
+import { HelpButton } from "@/components/shared/help-button";
 
 type MobileView = "list" | "thread" | "context";
 
@@ -52,6 +54,10 @@ export default function InboxPage() {
     <div className="flex flex-col h-full bg-background">
       {/* Header: title + subtitle */}
       <InboxHeader />
+
+      <div className="px-6 pb-2">
+        <DiagnosticButton module="inbox" />
+      </div>
 
       {/* Toolbar: search + filters + new button */}
       <InboxToolbar
@@ -103,6 +109,7 @@ export default function InboxPage() {
           <ConversationThreadPanel conversationId={selectedConversationId} conversation={selectedConversation} />
         )}
       </div>
+      <HelpButton page="Bandeja" />
     </div>
   );
 }

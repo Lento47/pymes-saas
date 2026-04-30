@@ -6,6 +6,8 @@ import { useRequireAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
+import { DiagnosticButton } from "@/components/shared/diagnostic-button";
+import { HelpButton } from "@/components/shared/help-button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
@@ -122,6 +124,10 @@ export default function ContactsPage() {
           <Upload className="w-3.5 h-3.5 mr-1.5" /> Import CSV
         </Button>
       </PageHeader>
+
+      <div className="px-6 pb-2">
+        <DiagnosticButton module="contacts" />
+      </div>
 
       <div className="px-4 md:px-6 py-4 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
@@ -314,6 +320,7 @@ export default function ContactsPage() {
         </DialogContent>
       </Dialog>
       <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} entityType="contacts" />
+      <HelpButton page="Contactos" />
     </div>
   );
 }
