@@ -4,7 +4,7 @@ import { useAuth, useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { usePaddle } from "@/hooks/use-paddle";
-import { api } from "@/lib/api";
+import { api, getAuthToken } from "@/lib/api";
 import { ADD_ONS } from "@/data/pricing.data";
 import { PageHeader } from "@/components/shared/page-header";
 import { PageLoader } from "@/components/shared/loading-spinner";
@@ -782,10 +782,16 @@ function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }
                   size="sm"
                   variant="outline"
                   className="h-7 text-[10px]"
-                  onClick={() => {
-                    const apiBase = import.meta.env.VITE_API_URL || '';
-                    window.open(`${apiBase}/api/billing/invoices/${inv.id}/pdf`, "_blank");
-                  }}
+                onClick={async () => {
+                  const token = getAuthToken();
+                  const apiBase = import.meta.env.VITE_API_URL || '';
+                  const res = await fetch(`${apiBase}/api/billing/invoices/${inv.id}/pdf`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  window.open(url, "_blank");
+                }}
                 >
                   PDF
                 </Button>
