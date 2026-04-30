@@ -13,10 +13,11 @@ import { SearchModule } from '../search/search.module';
 import { DocsModule } from '../docs/docs.module';
 import { SupportRouterService } from './support-router.service';
 import { DiagnosticService } from './diagnostic.service';
+import { EngineeringFixService } from './engineering-fix.service';
 
 @Module({
   imports: [PrismaModule, CryptoModule, InsightsModule, SearchModule, DocsModule],
-  providers: [AiService, AgentService, AgentToolsService, SupportRouterService, DiagnosticService],
+  providers: [AiService, AgentService, AgentToolsService, SupportRouterService, DiagnosticService, EngineeringFixService],
   controllers: [AgentController, AgentToolsController, AiAssistantController, PublicAgentController],
   exports: [AiService, AgentService, AgentToolsService],
 })

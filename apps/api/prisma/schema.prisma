@@ -1635,6 +1635,7 @@ model SupportDiagnosticCase {
   updated_at DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  fixCases   EngineeringFixCase[]
 
   @@index([workspace_id])
   @@index([error_code])
@@ -1667,4 +1668,39 @@ model SupportKnownIssue {
   @@index([severity])
   @@index([fix_status])
   @@map("support_known_issues")
+}
+
+// ============================================================
+// ENGINEERING FIX AGENT — Automated bug reproduction & PRs
+// ============================================================
+
+enum EngineeringFixStatus {
+  PENDING
+  INVESTIGATING
+  FIX_READY
+  PR_OPENED
+  MERGED
+  FAILED
+}
+
+model EngineeringFixCase {
+  id                  String               @id @default(cuid())
+  diagnostic_case_id  String?
+  branch_name         String?
+  status              EngineeringFixStatus @default(PENDING)
+  pr_url              String?
+  pr_number           Int?
+  files_changed_json  Json?                @db.JsonB
+  test_added_json     Json?                @db.JsonB
+  fix_summary         String?              @db.Text
+  rollback_notes      String?              @db.Text
+  error_log           String?              @db.Text
+  created_at          DateTime             @default(now())
+  updated_at          DateTime             @updatedAt
+
+  diagnosticCase SupportDiagnosticCase? @relation(fields: [diagnostic_case_id], references: [id])
+
+  @@index([status])
+  @@index([diagnostic_case_id])
+  @@map("engineering_fix_cases")
 }

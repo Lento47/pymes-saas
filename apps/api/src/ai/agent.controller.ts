@@ -1,10 +1,14 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
+  Patch,
+  Param,
   Req,
   Res,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -19,6 +23,7 @@ import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { SupportRouterService } from './support-router.service';
 import { DiagnosticService } from './diagnostic.service';
+import { EngineeringFixService } from './engineering-fix.service';
 
 @Controller('agent')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,7 +35,33 @@ export class AgentController {
     private readonly prisma: PrismaService,
     private readonly router: SupportRouterService,
     private readonly diagnostic: DiagnosticService,
+    private readonly fixService: EngineeringFixService,
   ) {} 
+
+  @Get('diagnostic-cases/:id')
+  async getDiagnosticCase(@Param('id') id: string) {
+    const case_ = await this.fixService.getDiagnosticCaseForFix(id);
+    if (!case_) throw new NotFoundException('Diagnostic case not found');
+    return case_;
+  }
+
+  @Patch('diagnostic-cases/:id')
+  async updateDiagnosticCase(
+    @Param('id') id: string,
+    @Body() body: { status?: string; pr_url?: string; pr_number?: number; files_changed?: any; test_added?: any; fix_summary?: string; rollback_notes?: string; error_log?: string },
+  ) {
+    return this.fixService.updateFixStatus(id, body);
+  }
+
+  @Post('fix-cases')
+  @Roles('ADMIN', 'AGENT')
+  async createFixCase(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Body('diagnostic_case_id') diagnosticCaseId: string,
+  ) {
+    await this.planLimits.enforceAiAccess(workspaceId);
+    return this.fixService.createFixCase(diagnosticCaseId);
+  }
 
   @Post('diagnose')
   @Roles('ADMIN', 'AGENT', 'VIEWER')
