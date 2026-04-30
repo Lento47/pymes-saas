@@ -422,8 +422,9 @@ export default function PricingPage() {
               backgroundImage: 'url(https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/readytolunch.png)',
               backgroundSize: 'cover',
               backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
             }}>
-            <div className="absolute inset-0 bg-[#05091d]/80 backdrop-blur-[2px]" />
+            <div className="absolute inset-0 bg-[#05091d]/70" />
             <div className="relative z-10">
             <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-white md:text-4xl">
               {copy.cta?.title || '¿Listo para empezar?'}
