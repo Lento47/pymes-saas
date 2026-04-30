@@ -115,4 +115,4 @@ jobs:
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service pymeshub-api --environment production --detach
+        run: railway up --service pymes-saasAPI --environment production --detach
