@@ -383,7 +383,7 @@ export default function Landing() {
   const handleMenuNavigate = (href: string) => {
     setActiveMenu(null);
     if (href.startsWith("#")) {
-      window.location.href = `/product#${href.slice(1)}`;
+      window.location.href = `/${href.slice(1)}`;
     }
   };
 

@@ -34,6 +34,10 @@ import HelpDocumentPage from "@/pages/help-document";
 import DocumentationCenterPage from "@/pages/documentation";
 import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
+import PlatformPage from "@/pages/platform";
+import WorkflowsPage from "@/pages/workflows";
+import InsightsPage from "@/pages/insights-page";
+import SecurityPage from "@/pages/security-page";
 import NotFound from "@/pages/not-found";
 import Chat from "@/pages/chat";
 import Agent from "@/pages/agent";
@@ -82,6 +86,18 @@ function AppRouter() {
       </Route>
       <Route path="/legal/:slug">
         {(params) => <LegalDocumentPage slug={params.slug} />}
+      </Route>
+      <Route path="/platform">
+        {() => <PlatformPage />}
+      </Route>
+      <Route path="/workflows">
+        {() => <WorkflowsPage />}
+      </Route>
+      <Route path="/insights">
+        {() => <InsightsPage />}
+      </Route>
+      <Route path="/security">
+        {() => <SecurityPage />}
       </Route>
       <Route path="/">
         {() => <RootRoute />}

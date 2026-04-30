@@ -1,7 +1,8 @@
 import { Link } from "wouter";
-import { ArrowLeft, Workflow, Sparkles, Zap, FileText, MessageCircle, Bot } from "lucide-react";
+import { ArrowLeft, Workflow, Sparkles, Zap, FileText, MessageCircle, Bot, ExternalLink } from "lucide-react";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
+import { Footer } from "@/components/marketing/footer";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 export default function WorkflowsPage() {
@@ -41,7 +42,33 @@ export default function WorkflowsPage() {
             </div>
           </div>
         </section>
+
+        <section className="px-4 pb-16 md:px-8 md:pb-24">
+          <div className="mx-auto max-w-7xl">
+            <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-white text-center">Recursos operativos</h2>
+            <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {[
+                { href: "/documentation/support-policy", title: "Política de Soporte", desc: "Canales, prioridades, escalamiento y cierre de solicitudes." },
+                { href: "/documentation/workspace-launch-guide", title: "Guía de Lanzamiento", desc: "Roles, canales, departamentos y checklist pre-go-live." },
+                { href: "/documentation/sla", title: "SLA Base", desc: "Disponibilidad objetivo, mantenimientos e incidentes críticos." },
+                { href: "/documentation/platform-overview", title: "Visión General", desc: "Cómo se conectan inbox, billing, pipeline y docs." },
+              ].map(({ href, title, desc }) => (
+                <Link key={href} href={href}>
+                  <a className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-white group-hover:text-white/90">
+                      {title}
+                      <ExternalLink className="h-3.5 w-3.5 text-white/30" />
+                    </div>
+                    <p className="mt-1.5 text-xs leading-5 text-white/40">{desc}</p>
+                  </a>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
+
+      <Footer />
     </div>
   );
 }
