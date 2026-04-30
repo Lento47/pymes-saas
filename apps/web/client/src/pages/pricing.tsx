@@ -145,7 +145,7 @@ export default function PricingPage() {
                     return;
                   }
                   if (isAuthenticated) {
-                    navigate('/settings/billing');
+                    navigate(`/settings/billing?addon=${addOn.key}`);
                     return;
                   }
                   setAddOnLoading(addOn.key);

@@ -5,7 +5,6 @@ import { useI18n } from "@/components/providers/i18n-provider";
 import { useTheme } from "@/components/providers/theme-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import { Footer } from "@/components/marketing/footer";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
@@ -432,8 +431,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>
-
-        <Footer />
       </main>
     </div>
   );
