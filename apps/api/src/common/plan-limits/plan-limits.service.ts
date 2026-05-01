@@ -44,6 +44,7 @@ interface PlanLimits {
   invoices_per_month: number | 'custom';
   storage_bytes: number | 'custom';
   locations: number | 'custom';
+  invite_codes: number | 'custom';
 }
 
 export type { PlanLimits };
@@ -57,6 +58,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invoices_per_month: 50,
     storage_bytes: 100 * 1024 * 1024, // 100 MB
     locations: 1,
+    invite_codes: 3,
   },
   STARTER: {
     users: 1,
@@ -66,6 +68,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invoices_per_month: 100,
     storage_bytes: 5 * 1024 * 1024 * 1024, // 5 GB
     locations: 1,
+    invite_codes: 10,
   },
   GROWTH: {
     users: 5,
@@ -75,6 +78,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invoices_per_month: 500,
     storage_bytes: 10 * 1024 * 1024 * 1024, // 10 GB
     locations: 1,
+    invite_codes: 50,
   },
   BUSINESS: {
     users: 15,
@@ -84,6 +88,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invoices_per_month: 2_000,
     storage_bytes: 50 * 1024 * 1024 * 1024, // 50 GB
     locations: 3,
+    invite_codes: 200,
   },
   ENTERPRISE: {
     // Legacy mapping → Business limits (backward compatibility)
@@ -94,6 +99,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invoices_per_month: 2_000,
     storage_bytes: 50 * 1024 * 1024 * 1024,
     locations: 3,
+    invite_codes: 200,
   },
   BUSINESS_PLUS: {
     users: 'custom',
@@ -103,6 +109,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invoices_per_month: 'custom',
     storage_bytes: 'custom',
     locations: 'custom',
+    invite_codes: 'custom',
   },
 };
 
@@ -374,6 +381,20 @@ export class PlanLimitsService {
     const current = await this.prisma.document.count({ where: { workspace_id: workspaceId } });
     if (current >= (limit as number)) {
       throw new QuotaExceededError('documentos', current, limit, plan, this.getUpgradePlan(plan));
+    }
+  }
+
+  async checkInviteCodeLimit(workspaceId: string): Promise<void> {
+    const plan = await this.getWorkspacePlan(workspaceId);
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits.invite_codes;
+    if (limit === 'custom' || limit === Infinity) return;
+
+    const current = await this.prisma.invitationCode.count({
+      where: { workspace_id: workspaceId, is_active: true, expires_at: { gt: new Date() } },
+    });
+    if (current >= (limit as number)) {
+      throw new QuotaExceededError('códigos de invitación activos', current, limit, plan, this.getUpgradePlan(plan));
     }
   }
 

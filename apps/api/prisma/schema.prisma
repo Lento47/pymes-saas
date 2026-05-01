@@ -248,6 +248,7 @@ model Workspace {
   deals                Deal[]
   subscriptions        WorkspaceSubscription[]
   billing_events       BillingEvent[]
+  invitation_codes     InvitationCode[]
   stripe_events        StripeEvent[]
   routing_rules        RoutingRule[]
   agent_sessions       AgentSession[]
@@ -1138,6 +1139,29 @@ model BillingInvoice {
   @@index([status])
   @@index([issued_at(sort: Desc)])
   @@map("billing_invoices")
+}
+
+// ============================================================
+// INVITATION CODES
+// ============================================================
+
+model InvitationCode {
+  id           String    @id @default(cuid())
+  workspace_id String
+  code         String    @unique
+  role         String    @default("AGENT")
+  max_uses     Int       @default(5)
+  used_count   Int       @default(0)
+  is_active    Boolean   @default(true)
+  expires_at   DateTime
+  created_by   String
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@map("invitation_codes")
 }
 
 // ============================================================

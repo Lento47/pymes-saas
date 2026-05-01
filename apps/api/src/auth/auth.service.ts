@@ -334,6 +334,74 @@ export class AuthService {
     };
   }
 
+  async getInviteCodePreview(code: string) {
+    const record = await this.prisma.invitationCode.findUnique({
+      where: { code: code.toUpperCase() },
+      include: { workspace: { select: { id: true, name: true, slug: true } } },
+    });
+    if (!record) throw new BadRequestException('Código de invitación no encontrado.');
+    if (!record.is_active || new Date() > record.expires_at) {
+      throw new BadRequestException('Este código ya expiró.');
+    }
+    if (record.used_count >= record.max_uses) {
+      throw new BadRequestException('Este código ya alcanzó el límite de usos.');
+    }
+    return {
+      code_id: record.id,
+      workspace_name: record.workspace.name,
+      workspace_slug: record.workspace.slug,
+      role: record.role,
+      requires_account_setup: false,
+    };
+  }
+
+  async redeemInviteCode(dto: { code: string; name?: string; password?: string }, userId: string) {
+    const record = await this.prisma.invitationCode.findUnique({
+      where: { code: dto.code.toUpperCase() },
+      include: { workspace: { select: { id: true, name: true, slug: true } } },
+    });
+    if (!record) throw new BadRequestException('Código de invitación no encontrado.');
+    if (!record.is_active || new Date() > record.expires_at) {
+      throw new BadRequestException('Este código ya expiró.');
+    }
+    if (record.used_count >= record.max_uses) {
+      throw new BadRequestException('Este código ya alcanzó el límite de usos.');
+    }
+
+    const workspace = record.workspace;
+
+    const existingMembership = await this.prisma.workspaceUser.findUnique({
+      where: {
+        workspace_id_user_id: {
+          workspace_id: workspace.id,
+          user_id: userId,
+        },
+      },
+    });
+    if (existingMembership) throw new BadRequestException('Ya eres miembro de este workspace.');
+
+    await this.prisma.workspaceUser.create({
+      data: {
+        workspace_id: workspace.id,
+        user_id: userId,
+        role: record.role,
+        is_owner: false,
+      },
+    });
+
+    await this.prisma.invitationCode.update({
+      where: { id: record.id },
+      data: { used_count: { increment: 1 } },
+    });
+
+    return {
+      workspace_id: workspace.id,
+      workspace_name: workspace.name,
+      workspace_slug: workspace.slug,
+      role: record.role,
+    };
+  }
+
   async acceptInvite(dto: AcceptInviteDto) {
     const payload = this.verifyInviteToken(dto.token);
 

@@ -70,6 +70,24 @@ export class AuthController {
     return this.authService.acceptInvite(dto);
   }
 
+  /** POST /auth/invite-code-preview */
+  @Post('invite-code-preview')
+  @HttpCode(HttpStatus.OK)
+  inviteCodePreview(@Body() dto: { code: string }) {
+    return this.authService.getInviteCodePreview(dto.code);
+  }
+
+  /** POST /auth/redeem-invite-code */
+  @Post('redeem-invite-code')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  redeemInviteCode(
+    @CurrentUser('id') userId: string,
+    @Body() dto: { code: string; name?: string; password?: string },
+  ) {
+    return this.authService.redeemInviteCode(dto, userId);
+  }
+
   /** GET /auth/me */
   @Get('me')
   @UseGuards(JwtAuthGuard)

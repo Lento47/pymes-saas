@@ -29,6 +29,7 @@ import { PlanLimitsModule } from './common/plan-limits/plan-limits.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { InsightsModule } from './insights/insights.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { InviteCodesModule } from './invite-codes/invite-codes.module';
 import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
 import { HaciendaModule } from './hacienda/hacienda.module';
@@ -91,6 +92,7 @@ import { ProductMetricsModule } from './common/metrics/product-metrics.module';
     DepartmentsModule,
     InsightsModule,
     InvoicesModule,
+    InviteCodesModule,
     HaciendaModule,
     PipelineModule,
     AiModule,
