@@ -123,6 +123,10 @@ export class ChannelsService {
       ? this.crypto.encrypt(dto.api_key)
       : existingConfig.api_key_encrypted;
 
+    const smtp_pass_encrypted = dto.smtp_password
+      ? this.crypto.encrypt(dto.smtp_password)
+      : existingConfig.smtp_pass_encrypted;
+
     const updated = await this.prisma.channel.update({
       where: { id },
       data: {
@@ -134,6 +138,23 @@ export class ChannelsService {
           ...(dto.inbound_email?.trim()
             ? { inbound_email: dto.inbound_email.trim().toLowerCase() }
             : {}),
+          ...(dto.smtp_host?.trim()
+            ? {
+                smtp_host: dto.smtp_host.trim(),
+                smtp_port: dto.smtp_port ?? 587,
+                smtp_user: dto.smtp_user?.trim(),
+                smtp_pass_encrypted,
+                smtp_tls: dto.smtp_tls ?? true,
+              }
+            : existingConfig.smtp_host
+              ? {
+                  smtp_host: existingConfig.smtp_host,
+                  smtp_port: existingConfig.smtp_port ?? 587,
+                  smtp_user: existingConfig.smtp_user,
+                  smtp_pass_encrypted,
+                  smtp_tls: existingConfig.smtp_tls ?? true,
+                }
+              : {}),
         }),
       },
     });

@@ -245,27 +245,30 @@ export class PaddleService {
     // EL TRIAL, SIN CARGO. ACTUALIZAMOS LOCAL DE INMEDIATO PARA QUE LA UI
     // REFLEJE EL PLAN CORRECTO. PADDLE COBRARA AL FINAL DEL TRIAL.
     const status = this.mapPaddleStatus(updated.status);
-
-    // ATOMIC — SI UNA UPDATE FALLA, NINGUNA SE APLICA Y EL WEBHOOK
-    // POSTERIOR (subscription.updated) RECONCILIA EL ESTADO.
-    await this.prisma.$transaction([
-      this.prisma.workspaceSubscription.update({
-        where: { id: sub.id },
-        data: { plan: newPlan, status: status as any },
-      }),
-      this.prisma.workspace.update({
-        where: { id: workspaceId },
-        data: { plan: newPlan },
-      }),
-    ]);
-    this.logger.log(`Plan changed immediately: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}${isDowngrade ? ' (downgrade)' : ' (upgrade)'}`);
+    const shouldUpdateNow = !isDowngrade || isTrialing;
+    if (shouldUpdateNow) {
+      await this.prisma.$transaction([
+        this.prisma.workspaceSubscription.update({
+          where: { id: sub.id },
+          data: { plan: newPlan, status: status as any },
+        }),
+        this.prisma.workspace.update({
+          where: { id: workspaceId },
+          data: { plan: newPlan },
+        }),
+      ]);
+      this.logger.log(`Plan changed immediately: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
+    } else {
+      this.logger.log(`Downgrade scheduled for end of period: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
+    }
 
     return {
       updated: true,
-      plan: newPlan,
+      plan: shouldUpdateNow ? newPlan : sub.plan,
+      scheduled_plan: !shouldUpdateNow ? newPlan : null,
       status,
       prorated: !isDowngrade && !isTrialing,
-      effective: 'immediate',
+      effective: shouldUpdateNow ? 'immediate' : 'next_billing_period',
     };
   }
 
