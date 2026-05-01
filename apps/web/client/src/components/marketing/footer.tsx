@@ -135,7 +135,7 @@ export function Footer({ className }: { className?: string }) {
         </div>
 
         <p className="mt-6 text-center text-xs text-white/20">
-          &copy; 2026 PymeHub. {f.rights}.
+          &copy; 2026 PymesHub S.A., Lim&oacute;n, Costa Rica. {f.rights}.
         </p>
       </div>
     </footer>

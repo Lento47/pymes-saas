@@ -344,7 +344,7 @@ export default function RegisterPage() {
               </p>
 
               <p className="text-xs uppercase tracking-[0.22em] text-white/34">
-                © {new Date().getFullYear()} PymesHub
+                &copy; {new Date().getFullYear()} PymesHub S.A., Lim&oacute;n, Costa Rica
               </p>
             </div>
           </div>

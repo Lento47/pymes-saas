@@ -330,7 +330,7 @@ export default function LoginPage() {
               </p>
 
               <p className="text-xs uppercase tracking-[0.22em] text-white/60">
-                © {new Date().getFullYear()} PymesHub
+                &copy; {new Date().getFullYear()} PymesHub S.A., Lim&oacute;n, Costa Rica
               </p>
             </div>
           </div>
