@@ -25,7 +25,7 @@ export function MobileBottomNav({ onMenuClick }: { onMenuClick: () => void }) {
             <Link key={path} href={path}>
               <a
                 className={cn(
-                  "flex min-h-11 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-1.5 transition-all duration-200",
+                  "flex min-h-11 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-md px-3 py-1.5 transition-all duration-200",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                   active
                     ? "bg-primary/10 text-primary ring-1 ring-primary/20"
@@ -43,7 +43,7 @@ export function MobileBottomNav({ onMenuClick }: { onMenuClick: () => void }) {
           type="button"
           onClick={onMenuClick}
           className={cn(
-            "flex min-h-11 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-1.5 transition-all duration-200",
+            "flex min-h-11 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-md px-3 py-1.5 transition-all duration-200",
             "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           )}

@@ -94,8 +94,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const { messages } = useI18n();
   const { theme, toggle } = useTheme();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
+  );
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 1024,
+  );
   const wsMenuRef = useRef<HTMLDivElement>(null);
   const copy = messages.sidebar;
 
@@ -127,7 +131,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       setIsMobile(mobile);
       if (mobile) setSidebarOpen(false);
     };
-    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);

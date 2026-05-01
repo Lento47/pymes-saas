@@ -239,7 +239,7 @@ export function ModuleHero({ module, children, className = "" }: ModuleHeroProps
 
   return (
     <div
-      className={`relative w-full rounded-[20px] overflow-hidden ${className}`}
+      className={`relative w-full rounded-md overflow-hidden ${className}`}
       style={{ background: theme.gradient, minHeight: 140 }}
     >
       {/* Layer 1: wave lines */}

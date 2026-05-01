@@ -1,0 +1,278 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		000000000000000000000101 /* PymesHubApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000201 /* PymesHubApp.swift */; };
+		000000000000000000000102 /* AppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000202 /* AppView.swift */; };
+		000000000000000000000103 /* AppTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000203 /* AppTab.swift */; };
+		000000000000000000000104 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000204 /* AppRouter.swift */; };
+		000000000000000000000105 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000205 /* SessionStore.swift */; };
+		000000000000000000000106 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000206 /* AppEnvironment.swift */; };
+		000000000000000000000107 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000207 /* APIClient.swift */; };
+		000000000000000000000108 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000208 /* APIError.swift */; };
+		000000000000000000000109 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000209 /* KeychainStore.swift */; };
+		000000000000000000000110 /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000210 /* AuthModels.swift */; };
+		000000000000000000000111 /* DomainModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000211 /* DomainModels.swift */; };
+		000000000000000000000112 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000212 /* LoginView.swift */; };
+		000000000000000000000113 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000213 /* InboxView.swift */; };
+		000000000000000000000114 /* ConversationDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000214 /* ConversationDetailView.swift */; };
+		000000000000000000000115 /* ContactsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000215 /* ContactsView.swift */; };
+		000000000000000000000116 /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000216 /* TasksView.swift */; };
+		000000000000000000000117 /* InvoicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000217 /* InvoicesView.swift */; };
+		000000000000000000000118 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000218 /* SettingsView.swift */; };
+		000000000000000000000119 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000219 /* Assets.xcassets */; };
+		000000000000000000000120 /* Configuration.plist in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000220 /* Configuration.plist */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		000000000000000000000001 /* PymesHub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PymesHub.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000201 /* PymesHubApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PymesHubApp.swift; sourceTree = "<group>"; };
+		000000000000000000000202 /* AppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppView.swift; sourceTree = "<group>"; };
+		000000000000000000000203 /* AppTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppTab.swift; sourceTree = "<group>"; };
+		000000000000000000000204 /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppRouter.swift; sourceTree = "<group>"; };
+		000000000000000000000205 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/SessionStore.swift; sourceTree = "<group>"; };
+		000000000000000000000206 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppEnvironment.swift; sourceTree = "<group>"; };
+		000000000000000000000207 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/API/APIClient.swift; sourceTree = "<group>"; };
+		000000000000000000000208 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/API/APIError.swift; sourceTree = "<group>"; };
+		000000000000000000000209 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Security/KeychainStore.swift; sourceTree = "<group>"; };
+		000000000000000000000210 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Models/AuthModels.swift; sourceTree = "<group>"; };
+		000000000000000000000211 /* DomainModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Models/DomainModels.swift; sourceTree = "<group>"; };
+		000000000000000000000212 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Auth/LoginView.swift; sourceTree = "<group>"; };
+		000000000000000000000213 /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Inbox/InboxView.swift; sourceTree = "<group>"; };
+		000000000000000000000214 /* ConversationDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Inbox/ConversationDetailView.swift; sourceTree = "<group>"; };
+		000000000000000000000215 /* ContactsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Contacts/ContactsView.swift; sourceTree = "<group>"; };
+		000000000000000000000216 /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Tasks/TasksView.swift; sourceTree = "<group>"; };
+		000000000000000000000217 /* InvoicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Invoices/InvoicesView.swift; sourceTree = "<group>"; };
+		000000000000000000000218 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Settings/SettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000000219 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
+		000000000000000000000220 /* Configuration.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Configuration.plist; sourceTree = "<group>"; };
+		000000000000000000000221 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		000000000000000000000301 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000401 = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000402 /* PymesHub */,
+				000000000000000000000403 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		000000000000000000000402 /* PymesHub */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000201 /* PymesHubApp.swift */,
+				000000000000000000000202 /* AppView.swift */,
+				000000000000000000000203 /* AppTab.swift */,
+				000000000000000000000204 /* AppRouter.swift */,
+				000000000000000000000205 /* SessionStore.swift */,
+				000000000000000000000206 /* AppEnvironment.swift */,
+				000000000000000000000207 /* APIClient.swift */,
+				000000000000000000000208 /* APIError.swift */,
+				000000000000000000000209 /* KeychainStore.swift */,
+				000000000000000000000210 /* AuthModels.swift */,
+				000000000000000000000211 /* DomainModels.swift */,
+				000000000000000000000212 /* LoginView.swift */,
+				000000000000000000000213 /* InboxView.swift */,
+				000000000000000000000214 /* ConversationDetailView.swift */,
+				000000000000000000000215 /* ContactsView.swift */,
+				000000000000000000000216 /* TasksView.swift */,
+				000000000000000000000217 /* InvoicesView.swift */,
+				000000000000000000000218 /* SettingsView.swift */,
+				000000000000000000000219 /* Assets.xcassets */,
+				000000000000000000000220 /* Configuration.plist */,
+				000000000000000000000221 /* Info.plist */,
+			);
+			path = PymesHub;
+			sourceTree = "<group>";
+		};
+		000000000000000000000403 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000001 /* PymesHub.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000501 /* PymesHub */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000601 /* Build configuration list for PBXNativeTarget "PymesHub" */;
+			buildPhases = (
+				000000000000000000000701 /* Sources */,
+				000000000000000000000301 /* Frameworks */,
+				000000000000000000000702 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = PymesHub;
+			productName = PymesHub;
+			productReference = 000000000000000000000001 /* PymesHub.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000901 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					000000000000000000000501 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 000000000000000000000602 /* Build configuration list for PBXProject "PymesHub" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = 000000000000000000000401;
+			productRefGroup = 000000000000000000000403 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000501 /* PymesHub */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		000000000000000000000702 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000119 /* Assets.xcassets in Resources */,
+				000000000000000000000120 /* Configuration.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		000000000000000000000701 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000101 /* PymesHubApp.swift in Sources */,
+				000000000000000000000102 /* AppView.swift in Sources */,
+				000000000000000000000103 /* AppTab.swift in Sources */,
+				000000000000000000000104 /* AppRouter.swift in Sources */,
+				000000000000000000000105 /* SessionStore.swift in Sources */,
+				000000000000000000000106 /* AppEnvironment.swift in Sources */,
+				000000000000000000000107 /* APIClient.swift in Sources */,
+				000000000000000000000108 /* APIError.swift in Sources */,
+				000000000000000000000109 /* KeychainStore.swift in Sources */,
+				000000000000000000000110 /* AuthModels.swift in Sources */,
+				000000000000000000000111 /* DomainModels.swift in Sources */,
+				000000000000000000000112 /* LoginView.swift in Sources */,
+				000000000000000000000113 /* InboxView.swift in Sources */,
+				000000000000000000000114 /* ConversationDetailView.swift in Sources */,
+				000000000000000000000115 /* ContactsView.swift in Sources */,
+				000000000000000000000116 /* TasksView.swift in Sources */,
+				000000000000000000000117 /* InvoicesView.swift in Sources */,
+				000000000000000000000118 /* SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		000000000000000000000801 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PymesHub/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pymeshub.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		000000000000000000000802 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PymesHub/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pymeshub.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		000000000000000000000803 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		000000000000000000000804 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		000000000000000000000601 /* Build configuration list for PBXNativeTarget "PymesHub" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000801 /* Debug */,
+				000000000000000000000802 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000602 /* Build configuration list for PBXProject "PymesHub" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000803 /* Debug */,
+				000000000000000000000804 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 000000000000000000000901 /* Project object */;
+}

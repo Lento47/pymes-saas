@@ -577,7 +577,7 @@ function WorkspaceTab() {
 
         <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
           <aside className="space-y-3 xl:pr-2">
-            <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4">
+            <div className="rounded-md border border-sky-500/20 bg-sky-500/10 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <BookOpen className="h-4 w-4 text-sky-400" />
                 Estado de preparación
@@ -593,7 +593,7 @@ function WorkspaceTab() {
                   key={step.key}
                   type="button"
                   onClick={() => setTaxStep(index)}
-                  className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
+                  className={`w-full rounded-md border px-4 py-3 text-left transition-colors ${
                     taxStep === index
                       ? "border-sky-500/40 bg-sky-500/10"
                       : "border-border bg-[hsl(var(--elevated))] hover:bg-[hsl(var(--elevated))]/80"
@@ -622,7 +622,7 @@ function WorkspaceTab() {
             </div>
           </aside>
 
-          <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-5">
+          <div className="rounded-md border border-border bg-[hsl(var(--elevated))] p-5">
             <div className="mb-5 flex items-start justify-between gap-4 border-b border-border pb-4">
               <div>
                 <div className="text-base font-semibold text-foreground">{currentTaxStep.title}</div>
@@ -2079,7 +2079,7 @@ function PlatformTab() {
             <div>
               {selectedSlug ? (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
+                  <div className="rounded-md border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium text-foreground">Billing y desbloqueo</p>
@@ -2313,7 +2313,7 @@ function ApiKeyCard({
   onSave: () => void; onClear: () => void; isPending: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
+    <div className="rounded-md border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${iconBg}`}>

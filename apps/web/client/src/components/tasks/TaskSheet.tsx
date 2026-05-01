@@ -92,7 +92,7 @@ export function TaskSheet({ open, onOpenChange, editingId, initialData, onSave, 
                     type="button"
                     onClick={() => set("priority", p.value)}
                     className={cn(
-                      "flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border text-center transition-all duration-200",
+                      "flex flex-col items-center gap-1.5 py-3 px-2 rounded-md border text-center transition-all duration-200",
                       isSelected
                         ? "border-violet-500/50 bg-violet-500/[0.06] ring-1 ring-violet-500/20"
                         : "border-border/60 bg-card/40 hover:bg-accent/40 hover:border-border"

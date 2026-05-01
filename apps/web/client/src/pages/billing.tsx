@@ -391,7 +391,7 @@ export default function BillingPage() {
 
         {/* Current plan info card */}
         <div
-          className="rounded-xl border p-5"
+          className="rounded-md border p-5"
           style={{
             borderColor: currentPlan === "FREE" ? "hsl(var(--border))" : "hsl(var(--accent) / 0.3)",
             background: currentPlan === "FREE"
@@ -451,10 +451,10 @@ export default function BillingPage() {
         </div>
 
         {EXTRA_SEAT_ADD_ON && (
-          <div className="rounded-xl border border-accent/25 bg-gradient-to-br from-accent/[0.07] via-card/50 to-card/30 p-5 shadow-sm">
+          <div className="rounded-md border border-accent/25 bg-gradient-to-br from-accent/[0.07] via-card/50 to-card/30 p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-accent/20 bg-accent/10 text-accent">
                   <Users className="h-5 w-5" />
                 </div>
                 <div>
@@ -510,7 +510,7 @@ export default function BillingPage() {
               return (
                 <div
                   key={tier.key + tier.name}
-                  className={`rounded-xl border p-5 transition-all duration-200 hover:border-accent/30 ${
+                  className={`rounded-md border p-5 transition-all duration-200 hover:border-accent/30 ${
                     isCurrent
                       ? "border-accent/30 bg-accent/[0.03] ring-1 ring-accent/10"
                       : `border-border/60 bg-card/40 hover:bg-card/60`
@@ -616,7 +616,7 @@ export default function BillingPage() {
               const isCurrent = currentPlan === "BUSINESS_PLUS" || currentPlan === "ENTERPRISE";
               return (
                 <div
-                  className={`rounded-xl border p-5 transition-all duration-200 md:col-span-2 xl:col-span-1 ${
+                  className={`rounded-md border p-5 transition-all duration-200 md:col-span-2 xl:col-span-1 ${
                     isCurrent
                       ? "border-yellow-500/30 bg-yellow-500/[0.03] ring-1 ring-yellow-500/10"
                       : "border-yellow-500/20 bg-gradient-to-br from-yellow-500/[0.03] to-card/40 hover:border-yellow-500/30"
@@ -718,7 +718,7 @@ function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border/60 bg-card/40 p-6 text-center">
+      <div className="rounded-md border border-border/60 bg-card/40 p-6 text-center">
         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground mx-auto" />
       </div>
     );
@@ -726,7 +726,7 @@ function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }
 
   if (invoices.length === 0 && !search) {
     return (
-      <div className="rounded-xl border border-border/60 bg-card/40 p-6 text-center">
+      <div className="rounded-md border border-border/60 bg-card/40 p-6 text-center">
         <Receipt className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
         <p className="text-xs text-muted-foreground mb-3">
           Aún no hay facturas. La primera aparecerá después de tu primer pago.
@@ -745,7 +745,7 @@ function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }
   }
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card/40 overflow-hidden">
+    <div className="rounded-md border border-border/60 bg-card/40 overflow-hidden">
       <div className="px-4 py-2.5 border-b border-border/60">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
