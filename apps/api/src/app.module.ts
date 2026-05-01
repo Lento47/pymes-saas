@@ -91,7 +91,6 @@ import { TelegramModule } from './telegram/telegram.module';
     RoutingModule,
     SamlModule,
     I18nModule,
-    // Telegram module
     TelegramModule,
     PlatformModule,
     PaddleModule,
@@ -100,7 +99,6 @@ import { TelegramModule } from './telegram/telegram.module';
     EventsModule,
     EmailModule,
     WhatsAppModule,
-    TelegramModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: PlanThrottlerGuard },
