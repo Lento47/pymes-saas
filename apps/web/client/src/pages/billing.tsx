@@ -599,10 +599,10 @@ export default function BillingPage() {
                   ) : (
                     <div className="space-y-1.5">
                       <Button size="sm" className="w-full h-8 text-xs" variant="ghost" disabled>
-                        <ArrowDownRight className="w-3.5 h-3.5 mr-1.5" /> Plan inferior
+                        <ArrowDownRight className="w-3.5 h-3.5 mr-1.5" /> Cambiar a este plan
                       </Button>
                       <p className="text-center text-[10px] text-muted-foreground">
-                        Los downgrades aplican al final del período actual.
+                        Los cambios de plan aplican al final del período actual.
                       </p>
                     </div>
                   )}
