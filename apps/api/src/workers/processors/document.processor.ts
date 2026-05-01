@@ -33,7 +33,7 @@ const DOC_TYPE_PATTERNS: Array<{ type: DocumentType; regex: RegExp }> = [
   { type: 'identification', regex: /c[eé]dula|pasaporte|identificaci[oó]n|id\b/i },
 ];
 
-function detectDocumentType(fileName: string): DocumentType {
+export function detectDocumentType(fileName: string): DocumentType {
   for (const { type, regex } of DOC_TYPE_PATTERNS) {
     if (regex.test(fileName)) return type;
   }

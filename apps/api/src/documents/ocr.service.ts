@@ -5,17 +5,13 @@ import { Readable } from 'stream';
 /**
  * OCR / text extraction service.
  *
- * Uses dynamic imports for `pdf-parse` and `tesseract.js` so that:
- *  - The API still builds and runs if these optional deps are not installed.
+ * Uses dynamic import for `pdf-parse` so that:
+ *  - The API still builds and runs if the optional dep is not installed.
  *  - OCR is best-effort: failures degrade gracefully to metadata-only processing.
- *
- * To enable OCR install the deps in `apps/api`:
- *   pnpm add pdf-parse tesseract.js
  *
  * Behavior is controlled by env vars:
  *   DOCUMENT_OCR_ENABLED      = '1' | 'true' to enable (default: disabled)
  *   DOCUMENT_OCR_MAX_BYTES    = max file size to OCR (default: 10 MB)
- *   DOCUMENT_OCR_LANGS        = Tesseract languages, e.g. 'spa+eng' (default)
  */
 @Injectable()
 export class OcrService {
@@ -36,9 +32,6 @@ export class OcrService {
       : 10 * 1024 * 1024;
   }
 
-  private langs(): string {
-    return this.config.get<string>('DOCUMENT_OCR_LANGS') || 'spa+eng';
-  }
 
   async streamToBuffer(stream: Readable): Promise<Buffer> {
     const chunks: Buffer[] = [];
@@ -65,25 +58,9 @@ export class OcrService {
     }
   }
 
-  /** Extract text from an image buffer via Tesseract. Returns null if unavailable. */
-  async extractFromImage(buffer: Buffer): Promise<string | null> {
-    try {
-      const mod: any = await import('tesseract.js').catch(() => null);
-      if (!mod) {
-        this.logger.warn('tesseract.js not installed; skipping image OCR.');
-        return null;
-      }
-      const tesseract = mod.default ?? mod;
-      const result = await tesseract.recognize(buffer, this.langs());
-      return (result?.data?.text ?? '').trim() || null;
-    } catch (err) {
-      this.logger.warn(`Image OCR failed: ${(err as Error).message}`);
-      return null;
-    }
-  }
 
   /**
-   * Extract text by mime type. Returns null if OCR disabled, file too large,
+   * Extract text from PDF by mime type. Returns null if OCR disabled, file too large,
    * unsupported type, or the underlying lib is missing.
    */
   async extract(
@@ -100,15 +77,9 @@ export class OcrService {
     }
 
     const mime = mimeType.toLowerCase();
-
     if (mime === 'application/pdf') {
       const buf = await loadBuffer();
       return this.extractFromPdf(buf);
-    }
-
-    if (mime.startsWith('image/')) {
-      const buf = await loadBuffer();
-      return this.extractFromImage(buf);
     }
 
     return null;
