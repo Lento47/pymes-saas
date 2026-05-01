@@ -365,6 +365,18 @@ export class PlanLimitsService {
     }
   }
 
+  async checkDocumentLimit(workspaceId: string): Promise<void> {
+    const plan = await this.getWorkspacePlan(workspaceId);
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits.documents;
+    if (limit === 'custom' || limit === Infinity) return;
+
+    const current = await this.prisma.document.count({ where: { workspace_id: workspaceId } });
+    if (current >= (limit as number)) {
+      throw new QuotaExceededError('documentos', current, limit, plan, this.getUpgradePlan(plan));
+    }
+  }
+
   // ── enforceXxx methods (backward-compat aliases used by controllers) ────
 
   async enforceMembers(workspaceId: string): Promise<void> {

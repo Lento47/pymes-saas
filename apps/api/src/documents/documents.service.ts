@@ -10,6 +10,7 @@ import { FilterDocumentsDto } from './dto/filter-documents.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AutomationsService } from '../automations/automations.service';
 import { QueueService } from '../workers/queue.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -33,6 +34,7 @@ export class DocumentsService {
     private readonly storage: StorageService,
     private readonly automationsService: AutomationsService,
     private readonly queueService: QueueService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   // ── POST /documents/upload ─────────────────────────────────────────────────
@@ -52,6 +54,8 @@ export class DocumentsService {
     if (file.size > MAX_FILE_SIZE) {
       throw new BadRequestException('El archivo supera el límite de 25 MB.');
     }
+
+    await this.planLimits.checkDocumentLimit(workspaceId);
 
     // Validar que contact/conversation/task pertenecen al workspace
     if (metadata.contact_id) {
