@@ -234,6 +234,7 @@ export default function BillingPage() {
     queryKey: ["subscription", workspaceSlug],
     queryFn: () => fetchSubscription(workspaceSlug || ""),
     enabled: !!workspaceSlug && isAuthenticated,
+    staleTime: 0,
   });
 
   const { data: pricesData } = useQuery({
