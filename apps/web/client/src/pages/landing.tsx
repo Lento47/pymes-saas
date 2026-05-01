@@ -520,7 +520,7 @@ export default function Landing() {
                       {copy.nav.logIn}
                     </a>
                   </Link>
-                  <Link href="/login">
+                  <Link href="/register">
                     <a className="font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
                       {copy.nav.getStarted}
                       <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -554,7 +554,7 @@ export default function Landing() {
                         {copy.nav.logIn}
                       </a>
                     </Link>
-                    <Link href="/login">
+                    <Link href="/register">
                       <a className="font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px]">
                         {copy.nav.getStarted}
                         <ArrowRight className="h-3 w-3 inline" />
@@ -617,14 +617,14 @@ export default function Landing() {
                 {copy.intro}
               </div>
 
-              <h1 className="font-marketing mt-6 md:mt-8 text-[2.5rem] leading-[0.94] tracking-[-0.05em] font-extrabold text-white sm:text-5xl md:text-6xl lg:text-[6.8rem]">
+              <h1 className="font-marketing mt-6 md:mt-8 text-[2rem] leading-[1.05] tracking-[-0.03em] font-bold text-white sm:text-[2.5rem] md:text-[3.25rem] lg:text-[4rem]">
                 {copy.title[0]}
                 <br />
                 {copy.title[1]}
               </h1>
 
               <p
-                className="soft-glow mt-4 md:mt-5 text-[1.6rem] font-medium leading-[0.95] tracking-[-0.045em] text-[#e7ff5a] sm:text-4xl md:text-[4.1rem]"
+                className="soft-glow mt-3 md:mt-4 text-[1.25rem] font-medium leading-[1.1] tracking-[-0.03em] text-[#e7ff5a] sm:text-[1.75rem] md:text-[2.5rem]"
                 style={{
                   fontFamily:
                     'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -638,7 +638,7 @@ export default function Landing() {
               </p>
 
               <div className="mt-8 md:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-                <Link href="/login">
+                <Link href="/register">
                   <a className="font-marketing inline-flex items-center gap-2 rounded-lg bg-[#2563eb] px-6 md:px-8 py-3.5 md:py-4 text-sm md:text-base font-bold text-white transition hover:translate-y-[-1px]">
                     {copy.primaryCta}
                     <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
