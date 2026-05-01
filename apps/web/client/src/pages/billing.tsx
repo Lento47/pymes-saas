@@ -101,7 +101,7 @@ const PLAN_TIERS: PlanTier[] = [
       { label: "Contactos", value: "2,500", icon: Users },
       { label: "Facturas/mes", value: "500", icon: Receipt },
       { label: "Automatizaciones", value: "25", icon: Zap },
-      { label: "Documentos", value: "5,000", icon: FolderOpen },
+      { label: "Documentos", value: "500", icon: FolderOpen },
       { label: "Almacenamiento", value: "10 GB", icon: Database },
     ],
     popular: true,
