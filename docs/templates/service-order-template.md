@@ -1,11 +1,11 @@
-# Plantilla Base de Orden de Servicio para PymeHub
+# Plantilla Base de Orden de Servicio para PymesHub
 
 ## 1. Datos de la orden
 
 - Cliente: `[CLIENTE]`
 - Fecha: `[FECHA]`
 - Responsable comercial: `[RESPONSABLE]`
-- Producto: `PymeHub`
+- Producto: `PymesHub`
 - Plan o servicio: `[PLAN_O_SERVICIO]`
 - Monto: `[MONTO]`
 - Moneda: `[MONEDA]`
@@ -29,7 +29,7 @@
 
 ## 5. Documentos aplicables
 
-- MSA de PymeHub
+- MSA de PymesHub
 - Terminos y Condiciones
 - Politica de Privacidad
 - DPA si aplica

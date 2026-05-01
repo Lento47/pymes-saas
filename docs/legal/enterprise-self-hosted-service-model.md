@@ -14,6 +14,6 @@ Documento operativo para acompañar el contrato enterprise de servidor local Win
 
 ## Diferencia frente a SaaS
 
-En `cloud`, PymeHub opera la plataforma.
+En `cloud`, PymesHub opera la plataforma.
 
-En `enterprise`, PymeHub entrega software y soporte bajo condiciones específicas, pero la operación puede quedar en el cliente o ser compartida por servicios profesionales sobre un servidor Windows local.
+En `enterprise`, PymesHub entrega software y soporte bajo condiciones específicas, pero la operación puede quedar en el cliente o ser compartida por servicios profesionales sobre un servidor Windows local.

@@ -1,8 +1,8 @@
-# Requisitos de Audit Logging para PymeHub
+# Requisitos de Audit Logging para PymesHub
 
 ## 1. Proposito
 
-Esta especificacion define los eventos y campos minimos que PymeHub debe auditar para soporte, seguridad, cumplimiento y reconstruccion de hechos relevantes.
+Esta especificacion define los eventos y campos minimos que PymesHub debe auditar para soporte, seguridad, cumplimiento y reconstruccion de hechos relevantes.
 
 ## 2. Eventos minimos
 

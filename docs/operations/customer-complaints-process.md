@@ -1,8 +1,8 @@
-# Proceso de Reclamos y Quejas de Clientes de PymeHub
+# Proceso de Reclamos y Quejas de Clientes de PymesHub
 
 ## 1. Proposito
 
-Este procedimiento define como PymeHub recibe, clasifica, investiga y cierra reclamos de clientes de naturaleza comercial, operativa, de soporte, privacidad, seguridad o contractual.
+Este procedimiento define como PymesHub recibe, clasifica, investiga y cierra reclamos de clientes de naturaleza comercial, operativa, de soporte, privacidad, seguridad o contractual.
 
 ## 2. Flujo
 

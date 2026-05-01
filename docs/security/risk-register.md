@@ -1,8 +1,8 @@
-# Registro General de Riesgos de PymeHub
+# Registro General de Riesgos de PymesHub
 
 ## 1. Proposito
 
-Este registro consolida los riesgos principales de PymeHub a nivel legal, operativo, tecnico y de seguridad. Su objetivo es que los riesgos relevantes tengan visibilidad, owner y plan de tratamiento.
+Este registro consolida los riesgos principales de PymesHub a nivel legal, operativo, tecnico y de seguridad. Su objetivo es que los riesgos relevantes tengan visibilidad, owner y plan de tratamiento.
 
 ## 2. Reglas de uso
 

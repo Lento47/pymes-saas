@@ -1,8 +1,8 @@
-# Politica de Control de Acceso de PymeHub
+# Politica de Control de Acceso de PymesHub
 
 ## 1. Proposito
 
-Esta politica define las reglas de alta, baja, modificacion, revision y uso de accesos a PymeHub y a su infraestructura. Su objetivo es asegurar que todo acceso responda a necesidad legitima, menor privilegio y trazabilidad.
+Esta politica define las reglas de alta, baja, modificacion, revision y uso de accesos a PymesHub y a su infraestructura. Su objetivo es asegurar que todo acceso responda a necesidad legitima, menor privilegio y trazabilidad.
 
 ## 2. Alcance
 

@@ -1,12 +1,12 @@
-# Mapa de Servicios de Terceros de PymeHub
+# Mapa de Servicios de Terceros de PymesHub
 
 ## 1. Proposito
 
-Este mapa resume los servicios de terceros utilizados o previstos por PymeHub y la funcion que cumplen dentro de la arquitectura. Sirve como vista rapida de dependencias criticas para arquitectura, privacidad y vendor review.
+Este mapa resume los servicios de terceros utilizados o previstos por PymesHub y la funcion que cumplen dentro de la arquitectura. Sirve como vista rapida de dependencias criticas para arquitectura, privacidad y vendor review.
 
 ## 2. Mapa
 
-| Servicio | Funcion dentro de PymeHub | Tipo de datos implicados | Criticidad | Documento relacionado |
+| Servicio | Funcion dentro de PymesHub | Tipo de datos implicados | Criticidad | Documento relacionado |
 | --- | --- | --- | --- | --- |
 | OpenAI | Insights, resúmenes, funciones IA | Contexto, prompts, outputs | Alta | `product-compliance/ai-usage-and-disclosure.md` |
 | Resend | Correo transaccional | Correos, metadatos | Media/Alta | `security/subprocessors-list.md` |

@@ -1,8 +1,8 @@
-# Paquete Documental Maestro de PymeHub
+# Paquete Documental Maestro de PymesHub
 
 ## 1. Proposito
 
-Este directorio contiene la documentacion maestra de PymeHub como producto SaaS B2B multi-tenant orientado a pymes. El paquete esta diseñado para cubrir de forma coherente la capa legal externa, la capa interna de cumplimiento, la operacion diaria del servicio y los requisitos tecnicos que el producto debe implementar para sostener lo que se promete a clientes, prospectos, proveedores y terceros.
+Este directorio contiene la documentacion maestra de PymesHub como producto SaaS B2B multi-tenant orientado a pymes. El paquete esta diseñado para cubrir de forma coherente la capa legal externa, la capa interna de cumplimiento, la operacion diaria del servicio y los requisitos tecnicos que el producto debe implementar para sostener lo que se promete a clientes, prospectos, proveedores y terceros.
 
 El objetivo del paquete no es convertirse en un tratado teorico ni en una certificacion formal por si mismo. Su objetivo es dejar el repositorio listo para operar con orden, demostrar control documental y servir como base seria para validacion legal, fiscal, de privacidad, seguridad, soporte y producto.
 
@@ -10,10 +10,10 @@ El objetivo del paquete no es convertirse en un tratado teorico ni en una certif
 
 Este paquete aplica a:
 
-- el sitio y dominio `[DOMINIO]`;
-- el producto PymeHub y sus modulos de inbox, CRM, tareas, documentos, OCR, automatizaciones, resúmenes IA, insights, notificaciones y administracion multi-tenant;
-- la operacion de `[NOMBRE_EMPRESA]` en `[JURISDICCION]`;
-- los clientes B2B de PymeHub;
+- el sitio y dominio `pymeshub.lat`;
+- el producto PymesHub y sus modulos de inbox, CRM, tareas, documentos, OCR, automatizaciones, resúmenes IA, insights, notificaciones y administracion multi-tenant;
+- la operacion de `Otnel S.A` en `Costa Rica`;
+- los clientes B2B de PymesHub;
 - los miembros internos, contratistas y proveedores autorizados que acceden a datos o sistemas del servicio.
 
 No sustituye asesoria legal, fiscal o regulatoria local. Cuando exista una zona que requiera validacion externa, el documento correspondiente deja fijado el criterio operativo de trabajo y el punto exacto que debe confirmarse con asesoria.
@@ -24,10 +24,10 @@ No sustituye asesoria legal, fiscal o regulatoria local. Cuando exista una zona 
 
 Los siguientes placeholders deben permanecer consistentes hasta su sustitucion definitiva:
 
-- `[NOMBRE_EMPRESA]`
+- `Otnel S.A`
 - `[CORREO_LEGAL]`
-- `[DOMINIO]`
-- `[JURISDICCION]`
+- `pymeshub.lat`
+- `Costa Rica`
 
 Otros placeholders adicionales podran usarse cuando un dato todavia no se haya definido formalmente, siempre que el documento deje claro si se trata de un dato operativo, legal, comercial o tecnico pendiente.
 
@@ -60,9 +60,9 @@ Todo documento de este paquete debe interpretarse con los siguientes metadatos p
 
 ## 4. Principios del paquete
 
-- La documentacion esta adaptada a la operacion real de PymeHub y no a un SaaS generico.
+- La documentacion esta adaptada a la operacion real de PymesHub y no a un SaaS generico.
 - Se diferencia con claridad entre documentos externos al cliente, politicas internas y especificaciones que el producto debe implementar.
-- Ningun documento debe prometer algo que PymeHub no pueda sostener operativamente o tecnicamente.
+- Ningun documento debe prometer algo que PymesHub no pueda sostener operativamente o tecnicamente.
 - Toda afirmacion relevante debe poder rastrearse a una evidencia, flujo, control o backlog de implementacion.
 - Donde exista incertidumbre normativa especifica, se documenta el criterio operativo y la necesidad de validacion externa, pero no se inventa certeza.
 
@@ -97,4 +97,4 @@ Al mantener este paquete actualizado, el repositorio debe quedar preparado para:
 
 ## 8. Relacion con otros documentos
 
-Este `README` funciona como indice maestro y norma editorial del paquete. Debe revisarse cada vez que se agregue una nueva politica, se cambie la estructura del directorio o se incorpore una nueva linea de negocio, proveedor critico o capacidad de producto que altere el mapa de cumplimiento de PymeHub.
+Este `README` funciona como indice maestro y norma editorial del paquete. Debe revisarse cada vez que se agregue una nueva politica, se cambie la estructura del directorio o se incorpore una nueva linea de negocio, proveedor critico o capacidad de producto que altere el mapa de cumplimiento de PymesHub.

@@ -1,15 +1,15 @@
-# Terminos y Condiciones de PymeHub
+# Terminos y Condiciones de PymesHub
 
 ## 1. Proposito
 
-Estos Terminos y Condiciones regulan el acceso, contratacion y uso de PymeHub como servicio SaaS B2B operado por `[NOMBRE_EMPRESA]`. Su finalidad es establecer, de manera clara y exigible, los derechos, obligaciones, limitaciones y reglas generales aplicables a toda cuenta, workspace, usuario autorizado y uso del servicio.
+Estos Terminos y Condiciones regulan el acceso, contratacion y uso de PymesHub como servicio SaaS B2B operado por `Otnel S.A`. Su finalidad es establecer, de manera clara y exigible, los derechos, obligaciones, limitaciones y reglas generales aplicables a toda cuenta, workspace, usuario autorizado y uso del servicio.
 
 ## 2. Alcance
 
 Estos terminos aplican a:
 
-- la navegacion por `[DOMINIO]`;
-- el registro y uso de PymeHub;
+- la navegacion por `pymeshub.lat`;
+- el registro y uso de PymesHub;
 - las cuentas de prueba, gratuitas, pagas o enterprise;
 - cualquier modulo de inbox, CRM, tareas, documentos, OCR, automatizaciones, insights, resúmenes IA, dashboards, APIs o funciones relacionadas;
 - toda orden, alta, acceso o uso realizado por el cliente o por usuarios de su workspace.
@@ -18,10 +18,10 @@ Si existe un contrato principal, orden de servicio o MSA firmado, dichos documen
 
 ## 3. Definiciones clave
 
-- `PymeHub`: la plataforma SaaS, sus interfaces, APIs, workers, documentacion y servicios relacionados.
-- `Proveedor`: `[NOMBRE_EMPRESA]`.
+- `PymesHub`: la plataforma SaaS, sus interfaces, APIs, workers, documentacion y servicios relacionados.
+- `Proveedor`: `Otnel S.A`.
 - `Cliente`: la persona fisica o juridica que contrata o utiliza el servicio para fines empresariales.
-- `Workspace`: entorno logico de operacion del cliente dentro de PymeHub.
+- `Workspace`: entorno logico de operacion del cliente dentro de PymesHub.
 - `Usuario autorizado`: persona a la que el cliente otorga acceso al workspace.
 - `Datos del Cliente`: informacion cargada, generada, transmitida o administrada por el cliente dentro del servicio.
 - `Servicios de terceros`: proveedores externos utilizados para hosting, almacenamiento, correo, colas, OCR, monitoreo, IA, pagos u otras funciones auxiliares.
@@ -29,11 +29,11 @@ Si existe un contrato principal, orden de servicio o MSA firmado, dichos documen
 
 ## 4. Identidad del proveedor y contacto
 
-PymeHub es operado por `[NOMBRE_EMPRESA]`, con domicilio en `[JURISDICCION]`. El canal oficial para notificaciones legales, privacidad o cuestiones contractuales es `[CORREO_LEGAL]`.
+PymesHub es operado por `Otnel S.A`, con domicilio en `Costa Rica`. El canal oficial para notificaciones legales, privacidad o cuestiones contractuales es `[CORREO_LEGAL]`.
 
 ## 5. Naturaleza del servicio
 
-PymeHub es un servicio SaaS multi-tenant orientado a la gestion operativa de pymes. El servicio puede incluir, entre otras capacidades:
+PymesHub es un servicio SaaS multi-tenant orientado a la gestion operativa de pymes. El servicio puede incluir, entre otras capacidades:
 
 - inbox unificado de conversaciones;
 - gestion de tareas y contactos;
@@ -43,11 +43,11 @@ PymeHub es un servicio SaaS multi-tenant orientado a la gestion operativa de pym
 - notificaciones y trazabilidad operativa;
 - funciones de IA para resúmenes, insights o asistencia.
 
-El servicio se presta en modalidad de licencia de acceso y uso, no como cesion de software instalado en propiedad del cliente. PymeHub puede evolucionar funcionalmente como parte de su naturaleza SaaS, siempre que ello no desnaturalice de forma irrazonable el objeto contratado.
+El servicio se presta en modalidad de licencia de acceso y uso, no como cesion de software instalado en propiedad del cliente. PymesHub puede evolucionar funcionalmente como parte de su naturaleza SaaS, siempre que ello no desnaturalice de forma irrazonable el objeto contratado.
 
 ## 6. Elegibilidad y representacion
 
-PymeHub esta dirigido principalmente a uso profesional o empresarial. Quien acepte estos terminos en nombre de una empresa declara y garantiza que cuenta con facultades suficientes para obligarla contractualmente. El cliente debe proporcionar informacion veraz, completa y actualizada al registrarse o contratar.
+PymesHub esta dirigido principalmente a uso profesional o empresarial. Quien acepte estos terminos en nombre de una empresa declara y garantiza que cuenta con facultades suficientes para obligarla contractualmente. El cliente debe proporcionar informacion veraz, completa y actualizada al registrarse o contratar.
 
 ## 7. Cuenta, workspace y usuarios
 
@@ -63,7 +63,7 @@ El Proveedor podra considerar validas las acciones realizadas desde cuentas aute
 
 ## 8. Licencia de uso
 
-Sujeto al cumplimiento de estos terminos y al pago de los importes aplicables, el Proveedor otorga al cliente una licencia limitada, no exclusiva, revocable, no sublicenciable y no transferible para acceder y usar PymeHub exclusivamente para fines internos de operacion empresarial del cliente.
+Sujeto al cumplimiento de estos terminos y al pago de los importes aplicables, el Proveedor otorga al cliente una licencia limitada, no exclusiva, revocable, no sublicenciable y no transferible para acceder y usar PymesHub exclusivamente para fines internos de operacion empresarial del cliente.
 
 Esta licencia no confiere derecho alguno sobre:
 
@@ -76,7 +76,7 @@ Esta licencia no confiere derecho alguno sobre:
 
 El cliente y sus usuarios no pueden:
 
-- utilizar PymeHub para actividades ilegales, fraudulentas o engañosas;
+- utilizar PymesHub para actividades ilegales, fraudulentas o engañosas;
 - enviar spam, malware, phishing o comunicaciones no autorizadas;
 - cargar contenido que infrinja derechos de terceros;
 - intentar acceder, inferir o afectar datos de otros tenants;
@@ -89,7 +89,7 @@ El detalle de conductas prohibidas se complementa con [`acceptable-use-policy.md
 
 ## 10. Servicios de terceros, OCR e IA
 
-PymeHub puede apoyarse en servicios de terceros para almacenamiento, correo, observabilidad, procesamiento y modelos de IA. El cliente reconoce que ciertas funcionalidades dependen de dichos terceros y que el Proveedor no controla integralmente sus niveles de servicio, politicas internas o continuidad.
+PymesHub puede apoyarse en servicios de terceros para almacenamiento, correo, observabilidad, procesamiento y modelos de IA. El cliente reconoce que ciertas funcionalidades dependen de dichos terceros y que el Proveedor no controla integralmente sus niveles de servicio, politicas internas o continuidad.
 
 Asimismo, el cliente reconoce que:
 
@@ -99,7 +99,7 @@ Asimismo, el cliente reconoce que:
 
 ## 11. Planes, limites, precios y cambios comerciales
 
-PymeHub puede operar bajo distintos planes, cupos y limites de uso, incluyendo usuarios, automatizaciones, documentos, almacenamiento, integraciones y otras capacidades. Los precios, reglas de cobro, renovaciones, upgrades, downgrades y mora se rigen por la oferta comercial vigente y por la politica interna de pricing y billing.
+PymesHub puede operar bajo distintos planes, cupos y limites de uso, incluyendo usuarios, automatizaciones, documentos, almacenamiento, integraciones y otras capacidades. Los precios, reglas de cobro, renovaciones, upgrades, downgrades y mora se rigen por la oferta comercial vigente y por la politica interna de pricing y billing.
 
 El Proveedor podra modificar precios o planes para periodos futuros, siempre que comunique el cambio por medios razonables antes de su entrada en vigor para renovaciones afectadas.
 
@@ -124,7 +124,7 @@ Cuando corresponda, el tratamiento de datos se regira adicionalmente por:
 
 ## 15. Propiedad intelectual
 
-Todos los derechos sobre PymeHub, su software, arquitectura, interfaces, documentacion, metodologias, contenido propio, marcas, materiales, mejoras y desarrollos corresponden al Proveedor o a sus licenciantes. Salvo acuerdo expreso, ninguna disposicion de estos terminos transfiere al cliente derecho patrimonial alguno sobre dichos activos.
+Todos los derechos sobre PymesHub, su software, arquitectura, interfaces, documentacion, metodologias, contenido propio, marcas, materiales, mejoras y desarrollos corresponden al Proveedor o a sus licenciantes. Salvo acuerdo expreso, ninguna disposicion de estos terminos transfiere al cliente derecho patrimonial alguno sobre dichos activos.
 
 El cliente concede al Proveedor las autorizaciones estrictamente necesarias para alojar, procesar, reproducir tecnicamente, transmitir y respaldar sus datos en la medida indispensable para operar el servicio.
 
@@ -162,7 +162,7 @@ Tras la terminacion, el cliente podra solicitar exportacion razonable de sus dat
 
 ## 20. Declaraciones, garantias y descargos
 
-Salvo que se pacte expresamente lo contrario, PymeHub se proporciona "tal cual" y "segun disponibilidad". El Proveedor no garantiza:
+Salvo que se pacte expresamente lo contrario, PymesHub se proporciona "tal cual" y "segun disponibilidad". El Proveedor no garantiza:
 
 - que el servicio sea ininterrumpido o libre de errores;
 - que el OCR o la IA sean exactos en todo caso;
@@ -180,7 +180,7 @@ El cliente defendera e indemnizara al Proveedor frente a reclamos de terceros de
 - datos o contenidos cargados por el cliente;
 - uso ilegal o prohibido del servicio;
 - incumplimiento de estos terminos o de la ley aplicable;
-- falta de autorizacion o base valida para tratar datos dentro de PymeHub.
+- falta de autorizacion o base valida para tratar datos dentro de PymesHub.
 
 ## 23. Versionado y aceptacion
 
@@ -188,7 +188,7 @@ El Proveedor podra actualizar estos terminos. La version vigente debera publicar
 
 ## 24. Ley aplicable y jurisdiccion
 
-Estos terminos se rigen por las leyes de `[JURISDICCION]`, sin perjuicio de normas imperativas aplicables. Toda controversia se sometera a la jurisdiccion competente de `[JURISDICCION]`, salvo acuerdo escrito diferente.
+Estos terminos se rigen por las leyes de `Costa Rica`, sin perjuicio de normas imperativas aplicables. Toda controversia se sometera a la jurisdiccion competente de `Costa Rica`, salvo acuerdo escrito diferente.
 
 ## 25. Relacion con otros documentos
 

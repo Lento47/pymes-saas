@@ -2,10 +2,10 @@
 
 ## Cloud
 
-- PymeHub opera infraestructura, despliegues, backups y monitoreo.
+- PymesHub opera infraestructura, despliegues, backups y monitoreo.
 - El desktop permitido es `desktop-cloud`.
 - El updater del shell está activo y controlado por GitHub Releases.
-- La URL del shell apunta al SaaS operado por PymeHub.
+- La URL del shell apunta al SaaS operado por PymesHub.
 
 ## Enterprise
 
@@ -18,7 +18,7 @@
 
 ## Reglas de soporte
 
-- Cloud: PymeHub es responsable de backups, upgrades y observabilidad de plataforma.
+- Cloud: PymesHub es responsable de backups, upgrades y observabilidad de plataforma.
 - Enterprise: la responsabilidad operativa exacta depende del contrato, pero debe explicitar:
   - quién hace backups
   - quién ejecuta upgrades

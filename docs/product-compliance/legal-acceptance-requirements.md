@@ -1,8 +1,8 @@
-# Requisitos de Aceptacion Legal en Producto para PymeHub
+# Requisitos de Aceptacion Legal en Producto para PymesHub
 
 ## 1. Proposito
 
-Esta especificacion define que debe implementar PymeHub para demostrar, de forma verificable, que un cliente o usuario autorizado acepto los documentos legales aplicables y en que version lo hizo.
+Esta especificacion define que debe implementar PymesHub para demostrar, de forma verificable, que un cliente o usuario autorizado acepto los documentos legales aplicables y en que version lo hizo.
 
 ## 2. Alcance
 

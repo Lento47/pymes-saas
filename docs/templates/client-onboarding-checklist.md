@@ -1,4 +1,4 @@
-# Checklist Operativo de Alta de Cliente en PymeHub
+# Checklist Operativo de Alta de Cliente en PymesHub
 
 ## 1. Checklist
 
