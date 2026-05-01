@@ -137,6 +137,16 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     if (isMobile) setSidebarOpen(false);
   }, [location, isMobile]);
 
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (isMobile && sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isMobile, sidebarOpen]);
+
   // Close workspace menu on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -171,7 +181,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       >
         {/* ── Mobile Close Button ── */}
         {isMobile && (
-          <div className="shrink-0 flex justify-end px-3 py-3 border-b border-border/40">
+          <div className="shrink-0 flex justify-end px-3 py-3 border-b border-border/40 pt-safe">
             <button
               onClick={() => setSidebarOpen(false)}
               className={cn(
@@ -336,7 +346,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* ── Bottom Actions ── */}
-        <div className="shrink-0 border-t border-border/40 px-3 py-3 space-y-3 bg-sidebar-accent/20">
+        <div className="shrink-0 border-t border-border/40 px-3 py-3 pb-safe space-y-3 bg-sidebar-accent/20">
           {/* Controls */}
           <div className="flex items-center gap-1 px-2">
             <button
@@ -385,7 +395,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       {/* ── Main Content ── */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* ── Top Bar ── */}
-        <header className="shrink-0 flex items-center gap-3 px-4 lg:px-6 py-3 border-b border-border/40 bg-background/80 backdrop-blur-sm relative z-40">
+        <header className="shrink-0 flex items-center gap-3 px-4 lg:px-6 py-3 border-b border-border/40 bg-background/80 backdrop-blur-sm relative z-40 pt-safe">
           {/* Menu toggle - Always visible */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
