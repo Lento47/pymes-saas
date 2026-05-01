@@ -842,11 +842,11 @@ export class PaddleService {
     const resend = new Resend(apiKey);
     try {
       await resend.emails.send({
-        from: 'PymeHub <billing@pymeshub.lat>',
+        from: 'PymesHub <billing@pymeshub.lat>',
         to,
         subject: `Factura ${inv.number} — ${inv.plan_name} (${monthName})`,
         html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111827">
-          <h2 style="color:#1a56db;margin:0 0 16px">PymeHub</h2>
+          <h2 style="color:#1a56db;margin:0 0 16px">PymesHub</h2>
           <p>Hola${recipientName ? ` ${recipientName.replace(/[<>&"']/g, (c: string) => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]!))}` : ''},</p>
           <p>Tu pago de <strong>${formattedTotal}</strong> por el plan <strong>${inv.plan_name}</strong> fue procesado correctamente.</p>
           <p style="background:#f8fafc;padding:12px 16px;border-radius:6px;margin:16px 0">
@@ -855,7 +855,7 @@ export class PaddleService {
           </p>
           <p>Adjuntamos la factura en PDF. Tambien podes descargarla desde <a href="https://pymeshub.lat/settings/billing" style="color:#1a56db">Configuracion → Facturacion</a>.</p>
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0"/>
-          <p style="color:#9ca3af;font-size:11px">PymeHub — Plataforma SaaS para PYMEs · Costa Rica<br/>support@pymeshub.com · pymeshub.lat</p>
+          <p style="color:#9ca3af;font-size:11px">PymesHub — Plataforma SaaS para PYMEs · Costa Rica<br/>support@pymeshub.com · pymeshub.lat</p>
         </div>`,
         attachments: [
           {
