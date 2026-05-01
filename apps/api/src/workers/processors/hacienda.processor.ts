@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { InvoicesService } from '../../invoices/invoices.service';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { HaciendaRecepcionService } from '../../hacienda/hacienda-recepcion.service';
 import { HaciendaStatus } from '@prisma/client';
 
 @Injectable()
@@ -11,8 +11,8 @@ export class HaciendaProcessor {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly invoicesService: InvoicesService,
     private readonly notificationsService: NotificationsService,
+    private readonly haciendaRecepcion: HaciendaRecepcionService,
   ) {}
 
   @Cron('*/15 * * * *')
@@ -34,68 +34,86 @@ export class HaciendaProcessor {
 
     for (const ws of workspaces) {
       try {
-        const updated = await this.invoicesService.bulkSyncPendingHaciendaStatuses(ws.workspace_id);
+        const pending = await this.prisma.invoice.findMany({
+          where: {
+            workspace_id: ws.workspace_id,
+            hacienda_status: { in: [HaciendaStatus.SUBMITTED, HaciendaStatus.RECIBIDO, HaciendaStatus.PROCESANDO] },
+            clave: { not: null },
+          },
+          select: { id: true, clave: true },
+          take: 5,
+          orderBy: { hacienda_last_checked_at: 'asc' as const },
+        });
 
-        if (updated > 0) {
-          const fresh = await this.prisma.invoice.findMany({
-            where: {
-              workspace_id: ws.workspace_id,
-              hacienda_status: { in: [HaciendaStatus.ACEPTADO, HaciendaStatus.RECHAZADO] },
-              id: {
-                in: (
-                  await this.prisma.invoice.findMany({
-                    where: {
-                      workspace_id: ws.workspace_id,
-                      hacienda_status: { in: [HaciendaStatus.ACEPTADO, HaciendaStatus.RECHAZADO] },
-                      updated_at: { gte: new Date(Date.now() - 16 * 60 * 1000) },
-                    },
-                    select: { id: true },
-                    take: 5,
-                  })
-                ).map(i => i.id),
+        for (const inv of pending) {
+          try {
+            const response = await this.haciendaRecepcion.getRecepcionStatus(ws.workspace_id, inv.clave!);
+            const newStatus = this.mapHaciendaStatus(response?.['ind-estado']);
+
+            await this.prisma.invoice.update({
+              where: { id: inv.id },
+              data: {
+                hacienda_status: newStatus,
+                hacienda_last_checked_at: new Date(),
+                hacienda_last_error: newStatus === HaciendaStatus.RECHAZADO ? 'Hacienda rechazó el comprobante.' : null,
+                updated_at: new Date(),
               },
-            },
-            select: { id: true, number: true, hacienda_status: true },
-            take: 5,
-          });
+            });
 
-          const admins = await this.prisma.workspaceMembership.findMany({
-            where: {
-              workspace_id: ws.workspace_id,
-              role: { in: ['OWNER', 'ADMIN'] as any },
-            },
-            select: { user_id: true },
-            take: 3,
-          });
+            if (newStatus === HaciendaStatus.ACEPTADO || newStatus === HaciendaStatus.RECHAZADO) {
+              const invoice = await this.prisma.invoice.findUnique({
+                where: { id: inv.id },
+                select: { id: true, number: true, hacienda_status: true },
+              });
 
-          const notified = new Set<string>();
-          for (const inv of fresh) {
-            for (const admin of admins) {
-              if (notified.has(admin.user_id + inv.id)) continue;
-              notified.add(admin.user_id + inv.id);
+              if (invoice) {
+                const admins = await this.prisma.workspaceMembership.findMany({
+                  where: {
+                    workspace_id: ws.workspace_id,
+                    role: { in: ['OWNER', 'ADMIN'] as any },
+                  },
+                  select: { user_id: true },
+                  take: 3,
+                });
 
-              const type = inv.hacienda_status === HaciendaStatus.ACEPTADO ? 'hacienda_aceptado' : 'hacienda_rechazado';
-              const title = inv.hacienda_status === HaciendaStatus.ACEPTADO
-                ? 'Factura aceptada por Hacienda'
-                : 'Factura rechazada por Hacienda';
-              const body = inv.hacienda_status === HaciendaStatus.ACEPTADO
-                ? `La factura ${inv.number} fue aceptada por Hacienda.`
-                : `La factura ${inv.number} fue rechazada por Hacienda. Revisá el error en Facturación.`;
+                const type = newStatus === HaciendaStatus.ACEPTADO ? 'hacienda_aceptado' : 'hacienda_rechazado';
+                const title = newStatus === HaciendaStatus.ACEPTADO
+                  ? 'Factura aceptada por Hacienda'
+                  : 'Factura rechazada por Hacienda';
+                const body = newStatus === HaciendaStatus.ACEPTADO
+                  ? `La factura ${invoice.number} fue aceptada por Hacienda.`
+                  : `La factura ${invoice.number} fue rechazada por Hacienda. Revisá el error en Facturación.`;
 
-              await this.notificationsService.create(ws.workspace_id, {
-                user_id: admin.user_id,
-                type,
-                title,
-                body,
-                related_entity_type: 'invoice',
-                related_entity_id: inv.id,
-              }).catch(() => {});
+                for (const admin of admins) {
+                  await this.notificationsService.create(ws.workspace_id, {
+                    user_id: admin.user_id,
+                    type,
+                    title,
+                    body,
+                    related_entity_type: 'invoice',
+                    related_entity_id: invoice.id,
+                  }).catch(() => {});
+                }
+              }
             }
+          } catch (err) {
+            this.logger.warn(`Auto-sync failed for invoice ${inv.id}: ${(err as Error).message}`);
           }
         }
       } catch (err) {
         this.logger.warn(`Hacienda poll failed for workspace ${ws.workspace_id}: ${(err as Error).message}`);
       }
+    }
+  }
+
+  private mapHaciendaStatus(indEstado: string | undefined): HaciendaStatus {
+    switch (indEstado) {
+      case 'recibido': return HaciendaStatus.RECIBIDO;
+      case 'procesando': return HaciendaStatus.PROCESANDO;
+      case 'aceptado': return HaciendaStatus.ACEPTADO;
+      case 'rechazado': return HaciendaStatus.RECHAZADO;
+      case 'error': return HaciendaStatus.ERROR;
+      default: return HaciendaStatus.SUBMITTED;
     }
   }
 }

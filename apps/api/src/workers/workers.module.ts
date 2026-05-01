@@ -1,4 +1,4 @@
-import { Module, Logger, forwardRef } from '@nestjs/common';
+import { Module, Logger } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
@@ -6,7 +6,7 @@ import IORedis from 'ioredis';
 
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AiModule } from '../ai/ai.module';
-import { InvoicesModule } from '../invoices/invoices.module';
+import { HaciendaModule } from '../hacienda/hacienda.module';
 import { StorageService } from '../common/storage/storage.service';
 import { QUEUE_NAMES } from './queues.constants';
 import { QueueService } from './queue.service';
@@ -57,7 +57,7 @@ function createRedisConnection(config: ConfigService) {
   imports: [
     NotificationsModule,
     AiModule,
-    forwardRef(() => InvoicesModule),
+    HaciendaModule,
     ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       inject: [ConfigService],

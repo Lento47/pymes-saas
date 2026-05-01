@@ -690,7 +690,7 @@ export class InvoicesService {
 
   private serializeInvoice(invoice: any) {
     const amountPaid = this.getAmountPaid(invoice);
-    const totalAmount = Number(invoice.amount ?? 0);
+    const totalAmount = this.parseAmount(invoice.amount);
     const balanceDue = Math.max(0, totalAmount - amountPaid);
 
     return {
@@ -704,15 +704,21 @@ export class InvoicesService {
     };
   }
 
+  private parseAmount(value: any): number {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'object' && typeof value.toNumber === 'function') return value.toNumber();
+    return Number(value) || 0;
+  }
+
   private getAmountPaid(invoice: any) {
     return (invoice.payments ?? []).reduce(
-      (sum: number, payment: any) => sum + Number(payment.amount ?? 0),
+      (sum: number, payment: any) => sum + this.parseAmount(payment.amount),
       0,
     );
   }
 
   private getBalanceDue(invoice: any) {
-    return Math.max(0, Number(invoice.amount ?? 0) - this.getAmountPaid(invoice));
+    return Math.max(0, this.parseAmount(invoice.amount) - this.getAmountPaid(invoice));
   }
 
   private validateStateTransition(current: InvoiceStatus, next: InvoiceStatus): void {
@@ -1127,30 +1133,5 @@ export class InvoicesService {
     });
 
     return { xml };
-  }
-
-  async bulkSyncPendingHaciendaStatuses(workspaceId: string): Promise<number> {
-    const pending = await this.prisma.invoice.findMany({
-      where: {
-        workspace_id: workspaceId,
-        hacienda_status: { in: [HaciendaStatus.SUBMITTED, HaciendaStatus.RECIBIDO, HaciendaStatus.PROCESANDO] },
-        clave: { not: null },
-      },
-      select: { id: true, clave: true, hacienda_status: true },
-      take: 5,
-      orderBy: { hacienda_last_checked_at: 'asc' },
-    });
-
-    let updated = 0;
-    for (const inv of pending) {
-      try {
-        await this.syncHaciendaStatus(workspaceId, inv.id);
-        updated++;
-      } catch (err) {
-        this.logger.warn(`Auto-sync failed for invoice ${inv.id}: ${(err as Error).message}`);
-      }
-    }
-
-    return updated;
   }
 }
