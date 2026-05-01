@@ -8,10 +8,41 @@ import {
   Post,
   Req,
   UnauthorizedException,
+  BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import * as crypto from 'crypto';
 import { EmailService } from './email.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
+@Controller('email')
+export class EmailController {
+  private readonly logger = new Logger(EmailController.name);
+
+  constructor(private readonly emailService: EmailService) {}
+
+  @Post('test-smtp')
+  @UseGuards(JwtAuthGuard)
+  async testSmtp(@Body() body: any) {
+    if (!body.host || !body.user || !body.password) {
+      throw new BadRequestException('Faltan datos: host, user y password son requeridos.');
+    }
+    const result = await this.emailService.testSmtpConnection({
+      host: body.host,
+      port: Number(body.port) || 587,
+      user: body.user,
+      password: body.password,
+      tls: body.tls !== false,
+      from_email: body.from_email || body.user,
+      from_name: body.from_name || 'PymesHub',
+    });
+    if (!result.success) {
+      throw new BadRequestException(result.message);
+    }
+    return result;
+  }
+}
 
 @Controller('inbound/email')
 export class InboundController {

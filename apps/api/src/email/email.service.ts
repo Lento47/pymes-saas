@@ -151,6 +151,34 @@ export class EmailService {
   // INBOUND (webhook)
   // ─────────────────────────────────────────────────────────────────────────────
 
+  async testSmtpConnection(smtpConfig: { host: string; port: number; user: string; password: string; tls: boolean; from_email: string; from_name: string }): Promise<{ success: boolean; message: string }> {
+    try {
+      const result = await this.smtp.send(
+        {
+          host: smtpConfig.host,
+          port: smtpConfig.port,
+          user: smtpConfig.user,
+          password: smtpConfig.password,
+          tls: smtpConfig.tls,
+        },
+        {
+          from: `${smtpConfig.from_name} <${smtpConfig.from_email}>`,
+          to: smtpConfig.from_email,
+          subject: 'PymesHub — Prueba de conexión SMTP',
+          html: '<p>Si recibiste este correo, tu configuración SMTP funciona correctamente.</p>',
+        },
+      );
+      return { success: true, message: `Conexión exitosa — Message ID: ${result.id}` };
+    } catch (err: any) {
+      this.logger.warn(`SMTP test failed: ${err?.message ?? err}`);
+      return { success: false, message: err?.message ?? 'Error de conexión SMTP' };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // INBOUND (webhook)
+  // ─────────────────────────────────────────────────────────────────────────────
+
   /**
    * Process an inbound email webhook from Resend.
    * SECURITY: Resolves workspace from email address in the payload, not from client headers.
