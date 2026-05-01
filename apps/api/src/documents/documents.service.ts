@@ -193,10 +193,7 @@ export class DocumentsService {
 
     if (!doc) throw new NotFoundException('Documento no encontrado.');
 
-    // Generar URL de descarga firmada (válida 1 hora)
-    const download_url = await this.storage.getPresignedUrl(doc.storage_key, 3600);
-
-    return { ...doc, download_url };
+    return doc;
   }
 
   // ── PATCH /documents/:id ───────────────────────────────────────────────────
