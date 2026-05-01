@@ -1,8 +1,8 @@
-# Registro de Riesgo de Proveedores de PymeHub
+# Registro de Riesgo de Proveedores de PymesHub
 
 ## 1. Proposito
 
-Este registro documenta la evaluacion minima de riesgo de los proveedores criticos de PymeHub. Su objetivo es que la dependencia de terceros no quede invisibilizada y que cada servicio externo relevante tenga owner, riesgo residual y accion pendiente.
+Este registro documenta la evaluacion minima de riesgo de los proveedores criticos de PymesHub. Su objetivo es que la dependencia de terceros no quede invisibilizada y que cada servicio externo relevante tenga owner, riesgo residual y accion pendiente.
 
 ## 2. Reglas de uso
 

@@ -1,71 +1,201 @@
-# Términos y Condiciones de PyMesHub
+# Terminos y Condiciones de PymesHub
 
-Versión beta / acceso anticipado
+## 1. Proposito
 
-Última actualización: [FECHA]
+Estos Terminos y Condiciones regulan el acceso, contratacion y uso de PymesHub como servicio SaaS B2B operado por `Otnel S.A`. Su finalidad es establecer, de manera clara y exigible, los derechos, obligaciones, limitaciones y reglas generales aplicables a toda cuenta, workspace, usuario autorizado y uso del servicio.
 
-## 1. Bienvenido a PyMesHub
+## 2. Alcance
 
-Estos Términos y Condiciones ("Términos") regulan el acceso y uso de la plataforma PyMesHub ("Servicio"), operada por [NOMBRE_EMPRESA] ("PyMesHub", "nosotros"). Al registrarte, acceder o utilizar el Servicio, aceptas estos Términos en nombre propio o de la empresa que representas.
+Estos terminos aplican a:
 
-PyMesHub se encuentra en etapa beta cerrada y acceso anticipado. Esto significa que la Plataforma está en desarrollo activo, que algunas funcionalidades pueden cambiar, estar limitadas, suspenderse temporalmente o presentar errores, y que el objetivo principal de esta etapa es validar el producto con negocios reales antes del lanzamiento público.
+- la navegacion por `pymeshub.lat`;
+- el registro y uso de PymesHub;
+- las cuentas de prueba, gratuitas, pagas o enterprise;
+- cualquier modulo de inbox, CRM, tareas, documentos, OCR, automatizaciones, insights, resúmenes IA, dashboards, APIs o funciones relacionadas;
+- toda orden, alta, acceso o uso realizado por el cliente o por usuarios de su workspace.
 
-## 2. Elegibilidad y representación
+Si existe un contrato principal, orden de servicio o MSA firmado, dichos documentos complementan estos terminos. En caso de contradiccion material, prevalecera el documento contractual de mayor especificidad.
 
-Puedes utilizar el Servicio si eres mayor de 18 años, actúas en representación de una empresa, emprendimiento, pyme o actividad empresarial legítima, y no has sido suspendido previamente por incumplimiento de estos Términos.
+## 3. Definiciones clave
 
-Si aceptas estos Términos por cuenta de una organización, declaras que tienes autorización suficiente para vincularla. La organización será responsable por el uso que realicen sus usuarios, empleados, contratistas o representantes autorizados dentro del workspace.
+- `PymesHub`: la plataforma SaaS, sus interfaces, APIs, workers, documentacion y servicios relacionados.
+- `Proveedor`: `Otnel S.A`.
+- `Cliente`: la persona fisica o juridica que contrata o utiliza el servicio para fines empresariales.
+- `Workspace`: entorno logico de operacion del cliente dentro de PymesHub.
+- `Usuario autorizado`: persona a la que el cliente otorga acceso al workspace.
+- `Datos del Cliente`: informacion cargada, generada, transmitida o administrada por el cliente dentro del servicio.
+- `Servicios de terceros`: proveedores externos utilizados para hosting, almacenamiento, correo, colas, OCR, monitoreo, IA, pagos u otras funciones auxiliares.
+- `Politicas vinculadas`: documentos complementarios publicados por el Proveedor, incluyendo privacidad, uso aceptable, cancelacion y DPA.
 
-## 3. Cuenta, seguridad y uso autorizado
+## 4. Identidad del proveedor y contacto
 
-Eres responsable de proporcionar información veraz, mantener tus credenciales protegidas, administrar correctamente los accesos de tu equipo y notificarnos sin demora si detectas uso no autorizado, pérdida de credenciales o actividad sospechosa.
+PymesHub es operado por `Otnel S.A`, con domicilio en `Costa Rica`. El canal oficial para notificaciones legales, privacidad o cuestiones contractuales es `[CORREO_LEGAL]`.
 
-Podemos considerar válidas las acciones realizadas desde una cuenta autenticada, salvo que exista evidencia razonable de compromiso de seguridad. PyMesHub podrá suspender accesos cuando sea necesario para proteger la Plataforma, a otros usuarios o los datos tratados en el Servicio.
+## 5. Naturaleza del servicio
 
-## 4. Servicio beta y ausencia de garantías absolutas
+PymesHub es un servicio SaaS multi-tenant orientado a la gestion operativa de pymes. El servicio puede incluir, entre otras capacidades:
 
-Durante la etapa beta, el Servicio se proporciona "tal cual" y "según disponibilidad". No garantizamos disponibilidad continua, ausencia total de errores, compatibilidad permanente con todos los sistemas de terceros ni adecuación para un propósito específico no acordado expresamente.
+- inbox unificado de conversaciones;
+- gestion de tareas y contactos;
+- almacenamiento y vinculacion de documentos;
+- extraccion o procesamiento mediante OCR;
+- reglas y automatizaciones;
+- notificaciones y trazabilidad operativa;
+- funciones de IA para resúmenes, insights o asistencia.
 
-Las métricas, alertas, estimaciones, resúmenes, reportes o proyecciones mostradas en la Plataforma son referenciales. No constituyen asesoría financiera, legal, fiscal ni garantía de resultados comerciales para tu negocio.
+El servicio se presta en modalidad de licencia de acceso y uso, no como cesion de software instalado en propiedad del cliente. PymesHub puede evolucionar funcionalmente como parte de su naturaleza SaaS, siempre que ello no desnaturalice de forma irrazonable el objeto contratado.
 
-## 5. Datos del cliente, privacidad e integraciones
+## 6. Elegibilidad y representacion
 
-Los datos que ingreses, conectes o proceses en PyMesHub, incluyendo mensajes, contactos, facturas, documentos, leads, notas y datos de tus clientes finales, pertenecen a tu negocio o quedan bajo tu control. No vendemos esos datos ni los utilizamos para fines ajenos a prestar, proteger, soportar o mejorar razonablemente el Servicio.
+PymesHub esta dirigido principalmente a uso profesional o empresarial. Quien acepte estos terminos en nombre de una empresa declara y garantiza que cuenta con facultades suficientes para obligarla contractualmente. El cliente debe proporcionar informacion veraz, completa y actualizada al registrarse o contratar.
 
-Si conectas PyMesHub con WhatsApp, correo electrónico, facturación electrónica u otros servicios de terceros, nos autorizas a acceder y procesar la información necesaria en tu nombre para prestar las funcionalidades habilitadas. También aceptas cumplir las reglas, políticas y restricciones de cada proveedor integrado.
+## 7. Cuenta, workspace y usuarios
 
-El tratamiento de datos personales se rige por nuestra Política de Privacidad y, cuando corresponda, por un acuerdo de encargado de tratamiento o DPA aplicable.
+El cliente es responsable por:
 
-## 6. Obligaciones del usuario
+- la administracion de su workspace;
+- la designacion de usuarios autorizados;
+- la asignacion correcta de roles `OWNER`, `ADMIN`, `AGENT` y `VIEWER`;
+- la custodia de credenciales y mecanismos de acceso;
+- el uso de la cuenta por parte de sus usuarios, empleados, agentes, contractors o terceros autorizados.
 
-No puedes utilizar el Servicio para actividades ilegales, fraudulentas, engañosas, abusivas, invasivas de la privacidad, envío de spam, mensajes masivos no solicitados, malware, phishing, infracción de derechos de terceros o manipulación de datos de otros usuarios.
+El Proveedor podra considerar validas las acciones realizadas desde cuentas autenticadas del cliente, salvo evidencia razonable de compromiso o uso no autorizado.
 
-Tampoco puedes intentar vulnerar la seguridad de la Plataforma, evadir límites técnicos o comerciales, realizar scraping no autorizado, someter el Servicio a cargas excesivas sin consentimiento o usar salidas de IA como decisión final en asuntos sensibles sin revisión humana adecuada.
+## 8. Licencia de uso
 
-## 7. Planes, pagos y acceso anticipado
+Sujeto al cumplimiento de estos terminos y al pago de los importes aplicables, el Proveedor otorga al cliente una licencia limitada, no exclusiva, revocable, no sublicenciable y no transferible para acceder y usar PymesHub exclusivamente para fines internos de operacion empresarial del cliente.
 
-Durante la beta cerrada, el acceso anticipado puede ofrecerse de forma gratuita. PyMesHub podrá introducir planes de pago, límites comerciales o suscripciones en el futuro, pero notificará con al menos [30] días de anticipación antes de iniciar cualquier cobro aplicable a usuarios beta.
+Esta licencia no confiere derecho alguno sobre:
 
-Cuando existan planes pagados, las tarifas, impuestos, ciclos de facturación, renovaciones, cancelaciones, downgrades, reembolsos y comprobantes se regirán por la oferta comercial vigente y por las políticas publicadas en el sitio o comunicadas al cliente.
+- el codigo fuente;
+- la arquitectura interna;
+- los modelos, prompts, configuraciones o workflows internos del Proveedor;
+- las marcas, nombres comerciales, materiales de marketing o documentacion del Proveedor, salvo autorizacion escrita.
 
-## 8. Propiedad intelectual y feedback
+## 9. Restricciones de uso
 
-PyMesHub, su software, interfaces, diseño, documentación, marca, arquitectura, flujos, materiales y componentes relacionados son propiedad de [NOMBRE_EMPRESA] o de sus licenciantes. Te otorgamos una licencia limitada, no exclusiva, intransferible y revocable para usar el Servicio conforme a estos Términos.
+El cliente y sus usuarios no pueden:
 
-Si compartes sugerencias, comentarios o ideas durante la beta, autorizas a PyMesHub a utilizarlos para mejorar el producto sin obligación de compensación, salvo acuerdo escrito distinto.
+- utilizar PymesHub para actividades ilegales, fraudulentas o engañosas;
+- enviar spam, malware, phishing o comunicaciones no autorizadas;
+- cargar contenido que infrinja derechos de terceros;
+- intentar acceder, inferir o afectar datos de otros tenants;
+- evadir limites de plan, autenticacion, seguridad o facturacion;
+- realizar scraping o uso automatizado no autorizado de la plataforma;
+- usar OCR o IA para decisiones de alto impacto sin validacion humana adecuada;
+- revender el servicio sin acuerdo escrito del Proveedor.
 
-## 9. Limitación de responsabilidad
+El detalle de conductas prohibidas se complementa con [`acceptable-use-policy.md`](./acceptable-use-policy.md).
 
-En la máxima medida permitida por la ley aplicable, PyMesHub no será responsable por daños indirectos, incidentales, especiales, consecuentes o punitivos, incluyendo pérdida de ingresos, datos, clientes, oportunidades de negocio, reputación o beneficios esperados.
+## 10. Servicios de terceros, OCR e IA
 
-Nuestra responsabilidad total por cualquier reclamo relacionado con el Servicio se limitará al monto pagado por ti en los [6] meses anteriores al hecho que generó la reclamación o a [USD $100] si no has realizado pagos, salvo dolo, culpa grave o disposición legal imperativa en contrario.
+PymesHub puede apoyarse en servicios de terceros para almacenamiento, correo, observabilidad, procesamiento y modelos de IA. El cliente reconoce que ciertas funcionalidades dependen de dichos terceros y que el Proveedor no controla integralmente sus niveles de servicio, politicas internas o continuidad.
 
-Dado que el Servicio se encuentra en etapa beta, aceptas que pueden existir fallos, interrupciones, cambios funcionales, indisponibilidad temporal o errores de procesamiento propios de un producto en desarrollo.
+Asimismo, el cliente reconoce que:
 
-## 10. Confidencialidad, cambios y contacto
+- el OCR puede producir errores, omisiones o extracciones incompletas;
+- las funciones de IA pueden generar resultados incorrectos, incompletos o no aptos para sustituir juicio humano;
+- los resultados automatizados deben usarse como apoyo operacional y no como garantia absoluta de exactitud.
 
-La información no pública compartida entre las partes en el contexto de la beta será tratada como confidencial y no será revelada a terceros salvo autorización, necesidad operativa con proveedores sujetos a confidencialidad u obligación legal.
+## 11. Planes, limites, precios y cambios comerciales
 
-Podemos actualizar estos Términos para reflejar cambios del producto, de la operación o del marco legal. Los cambios relevantes serán comunicados por correo, aviso en la plataforma o publicación visible. El uso continuado del Servicio después de la notificación implica aceptación de la versión vigente.
+PymesHub puede operar bajo distintos planes, cupos y limites de uso, incluyendo usuarios, automatizaciones, documentos, almacenamiento, integraciones y otras capacidades. Los precios, reglas de cobro, renovaciones, upgrades, downgrades y mora se rigen por la oferta comercial vigente y por la politica interna de pricing y billing.
 
-Para consultas legales o contractuales, escríbenos a [CORREO_LEGAL]. La jurisdicción, domicilio legal y entidad operadora quedan pendientes de completar: [JURISDICCION], [DOMINIO], [NOMBRE_EMPRESA].
+El Proveedor podra modificar precios o planes para periodos futuros, siempre que comunique el cambio por medios razonables antes de su entrada en vigor para renovaciones afectadas.
+
+## 12. Pagos e impuestos
+
+Salvo que se indique lo contrario, todos los montos se entienden antes de impuestos aplicables. El cliente debe pagar oportunamente los importes facturados y proporcionar la informacion necesaria para emision de comprobantes validos. Los ajustes, descuentos, notas de credito o reembolsos se gestionaran conforme a la politica vigente y a la normativa aplicable.
+
+## 13. Disponibilidad y mantenimiento
+
+El Proveedor prestara el servicio con esfuerzos comercialmente razonables, pero no garantiza continuidad absoluta ni ausencia total de fallas. Pueden existir interrupciones por mantenimiento programado, incidentes de terceros, internet, errores, mitigaciones de seguridad o fuerza mayor. Cualquier SLA expreso debera constar en documento separado o en la politica correspondiente.
+
+## 14. Datos del cliente y tratamiento
+
+El cliente conserva la titularidad o control sobre sus Datos del Cliente. El Proveedor tratara dichos datos para prestar, mantener, soportar, proteger y mejorar razonablemente el servicio, asi como para cumplir obligaciones legales, de seguridad, contables o contractuales.
+
+Cuando corresponda, el tratamiento de datos se regira adicionalmente por:
+
+- la Politica de Privacidad;
+- el Data Processing Addendum;
+- la lista de subprocesadores vigente;
+- las politicas de retencion, seguridad y respuesta a incidentes.
+
+## 15. Propiedad intelectual
+
+Todos los derechos sobre PymesHub, su software, arquitectura, interfaces, documentacion, metodologias, contenido propio, marcas, materiales, mejoras y desarrollos corresponden al Proveedor o a sus licenciantes. Salvo acuerdo expreso, ninguna disposicion de estos terminos transfiere al cliente derecho patrimonial alguno sobre dichos activos.
+
+El cliente concede al Proveedor las autorizaciones estrictamente necesarias para alojar, procesar, reproducir tecnicamente, transmitir y respaldar sus datos en la medida indispensable para operar el servicio.
+
+## 16. Feedback
+
+Si el cliente comunica sugerencias, observaciones, mejoras o feedback, el Proveedor podra utilizarlos libremente para mejorar el servicio, sin obligacion de compensacion, salvo pacto escrito distinto.
+
+## 17. Suspensiones
+
+El Proveedor podra suspender total o parcialmente el acceso al servicio cuando exista:
+
+- impago;
+- riesgo de seguridad;
+- uso prohibido;
+- incumplimiento material de estos terminos;
+- orden de autoridad competente;
+- necesidad urgente de mitigacion tecnica.
+
+Cuando sea razonable, el Proveedor notificara previamente o sin demora indebida la suspension y su causa general.
+
+## 18. Terminacion
+
+El cliente podra terminar la relacion conforme a la politica de cancelacion aplicable. El Proveedor podra terminarla por incumplimiento material, impago persistente, uso prohibido, fraude, riesgo inaceptable o imposibilidad legal de continuar prestando el servicio.
+
+La terminacion no extingue:
+
+- obligaciones de pago ya causadas;
+- obligaciones de confidencialidad;
+- limitaciones de responsabilidad;
+- facultades de retencion minima de evidencia o registros exigidos por ley o defensa legal.
+
+## 19. Exportacion, retencion y borrado
+
+Tras la terminacion, el cliente podra solicitar exportacion razonable de sus datos dentro de la ventana operativa prevista. Posteriormente, el Proveedor podra borrar o anonimizar la informacion activa conforme a su politica de retencion y eliminacion, sin perjuicio de copias residuales en backups y de registros que deban mantenerse por obligaciones legales o de seguridad.
+
+## 20. Declaraciones, garantias y descargos
+
+Salvo que se pacte expresamente lo contrario, PymesHub se proporciona "tal cual" y "segun disponibilidad". El Proveedor no garantiza:
+
+- que el servicio sea ininterrumpido o libre de errores;
+- que el OCR o la IA sean exactos en todo caso;
+- que el servicio satisfaga requisitos no comunicados o no contratados expresamente;
+- compatibilidad con integraciones, sistemas o flujos de terceros no controlados.
+
+## 21. Limitacion de responsabilidad
+
+En la maxima medida permitida por ley, el Proveedor no sera responsable por daños indirectos, incidentales, especiales, punitivos, lucro cesante, perdida reputacional o perdida de oportunidad de negocio. La responsabilidad agregada del Proveedor derivada del servicio no excedera el total efectivamente pagado por el cliente en los doce meses previos al hecho generador del reclamo, salvo dolo o prohibicion legal expresa.
+
+## 22. Indemnidad
+
+El cliente defendera e indemnizara al Proveedor frente a reclamos de terceros derivados de:
+
+- datos o contenidos cargados por el cliente;
+- uso ilegal o prohibido del servicio;
+- incumplimiento de estos terminos o de la ley aplicable;
+- falta de autorizacion o base valida para tratar datos dentro de PymesHub.
+
+## 23. Versionado y aceptacion
+
+El Proveedor podra actualizar estos terminos. La version vigente debera publicarse y quedar identificada con fecha de emision o version documental. El producto debe conservar, cuando aplique, evidencia de aceptacion por usuario y workspace. El uso continuado del servicio despues de cambios materiales podra requerir aceptacion renovada.
+
+## 24. Ley aplicable y jurisdiccion
+
+Estos terminos se rigen por las leyes de `Costa Rica`, sin perjuicio de normas imperativas aplicables. Toda controversia se sometera a la jurisdiccion competente de `Costa Rica`, salvo acuerdo escrito diferente.
+
+## 25. Relacion con otros documentos
+
+Estos terminos deben leerse junto con:
+
+- [`privacy-policy.md`](./privacy-policy.md)
+- [`master-service-agreement.md`](./master-service-agreement.md)
+- [`data-processing-addendum.md`](./data-processing-addendum.md)
+- [`cancellation-refund-policy.md`](./cancellation-refund-policy.md)
+- [`acceptable-use-policy.md`](./acceptable-use-policy.md)

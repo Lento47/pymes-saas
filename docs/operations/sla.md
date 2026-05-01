@@ -1,16 +1,16 @@
-# SLA Base de PymeHub
+# SLA Base de PymesHub
 
 ## 1. Proposito
 
-Este documento define el objetivo base de disponibilidad y manejo de incidentes para PymeHub. Funciona como referencia operativa y, salvo pacto expreso, no constituye por si mismo un compromiso indemnizable con creditos automáticos.
+Este documento define el objetivo base de disponibilidad y manejo de incidentes para PymesHub. Funciona como referencia operativa y, salvo pacto expreso, no constituye por si mismo un compromiso indemnizable con creditos automáticos.
 
 ## 2. Alcance
 
-Aplica a los componentes principales del servicio que sostienen el acceso normal del cliente a PymeHub, sin incluir indisponibilidades causadas exclusivamente por internet del cliente, uso indebido, fuerza mayor o eventos generalizados de terceros fuera del control razonable del Proveedor.
+Aplica a los componentes principales del servicio que sostienen el acceso normal del cliente a PymesHub, sin incluir indisponibilidades causadas exclusivamente por internet del cliente, uso indebido, fuerza mayor o eventos generalizados de terceros fuera del control razonable del Proveedor.
 
 ## 3. Objetivo de disponibilidad
 
-PymeHub aspira a una disponibilidad mensual objetivo de `[OBJETIVO_DISPONIBILIDAD]%` para los componentes principales del servicio, excluyendo:
+PymesHub aspira a una disponibilidad mensual objetivo de `[OBJETIVO_DISPONIBILIDAD]%` para los componentes principales del servicio, excluyendo:
 
 - mantenimientos programados comunicados razonablemente;
 - fuerza mayor;

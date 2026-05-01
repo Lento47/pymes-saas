@@ -1,8 +1,8 @@
-# Politica de Desarrollo Seguro de PymeHub
+# Politica de Desarrollo Seguro de PymesHub
 
 ## 1. Proposito
 
-Esta politica integra controles basicos de seguridad al ciclo de desarrollo de PymeHub para reducir defectos evitables, exposicion de secretos, fallas de autorizacion y regresiones con impacto en clientes o cumplimiento.
+Esta politica integra controles basicos de seguridad al ciclo de desarrollo de PymesHub para reducir defectos evitables, exposicion de secretos, fallas de autorizacion y regresiones con impacto en clientes o cumplimiento.
 
 ## 2. Alcance
 
@@ -40,7 +40,7 @@ Las vulnerabilidades detectadas deben clasificarse segun criticidad y resolverse
 
 ## 6. Ambientes
 
-PymeHub debe mantener separacion entre desarrollo, staging y produccion, con:
+PymesHub debe mantener separacion entre desarrollo, staging y produccion, con:
 
 - variables de entorno diferenciadas;
 - secretos independientes;

@@ -1,14 +1,14 @@
-# Plan de Figura Legal para PymeHub en Costa Rica
+# Plan de Figura Legal para PymesHub en Costa Rica
 
 ## 1. Proposito
 
-Este documento funciona como memo de decision para definir la figura juridica bajo la cual operara PymeHub en Costa Rica. Su objetivo es alinear velocidad de lanzamiento, capacidad de facturacion, gestion de riesgo, imagen comercial, formalizacion bancaria y escalabilidad contractual.
+Este documento funciona como memo de decision para definir la figura juridica bajo la cual operara PymesHub en Costa Rica. Su objetivo es alinear velocidad de lanzamiento, capacidad de facturacion, gestion de riesgo, imagen comercial, formalizacion bancaria y escalabilidad contractual.
 
 ## 2. Alcance
 
 Este plan cubre:
 
-- la figura legal inicial para operar PymeHub;
+- la figura legal inicial para operar PymesHub;
 - los criterios para migrar de una figura inicial a una estructura mas robusta;
 - las validaciones societarias, bancarias y fiscales asociadas;
 - la asignacion de responsables para formalizacion.
@@ -17,8 +17,8 @@ Este plan cubre:
 
 - Figura inicial seleccionada: `[POR_DEFINIR_PERSONA_FISICA_O_SOCIEDAD]`
 - Fecha objetivo de formalizacion o migracion: `[FECHA_OBJETIVO]`
-- Nombre legal proyectado: `[NOMBRE_EMPRESA]`
-- Nombre comercial del producto: `PymeHub`
+- Nombre legal proyectado: `Otnel`
+- Nombre comercial del producto: `PymesHub`
 - Responsable de firma: `[REPRESENTANTE_LEGAL]`
 - Banco objetivo: `[BANCO_OBJETIVO]`
 - Contador o asesoria asignada: `[CONTADOR_ASIGNADO]`
@@ -105,7 +105,7 @@ Antes de cerrar la decision, deben validarse con asesoria local:
 - RTBF, si aplica;
 - impuesto a personas juridicas, si aplica;
 - requisitos bancarios para cuenta de operacion;
-- redaccion del objeto social suficiente para PymeHub.
+- redaccion del objeto social suficiente para PymesHub.
 
 ## 9. Objeto social sugerido
 

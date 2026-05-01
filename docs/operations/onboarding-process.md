@@ -1,8 +1,8 @@
-# Proceso de Onboarding de Clientes en PymeHub
+# Proceso de Onboarding de Clientes en PymesHub
 
 ## 1. Proposito
 
-Este procedimiento estandariza el alta de nuevos clientes para que PymeHub inicie con configuracion minima suficiente, aceptacion documental, responsabilidades claras y expectativa correcta sobre el servicio contratado.
+Este procedimiento estandariza el alta de nuevos clientes para que PymesHub inicie con configuracion minima suficiente, aceptacion documental, responsabilidades claras y expectativa correcta sobre el servicio contratado.
 
 ## 2. Entradas del proceso
 

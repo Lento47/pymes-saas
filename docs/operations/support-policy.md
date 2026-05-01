@@ -1,8 +1,8 @@
-# Politica de Soporte de PymeHub
+# Politica de Soporte de PymesHub
 
 ## 1. Proposito
 
-Esta politica define como PymeHub recibe, clasifica, gestiona y cierra solicitudes de soporte de clientes. Su objetivo es asegurar una operacion consistente, trazable y proporcional a la severidad del caso.
+Esta politica define como PymesHub recibe, clasifica, gestiona y cierra solicitudes de soporte de clientes. Su objetivo es asegurar una operacion consistente, trazable y proporcional a la severidad del caso.
 
 ## 2. Alcance
 
@@ -18,7 +18,7 @@ No se garantiza atencion formal de solicitudes recibidas por canales informales 
 
 ## 4. Horario de atencion
 
-El soporte ordinario opera en horario laboral de `[JURISDICCION]`, salvo acuerdos especiales. Los incidentes criticos pueden escalarse fuera de horario cuando comprometan disponibilidad, seguridad o continuidad del servicio.
+El soporte ordinario opera en horario laboral de `Costa Rica`, salvo acuerdos especiales. Los incidentes criticos pueden escalarse fuera de horario cuando comprometan disponibilidad, seguridad o continuidad del servicio.
 
 ## 5. Clasificacion de prioridad
 
@@ -75,4 +75,4 @@ El soporte base no incluye, salvo acuerdo expreso:
 - integraciones especiales;
 - limpieza manual extensa de datos;
 - capacitacion fuera del onboarding pactado;
-- soporte sobre herramientas de terceros no administradas por PymeHub.
+- soporte sobre herramientas de terceros no administradas por PymesHub.

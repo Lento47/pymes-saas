@@ -1,16 +1,16 @@
-# Politica de Uso Aceptable de PymeHub
+# Politica de Uso Aceptable de PymesHub
 
 ## Proposito
 
-Esta politica define usos prohibidos y controles minimos para proteger PymeHub, a otros clientes, a terceros y a `[NOMBRE_EMPRESA]`. Aplica a todo usuario, cliente, proveedor o integracion que utilice el servicio.
+Esta politica define usos prohibidos y controles minimos para proteger PymesHub, a otros clientes, a terceros y a `Otnel S.A`. Aplica a todo usuario, cliente, proveedor o integracion que utilice el servicio.
 
 ## Usos permitidos
 
-PymeHub debe usarse para operaciones legitimas de negocio relacionadas con gestion de conversaciones, clientes, tareas, documentos, automatizaciones y reportes internos del cliente.
+PymesHub debe usarse para operaciones legitimas de negocio relacionadas con gestion de conversaciones, clientes, tareas, documentos, automatizaciones y reportes internos del cliente.
 
 ## Usos prohibidos
 
-Se prohibe usar PymeHub para:
+Se prohibe usar PymesHub para:
 
 - spam, envio masivo no consentido o campañas abusivas;
 - fraude, suplantacion, phishing, estafas o engaño comercial;
@@ -27,7 +27,7 @@ Se prohibe usar PymeHub para:
 
 ## Consecuencias
 
-`[NOMBRE_EMPRESA]` puede investigar, limitar, suspender o terminar accesos cuando detecte uso prohibido o riesgo grave. Tambien podra preservar evidencias, bloquear contenido o cooperar con autoridades cuando sea legalmente necesario.
+`Otnel S.A` puede investigar, limitar, suspender o terminar accesos cuando detecte uso prohibido o riesgo grave. Tambien podra preservar evidencias, bloquear contenido o cooperar con autoridades cuando sea legalmente necesario.
 
 ## Cooperacion del cliente
 

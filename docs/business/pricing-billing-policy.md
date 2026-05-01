@@ -1,8 +1,8 @@
-# Politica Interna de Pricing y Billing de PymeHub
+# Politica Interna de Pricing y Billing de PymesHub
 
 ## 1. Proposito
 
-Esta politica define la logica comercial y operativa que PymeHub debe seguir para precios, ciclos de cobro, cambios de plan, descuentos, mora, suspension y reactivacion. Su objetivo es asegurar que ventas, soporte, producto y facturacion operen con una sola regla.
+Esta politica define la logica comercial y operativa que PymesHub debe seguir para precios, ciclos de cobro, cambios de plan, descuentos, mora, suspension y reactivacion. Su objetivo es asegurar que ventas, soporte, producto y facturacion operen con una sola regla.
 
 ## 2. Alcance
 
@@ -27,7 +27,7 @@ Cada plan puede tener limites sobre usuarios, almacenamiento, automatizaciones, 
 
 ## 5. Ciclos de cobro
 
-PymeHub puede operar con:
+PymesHub puede operar con:
 
 - suscripciones mensuales;
 - suscripciones anuales;
@@ -55,7 +55,7 @@ La regla elegida debe mantenerse consistente y explicarse al cliente antes de ap
 
 ## 7. Downgrades
 
-Los downgrades no deben provocar perdida inadvertida de datos. Si el cliente excede los limites del plan inferior, PymeHub puede:
+Los downgrades no deben provocar perdida inadvertida de datos. Si el cliente excede los limites del plan inferior, PymesHub puede:
 
 - impedir nuevas creaciones;
 - mantener recursos existentes en modo restringido;
@@ -76,7 +76,7 @@ Todo descuento debe registrar:
 
 ## 9. Mora e impago
 
-Ante mora o impago, PymeHub puede aplicar escalonadamente:
+Ante mora o impago, PymesHub puede aplicar escalonadamente:
 
 1. aviso de cobro pendiente;
 2. periodo breve de gracia;
@@ -95,7 +95,7 @@ La reactivacion requiere:
 - confirmacion de que los datos siguen disponibles;
 - definicion clara del nuevo periodo de servicio.
 
-`[NOMBRE_EMPRESA]` podra exigir el pago de saldos pendientes antes de reactivar.
+`Otnel` podra exigir el pago de saldos pendientes antes de reactivar.
 
 ## 11. Evidencia y control
 
