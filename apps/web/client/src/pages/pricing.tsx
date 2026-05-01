@@ -201,7 +201,7 @@ export default function PricingPage() {
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-white/70">
               {copy.cta?.subtitle ||
-                'Join hundreds of businesses using PymeHub to manage customer operations.'}
+                'Join hundreds of businesses using PymesHub to manage customer operations.'}
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <button

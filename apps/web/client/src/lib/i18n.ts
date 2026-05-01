@@ -405,7 +405,7 @@ export const translations = {
       },
       cta: {
         title: "Ready to get started?",
-        subtitle: "Join hundreds of businesses using PymeHub",
+        subtitle: "Join hundreds of businesses using PymesHub",
         primary: "Start Free Trial",
         secondary: "Schedule a Demo",
         note: "No credit card required. Try free for 14 days.",
@@ -807,7 +807,7 @@ export const translations = {
       },
       cta: {
         title: "¿Listo para empezar?",
-        subtitle: "Únete a cientos de negocios usando PymeHub",
+        subtitle: "Únete a cientos de negocios usando PymesHub",
         primary: "Comenzar Prueba Gratuita",
         secondary: "Programar Demostración",
         note: "Sin tarjeta de crédito requerida. Prueba gratis por 14 días.",

@@ -525,7 +525,7 @@ export default function BillingPage() {
                     <Button
                       size="sm"
                       className="w-full h-8 text-xs gap-1.5 bg-yellow-600 hover:bg-yellow-700 text-white"
-                      onClick={() => toast({ title: "Contactá a ventas", description: "Escribinos a ventas@pymehub.com para armar tu plan Business+ a medida." })}
+                      onClick={() => toast({ title: "Contactá a ventas", description: "Escribinos a ventas@PymesHub.com para armar tu plan Business+ a medida." })}
                     >
                       Contactar a ventas
                     </Button>

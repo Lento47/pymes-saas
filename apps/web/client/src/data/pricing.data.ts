@@ -198,7 +198,7 @@ export const FAQS: FAQ[] = [
   {
     question: 'Is there a free trial?',
     answer:
-      'Yes. PymeHub offers a guided 14-day trial for eligible plans. You can explore all features with a test workspace.',
+      'Yes. PymesHub offers a guided 14-day trial for eligible plans. You can explore all features with a test workspace.',
   },
   {
     question: 'Can I pay in colones?',

@@ -70,7 +70,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     slug: "terms-of-service",
     title: "Términos de Servicio",
     summary: "Reglas de acceso, uso, licencia, pagos, suspensión, responsabilidad y ley aplicable.",
-    purpose: "Gobernar la relación contractual entre PymeHub y cada cliente respecto del uso de la Plataforma.",
+    purpose: "Gobernar la relación contractual entre PymesHub y cada cliente respecto del uso de la Plataforma.",
     category: "legal",
     visibility: "public",
     audience: "Cliente",
@@ -87,7 +87,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "privacy-policy",
     title: "Política de Privacidad",
-    summary: "Cómo PymeHub recopila, usa, conserva, comparte y protege datos personales.",
+    summary: "Cómo PymesHub recopila, usa, conserva, comparte y protege datos personales.",
     purpose: "Cumplir con la Ley N.º 8968 y dar transparencia sobre el tratamiento de datos personales en Costa Rica.",
     category: "legal",
     visibility: "public",
@@ -105,7 +105,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "data-processing-addendum",
     title: "Data Processing Addendum (DPA)",
-    summary: "Reglas vinculantes cuando el cliente es responsable y PymeHub actúa como encargado del tratamiento.",
+    summary: "Reglas vinculantes cuando el cliente es responsable y PymesHub actúa como encargado del tratamiento.",
     purpose: "Cumplir con la Ley N.º 8968 y su Reglamento para documentar instrucciones, subencargados, seguridad y responsabilidades.",
     category: "legal",
     visibility: "public",
@@ -123,7 +123,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "acceptable-use-policy",
     title: "Política de Uso Aceptable (AUP)",
-    summary: "Conductas permitidas y prohibidas al usar PymeHub, sus integraciones y canales.",
+    summary: "Conductas permitidas y prohibidas al usar PymesHub, sus integraciones y canales.",
     purpose: "Proteger la integridad del servicio y los derechos de otros clientes y terceros.",
     category: "legal",
     visibility: "public",
@@ -155,7 +155,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
   {
     slug: "subprocessors-notice",
     title: "Aviso de Subencargados",
-    summary: "Lista pública de terceros que tratan datos por cuenta de PymeHub, con función, categorías y región.",
+    summary: "Lista pública de terceros que tratan datos por cuenta de PymesHub, con función, categorías y región.",
     purpose: "Dar transparencia sobre la cadena de tratamiento y permitir al cliente evaluar riesgos.",
     category: "legal",
     visibility: "public",
