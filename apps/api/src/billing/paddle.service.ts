@@ -686,7 +686,7 @@ export class PaddleService {
     if (sub) {
       await this.prisma.workspaceSubscription.update({
         where: { id: sub.id },
-        data: { status: 'CANCELLED' },
+        data: { status: 'CANCELLED', plan: 'FREE' },
       });
 
       const ws = await this.prisma.workspace.findUnique({
@@ -747,7 +747,12 @@ export class PaddleService {
 
     await this.prisma.workspaceSubscription.update({
       where: { id: sub.id },
-      data: { status: 'ACTIVE' },
+      data: { status: 'ACTIVE', plan: sub.plan },
+    });
+
+    await this.prisma.workspace.update({
+      where: { id: sub.workspace_id },
+      data: { plan: sub.plan },
     });
 
     // DEDUPE — `transaction.completed` y `transaction.paid` pueden disparar por
@@ -915,7 +920,11 @@ export class PaddleService {
     if (enterpriseMonthly) priceVars[enterpriseMonthly] = 'ENTERPRISE';
     if (enterpriseAnnual) priceVars[enterpriseAnnual] = 'ENTERPRISE';
 
-    return priceVars[priceId] ?? 'FREE';
+    const result = priceVars[priceId] ?? 'FREE';
+    if (result === 'FREE' && priceId) {
+      this.logger.warn(`mapPaddlePriceToPlan: unmapped Paddle price ID "${priceId}" — falling back to FREE. Check env vars PADDLE_PRICE_*_MONTHLY/ANNUAL.`);
+    }
+    return result;
   }
 
   private async getWorkspaceInfo(workspaceId: string): Promise<{ name: string; email: string }> {
