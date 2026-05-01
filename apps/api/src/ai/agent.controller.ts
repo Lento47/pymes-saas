@@ -71,8 +71,8 @@ export class AgentController {
     @CurrentUser('id') userId: string,
   ) {
     const result = await this.diagnostic.diagnose({
-      workspace_id: workspaceId,
-      user_id: userId,
+      workspaceId,
+      userId,
       module: body.module || 'unknown',
       error_code: body.error_code,
       trace_id: body.trace_id,
