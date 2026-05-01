@@ -891,16 +891,29 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
   const [fromEmail, setFromEmail] = useState(channel?.config?.from_email ?? "");
   const [inboundEmail, setInboundEmail] = useState(channel?.config?.inbound_email ?? "");
   const [fromName, setFromName] = useState(channel?.config?.from_name ?? "");
+  const [smtpHost, setSmtpHost] = useState(channel?.config?.smtp_host ?? "");
+  const [smtpPort, setSmtpPort] = useState(channel?.config?.smtp_port ?? 587);
+  const [smtpUser, setSmtpUser] = useState(channel?.config?.smtp_user ?? "");
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpTls, setSmtpTls] = useState(channel?.config?.smtp_tls ?? true);
+  const [useSmtp, setUseSmtp] = useState(!!channel?.config?.smtp_host);
   const webhookUrl = `${window.location.origin}/api/inbound/email/webhook`;
   const resolvedInboundEmail = inboundEmail.trim() || fromEmail.trim();
   const workspaceHeader = channel?.workspace_id ?? "WORKSPACE_ID";
 
   const save = useMutation({
     mutationFn: () => api.configureEmail(channel.id, {
-      api_key: apiKey || undefined,
+      api_key: useSmtp ? undefined : (apiKey || undefined),
       from_email: fromEmail,
       inbound_email: inboundEmail.trim() ? inboundEmail : undefined,
       from_name: fromName,
+      ...(useSmtp ? {
+        smtp_host: smtpHost || undefined,
+        smtp_port: smtpPort,
+        smtp_user: smtpUser || undefined,
+        smtp_password: smtpPassword || undefined,
+        smtp_tls: smtpTls,
+      } : {}),
     }),
     onSuccess: () => {
       toast({ title: "Canal EMAIL guardado y activado" });
@@ -930,12 +943,54 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
         </a>
       </div>
 
-      <div>
-        <Label>API Key de Resend {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener la actual)</span>}</Label>
-        <div className="mt-1">
-          <SecretInput value={apiKey} onChange={setApiKey} placeholder={isEdit ? "••••••••••••••••••••" : "re_xxxxxxxxxxxxxxxxxxxx"} />
+      {!useSmtp && (
+        <div>
+          <Label>API Key de Resend {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener la actual)</span>}</Label>
+          <div className="mt-1">
+            <SecretInput value={apiKey} onChange={setApiKey} placeholder={isEdit ? "••••••••••••••••••••" : "re_xxxxxxxxxxxxxxxxxxxx"} />
+          </div>
         </div>
+      )}
+
+      <div className="flex items-center justify-between rounded-lg border border-border p-3">
+        <div>
+          <Label className="text-xs">Usar SMTP personalizado</Label>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Gmail, Outlook, hosting propio — configurá tu servidor SMTP.</p>
+        </div>
+        <Switch checked={useSmtp} onCheckedChange={setUseSmtp} />
       </div>
+
+      {useSmtp && (
+        <div className="space-y-3 rounded-lg border border-border p-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[11px]">Servidor SMTP</Label>
+              <Input value={smtpHost} onChange={e => setSmtpHost(e.target.value)}
+                placeholder="smtp.gmail.com" className="mt-1 h-8 text-xs bg-[hsl(var(--elevated))] border-border" />
+            </div>
+            <div>
+              <Label className="text-[11px]">Puerto</Label>
+              <Input type="number" value={smtpPort} onChange={e => setSmtpPort(Number(e.target.value))}
+                placeholder="587" className="mt-1 h-8 text-xs bg-[hsl(var(--elevated))] border-border" />
+            </div>
+          </div>
+          <div>
+            <Label className="text-[11px]">Usuario SMTP</Label>
+            <Input value={smtpUser} onChange={e => setSmtpUser(e.target.value)}
+              placeholder="tu-email@gmail.com" className="mt-1 h-8 text-xs bg-[hsl(var(--elevated))] border-border" />
+          </div>
+          <div>
+            <Label className="text-[11px]">Contraseña SMTP {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener la actual)</span>}</Label>
+            <div className="mt-1">
+              <SecretInput value={smtpPassword} onChange={setSmtpPassword} placeholder={isEdit ? "••••••••••••••" : "contraseña o app password"} />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={smtpTls} onCheckedChange={setSmtpTls} id="smtp-tls" />
+            <Label htmlFor="smtp-tls" className="text-[11px] text-muted-foreground">Usar TLS/STARTTLS</Label>
+          </div>
+        </div>
+      )}
 
       <div>
         <Label>Email remitente</Label>
