@@ -2486,26 +2486,26 @@ export default function Settings() {
           <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">
             <Building2 className="h-4 w-4 mr-2" />{copy.tabs.workspace}
           </TabsTrigger>
+          <TabsTrigger value="billing" className="data-[state=active]:bg-elevated">
+            <CreditCard className="h-4 w-4 mr-2" />{copy.tabs.billing}
+          </TabsTrigger>
           <TabsTrigger value="members" className="data-[state=active]:bg-elevated">
             <Users className="h-4 w-4 mr-2" />{copy.tabs.members}
+          </TabsTrigger>
+          <TabsTrigger value="departments" className="data-[state=active]:bg-elevated">
+            <Layers className="h-4 w-4 mr-2" />{copy.tabs.departments}
           </TabsTrigger>
           <TabsTrigger value="channels" className="data-[state=active]:bg-elevated">
             <PlugZap className="h-4 w-4 mr-2" />{copy.tabs.channels}
           </TabsTrigger>
-          <TabsTrigger value="departments" className="data-[state=active]:bg-elevated">
-            <Layers className="h-4 w-4 mr-2" />{copy.tabs.departments}
+          <TabsTrigger value="routing" className="data-[state=active]:bg-elevated">
+            <Shuffle className="h-4 w-4 mr-2" />{copy.tabs.routing}
           </TabsTrigger>
           <TabsTrigger value="integrations" className="data-[state=active]:bg-elevated">
             <Plug className="h-4 w-4 mr-2" />{copy.tabs.integrations}
           </TabsTrigger>
           <TabsTrigger value="ai" className="data-[state=active]:bg-elevated">
             <BrainCircuit className="h-4 w-4 mr-2" />{copy.tabs.ai}
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="data-[state=active]:bg-elevated">
-            <CreditCard className="h-4 w-4 mr-2" />{copy.tabs.billing}
-          </TabsTrigger>
-          <TabsTrigger value="routing" className="data-[state=active]:bg-elevated">
-            <Shuffle className="h-4 w-4 mr-2" />{copy.tabs.routing}
           </TabsTrigger>
           {isPlanAtLeast('BUSINESS') && (
             <TabsTrigger value="apitokens" className="data-[state=active]:bg-elevated">
@@ -2531,13 +2531,13 @@ export default function Settings() {
         <Card className="mt-4 bg-card border-border">
           <CardContent className="pt-6">
             <TabsContent value="workspace"><WorkspaceTab /></TabsContent>
+            <TabsContent value="billing"><BillingPage /></TabsContent>
             <TabsContent value="members"><MembersTab /></TabsContent>
-            <TabsContent value="channels"><ChannelsTab /></TabsContent>
             <TabsContent value="departments"><DepartmentsTab /></TabsContent>
+            <TabsContent value="channels"><ChannelsTab /></TabsContent>
+            <TabsContent value="routing"><RoutingRulesTab /></TabsContent>
             <TabsContent value="integrations"><IntegrationsTab /></TabsContent>
             <TabsContent value="ai"><AiTab /></TabsContent>
-            <TabsContent value="billing"><BillingPage /></TabsContent>
-            <TabsContent value="routing"><RoutingRulesTab /></TabsContent>
             {isPlanAtLeast('BUSINESS') && <TabsContent value="apitokens"><ApiTokensTab /></TabsContent>}
             {isPlanAtLeast('BUSINESS') && <TabsContent value="saml"><SamlConfig /></TabsContent>}
             {isPlanAtLeast('BUSINESS_PLUS') && <TabsContent value="enterprise"><EnterpriseSettingsTab /></TabsContent>}
