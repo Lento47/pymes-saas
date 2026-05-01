@@ -679,7 +679,7 @@ export const translations = {
     },
     legalCenter: {
       eyebrow: "Legal Center",
-      title: "PymeHub Legal Documentation",
+      title: "PymesHub Legal Documentation",
       description: "Customer-facing legal documents governing the use of the Platform, aligned with Costa Rican legislation and international best practices.",
       backToDocs: "Back to Documentation",
       backToLanding: "Back to landing",
@@ -1356,7 +1356,7 @@ export const translations = {
     },
     legalCenter: {
       eyebrow: "Centro Legal",
-      title: "Documentación legal de PymeHub",
+      title: "Documentación legal de PymesHub",
       description: "Documentos legales orientados al cliente que rigen el uso de la Plataforma, alineados con la legislación costarricense y mejores prácticas internacionales.",
       backToDocs: "Volver a Documentación",
       backToLanding: "Volver al landing",

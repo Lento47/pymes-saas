@@ -207,7 +207,7 @@ export const ADD_ONS: AddOn[] = [
 export const FAQS: FAQ[] = [
   {
     question: '¿Hay prueba gratuita?',
-    answer: 'Sí. PymeHub ofrece una prueba guiada de 14 días para planes elegibles. Podés explorar todas las funciones con un workspace de prueba.',
+    answer: 'Sí. PymesHub ofrece una prueba guiada de 14 días para planes elegibles. Podés explorar todas las funciones con un workspace de prueba.',
   },
   {
     question: '¿Puedo pagar en colones?',
@@ -239,7 +239,7 @@ export const FAQS: FAQ[] = [
   },
   {
     question: '¿Hay costos adicionales por WhatsApp?',
-    answer: 'La bandeja de WhatsApp está incluida para gestionar conversaciones, asignar clientes y dar seguimiento. Los costos oficiales de mensajería de Meta WhatsApp Business Platform pueden aplicar según el uso, categoría del mensaje, país del destinatario y configuración del proveedor. Estos son independientes de tu suscripción de PymeHub.',
+    answer: 'La bandeja de WhatsApp está incluida para gestionar conversaciones, asignar clientes y dar seguimiento. Los costos oficiales de mensajería de Meta WhatsApp Business Platform pueden aplicar según el uso, categoría del mensaje, país del destinatario y configuración del proveedor. Estos son independientes de tu suscripción de PymesHub.',
   },
   {
     question: '¿Están listas las funciones enterprise de Business+?',
