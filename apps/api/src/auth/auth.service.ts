@@ -379,7 +379,7 @@ export class AuthService {
       data: {
         workspace_id: workspace.id,
         user_id: userId,
-        role: record.role,
+        role: record.role as any,
         is_owner: false,
       },
     });
