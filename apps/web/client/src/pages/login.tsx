@@ -194,7 +194,7 @@ export default function LoginPage() {
                   Tu sesión ha expirado
                 </p>
                 <p className="mt-1 text-xs text-amber-200/80">
-                  Por seguridad, la sesión se cierra después de 10 minutos de inactividad. Ingresa de nuevo para continuar.
+                  Por seguridad, la sesión se cierra después de 30 minutos de inactividad. Ingresa de nuevo para continuar.
                 </p>
               </div>
             )}

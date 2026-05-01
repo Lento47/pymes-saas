@@ -21,8 +21,8 @@ let _token: string | null = null;
 let _workspaceSlug: string | null = null;
 let _refreshToken: string | null = null;
 
-// Session timeout: 10 minutes of inactivity
-const INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
+// Session timeout: 30 minutes of inactivity
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
 
 function getStorage(): Storage {
   // Use localStorage for cross-session persistence
