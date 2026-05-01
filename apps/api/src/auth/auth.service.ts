@@ -485,10 +485,16 @@ export class AuthService {
       select: { id: true, name: true, slug: true, plan: true, timezone: true, locale: true },
     });
 
+    const userData = await this.prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: { avatar_url: true, name: true },
+    });
+
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
+      name: userData.name,
+      avatar_url: userData.avatar_url,
       role: user.role,
       is_owner: user.is_owner,
       is_platform_admin: user.is_platform_admin,

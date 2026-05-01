@@ -4,14 +4,22 @@ import {
   Get,
   Param,
   Patch,
+  Post,
+  Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -53,5 +61,27 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
   ) {
     return this.service.updateById(user.workspace_id, user, targetId, dto);
+  }
+
+  /** PATCH /users/me/password — cambiar contraseña */
+  @Patch('me/password')
+  changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
+    return this.service.changePassword(user.id, dto);
+  }
+
+  /** POST /users/me/avatar — subir foto de perfil */
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
+  uploadAvatar(@CurrentUser() user: AuthUser, @UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Archivo requerido.');
+    return this.service.uploadAvatar(user.id, file);
+  }
+
+  /** GET /users/:id/avatar — mostrar foto de perfil */
+  @Get(':id/avatar')
+  async getAvatar(@Param('id') id: string, @Res() res: Response) {
+    const { data, contentType } = await this.service.getAvatar(id);
+    res.set({ 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400' });
+    res.send(data);
   }
 }
