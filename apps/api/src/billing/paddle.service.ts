@@ -245,36 +245,27 @@ export class PaddleService {
     // EL TRIAL, SIN CARGO. ACTUALIZAMOS LOCAL DE INMEDIATO PARA QUE LA UI
     // REFLEJE EL PLAN CORRECTO. PADDLE COBRARA AL FINAL DEL TRIAL.
     const status = this.mapPaddleStatus(updated.status);
-    const shouldUpdateNow = !isDowngrade || isTrialing;
-    if (shouldUpdateNow) {
-      // ATOMICO — SI UNA UPDATE FALLA, NINGUNA SE APLICA Y EL WEBHOOK
-      // POSTERIOR (subscription.updated) RECONCILIA EL ESTADO.
-      await this.prisma.$transaction([
-        this.prisma.workspaceSubscription.update({
-          where: { id: sub.id },
-          data: { plan: newPlan, status: status as any },
-        }),
-        this.prisma.workspace.update({
-          where: { id: workspaceId },
-          data: { plan: newPlan },
-        }),
-      ]);
-      if (isTrialing) {
-        this.logger.log(`Plan changed during trial (no charge now): workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
-      } else {
-        this.logger.log(`Plan upgraded immediately: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
-      }
-    } else {
-      this.logger.log(`Plan downgrade scheduled for next period: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
-    }
+
+    // ATOMIC — SI UNA UPDATE FALLA, NINGUNA SE APLICA Y EL WEBHOOK
+    // POSTERIOR (subscription.updated) RECONCILIA EL ESTADO.
+    await this.prisma.$transaction([
+      this.prisma.workspaceSubscription.update({
+        where: { id: sub.id },
+        data: { plan: newPlan, status: status as any },
+      }),
+      this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { plan: newPlan },
+      }),
+    ]);
+    this.logger.log(`Plan changed immediately: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}${isDowngrade ? ' (downgrade)' : ' (upgrade)'}`);
 
     return {
       updated: true,
-      plan: shouldUpdateNow ? newPlan : sub.plan, // PARA UI: EN DOWNGRADE NO TRIAL, EL PLAN ACTUAL SIGUE VIGENTE HASTA EL PROXIMO CICLO
-      scheduled_plan: !shouldUpdateNow ? newPlan : null,
+      plan: newPlan,
       status,
       prorated: !isDowngrade && !isTrialing,
-      effective: shouldUpdateNow ? 'immediate' : 'next_billing_period',
+      effective: 'immediate',
     };
   }
 
