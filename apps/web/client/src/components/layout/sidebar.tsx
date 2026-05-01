@@ -81,7 +81,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: "/chat",          icon: MessageCircle,    key: "chat" },
       { path: "/agent",         icon: Bot,             key: "agent" },
-      { path: "/settings",      icon: Settings,        key: "settings" },
       { path: "/help",          icon: CircleHelp,       key: "help" },
       { path: "/notifications", icon: BellRing,        key: "notifications", badge: "unread" },
     ],
@@ -347,6 +346,18 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           ))}
         </nav>
+
+        {/* ── Settings Dropdown ── */}
+        <div className="shrink-0 px-3 pb-2">
+          <div className="relative">
+            <Link href="/settings?tab=profile">
+              <a className="group relative flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40">
+                <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
+                <span className="flex-1 text-sm">Configuración</span>
+              </a>
+            </Link>
+          </div>
+        </div>
 
         {/* ── Bottom Actions ── */}
         <div className="shrink-0 border-t border-border/40 px-3 py-3 pb-safe space-y-3 bg-sidebar-accent/20">

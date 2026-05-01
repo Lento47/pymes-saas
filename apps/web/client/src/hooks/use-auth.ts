@@ -17,6 +17,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  avatar_url?: string;
   role: string;
   is_platform_admin?: boolean;
   workspace: {

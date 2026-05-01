@@ -23,11 +23,12 @@ import { SUPPORTED_LOCALES, normalizeLocale, type SupportedLocale } from "@/lib/
 import {
   Building2, Users, PlugZap, UserPlus, Plus, Plug,
   Mail, MessageCircle, Radio, Eye, EyeOff, ExternalLink,
-  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard, Shuffle, Loader2, Key, Copy, Shield, Send, Crown,
+  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard, Shuffle, Loader2, Key, Copy, Shield, Send, Crown, UserCircle,
 } from "lucide-react";
 import BillingPage from "@/pages/billing";
 import { SamlConfig } from "@/components/settings/saml-config";
 import EnterpriseSettingsTab from "@/components/settings/enterprise-settings";
+import { ProfileTab } from "@/components/settings/profile-tab";
 import { ModuleHero } from "@/components/shared/module-hero";
 
 function RoutingRulesTab() {
@@ -2678,12 +2679,21 @@ function ApiTokensTab() {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROFILE TAB
+// ═══════════════════════════════════════════════════════════════════════════════
+
+
+
+
 export default function Settings() {
   const { user } = useAuth();
   const { messages } = useI18n();
   const copy = messages.settings;
   const isPlatformAdmin = user?.is_platform_admin === true;
   const plan = user?.workspace?.plan ?? 'FREE';
+  const tabParam = new URLSearchParams(window.location.search).get('tab');
+  const defaultTab = tabParam || 'workspace';
   const isPlanAtLeast = (min: string) => {
     const order = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
     return order.indexOf(plan) >= order.indexOf(min);
@@ -2702,10 +2712,10 @@ export default function Settings() {
       <div className="px-6 pb-2">
         <DiagnosticButton module="settings" />
       </div>
-      <Tabs defaultValue="workspace">
+      <Tabs defaultValue={defaultTab}>
         <TabsList className="bg-card border border-border overflow-x-auto flex-nowrap scrollbar-none">
-          <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">
-            <Building2 className="h-4 w-4 mr-2" />{copy.tabs.workspace}
+          <TabsTrigger value="profile" className="data-[state=active]:bg-elevated">
+            <UserCircle className="h-4 w-4 mr-2" />Perfil
           </TabsTrigger>
           <TabsTrigger value="billing" className="data-[state=active]:bg-elevated">
             <CreditCard className="h-4 w-4 mr-2" />{copy.tabs.billing}
@@ -2751,6 +2761,7 @@ export default function Settings() {
         </TabsList>
         <Card className="mt-4 bg-card border-border">
           <CardContent className="pt-6">
+            <TabsContent value="profile"><ProfileTab /></TabsContent>
             <TabsContent value="workspace"><WorkspaceTab /></TabsContent>
             <TabsContent value="billing"><BillingPage /></TabsContent>
             <TabsContent value="members"><MembersTab /></TabsContent>
