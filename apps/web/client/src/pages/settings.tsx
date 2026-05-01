@@ -803,10 +803,19 @@ function MembersTab() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("AGENT");
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeRole, setCodeRole] = useState("AGENT");
+  const [codeMax, setCodeMax] = useState("5");
+  const [codeExpiry, setCodeExpiry] = useState("7");
 
   const { data, isLoading } = useQuery({
     queryKey: ["/api/workspaces/current/members"],
     queryFn: () => api.getMembers(),
+  });
+
+  const { data: codes, isLoading: codesLoading } = useQuery({
+    queryKey: ["/api/workspaces/current/invite-codes"],
+    queryFn: () => api.getInviteCodes().catch(() => []),
   });
 
   const invite = useMutation({
@@ -814,66 +823,174 @@ function MembersTab() {
     onSuccess: () => {
       toast({ title: "Invitación enviada" });
       qc.invalidateQueries({ queryKey: ["/api/workspaces/current/members"] });
-      setOpen(false);
-      setEmail("");
+      setOpen(false); setEmail("");
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const changeRoleMut = useMutation({
+    mutationFn: ({ userId, newRole }: { userId: string; newRole: string }) => api.changeMemberRole(userId, newRole),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/workspaces/current/members"] }); toast({ title: "Rol actualizado" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const removeMut = useMutation({
+    mutationFn: (userId: string) => api.removeMember(userId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/workspaces/current/members"] }); toast({ title: "Miembro removido" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const genCode = useMutation({
+    mutationFn: () => api.createInviteCode({ role: codeRole, max_uses: Number(codeMax) || 5, expires_in_days: Number(codeExpiry) || 7 }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/workspaces/current/invite-codes"] }); setCodeOpen(false); toast({ title: "Código generado" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const revokeCode = useMutation({
+    mutationFn: (id: string) => api.revokeInviteCode(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/workspaces/current/invite-codes"] }); toast({ title: "Código revocado" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   const members = Array.isArray(data) ? data : [];
+  const codesList = Array.isArray(codes) ? codes : [];
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-muted-foreground">{members.length} miembro(s)</p>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="bg-primary hover:bg-primary/90">
-              <UserPlus className="h-4 w-4 mr-2" />Invitar
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-card border-border">
-            <DialogHeader><DialogTitle>Invitar usuario</DialogTitle></DialogHeader>
-            <div className="space-y-3 pt-2">
-              <div>
-                <Label>Email</Label>
-                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-              </div>
-              <div>
-                <Label>Rol</Label>
-                <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-card border-border">
-                    {["ADMIN", "AGENT", "VIEWER"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={() => invite.mutate()} disabled={!email || invite.isPending} className="w-full bg-primary hover:bg-primary/90">
-                {invite.isPending ? "Enviando..." : "Enviar invitación"}
+    <div className="space-y-6">
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-sm text-muted-foreground">{members.length} miembro(s)</p>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="bg-primary hover:bg-primary/90">
+                <UserPlus className="h-4 w-4 mr-2" />Invitar
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {isLoading ? <div className="text-muted-foreground text-sm">Cargando...</div> : (
-        <div className="space-y-2">
-          {members.map((m: any) => (
-            <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-elevated text-xs">{m.name?.[0]?.toUpperCase()}</AvatarFallback>
-                </Avatar>
+            </DialogTrigger>
+            <DialogContent className="bg-card border-border">
+              <DialogHeader><DialogTitle>Invitar usuario</DialogTitle></DialogHeader>
+              <div className="space-y-3 pt-2">
                 <div>
-                  <p className="text-sm font-medium">{m.name}</p>
-                  <p className="text-xs text-muted-foreground">{m.email}</p>
+                  <Label>Email</Label>
+                  <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                </div>
+                <div>
+                  <Label>Rol</Label>
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      {["ADMIN", "AGENT", "VIEWER"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={() => invite.mutate()} disabled={!email || invite.isPending} className="w-full bg-primary hover:bg-primary/90">
+                  {invite.isPending ? "Enviando..." : "Enviar invitación"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {isLoading ? <div className="text-muted-foreground text-sm">Cargando...</div> : (
+          <div className="space-y-2">
+            {members.map((m: any) => (
+              <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-elevated text-xs">{m.name?.[0]?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">{m.name}</p>
+                    <p className="text-xs text-muted-foreground">{m.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={m.role} onValueChange={newRole => changeRoleMut.mutate({ userId: m.user_id, newRole })} disabled={m.role === 'OWNER'}>
+                    <SelectTrigger className="h-7 text-[11px] w-24 bg-elevated border-border"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      {["ADMIN", "AGENT", "VIEWER"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {m.role !== 'OWNER' && (
+                    <Button variant="ghost" size="sm" className="h-7 text-[11px] text-destructive hover:text-destructive" onClick={() => { if (window.confirm(`¿Remover a ${m.name || m.email} del workspace?`)) removeMut.mutate(m.user_id); }}>
+                      <UserMinus className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               </div>
-              <Badge variant="outline" className={ROLE_COLORS[m.role] ?? ""}>{m.role}</Badge>
-            </div>
-          ))}
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-border my-4" />
+
+      <div>
+        <div className="flex justify-between items-center mb-3">
+          <div>
+            <h3 className="text-sm font-semibold">Códigos de invitación</h3>
+            <p className="text-xs text-muted-foreground">Generá códigos para compartir en WhatsApp, SMS o verbalmente.</p>
+          </div>
+          <Dialog open={codeOpen} onOpenChange={setCodeOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline"><Key className="h-4 w-4 mr-2" />Generar código</Button>
+            </DialogTrigger>
+            <DialogContent className="bg-card border-border">
+              <DialogHeader><DialogTitle>Generar código de invitación</DialogTitle></DialogHeader>
+              <div className="space-y-3 pt-2">
+                <div>
+                  <Label>Rol asignado</Label>
+                  <Select value={codeRole} onValueChange={setCodeRole}>
+                    <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      {["ADMIN", "AGENT", "VIEWER"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Usos máximos</Label>
+                    <Input type="number" value={codeMax} onChange={e => setCodeMax(e.target.value)} placeholder="5" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                  <div>
+                    <Label>Expira en días</Label>
+                    <Input type="number" value={codeExpiry} onChange={e => setCodeExpiry(e.target.value)} placeholder="7" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                  </div>
+                </div>
+                <Button onClick={() => genCode.mutate()} disabled={genCode.isPending} className="w-full bg-primary hover:bg-primary/90">
+                  {genCode.isPending ? "Generando..." : "Generar código"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
-      )}
+
+        {codesList.length > 0 && (
+          <div className="space-y-2">
+            {codesList.map((c: any) => (
+              <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-sm font-bold tracking-wider text-primary">{c.code}</span>
+                  <span className="text-xs text-muted-foreground">{c.used_count}/{c.max_uses} usos</span>
+                  <Badge variant="outline" className={c.is_active && new Date(c.expires_at) > new Date() ? "border-green-500/30 text-green-400 bg-green-500/10" : "border-red-500/30 text-red-400 bg-red-500/10"}>
+                    {!c.is_active ? "Revocado" : new Date(c.expires_at) > new Date() ? "Activo" : "Expirado"}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground">{new Date(c.expires_at).toLocaleDateString("es-CR")}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => { navigator.clipboard.writeText(c.code); toast({ title: "Copiado", description: "Compartí el código con quien quieras invitar." }); }}>
+                    <Copy className="h-3.5 w-3.5 mr-1" />Copiar
+                  </Button>
+                  {c.is_active && (
+                    <Button variant="ghost" size="sm" className="h-7 text-[11px] text-destructive" onClick={() => { if (window.confirm("¿Revocar este código?")) revokeCode.mutate(c.id); }}>
+                      Revocar
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

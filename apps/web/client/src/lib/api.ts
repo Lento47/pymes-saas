@@ -205,6 +205,13 @@ export const api = {
     request<any>("POST", "/api/auth/invite-preview", { token }),
   acceptInvite: (data: { token: string; name?: string; password?: string }) =>
     request<any>("POST", "/api/auth/accept-invite", data),
+  previewInviteCode: (code: string) => request<any>("POST", "/api/auth/invite-code-preview", { code }),
+  redeemInviteCode: (data: { code: string; name?: string; password?: string }) =>
+    request<any>("POST", "/api/auth/redeem-invite-code", data),
+  getInviteCodes: () => request<any>("GET", "/api/workspaces/current/invite-codes"),
+  createInviteCode: (data: { role?: string; max_uses?: number; expires_in_days?: number }) =>
+    request<any>("POST", "/api/workspaces/current/invite-codes", data),
+  revokeInviteCode: (id: string) => request<any>("DELETE", `/api/workspaces/current/invite-codes/${id}`),
   login: async (email: string, password: string, workspaceSlug: string) => {
     const r = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",

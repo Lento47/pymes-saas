@@ -24,6 +24,10 @@ function parseTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("token") ?? "";
 }
 
+function parseCodeFromUrl() {
+  return new URLSearchParams(window.location.search).get("code") ?? "";
+}
+
 function parseError(err: unknown): string {
   if (!(err instanceof Error)) return "No se pudo procesar la invitación.";
   const m = err.message;
@@ -32,17 +36,32 @@ function parseError(err: unknown): string {
 }
 
 export default function AcceptInvitePage() {
-  const { acceptInvite, isAuthenticated } = useAuth();
+  const { acceptInvite, isAuthenticated, login, user } = useAuth();
   const { toast } = useToast();
   const token = useMemo(() => parseTokenFromUrl(), []);
-  const [preview, setPreview] = useState<InvitePreview | null>(null);
+  const code = useMemo(() => parseCodeFromUrl(), []);
+  const isCodeFlow = !!code;
+  const [preview, setPreview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [codeInput, setCodeInput] = useState(code);
 
   useEffect(() => {
+    if (isCodeFlow) {
+      if (!code) { setLoading(false); return; }
+      void (async () => {
+        try {
+          const result = await api.previewInviteCode(code);
+          setPreview({ ...result, email: user?.email || "", requires_account_setup: false });
+        } catch (err) { setError(parseError(err)); }
+        finally { setLoading(false); }
+      })();
+      return;
+    }
+
     if (!token) {
       setError("El enlace no incluye un token de invitación válido.");
       setLoading(false);
@@ -64,26 +83,31 @@ export default function AcceptInvitePage() {
         if (active) setLoading(false);
       });
 
-    return () => {
-      active = false;
-    };
-  }, [token]);
+    return () => { active = false; };
+  }, [token, code, isCodeFlow, user?.email]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !isCodeFlow) {
       history.replaceState(null, "", "/");
       window.dispatchEvent(new PopStateEvent("popstate"));
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isCodeFlow]);
 
   const handleAccept = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!token) return;
-
     setSubmitting(true);
     setError(null);
 
     try {
+      if (isCodeFlow) {
+        await api.redeemInviteCode({ code: codeInput, name, password });
+        toast({ title: "Invitación aceptada", description: "Ya eres miembro del workspace." });
+        history.replaceState(null, "", "/");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+        return;
+      }
+
+      if (!token) return;
       await acceptInvite(
         token,
         preview?.requires_account_setup ? name : undefined,
@@ -103,12 +127,24 @@ export default function AcceptInvitePage() {
     <div className="min-h-screen bg-background px-6 py-10 text-foreground">
       <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-6">
-          <p className="text-sm uppercase tracking-[0.18em] text-muted-foreground">Pymeshub</p>
-          <h1 className="mt-2 text-2xl font-semibold">Aceptar invitación</h1>
+          <p className="text-sm uppercase tracking-[0.18em] text-muted-foreground">PymesHub</p>
+          <h1 className="mt-2 text-2xl font-semibold">{isCodeFlow ? "Ingresar con código" : "Aceptar invitación"}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Completa tu acceso al workspace desde este enlace seguro.
+            {isCodeFlow ? "Ingresá el código de invitación que te compartieron." : "Completa tu acceso al workspace desde este enlace seguro."}
           </p>
         </div>
+
+        {isCodeFlow && !code && (
+          <form onSubmit={handleAccept} className="space-y-4">
+            <div>
+              <Label>Código de invitación</Label>
+              <Input value={codeInput} onChange={e => setCodeInput(e.target.value.toUpperCase())} placeholder="ABC123" maxLength={6} className="mt-1 text-center tracking-[0.5em] uppercase" />
+            </div>
+            <Button type="submit" disabled={!codeInput || submitting} className="w-full">
+              {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Verificando...</> : "Verificar código"}
+            </Button>
+          </form>
+        )}
 
         {loading ? (
           <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
