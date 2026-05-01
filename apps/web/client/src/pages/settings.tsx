@@ -925,8 +925,35 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
 
   const isEdit = channel?.status === "ACTIVE";
 
+  const [testingSmtp, setTestingSmtp] = useState(false);
+  const testSmtp = async () => {
+    if (!smtpHost || !smtpUser || !smtpPassword) {
+      toast({ title: "Faltan datos", description: "Completá servidor, usuario y contraseña SMTP.", variant: "destructive" });
+      return;
+    }
+    setTestingSmtp(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/email/test-smtp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ host: smtpHost, port: smtpPort, user: smtpUser, password: smtpPassword, tls: smtpTls, from_email: fromEmail, from_name: fromName }),
+      });
+      if (res.ok) {
+        toast({ title: "Conexión SMTP exitosa", description: "El servidor SMTP respondió correctamente." });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "Error SMTP", description: err.message || "No se pudo conectar al servidor SMTP.", variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Error SMTP", description: e.message || "No se pudo conectar.", variant: "destructive" });
+    } finally {
+      setTestingSmtp(false);
+    }
+  };
+
   return (
     <div className="space-y-4 pt-2">
+      {!useSmtp && (
       <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
         Obtené tu API key en{" "}
         <a
@@ -942,6 +969,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           resend.com/api-keys <ExternalLink className="h-3 w-3" />
         </a>
       </div>
+      )}
 
       {!useSmtp && (
         <div>
@@ -962,6 +990,10 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
 
       {useSmtp && (
         <div className="space-y-3 rounded-lg border border-border p-3">
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => { setSmtpHost("smtp.gmail.com"); setSmtpPort(587); setSmtpTls(true); }}>Gmail</Button>
+            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => { setSmtpHost("smtp.office365.com"); setSmtpPort(587); setSmtpTls(true); }}>Outlook</Button>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-[11px]">Servidor SMTP</Label>
@@ -984,6 +1016,9 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
             <div className="mt-1">
               <SecretInput value={smtpPassword} onChange={setSmtpPassword} placeholder={isEdit ? "••••••••••••••" : "contraseña o app password"} />
             </div>
+            <p className="text-[10px] text-amber-400/80 mt-1">
+              Gmail: usá una <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="underline" onClick={e => { e.preventDefault(); void openExternal("https://myaccount.google.com/apppasswords"); }}>app password</a>, no tu contraseña normal.
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Switch checked={smtpTls} onCheckedChange={setSmtpTls} id="smtp-tls" />
@@ -1021,6 +1056,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           placeholder="PYMES CRM" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
       </div>
 
+      {!useSmtp && (
       <div className="space-y-3 rounded-lg border border-border bg-[hsl(var(--elevated))] p-3 text-xs">
         <div>
                       <p className="font-medium text-foreground">Recepción de correos en PymesHub</p>
@@ -1060,15 +1096,28 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           </p>
         </div>
       </div>
+      )}
 
-      <Button
-        onClick={() => save.mutate()}
-        // On edit, api_key can be blank (keep existing) — only require it on first setup
-        disabled={(!isEdit && !apiKey) || !fromEmail || !fromName || save.isPending}
-        className="w-full bg-primary hover:bg-primary/90"
-      >
-        {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          onClick={() => save.mutate()}
+          disabled={(!isEdit && ((!useSmtp && !apiKey) || (useSmtp && (!smtpHost || !smtpUser)))) || !fromEmail || !fromName || save.isPending}
+          className="flex-1 bg-primary hover:bg-primary/90"
+        >
+          {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
+        </Button>
+        {useSmtp && (
+          <Button
+            variant="outline"
+            onClick={testSmtp}
+            disabled={!smtpHost || !smtpUser || !smtpPassword || testingSmtp}
+            className="flex-1"
+          >
+            {testingSmtp && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+            Probar conexión
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
