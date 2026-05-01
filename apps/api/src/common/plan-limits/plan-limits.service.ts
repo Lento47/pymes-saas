@@ -50,9 +50,9 @@ export type { PlanLimits };
 
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
   FREE: {
-    users: 3,
+    users: 1,
     automations: 5,
-    contacts: 500,
+    contacts: 100,
     documents: 50,
     invoices_per_month: 50,
     storage_bytes: 100 * 1024 * 1024, // 100 MB
@@ -60,9 +60,9 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   },
   STARTER: {
     users: 1,
-    automations: 5,
+    automations: 15,
     contacts: 500,
-    documents: 100,
+    documents: 500,
     invoices_per_month: 100,
     storage_bytes: 5 * 1024 * 1024 * 1024, // 5 GB
     locations: 1,
