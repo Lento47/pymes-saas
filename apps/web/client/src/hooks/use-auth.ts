@@ -82,9 +82,15 @@ if (_storedRefreshToken && !isLoggedIn()) {
         const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000));
         const r = await Promise.race([api.refresh(_storedRefreshToken), timeout]) as any;
         setAuthState(r.access_token, getWorkspaceSlug()!, r.refresh_token);
-        const me = await Promise.race([api.getMe(), timeout]) as any;
-        _user = me;
-        setAuthState(r.access_token, me.workspace.slug, r.refresh_token);
+
+        if (r.user) {
+          _user = r.user;
+          setAuthState(r.access_token, r.user.workspace.slug, r.refresh_token);
+        } else {
+          const me = await Promise.race([api.getMe(), timeout]) as any;
+          _user = me;
+          setAuthState(r.access_token, me.workspace.slug, r.refresh_token);
+        }
         connectSocket();
         attachWorkspaceUpdateListener();
       } catch {
