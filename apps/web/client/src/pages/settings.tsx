@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import { HelpButton } from "@/components/shared/help-button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -2712,73 +2711,24 @@ export default function Settings() {
       <div className="px-6 pb-2">
         <DiagnosticButton module="settings" />
       </div>
-      <Tabs defaultValue={defaultTab}>
-        <TabsList className="bg-card border border-border overflow-x-auto flex-nowrap scrollbar-none">
-          <TabsTrigger value="profile" className="data-[state=active]:bg-elevated">
-            <UserCircle className="h-4 w-4 mr-2" />Perfil
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="data-[state=active]:bg-elevated">
-            <CreditCard className="h-4 w-4 mr-2" />{copy.tabs.billing}
-          </TabsTrigger>
-          <TabsTrigger value="members" className="data-[state=active]:bg-elevated">
-            <Users className="h-4 w-4 mr-2" />{copy.tabs.members}
-          </TabsTrigger>
-          <TabsTrigger value="departments" className="data-[state=active]:bg-elevated">
-            <Layers className="h-4 w-4 mr-2" />{copy.tabs.departments}
-          </TabsTrigger>
-          <TabsTrigger value="channels" className="data-[state=active]:bg-elevated">
-            <PlugZap className="h-4 w-4 mr-2" />{copy.tabs.channels}
-          </TabsTrigger>
-          <TabsTrigger value="routing" className="data-[state=active]:bg-elevated">
-            <Shuffle className="h-4 w-4 mr-2" />{copy.tabs.routing}
-          </TabsTrigger>
-          <TabsTrigger value="integrations" className="data-[state=active]:bg-elevated">
-            <Plug className="h-4 w-4 mr-2" />{copy.tabs.integrations}
-          </TabsTrigger>
-          <TabsTrigger value="ai" className="data-[state=active]:bg-elevated">
-            <BrainCircuit className="h-4 w-4 mr-2" />{copy.tabs.ai}
-          </TabsTrigger>
-          {isPlanAtLeast('BUSINESS') && (
-            <TabsTrigger value="apitokens" className="data-[state=active]:bg-elevated">
-              <Key className="h-4 w-4 mr-2" />{copy.tabs.apiTokens}
-            </TabsTrigger>
-          )}
-          {isPlanAtLeast('BUSINESS') && (
-            <TabsTrigger value="saml" className="data-[state=active]:bg-elevated">
-              <Shield className="h-4 w-4 mr-2" />SAML SSO
-            </TabsTrigger>
-          )}
-          {isPlanAtLeast('BUSINESS_PLUS') && (
-            <TabsTrigger value="enterprise" className="data-[state=active]:bg-elevated">
-              <Crown className="h-4 w-4 mr-2" />Enterprise
-            </TabsTrigger>
-          )}
-          {isPlatformAdmin && (
-            <TabsTrigger value="platform" className="data-[state=active]:bg-elevated">
-              <ShieldCheck className="h-4 w-4 mr-2" />{copy.tabs.platform}
-            </TabsTrigger>
-          )}
-        </TabsList>
-        <Card className="mt-4 bg-card border-border">
-          <CardContent className="pt-6">
-            <TabsContent value="profile"><ProfileTab /></TabsContent>
-            <TabsContent value="workspace"><WorkspaceTab /></TabsContent>
-            <TabsContent value="billing"><BillingPage /></TabsContent>
-            <TabsContent value="members"><MembersTab /></TabsContent>
-            <TabsContent value="departments"><DepartmentsTab /></TabsContent>
-            <TabsContent value="channels"><ChannelsTab /></TabsContent>
-            <TabsContent value="routing"><RoutingRulesTab /></TabsContent>
-            <TabsContent value="integrations"><IntegrationsTab /></TabsContent>
-            <TabsContent value="ai"><AiTab /></TabsContent>
-            {isPlanAtLeast('BUSINESS') && <TabsContent value="apitokens"><ApiTokensTab /></TabsContent>}
-            {isPlanAtLeast('BUSINESS') && <TabsContent value="saml"><SamlConfig /></TabsContent>}
-            {isPlanAtLeast('BUSINESS_PLUS') && <TabsContent value="enterprise"><EnterpriseSettingsTab /></TabsContent>}
-            {isPlatformAdmin && (
-              <TabsContent value="platform"><PlatformTab /></TabsContent>
-            )}
-          </CardContent>
-        </Card>
-      </Tabs>
+      <Card className="bg-card border-border">
+        <CardContent className="pt-6">
+          {defaultTab === "profile" && <ProfileTab />}
+          {defaultTab === "workspace" && <WorkspaceTab />}
+          {defaultTab === "billing" && <BillingPage />}
+          {defaultTab === "members" && <MembersTab />}
+          {defaultTab === "departments" && <DepartmentsTab />}
+          {defaultTab === "channels" && <ChannelsTab />}
+          {defaultTab === "routing" && <RoutingRulesTab />}
+          {defaultTab === "integrations" && <IntegrationsTab />}
+          {defaultTab === "ai" && <AiTab />}
+          {defaultTab === "apitokens" && isPlanAtLeast('BUSINESS') && <ApiTokensTab />}
+          {defaultTab === "saml" && isPlanAtLeast('BUSINESS') && <SamlConfig />}
+          {defaultTab === "enterprise" && isPlanAtLeast('BUSINESS_PLUS') && <EnterpriseSettingsTab />}
+          {defaultTab === "platform" && isPlatformAdmin && <PlatformTab />}
+          {!["profile","workspace","billing","members","departments","channels","routing","integrations","ai","apitokens","saml","enterprise","platform"].includes(defaultTab) && <WorkspaceTab />}
+        </CardContent>
+      </Card>
       <HelpButton page="Configuración" />
     </div>
   );
