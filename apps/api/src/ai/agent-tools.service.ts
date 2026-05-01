@@ -59,6 +59,8 @@ export class AgentToolsService {
         return this.listDocuments(workspaceId, args);
       case 'get_settings':
         return this.getSettings(workspaceId);
+      case 'get_errors':
+        return this.getErrors(workspaceId, args);
       default:
         throw new BadRequestException(`Unknown tool: ${tool}`);
     }
@@ -326,5 +328,26 @@ export class AgentToolsService {
       orderBy: { created_at: 'desc' },
     });
     return { documents: docs };
+  }
+
+  private async getErrors(workspaceId: string, args: Record<string, any>) {
+    const limit = Math.min(args.limit || 10, 50);
+    const errors = await (this.prisma as any).errorReport.findMany({
+      where: { workspace_id: workspaceId },
+      select: {
+        id: true, source: true, category: true, severity: true, title: true,
+        message: true, route: true, method: true, status_code: true,
+        occurred_at: true, context_json: true,
+      },
+      orderBy: { occurred_at: 'desc' },
+      take: limit,
+    });
+    return {
+      errors,
+      count: errors.length,
+      summary: errors.length > 0
+        ? `${errors.length} error(es) reciente(s). ${errors.filter((e: any) => e.status_code && e.status_code >= 500).length} son del servidor (5xx).`
+        : 'No hay errores recientes en este workspace.',
+    };
   }
 }

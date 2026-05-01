@@ -58,6 +58,7 @@ export class SupportRouterService {
       'create_contact', 'update_contact', 'create_task', 'update_task',
       'create_deal', 'move_deal', 'reply_conversation',
       'create_automation', 'toggle_automation', 'search_pymeshub_docs',
+      'get_errors',
     ],
     docs: ['search_pymeshub_docs'],
     onboarding: [
@@ -75,6 +76,7 @@ export class SupportRouterService {
     troubleshooting: [
       'get_workspace', 'get_settings', 'get_stats', 'search',
       'search_pymeshub_docs', 'list_conversations', 'get_conversation_detail',
+      'get_errors',
     ],
     escalation: ['search_pymeshub_docs'], // minimal tools, just documents for context
   };

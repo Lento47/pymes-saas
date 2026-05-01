@@ -144,6 +144,23 @@ export class AgentService {
         },
       }),
 
+      // ── Errors ──
+      tool({
+        name: 'get_errors',
+        description: 'Get recent errors from this workspace for diagnostics. Returns error messages, status codes, routes, and timestamps.',
+        parameters: z.object({ limit: z.number().optional().describe('Max errors to return (default 10, max 50)') }),
+        execute: async ({ limit }: { limit?: number }) => {
+          const take = Math.min(limit || 10, 50);
+          const errors = await (prisma as any).errorReport.findMany({
+            where: { workspace_id: workspaceId },
+            select: { id: true, source: true, category: true, severity: true, title: true, message: true, route: true, method: true, status_code: true, occurred_at: true, context_json: true },
+            orderBy: { occurred_at: 'desc' },
+            take,
+          });
+          return { errors, count: errors.length };
+        },
+      }),
+
       // ── Docs ──
       tool({
         name: 'search_pymeshub_docs',
