@@ -303,7 +303,7 @@ export default function LoginPage() {
 
             <div className="mt-10 flex flex-col items-center gap-4 text-center">
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/80">
-                <Link href="/legal/terms-and-conditions">
+                <Link href="/legal/terms-of-service">
                   <a className="transition hover:text-white/82">{copy.terms}</a>
                 </Link>
                 <span className="h-1 w-1 rounded-full bg-white/40" />

@@ -325,7 +325,7 @@ export default function RegisterPage() {
 
             <div className="mt-8 flex flex-col items-center gap-4 text-center">
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/58">
-                <Link href="/legal/terms-and-conditions">
+                <Link href="/legal/terms-of-service">
                   <a className="transition hover:text-white/82">{reg.terms}</a>
                 </Link>
                 <span className="h-1 w-1 rounded-full bg-white/24" />
