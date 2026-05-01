@@ -13,6 +13,7 @@ import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare,
   Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot, MessageCircle,
   Sun, Moon, Search, Menu, X, ChevronRight, Building2,
+  CreditCard, Layers, Plug, PlugZap, Shuffle, BrainCircuit, ShieldCheck, UserCircle,
 } from "lucide-react";
 
 type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "agent" | "notifications" | "chat" | "settings" | "help";
@@ -87,6 +88,19 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+const SETTINGS_ITEMS = [
+  { href: "/settings?tab=profile", icon: UserCircle, label: "Perfil" },
+  { href: "/settings?tab=workspace", icon: Building2, label: "Workspace" },
+  { href: "/settings?tab=billing", icon: CreditCard, label: "Facturación" },
+  { href: "/settings?tab=members", icon: Users, label: "Miembros" },
+  { href: "/settings?tab=departments", icon: Layers, label: "Departamentos" },
+  { href: "/settings?tab=channels", icon: PlugZap, label: "Canales" },
+  { href: "/settings?tab=routing", icon: Shuffle, label: "Enrutamiento" },
+  { href: "/settings?tab=integrations", icon: Plug, label: "Integraciones" },
+  { href: "/settings?tab=ai", icon: BrainCircuit, label: "Inteligencia Artificial" },
+  { href: "/settings?tab=platform", icon: ShieldCheck, label: "Plataforma" },
+] as const;
+
 export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, switchWorkspace } = useAuth();
@@ -99,7 +113,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 1024,
   );
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const wsMenuRef = useRef<HTMLDivElement>(null);
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
   const copy = messages.sidebar;
 
   useNotificationsSocket();
@@ -137,6 +153,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   // Close sidebar on route change (mobile)
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
+    setSettingsMenuOpen(false);
   }, [location, isMobile]);
 
   // Lock body scroll when mobile sidebar is open
@@ -161,6 +178,18 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [wsMenuOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
+        setSettingsMenuOpen(false);
+      }
+    };
+    if (settingsMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [settingsMenuOpen]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -348,15 +377,32 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* ── Settings Dropdown ── */}
-        <div className="shrink-0 px-3 pb-2">
-          <div className="relative">
-            <Link href="/settings?tab=profile">
-              <a className="group relative flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40">
-                <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
-                <span className="flex-1 text-sm">Configuración</span>
-              </a>
-            </Link>
-          </div>
+        <div className="shrink-0 px-3 pb-2" ref={settingsMenuRef}>
+          <button
+            onClick={() => setSettingsMenuOpen(o => !o)}
+            className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+          >
+            <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
+            <span className="flex-1 text-sm text-left">Configuración</span>
+            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", settingsMenuOpen && "rotate-180")} />
+          </button>
+          {settingsMenuOpen && (
+            <div className="absolute left-3 right-3 bottom-full mb-2 rounded-xl border border-border/60 bg-sidebar shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <div className="p-2 max-h-[300px] overflow-y-auto">
+                {SETTINGS_ITEMS.map((item) => (
+                  <Link key={item.href} href={item.href}>
+                    <a
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground transition-all"
+                      onClick={() => setSettingsMenuOpen(false)}
+                    >
+                      <item.icon className="w-4 h-4 shrink-0" />
+                      <span>{item.label}</span>
+                    </a>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Bottom Actions ── */}
