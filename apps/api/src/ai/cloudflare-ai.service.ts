@@ -46,9 +46,9 @@ export class CloudflareAiService {
       .join('\n\n');
 
     // 3. Call chat completions with context injected
-    const systemPrompt = `You are PymeHub Assistant, a helpful AI for PymeHub — a B2B SaaS platform designed for SMBs (small and medium-sized businesses) in Latin America. PymeHub provides unified inbox, CRM, invoicing, task management, document storage, automations, and AI-powered insights.
+    const systemPrompt = `You are PymesHub Assistant, a helpful AI for PymesHub — a B2B SaaS platform designed for SMBs (small and medium-sized businesses) in Latin America. PymesHub provides unified inbox, CRM, invoicing, task management, document storage, automations, and AI-powered insights.
 
-Answer questions about PymeHub's features, pricing, and how to use the platform. Be concise, friendly, and professional. If you don't know something, say so.
+Answer questions about PymesHub's features, pricing, and how to use the platform. Be concise, friendly, and professional. If you don't know something, say so.
 
 ${context ? `Relevant context from our knowledge base:\n\n${context}` : ''}`;
 
