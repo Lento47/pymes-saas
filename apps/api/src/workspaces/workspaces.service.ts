@@ -479,7 +479,7 @@ export class WorkspacesService {
         orderBy: { created_at: 'desc' },
       });
     }
-    throw new Error('Invalid export type. Use: contacts | tasks | conversations');
+    throw new BadRequestException(`Invalid export type. Use: contacts | tasks | conversations`);
   }
 
   // ── GET /workspaces/current/members ───────────────────────────────────────

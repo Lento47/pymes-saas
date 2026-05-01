@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -579,7 +573,7 @@ export class AuthService {
       });
       if (!exists) return candidate;
     }
-    throw new Error('Could not generate unique workspace slug.');
+    throw new InternalServerErrorException('Could not generate unique workspace slug.');
   }
 
   async resetPassword(email: string, newPassword: string) {

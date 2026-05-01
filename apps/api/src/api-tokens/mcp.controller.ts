@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Req, Res, UseGuards, Get, Headers } from '@nestjs/common';
+import { Body, Controller, Get, Headers, InternalServerErrorException, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ApiTokenGuard } from '../api-tokens/api-token.guard';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -226,7 +226,7 @@ export class McpController {
         where: { slug: args.slug },
         select: { id: true, name: true, slug: true, plan: true },
       });
-      if (!ws) throw new Error(`Workspace "${args.slug}" not found`);
+      if (!ws) throw new InternalServerErrorException(`Workspace "${args.slug}" not found`);
       this.sessions.set(sessionKey, ws.id);
       return { workspace_set: ws };
     }
@@ -237,7 +237,7 @@ export class McpController {
       effectiveWorkspaceId = this.sessions.get(sessionKey) || null;
     }
     if (!effectiveWorkspaceId) {
-      throw new Error('No workspace set. Use set_workspace tool or x-workspace-slug header.');
+      throw new InternalServerErrorException('No workspace set. Use set_workspace tool or x-workspace-slug header.');
     }
 
     switch (name) {
@@ -303,7 +303,7 @@ export class McpController {
         return { workspace: ws, members };
       }
       default:
-        throw new Error(`Unknown tool: ${name}`);
+        throw new InternalServerErrorException(`Unknown tool: ${name}`);
     }
   }
 }

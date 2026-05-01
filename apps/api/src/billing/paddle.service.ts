@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { Paddle, Environment, LogLevel, type EventEntity } from '@paddle/paddle-node-sdk';
@@ -53,7 +53,7 @@ export class PaddleService {
   }
 
   private requireClient(): Paddle {
-    if (!this.paddle) throw new Error('Paddle is not configured');
+    if (!this.paddle) throw new ServiceUnavailableException(`Paddle is not configured`);
     return this.paddle;
   }
 
@@ -141,7 +141,7 @@ export class PaddleService {
     });
 
     if (!sub?.provider_customer_id) {
-      throw new Error('No Paddle customer found for workspace');
+      throw new NotFoundException(`No Paddle customer found for workspace`);
     }
 
     const subscriptionIds = sub.provider_subscription_id
@@ -179,7 +179,7 @@ export class PaddleService {
     const paddle = this.requireClient();
 
     if (!newPriceId) {
-      throw new Error('newPriceId is required');
+      throw new BadRequestException(`newPriceId is required`);
     }
 
     const sub = await this.prisma.workspaceSubscription.findFirst({
@@ -193,14 +193,14 @@ export class PaddleService {
     });
 
     if (!sub?.provider_subscription_id) {
-      throw new Error('No active Paddle subscription. Use /billing/checkout for first-time purchase.');
+      throw new NotFoundException(`No active Paddle subscription. Use /billing/checkout for first-time purchase.`);
     }
 
     // CONSULTA EL ITEM_ID ACTUAL EN PADDLE (NECESARIO PARA EL UPDATE).
     const paddleSub = await paddle.subscriptions.get(sub.provider_subscription_id);
     const currentItem = paddleSub.items?.[0];
     if (!currentItem?.price?.id) {
-      throw new Error('Could not read current Paddle subscription items');
+      throw new InternalServerErrorException('Could not read current Paddle subscription items');
     }
 
     // SI ES EL MISMO PRICE — NO HACER NADA.
@@ -281,7 +281,7 @@ export class PaddleService {
     });
 
     if (!sub?.provider_subscription_id) {
-      throw new Error('No active Paddle subscription');
+      throw new NotFoundException(`No active Paddle subscription`);
     }
 
     const result = await paddle.subscriptions.cancel(sub.provider_subscription_id, {

@@ -4,7 +4,17 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/telemetry/api-exception.filter';
+import { PrismaExceptionFilter } from './common/prisma/prisma-exception.filter';
 import { ErrorReportsService } from './error-reports/error-reports.service';
+
+process.on('uncaughtException', (err) => {
+  console.error('🔥 UNCAUGHT EXCEPTION — process will exit', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️ UNHANDLED REJECTION', reason);
+});
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -66,6 +76,7 @@ async function bootstrap() {
   });
 
   app.useGlobalFilters(new ApiExceptionFilter(app.get(ErrorReportsService)));
+  app.useGlobalFilters(new PrismaExceptionFilter());
   const port = process.env.PORT ?? 4000;
   const host = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
   await app.listen(port, host);
