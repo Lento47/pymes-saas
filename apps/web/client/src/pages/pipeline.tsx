@@ -96,7 +96,7 @@ export default function PipelinePage() {
   const [modalOpen, setModalOpen] = useState(false); const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [defaultStage, setDefaultStage] = useState<string>();
-  const moveMut = useMutation({ mutationFn: ({ dealId, stageId }: { dealId: string; stageId: string }) => api.moveDeal(dealId, stageId), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }) });
+  const moveMut = useMutation({ mutationFn: ({ dealId, stageId }: { dealId: string; stageId: string }) => api.moveDeal(dealId, stageId), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }), onError: (err: any) => toast({ title: "Error al mover deal", description: err?.message || "No se pudo mover.", variant: "destructive" }) });
 
   const handleDragStart = (e: React.DragEvent, dealId: string) => { e.dataTransfer.setData("dealId", dealId); e.dataTransfer.effectAllowed = "move"; };
   const handleDrop = (e: React.DragEvent, stageId: string) => { const dealId = e.dataTransfer.getData("dealId"); if (dealId) moveMut.mutate({ dealId, stageId }); };

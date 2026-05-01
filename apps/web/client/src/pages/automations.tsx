@@ -46,8 +46,8 @@ export default function AutomationsPage() {
     );
   }, [automations, searchQuery]);
 
-  const toggleMut = useMutation({ mutationFn: (id: string) => api.toggleAutomation(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/automations"] }) });
-  const deleteMut = useMutation({ mutationFn: (id: string) => api.deleteAutomation(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/automations"] }); setDeleteId(null); toast({ title: 'Automatización eliminada' }); } });
+  const toggleMut = useMutation({ mutationFn: (id: string) => api.toggleAutomation(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/automations"] }), onError: (err: any) => toast({ title: 'Error', description: err?.message || 'No se pudo cambiar el estado.', variant: 'destructive' }) });
+  const deleteMut = useMutation({ mutationFn: (id: string) => api.deleteAutomation(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/automations"] }); setDeleteId(null); toast({ title: 'Automatización eliminada' }); }, onError: (err: any) => toast({ title: 'Error', description: err?.message || 'No se pudo eliminar.', variant: 'destructive' }) });
 
   const createMut = useMutation({
     mutationFn: (data: any) => api.createAutomation(data),

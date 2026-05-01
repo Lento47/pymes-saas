@@ -139,12 +139,15 @@ async function request<T>(
   };
 
   const body = options?.isFormData ? (data as FormData) : data ? JSON.stringify(data) : undefined;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
 
   let res: Response;
 
   try {
-    res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body });
+    res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body, signal: controller.signal });
   } catch (error: any) {
+    clearTimeout(timeout);
     if (!path.includes("/error-reports/client")) {
       void reportClientError({
         source: "FRONTEND",
@@ -160,6 +163,7 @@ async function request<T>(
     }
     throw error;
   }
+  clearTimeout(timeout);
 
   // On 401, attempt token refresh and retry once
   if (res.status === 401 && !path.includes("/auth/login") && !path.includes("/auth/refresh")) {
@@ -176,21 +180,26 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
+    const raw = (await res.text()) || res.statusText;
+    let message = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      message = parsed.message || parsed.error || raw;
+    } catch { /* not JSON, use raw text */ }
     if (res.status >= 500 && !path.includes("/error-reports/client")) {
       void reportClientError({
         source: "FRONTEND",
         category: "API_RESPONSE",
         severity: "ERROR",
         title: `API ${res.status}`,
-        message: text,
+        message,
         method,
         status_code: res.status,
         url: `${API_BASE}${path}`,
         context_json: { path },
       });
     }
-    throw new Error(`${res.status}: ${text}`);
+    throw new Error(message);
   }
 
   const contentType = res.headers.get("content-type");
