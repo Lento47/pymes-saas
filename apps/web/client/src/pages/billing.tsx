@@ -708,7 +708,8 @@ function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }
     queryKey: ["/api/billing/invoices", { page, search }],
     queryFn: () => api.getBillingInvoices({ page, limit: 10, search: search || undefined }),
     retry: false,
-    staleTime: 30000,
+    staleTime: 30_000,
+    refetchInterval: 15_000,
   });
 
   const invoices = Array.isArray(data?.data) ? data.data : [];
