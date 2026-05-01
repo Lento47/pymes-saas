@@ -340,6 +340,7 @@ model RefreshToken {
   @@index([token_hash])
   @@index([user_id, workspace_id])
   @@index([expires_at])
+  @@index([family, revoked_at])
   @@map("refresh_tokens")
 }
 

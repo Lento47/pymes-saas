@@ -14,7 +14,7 @@ import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { InviteTokenPayload } from './invite-token.types';
 import { RegisterDto } from './dto/register.dto';
-import { JwtPayload } from './strategies/jwt.strategy';
+import { JwtPayload, AuthUser } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
 import { DemoDataService } from '../demo/demo-data.service';
 
@@ -79,14 +79,17 @@ export class AuthService {
     });
     if (!workspace) throw new UnauthorizedException('Workspace no encontrado.');
 
-    const membership = await this.prisma.workspaceUser.findUnique({
-      where: {
-        workspace_id_user_id: {
-          workspace_id: workspace.id,
-          user_id: user.id,
+    const [membership, refresh_token] = await Promise.all([
+      this.prisma.workspaceUser.findUnique({
+        where: {
+          workspace_id_user_id: {
+            workspace_id: workspace.id,
+            user_id: user.id,
+          },
         },
-      },
-    });
+      }),
+      this.refreshTokenService.create(user.id, workspace.id),
+    ]);
     if (!membership) throw new UnauthorizedException('Sin acceso a este workspace.');
 
     const access_token = this.signToken({
@@ -96,8 +99,6 @@ export class AuthService {
       role: membership.role,
       is_platform_admin: user.is_platform_admin,
     });
-
-    const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
 
     return {
       access_token,
@@ -134,7 +135,7 @@ export class AuthService {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('El email ya está registrado.');
 
-    const password_hash = await bcrypt.hash(dto.password, 12);
+    const password_hash = await bcrypt.hash(dto.password, 10);
 
     const user = await this.prisma.user.create({
       data: {
@@ -438,7 +439,7 @@ export class AuthService {
         throw new BadRequestException('La contraseña es requerida para activar la invitación.');
       }
 
-      const password_hash = await bcrypt.hash(dto.password, 12);
+      const password_hash = await bcrypt.hash(dto.password, 10);
       resolvedUser = await this.prisma.user.update({
         where: { id: user.id },
         data: {
@@ -484,22 +485,20 @@ export class AuthService {
 
   // ── Me ─────────────────────────────────────────────────────────────────────
 
-  async getMe(userId: string, workspaceId: string) {
-    const membership = await this.prisma.workspaceUser.findUniqueOrThrow({
-      where: {
-        workspace_id_user_id: { workspace_id: workspaceId, user_id: userId },
-      },
-      include: {
-        user: { select: { id: true, email: true, name: true, avatar_url: true, status: true, created_at: true, is_platform_admin: true } },
-        workspace: { select: { id: true, name: true, slug: true, plan: true, timezone: true, locale: true } },
-      },
+  async getMe(user: AuthUser) {
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: user.workspace_id },
+      select: { id: true, name: true, slug: true, plan: true, timezone: true, locale: true },
     });
 
     return {
-      ...membership.user,
-      role: membership.role,
-      is_owner: membership.is_owner,
-      workspace: membership.workspace,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      is_owner: user.is_owner,
+      is_platform_admin: user.is_platform_admin,
+      workspace,
     };
   }
 
