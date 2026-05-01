@@ -188,7 +188,7 @@ function OrbitGraphic() {
       <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#e8ff59]/35 bg-[#10173a]/90 text-[#e8ff59] shadow-[0_0_32px_rgba(232,255,89,0.35)]">
         <Sparkles className="h-6 w-6" />
       </div>
-      <div className="absolute left-[18%] top-[34%] h-3 w-3 rounded-full bg-[#5c72ff]/80 shadow-[0_0_16px_rgba(92,114,255,0.65)]" />
+      <div className="absolute left-[18%] top-[34%] h-3 w-3 rounded-full bg-[#5c72ff]/80 shadow-[0_0_6px_rgba(92,114,255,0.65)]" />
       <div className="absolute bottom-[18%] right-[14%] h-3.5 w-3.5 rounded-full bg-[#5c72ff]/70 shadow-[0_0_18px_rgba(92,114,255,0.55)]" />
       <div className="absolute right-[26%] top-[13%] h-2.5 w-2.5 rounded-full bg-[#9db0ff]/90 shadow-[0_0_14px_rgba(157,176,255,0.7)]" />
       <div className="absolute left-[50%] top-[8%] h-2 w-2 -translate-x-1/2 rounded-full bg-[#e8ff59]/70 shadow-[0_0_14px_rgba(232,255,89,0.7)]" />
@@ -466,9 +466,9 @@ export default function Landing() {
             >
               <nav
                 className={cn(
-                  "luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7 transition-all duration-300",
+                  "flex items-center justify-between rounded-lg px-5 py-4 md:px-7 transition-all duration-300",
                   scrolled
-                    ? "bg-[rgba(5,9,29,0.88)] backdrop-blur-[32px] border border-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
+                    ? "bg-[rgba(5,9,29,0.88)] backdrop-blur-[32px] border border-white/[0.06] shadow-sm"
                     : "glass-panel"
                 )}
                 data-nav-item
@@ -521,7 +521,7 @@ export default function Landing() {
                     </a>
                   </Link>
                   <Link href="/login">
-                    <a className="glow-button font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
+                    <a className="font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
                       {copy.nav.getStarted}
                       <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                     </a>
@@ -537,7 +537,7 @@ export default function Landing() {
               </nav>
 
               {mobileMenuOpen && (
-                <div className="md:hidden mt-2 glass-panel luminous-border rounded-[28px] p-4" data-mobile-menu>
+                <div className="md:hidden mt-2 glass-panel rounded-xl p-4" data-mobile-menu>
                   <div className="space-y-2">
                     <Link href="/pricing">
                       <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
@@ -555,7 +555,7 @@ export default function Landing() {
                       </a>
                     </Link>
                     <Link href="/login">
-                      <a className="glow-button font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px]">
+                      <a className="font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px]">
                         {copy.nav.getStarted}
                         <ArrowRight className="h-3 w-3 inline" />
                       </a>
@@ -639,13 +639,13 @@ export default function Landing() {
 
               <div className="mt-8 md:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                 <Link href="/login">
-                  <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 md:px-8 py-3.5 md:py-4 text-sm md:text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
+                  <a className="font-marketing inline-flex items-center gap-2 rounded-lg bg-[#2563eb] px-6 md:px-8 py-3.5 md:py-4 text-sm md:text-base font-bold text-white transition hover:translate-y-[-1px]">
                     {copy.primaryCta}
                     <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
                   </a>
                 </Link>
                 <Link href="/product">
-                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
+                  <a className="font-marketing inline-flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
                     {copy.secondaryCta}
                   </a>
                 </Link>
@@ -668,7 +668,7 @@ export default function Landing() {
 
               {/* Mini hero dashboard mockup */}
               <div ref={revealMockup} className="mx-auto mt-14 max-w-2xl reveal-up" style={{ transitionDelay: "120ms" }}>
-                <div className="glass-panel luminous-border rounded-[24px] p-4 shadow-[0_40px_100px_rgba(0,0,0,0.55)]">
+                <div className="glass-panel rounded-xl p-4 shadow-sm">
                   <div className="mb-3 flex items-center gap-2 px-1">
                     {["#ff5f57","#febc2e","#28c840"].map((c, i) => (
                       <span key={i} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
@@ -707,8 +707,8 @@ export default function Landing() {
               <Carousel opts={{ align: "start", loop: true }}>
                 <CarouselContent>
                   <CarouselItem className="basis-full">
-                    <article className="glass-panel rounded-[30px] p-6">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
+                    <article className="glass-panel rounded-xl p-6">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 p-2 text-[#dfe6ff]">
                         <img
                           src="/landing-icons/world.png"
                           alt=""
@@ -727,7 +727,7 @@ export default function Landing() {
                         {copy.overview.inbox.signals.map((signal) => (
                           <div
                             key={signal.label}
-                            className="glass-panel-soft grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-2xl px-4 py-3"
+                            className="glass-panel-soft grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 rounded-xl px-4 py-3"
                           >
                             <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
                               {signal.label}
@@ -747,7 +747,7 @@ export default function Landing() {
                               key={index}
                               className={`h-2.5 w-2.5 rounded-full ${
                                 active
-                                  ? "bg-[#dfff4a] shadow-[0_0_18px_rgba(223,255,74,0.7)]"
+                                  ? "bg-[#dfff4a] "
                                   : "bg-[#6b7dff]/28"
                               }`}
                             />
@@ -762,7 +762,7 @@ export default function Landing() {
                   </CarouselItem>
 
                   <CarouselItem className="basis-full">
-                    <article className="glass-panel rounded-[34px] px-6 py-7">
+                    <article className="glass-panel rounded-xl px-6 py-7">
                       <div className="flex flex-col gap-6">
                         <div>
                           <div className="flex items-center gap-3">
@@ -799,18 +799,18 @@ export default function Landing() {
                           </div>
                       </div>
 
-                      <div className="glass-panel-soft rounded-2xl px-4 py-3 text-sm text-white/72">
+                      <div className="glass-panel-soft rounded-xl px-4 py-3 text-sm text-white/72">
                           {copy.overview.performance.timeframe}
                       </div>
                     </div>
 
-                      <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
+                      <div className="mt-8 h-[18rem] w-full rounded-xl border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
                         <PerformanceChart labels={copy.overview.performance.chartDays} />
                       </div>
 
                       <div className="mt-7 grid gap-3 sm:grid-cols-3">
                         {copy.overview.performance.stats.map(({ label, value }) => (
-                          <div key={label} className="glass-panel-soft rounded-2xl px-4 py-4">
+                          <div key={label} className="glass-panel-soft rounded-xl px-4 py-4">
                             <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
                               {label}
                             </p>
@@ -824,7 +824,7 @@ export default function Landing() {
                   </CarouselItem>
 
                   <CarouselItem className="basis-full">
-                    <article className="glass-panel rounded-[30px] p-6">
+                    <article className="glass-panel rounded-xl p-6">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
                         <img
                           src="/landing-icons/Smart-automations.png"
@@ -842,13 +842,13 @@ export default function Landing() {
 
                       <OrbitGraphic />
 
-                      <div className="glass-panel-soft mt-3 rounded-2xl px-4 py-4">
+                      <div className="glass-panel-soft mt-3 rounded-xl px-4 py-4">
                         <div className="flex items-center justify-between">
                           <span className="font-marketing text-sm font-semibold text-white/84">
                             {copy.overview.automations.statusLabel}
                           </span>
                           <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
-                            <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_12px_rgba(223,255,74,0.8)]" />
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_4px_rgba(223,255,74,0.8)]" />
                             {copy.overview.automations.statusValue}
                           </span>
                         </div>
@@ -865,8 +865,8 @@ export default function Landing() {
 
             {/* Desktop Grid */}
             <div ref={revealCards} className="reveal-up hidden md:grid mt-16 grid gap-6 xl:grid-cols-[0.95fr_1.7fr_0.95fr]">
-              <article className="glass-panel rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(114,137,255,0.34),rgba(84,101,255,0.18))] p-2 text-[#dfe6ff]">
+              <article className="glass-panel rounded-xl p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 p-2 text-[#dfe6ff]">
                   <img
                     src="/landing-icons/world.png"
                     alt=""
@@ -919,7 +919,7 @@ export default function Landing() {
                         key={index}
                         className={`h-2.5 w-2.5 rounded-full ${
                           active
-                            ? "bg-[#dfff4a] shadow-[0_0_18px_rgba(223,255,74,0.7)]"
+                            ? "bg-[#dfff4a] "
                             : "bg-[#6b7dff]/28"
                         }`}
                       />
@@ -932,7 +932,7 @@ export default function Landing() {
                 </div>
               </article>
 
-              <article className="glass-panel rounded-[34px] px-6 py-7 md:px-8 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
+              <article className="glass-panel rounded-xl px-6 py-7 md:px-8 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
                 <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="flex items-center gap-3">
@@ -969,18 +969,18 @@ export default function Landing() {
                     </div>
                 </div>
 
-                <div className="glass-panel-soft rounded-2xl px-4 py-3 text-sm text-white/72">
+                <div className="glass-panel-soft rounded-xl px-4 py-3 text-sm text-white/72">
                     {copy.overview.performance.timeframe}
                 </div>
               </div>
 
-                <div className="mt-8 h-[18rem] w-full rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
+                <div className="mt-8 h-[18rem] w-full rounded-xl border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-3">
                   <PerformanceChart labels={copy.overview.performance.chartDays} />
                 </div>
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
                   {copy.overview.performance.stats.map(({ label, value }) => (
-                    <div key={label} className="glass-panel-soft rounded-2xl px-4 py-4">
+                    <div key={label} className="glass-panel-soft rounded-xl px-4 py-4">
                       <p className="text-xs uppercase tracking-[0.22em] text-[#aeb6df]/42">
                         {label}
                       </p>
@@ -992,7 +992,7 @@ export default function Landing() {
                 </div>
               </article>
 
-              <article className="glass-panel rounded-[30px] p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
+              <article className="glass-panel rounded-xl p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
                   <img
                     src="/landing-icons/Smart-automations.png"
@@ -1025,13 +1025,13 @@ export default function Landing() {
                   ))}
                 </div>
 
-                <div className="glass-panel-soft mt-3 rounded-2xl px-4 py-4">
+                <div className="glass-panel-soft mt-3 rounded-xl px-4 py-4">
                   <div className="flex items-center justify-between">
                     <span className="font-marketing text-sm font-semibold text-white/84">
                       {copy.overview.automations.statusLabel}
                     </span>
                     <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_12px_rgba(223,255,74,0.8)]" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_4px_rgba(223,255,74,0.8)]" />
                       {copy.overview.automations.statusValue}
                     </span>
                   </div>

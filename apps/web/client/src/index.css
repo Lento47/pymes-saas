@@ -105,29 +105,29 @@ body {
 
 /* ── Glass panels ── */
 .glass-panel {
-  background: linear-gradient(180deg, rgba(18, 24, 70, 0.92) 0%, rgba(8, 11, 33, 0.92) 100%);
-  border: 1px solid rgba(108, 126, 255, 0.28);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 30px 80px rgba(2,6,23,0.45), 0 0 0 1px rgba(99,102,241,0.05);
-  -webkit-backdrop-filter: blur(26px);
-  backdrop-filter: blur(26px);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 html.light .glass-panel {
-  background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,250,255,0.92) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: none;
 }
 
 .glass-panel-soft {
-  background: linear-gradient(180deg, rgba(12,17,52,0.82) 0%, rgba(7,11,31,0.82) 100%);
-  border: 1px solid rgba(113,132,255,0.16);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 20px 50px rgba(2,6,23,0.28);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 html.light .glass-panel-soft {
-  background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(245,248,255,0.85) 100%);
-  border: 1px solid rgba(99,102,241,0.1);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  box-shadow: none;
 }
 
 html.light .marketing-grid {
@@ -150,35 +150,21 @@ html.light .marketing-grid {
 }
 
 .marketing-surface {
-  background: linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.026));
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 24px 70px rgba(0,0,0,0.26);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: none;
 }
 
 .marketing-surface-quiet {
-  background: linear-gradient(180deg, rgba(255,255,255,0.048), rgba(255,255,255,0.018));
-  border: 1px solid rgba(255,255,255,0.095);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.045), 0 16px 46px rgba(0,0,0,0.18);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: none;
 }
 
 .luminous-border { position: relative; }
-.luminous-border::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(147,197,253,0.2), rgba(167,139,250,0.2));
-  /* Safari workaround: mask-composite not supported, using alternative approach */
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: destination-out;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0.8;
-}
 
-.glow-button { box-shadow: 0 0 0 1px rgba(99,102,241,0.25) inset, 0 0 28px rgba(99,102,241,0.15), 0 8px 30px rgba(99,102,241,0.1); }
-.soft-glow { box-shadow: 0 0 45px rgba(99,102,241,0.1); }
+.glow-button { box-shadow: none; }
+.soft-glow { box-shadow: none; }
 
 @keyframes float-y {
   0%, 100% { transform: translateY(0); will-change: transform; }
