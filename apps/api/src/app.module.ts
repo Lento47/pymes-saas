@@ -56,6 +56,7 @@ import { ContactSalesModule } from './contact-sales/contact-sales.module';
 import { UsageMeteringModule } from './usage-metering/usage-metering.module';
 import { MessageTemplatesModule } from './message-templates/message-templates.module';
 import { ProductMetricsModule } from './common/metrics/product-metrics.module';
+import { InventoryModule } from './inventory/inventory.module';
 
 @Module({
   imports: [
@@ -119,6 +120,7 @@ import { ProductMetricsModule } from './common/metrics/product-metrics.module';
     ContactSalesModule,
     UsageMeteringModule,
     MessageTemplatesModule,
+    InventoryModule,
 
     // Metrics
     ProductMetricsModule,

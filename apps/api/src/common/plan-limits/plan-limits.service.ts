@@ -45,6 +45,8 @@ interface PlanLimits {
   storage_bytes: number | 'custom';
   locations: number | 'custom';
   invite_codes: number | 'custom';
+  products: number | 'custom';
+  product_categories: number | 'custom';
 }
 
 export type { PlanLimits };
@@ -56,9 +58,11 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     contacts: 100,
     documents: 50,
     invoices_per_month: 50,
-    storage_bytes: 100 * 1024 * 1024, // 100 MB
+    storage_bytes: 100 * 1024 * 1024,
     locations: 1,
     invite_codes: 3,
+    products: 50,
+    product_categories: 5,
   },
   STARTER: {
     users: 1,
@@ -66,9 +70,11 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     contacts: 500,
     documents: 500,
     invoices_per_month: 100,
-    storage_bytes: 5 * 1024 * 1024 * 1024, // 5 GB
+    storage_bytes: 5 * 1024 * 1024 * 1024,
     locations: 1,
     invite_codes: 10,
+    products: 300,
+    product_categories: 20,
   },
   GROWTH: {
     users: 5,
@@ -76,22 +82,13 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     contacts: 2_500,
     documents: 500,
     invoices_per_month: 500,
-    storage_bytes: 10 * 1024 * 1024 * 1024, // 10 GB
+    storage_bytes: 10 * 1024 * 1024 * 1024,
     locations: 1,
     invite_codes: 50,
+    products: 1500,
+    product_categories: 50,
   },
   BUSINESS: {
-    users: 15,
-    automations: 100,
-    contacts: 15_000,
-    documents: 5_000,
-    invoices_per_month: 2_000,
-    storage_bytes: 50 * 1024 * 1024 * 1024, // 50 GB
-    locations: 3,
-    invite_codes: 200,
-  },
-  ENTERPRISE: {
-    // Legacy mapping → Business limits (backward compatibility)
     users: 15,
     automations: 100,
     contacts: 15_000,
@@ -100,16 +97,20 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     storage_bytes: 50 * 1024 * 1024 * 1024,
     locations: 3,
     invite_codes: 200,
+    products: 10000,
+    product_categories: 200,
+  },
+  ENTERPRISE: {
+    users: 15, automations: 100, contacts: 15_000, documents: 5_000,
+    invoices_per_month: 2_000, storage_bytes: 50 * 1024 * 1024 * 1024,
+    locations: 3, invite_codes: 200,
+    products: 10000, product_categories: 200,
   },
   BUSINESS_PLUS: {
-    users: 'custom',
-    automations: 'custom',
-    contacts: 'custom',
-    documents: 'custom',
-    invoices_per_month: 'custom',
-    storage_bytes: 'custom',
-    locations: 'custom',
-    invite_codes: 'custom',
+    users: 'custom', automations: 'custom', contacts: 'custom', documents: 'custom',
+    invoices_per_month: 'custom', storage_bytes: 'custom',
+    locations: 'custom', invite_codes: 'custom',
+    products: 'custom', product_categories: 'custom',
   },
 };
 
@@ -440,6 +441,32 @@ export class PlanLimitsService {
           this.getUpgradePlan(plan),
         );
       }
+    }
+  }
+
+  async enforceProductCount(workspaceId: string): Promise<void> {
+    const plan = await this.getWorkspacePlan(workspaceId);
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits.products;
+    if (limit === 'custom' || limit === Infinity) return;
+    const current = await (this.prisma as any).product.count({
+      where: { workspace_id: workspaceId, is_active: true },
+    });
+    if (current >= (limit as number)) {
+      throw new QuotaExceededError('productos', current, limit, plan, this.getUpgradePlan(plan));
+    }
+  }
+
+  async enforceCategoryCount(workspaceId: string): Promise<void> {
+    const plan = await this.getWorkspacePlan(workspaceId);
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits.product_categories;
+    if (limit === 'custom' || limit === Infinity) return;
+    const current = await (this.prisma as any).productCategory.count({
+      where: { workspace_id: workspaceId },
+    });
+    if (current >= (limit as number)) {
+      throw new QuotaExceededError('categorías de productos', current, limit, plan, this.getUpgradePlan(plan));
     }
   }
 }

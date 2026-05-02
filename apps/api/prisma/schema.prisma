@@ -210,58 +210,61 @@ enum RoutingMatchType {
 // ============================================================
 
 model Workspace {
-  id           String          @id @default(cuid())
-  name         String
-  slug         String          @unique
-  country_code String?         @db.Char(2)
-  timezone     String          @default("UTC")
-  locale       String          @default("en")
-  status       WorkspaceStatus @default(ACTIVE)
-  plan         WorkspacePlan   @default(FREE)
-  settings_json Json?          @db.JsonB
+  id            String          @id @default(cuid())
+  name          String
+  slug          String          @unique
+  country_code  String?         @db.Char(2)
+  timezone      String          @default("UTC")
+  locale        String          @default("en")
+  status        WorkspaceStatus @default(ACTIVE)
+  plan          WorkspacePlan   @default(FREE)
+  settings_json Json?           @db.JsonB
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   // Relations
-  workspace_users      WorkspaceUser[]
-  contacts             Contact[]
-  channels             Channel[]
-  conversations        Conversation[]
-  messages             Message[]
-  tasks                Task[]
-  documents            Document[]
-  invoices             Invoice[]
-  invoice_lines        InvoiceLine[]
+  workspace_users       WorkspaceUser[]
+  contacts              Contact[]
+  channels              Channel[]
+  conversations         Conversation[]
+  messages              Message[]
+  tasks                 Task[]
+  documents             Document[]
+  invoices              Invoice[]
+  invoice_lines         InvoiceLine[]
   workspace_tax_profile WorkspaceTaxProfile?
-  invoice_payments     InvoicePayment[]
-  automation_rules     AutomationRule[]
+  invoice_payments      InvoicePayment[]
+  automation_rules      AutomationRule[]
   automation_executions AutomationExecution[]
-  daily_summaries      DailySummary[]
-  notifications        Notification[]
-  audit_logs           AuditLog[]
-  departments          Department[]
-  refresh_tokens       RefreshToken[]
-  payment_reminders    PaymentReminder[]
-  error_reports        ErrorReport[]
-  deal_stages          DealStage[]
-  deals                Deal[]
-  subscriptions        WorkspaceSubscription[]
-  billing_events       BillingEvent[]
-  invitation_codes     InvitationCode[]
-  stripe_events        StripeEvent[]
-  routing_rules        RoutingRule[]
-  agent_sessions       AgentSession[]
-  diagnostic_cases     SupportDiagnosticCase[]
+  daily_summaries       DailySummary[]
+  notifications         Notification[]
+  audit_logs            AuditLog[]
+  departments           Department[]
+  refresh_tokens        RefreshToken[]
+  payment_reminders     PaymentReminder[]
+  error_reports         ErrorReport[]
+  deal_stages           DealStage[]
+  deals                 Deal[]
+  subscriptions         WorkspaceSubscription[]
+  billing_events        BillingEvent[]
+  invitation_codes      InvitationCode[]
+  stripe_events         StripeEvent[]
+  routing_rules         RoutingRule[]
+  agent_sessions        AgentSession[]
+  diagnostic_cases      SupportDiagnosticCase[]
 
   // Business+ Enterprise relations
-  enterprise_config    WorkspaceEnterpriseConfig?
-  sso_config           WorkspaceSsoConfig?
-  sla_assignments      WorkspaceSlaAssignment[]
-  onboarding_project   OnboardingProject?
-  message_templates    MessageTemplate[]
-  usage_snapshots      WorkspaceUsageSnapshot[]
-  sales_inquiries      ContactSalesInquiry[]
+  enterprise_config  WorkspaceEnterpriseConfig?
+  sso_config         WorkspaceSsoConfig?
+  sla_assignments    WorkspaceSlaAssignment[]
+  onboarding_project OnboardingProject?
+  message_templates  MessageTemplate[]
+  usage_snapshots    WorkspaceUsageSnapshot[]
+  sales_inquiries    ContactSalesInquiry[]
+  productCategories  ProductCategory[]
+  products           Product[]
+  stockMovements     StockMovement[]
 
   @@index([slug])
   @@index([status])
@@ -269,37 +272,37 @@ model Workspace {
 }
 
 model User {
-  id                 String     @id @default(cuid())
-  email              String     @unique
-  name               String
-  avatar_url         String?
-  password_hash      String?
-  status             UserStatus @default(ACTIVE)
-  is_platform_admin  Boolean    @default(false)
+  id                String     @id @default(cuid())
+  email             String     @unique
+  name              String
+  avatar_url        String?
+  password_hash     String?
+  status            UserStatus @default(ACTIVE)
+  is_platform_admin Boolean    @default(false)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   // Relations
-  workspace_users       WorkspaceUser[]
-  assigned_conversations Conversation[]     @relation("ConversationAssignee")
-  assigned_tasks        Task[]              @relation("TaskAssignee")
-  uploaded_documents    Document[]          @relation("DocumentUploader")
-  automation_rules      AutomationRule[]    @relation("RuleCreator")
-  notifications         Notification[]
-  audit_logs            AuditLog[]
-  outbound_messages     Message[]           @relation("MessageSender")
-  department_memberships DepartmentMember[]
-  refresh_tokens        RefreshToken[]
-  recorded_invoice_payments InvoicePayment[] @relation("InvoicePaymentRecorder")
-  error_reports         ErrorReport[]
-  assigned_deals        Deal[]              @relation("DealAssignee")
-  billing_events        BillingEvent[]
-  agent_sessions        AgentSession[]
+  workspace_users           WorkspaceUser[]
+  assigned_conversations    Conversation[]     @relation("ConversationAssignee")
+  assigned_tasks            Task[]             @relation("TaskAssignee")
+  uploaded_documents        Document[]         @relation("DocumentUploader")
+  automation_rules          AutomationRule[]   @relation("RuleCreator")
+  notifications             Notification[]
+  audit_logs                AuditLog[]
+  outbound_messages         Message[]          @relation("MessageSender")
+  department_memberships    DepartmentMember[]
+  refresh_tokens            RefreshToken[]
+  recorded_invoice_payments InvoicePayment[]   @relation("InvoicePaymentRecorder")
+  error_reports             ErrorReport[]
+  assigned_deals            Deal[]             @relation("DealAssignee")
+  billing_events            BillingEvent[]
+  agent_sessions            AgentSession[]
 
   // Business+ Enterprise relations
-  onboarding_projects  OnboardingProject[]  @relation("OnboardingOwner")
-  template_creations   MessageTemplate[]    @relation("TemplateCreator")
+  onboarding_projects OnboardingProject[] @relation("OnboardingOwner")
+  template_creations  MessageTemplate[]   @relation("TemplateCreator")
 
   @@index([email])
   @@index([status])
@@ -325,14 +328,14 @@ model WorkspaceUser {
 }
 
 model RefreshToken {
-  id           String   @id @default(cuid())
-  token_hash   String   @unique  // SHA-256 of the raw token
+  id           String    @id @default(cuid())
+  token_hash   String    @unique // SHA-256 of the raw token
   user_id      String
   workspace_id String
-  family       String   // random UUID per login session — for reuse detection
+  family       String // random UUID per login session — for reuse detection
   expires_at   DateTime
   revoked_at   DateTime?
-  created_at   DateTime @default(now())
+  created_at   DateTime  @default(now())
 
   user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
@@ -376,24 +379,24 @@ model WorkspaceSubscription {
 }
 
 model BillingEvent {
-  id                String           @id @default(cuid())
+  id                String          @id @default(cuid())
   workspace_id      String
   subscription_id   String?
-  provider          BillingProvider  @default(MANUAL)
-  source            String           @default("MANUAL")
+  provider          BillingProvider @default(MANUAL)
+  source            String          @default("MANUAL")
   event_type        String
   provider_event_id String?
   actor_user_id     String?
   applied_plan      WorkspacePlan?
-  payload_json      Json?            @db.JsonB
+  payload_json      Json?           @db.JsonB
   processed_at      DateTime?
-  notes             String?          @db.Text
+  notes             String?         @db.Text
 
   created_at DateTime @default(now())
 
-  workspace     Workspace              @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  subscription  WorkspaceSubscription? @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
-  actor_user    User?                  @relation(fields: [actor_user_id], references: [id], onDelete: SetNull)
+  workspace    Workspace              @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  subscription WorkspaceSubscription? @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
+  actor_user   User?                  @relation(fields: [actor_user_id], references: [id], onDelete: SetNull)
 
   @@unique([provider, provider_event_id])
   @@index([workspace_id])
@@ -409,25 +412,25 @@ model BillingEvent {
 // ============================================================
 
 model Contact {
-  id               String      @id @default(cuid())
-  workspace_id     String
-  type             ContactType @default(CUSTOMER)
-  full_name        String
-  company_name     String?
-  email            String?
-  phone            String?
-  identification_type String?
-  identification_number String?
-  tax_email        String?
-  province         String?
-  canton           String?
-  district         String?
-  address_detail   String?
-  foreign_identification String?
-  receptor_validation_json Json? @db.JsonB
-  external_ref     String?
-  tags_json        Json?       @db.JsonB
-  last_interaction_at DateTime?
+  id                       String      @id @default(cuid())
+  workspace_id             String
+  type                     ContactType @default(CUSTOMER)
+  full_name                String
+  company_name             String?
+  email                    String?
+  phone                    String?
+  identification_type      String?
+  identification_number    String?
+  tax_email                String?
+  province                 String?
+  canton                   String?
+  district                 String?
+  address_detail           String?
+  foreign_identification   String?
+  receptor_validation_json Json?       @db.JsonB
+  external_ref             String?
+  tags_json                Json?       @db.JsonB
+  last_interaction_at      DateTime?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -478,36 +481,36 @@ model Channel {
 // ============================================================
 
 model Conversation {
-  id               String             @id @default(cuid())
-  workspace_id     String
-  channel_id       String
-  contact_id       String?
-  subject          String?
-  status           ConversationStatus @default(NEW)
-  priority         Priority           @default(MEDIUM)
-  category         String?
-  assigned_user_id String?
-  last_message_at  DateTime?
+  id                String             @id @default(cuid())
+  workspace_id      String
+  channel_id        String
+  contact_id        String?
+  subject           String?
+  status            ConversationStatus @default(NEW)
+  priority          Priority           @default(MEDIUM)
+  category          String?
+  assigned_user_id  String?
+  last_message_at   DateTime?
   first_response_at DateTime?
   resolved_at       DateTime?
-  sla_breached  Boolean @default(false)
-  sla_target_hours Int?
+  sla_breached      Boolean            @default(false)
+  sla_target_hours  Int?
 
   // WhatsApp 24h service window
-  last_customer_message_at    DateTime?
-  service_window_expires_at   DateTime?
-  is_service_window_open      Boolean  @default(false)
-  requires_template_for_outbound Boolean @default(false)
+  last_customer_message_at       DateTime?
+  service_window_expires_at      DateTime?
+  is_service_window_open         Boolean   @default(false)
+  requires_template_for_outbound Boolean   @default(false)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  department_id    String?
+  department_id String?
 
-  workspace     Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  channel       Channel    @relation(fields: [channel_id], references: [id])
-  contact       Contact?   @relation(fields: [contact_id], references: [id])
-  assigned_user User?      @relation("ConversationAssignee", fields: [assigned_user_id], references: [id])
+  workspace     Workspace   @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  channel       Channel     @relation(fields: [channel_id], references: [id])
+  contact       Contact?    @relation(fields: [contact_id], references: [id])
+  assigned_user User?       @relation("ConversationAssignee", fields: [assigned_user_id], references: [id])
   department    Department? @relation("ConversationDepartment", fields: [department_id], references: [id])
 
   messages  Message[]
@@ -526,29 +529,29 @@ model Conversation {
 }
 
 model Message {
-  id                    String           @id @default(cuid())
-  workspace_id          String
-  conversation_id       String
-  direction             MessageDirection
-  sender_name           String?
-  sender_ref            String?           // email address, phone number, user_id, etc.
-  sender_user_id        String?           // populated for outbound/internal
-  body_text             String?           @db.Text
-  body_html             String?           @db.Text
-  raw_payload_json      Json?             @db.JsonB
+  id                     String           @id @default(cuid())
+  workspace_id           String
+  conversation_id        String
+  direction              MessageDirection
+  sender_name            String?
+  sender_ref             String? // email address, phone number, user_id, etc.
+  sender_user_id         String? // populated for outbound/internal
+  body_text              String?          @db.Text
+  body_html              String?          @db.Text
+  raw_payload_json       Json?            @db.JsonB
   ai_classification_json Json?            @db.JsonB
-  sent_at               DateTime?
+  sent_at                DateTime?
 
   // WhatsApp / Telegram cost tracking
-  message_type  String?  // text | image | file | audio | template | system
-  cost_category String?  // service | utility | marketing | authentication | free | unknown
-  cost_estimate Float?   @default(0)
-  cost_currency  String? @default("CRC")
+  message_type  String? // text | image | file | audio | template | system
+  cost_category String? // service | utility | marketing | authentication | free | unknown
+  cost_estimate Float?  @default(0)
+  cost_currency String? @default("CRC")
 
   // Telegram specific
-  telegram_chat_id      String?
-  telegram_user_id      String?
-  telegram_message_id   String?
+  telegram_chat_id    String?
+  telegram_user_id    String?
+  telegram_message_id String?
 
   created_at DateTime @default(now())
 
@@ -585,10 +588,10 @@ model Task {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  workspace     Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  workspace     Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   conversation  Conversation? @relation(fields: [conversation_id], references: [id])
-  contact       Contact?     @relation(fields: [contact_id], references: [id])
-  assigned_user User?        @relation("TaskAssignee", fields: [assigned_user_id], references: [id])
+  contact       Contact?      @relation(fields: [contact_id], references: [id])
+  assigned_user User?         @relation("TaskAssignee", fields: [assigned_user_id], references: [id])
 
   @@index([workspace_id])
   @@index([workspace_id, status])
@@ -611,8 +614,8 @@ model Document {
   task_id             String?
   file_name           String
   mime_type           String
-  storage_key         String         // S3/MinIO object key
-  file_size           Int            // bytes
+  storage_key         String // S3/MinIO object key
+  file_size           Int // bytes
   ocr_text            String?        @db.Text
   extracted_data_json Json?          @db.JsonB
   summary_text        String?        @db.Text
@@ -622,10 +625,10 @@ model Document {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  workspace       Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  contact         Contact?     @relation(fields: [contact_id], references: [id])
-  conversation    Conversation? @relation(fields: [conversation_id], references: [id])
-  uploaded_by     User?        @relation("DocumentUploader", fields: [uploaded_by_user_id], references: [id])
+  workspace    Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact      Contact?      @relation(fields: [contact_id], references: [id])
+  conversation Conversation? @relation(fields: [conversation_id], references: [id])
+  uploaded_by  User?         @relation("DocumentUploader", fields: [uploaded_by_user_id], references: [id])
 
   @@index([workspace_id])
   @@index([workspace_id, status])
@@ -639,47 +642,47 @@ model Document {
 // ============================================================
 
 model Invoice {
-  id              String        @id @default(cuid())
-  workspace_id    String
-  contact_id      String
-  conversation_id String?
-  reference_invoice_id String?
-  number          String
-  amount          Decimal       @db.Decimal(12, 2)
-  currency        String        @default("USD")
-  due_date        DateTime
-  paid_at         DateTime?
-  status          InvoiceStatus @default(DRAFT)
-  document_type   InvoiceDocumentType @default(FACTURA_ELECTRONICA)
-  issuance_mode   InvoiceIssuanceMode @default(MANUAL_ONLY)
-  hacienda_status HaciendaStatus @default(DRAFT)
-  clave           String?
-  consecutivo     String?
-  activity_code   String?
-  sale_condition  String?
-  payment_method  String?
-  issue_date      DateTime?
-  exchange_rate   Decimal?      @db.Decimal(12, 5)
-  hacienda_location_url String?
-  signed_xml_storage_key String?
+  id                       String              @id @default(cuid())
+  workspace_id             String
+  contact_id               String
+  conversation_id          String?
+  reference_invoice_id     String?
+  number                   String
+  amount                   Decimal             @db.Decimal(12, 2)
+  currency                 String              @default("USD")
+  due_date                 DateTime
+  paid_at                  DateTime?
+  status                   InvoiceStatus       @default(DRAFT)
+  document_type            InvoiceDocumentType @default(FACTURA_ELECTRONICA)
+  issuance_mode            InvoiceIssuanceMode @default(MANUAL_ONLY)
+  hacienda_status          HaciendaStatus      @default(DRAFT)
+  clave                    String?
+  consecutivo              String?
+  activity_code            String?
+  sale_condition           String?
+  payment_method           String?
+  issue_date               DateTime?
+  exchange_rate            Decimal?            @db.Decimal(12, 5)
+  hacienda_location_url    String?
+  signed_xml_storage_key   String?
   response_xml_storage_key String?
-  hacienda_last_error String?   @db.Text
+  hacienda_last_error      String?             @db.Text
   hacienda_last_checked_at DateTime?
-  hacienda_submitted_at DateTime?
-  description     String?       @db.Text
-  notes_json      Json?         @db.JsonB
+  hacienda_submitted_at    DateTime?
+  description              String?             @db.Text
+  notes_json               Json?               @db.JsonB
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  workspace    Workspace          @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  contact      Contact            @relation(fields: [contact_id], references: [id])
-  conversation Conversation?      @relation(fields: [conversation_id], references: [id], onDelete: SetNull)
-  reference_invoice Invoice?      @relation("InvoiceReference", fields: [reference_invoice_id], references: [id], onDelete: SetNull)
-  referenced_by     Invoice[]     @relation("InvoiceReference")
-  reminders    PaymentReminder[]
-  payments     InvoicePayment[]
-  lines        InvoiceLine[]
+  workspace         Workspace         @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact           Contact           @relation(fields: [contact_id], references: [id])
+  conversation      Conversation?     @relation(fields: [conversation_id], references: [id], onDelete: SetNull)
+  reference_invoice Invoice?          @relation("InvoiceReference", fields: [reference_invoice_id], references: [id], onDelete: SetNull)
+  referenced_by     Invoice[]         @relation("InvoiceReference")
+  reminders         PaymentReminder[]
+  payments          InvoicePayment[]
+  lines             InvoiceLine[]
 
   @@index([workspace_id])
   @@index([workspace_id, status])
@@ -696,6 +699,7 @@ model InvoiceLine {
   id                String   @id @default(cuid())
   workspace_id      String
   invoice_id        String
+  product_id        String?
   line_number       Int
   description       String
   quantity          Decimal  @db.Decimal(12, 3)
@@ -716,10 +720,13 @@ model InvoiceLine {
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   invoice   Invoice   @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  product   Product?  @relation(fields: [productId], references: [id])
+  productId String?
 
+  @@unique([invoice_id, line_number])
   @@index([workspace_id])
   @@index([invoice_id])
-  @@unique([invoice_id, line_number])
+  @@index([product_id])
   @@map("invoice_lines")
 }
 
@@ -750,10 +757,10 @@ model InvoicePayment {
 }
 
 model PaymentReminder {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   workspace_id String
   invoice_id   String
-  draft_text   String   @db.Text
+  draft_text   String    @db.Text
   sent_at      DateTime?
   sent_via     String?
   approved_by  String?
@@ -770,8 +777,8 @@ model PaymentReminder {
 }
 
 model WorkspaceTaxProfile {
-  id                    String @id @default(cuid())
-  workspace_id          String @unique
+  id                    String  @id @default(cuid())
+  workspace_id          String  @unique
   identification_type   String
   identification_number String
   legal_name            String
@@ -870,23 +877,23 @@ model RoutingRule {
 // ============================================================
 
 model AutomationRule {
-  id                   String      @id @default(cuid())
-  workspace_id         String
-  name                 String
-  description          String?     @db.Text
-  trigger_type         TriggerType
-  trigger_config_json  Json        @db.JsonB
-  condition_config_json Json?      @db.JsonB
-  action_config_json   Json        @db.JsonB
-  enabled              Boolean     @default(true)
-  created_by_user_id   String?
+  id                    String      @id @default(cuid())
+  workspace_id          String
+  name                  String
+  description           String?     @db.Text
+  trigger_type          TriggerType
+  trigger_config_json   Json        @db.JsonB
+  condition_config_json Json?       @db.JsonB
+  action_config_json    Json        @db.JsonB
+  enabled               Boolean     @default(true)
+  created_by_user_id    String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  workspace    Workspace             @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  created_by   User?                 @relation("RuleCreator", fields: [created_by_user_id], references: [id])
-  executions   AutomationExecution[]
+  workspace  Workspace             @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  created_by User?                 @relation("RuleCreator", fields: [created_by_user_id], references: [id])
+  executions AutomationExecution[]
 
   @@index([workspace_id])
   @@index([workspace_id, enabled])
@@ -898,7 +905,7 @@ model AutomationExecution {
   id                  String                    @id @default(cuid())
   workspace_id        String
   rule_id             String
-  trigger_entity_type String                    // "message" | "conversation" | "document" | "task"
+  trigger_entity_type String // "message" | "conversation" | "document" | "task"
   trigger_entity_id   String
   status              AutomationExecutionStatus @default(QUEUED)
   input_json          Json?                     @db.JsonB
@@ -944,14 +951,14 @@ model DailySummary {
 // ============================================================
 
 model Notification {
-  id                  String   @id @default(cuid())
+  id                  String    @id @default(cuid())
   workspace_id        String
   user_id             String
-  type                String   // "task_due" | "message_received" | "mention" | "automation_failed" etc.
+  type                String // "task_due" | "message_received" | "mention" | "automation_failed" etc.
   title               String
-  body                String   @db.Text
+  body                String    @db.Text
   read_at             DateTime?
-  related_entity_type String?  // "conversation" | "task" | "document"
+  related_entity_type String? // "conversation" | "task" | "document"
   related_entity_id   String?
 
   created_at DateTime @default(now())
@@ -970,14 +977,14 @@ model Notification {
 // ============================================================
 
 model AuditLog {
-  id          String  @id @default(cuid())
+  id           String  @id @default(cuid())
   workspace_id String
-  user_id     String?
-  action      String  // "contact.created" | "conversation.resolved" | "rule.enabled" etc.
-  entity_type String
-  entity_id   String
-  before_json Json?   @db.JsonB
-  after_json  Json?   @db.JsonB
+  user_id      String?
+  action       String // "contact.created" | "conversation.resolved" | "rule.enabled" etc.
+  entity_type  String
+  entity_id    String
+  before_json  Json?   @db.JsonB
+  after_json   Json?   @db.JsonB
 
   created_at DateTime @default(now())
 
@@ -996,11 +1003,11 @@ model AuditLog {
 // ============================================================
 
 model DealStage {
-  id           String  @id @default(cuid())
+  id           String @id @default(cuid())
   workspace_id String
   name         String
   order        Int
-  color        String  @default("#6366f1")
+  color        String @default("#6366f1")
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -1030,10 +1037,10 @@ model Deal {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  workspace     Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  stage         DealStage  @relation(fields: [stage_id], references: [id])
-  contact       Contact?   @relation(fields: [contact_id], references: [id], onDelete: SetNull)
-  assigned_user User?      @relation("DealAssignee", fields: [assigned_user_id], references: [id], onDelete: SetNull)
+  workspace     Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  stage         DealStage @relation(fields: [stage_id], references: [id])
+  contact       Contact?  @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  assigned_user User?     @relation("DealAssignee", fields: [assigned_user_id], references: [id], onDelete: SetNull)
 
   @@index([workspace_id])
   @@index([workspace_id, stage_id])
@@ -1044,23 +1051,23 @@ model Deal {
 }
 
 model ErrorReport {
-  id          String   @id @default(cuid())
+  id           String   @id @default(cuid())
   workspace_id String?
-  user_id     String?
-  source      String
-  category    String
-  severity    String   @default("ERROR")
-  title       String?
-  message     String   @db.Text
-  stack       String?  @db.Text
-  route       String?
-  url         String?
-  method      String?
-  status_code Int?
-  user_agent  String?  @db.Text
-  context_json Json?   @db.JsonB
-  occurred_at DateTime @default(now())
-  created_at  DateTime @default(now())
+  user_id      String?
+  source       String
+  category     String
+  severity     String   @default("ERROR")
+  title        String?
+  message      String   @db.Text
+  stack        String?  @db.Text
+  route        String?
+  url          String?
+  method       String?
+  status_code  Int?
+  user_agent   String?  @db.Text
+  context_json Json?    @db.JsonB
+  occurred_at  DateTime @default(now())
+  created_at   DateTime @default(now())
 
   workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: SetNull)
   user      User?      @relation(fields: [user_id], references: [id], onDelete: SetNull)
@@ -1076,14 +1083,14 @@ model ErrorReport {
 }
 
 model StripeEvent {
-  id             String   @id @default(cuid())
-  workspace_id   String?
-  external_id    String   @unique
-  type           String
-  data           Json     @db.JsonB
-  processed      Boolean  @default(false)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  workspace_id String?
+  external_id  String   @unique
+  type         String
+  data         Json     @db.JsonB
+  processed    Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
   workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: SetNull)
 
@@ -1147,17 +1154,17 @@ model BillingInvoice {
 // ============================================================
 
 model InvitationCode {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   workspace_id String
-  code         String    @unique
-  role         String    @default("AGENT")
-  max_uses     Int       @default(5)
-  used_count   Int       @default(0)
-  is_active    Boolean   @default(true)
+  code         String   @unique
+  role         String   @default("AGENT")
+  max_uses     Int      @default(5)
+  used_count   Int      @default(0)
+  is_active    Boolean  @default(true)
   expires_at   DateTime
   created_by   String
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
@@ -1179,16 +1186,16 @@ enum CapabilityStatus {
 }
 
 model BusinessPlusCapability {
-  id                    String           @id @default(cuid())
-  key                   String           @unique
-  name                  String
-  description           String?          @db.Text
-  status                CapabilityStatus @default(ROADMAP)
-  visible_on_pricing    Boolean          @default(false)
-  visible_in_admin      Boolean          @default(true)
-  requires_sales_approval Boolean        @default(false)
-  requires_setup        Boolean          @default(false)
-  documentation_url     String?
+  id                      String           @id @default(cuid())
+  key                     String           @unique
+  name                    String
+  description             String?          @db.Text
+  status                  CapabilityStatus @default(ROADMAP)
+  visible_on_pricing      Boolean          @default(false)
+  visible_in_admin        Boolean          @default(true)
+  requires_sales_approval Boolean          @default(false)
+  requires_setup          Boolean          @default(false)
+  documentation_url       String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -1203,23 +1210,23 @@ model BusinessPlusCapability {
 // ============================================================
 
 model WorkspaceEnterpriseConfig {
-  id                 String    @id @default(cuid())
-  workspace_id       String    @unique
-  plan_key           String    @default("BUSINESS_PLUS")
-  contract_type      String?   // monthly | annual | custom
-  contract_start_date DateTime?
-  contract_end_date   DateTime?
+  id                   String    @id @default(cuid())
+  workspace_id         String    @unique
+  plan_key             String    @default("BUSINESS_PLUS")
+  contract_type        String? // monthly | annual | custom
+  contract_start_date  DateTime?
+  contract_end_date    DateTime?
   custom_monthly_price Float?
   custom_annual_price  Float?
-  currency            String?   @default("CRC")
-  custom_limits       Json?     @db.JsonB // { contacts, invoicesPerMonth, automations, storageGb, locations, users, apiCallsPerMonth, whatsappMessagesIncluded, telegramMessagesIncluded }
+  currency             String?   @default("CRC")
+  custom_limits        Json?     @db.JsonB // { contacts, invoicesPerMonth, automations, storageGb, locations, users, apiCallsPerMonth, whatsappMessagesIncluded, telegramMessagesIncluded }
   enabled_capabilities String[] // array of BusinessPlusCapability keys
-  sla_tier            String?   // none | standard | priority | custom
-  onboarding_tier     String?   // none | assisted | dedicated | custom
-  support_tier        String?   // standard | priority | dedicated | custom
-  security_tier       String?   // standard | advanced | custom
-  contract_notes      String?   @db.Text
-  internal_notes      String?   @db.Text
+  sla_tier             String? // none | standard | priority | custom
+  onboarding_tier      String? // none | assisted | dedicated | custom
+  support_tier         String? // standard | priority | dedicated | custom
+  security_tier        String? // standard | advanced | custom
+  contract_notes       String?   @db.Text
+  internal_notes       String?   @db.Text
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -1236,24 +1243,24 @@ model WorkspaceEnterpriseConfig {
 // ============================================================
 
 model WorkspaceSsoConfig {
-  id                           String  @id @default(cuid())
-  workspace_id                 String  @unique
-  provider_type                String  @default("saml")
-  enabled                      Boolean @default(false)
-  idp_entity_id                String?
-  idp_sso_url                  String?
-  idp_certificate_encrypted    String? @db.Text
-  metadata_url                 String?
-  metadata_xml_encrypted       String? @db.Text
-  sp_entity_id                 String?
-  acs_url                      String?
-  name_id_format               String?
-  email_attribute              String?
-  first_name_attribute         String?
-  last_name_attribute          String?
-  role_attribute               String?
+  id                                 String  @id @default(cuid())
+  workspace_id                       String  @unique
+  provider_type                      String  @default("saml")
+  enabled                            Boolean @default(false)
+  idp_entity_id                      String?
+  idp_sso_url                        String?
+  idp_certificate_encrypted          String? @db.Text
+  metadata_url                       String?
+  metadata_xml_encrypted             String? @db.Text
+  sp_entity_id                       String?
+  acs_url                            String?
+  name_id_format                     String?
+  email_attribute                    String?
+  first_name_attribute               String?
+  last_name_attribute                String?
+  role_attribute                     String?
   allow_password_fallback_for_admins Boolean @default(true)
-  require_sso_for_members       Boolean @default(false)
+  require_sso_for_members            Boolean @default(false)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -1299,16 +1306,16 @@ model FeatureFlag {
 // ============================================================
 
 model SlaPolicy {
-  id                          String  @id @default(cuid())
-  key                         String  @unique // standard | priority | custom
-  name                        String
-  support_window              String? // e.g. "Mon-Fri 8am-6pm CST"
+  id                            String  @id @default(cuid())
+  key                           String  @unique // standard | priority | custom
+  name                          String
+  support_window                String? // e.g. "Mon-Fri 8am-6pm CST"
   first_response_target_minutes Int?
-  resolution_target_hours     Int?
-  uptime_target_percent       Float?
-  applies_to_plan             String  @default("BUSINESS_PLUS")
-  requires_contract           Boolean @default(false)
-  description                 String? @db.Text
+  resolution_target_hours       Int?
+  uptime_target_percent         Float?
+  applies_to_plan               String  @default("BUSINESS_PLUS")
+  requires_contract             Boolean @default(false)
+  description                   String? @db.Text
 
   assignments WorkspaceSlaAssignment[]
 
@@ -1321,10 +1328,10 @@ model SlaPolicy {
 }
 
 model WorkspaceSlaAssignment {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   workspace_id       String
   sla_policy_id      String
-  effective_from     DateTime @default(now())
+  effective_from     DateTime  @default(now())
   effective_to       DateTime?
   contract_reference String?
 
@@ -1351,15 +1358,15 @@ enum OnboardingStatus {
 }
 
 model OnboardingProject {
-  id                 String           @id @default(cuid())
-  workspace_id       String           @unique
-  plan_key           String           @default("BUSINESS_PLUS")
-  owner_user_id      String?
-  status             OnboardingStatus @default(NOT_STARTED)
+  id                  String           @id @default(cuid())
+  workspace_id        String           @unique
+  plan_key            String           @default("BUSINESS_PLUS")
+  owner_user_id       String?
+  status              OnboardingStatus @default(NOT_STARTED)
   target_go_live_date DateTime?
-  checklist          Json             @db.JsonB // [{ category, items: [{ label, completed, notes }] }]
-  notes              String?          @db.Text
-  success_criteria   String?          @db.Text
+  checklist           Json             @db.JsonB // [{ category, items: [{ label, completed, notes }] }]
+  notes               String?          @db.Text
+  success_criteria    String?          @db.Text
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -1385,17 +1392,17 @@ enum TemplateStatus {
 }
 
 model MessageTemplate {
-  id                  String         @id @default(cuid())
-  workspace_id        String
-  channel             String         @default("WHATSAPP") // whatsapp | telegram | email
-  name                String
+  id                   String         @id @default(cuid())
+  workspace_id         String
+  channel              String         @default("WHATSAPP") // whatsapp | telegram | email
+  name                 String
   external_template_id String?
-  category            String?        // service | utility | marketing | authentication | unknown
-  language            String?
-  body                String         @db.Text
-  status              TemplateStatus @default(DRAFT)
-  variables           Json?          @db.JsonB
-  created_by_user_id  String?
+  category             String? // service | utility | marketing | authentication | unknown
+  language             String?
+  body                 String         @db.Text
+  status               TemplateStatus @default(DRAFT)
+  variables            Json?          @db.JsonB
+  created_by_user_id   String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -1415,21 +1422,21 @@ model MessageTemplate {
 // ============================================================
 
 model WorkspaceUsageSnapshot {
-  id                       String   @id @default(cuid())
-  workspace_id             String
-  period_start             DateTime
-  period_end               DateTime
-  contacts_count           Int      @default(0)
-  invoices_count           Int      @default(0)
-  automations_count        Int      @default(0)
-  storage_used_mb          Float    @default(0)
-  users_count              Int      @default(0)
-  locations_count          Int      @default(0)
-  whatsapp_messages_count  Int      @default(0)
-  telegram_messages_count  Int      @default(0)
-  email_messages_count     Int      @default(0)
-  forms_submitted_count    Int      @default(0)
-  api_calls_count          Int      @default(0)
+  id                      String   @id @default(cuid())
+  workspace_id            String
+  period_start            DateTime
+  period_end              DateTime
+  contacts_count          Int      @default(0)
+  invoices_count          Int      @default(0)
+  automations_count       Int      @default(0)
+  storage_used_mb         Float    @default(0)
+  users_count             Int      @default(0)
+  locations_count         Int      @default(0)
+  whatsapp_messages_count Int      @default(0)
+  telegram_messages_count Int      @default(0)
+  email_messages_count    Int      @default(0)
+  forms_submitted_count   Int      @default(0)
+  api_calls_count         Int      @default(0)
 
   created_at DateTime @default(now())
 
@@ -1445,28 +1452,28 @@ model WorkspaceUsageSnapshot {
 // ============================================================
 
 model ContactSalesInquiry {
-  id                        String   @id @default(cuid())
-  workspace_id              String?
-  business_name             String
-  contact_name              String
-  email                     String
-  phone                     String?
-  industry                  String?
-  employee_count            Int?
-  users_needed              Int?
-  locations_count           Int?
-  monthly_invoices_estimate Int?
-  contacts_estimate         Int?
-  current_tools             String?  @db.Text
-  channels_needed           String[] // whatsapp | telegram | email | forms
-  migration_needed          Boolean  @default(false)
-  sso_needed                Boolean  @default(false)
-  sla_needed                Boolean  @default(false)
-  dedicated_onboarding_needed Boolean @default(false)
-  custom_workflows_needed   Boolean  @default(false)
-  preferred_onboarding_date DateTime?
-  message                   String?  @db.Text
-  status                    String   @default("NEW") // NEW | CONTACTED | QUALIFIED | CLOSED
+  id                          String    @id @default(cuid())
+  workspace_id                String?
+  business_name               String
+  contact_name                String
+  email                       String
+  phone                       String?
+  industry                    String?
+  employee_count              Int?
+  users_needed                Int?
+  locations_count             Int?
+  monthly_invoices_estimate   Int?
+  contacts_estimate           Int?
+  current_tools               String?   @db.Text
+  channels_needed             String[] // whatsapp | telegram | email | forms
+  migration_needed            Boolean   @default(false)
+  sso_needed                  Boolean   @default(false)
+  sla_needed                  Boolean   @default(false)
+  dedicated_onboarding_needed Boolean   @default(false)
+  custom_workflows_needed     Boolean   @default(false)
+  preferred_onboarding_date   DateTime?
+  message                     String?   @db.Text
+  status                      String    @default("NEW") // NEW | CONTACTED | QUALIFIED | CLOSED
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -1492,11 +1499,11 @@ model ContactSalesInquiry {
 model SystemTemplate {
   id          String   @id @default(cuid())
   key         String   @unique
-  type        String   // "automation" | "message" | "invoice" | "workspace"
+  type        String // "automation" | "message" | "invoice" | "workspace"
   name        String
   description String?  @db.Text
-  category    String?  // "sales" | "support" | "billing" | "onboarding" | "general"
-  channel     String?  // "whatsapp" | "telegram" | "email"
+  category    String? // "sales" | "support" | "billing" | "onboarding" | "general"
+  channel     String? // "whatsapp" | "telegram" | "email"
   body        Json     @db.JsonB
   is_active   Boolean  @default(true)
   order       Int      @default(0)
@@ -1514,19 +1521,19 @@ model SystemTemplate {
 // ============================================================
 
 model WorkspaceTemplate {
-  id              String   @id @default(cuid())
-  key             String   @unique
-  name            String
-  description     String?  @db.Text
-  industry        String?  // "retail" | "services" | "healthcare" | "restaurant"
-  pipeline_stages Json     @db.JsonB   // [{ name, color, order }]
-  contact_tags    String[]             // e.g. ["cliente", "proveedor"]
-  automation_rules Json    @db.JsonB   // array of automation templates
-  invoice_config  Json?   @db.JsonB   // default invoice settings
-  is_active       Boolean  @default(true)
-  order           Int      @default(0)
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  id               String   @id @default(cuid())
+  key              String   @unique
+  name             String
+  description      String?  @db.Text
+  industry         String? // "retail" | "services" | "healthcare" | "restaurant"
+  pipeline_stages  Json     @db.JsonB // [{ name, color, order }]
+  contact_tags     String[] // e.g. ["cliente", "proveedor"]
+  automation_rules Json     @db.JsonB // array of automation templates
+  invoice_config   Json?    @db.JsonB // default invoice settings
+  is_active        Boolean  @default(true)
+  order            Int      @default(0)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
   @@index([industry])
   @@index([is_active])
@@ -1552,20 +1559,20 @@ enum EscalationStatus {
 }
 
 model AgentSession {
-  id           String             @id @default(cuid())
-  workspace_id String
-  user_id      String?
-  agent_type   String             // "router", "docs", "onboarding", "inbox", "billing", "troubleshooting", "escalation"
-  status       AgentSessionStatus @default(ACTIVE)
-  metadata_json Json?             @db.JsonB // { plan, role, locale, page_context }
+  id            String             @id @default(cuid())
+  workspace_id  String
+  user_id       String?
+  agent_type    String // "router", "docs", "onboarding", "inbox", "billing", "troubleshooting", "escalation"
+  status        AgentSessionStatus @default(ACTIVE)
+  metadata_json Json?              @db.JsonB // { plan, role, locale, page_context }
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  user      User?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  messages  AgentMessage[]
-  toolCalls AgentToolCall[]
+  workspace   Workspace         @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user        User?             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages    AgentMessage[]
+  toolCalls   AgentToolCall[]
   escalations AgentEscalation[]
 
   @@index([workspace_id])
@@ -1576,10 +1583,10 @@ model AgentSession {
 }
 
 model AgentMessage {
-  id         String   @id @default(cuid())
-  session_id String
-  role       String   // "user", "assistant", "system", "tool"
-  content    String   @db.Text
+  id            String @id @default(cuid())
+  session_id    String
+  role          String // "user", "assistant", "system", "tool"
+  content       String @db.Text
   metadata_json Json?  @db.JsonB // { tool_calls, citations, confidence }
 
   created_at DateTime @default(now())
@@ -1592,16 +1599,16 @@ model AgentMessage {
 }
 
 model AgentToolCall {
-  id            String   @id @default(cuid())
-  session_id    String
-  agent_type    String    // which sub-agent made the call
-  tool_name     String
-  input_json    Json     @db.JsonB
-  output_json   Json?    @db.JsonB
-  risk_level    String?   // "low", "medium", "high", "critical"
-  allowed       Boolean  @default(true)
+  id             String   @id @default(cuid())
+  session_id     String
+  agent_type     String // which sub-agent made the call
+  tool_name      String
+  input_json     Json     @db.JsonB
+  output_json    Json?    @db.JsonB
+  risk_level     String? // "low", "medium", "high", "critical"
+  allowed        Boolean  @default(true)
   blocked_reason String?
-  executed_at   DateTime @default(now())
+  executed_at    DateTime @default(now())
 
   session AgentSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
 
@@ -1620,7 +1627,7 @@ model AgentEscalation {
   summary         String           @db.Text
   evidence_json   Json?            @db.JsonB // { steps_attempted, error_messages, context }
   status          EscalationStatus @default(OPEN)
-  resolved_by     String?          // user_id of resolving agent
+  resolved_by     String? // user_id of resolving agent
   resolution_note String?          @db.Text
 
   created_at DateTime @default(now())
@@ -1640,27 +1647,27 @@ model AgentEscalation {
 // ============================================================
 
 model SupportDiagnosticCase {
-  id              String   @id @default(cuid())
-  workspace_id    String
-  user_id         String?
-  module          String    // "inbox", "billing", "settings", etc.
-  error_code      String?
-  trace_id        String?
-  category        String    // "USER_GUIDANCE", "PERMISSION_ISSUE", etc.
-  risk_level      String    // "low", "medium", "high", "critical"
-  status          String    @default("OPEN") // "OPEN", "INVESTIGATING", "RESOLVED", "ESCALATED"
-  title           String
-  user_description String?  @db.Text
-  safe_summary    String?   @db.Text
-  steps_json      Json?     @db.JsonB // reproduction_steps
-  evidence_json   Json?     @db.JsonB // collected evidence
-  resolution_json Json?     @db.JsonB // { resolution, workaround, escalated_to }
+  id               String  @id @default(cuid())
+  workspace_id     String
+  user_id          String?
+  module           String // "inbox", "billing", "settings", etc.
+  error_code       String?
+  trace_id         String?
+  category         String // "USER_GUIDANCE", "PERMISSION_ISSUE", etc.
+  risk_level       String // "low", "medium", "high", "critical"
+  status           String  @default("OPEN") // "OPEN", "INVESTIGATING", "RESOLVED", "ESCALATED"
+  title            String
+  user_description String? @db.Text
+  safe_summary     String? @db.Text
+  steps_json       Json?   @db.JsonB // reproduction_steps
+  evidence_json    Json?   @db.JsonB // collected evidence
+  resolution_json  Json?   @db.JsonB // { resolution, workaround, escalated_to }
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  fixCases   EngineeringFixCase[]
+  workspace Workspace            @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  fixCases  EngineeringFixCase[]
 
   @@index([workspace_id])
   @@index([error_code])
@@ -1671,19 +1678,19 @@ model SupportDiagnosticCase {
 }
 
 model SupportKnownIssue {
-  id              String   @id @default(cuid())
-  error_code      String   @unique
-  title           String
-  module          String
-  category        String
-  severity        String    // "low", "medium", "high", "critical"
-  description     String?  @db.Text
-  workaround      String?  @db.Text
-  fix_status      String   @default("OPEN") // "OPEN", "FIX_IN_PROGRESS", "FIXED", "WONT_FIX"
-  fix_pr_url      String?
+  id                String  @id @default(cuid())
+  error_code        String  @unique
+  title             String
+  module            String
+  category          String
+  severity          String // "low", "medium", "high", "critical"
+  description       String? @db.Text
+  workaround        String? @db.Text
+  fix_status        String  @default("OPEN") // "OPEN", "FIX_IN_PROGRESS", "FIXED", "WONT_FIX"
+  fix_pr_url        String?
   affected_versions String?
-  fixed_in_version String?
-  is_active       Boolean  @default(true)
+  fixed_in_version  String?
+  is_active         Boolean @default(true)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -1709,23 +1716,107 @@ enum EngineeringFixStatus {
 }
 
 model EngineeringFixCase {
-  id                  String               @id @default(cuid())
-  diagnostic_case_id  String?
-  branch_name         String?
-  status              EngineeringFixStatus @default(PENDING)
-  pr_url              String?
-  pr_number           Int?
-  files_changed_json  Json?                @db.JsonB
-  test_added_json     Json?                @db.JsonB
-  fix_summary         String?              @db.Text
-  rollback_notes      String?              @db.Text
-  error_log           String?              @db.Text
-  created_at          DateTime             @default(now())
-  updated_at          DateTime             @updatedAt
+  id                 String               @id @default(cuid())
+  diagnostic_case_id String?
+  branch_name        String?
+  status             EngineeringFixStatus @default(PENDING)
+  pr_url             String?
+  pr_number          Int?
+  files_changed_json Json?                @db.JsonB
+  test_added_json    Json?                @db.JsonB
+  fix_summary        String?              @db.Text
+  rollback_notes     String?              @db.Text
+  error_log          String?              @db.Text
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @updatedAt
 
   diagnosticCase SupportDiagnosticCase? @relation(fields: [diagnostic_case_id], references: [id])
 
   @@index([status])
   @@index([diagnostic_case_id])
   @@map("engineering_fix_cases")
+}
+
+// ============================================================
+// INVENTORY
+// ============================================================
+
+enum ProductType {
+  PRODUCT
+  SERVICE
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  REVERSAL
+}
+
+model ProductCategory {
+  id           String   @id @default(cuid())
+  workspace_id String
+  name         String
+  description  String?
+  color        String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  products  Product[]
+
+  @@unique([workspace_id, name])
+  @@map("product_categories")
+}
+
+model Product {
+  id              String      @id @default(cuid())
+  workspace_id    String
+  category_id     String?
+  name            String
+  sku             String
+  description     String?     @db.Text
+  type            ProductType @default(PRODUCT)
+  unit_price      Decimal     @db.Decimal(12, 5)
+  cost_price      Decimal?    @db.Decimal(12, 5)
+  current_stock   Int         @default(0)
+  min_stock       Int         @default(0)
+  unit_of_measure String?
+  track_inventory Boolean     @default(true)
+  is_active       Boolean     @default(true)
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+
+  category      ProductCategory? @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  workspace     Workspace        @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  movements     StockMovement[]
+  invoice_lines InvoiceLine[]
+
+  @@unique([workspace_id, sku])
+  @@index([workspace_id, is_active])
+  @@index([workspace_id, current_stock])
+  @@map("products")
+}
+
+model StockMovement {
+  id             String       @id @default(cuid())
+  workspace_id   String
+  product_id     String
+  type           MovementType
+  quantity       Int
+  previous_stock Int
+  new_stock      Int
+  reason         String?
+  reference_type String?
+  reference_id   String?
+  user_id        String?
+  created_at     DateTime     @default(now())
+
+  product   Product   @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([product_id])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@map("stock_movements")
 }

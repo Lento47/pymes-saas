@@ -53,6 +53,8 @@ describe('PlanLimitsService', () => {
         storage_bytes: 5 * 1024 * 1024 * 1024,
         locations: 1,
         invite_codes: 10,
+        products: 300,
+        product_categories: 20,
       });
     });
 
@@ -66,6 +68,8 @@ describe('PlanLimitsService', () => {
         storage_bytes: 10 * 1024 * 1024 * 1024,
         locations: 1,
         invite_codes: 50,
+        products: 1500,
+        product_categories: 50,
       });
     });
 
@@ -79,6 +83,8 @@ describe('PlanLimitsService', () => {
         storage_bytes: 50 * 1024 * 1024 * 1024,
         locations: 3,
         invite_codes: 200,
+        products: 10000,
+        product_categories: 200,
       });
     });
 
