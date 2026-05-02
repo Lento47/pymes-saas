@@ -541,6 +541,7 @@ export class PaddleService {
 
     try {
       switch (eventType) {
+        case 'subscription.created':
         case 'subscription.activated':
         case 'subscription.updated':
           await this.handleSubscriptionEvent(event.data);
@@ -826,7 +827,44 @@ export class PaddleService {
     });
 
     if (!sub) {
-      this.logger.warn(`Transaction completed but no subscription found for ${subscriptionId}`);
+      // subscription.activated might not have fired (e.g., Paddle sandbox trial).
+      // Create the subscription record and update workspace plan from the transaction data itself.
+      const customData = data.customData || data.custom_data || {};
+      const wsSlug = customData?.workspaceSlug || customData?.workspace_slug;
+      const plan = this.mapPaddlePriceToPlan(data.items?.[0]?.price?.id || '');
+      const customerId = data.customerId || data.customer_id;
+
+      if (wsSlug && plan !== 'FREE') {
+        const ws = await this.prisma.workspace.findUnique({
+          where: { slug: wsSlug },
+          select: { id: true, name: true },
+        });
+        if (ws) {
+          await this.prisma.workspaceSubscription.create({
+            data: {
+              workspace_id: ws.id,
+              provider_subscription_id: subscriptionId,
+              provider_customer_id: customerId,
+              provider: 'PADDLE',
+              status: 'ACTIVE',
+              plan,
+              current_period_start: data.billingPeriod?.startsAt
+                ? new Date(data.billingPeriod.startsAt) : new Date(),
+              current_period_end: data.billingPeriod?.endsAt
+                ? new Date(data.billingPeriod.endsAt) : undefined,
+            },
+          });
+          await this.prisma.workspace.update({
+            where: { id: ws.id },
+            data: { plan },
+          });
+          this.logger.log(`Created subscription from transaction: ws=${ws.id}, plan=${plan}, sub=${subscriptionId}`);
+          await this.resolveBillingCases(ws.id, 'SUBSCRIPTION_WORKSPACE_MISMATCH');
+          return;
+        }
+      }
+
+      this.logger.warn(`Transaction completed but no subscription found for ${subscriptionId} (and could not create from customData: slug=${wsSlug}, plan=${plan})`);
       return;
     }
 
