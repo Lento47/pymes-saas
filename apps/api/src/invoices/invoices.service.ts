@@ -277,6 +277,19 @@ export class InvoicesService {
           })
         : invoice;
 
+    const prevStatus = existing.status as string;
+    const nextStatus = finalStatus as string;
+
+    if (prevStatus === 'DRAFT' && nextStatus === 'SENT') {
+      await this.deductStock(workspaceId, id).catch((err) =>
+        this.logger.error(`Stock deduction on update failed: ${err?.message}`),
+      );
+    } else if (nextStatus === 'CANCELLED' && prevStatus !== 'DRAFT') {
+      await this.reverseStock(workspaceId, id).catch((err) =>
+        this.logger.error(`Stock reversal on cancel failed: ${err?.message}`),
+      );
+    }
+
     return this.serializeInvoice(normalized);
   }
 
@@ -505,6 +518,10 @@ export class InvoicesService {
       },
       include: this.invoiceInclude(),
     });
+
+    await this.deductStock(workspaceId, id).catch((err) =>
+      this.logger.error(`Stock deduction failed for invoice ${id}: ${err?.message}`),
+    );
 
     return this.serializeInvoice(updated);
   }
@@ -871,6 +888,7 @@ export class InvoicesService {
         tax_rate: taxRate || null,
         exoneration_json: line.exoneration ?? undefined,
         metadata_json: Array.isArray(line.metadata) ? line.metadata : undefined,
+        product_id: line.product_id ?? null,
       };
     });
 
@@ -878,6 +896,87 @@ export class InvoicesService {
       totalAmount: prepared.reduce((sum, line) => sum + Number(line.total_line_amount), 0),
       lines: prepared,
     };
+  }
+
+  private async deductStock(workspaceId: string, invoiceId: string) {
+    const lines = await (this.prisma as any).invoiceLine.findMany({
+      where: { invoice_id: invoiceId, workspace_id: workspaceId, product_id: { not: null } },
+      include: { product: { select: { id: true, track_inventory: true, type: true, current_stock: true } } },
+    });
+
+    for (const line of lines) {
+      if (!line.product || !line.product.track_inventory || line.product.type === 'SERVICE') continue;
+
+      const existingMovement = await (this.prisma as any).stockMovement.findFirst({
+        where: { product_id: line.product_id, reference_type: 'invoice', reference_id: invoiceId, type: 'OUT' },
+      });
+      if (existingMovement) continue;
+
+      const qty = Math.round(Number(line.quantity));
+      if (qty <= 0) continue;
+
+      const previousStock = line.product.current_stock;
+      const newStock = Math.max(0, previousStock - qty);
+
+      await (this.prisma as any).product.update({
+        where: { id: line.product_id },
+        data: { current_stock: newStock },
+      });
+
+      await (this.prisma as any).stockMovement.create({
+        data: {
+          workspace_id: workspaceId,
+          product_id: line.product_id,
+          type: 'OUT',
+          quantity: qty,
+          previous_stock: previousStock,
+          new_stock: newStock,
+          reason: `Factura #${line.invoice_id?.slice(0, 8)}`,
+          reference_type: 'invoice',
+          reference_id: invoiceId,
+        },
+      });
+    }
+  }
+
+  private async reverseStock(workspaceId: string, invoiceId: string) {
+    const movements = await (this.prisma as any).stockMovement.findMany({
+      where: { reference_type: 'invoice', reference_id: invoiceId, type: 'OUT' },
+    });
+
+    for (const mov of movements) {
+      const alreadyReversed = await (this.prisma as any).stockMovement.findFirst({
+        where: { product_id: mov.product_id, reference_type: 'invoice', reference_id: invoiceId, type: 'REVERSAL', quantity: mov.quantity },
+      });
+      if (alreadyReversed) continue;
+
+      const product = await (this.prisma as any).product.findUnique({
+        where: { id: mov.product_id },
+        select: { current_stock: true },
+      });
+      if (!product) continue;
+
+      const newStock = product.current_stock + mov.quantity;
+
+      await (this.prisma as any).product.update({
+        where: { id: mov.product_id },
+        data: { current_stock: newStock },
+      });
+
+      await (this.prisma as any).stockMovement.create({
+        data: {
+          workspace_id: workspaceId,
+          product_id: mov.product_id,
+          type: 'REVERSAL',
+          quantity: mov.quantity,
+          previous_stock: product.current_stock,
+          new_stock: newStock,
+          reason: `Reversión factura #${invoiceId?.slice(0, 8)}`,
+          reference_type: 'invoice',
+          reference_id: invoiceId,
+        },
+      });
+    }
   }
 
   private mapHaciendaStatus(value?: string): HaciendaStatus {
