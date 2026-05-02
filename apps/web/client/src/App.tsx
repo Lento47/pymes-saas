@@ -43,6 +43,7 @@ import SecurityPage from "@/pages/security-page";
 import NotFound from "@/pages/not-found";
 import Chat from "@/pages/chat";
 import Agent from "@/pages/agent";
+import OnboardingPage from "@/pages/onboarding";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminWorkspaces from "@/pages/admin/workspaces";
 import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
@@ -166,6 +167,9 @@ function AppRouter() {
       </Route>
       <Route path="/help/:slug">
         {(params) => <ProtectedLayout><HelpDocumentPage slug={params.slug} /></ProtectedLayout>}
+      </Route>
+      <Route path="/onboarding">
+        {() => <ProtectedLayout><OnboardingPage /></ProtectedLayout>}
       </Route>
       <Route component={NotFound} />
     </Switch>

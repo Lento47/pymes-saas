@@ -480,6 +480,9 @@ export const api = {
   getEnterpriseCapabilities: () => request<any>("GET", "/api/enterprise/capabilities"),
   // Contact Sales
   submitContactSales: (data: any) => request<any>("POST", "/api/contact-sales", data),
+  // Onboarding
+  getOnboardingProject: () => request<any>("GET", "/api/onboarding"),
+  saveOnboardingProject: (data: any) => request<any>("POST", "/api/onboarding", data),
   // Feature Flags
   getFeatureFlags: (workspaceId: string) => request<any>("GET", `/api/feature-flags/check/${workspaceId}`),
   // Usage
@@ -491,10 +494,6 @@ export const api = {
   },
   getApprovedTemplates: (workspaceId: string, channel?: string) =>
     request<any>("GET", `/api/message-templates/${workspaceId}/approved?channel=${channel ?? 'WHATSAPP'}`),
-  // Onboarding
-  getOnboardingProject: (workspaceId: string) => request<any>("GET", `/api/onboarding/${workspaceId}`),
-  upsertOnboardingProject: (workspaceId: string, data: any) => request<any>("POST", `/api/onboarding/${workspaceId}`, data),
-  updateOnboardingChecklist: (workspaceId: string, data: any) => request<any>("PUT", `/api/onboarding/${workspaceId}/checklist`, data),
   // SLA
   getSlaPolicies: () => request<any>("GET", "/api/sla/policies"),
   getSlaAssignment: (workspaceId: string) => request<any>("GET", `/api/sla/assignment/${workspaceId}`),
