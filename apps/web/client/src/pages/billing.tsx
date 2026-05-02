@@ -17,7 +17,7 @@ import { HelpButton } from "@/components/shared/help-button";
 import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import {
   Crown, ArrowUpRight, ArrowDownRight, Check, Loader2, Info, ExternalLink,
-  Users, Zap, Receipt, FolderOpen, Database, TrendingUp, Search,
+  Users, Zap, Receipt, FolderOpen, Database, TrendingUp, Search, Package, Layers,
 } from "lucide-react";
 
 const PLAN_ORDER = ["FREE", "STARTER", "GROWTH", "BUSINESS", "BUSINESS_PLUS"] as const;
@@ -46,10 +46,13 @@ const PLAN_TIERS: PlanTier[] = [
       "CRM básico",
       "Dashboard",
       "Facturación básica",
+      "Inventario básico",
       "5 automatizaciones",
     ],
     limits: [
       { label: "Contactos", value: "100", icon: Users },
+      { label: "Productos", value: "50", icon: Package },
+      { label: "Categorías", value: "5", icon: Layers },
       { label: "Facturas/mes", value: "50", icon: Receipt },
       { label: "Automatizaciones", value: "5", icon: Zap },
       { label: "Documentos", value: "50", icon: FolderOpen },
@@ -70,14 +73,18 @@ const PLAN_TIERS: PlanTier[] = [
       "Facturación básica",
       "Dashboard",
       "Pipeline de ventas",
+      "Inventario (300 productos)",
       "Soporte por email",
       "100 facturas/mes",
     ],
     limits: [
       { label: "Contactos", value: "500", icon: Users },
+      { label: "Productos", value: "300", icon: Package },
+      { label: "Categorías", value: "20", icon: Layers },
       { label: "Facturas/mes", value: "100", icon: Receipt },
       { label: "Automatizaciones", value: "15", icon: Zap },
       { label: "Documentos", value: "500", icon: FolderOpen },
+      { label: "Códigos invitación", value: "10", icon: Users },
       { label: "Almacenamiento", value: "5 GB", icon: Database },
     ],
     popular: false,
@@ -94,14 +101,18 @@ const PLAN_TIERS: PlanTier[] = [
       "Todo lo de Starter",
       "WhatsApp inbox",
       "Automatizaciones básicas",
+      "Inventario + control stock",
       "Dashboard de dueño",
       "Soporte prioritario",
     ],
     limits: [
       { label: "Contactos", value: "2,500", icon: Users },
+      { label: "Productos", value: "1,500", icon: Package },
+      { label: "Categorías", value: "50", icon: Layers },
       { label: "Facturas/mes", value: "500", icon: Receipt },
       { label: "Automatizaciones", value: "25", icon: Zap },
       { label: "Documentos", value: "500", icon: FolderOpen },
+      { label: "Códigos invitación", value: "50", icon: Users },
       { label: "Almacenamiento", value: "10 GB", icon: Database },
     ],
     popular: true,
@@ -119,14 +130,18 @@ const PLAN_TIERS: PlanTier[] = [
       "WhatsApp Inbox avanzado",
       "API access",
       "Audit logs",
+      "Inventario avanzado",
       "Multi-location",
       "100 automatizaciones",
     ],
     limits: [
       { label: "Contactos", value: "15,000", icon: Users },
+      { label: "Productos", value: "10,000", icon: Package },
+      { label: "Categorías", value: "200", icon: Layers },
       { label: "Facturas/mes", value: "2,000", icon: Receipt },
       { label: "Automatizaciones", value: "100", icon: Zap },
       { label: "Documentos", value: "5,000", icon: FolderOpen },
+      { label: "Códigos invitación", value: "200", icon: Users },
       { label: "Almacenamiento", value: "50 GB", icon: Database },
     ],
     popular: false,
@@ -148,9 +163,12 @@ const PLAN_TIERS: PlanTier[] = [
     ],
     limits: [
       { label: "Contactos", value: "Personalizado", icon: Users },
+      { label: "Productos", value: "Personalizado", icon: Package },
+      { label: "Categorías", value: "Personalizado", icon: Layers },
       { label: "Facturas/mes", value: "Personalizado", icon: Receipt },
       { label: "Automatizaciones", value: "Personalizado", icon: Zap },
       { label: "Documentos", value: "Personalizado", icon: FolderOpen },
+      { label: "Códigos invitación", value: "Personalizado", icon: Users },
       { label: "Almacenamiento", value: "Personalizado", icon: Database },
     ],
     popular: false,
@@ -551,6 +569,11 @@ export default function BillingPage() {
                     <p className="mt-2 text-[11px] font-medium text-foreground">
                       {tier.usersLabel}
                     </p>
+                    {tier.monthlyUSD > 0 && (
+                      <p className="mt-1 text-[10px] text-muted-foreground/60">
+                        USD + impuestos aplicables
+                      </p>
+                    )}
                   </div>
 
                   {/* Limits */}
