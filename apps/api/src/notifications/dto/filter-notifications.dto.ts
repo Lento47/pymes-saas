@@ -1,4 +1,5 @@
-import { IsOptional, IsNumberString, IsIn } from 'class-validator';
+import { IsOptional, IsIn } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class FilterNotificationsDto {
   @IsOptional()
@@ -6,10 +7,10 @@ export class FilterNotificationsDto {
   read?: string;
 
   @IsOptional()
-  @IsNumberString()
-  page?: number = 1;
+  @Type(() => Number)
+  page?: number;
 
   @IsOptional()
-  @IsNumberString()
-  limit?: number = 20;
+  @Type(() => Number)
+  limit?: number;
 }

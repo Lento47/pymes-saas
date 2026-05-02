@@ -8,6 +8,32 @@ import {
 } from '@nestjs/common';
 import { ErrorReportsService } from '../../error-reports/error-reports.service';
 
+const SILENT_404_PATTERNS = [
+  /\.php(\?.*)?$/i,
+  /\/\.env\d*$/i,
+  /\/\.env\..*$/i,
+  /\/\.git\//i,
+  /\/wp-admin/i,
+  /\/wp-content/i,
+  /\/wp-includes/i,
+  /\/wp-json/i,
+  /\/xmlrpc\.php/i,
+  /\/robots\.txt$/i,
+  /\/favicon\.ico$/i,
+  /^\/$/,
+  /\/vendor\//i,
+  /\/actuator/i,
+  /\/api\/v1\//i,
+  /\/_ignition/i,
+  /\/geoserver/i,
+  /\/sso\/login/i,
+  /\/solr\//i,
+  /\/druid\//i,
+  /\/console/i,
+  /\/Api\/index/i,
+  /\/webtools\//i,
+];
+
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(ApiExceptionFilter.name);
@@ -35,6 +61,15 @@ export class ApiExceptionFilter implements ExceptionFilter {
       typeof exceptionResponse === 'object' && exceptionResponse
         ? (exceptionResponse as any).error
         : undefined;
+
+    // Silently ignore 404s from bots/scanners hitting non-existent PHP, .env, etc.
+    if (status === 404) {
+      const url = request.originalUrl || request.url || '';
+      if (SILENT_404_PATTERNS.some((p) => p.test(url))) {
+        response.status(404).json({ statusCode: 404, message: 'Not Found' });
+        return;
+      }
+    }
 
     if (status >= 500) {
       await this.errorReports.createServerReport({

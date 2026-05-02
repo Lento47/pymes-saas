@@ -1,6 +1,5 @@
 import { Module, Logger } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import IORedis from 'ioredis';
 
@@ -58,7 +57,6 @@ function createRedisConnection(config: ConfigService) {
     NotificationsModule,
     AiModule,
     HaciendaModule,
-    ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
