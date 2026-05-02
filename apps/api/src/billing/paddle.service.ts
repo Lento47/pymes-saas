@@ -603,10 +603,14 @@ export class PaddleService {
     const customData = data.customData || data.custom_data || {};
     const workspaceSlug: string | undefined = customData?.workspaceSlug || customData?.workspace_slug;
 
+    this.logger.log(`Subscription event: customer=${customerId}, plan=${plan}, status=${status}, slug=${workspaceSlug}`);
+
     const existing = await this.prisma.workspaceSubscription.findFirst({
       where: { provider_customer_id: customerId },
       select: { id: true, workspace_id: true },
     });
+
+    this.logger.log(`Existing subscription: ${existing ? `id=${existing.id}, ws=${existing.workspace_id}` : 'none'}`);
 
     const subData = {
       provider_subscription_id: data.id,
@@ -647,6 +651,7 @@ export class PaddleService {
       const addonKey = customData?.addon || customData?.addon_key || undefined;
       const validAddons = ['ai_assistant', 'whatsapp_premium', 'extra_user', 'advanced_inventory', 'approvals_signature'];
       if (addonKey && validAddons.includes(addonKey)) {
+        this.logger.log(`Activating addon ${addonKey} for workspace ${workspaceId}`);
         const workspace = await this.prisma.workspace.findUnique({
           where: { id: workspaceId },
           select: { settings_json: true },
@@ -660,11 +665,15 @@ export class PaddleService {
         });
         this.logger.log(`Add-on activated: ${addonKey} for workspace ${workspaceId}`);
       } else {
+        this.logger.log(`Updating workspace ${workspaceId} plan to ${plan}`);
         await this.prisma.workspace.update({
           where: { id: workspaceId },
           data: { plan },
         });
+        this.logger.log(`Workspace ${workspaceId} plan updated to ${plan}`);
       }
+    } else {
+      this.logger.warn(`No workspaceId resolved for customer ${customerId}, slug=${workspaceSlug}`);
     }
   }
 
@@ -737,17 +746,24 @@ export class PaddleService {
       },
     });
 
-    if (!sub) return;
+    if (!sub) {
+      this.logger.warn(`Transaction completed but no subscription found for ${subscriptionId}`);
+      return;
+    }
+
+    this.logger.log(`Transaction handler: ws=${sub.workspace_id}, current plan=${sub.plan}, sub status=${sub.status}`);
 
     await this.prisma.workspaceSubscription.update({
       where: { id: sub.id },
       data: { status: 'ACTIVE', plan: sub.plan },
     });
 
+    this.logger.log(`Updating workspace ${sub.workspace_id} plan to ${sub.plan}`);
     await this.prisma.workspace.update({
       where: { id: sub.workspace_id },
       data: { plan: sub.plan },
     });
+    this.logger.log(`Workspace ${sub.workspace_id} plan updated to ${sub.plan}`);
 
     // DEDUPE — `transaction.completed` y `transaction.paid` pueden disparar por
     // la misma compra. Marcamos la factura con `[paddle_tx:<id>]` en notes y
