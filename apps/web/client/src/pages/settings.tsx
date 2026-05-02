@@ -187,6 +187,73 @@ function RoutingRulesTab() {
           </table>
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingRule} onOpenChange={(open) => { if (!open) setEditingRule(null); }}>
+        <DialogContent className="bg-card border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Editar Regla</DialogTitle>
+          </DialogHeader>
+          {editingRule && (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-foreground">Nombre</Label>
+                <Input value={editingRule.name} onChange={e => setEditingRule({ ...editingRule, name: e.target.value })} className="bg-[hsl(var(--elevated))] border-border" />
+              </div>
+              <div>
+                <Label className="text-foreground">Tipo de coincidencia</Label>
+                <Select value={editingRule.match_type} onValueChange={v => setEditingRule({ ...editingRule, match_type: v })}>
+                  <SelectTrigger className="bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="KEYWORD">Palabra clave</SelectItem>
+                    <SelectItem value="MENU_REPLY">Menú (texto exacto)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-foreground">Patrón / Palabra clave</Label>
+                <Input value={editingRule.pattern} onChange={e => setEditingRule({ ...editingRule, pattern: e.target.value })} className="bg-[hsl(var(--elevated))] border-border" />
+              </div>
+              <div>
+                <Label className="text-foreground">Departamento</Label>
+                <Input value={editingRule.department_id} onChange={e => setEditingRule({ ...editingRule, department_id: e.target.value })} placeholder="Nombre o ID del departamento" className="bg-[hsl(var(--elevated))] border-border" />
+              </div>
+              <div>
+                <Label className="text-foreground">ID del Canal (opcional)</Label>
+                <Input value={editingRule.channel_id || ''} onChange={e => setEditingRule({ ...editingRule, channel_id: e.target.value })} placeholder="Dejar vacío para todos" className="bg-[hsl(var(--elevated))] border-border" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-foreground">Prioridad</Label>
+                <Input type="number" min={0} value={editingRule.priority ?? 0} onChange={e => setEditingRule({ ...editingRule, priority: parseInt(e.target.value) || 0 })} className="bg-[hsl(var(--elevated))] border-border w-20" />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  className="flex-1"
+                  disabled={updateRule.isPending}
+                  onClick={() => {
+                    updateRule.mutate({
+                      id: editingRule.id,
+                      data: {
+                        name: editingRule.name,
+                        pattern: editingRule.pattern,
+                        match_type: editingRule.match_type,
+                        department_id: editingRule.department_id,
+                        channel_id: editingRule.channel_id || undefined,
+                        priority: editingRule.priority,
+                      },
+                    });
+                    setEditingRule(null);
+                  }}
+                >
+                  {updateRule.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                  Guardar
+                </Button>
+                <Button variant="outline" onClick={() => setEditingRule(null)}>Cancelar</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
