@@ -54,6 +54,15 @@ export class AgentController {
     return case_;
   }
 
+  @Patch('diagnostic-cases/:id/status')
+  @Roles('ADMIN')
+  async updateDiagnosticCaseStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
+    return this.diagnostic.updateCaseStatus(id, status);
+  }
+
   @Patch('fix-cases/:id')
   @Roles('ADMIN')
   async updateFixCase(

@@ -64,6 +64,13 @@ export class DiagnosticService {
     });
   }
 
+  async updateCaseStatus(id: string, status: string) {
+    return (this.prisma as any).supportDiagnosticCase.update({
+      where: { id },
+      data: { status },
+    });
+  }
+
   async diagnose(input: DiagnosticInput): Promise<DiagnosticResult> {
     let evidence: any = {};
 
@@ -104,7 +111,25 @@ export class DiagnosticService {
       }
     }
 
-    // Create the diagnostic case
+    // Don't persist USER_GUIDANCE cases — they're just noise, not real issues
+    if (classification.category === 'USER_GUIDANCE') {
+      this.logger.log(`Skipping USER_GUIDANCE case for ${input.module}: ${classification.title}`);
+      return {
+        case_id: 'skipped',
+        category: classification.category,
+        risk_level: classification.risk_level,
+        title: classification.title,
+        recommendation: classification.recommendation,
+        matched_known_issue: matchedIssue ? {
+          error_code: matchedIssue.error_code,
+          title: matchedIssue.title,
+          workaround: matchedIssue.workaround,
+          fix_status: matchedIssue.fix_status,
+        } : undefined,
+      };
+    }
+
+    // Create the diagnostic case for real issues
     const caseRecord = await (this.prisma as any).supportDiagnosticCase.create({
       data: {
         workspace_id: input.workspaceId,
