@@ -19,7 +19,7 @@ export default function DocumentationCenterPage() {
   );
 
   return (
-    <div className="dark relative min-h-screen overflow-hidden bg-background text-white">
+    <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-10rem] top-[4rem] h-72 w-72 rounded-full bg-[#5870ff]/12 blur-[120px]" />
         <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#dfff4a]/10 blur-[150px]" />
@@ -27,7 +27,7 @@ export default function DocumentationCenterPage() {
 
       <div className="relative z-10 px-4 pb-16 pt-6 md:px-8 md:pb-24">
         <div className="mx-auto max-w-7xl">
-          <nav className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7">
+            <nav className="flex items-center justify-between rounded-full border border-white/[0.08] bg-white/[0.04] px-5 py-4 md:px-7">
             <BrandLockup compact />
 
             <div className="flex items-center gap-2 md:gap-4">
@@ -38,7 +38,7 @@ export default function DocumentationCenterPage() {
                 </a>
               </Link>
               <Link href="/login">
-                <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-4 py-3 text-sm font-semibold text-[#071126] transition hover:translate-y-[-1px] md:px-6">
+                <a className="inline-flex items-center gap-2 rounded-full bg-[#5870ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#5870ff]/80 md:px-6">
                   {copy.openWorkspace}
                 </a>
               </Link>
