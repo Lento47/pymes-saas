@@ -1,8 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useRequireAuth, useAuth } from "@/hooks/use-auth";
-import { Link } from "wouter";
-import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, ChevronRight } from "lucide-react";
+import { useRequireAuth } from "@/hooks/use-auth";
+import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink } from "lucide-react";
 import { useState } from "react";
 
 const RISK_ICONS: Record<string, any> = {
@@ -28,8 +27,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function SupportPage() {
   useRequireAuth();
-  const { user } = useAuth();
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("OPEN");
+  const queryClient = useQueryClient();
 
   const { data: cases, isLoading } = useQuery({
     queryKey: ["diagnostic-cases"],
@@ -37,8 +36,16 @@ export default function SupportPage() {
     refetchInterval: 30000,
   });
 
+  const statusMut = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      api.updateDiagnosticCaseStatus(id, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diagnostic-cases"] }),
+  });
+
   const caseList: any[] = Array.isArray(cases) ? cases : [];
   const filtered = filter === "all" ? caseList : caseList.filter((c: any) => c.status === filter);
+
+  const openCount = caseList.filter((c: any) => c.status === "OPEN" || c.status === "INVESTIGATING").length;
 
   return (
     <div className="min-h-full bg-background">
@@ -47,14 +54,15 @@ export default function SupportPage() {
           <div>
             <h1 className="text-xl font-semibold text-foreground">Casos de Soporte</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Diagnósticos generados por el agente de soporte
+              {openCount > 0
+                ? `${openCount} caso${openCount > 1 ? "s" : ""} pendiente${openCount > 1 ? "s" : ""}`
+                : "Sin casos pendientes"}
             </p>
           </div>
         </div>
 
-        {/* Filters */}
         <div className="flex gap-2 mb-6">
-          {["all", "OPEN", "INVESTIGATING", "RESOLVED", "ESCALATED"].map((status) => (
+          {["OPEN", "INVESTIGATING", "RESOLVED", "ESCALATED", "all"].map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}
@@ -95,11 +103,14 @@ export default function SupportPage() {
               const RiskIcon = RISK_ICONS[c.risk_level] || Info;
               const riskColor = RISK_COLORS[c.risk_level] || "text-muted-foreground";
               const statusColor = STATUS_COLORS[c.status] || "bg-muted text-muted-foreground";
+              const isOpen = c.status === "OPEN" || c.status === "INVESTIGATING";
 
               return (
                 <div
                   key={c.id}
-                  className="rounded-md border border-border/60 bg-card/40 p-5 hover:border-border transition-colors"
+                  className={`rounded-md border bg-card/40 p-5 transition-colors ${
+                    isOpen ? "border-[#5771ff]/20" : "border-border/60 opacity-60"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -132,6 +143,30 @@ export default function SupportPage() {
                           minute: "2-digit",
                         })}
                       </span>
+                      {isOpen && (
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              statusMut.mutate({ id: c.id, status: "RESOLVED" });
+                            }}
+                            disabled={statusMut.isPending}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                          >
+                            <Check className="w-3 h-3" /> Marcar resuelto
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              statusMut.mutate({ id: c.id, status: "ESCALATED" });
+                            }}
+                            disabled={statusMut.isPending}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-md border border-orange-500/30 text-orange-400 hover:bg-orange-500/10 transition-colors"
+                          >
+                            <ExternalLink className="w-3 h-3" /> Escalar
+                          </button>
+                        </div>
+                      )}
                       {c.safe_summary && (
                         <div className="text-[11px] text-muted-foreground/60 max-w-[200px] text-right line-clamp-2">
                           {c.safe_summary}

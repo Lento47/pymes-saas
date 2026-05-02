@@ -486,6 +486,8 @@ export const api = {
   saveOnboardingProject: (data: any) => request<any>("POST", "/api/onboarding", data),
   // Support
   getDiagnosticCases: () => request<any>("GET", "/api/agent/diagnostic-cases"),
+  updateDiagnosticCaseStatus: (id: string, status: string) =>
+    request<any>("PATCH", `/api/agent/diagnostic-cases/${id}/status`, { status }),
   // Feature Flags
   getFeatureFlags: (workspaceId: string) => request<any>("GET", `/api/feature-flags/check/${workspaceId}`),
   // Usage
