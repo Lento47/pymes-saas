@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, HelpCircle, Search } from "lucide-react";
+import { Loader2, HelpCircle, Search, Package } from "lucide-react";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCabysSearch } from "@/hooks/useCabysSearch";
@@ -61,6 +61,7 @@ interface InvoiceFormData {
   line_description: string;
   cabys_code: string;
   tax_rate: string;
+  product_id: string;
 }
 
 interface InvoiceSheetProps {
@@ -88,6 +89,11 @@ export function InvoiceSheet({
   const { results: cabysResults, loading: cabysLoading } = useCabysSearch(cabysQuery);
   const [templates, setTemplates] = useState<any[]>([]);
 
+  const [productQuery, setProductQuery] = useState("");
+  const [productLoading, setProductLoading] = useState(false);
+  const [productResults, setProductResults] = useState<any[]>([]);
+  const [productOpen, setProductOpen] = useState(false);
+
   useEffect(() => {
     api.getInvoiceTemplates().then(data => {
       setTemplates(Array.isArray(data) ? data : []);
@@ -95,6 +101,33 @@ export function InvoiceSheet({
   }, []);
 
   useEffect(() => { setCabysQuery(""); }, [initialData.cabys_code]);
+
+  const handleProductSearch = async (q: string) => {
+    setProductQuery(q);
+    if (q.length < 2) { setProductResults([]); setProductOpen(false); return; }
+    setProductLoading(true);
+    try {
+      const params = new URLSearchParams({ search: q, limit: "8" });
+      const res = await api.getProducts(params.toString());
+      setProductResults(res?.data ?? []);
+      setProductOpen(true);
+    } catch {
+      setProductResults([]);
+    } finally {
+      setProductLoading(false);
+    }
+  };
+
+  const selectProduct = (p: any) => {
+    onChange({
+      product_id: p.id,
+      line_description: p.name,
+      amount: String(parseFloat(p.unit_price) || 0),
+    });
+    if (p.cabys_code) onChange({ cabys_code: p.cabys_code });
+    setProductOpen(false);
+    setProductQuery(p.name);
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -300,6 +333,50 @@ export function InvoiceSheet({
                     <FieldHelp meaning={HACIENDA_HELP.activity_code} />
                   </div>
                   <Input value={initialData.activity_code} onChange={(e) => onChange({ activity_code: e.target.value })} placeholder="Código de actividad" className="h-9 text-xs bg-background border-border" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1">
+                    <Label className="text-[11px] text-muted-foreground">Producto de inventario</Label>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      value={productQuery}
+                      onChange={(e) => handleProductSearch(e.target.value)}
+                      onFocus={() => { if (productResults.length > 0) setProductOpen(true); }}
+                      onBlur={() => setTimeout(() => setProductOpen(false), 200)}
+                      placeholder="Buscar por nombre o SKU..."
+                      className="h-9 text-xs bg-background border-border pr-8"
+                    />
+                    {productLoading && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                    {!productLoading && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />}
+                    {productOpen && productResults.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 max-h-44 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                        {productResults.map((p: any) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-[11px] hover:bg-accent/50 transition-colors border-b border-border/40 last:border-0"
+                            onMouseDown={() => selectProduct(p)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Package className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+                              <span className="font-medium text-foreground">{p.name}</span>
+                              <span className="text-muted-foreground/60 font-mono text-[10px]">{p.sku}</span>
+                              <span className="ml-auto text-emerald-400 text-[10px]">₡{parseFloat(p.unit_price).toLocaleString("es-CR", { minimumFractionDigits: 2 })}</span>
+                              {p.track_inventory && p.type === "PRODUCT" && (
+                                <span className="text-muted-foreground/50 text-[10px]">Stock: {p.current_stock}</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {productOpen && productQuery.length >= 2 && productResults.length === 0 && !productLoading && (
+                      <div className="absolute z-50 w-full mt-1 rounded-md border border-border bg-card shadow-lg px-3 py-2 text-[11px] text-muted-foreground">
+                        Sin resultados
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
