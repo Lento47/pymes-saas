@@ -100,6 +100,18 @@ export class BillingController {
     }
   }
 
+  @Post('cancel')
+  @UseGuards(JwtAuthGuard)
+  async cancelPlan(@CurrentUser() user: AuthUser) {
+    try {
+      return await this.paddleService.cancelSubscription(user.workspace_id);
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      this.logger.error(`Cancel plan failed for workspace=${user.workspace_id}:`, error);
+      throw new InternalServerErrorException('No se pudo cancelar el plan. Intentalo de nuevo o contacta a soporte.');
+    }
+  }
+
   @Post('webhook')
   async handleWebhook(@Req() request: RawBodyRequest<Request>) {
     const signature = request.headers['paddle-signature'] as string;
