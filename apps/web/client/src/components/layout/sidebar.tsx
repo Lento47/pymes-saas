@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/providers/i18n-provider";
@@ -9,7 +8,7 @@ import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
-import { api } from "@/lib/api";
+import { api, getWorkspaceSlug } from "@/lib/api";
 import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare,
   Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot, MessageCircle,
@@ -103,7 +102,7 @@ const SETTINGS_ITEMS = [
 ] as const;
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
   const { user, logout, switchWorkspace } = useAuth();
   const { messages } = useI18n();
   const { theme, toggle } = useTheme();
@@ -116,7 +115,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   );
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const wsMenuRef = useRef<HTMLDivElement>(null);
-  const settingsMenuRef = useRef<HTMLDivElement>(null);
   const copy = messages.sidebar;
 
   useNotificationsSocket();
@@ -179,18 +177,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [wsMenuOpen]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
-        setSettingsMenuOpen(false);
-      }
-    };
-    if (settingsMenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [settingsMenuOpen]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -378,7 +364,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* ── Settings Dropdown ── */}
-        <div className="shrink-0 px-3 pb-2" ref={settingsMenuRef}>
+        <div className="shrink-0 px-3 pb-2">
           <button
             onClick={() => setSettingsMenuOpen(o => !o)}
             className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
@@ -387,31 +373,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             <span className="flex-1 text-sm text-left">Configuración</span>
             <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", settingsMenuOpen && "rotate-180")} />
           </button>
-          {settingsMenuOpen && createPortal(
-            <div
-              className="rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden z-50 animate-in fade-in duration-150"
-              style={{
-                position: 'fixed',
-                left: sidebarOpen ? '268px' : '8px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '220px',
-              }}
-            >
-              <div className="p-2 max-h-[300px] overflow-y-auto">
-                {SETTINGS_ITEMS.map((item) => (
-                  <a key={item.href}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground transition-all cursor-pointer"
-                    onClick={() => { setSettingsMenuOpen(false); navigate(item.href); }}
-                  >
-                    <item.icon className="w-4 h-4 shrink-0" />
-                    <span>{item.label}</span>
-                  </a>
-                ))}
-              </div>
-            </div>,
-            document.body,
-          )}
         </div>
 
         {/* ── Bottom Actions ── */}
@@ -511,6 +472,30 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+
+      {/* ── Settings Flyout Menu (rendered outside sidebar, always visible) ── */}
+      {settingsMenuOpen && (
+        <div
+          className="fixed z-50 rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden animate-in fade-in slide-in-from-left-2 duration-150"
+          style={{ left: sidebarOpen ? 268 : 8, top: 72, width: 220 }}
+        >
+          <div className="p-2 max-h-[400px] overflow-y-auto">
+            {SETTINGS_ITEMS.map((item) => {
+              const slug = getWorkspaceSlug();
+              const href = slug ? `/${slug}${item.href}` : item.href;
+              return (
+                <a key={item.href} href={href}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground transition-all"
+                  onClick={() => setSettingsMenuOpen(false)}
+                >
+                  <item.icon className="w-4 h-4 shrink-0" />
+                  <span>{item.label}</span>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
