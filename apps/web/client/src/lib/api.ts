@@ -145,6 +145,7 @@ async function request<T>(
   let res: Response;
 
   try {
+    updateLastActivity();
     res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body, signal: controller.signal });
   } catch (error: any) {
     clearTimeout(timeout);
