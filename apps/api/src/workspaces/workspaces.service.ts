@@ -396,11 +396,11 @@ export class WorkspacesService {
 
     const [monthlyRevenue, prevMonthRevenue] = await Promise.all([
       this.prisma.invoice.aggregate({
-        where: { workspace_id: workspaceId, created_at: { gte: startOfMonth } },
+        where: { workspace_id: workspaceId, created_at: { gte: startOfMonth }, status: { not: 'CANCELLED' } },
         _sum: { amount: true },
       }),
       this.prisma.invoice.aggregate({
-        where: { workspace_id: workspaceId, created_at: { gte: startOfPrevMonth, lte: endOfPrevMonth } },
+        where: { workspace_id: workspaceId, created_at: { gte: startOfPrevMonth, lte: endOfPrevMonth }, status: { not: 'CANCELLED' } },
         _sum: { amount: true },
       }),
     ]);
@@ -408,8 +408,8 @@ export class WorkspacesService {
     const revenueThisMonth = Number(monthlyRevenue._sum.amount ?? 0);
     const revenuePrevMonth = Number(prevMonthRevenue._sum.amount ?? 0);
     const revenueChange = revenuePrevMonth > 0
-      ? ((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth * 100)
-      : 0;
+      ? Math.round(((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth * 100))
+      : (revenueThisMonth > 0 ? 100 : 0);
 
     return {
       contacts,
