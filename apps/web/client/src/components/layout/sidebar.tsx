@@ -387,13 +387,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             <span className="flex-1 text-sm text-left">Configuración</span>
             <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", settingsMenuOpen && "rotate-180")} />
           </button>
-          {settingsMenuOpen && settingsMenuRef.current && createPortal(
+          {settingsMenuOpen && createPortal(
             <div
-              className="rounded-xl border border-border/60 bg-sidebar shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+              className="rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden z-50 animate-in fade-in duration-150"
               style={{
                 position: 'fixed',
-                left: settingsMenuRef.current.getBoundingClientRect().right + 8,
-                top: settingsMenuRef.current.getBoundingClientRect().bottom - 8,
+                left: sidebarOpen ? '268px' : '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
                 width: '220px',
               }}
             >
@@ -401,7 +402,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 {SETTINGS_ITEMS.map((item) => (
                   <a key={item.href}
                     className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground transition-all cursor-pointer"
-                    onClick={() => { navigate(item.href); setSettingsMenuOpen(false); }}
+                    onClick={() => { setSettingsMenuOpen(false); navigate(item.href); }}
                   >
                     <item.icon className="w-4 h-4 shrink-0" />
                     <span>{item.label}</span>
