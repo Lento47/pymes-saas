@@ -40,11 +40,12 @@ function DueDateLabel({ dateStr }: { dateStr?: string }) {
   );
 }
 
-function toCreateTaskPayload(form: { title: string; description: string; priority: string; dueDate: string }) {
+function toCreateTaskPayload(form: { title: string; description: string; priority: string; dueDate: string; assignedUserId: string }) {
   const body: Record<string, string> = { title: form.title.trim() };
   if (form.description?.trim()) body.description = form.description.trim();
   if (form.priority) body.priority = form.priority;
   if (form.dueDate) body.due_at = `${form.dueDate}T12:00:00.000Z`;
+  if (form.assignedUserId) body.assigned_user_id = form.assignedUserId;
   return body;
 }
 
@@ -62,7 +63,7 @@ export default function TasksPage() {
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", priority: "MEDIUM", dueDate: "" });
+  const [form, setForm] = useState({ title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" });
 
   const params: Record<string, string> = {};
   if (statusFilter !== "ALL") params.status = statusFilter;
@@ -91,7 +92,7 @@ export default function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
       setShowCreate(false);
       setEditingId(null);
-      setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "" });
+      setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" });
       toast({ title: editingId ? "Tarea actualizada" : "Tarea creada" });
     },
     onError: (err: any) => {
@@ -139,6 +140,7 @@ export default function TasksPage() {
       dueDate: task.dueDate || task.due_date
         ? format(new Date(task.dueDate || task.due_date), "yyyy-MM-dd")
         : "",
+      assignedUserId: task.assigned_user_id || "",
     });
     setShowCreate(true);
   };
@@ -152,8 +154,8 @@ export default function TasksPage() {
             size="sm"
             className="h-8 text-xs"
             onClick={() => {
-              setEditingId(null);
-              setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "" });
+               setEditingId(null);
+               setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" });
               setShowCreate(true);
             }}
             data-testid="button-create-task"

@@ -22,6 +22,7 @@ export interface TaskFormData {
   description: string;
   priority: string;
   dueDate: string;
+  assignedUserId: string;
 }
 
 interface TaskSheetProps {
@@ -119,7 +120,7 @@ export function TaskSheet({ open, onOpenChange, editingId, initialData, onSave, 
 
           <div className="space-y-1.5">
             <Label className="text-[11px] text-muted-foreground">Asignar a</Label>
-            <Select>
+            <Select value={form.assignedUserId} onValueChange={(v) => set("assignedUserId", v)}>
               <SelectTrigger className="h-9 text-xs bg-background border-border">
                 <SelectValue placeholder="Sin asignar" />
               </SelectTrigger>
