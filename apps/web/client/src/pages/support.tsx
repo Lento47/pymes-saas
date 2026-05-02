@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
-import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink, ChevronDown, ChevronUp, Building2, UserCircle } from "lucide-react";
+import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink, ChevronDown, ChevronUp, Building2, UserCircle, LayoutList, Map } from "lucide-react";
 import { useState } from "react";
+import { PlaygroundBoard } from "@/components/playground/PlaygroundBoard";
 
 const RISK_ICONS: Record<string, any> = {
   critical: AlertTriangle,
@@ -37,6 +38,7 @@ function parseEvidence(evidence: any): { workspace?: any; user?: any } {
 
 export default function SupportPage() {
   useRequireAuth();
+  const [view, setView] = useState<"list" | "playground">("list");
   const [filter, setFilter] = useState("OPEN");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -63,15 +65,39 @@ export default function SupportPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-semibold text-foreground">Casos de Soporte</h1>
+            <h1 className="text-xl font-semibold text-foreground">Soporte</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {openCount > 0
-                ? `${openCount} caso${openCount > 1 ? "s" : ""} pendiente${openCount > 1 ? "s" : ""}`
-                : "Sin casos pendientes"}
+              {view === "playground" ? "Flujo visual de agentes y casos" :
+               openCount > 0 ? `${openCount} caso${openCount > 1 ? "s" : ""} pendiente${openCount > 1 ? "s" : ""}` :
+               "Sin casos pendientes"}
             </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
+              <button
+                onClick={() => setView("list")}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  view === "list" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <LayoutList className="w-3.5 h-3.5" /> Lista
+              </button>
+              <button
+                onClick={() => setView("playground")}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  view === "playground" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Map className="w-3.5 h-3.5" /> Playground
+              </button>
+            </div>
           </div>
         </div>
 
+        {view === "playground" && <PlaygroundBoard />}
+
+        {view !== "playground" && (
+          <>
         <div className="flex gap-2 mb-6">
           {["OPEN", "INVESTIGATING", "RESOLVED", "ESCALATED", "all"].map((status) => (
             <button
@@ -242,6 +268,8 @@ export default function SupportPage() {
               );
             })}
           </div>
+        )}
+        </>
         )}
       </div>
     </div>
