@@ -488,6 +488,8 @@ export const api = {
   getDiagnosticCases: () => request<any>("GET", "/api/agent/diagnostic-cases"),
   updateDiagnosticCaseStatus: (id: string, status: string) =>
     request<any>("PATCH", `/api/agent/diagnostic-cases/${id}/status`, { status }),
+  createFixCase: (diagnosticCaseId: string) =>
+    request<any>("POST", "/api/agent/fix-cases", { diagnostic_case_id: diagnosticCaseId }),
   // Inventory
   getProducts: (params?: string) => request<any>("GET", `/api/inventory/products${params ? `?${params}` : ''}`),
   getProduct: (id: string) => request<any>("GET", `/api/inventory/products/${id}`),
