@@ -448,6 +448,7 @@ export const api = {
   platformGetStats: () => request<any>("GET", "/api/platform/stats"),
   platformToggleAdmin: (userId: string) => request<any>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
   platformGetWorkspaceBySlug: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}`),
+  platformDeleteWorkspace: (slug: string) => request<any>("DELETE", `/api/platform/workspaces/${slug}`),
   // AI / Agent
   askAssistant: (prompt: string) => request<any>("POST", "/api/workspaces/current/ai/assist", { prompt }),
   createAgentStream: (message: string, conversationId?: string) => request<any>("POST", "/api/agent/stream", { message, conversationId }),

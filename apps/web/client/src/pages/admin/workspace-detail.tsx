@@ -1,15 +1,21 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/shared/page-header";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Calendar, CreditCard } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { Crown, Calendar, CreditCard, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 
 export default function AdminWorkspaceDetail() {
   const { user } = useAuth();
-  const [location] = useLocation();
+  const { toast } = useToast();
+  const [location, navigate] = useLocation();
   const slug = location.split("/").pop() ?? "";
 
   const { data, isLoading } = useQuery({
@@ -17,6 +23,18 @@ export default function AdminWorkspaceDetail() {
     queryFn: () => api.platformGetWorkspaceBySlug(slug),
     enabled: !!user?.is_platform_admin && !!slug,
     retry: false,
+  });
+
+  const [showDelete, setShowDelete] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+
+  const deleteMut = useMutation({
+    mutationFn: () => api.platformDeleteWorkspace(slug),
+    onSuccess: () => {
+      toast({ title: "Workspace eliminado" });
+      navigate("/admin/workspaces");
+    },
+    onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
   if (isLoading) return <PageLoader />;
@@ -72,6 +90,67 @@ export default function AdminWorkspaceDetail() {
             </pre>
           </div>
         )}
+
+        {/* Delete workspace */}
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.03] p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+                Zona de peligro
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Eliminar este workspace es irreversible. Todos los datos asociados se marcarán como eliminados.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"
+              onClick={() => setShowDelete(true)}
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1" /> Eliminar
+            </Button>
+          </div>
+
+          {showDelete && (
+            <div className="mt-4 pt-4 border-t border-red-500/10 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Escribí <span className="font-semibold text-red-400">confirmar</span> para eliminar este workspace.
+              </p>
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Label className="text-[11px]">Confirmación</Label>
+                  <Input
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="confirmar"
+                    className="h-9 text-xs bg-background border-border"
+                    autoFocus
+                  />
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="h-9 text-xs"
+                  disabled={confirmText !== "confirmar" || deleteMut.isPending}
+                  onClick={() => deleteMut.mutate()}
+                >
+                  {deleteMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                  Confirmar eliminación
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 text-xs"
+                  onClick={() => { setShowDelete(false); setConfirmText(""); }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
