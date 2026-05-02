@@ -57,6 +57,58 @@ export class WhatsAppService {
     return { message_id: data.messages?.[0]?.id ?? 'unknown' };
   }
 
+  async sendTemplateMessage(
+    channel: any,
+    to: string,
+    templateName: string,
+    language: string,
+    variables: Record<string, string>,
+  ): Promise<{ message_id: string }> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const components: any[] = [];
+    if (Object.keys(variables).length > 0) {
+      components.push({
+        type: 'body',
+        parameters: Object.values(variables).map((v) => ({
+          type: 'text',
+          text: v,
+        })),
+      });
+    }
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: language || 'es' },
+          ...(components.length > 0 ? { components } : {}),
+        },
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta template API error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando plantilla por WhatsApp',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
   // ── Procesar webhook entrante ──────────────────────────────────────────────
 
   /**

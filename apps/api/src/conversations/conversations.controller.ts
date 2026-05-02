@@ -18,6 +18,8 @@ import { MessagesService } from './messages.service';
 import { SlaService } from './sla.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { MessageTemplatesService } from '../message-templates/message-templates.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -39,6 +41,8 @@ export class ConversationsController {
     private readonly slaService: SlaService,
     private readonly emailService: EmailService,
     private readonly whatsAppService: WhatsAppService,
+    private readonly telegramService: TelegramService,
+    private readonly templatesService: MessageTemplatesService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -142,15 +146,26 @@ export class ConversationsController {
     @Param('id', ValidateUUIDPipe) conversationId: string,
     @Body() dto: SendMessageDto,
   ) {
-    // 1. Guardar mensaje en DB
+    let bodyText = dto.body_text ?? '';
+    let bodyHtml = dto.body_html ?? '';
+    let template: any = null;
+
+    if (dto.template_id) {
+      template = await this.templatesService.getById(user.workspace_id, dto.template_id);
+      if (template) {
+        bodyText = this.resolveTemplate(template.body, dto.template_variables ?? {});
+        bodyHtml = bodyText.replace(/\n/g, '<br>');
+      }
+    }
+
+    const sendDto = { ...dto, body_text: bodyText, body_html: bodyHtml };
     const message = await this.messagesService.send(
       user.workspace_id,
       conversationId,
       user,
-      dto,
+      sendDto,
     );
 
-    // 2. Despachar al canal externo si aplica
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: user.workspace_id },
       include: { contact: true, channel: true },
@@ -162,8 +177,8 @@ export class ConversationsController {
           conv.channel,
           (conv.contact as any).email,
           (conv as any).subject ?? 'Nuevo mensaje',
-          dto.body_html ?? dto.body_text ?? '',
-          dto.body_text,
+          bodyHtml || bodyText,
+          bodyText,
         );
       } catch (err: any) {
         this.logger.error(`Email dispatch failed: ${err?.message}`);
@@ -172,14 +187,43 @@ export class ConversationsController {
 
     if (conv?.channel?.type === 'WHATSAPP' && (conv.contact as any)?.phone) {
       try {
-        // Strip non-digits and leading + so Meta receives e.g. "50672134886"
         const to = ((conv.contact as any).phone as string).replace(/\D/g, '');
-        await this.whatsAppService.sendMessage(conv.channel, to, dto.body_text ?? '');
+        if (template?.external_template_id) {
+          await this.whatsAppService.sendTemplateMessage(
+            conv.channel,
+            to,
+            template.external_template_id,
+            template.language ?? 'es',
+            dto.template_variables ?? {},
+          );
+        } else {
+          await this.whatsAppService.sendMessage(conv.channel, to, bodyText);
+        }
       } catch (err: any) {
         this.logger.error(`WhatsApp dispatch failed: ${err?.message}`);
       }
     }
 
+    if (conv?.channel?.type === 'TELEGRAM' && (conv.contact as any)?.telegram_chat_id) {
+      try {
+        await this.telegramService.sendMessage(
+          conv.channel.id,
+          (conv.contact as any).telegram_chat_id,
+          bodyText,
+        );
+      } catch (err: any) {
+        this.logger.error(`Telegram dispatch failed: ${err?.message}`);
+      }
+    }
+
     return message;
+  }
+
+  private resolveTemplate(body: string, vars: Record<string, string>): string {
+    let resolved = body;
+    for (const [key, value] of Object.entries(vars)) {
+      resolved = resolved.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+    }
+    return resolved;
   }
 }

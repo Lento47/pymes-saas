@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
 import { MessageDirection } from '@prisma/client';
 
 export class SendMessageDto {
@@ -13,4 +13,12 @@ export class SendMessageDto {
   @IsOptional()
   @IsString()
   body_html?: string;
+
+  @IsOptional()
+  @IsString()
+  template_id?: string;
+
+  @IsOptional()
+  @IsObject()
+  template_variables?: Record<string, string>;
 }
