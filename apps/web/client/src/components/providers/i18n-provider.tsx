@@ -50,7 +50,7 @@ function resolveInitialLocale(workspaceLocale?: string | null): SupportedLocale 
   const stored = readStoredLocale();
   if (stored) return stored;
 
-  return readNavigatorLocale();
+  return DEFAULT_LOCALE;
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
