@@ -1,10 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { FeatureFlagGuard, RequireFeature } from '../feature-flags/feature-flags.guard';
 import { MessageTemplatesService } from './message-templates.service';
 
 @Controller('message-templates')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
 export class MessageTemplatesController {
   constructor(private readonly templates: MessageTemplatesService) {}
 
@@ -24,16 +25,19 @@ export class MessageTemplatesController {
   }
 
   @Post(':workspaceId')
+  @RequireFeature('message_templates')
   async create(@Param('workspaceId') workspaceId: string, @Body() data: any, @Req() req: any) {
     return this.templates.create(workspaceId, req.user?.sub, data);
   }
 
   @Put(':workspaceId/:id')
+  @RequireFeature('message_templates')
   async update(@Param('workspaceId') workspaceId: string, @Param('id') id: string, @Body() data: any) {
     return this.templates.update(workspaceId, id, data);
   }
 
   @Delete(':workspaceId/:id')
+  @RequireFeature('message_templates')
   async delete(@Param('workspaceId') workspaceId: string, @Param('id') id: string) {
     return this.templates.delete(workspaceId, id);
   }

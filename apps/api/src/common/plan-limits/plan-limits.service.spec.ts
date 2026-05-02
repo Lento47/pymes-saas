@@ -46,12 +46,13 @@ describe('PlanLimitsService', () => {
     it('STARTER has correct limits per spec', () => {
       expect(PLAN_LIMITS['STARTER']).toEqual({
         users: 1,
-        automations: 5,
+        automations: 15,
         contacts: 500,
-        documents: 100,
+        documents: 500,
         invoices_per_month: 100,
         storage_bytes: 5 * 1024 * 1024 * 1024,
         locations: 1,
+        invite_codes: 10,
       });
     });
 
@@ -64,6 +65,7 @@ describe('PlanLimitsService', () => {
         invoices_per_month: 500,
         storage_bytes: 10 * 1024 * 1024 * 1024,
         locations: 1,
+        invite_codes: 50,
       });
     });
 
@@ -76,6 +78,7 @@ describe('PlanLimitsService', () => {
         invoices_per_month: 2_000,
         storage_bytes: 50 * 1024 * 1024 * 1024,
         locations: 3,
+        invite_codes: 200,
       });
     });
 
@@ -172,7 +175,7 @@ describe('PlanLimitsService', () => {
   describe('checkAutomationLimit', () => {
     it('throws QuotaExceededError when STARTER automation limit exceeded', async () => {
       mockPrisma.workspace.findUniqueOrThrow.mockResolvedValue({ plan: 'STARTER' });
-      mockPrisma.automationRule.count.mockResolvedValue(5); // 5 = at limit
+      mockPrisma.automationRule.count.mockResolvedValue(15); // 15 = at limit
 
       await expect(service.checkAutomationLimit('ws1')).rejects.toThrow(QuotaExceededError);
     });

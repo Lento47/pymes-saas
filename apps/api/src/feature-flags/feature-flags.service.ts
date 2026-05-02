@@ -1,11 +1,37 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 
 @Injectable()
-export class FeatureFlagsService {
+export class FeatureFlagsService implements OnModuleInit {
   private readonly logger = new Logger(FeatureFlagsService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit() {
+    await this.seedDefaults();
+  }
+
+  async seedDefaults() {
+    const defaults = [
+      { key: 'automations', name: 'Automations', description: 'Automated workflows and triggers', required_plan: 'STARTER' as const },
+      { key: 'pipeline', name: 'Pipeline CRM', description: 'Deals and sales pipeline management', required_plan: 'STARTER' as const },
+      { key: 'ai_assistant', name: 'AI Assistant', description: 'AI-powered invoice and document assistant', required_plan: 'STARTER' as const },
+      { key: 'hacienda', name: 'Hacienda Submission', description: 'Submit invoices to Hacienda CR', required_plan: 'GROWTH' as const },
+      { key: 'message_templates', name: 'Message Templates', description: 'WhatsApp/Telegram message templates', required_plan: 'GROWTH' as const },
+      { key: 'invite_codes', name: 'Invite Codes', description: 'Invite team members via codes', required_plan: 'STARTER' as const },
+      { key: 'agent', name: 'Support Agent', description: 'AI support agent with diagnostics', required_plan: 'GROWTH' as const },
+      { key: 'invoice_reminders', name: 'Invoice Reminders', description: 'Automated payment reminders', required_plan: 'STARTER' as const },
+      { key: 'credit_notes', name: 'Credit Notes', description: 'Create and submit credit notes', required_plan: 'GROWTH' as const },
+    ];
+    for (const flag of defaults) {
+      await this.prisma.featureFlag.upsert({
+        where: { key: flag.key },
+        create: { ...flag, enabled: true },
+        update: { name: flag.name, description: flag.description, required_plan: flag.required_plan },
+      });
+    }
+    this.logger.log('Default feature flags seeded');
+  }
 
   async isEnabled(key: string, workspaceId: string): Promise<boolean> {
     const flag = await this.prisma.featureFlag.findUnique({ where: { key } });

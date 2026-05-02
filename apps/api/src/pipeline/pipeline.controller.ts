@@ -5,6 +5,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { FeatureFlagGuard, RequireFeature } from '../feature-flags/feature-flags.guard';
 import { PipelineService } from './pipeline.service';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 import { CreateStageDto } from './dto/create-stage.dto';
@@ -14,7 +15,7 @@ import { UpdateDealDto } from './dto/update-deal.dto';
 import { MoveDealDto } from './dto/move-deal.dto';
 
 @Controller('pipeline')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
 export class PipelineController {
   constructor(
     private readonly pipelineService: PipelineService,
@@ -29,6 +30,7 @@ export class PipelineController {
 
   @Post('stages')
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequireFeature('pipeline')
   async createStage(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateStageDto,
@@ -39,6 +41,7 @@ export class PipelineController {
 
   @Patch('stages/:id')
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequireFeature('pipeline')
   updateStage(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -49,6 +52,7 @@ export class PipelineController {
 
   @Delete('stages/:id')
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequireFeature('pipeline')
   deleteStage(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -64,6 +68,7 @@ export class PipelineController {
 
   @Post('deals')
   @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @RequireFeature('pipeline')
   async createDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateDealDto,
@@ -74,6 +79,7 @@ export class PipelineController {
 
   @Patch('deals/:id')
   @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @RequireFeature('pipeline')
   updateDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -84,6 +90,7 @@ export class PipelineController {
 
   @Patch('deals/:id/move')
   @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @RequireFeature('pipeline')
   moveDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -94,6 +101,7 @@ export class PipelineController {
 
   @Post('deals/:id/win')
   @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @RequireFeature('pipeline')
   winDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -103,6 +111,7 @@ export class PipelineController {
 
   @Delete('deals/:id')
   @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @RequireFeature('pipeline')
   deleteDeal(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,

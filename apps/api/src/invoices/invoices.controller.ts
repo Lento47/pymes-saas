@@ -15,6 +15,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { FeatureFlagGuard, RequireFeature } from '../feature-flags/feature-flags.guard';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
@@ -25,7 +26,7 @@ import { InvoicesService } from './invoices.service';
 import { RemindersService } from './reminders.service';
 
 @Controller('invoices')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
 export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
@@ -105,6 +106,7 @@ export class InvoicesController {
 
   @Post(':id/submit')
   @Roles(WorkspaceUserRole.AGENT)
+  @RequireFeature('hacienda')
   submitToHacienda(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -132,6 +134,7 @@ export class InvoicesController {
 
   @Post(':id/reminder')
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequireFeature('invoice_reminders')
   generateReminder(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -141,6 +144,7 @@ export class InvoicesController {
 
   @Post(':id/reminder/send')
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequireFeature('invoice_reminders')
   sendReminder(
     @CurrentUser() user: AuthUser,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -151,6 +155,7 @@ export class InvoicesController {
 
   @Post(':id/credit-note')
   @Roles(WorkspaceUserRole.AGENT)
+  @RequireFeature('credit_notes')
   createCreditNote(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -161,6 +166,7 @@ export class InvoicesController {
 
   @Post(':id/debit-note')
   @Roles(WorkspaceUserRole.AGENT)
+  @RequireFeature('credit_notes')
   createDebitNote(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -181,6 +187,7 @@ export class InvoicesController {
 
   @Post(':id/hacienda-validate')
   @Roles(WorkspaceUserRole.AGENT)
+  @RequireFeature('hacienda')
   validateForHacienda(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
