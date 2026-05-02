@@ -10,6 +10,11 @@ import { OnboardingService } from './onboarding.service';
 export class OnboardingController {
   constructor(private readonly onboarding: OnboardingService) {}
 
+  @Get('status')
+  async getStatus(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.onboarding.getStatus(workspaceId);
+  }
+
   @Get()
   @Roles('OWNER', 'ADMIN')
   async getProject(@CurrentUser('workspace_id') workspaceId: string) {

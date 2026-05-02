@@ -14,6 +14,26 @@ export class OnboardingService {
     });
   }
 
+  async getStatus(workspaceId: string) {
+    const project = await this.prisma.onboardingProject.findUnique({
+      where: { workspace_id: workspaceId },
+      select: { status: true, checklist: true },
+    });
+    if (!project) return { exists: false };
+    const checklist = (project.checklist as any[]) ?? [];
+    let completed = 0;
+    let total = 0;
+    for (const cat of checklist) {
+      if (cat.items) {
+        for (const item of cat.items) {
+          total++;
+          if (item.completed) completed++;
+        }
+      }
+    }
+    return { exists: true, status: project.status, completed, total };
+  }
+
   async saveProject(workspaceId: string, data: any) {
     const existing = await this.prisma.onboardingProject.findUnique({ where: { workspace_id: workspaceId } });
     if (existing) {
