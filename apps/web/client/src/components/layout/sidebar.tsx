@@ -475,10 +475,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
       {/* ── Settings Flyout Menu (rendered outside sidebar, always visible) ── */}
       {settingsMenuOpen && (
-        <div
-          className="fixed z-50 rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden animate-in fade-in slide-in-from-left-2 duration-150"
-          style={{ left: sidebarOpen ? 268 : 8, top: 72, width: 220 }}
-        >
+        <>
+          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setSettingsMenuOpen(false)} />
+          <div
+            className="fixed z-50 rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden animate-in fade-in slide-in-from-left-2 duration-150"
+            style={{ left: sidebarOpen ? 268 : 8, top: 72, width: 220 }}
+          >
           <div className="p-2 max-h-[400px] overflow-y-auto">
             {SETTINGS_ITEMS.map((item) => {
               const slug = getWorkspaceSlug();
@@ -495,6 +497,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             })}
           </div>
         </div>
+        </>
       )}
     </div>
   );
