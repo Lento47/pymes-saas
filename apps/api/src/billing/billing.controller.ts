@@ -89,6 +89,13 @@ export class BillingController {
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`Plan change failed for workspace=${user.workspace_id}:`, error);
+      this.paddleService.createDiagnosticCase(
+        user.workspace_id,
+        `Error al cambiar de plan: ${(error as Error)?.message}`,
+        'PLAN_CHANGE_FAILED',
+        `Workspace ${user.workspace_id} intentó cambiar de plan y falló: ${(error as Error)?.message}`,
+        'critical',
+      ).catch(() => {});
       throw new InternalServerErrorException('No se pudo cambiar el plan. Intentalo de nuevo o contacta a soporte.');
     }
   }

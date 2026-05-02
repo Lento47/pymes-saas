@@ -554,6 +554,23 @@ export class PaddleService {
           break;
         case 'transaction.payment_failed':
           this.logger.warn(`Payment failed for event ${eventId}`);
+          {
+            const subId = (event.data as any)?.subscriptionId;
+            if (subId) {
+              const sub = await this.prisma.workspaceSubscription.findFirst({
+                where: { provider_subscription_id: subId },
+                select: { workspace_id: true, workspace: { select: { name: true } } },
+              });
+              if (sub) {
+                await this.createDiagnosticCase(sub.workspace_id,
+                  `Pago fallido para ${sub.workspace.name}`,
+                  'PADDLE_PAYMENT_FAILED',
+                  `Un pago de Paddle falló. El usuario necesita actualizar su método de pago.`,
+                  'high',
+                );
+              }
+            }
+          }
           break;
         default:
           this.logger.log(`Unhandled Paddle event: ${eventType}`);
@@ -573,6 +590,22 @@ export class PaddleService {
       this.logger.log(`Event ${eventId} processed successfully`);
     } catch (error) {
       this.logger.error(`Error processing event ${eventId}:`, error);
+
+      const subId = (event.data as any)?.subscriptionId || (event.data as any)?.id;
+      if (subId) {
+        const sub = await this.prisma.workspaceSubscription.findFirst({
+          where: { provider_subscription_id: subId },
+          select: { workspace_id: true, workspace: { select: { name: true } } },
+        });
+        if (sub) {
+          await this.createDiagnosticCase(sub.workspace_id,
+            `Error procesando webhook de Paddle: ${eventType}`,
+            'PADDLE_WEBHOOK_ERROR',
+            `Evento ${eventId} falló: ${(error as Error)?.message}`,
+            'critical',
+          );
+        }
+      }
 
       await this.prisma.stripeEvent.upsert({
         where: { external_id: eventId },
@@ -604,6 +637,18 @@ export class PaddleService {
     const workspaceSlug: string | undefined = customData?.workspaceSlug || customData?.workspace_slug;
 
     this.logger.log(`Subscription event: customer=${customerId}, plan=${plan}, status=${status}, slug=${workspaceSlug}`);
+
+    if (status === 'PAST_DUE' && workspaceSlug) {
+      const ws = await this.prisma.workspace.findUnique({ where: { slug: workspaceSlug }, select: { id: true, name: true } });
+      if (ws) {
+        await this.createDiagnosticCase(ws.id,
+          `Suscripción en mora para ${ws.name}`,
+          'SUBSCRIPTION_PAST_DUE',
+          `La suscripción de ${ws.name} está en estado PAST_DUE. El pago no se ha podido procesar.`,
+          'high',
+        );
+      }
+    }
 
     const existing = await this.prisma.workspaceSubscription.findFirst({
       where: { provider_customer_id: customerId },
@@ -671,9 +716,23 @@ export class PaddleService {
           data: { plan },
         });
         this.logger.log(`Workspace ${workspaceId} plan updated to ${plan}`);
+        await this.resolveBillingCases(workspaceId, 'SUBSCRIPTION_WORKSPACE_MISMATCH');
       }
     } else {
       this.logger.warn(`No workspaceId resolved for customer ${customerId}, slug=${workspaceSlug}`);
+
+      if (workspaceSlug) {
+        const ws = await this.prisma.workspace.findUnique({
+          where: { slug: workspaceSlug }, select: { id: true, name: true },
+        });
+        if (ws) {
+          await this.createDiagnosticCase(ws.id,
+            `Webhook no pudo vincular suscripción para ${ws.name}`,
+            'SUBSCRIPTION_WORKSPACE_MISMATCH',
+            `customer=${customerId}, slug=${workspaceSlug}, plan=${plan}. Posiblemente el customer_id no coincide con ningún registro existente.`,
+          );
+        }
+      }
     }
   }
 
@@ -687,16 +746,29 @@ export class PaddleService {
     });
 
     if (sub) {
+      const ws = await this.prisma.workspace.findUnique({
+        where: { id: sub.workspace_id },
+        select: { id: true, name: true },
+      });
+      if (ws) {
+        await this.createDiagnosticCase(ws.id,
+          `Suscripción cancelada para ${ws.name}`,
+          'SUBSCRIPTION_CANCELED',
+          `El cliente canceló su suscripción. Plan revertido a FREE.`,
+          'medium',
+        );
+      }
+
       await this.prisma.workspaceSubscription.update({
         where: { id: sub.id },
         data: { status: 'CANCELLED', plan: 'FREE' },
       });
 
-      const ws = await this.prisma.workspace.findUnique({
+      const wss = await this.prisma.workspace.findUnique({
         where: { id: sub.workspace_id },
         select: { settings_json: true },
       });
-      const settings = (ws?.settings_json as Record<string, any>) ?? {};
+      const settings = (wss?.settings_json as Record<string, any>) ?? {};
       let modified = false;
       const addonKeys = ['ai_assistant_active', 'ai_assistant_activated_at',
         'whatsapp_premium_active', 'whatsapp_premium_activated_at',
@@ -952,5 +1024,47 @@ export class PaddleService {
       name: workspace?.name || 'Cliente',
       email: owner?.user?.email || '',
     };
+  }
+
+  async createDiagnosticCase(
+    workspaceId: string,
+    title: string,
+    errorCode: string,
+    errorDetail: string,
+    riskLevel: string = 'high',
+  ) {
+    try {
+      await (this.prisma as any).supportDiagnosticCase.create({
+        data: {
+          workspace_id: workspaceId,
+          module: 'billing',
+          error_code: errorCode,
+          category: 'BILLING_OR_PLAN',
+          risk_level: riskLevel,
+          status: 'OPEN',
+          title,
+          user_description: errorDetail,
+          safe_summary: 'Revisar logs de Railway para más detalles. Verificar configuración de Paddle.',
+          evidence_json: { error_code: errorCode, detail: errorDetail, timestamp: new Date().toISOString() },
+        },
+      });
+      this.logger.log(`Billing diagnostic case created: ${title}`);
+    } catch (err: any) {
+      this.logger.error(`Failed to create billing diagnostic case: ${err?.message}`);
+    }
+  }
+
+  async resolveBillingCases(workspaceId: string, errorCode: string) {
+    try {
+      const updated = await (this.prisma as any).supportDiagnosticCase.updateMany({
+        where: { workspace_id: workspaceId, error_code: errorCode, status: 'OPEN' },
+        data: { status: 'RESOLVED', resolution_json: { resolved_at: new Date().toISOString(), auto: true } },
+      });
+      if (updated.count > 0) {
+        this.logger.log(`Auto-resolved ${updated.count} billing case(s) for ${errorCode}`);
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to auto-resolve billing cases: ${err?.message}`);
+    }
   }
 }
