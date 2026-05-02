@@ -111,7 +111,7 @@ export class AutomationProcessor extends WorkerHost {
           : [];
 
       for (const action of actions) {
-        await this.executeAction(action, triggerEntityType, triggerEntityId, workspaceId);
+        await this.executeAction(action, triggerEntityType, triggerEntityId, workspaceId, rule.name);
       }
 
       // 7. Actualizar execution SUCCESS
@@ -203,6 +203,7 @@ export class AutomationProcessor extends WorkerHost {
     triggerEntityType: string,
     triggerEntityId: string,
     workspaceId: string,
+    ruleName: string,
   ): Promise<void> {
     const conversationTargetId = await this.resolveConversationTargetId(
       triggerEntityType,
@@ -219,11 +220,12 @@ export class AutomationProcessor extends WorkerHost {
           );
 
           if (recipientId) {
+            const actionDesc = this.describeAction(action);
             await this.notificationsService.create(workspaceId, {
               user_id: recipientId,
               type: 'automation',
-              title: action.title ?? 'Notificación automática',
-              body: action.body ?? 'Se ejecutó una automatización.',
+              title: action.title ?? ruleName,
+              body: action.body ?? `${ruleName}: ${actionDesc}`,
               related_entity_type: conversationTargetId ? 'conversation' : triggerEntityType,
               related_entity_id: conversationTargetId ?? triggerEntityId,
             });
@@ -282,11 +284,12 @@ export class AutomationProcessor extends WorkerHost {
           );
 
           if (recipientId) {
+            const actionDesc = this.describeAction(action);
           await this.notificationsService.create(workspaceId, {
             user_id: recipientId,
             type: 'automation',
-            title: action.title ?? 'Notificación automática',
-            body: action.body ?? '',
+            title: action.title ?? ruleName,
+            body: action.body ?? `${ruleName}: ${actionDesc}`,
             related_entity_type: conversationTargetId ? 'conversation' : triggerEntityType,
             related_entity_id: conversationTargetId ?? triggerEntityId,
           });
@@ -296,6 +299,18 @@ export class AutomationProcessor extends WorkerHost {
 
       default:
         this.logger.warn(`Unknown action type: ${(action as any).type}`);
+    }
+  }
+
+  private describeAction(action: AutomationAction): string {
+    switch (action.type) {
+      case 'set_priority': return `Cambió prioridad a ${action.priority}`;
+      case 'set_status': return `Cambió estado a ${action.status}`;
+      case 'assign': return `Asignó conversación`;
+      case 'create_task': return `Creó tarea: ${action.title ?? ''}`;
+      case 'notify': return 'Notificación enviada';
+      case 'notify_in_app': return 'Notificación en app';
+      default: return `Acción: ${action.type}`;
     }
   }
 
