@@ -344,6 +344,7 @@ export const api = {
   },
   // SUBSCRIPCION ACTUAL DEL WORKSPACE — USAR ESTE HELPER, NO `fetch()` CRUDO.
   getSubscription: () => request<any>("GET", "/api/workspaces/current/subscription"),
+  cancelPlan: () => request<any>("POST", "/api/billing/cancel"),
   // CAMBIO DE PLAN CON PRORRATEO PARA SUBSCRIPCION YA EXISTENTE.
   // SI NO HAY SUBSCRIPCION ACTIVA → USAR createCheckout (PADDLE OVERLAY).
   changePlan: (priceId: string) => request<any>("POST", "/api/billing/change-plan", { priceId }),

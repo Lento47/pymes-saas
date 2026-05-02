@@ -312,7 +312,20 @@ export default function BillingPage() {
       if (tier.key === "BUSINESS_PLUS") {
         toast({ title: "Contactá a ventas", description: "El plan Business+ requiere contacto directo con nuestro equipo." });
       } else if (tier.key === "FREE") {
-        toast({ title: "Plan gratuito", description: "Ya estás en el plan Free." });
+        if (currentPlan === "FREE") {
+          toast({ title: "Plan gratuito", description: "Ya estás en el plan Free." });
+        } else {
+          // Downgrade to FREE — cancel subscription via backend
+          setLoading(tier.key);
+          try {
+            await api.cancelPlan();
+            toast({ title: "Plan cancelado", description: "Tu suscripción se cancelará al final del período." });
+            refreshUser();
+            queryClient.invalidateQueries({ queryKey: ["subscription"] });
+          } catch (err: any) {
+            toast({ title: "Error", description: err?.message || "No se pudo cancelar el plan.", variant: "destructive" });
+          } finally { setLoading(null); }
+        }
       } else {
         // IMPORTANTE: ESTE TOAST SOLO DEBERIA APARECER SI EL BACKEND NO TIENE
         // CONFIGURADAS LAS VARIABLES PADDLE_PRICE_* EN RAILWAY. NO ES UN BUG
@@ -640,8 +653,19 @@ export default function BillingPage() {
                     </Button>
                   ) : (
                     <div className="space-y-1.5">
-                      <Button size="sm" className="w-full h-8 text-xs" variant="ghost" disabled>
-                        <ArrowDownRight className="w-3.5 h-3.5 mr-1.5" /> Cambiar a este plan
+                      <Button
+                        size="sm"
+                        className="w-full h-8 text-xs"
+                        variant="ghost"
+                        onClick={() => handleCheckout(tier)}
+                        disabled={!!loading}
+                      >
+                        {loading && loading === tier.key ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                        ) : (
+                          <ArrowDownRight className="w-3.5 h-3.5 mr-1.5" />
+                        )}
+                        Cambiar a este plan
                       </Button>
                       <p className="text-center text-[10px] text-muted-foreground">
                         Los cambios de plan aplican al final del período actual.
