@@ -89,6 +89,7 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 const SETTINGS_ITEMS = [
+  { href: "/onboarding", icon: UserCircle, label: "Onboarding" },
   { href: "/settings?tab=profile", icon: UserCircle, label: "Perfil" },
   { href: "/settings?tab=workspace", icon: Building2, label: "Workspace" },
   { href: "/settings?tab=billing", icon: CreditCard, label: "Facturación" },
