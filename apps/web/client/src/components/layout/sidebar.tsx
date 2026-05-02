@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/providers/i18n-provider";
@@ -102,7 +103,7 @@ const SETTINGS_ITEMS = [
 ] as const;
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { user, logout, switchWorkspace } = useAuth();
   const { messages } = useI18n();
   const { theme, toggle } = useTheme();
@@ -386,22 +387,29 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             <span className="flex-1 text-sm text-left">Configuración</span>
             <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", settingsMenuOpen && "rotate-180")} />
           </button>
-          {settingsMenuOpen && (
-            <div className="mt-1 rounded-xl border border-border/60 bg-sidebar shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="p-2 max-h-[260px] overflow-y-auto">
+          {settingsMenuOpen && settingsMenuRef.current && createPortal(
+            <div
+              className="rounded-xl border border-border/60 bg-sidebar shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+              style={{
+                position: 'fixed',
+                left: settingsMenuRef.current.getBoundingClientRect().right + 8,
+                top: settingsMenuRef.current.getBoundingClientRect().bottom - 8,
+                width: '220px',
+              }}
+            >
+              <div className="p-2 max-h-[300px] overflow-y-auto">
                 {SETTINGS_ITEMS.map((item) => (
-                  <Link key={item.href} href={item.href}>
-                    <a
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground transition-all"
-                      onClick={() => setSettingsMenuOpen(false)}
-                    >
-                      <item.icon className="w-4 h-4 shrink-0" />
-                      <span>{item.label}</span>
-                    </a>
-                  </Link>
+                  <a key={item.href}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground transition-all cursor-pointer"
+                    onClick={() => { navigate(item.href); setSettingsMenuOpen(false); }}
+                  >
+                    <item.icon className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </a>
                 ))}
               </div>
-            </div>
+            </div>,
+            document.body,
           )}
         </div>
 
