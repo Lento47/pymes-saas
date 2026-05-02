@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
-import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink } from "lucide-react";
+import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink, ChevronDown, ChevronUp, Building2, UserCircle } from "lucide-react";
 import { useState } from "react";
 
 const RISK_ICONS: Record<string, any> = {
@@ -25,9 +25,20 @@ const STATUS_COLORS: Record<string, string> = {
   ESCALATED: "bg-red-500/10 text-red-400 border-red-500/30",
 };
 
+function parseEvidence(evidence: any): { workspace?: any; user?: any } {
+  if (!evidence) return {};
+  try {
+    const e = typeof evidence === "string" ? JSON.parse(evidence) : evidence;
+    return { workspace: e.workspace, user: e.user };
+  } catch {
+    return {};
+  }
+}
+
 export default function SupportPage() {
   useRequireAuth();
   const [filter, setFilter] = useState("OPEN");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: cases, isLoading } = useQuery({
@@ -104,76 +115,129 @@ export default function SupportPage() {
               const riskColor = RISK_COLORS[c.risk_level] || "text-muted-foreground";
               const statusColor = STATUS_COLORS[c.status] || "bg-muted text-muted-foreground";
               const isOpen = c.status === "OPEN" || c.status === "INVESTIGATING";
+              const isExpanded = expandedId === c.id;
+              const evidence = parseEvidence(c.evidence_json);
 
               return (
                 <div
                   key={c.id}
-                  className={`rounded-md border bg-card/40 p-5 transition-colors ${
+                  className={`rounded-md border bg-card/40 transition-colors ${
                     isOpen ? "border-[#5771ff]/20" : "border-border/60 opacity-60"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <RiskIcon className={`w-4 h-4 ${riskColor}`} />
-                        <h3 className="text-sm font-medium text-foreground truncate">{c.title}</h3>
-                      </div>
-                      {c.user_description && (
-                        <p className="text-xs text-muted-foreground/70 mt-1 line-clamp-2">
-                          {c.user_description}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusColor}`}>
-                          {c.status}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground/50 uppercase">{c.module}</span>
-                        {c.error_code && (
-                          <span className="text-[10px] text-muted-foreground/40 font-mono">{c.error_code}</span>
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <RiskIcon className={`w-4 h-4 ${riskColor}`} />
+                          <h3 className="text-sm font-medium text-foreground truncate">{c.title}</h3>
+                        </div>
+                        {c.user_description && (
+                          <p className="text-xs text-muted-foreground/70 mt-1 line-clamp-2">
+                            {c.user_description}
+                          </p>
                         )}
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusColor}`}>
+                            {c.status}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground/50 uppercase">{c.module}</span>
+                          {c.error_code && (
+                            <span className="text-[10px] text-muted-foreground/40 font-mono">{c.error_code}</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {new Date(c.created_at).toLocaleDateString("es-CR", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                      {isOpen && (
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {new Date(c.created_at).toLocaleDateString("es-CR", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
                         <div className="flex gap-1.5">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              statusMut.mutate({ id: c.id, status: "RESOLVED" });
+                              setExpandedId(isExpanded ? null : c.id);
                             }}
-                            disabled={statusMut.isPending}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors"
                           >
-                            <Check className="w-3 h-3" /> Marcar resuelto
+                            {isExpanded ? (
+                              <><ChevronUp className="w-3 h-3" /> Ver menos</>
+                            ) : (
+                              <><ChevronDown className="w-3 h-3" /> Ver más</>
+                            )}
                           </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              statusMut.mutate({ id: c.id, status: "ESCALATED" });
-                            }}
-                            disabled={statusMut.isPending}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-md border border-orange-500/30 text-orange-400 hover:bg-orange-500/10 transition-colors"
-                          >
-                            <ExternalLink className="w-3 h-3" /> Escalar
-                          </button>
+                          {isOpen && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  statusMut.mutate({ id: c.id, status: "RESOLVED" });
+                                }}
+                                disabled={statusMut.isPending}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                              >
+                                <Check className="w-3 h-3" /> Resuelto
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  statusMut.mutate({ id: c.id, status: "ESCALATED" });
+                                }}
+                                disabled={statusMut.isPending}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-md border border-orange-500/30 text-orange-400 hover:bg-orange-500/10 transition-colors"
+                              >
+                                <ExternalLink className="w-3 h-3" /> Escalar
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="border-t border-border/60 px-5 py-4 space-y-3 bg-muted/20">
+                      {(evidence.workspace || evidence.user) && (
+                        <div className="flex flex-wrap gap-4">
+                          {evidence.workspace && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span className="text-muted-foreground">Workspace:</span>
+                              <span className="text-foreground font-medium">{evidence.workspace.name}</span>
+                              <span className="text-muted-foreground/50">({evidence.workspace.slug} · {evidence.workspace.plan})</span>
+                            </div>
+                          )}
+                          {evidence.user && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <UserCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span className="text-muted-foreground">Usuario:</span>
+                              <span className="text-foreground font-medium">{evidence.user.name}</span>
+                              <span className="text-muted-foreground/50">({evidence.user.email} · {evidence.user.role})</span>
+                            </div>
+                          )}
                         </div>
                       )}
                       {c.safe_summary && (
-                        <div className="text-[11px] text-muted-foreground/60 max-w-[200px] text-right line-clamp-2">
-                          {c.safe_summary}
+                        <div>
+                          <p className="text-[11px] text-muted-foreground mb-1">Recomendación:</p>
+                          <p className="text-xs text-foreground/80 leading-relaxed">{c.safe_summary}</p>
                         </div>
                       )}
+                      {c.trace_id && (
+                        <div className="text-[10px] text-muted-foreground/50 font-mono">
+                          Trace: {c.trace_id}
+                        </div>
+                      )}
+                      <div className="text-[10px] text-muted-foreground/40 font-mono">
+                        ID: {c.id}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
