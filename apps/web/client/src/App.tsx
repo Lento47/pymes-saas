@@ -46,6 +46,7 @@ import Agent from "@/pages/agent";
 import OnboardingPage from "@/pages/onboarding";
 import SupportPage from "@/pages/support";
 import InventoryPage from "@/pages/inventory";
+import InventoryDetailPage from "@/pages/inventory-detail";
 import InventoryMovementsPage from "@/pages/inventory-movements";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminWorkspaces from "@/pages/admin/workspaces";
@@ -152,6 +153,9 @@ function AppRouter() {
       </Route>
       <Route path="/inventory/movements">
         {() => <ProtectedLayout><InventoryMovementsPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/inventory/:id">
+        {(params) => <ProtectedLayout><InventoryDetailPage /></ProtectedLayout>}
       </Route>
       <Route path="/pipeline">
         {() => <ProtectedLayout><Pipeline /></ProtectedLayout>}

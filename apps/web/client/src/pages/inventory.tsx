@@ -3,59 +3,48 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Search, Plus, Pencil, Archive, Package, Layers, Minus, Plus as PlusIcon,
-  Loader2, Trash2, ChevronDown,
-} from "lucide-react";
+import { Search, Plus, Grid3X3, List, ArrowUpDown, Package, ChevronDown, Loader2, Minus } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ProductCard } from "@/components/inventory/ProductCard";
+import { ProductDrawer } from "@/components/inventory/ProductDrawer";
+import { CategoryChips } from "@/components/inventory/CategoryChips";
+import { StockBar } from "@/components/inventory/StockBar";
+import { cn } from "@/lib/utils";
 
-function stockColor(stock: number, min: number, track: boolean, type: string) {
-  if (!track || type === "SERVICE") return "text-muted-foreground";
-  if (stock <= 0) return "text-red-400";
-  if (stock <= min) return "text-amber-400";
-  return "text-emerald-400";
-}
-
-function stockBg(stock: number, min: number, track: boolean, type: string) {
-  if (!track || type === "SERVICE") return "bg-muted/30";
-  if (stock <= 0) return "bg-red-500/10";
-  if (stock <= min) return "bg-amber-500/10";
-  return "bg-emerald-500/10";
-}
-
-const EMPTY = { name: "", sku: "", description: "", type: "PRODUCT", unit_price: 0, cost_price: 0, min_stock: 0, unit_of_measure: "", track_inventory: true, category_id: "" };
+type SortKey = "name" | "price" | "stock" | "created";
 
 export default function InventoryPage() {
   useRequireAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [search, setSearch] = useState("");
-  const [catFilter, setCatFilter] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<any>(null);
+  const [catFilter, setCatFilter] = useState("all");
+  const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey>("name");
+  const [page, setPage] = useState(1);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [adjusting, setAdjusting] = useState<any>(null);
-  const [form, setForm] = useState({ ...EMPTY });
   const [adjustQty, setAdjustQty] = useState(0);
   const [adjustReason, setAdjustReason] = useState("");
 
+  const limit = viewMode === "grid" ? 24 : 20;
+
   const { data: prodData, isLoading } = useQuery({
-    queryKey: ["inventory-products", search, catFilter],
+    queryKey: ["inventory-products", search, catFilter, lowStockOnly, sortBy, page, limit],
     queryFn: () => {
       const p = new URLSearchParams();
       if (search) p.set("search", search);
-      if (catFilter) p.set("category_id", catFilter);
-      p.set("limit", "100");
+      if (catFilter !== "all") p.set("category_id", catFilter);
+      if (lowStockOnly) p.set("low_stock", "true");
+      p.set("limit", String(limit));
+      p.set("page", String(page));
       return api.getProducts(p.toString());
     },
     refetchInterval: 30000,
@@ -66,25 +55,20 @@ export default function InventoryPage() {
     queryFn: api.getCategories,
   });
 
-  const { data: lowStock } = useQuery({
-    queryKey: ["inventory-low-stock"],
-    queryFn: api.getLowStock,
-    refetchInterval: 60000,
-  });
-
   const products: any[] = prodData?.data ?? [];
+  const total = prodData?.meta?.total ?? 0;
+  const totalPages = prodData?.meta?.pages ?? 1;
   const catList: any[] = Array.isArray(categories) ? categories : [];
-  const lowList: any[] = Array.isArray(lowStock) ? lowStock : [];
 
   const createMut = useMutation({
     mutationFn: (d: any) => api.createProduct(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setCreating(false); setForm({ ...EMPTY }); toast({ title: "Producto creado" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setDrawerOpen(false); toast({ title: "Producto creado" }); },
     onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, ...d }: any) => api.updateProduct(id, d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setEditing(null); toast({ title: "Producto actualizado" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setDrawerOpen(false); setEditingProduct(null); toast({ title: "Producto actualizado" }); },
     onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
@@ -100,224 +84,184 @@ export default function InventoryPage() {
     onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
-  const prodForm = (isEdit: boolean) => (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label>Nombre</Label>
-          <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="bg-[hsl(var(--elevated))] border-border" />
-        </div>
-        <div>
-          <Label>SKU</Label>
-          <Input value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} className="bg-[hsl(var(--elevated))] border-border" />
-        </div>
-      </div>
-      <div>
-        <Label>Categoría</Label>
-        <Select value={form.category_id} onValueChange={v => setForm({ ...form, category_id: v })}>
-          <SelectTrigger className="bg-[hsl(var(--elevated))] border-border"><SelectValue placeholder="Sin categoría" /></SelectTrigger>
-          <SelectContent className="bg-card border-border">
-            <SelectItem value="none">Sin categoría</SelectItem>
-            {catList.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label>Descripción</Label>
-        <Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="bg-[hsl(var(--elevated))] border-border" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label>Tipo</Label>
-          <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
-            <SelectTrigger className="bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
-            <SelectContent className="bg-card border-border">
-              <SelectItem value="PRODUCT">Producto</SelectItem>
-              <SelectItem value="SERVICE">Servicio</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Unidad</Label>
-          <Input value={form.unit_of_measure} onChange={e => setForm({ ...form, unit_of_measure: e.target.value })} placeholder="unidad, kg, hora" className="bg-[hsl(var(--elevated))] border-border" />
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <Label>Precio venta</Label>
-          <Input type="number" min="0" step="0.01" value={form.unit_price} onChange={e => setForm({ ...form, unit_price: parseFloat(e.target.value) || 0 })} className="bg-[hsl(var(--elevated))] border-border" />
-        </div>
-        <div>
-          <Label>Costo</Label>
-          <Input type="number" min="0" step="0.01" value={form.cost_price || ""} onChange={e => setForm({ ...form, cost_price: parseFloat(e.target.value) || 0 })} className="bg-[hsl(var(--elevated))] border-border" />
-        </div>
-        <div>
-          <Label>Stock mín.</Label>
-          <Input type="number" min="0" value={form.min_stock} onChange={e => setForm({ ...form, min_stock: parseInt(e.target.value) || 0 })} className="bg-[hsl(var(--elevated))] border-border" />
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Switch checked={form.track_inventory} onCheckedChange={v => setForm({ ...form, track_inventory: v })} />
-        <Label>Control de inventario</Label>
-      </div>
-    </div>
-  );
+  const sorted = [...products].sort((a, b) => {
+    switch (sortBy) {
+      case "price": return parseFloat(b.unit_price) - parseFloat(a.unit_price);
+      case "stock": return b.current_stock - a.current_stock;
+      case "created": return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      default: return a.name.localeCompare(b.name);
+    }
+  });
 
   return (
     <div className="min-h-full bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-semibold text-foreground">Inventario</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {products.length} producto{products.length !== 1 ? "s" : ""}
-              {lowList.length > 0 && <span className="text-amber-400 ml-2">— {lowList.length} con stock bajo</span>}
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {total} producto{total !== 1 ? "s" : ""}
             </p>
           </div>
-          <div className="flex gap-2">
-            <Link href="/inventory/categories">
-              <Button variant="outline" size="sm"><Layers className="h-4 w-4 mr-1" />Categorías</Button>
-            </Link>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={cn("p-1.5 rounded-md transition-colors", viewMode === "grid" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                className={cn("p-1.5 rounded-md transition-colors", viewMode === "table" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
             <Link href="/inventory/movements">
-              <Button variant="outline" size="sm"><ChevronDown className="h-4 w-4 mr-1" />Movimientos</Button>
+              <Button variant="outline" size="sm" className="h-9"><ChevronDown className="h-4 w-4 mr-1" />Movimientos</Button>
             </Link>
-            <Button size="sm" onClick={() => { setForm({ ...EMPTY }); setCreating(true); }}>
-              <Plus className="h-4 w-4 mr-1" />Nuevo producto
+            <Button size="sm" className="h-9" onClick={() => { setEditingProduct(null); setDrawerOpen(true); }}>
+              <Plus className="h-4 w-4 mr-1" />Nuevo
             </Button>
           </div>
         </div>
 
-        <div className="flex gap-3 mb-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre o SKU..." className="pl-9 bg-[hsl(var(--elevated))] border-border" />
+        {/* Filters */}
+        <div className="space-y-3 mb-6">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Buscar por nombre o SKU..." className="pl-9 h-9 text-xs bg-background border-border" />
+            </div>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+              <SelectTrigger className="w-[180px] h-9 text-xs bg-background border-border">
+                <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Nombre</SelectItem>
+                <SelectItem value="price">Precio</SelectItem>
+                <SelectItem value="stock">Stock</SelectItem>
+                <SelectItem value="created">Más reciente</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2">
+              <Switch checked={lowStockOnly} onCheckedChange={setLowStockOnly} />
+              <Label className="text-xs text-muted-foreground cursor-pointer" onClick={() => setLowStockOnly(!lowStockOnly)}>Stock bajo</Label>
+            </div>
           </div>
-          <Select value={catFilter} onValueChange={setCatFilter}>
-            <SelectTrigger className="w-48 bg-[hsl(var(--elevated))] border-border"><SelectValue placeholder="Todas las categorías" /></SelectTrigger>
-            <SelectContent className="bg-card border-border">
-              <SelectItem value="all">Todas las categorías</SelectItem>
-              {catList.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <CategoryChips categories={catList} selected={catFilter} onSelect={v => { setCatFilter(v); setPage(1); }} />
         </div>
 
+        {/* Content */}
         {isLoading ? (
-          <div className="flex items-center gap-2 text-muted-foreground py-8"><Loader2 className="h-4 w-4 animate-spin" />Cargando...</div>
-        ) : products.length === 0 ? (
-          <div className="text-center py-16">
-            <Package className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">Agrega tu primer producto para usarlo en facturas</p>
-            <Button size="sm" className="mt-4" onClick={() => { setForm({ ...EMPTY }); setCreating(true); }}>
-              <Plus className="h-4 w-4 mr-1" />Agregar producto
-            </Button>
+          <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm">Cargando...</span>
           </div>
-        ) : (
-          <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-[hsl(var(--elevated))]">
-                <tr>
-                  <th className="text-left px-4 py-2 text-muted-foreground font-medium">Producto</th>
-                  <th className="text-left px-4 py-2 text-muted-foreground font-medium hidden sm:table-cell">SKU</th>
-                  <th className="text-left px-4 py-2 text-muted-foreground font-medium hidden md:table-cell">Cat.</th>
-                  <th className="text-right px-4 py-2 text-muted-foreground font-medium">Precio</th>
-                  <th className="text-center px-4 py-2 text-muted-foreground font-medium">Stock</th>
-                  <th className="text-right px-4 py-2 text-muted-foreground font-medium"></th>
+        ) : sorted.length === 0 ? (
+          <div className="text-center py-20">
+            <Package className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+            <p className="text-sm text-muted-foreground mb-1">
+              {search || catFilter !== "all" || lowStockOnly ? "Sin resultados para estos filtros" : "Agrega tu primer producto para usarlo en facturas"}
+            </p>
+            {!search && catFilter === "all" && !lowStockOnly && (
+              <Button size="sm" className="mt-3" onClick={() => { setEditingProduct(null); setDrawerOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" />Agregar producto
+              </Button>
+            )}
+          </div>
+        ) : viewMode === "table" ? (
+          <div className="rounded-xl border border-border overflow-hidden bg-card/40">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Producto</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Categoría</th>
+                  <th className="text-right px-4 py-3 text-[11px] font-medium text-muted-foreground">Precio</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Stock</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-medium text-muted-foreground">Tipo</th>
+                  <th className="text-right px-4 py-3 text-[11px] font-medium text-muted-foreground w-20"></th>
                 </tr>
               </thead>
               <tbody>
-                {products.map((p: any) => {
-                  const sc = stockColor(p.current_stock, p.min_stock, p.track_inventory, p.type);
-                  const sbg = stockBg(p.current_stock, p.min_stock, p.track_inventory, p.type);
-                  return (
-                    <tr key={p.id} className="border-t border-border hover:bg-[hsl(var(--elevated))] transition-colors">
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-foreground font-medium">{p.name}</span>
-                          {p.type === "SERVICE" && <Badge variant="secondary" className="text-[10px]">Servicio</Badge>}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 text-muted-foreground font-mono text-xs hidden sm:table-cell">{p.sku}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground text-xs hidden md:table-cell">{p.category?.name || "—"}</td>
-                      <td className="px-4 py-2.5 text-right text-foreground text-xs">
-                        ₡{parseFloat(p.unit_price).toLocaleString("es-CR", { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${sbg} ${sc}`}>
-                          {p.track_inventory && p.type === "PRODUCT" ? p.current_stock : "—"}
-                          {p.track_inventory && p.type === "PRODUCT" && p.current_stock <= p.min_stock && (
-                            <span className="ml-1 text-[10px]">/ min {p.min_stock}</span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <div className="flex items-center justify-end gap-0.5">
-                          {p.track_inventory && p.type === "PRODUCT" && (
-                            <Button variant="ghost" size="sm" onClick={() => setAdjusting(p)} title="Ajustar stock">
-                              <Minus className="h-3.5 w-3.5 text-muted-foreground" />
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="sm" onClick={() => { setForm({ ...p, category_id: p.category_id || "" }); setEditing(p); }}>
-                            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => { if (confirm("¿Archivar producto?")) archiveMut.mutate(p.id); }}>
-                            <Archive className="h-3.5 w-3.5 text-muted-foreground" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {sorted.map((p: any) => (
+                  <ProductCard key={p.id} product={p} viewMode="table" onEdit={(prod) => { setEditingProduct(prod); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={setAdjusting} />
+                ))}
               </tbody>
             </table>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {sorted.map((p: any) => (
+              <ProductCard key={p.id} product={p} viewMode="grid" onEdit={(prod) => { setEditingProduct(prod); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={setAdjusting} />
+            ))}
+          </div>
         )}
 
-        <Dialog open={creating} onOpenChange={setCreating}>
-          <DialogContent className="bg-card border-border max-w-lg">
-            <DialogHeader><DialogTitle>Nuevo Producto</DialogTitle></DialogHeader>
-            {prodForm(false)}
-            <Button className="w-full mt-2" disabled={createMut.isPending || !form.name || !form.sku} onClick={() => createMut.mutate({ ...form, category_id: form.category_id === "none" ? undefined : form.category_id || undefined })}>
-              {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Crear
-            </Button>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={!!editing} onOpenChange={(o) => { if (!o) setEditing(null); }}>
-          <DialogContent className="bg-card border-border max-w-lg">
-            <DialogHeader><DialogTitle>Editar Producto</DialogTitle></DialogHeader>
-            {editing && prodForm(true)}
-            <Button className="w-full mt-2" disabled={updateMut.isPending} onClick={() => updateMut.mutate({ id: editing.id, ...form, category_id: form.category_id === "none" ? undefined : form.category_id || undefined })}>
-              {updateMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Guardar
-            </Button>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={!!adjusting} onOpenChange={(o) => { if (!o) setAdjusting(null); }}>
-          <DialogContent className="bg-card border-border max-w-sm">
-            <DialogHeader><DialogTitle>Ajustar Stock — {adjusting?.name}</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">Stock actual: <span className="text-foreground font-medium">{adjusting?.current_stock}</span></p>
-              <div className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <Label>Cantidad (+ entrada, - salida)</Label>
-                  <Input type="number" value={adjustQty} onChange={e => setAdjustQty(parseInt(e.target.value) || 0)} className="bg-[hsl(var(--elevated))] border-border" />
-                </div>
-              </div>
-              <div>
-                <Label>Motivo</Label>
-                <Input value={adjustReason} onChange={e => setAdjustReason(e.target.value)} placeholder="Conteo físico, merma..." className="bg-[hsl(var(--elevated))] border-border" />
-              </div>
-              <p className="text-xs text-muted-foreground">Nuevo stock: <span className="text-foreground">{(adjusting?.current_stock || 0) + adjustQty}</span></p>
-            </div>
-            <Button className="w-full mt-2" disabled={adjustMut.isPending || adjustQty === 0} onClick={() => adjustMut.mutate({ id: adjusting.id, quantity: adjustQty, reason: adjustReason })}>
-              {adjustMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Ajustar
-            </Button>
-          </DialogContent>
-        </Dialog>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-8">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="h-8 text-xs">Anterior</Button>
+            <span className="text-xs text-muted-foreground px-3">{page} de {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="h-8 text-xs">Siguiente</Button>
+          </div>
+        )}
       </div>
+
+      {/* FAB mobile */}
+      <button
+        onClick={() => { setEditingProduct(null); setDrawerOpen(true); }}
+        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-110 md:hidden flex items-center justify-center"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
+      {/* Drawer */}
+      <ProductDrawer
+        open={drawerOpen}
+        onClose={() => { setDrawerOpen(false); setEditingProduct(null); }}
+        onSave={(data) => {
+          if (editingProduct) {
+            updateMut.mutate({ id: editingProduct.id, ...data });
+          } else {
+            createMut.mutate(data);
+          }
+        }}
+        isSaving={createMut.isPending || updateMut.isPending}
+        product={editingProduct}
+        categories={catList}
+      />
+
+      {/* Stock adjust dialog */}
+      {adjusting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Ajustar stock — {adjusting.name}</h3>
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Stock actual: <span className="text-foreground font-semibold">{adjusting.current_stock}</span></p>
+              <div className="space-y-1.5">
+                <Label className="text-[11px]">Cantidad (+ entrada, − salida)</Label>
+                <Input type="number" value={adjustQty} onChange={e => setAdjustQty(parseInt(e.target.value) || 0)} className="h-9 text-xs bg-background border-border" autoFocus />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px]">Motivo</Label>
+                <Input value={adjustReason} onChange={e => setAdjustReason(e.target.value)} placeholder="Conteo físico, merma..." className="h-9 text-xs bg-background border-border" />
+              </div>
+              <p className="text-xs text-muted-foreground">Nuevo stock: <span className="text-foreground font-semibold">{(adjusting.current_stock || 0) + adjustQty}</span></p>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => { setAdjusting(null); setAdjustQty(0); setAdjustReason(""); }}>Cancelar</Button>
+              <Button size="sm" className="flex-1 h-8 text-xs" disabled={adjustMut.isPending || adjustQty === 0} onClick={() => adjustMut.mutate({ id: adjusting.id, quantity: adjustQty, reason: adjustReason })}>
+                {adjustMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                Ajustar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
