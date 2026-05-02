@@ -387,8 +387,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", settingsMenuOpen && "rotate-180")} />
           </button>
           {settingsMenuOpen && (
-            <div className="absolute left-0 right-0 top-full mt-1 rounded-xl border border-border/60 bg-sidebar shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="p-2 max-h-[300px] overflow-y-auto">
+            <div className="mt-1 rounded-xl border border-border/60 bg-sidebar shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="p-2 max-h-[260px] overflow-y-auto">
                 {SETTINGS_ITEMS.map((item) => (
                   <Link key={item.href} href={item.href}>
                     <a
