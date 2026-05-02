@@ -87,6 +87,7 @@ export class AgentController {
     @CurrentUser('workspace_id') workspaceId: string,
     @CurrentUser('id') userId: string,
   ) {
+    await this.planLimits.enforceDiagnosticLimit(workspaceId);
     const result = await this.diagnostic.diagnose({
       workspaceId,
       userId,

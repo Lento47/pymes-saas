@@ -111,8 +111,9 @@ export class DiagnosticService {
       }
     }
 
-    // Don't persist USER_GUIDANCE cases — they're just noise, not real issues
-    if (classification.category === 'USER_GUIDANCE') {
+    // Don't persist USER_GUIDANCE cases — they're just noise, not real issues.
+    // EXCEPT billing: always create a case for billing events (mission critical).
+    if (classification.category === 'USER_GUIDANCE' && input.module !== 'billing') {
       this.logger.log(`Skipping USER_GUIDANCE case for ${input.module}: ${classification.title}`);
       return {
         case_id: 'skipped',

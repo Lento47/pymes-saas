@@ -47,6 +47,7 @@ interface PlanLimits {
   invite_codes: number | 'custom';
   products: number | 'custom';
   product_categories: number | 'custom';
+  diagnostics_per_day: number | 'custom';
 }
 
 export type { PlanLimits };
@@ -63,6 +64,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invite_codes: 3,
     products: 50,
     product_categories: 5,
+    diagnostics_per_day: 3,
   },
   STARTER: {
     users: 1,
@@ -75,6 +77,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invite_codes: 10,
     products: 300,
     product_categories: 20,
+    diagnostics_per_day: 10,
   },
   GROWTH: {
     users: 5,
@@ -87,6 +90,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invite_codes: 50,
     products: 1500,
     product_categories: 50,
+    diagnostics_per_day: 30,
   },
   BUSINESS: {
     users: 15,
@@ -99,18 +103,21 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invite_codes: 200,
     products: 10000,
     product_categories: 200,
+    diagnostics_per_day: 100,
   },
   ENTERPRISE: {
     users: 15, automations: 100, contacts: 15_000, documents: 5_000,
     invoices_per_month: 2_000, storage_bytes: 50 * 1024 * 1024 * 1024,
     locations: 3, invite_codes: 200,
     products: 10000, product_categories: 200,
+    diagnostics_per_day: 100,
   },
   BUSINESS_PLUS: {
     users: 'custom', automations: 'custom', contacts: 'custom', documents: 'custom',
     invoices_per_month: 'custom', storage_bytes: 'custom',
     locations: 'custom', invite_codes: 'custom',
     products: 'custom', product_categories: 'custom',
+    diagnostics_per_day: 'custom',
   },
 };
 
@@ -467,6 +474,20 @@ export class PlanLimitsService {
     });
     if (current >= (limit as number)) {
       throw new QuotaExceededError('categorías de productos', current, limit, plan, this.getUpgradePlan(plan));
+    }
+  }
+
+  async enforceDiagnosticLimit(workspaceId: string): Promise<void> {
+    const plan = await this.getWorkspacePlan(workspaceId);
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits.diagnostics_per_day;
+    if (limit === 'custom' || limit === Infinity) return;
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const current = await (this.prisma as any).supportDiagnosticCase.count({
+      where: { workspace_id: workspaceId, created_at: { gte: dayAgo } },
+    });
+    if (current >= (limit as number)) {
+      throw new QuotaExceededError('diagnósticos hoy', current, limit, plan, this.getUpgradePlan(plan));
     }
   }
 }
