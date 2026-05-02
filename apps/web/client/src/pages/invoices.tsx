@@ -173,6 +173,7 @@ export default function InvoicesPage() {
     line_description: "",
     cabys_code: "",
     tax_rate: "0",
+    product_id: "",
   });
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
@@ -298,6 +299,7 @@ export default function InvoicesPage() {
         line_description,
         cabys_code,
         tax_rate,
+        product_id,
         ...invoiceFields
       } = createForm;
 
@@ -314,6 +316,7 @@ export default function InvoicesPage() {
               unit_of_measure: "Unid",
               tax_code: "01",
               tax_rate: Number(tax_rate || 0),
+              product_id: product_id || undefined,
             }]
           : undefined,
         notes: [],
@@ -338,6 +341,7 @@ export default function InvoicesPage() {
         line_description: "",
         cabys_code: "",
         tax_rate: "0",
+        product_id: "",
       });
       toast({ title: "Factura creada" });
     },
