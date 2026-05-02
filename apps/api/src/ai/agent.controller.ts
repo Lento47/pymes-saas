@@ -46,6 +46,14 @@ export class AgentController {
     return case_;
   }
 
+  @Get('diagnostic-cases')
+  @Roles('ADMIN')
+  async listDiagnosticCases(
+    @CurrentUser('workspace_id') workspaceId: string,
+  ) {
+    return this.diagnostic.listCases(workspaceId);
+  }
+
   @Patch('fix-cases/:id')
   @Roles('ADMIN')
   async updateFixCase(

@@ -3,6 +3,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface DiagnosticInput {
   workspaceId: string;
@@ -50,7 +51,18 @@ export const MODULE_MAP: Record<string, string> = {
 export class DiagnosticService {
   private readonly logger = new Logger(DiagnosticService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
+
+  async listCases(workspaceId: string) {
+    return (this.prisma as any).supportDiagnosticCase.findMany({
+      where: { workspace_id: workspaceId },
+      orderBy: { created_at: 'desc' },
+      take: 50,
+    });
+  }
 
   async diagnose(input: DiagnosticInput): Promise<DiagnosticResult> {
     let evidence: any = {};
@@ -112,6 +124,10 @@ export class DiagnosticService {
 
     this.logger.log(`Diagnostic case created: ${caseRecord.id} (${classification.category} / ${classification.risk_level})`);
 
+    this.notifyAdmins(input.workspaceId, caseRecord.id, classification).catch((err) =>
+      this.logger.error(`Failed to notify admins of diagnostic case: ${err?.message}`),
+    );
+
     return {
       case_id: caseRecord.id,
       category: classification.category,
@@ -162,5 +178,27 @@ export class DiagnosticService {
 
   private result(category: string, risk_level: string, title: string, recommendation: string) {
     return { category, risk_level, title, recommendation };
+  }
+
+  private async notifyAdmins(workspaceId: string, caseId: string, classification: { category: string; risk_level: string; title: string }) {
+    const admins = await (this.prisma as any).workspaceUser.findMany({
+      where: { workspace_id: workspaceId, role: { in: ['OWNER', 'ADMIN'] } },
+      select: { user_id: true },
+    });
+
+    for (const admin of admins) {
+      try {
+        await this.notifications.create(workspaceId, {
+          user_id: admin.user_id,
+          type: 'diagnostic_case',
+          title: `Nuevo caso: ${classification.title}`,
+          body: `Categoría: ${classification.category} | Riesgo: ${classification.risk_level}`,
+          related_entity_type: 'support_diagnostic_case',
+          related_entity_id: caseId,
+        });
+      } catch (err: any) {
+        this.logger.error(`Notification to ${admin.user_id} failed: ${err?.message}`);
+      }
+    }
   }
 }
