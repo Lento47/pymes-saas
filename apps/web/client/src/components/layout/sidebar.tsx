@@ -370,7 +370,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => {
               const rect = settingsMenuRef.current?.getBoundingClientRect();
-              if (rect) setDropdownPos({ left: rect.right + 8, top: rect.top });
+              if (rect) setDropdownPos({ left: rect.right + 8, top: Math.min(rect.top + 4, window.innerHeight - 460) });
               setSettingsMenuOpen(o => !o);
             }}
             className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
@@ -485,7 +485,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setSettingsMenuOpen(false)} />
           <div
             className="fixed z-50 rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden animate-in fade-in slide-in-from-left-2 duration-150"
-            style={{ left: dropdownPos.left, top: dropdownPos.top, width: 220 }}
+            style={{ left: dropdownPos.left, top: dropdownPos.top, width: 220, maxHeight: 420 }}
           >
           <div className="p-2 max-h-[400px] overflow-y-auto">
             {SETTINGS_ITEMS.map((item) => {
