@@ -260,10 +260,14 @@ export default function DashboardPage() {
                   <div key={task.id} className="flex items-center gap-3 px-5 py-3">
                     <div className="w-[18px] h-[18px] rounded-full border-2 border-border/60 cursor-pointer hover:border-primary/50 transition-colors shrink-0" />
                     <span className="flex-1 text-[13px] text-foreground truncate">{task.title}</span>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${task.priority === "HIGH" ? "bg-red-500/10 text-red-600 dark:text-red-400" : task.priority === "MEDIUM" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "bg-slate-500/10 text-slate-600 dark:text-slate-400"}`}>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${
+                      task.priority === "HIGH" ? "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20" :
+                      task.priority === "MEDIUM" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20" :
+                      "bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20"
+                    }`}>
                       {task.priority === "HIGH" ? dash.high : task.priority === "MEDIUM" ? dash.medium : dash.low}
                     </span>
-                    {task.due_date && <span className="text-[11px] text-muted-foreground/50">{format(new Date(task.due_date), "MMM d", { locale: es })}</span>}
+                    {task.due_date && <span className="text-[11px] text-muted-foreground">{format(new Date(task.due_date), "MMM d", { locale: es })}</span>}
                   </div>
                 ))
               ) : (
