@@ -91,4 +91,39 @@ export class FollowupProcessor {
 
     this.logger.log('checkUnansweredConversations cron job finished');
   }
+
+  @Cron('0 3 * * *') // diario a las 3 AM UTC
+  async cleanupInactiveWorkspaces(): Promise<void> {
+    this.logger.log('Running cleanupInactiveWorkspaces cron job');
+
+    const threshold = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const expired = await this.prisma.workspace.findMany({
+      where: {
+        status: 'ACTIVE',
+        plan: 'FREE',
+        updated_at: { lt: threshold },
+      },
+      select: { id: true, name: true, slug: true },
+      take: 50,
+    });
+
+    this.logger.log(`Found ${expired.length} inactive workspaces to clean up`);
+
+    for (const ws of expired) {
+      try {
+        await this.prisma.workspace.update({
+          where: { id: ws.id },
+          data: {
+            status: 'DELETED',
+            slug: `${ws.slug}-inactive-${Date.now()}`,
+          },
+        });
+        this.logger.log(`Auto-deleted inactive workspace: ${ws.name} (${ws.slug})`);
+      } catch (err: any) {
+        this.logger.error(`Failed to delete workspace ${ws.id}: ${err?.message}`);
+      }
+    }
+
+    this.logger.log('cleanupInactiveWorkspaces cron job finished');
+  }
 }

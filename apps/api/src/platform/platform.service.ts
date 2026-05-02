@@ -524,6 +524,21 @@ export class PlatformService {
     return { message: `Usuario ${user.email} eliminado.` };
   }
 
+  async deleteWorkspace(slug: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { slug },
+      select: { id: true, name: true, status: true },
+    });
+    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+
+    await this.prisma.workspace.update({
+      where: { id: workspace.id },
+      data: { status: 'DELETED', slug: `${slug}-deleted-${Date.now()}` },
+    });
+
+    return { message: `Workspace "${workspace.name}" marcado como eliminado.` };
+  }
+
   private async ensureUserExists(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

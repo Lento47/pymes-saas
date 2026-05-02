@@ -110,4 +110,9 @@ export class PlatformController {
   deleteUser(@Param('userId') userId: string, @CurrentUser() user: AuthUser) {
     return this.service.deleteUser(userId, user.id);
   }
+
+  @Delete('workspaces/:slug')
+  async deleteWorkspace(@Param('slug') slug: string) {
+    return this.service.deleteWorkspace(slug);
+  }
 }
