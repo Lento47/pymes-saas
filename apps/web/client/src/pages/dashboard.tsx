@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import {
   TrendingUp, Receipt, CheckSquare, BarChart4, ChevronDown, Sparkles, ArrowRight,
-  ShieldCheck, TriangleAlert, CircleAlert, Info, Plus, FileText, MessageCircle,
+  ShieldCheck, TriangleAlert, CircleAlert, Info, Plus, FileText, MessageCircle, Package,
 } from "lucide-react";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { es } from "date-fns/locale";
@@ -91,6 +91,7 @@ export default function DashboardPage() {
   const { data: pipelineStagesData, isLoading: pipelineLoading } = useQuery({ queryKey: ["/api/pipeline/stages", "dash"], queryFn: () => api.getPipelineStages(), refetchInterval: 60000 });
   const { data: insights } = useQuery({ queryKey: ["/api/insights"], queryFn: api.getInsights, staleTime: 3 * 60 * 1000 });
   const { data: onboardStatus } = useQuery({ queryKey: ["onboarding-status"], queryFn: api.getOnboardingStatus, staleTime: 5 * 60 * 1000, retry: false });
+  const { data: lowStock } = useQuery({ queryKey: ["low-stock-dash"], queryFn: api.getLowStock, refetchInterval: 120000, retry: false });
 
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
@@ -180,8 +181,31 @@ export default function DashboardPage() {
                         <span className="text-[11px] text-muted-foreground">{onboardStatus.completed} de {onboardStatus.total || 15}</span>
                       </div>
                     )}
+          </div>
+
+          {/* Low Stock Alert */}
+          {Array.isArray(lowStock) && lowStock.length > 0 && (
+            <div className="rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Package className="w-[15px] h-[15px] text-amber-400" />
+                <h2 className="text-sm font-medium text-foreground">Stock Bajo</h2>
+              </div>
+              <div className="space-y-2">
+                {lowStock.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between text-xs">
+                    <span className="text-foreground truncate max-w-[140px]">{p.name}</span>
+                    <span className="text-amber-400 font-medium">
+                      {p.current_stock} / {p.min_stock} {p.unit_of_measure || "uds"}
+                    </span>
                   </div>
-                </div>
+                ))}
+              </div>
+              <Link href="/inventory">
+                <span className="text-[11px] text-primary hover:text-primary/80 mt-3 inline-block cursor-pointer">Ver inventario →</span>
+              </Link>
+            </div>
+          )}
+        </div>
                 <ArrowRight className="w-4 h-4 text-muted-foreground" />
               </div>
             </div>

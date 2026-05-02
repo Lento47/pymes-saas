@@ -10,13 +10,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api, getWorkspaceSlug } from "@/lib/api";
 import {
-  LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare,
+  LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
   Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot, MessageCircle,
   Sun, Moon, Search, Menu, X, ChevronRight, Building2,
   CreditCard, Layers, Plug, PlugZap, Shuffle, BrainCircuit, ShieldCheck, UserCircle, LifeBuoy,
 } from "lucide-react";
 
-type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "agent" | "notifications" | "chat" | "settings" | "help";
+type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "notifications" | "chat" | "settings" | "help";
 type NavItem = { path: string; icon: any; key: NavKey; badge?: "unread" | "overdue" };
 
 function navLabel(copy: any, key: NavKey): string {
@@ -75,6 +75,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: "/documents",     icon: FileText,        key: "documents" },
       { path: "/invoices",      icon: Receipt,         key: "invoices" },
       { path: "/automations",   icon: Zap,             key: "automations" },
+      { path: "/inventory",     icon: Package,         key: "inventory" },
     ],
   },
   {

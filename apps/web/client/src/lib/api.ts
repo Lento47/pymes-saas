@@ -488,6 +488,19 @@ export const api = {
   getDiagnosticCases: () => request<any>("GET", "/api/agent/diagnostic-cases"),
   updateDiagnosticCaseStatus: (id: string, status: string) =>
     request<any>("PATCH", `/api/agent/diagnostic-cases/${id}/status`, { status }),
+  // Inventory
+  getProducts: (params?: string) => request<any>("GET", `/api/inventory/products${params ? `?${params}` : ''}`),
+  getProduct: (id: string) => request<any>("GET", `/api/inventory/products/${id}`),
+  createProduct: (data: any) => request<any>("POST", "/api/inventory/products", data),
+  updateProduct: (id: string, data: any) => request<any>("PATCH", `/api/inventory/products/${id}`, data),
+  archiveProduct: (id: string) => request<any>("DELETE", `/api/inventory/products/${id}`),
+  adjustStock: (id: string, data: any) => request<any>("POST", `/api/inventory/products/${id}/adjust-stock`, data),
+  getLowStock: () => request<any>("GET", "/api/inventory/products/low-stock"),
+  getStockMovements: (params?: string) => request<any>("GET", `/api/inventory/movements${params ? `?${params}` : ''}`),
+  getCategories: () => request<any>("GET", "/api/inventory/categories"),
+  createCategory: (data: any) => request<any>("POST", "/api/inventory/categories", data),
+  updateCategory: (id: string, data: any) => request<any>("PATCH", `/api/inventory/categories/${id}`, data),
+  deleteCategory: (id: string) => request<any>("DELETE", `/api/inventory/categories/${id}`),
   // Feature Flags
   getFeatureFlags: (workspaceId: string) => request<any>("GET", `/api/feature-flags/check/${workspaceId}`),
   // Usage
