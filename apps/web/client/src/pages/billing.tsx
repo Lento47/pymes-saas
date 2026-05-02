@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth, useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -217,7 +217,7 @@ async function fetchSubscription(_workspaceSlug: string) {
 
 export default function BillingPage() {
   useRequireAuth();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, refreshUser } = useAuth();
   const { toast } = useToast();
   const paddle = usePaddle();
   const [location] = useLocation();
@@ -236,6 +236,13 @@ export default function BillingPage() {
   const success = params.get("paddle") === "success";
   const canceled = params.get("canceled");
   const addonParam = params.get("addon");
+
+  useEffect(() => {
+    if (success && isAuthenticated) {
+      refreshUser().catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    }
+  }, [success, isAuthenticated, refreshUser]);
   const addonLabels: Record<string, string> = {
     ai_assistant: 'Asistente IA',
     whatsapp_premium: 'WhatsApp + Analíticas',

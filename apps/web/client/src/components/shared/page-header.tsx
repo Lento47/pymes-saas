@@ -18,7 +18,7 @@ export function PageHeader({ title, description, className, children }: PageHead
     >
       <div>
         <h1
-          className="font-semibold text-white tracking-tight"
+          className="font-semibold text-foreground tracking-tight"
           style={{ fontSize: "15px", lineHeight: "1.3" }}
           data-testid="page-title"
         >
