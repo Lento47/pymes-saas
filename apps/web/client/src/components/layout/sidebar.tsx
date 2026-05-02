@@ -114,7 +114,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     () => typeof window !== 'undefined' && window.innerWidth < 1024,
   );
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ left: 0, top: 0 });
   const wsMenuRef = useRef<HTMLDivElement>(null);
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
   const copy = messages.sidebar;
 
   useNotificationsSocket();
@@ -364,9 +366,13 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* ── Settings Dropdown ── */}
-        <div className="shrink-0 px-3 pb-2">
+        <div className="shrink-0 px-3 pb-2" ref={settingsMenuRef}>
           <button
-            onClick={() => setSettingsMenuOpen(o => !o)}
+            onClick={() => {
+              const rect = settingsMenuRef.current?.getBoundingClientRect();
+              if (rect) setDropdownPos({ left: rect.right + 8, top: rect.top });
+              setSettingsMenuOpen(o => !o);
+            }}
             className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
           >
             <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
@@ -479,7 +485,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setSettingsMenuOpen(false)} />
           <div
             className="fixed z-50 rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden animate-in fade-in slide-in-from-left-2 duration-150"
-            style={{ left: sidebarOpen ? 268 : 8, top: 72, width: 220 }}
+            style={{ left: dropdownPos.left, top: dropdownPos.top, width: 220 }}
           >
           <div className="p-2 max-h-[400px] overflow-y-auto">
             {SETTINGS_ITEMS.map((item) => {
