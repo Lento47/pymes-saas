@@ -244,10 +244,8 @@ export default function TasksPage() {
                 {taskList.map((task: any) => {
                   const dueStr = task.dueDate || task.due_date || task.due_at;
                   const isOverdue = dueStr && isPast(new Date(dueStr)) && !isToday(new Date(dueStr)) && task.status !== "DONE";
-                  const assigneeName = task.assignedTo?.firstName
-                    ? `${task.assignedTo.firstName} ${task.assignedTo.lastName || ""}`.trim()
-                    : task.assigned_to?.firstName
-                    ? `${task.assigned_to.firstName} ${task.assigned_to.lastName || ""}`.trim()
+                  const assigneeName = task.assigned_user?.name
+                    ? task.assigned_user.name
                     : null;
 
                   return (

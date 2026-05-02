@@ -1324,10 +1324,21 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
 function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  // Pre-populate non-secret fields
   const [accessToken, setAccessToken] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState(channel?.config?.phone_number_id ?? "");
   const [wabaId, setWabaId] = useState(channel?.config?.waba_id ?? "");
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const { data: waConfig } = useQuery({
+    queryKey: ["whatsapp-config"],
+    queryFn: api.getWhatsAppConfig,
+    staleTime: Infinity,
+  });
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try { await navigator.clipboard.writeText(text); setCopied(label); setTimeout(() => setCopied(null), 2000); }
+    catch { /* ignore */ }
+  };
 
   const save = useMutation({
     mutationFn: () => api.configureWhatsApp(channel.id, {
@@ -1381,10 +1392,38 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
           placeholder="987654321098765" className="mt-1 bg-[hsl(var(--elevated))] border-border font-mono text-xs" />
       </div>
 
-      <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs text-muted-foreground space-y-1">
-        <p className="font-medium text-foreground">Webhook para Meta Developers:</p>
-        <p className="font-mono break-all">https://tu-dominio.com/api/inbound/whatsapp/webhook</p>
-        <p>Token de verificación: el valor de <span className="font-mono">WHATSAPP_WEBHOOK_VERIFY_TOKEN</span> en tu .env</p>
+      <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs space-y-2">
+        <p className="font-medium text-foreground">Configuración del webhook en Meta</p>
+
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Webhook URL</Label>
+          <div className="flex items-center gap-1.5 mt-1">
+            <code className="text-[11px] bg-background px-2 py-1.5 rounded border border-border flex-1 truncate font-mono">
+              {waConfig?.webhookUrl || "Cargando..."}
+            </code>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px]"
+              onClick={() => copyToClipboard(waConfig?.webhookUrl || "", "url")}>
+              {copied === "url" ? "¡Copiado!" : "Copiar"}
+            </Button>
+          </div>
+        </div>
+
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Verify Token</Label>
+          <div className="flex items-center gap-1.5 mt-1">
+            <code className="text-[11px] bg-background px-2 py-1.5 rounded border border-border flex-1 truncate font-mono">
+              {waConfig?.verifyToken || "••••"}
+            </code>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px]"
+              onClick={() => copyToClipboard(waConfig?.verifyToken || "", "token")}>
+              {copied === "token" ? "¡Copiado!" : "Copiar"}
+            </Button>
+          </div>
+        </div>
+
+        <p className="text-[10px] text-muted-foreground/60">
+          Copiá URL y token en Meta Developers → WhatsApp → Configuration → Webhook.
+        </p>
       </div>
 
       <Button

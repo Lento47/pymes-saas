@@ -360,6 +360,7 @@ export const api = {
   changePassword: (data: { current_password: string; new_password: string }) => request<any>("PATCH", "/api/users/me/password", data),
   uploadAvatar: (formData: FormData) => request<any>("POST", "/api/users/me/avatar", formData, { isFormData: true }),
   getChannels: () => request<any>("GET", "/api/channels"),
+  getWhatsAppConfig: () => request<any>("GET", "/api/channels/whatsapp-config"),
   createChannel: (data: any) => request<any>("POST", "/api/channels", data),
   updateChannel: (id: string, data: any) => request<any>("PATCH", `/api/channels/${id}`, data),
   deleteChannel: (id: string) => request<any>("DELETE", `/api/channels/${id}`),
