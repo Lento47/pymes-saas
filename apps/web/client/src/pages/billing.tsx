@@ -237,12 +237,19 @@ export default function BillingPage() {
   const canceled = params.get("canceled");
   const addonParam = params.get("addon");
 
+  const workspaceSlug = user?.workspace?.slug;
+
   useEffect(() => {
-    if (success && isAuthenticated) {
-      refreshUser().catch(() => {});
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    if (success) {
+      const t = setTimeout(() => {
+        refreshUser().catch(() => {});
+        queryClient.invalidateQueries({ queryKey: ["subscription"] });
+        queryClient.invalidateQueries({ queryKey: ["subscription", workspaceSlug] });
+      }, 2000);
+      return () => clearTimeout(t);
     }
-  }, [success, isAuthenticated, refreshUser]);
+  }, [success]);
+
   const addonLabels: Record<string, string> = {
     ai_assistant: 'Asistente IA',
     whatsapp_premium: 'WhatsApp + Analíticas',
@@ -250,7 +257,6 @@ export default function BillingPage() {
     advanced_inventory: 'Inventario avanzado',
     approvals_signature: 'Aprobaciones y firma digital',
   };
-  const workspaceSlug = user?.workspace?.slug;
 
   const currentPlan = user?.workspace?.plan ?? "FREE";
   const planBadge = PLAN_BADGE[currentPlan] || PLAN_BADGE.FREE;
@@ -449,10 +455,16 @@ export default function BillingPage() {
                     </span>
                   )}
                 </p>
+                {subscription.current_period_start && subscription.current_period_end ? (
                 <p className="text-[11px] text-muted-foreground">
                   Período: {new Date(subscription.current_period_start).toLocaleDateString("es-CR")} –{" "}
                   {new Date(subscription.current_period_end).toLocaleDateString("es-CR")}
                 </p>
+                ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Período de prueba activo — sin cobro hasta que termine
+                </p>
+                )}
               </div>
               <div className="flex items-center gap-2">
               <Button
