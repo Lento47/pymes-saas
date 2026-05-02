@@ -249,7 +249,7 @@ export const translations = {
           statusValue: "Active",
         },
       },
-      trustTitle: "We are not here to sell smoke. We are here to build with you.",
+      trustTitle: "Centralize, automate, grow.",
       trustDescription:
         "PymesHub is in closed beta. We do not have 500 customers yet, but we do have a team focused on saving Latin American SMBs hours and dollars.",
       trustOffer: "Join now and get lifetime free access to the plan you choose when we launch.",
@@ -916,7 +916,7 @@ export const translations = {
           statusValue: "Activo 24/7",
         },
       },
-      trustTitle: "No venimos a venderte humo. Venimos a construir contigo.",
+      trustTitle: "Centralizá, automatizá, crecé.",
       trustDescription:
         "PyMesHub está en beta cerrada. No tenemos 500 clientes todavía, pero tenemos un equipo obsesionado con ahorrarle horas y dólares a las pymes latinas.",
       trustOffer: "Si te sumas ahora, ayudas a definir el producto y accedes con condiciones preferentes cuando lancemos.",
