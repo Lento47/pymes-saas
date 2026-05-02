@@ -720,8 +720,7 @@ model InvoiceLine {
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   invoice   Invoice   @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
-  product   Product?  @relation(fields: [productId], references: [id])
-  productId String?
+  product   Product?  @relation(fields: [product_id], references: [id], onDelete: SetNull)
 
   @@unique([invoice_id, line_number])
   @@index([workspace_id])
