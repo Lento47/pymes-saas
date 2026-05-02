@@ -152,9 +152,18 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .emit('task:updated', task);
   }
 
-  /**
-   * Emitir actualización del workspace (rename, locale, plan, etc.) a todos los miembros.
-   */
+  emitCaseUpdated(workspaceId: string, caseData: unknown) {
+    this.server
+      .to(`workspace:${workspaceId}`)
+      .emit('case:updated', caseData);
+  }
+
+  emitAgentMoved(workspaceId: string, agentData: unknown) {
+    this.server
+      .to(`workspace:${workspaceId}`)
+      .emit('agent:moved', agentData);
+  }
+
   emitWorkspaceUpdated(workspaceId: string, workspace: unknown) {
     this.server
       .to(`workspace:${workspaceId}`)
