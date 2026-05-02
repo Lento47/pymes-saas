@@ -25,7 +25,7 @@ export class MessagesService {
     private readonly automationsService: AutomationsService,
   ) { }
 
-  async findAll(workspaceId: string, conversationId: string, page = 1, limit = 50) {
+  async findAll(workspaceId: string, conversationId: string, page = 1, limit = 100) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
       select: { id: true },
@@ -39,18 +39,18 @@ export class MessagesService {
         where: { conversation_id: conversationId, workspace_id: workspaceId },
         skip,
         take: limit,
-        orderBy: { sent_at: 'asc' },
+        orderBy: { sent_at: 'desc' },
         include: {
           sender_user: { select: { id: true, name: true, avatar_url: true } },
         },
       }),
       this.prisma.message.count({
-        where: { conversation_id: conversationId },
+        where: { conversation_id: conversationId, workspace_id: workspaceId },
       }),
     ]);
 
     return {
-      data,
+      data: data.reverse(),
       meta: { total, page, limit, pages: Math.ceil(total / limit) },
     };
   }

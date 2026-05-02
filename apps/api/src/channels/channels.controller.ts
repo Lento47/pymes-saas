@@ -44,6 +44,14 @@ export class ChannelsController {
     return this.channelsService.findAll(workspaceId);
   }
 
+  @Get('whatsapp-config')
+  getWhatsAppConfig() {
+    return {
+      webhookUrl: 'https://pymeshub.lat/api/inbound/whatsapp/webhook',
+      verifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || '',
+    };
+  }
+
   @Get(':id')
   @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findOne(
