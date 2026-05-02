@@ -1,5 +1,6 @@
 import { Controller, Post, Body, Req, Res, UseGuards, Get, Headers } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as crypto from 'crypto';
 import { ApiTokenGuard } from '../api-tokens/api-token.guard';
 import { PrismaService } from '../common/prisma/prisma.service';
 
@@ -64,7 +65,7 @@ export class McpController {
   private mcpSessions = new Map<string, number>();
 
   private newSessionId(): string {
-    return `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return `mcp-${crypto.randomUUID()}`;
   }
 
   @Get()
