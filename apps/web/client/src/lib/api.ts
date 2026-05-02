@@ -484,6 +484,8 @@ export const api = {
   getOnboardingProject: () => request<any>("GET", "/api/onboarding"),
   getOnboardingStatus: () => request<any>("GET", "/api/onboarding/status"),
   saveOnboardingProject: (data: any) => request<any>("POST", "/api/onboarding", data),
+  // Support
+  getDiagnosticCases: () => request<any>("GET", "/api/agent/diagnostic-cases"),
   // Feature Flags
   getFeatureFlags: (workspaceId: string) => request<any>("GET", `/api/feature-flags/check/${workspaceId}`),
   // Usage

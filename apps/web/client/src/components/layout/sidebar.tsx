@@ -13,7 +13,7 @@ import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare,
   Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot, MessageCircle,
   Sun, Moon, Search, Menu, X, ChevronRight, Building2,
-  CreditCard, Layers, Plug, PlugZap, Shuffle, BrainCircuit, ShieldCheck, UserCircle,
+  CreditCard, Layers, Plug, PlugZap, Shuffle, BrainCircuit, ShieldCheck, UserCircle, LifeBuoy,
 } from "lucide-react";
 
 type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "agent" | "notifications" | "chat" | "settings" | "help";
@@ -90,6 +90,7 @@ const NAV_GROUPS: NavGroup[] = [
 
 const SETTINGS_ITEMS = [
   { href: "/onboarding", icon: UserCircle, label: "Onboarding" },
+  { href: "/support", icon: LifeBuoy, label: "Soporte" },
   { href: "/settings?tab=profile", icon: UserCircle, label: "Perfil" },
   { href: "/settings?tab=workspace", icon: Building2, label: "Workspace" },
   { href: "/settings?tab=billing", icon: CreditCard, label: "Facturación" },
