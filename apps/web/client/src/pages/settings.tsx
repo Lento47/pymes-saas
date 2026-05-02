@@ -22,7 +22,7 @@ import { SUPPORTED_LOCALES, normalizeLocale, type SupportedLocale } from "@/lib/
 import {
   Building2, Users, PlugZap, UserPlus, Plus, Plug,
   Mail, MessageCircle, Radio, Eye, EyeOff, ExternalLink,
-  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard, Shuffle, Loader2, Key, Copy, Shield, Send, Crown, UserCircle,
+  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard, Shuffle, Loader2, Key, Copy, Shield, Send, Crown, UserCircle, Pencil,
 } from "lucide-react";
 import BillingPage from "@/pages/billing";
 import { SamlConfig } from "@/components/settings/saml-config";
@@ -55,7 +55,15 @@ function RoutingRulesTab() {
     onSuccess: () => refetch(),
   });
 
+  const updateRule = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      api.updateRoutingRule(id, data),
+    onSuccess: () => { refetch(); toast({ title: 'Regla actualizada' }); },
+    onError: (err: any) => toast({ title: 'Error', description: err?.message, variant: 'destructive' }),
+  });
+
   const [newRule, setNewRule] = useState({ name: '', pattern: '', match_type: 'KEYWORD', department_id: '', channel_id: '', priority: 0, is_active: true });
+  const [editingRule, setEditingRule] = useState<any>(null);
 
   return (
     <div className="space-y-4">
@@ -150,7 +158,7 @@ function RoutingRulesTab() {
                       {r.match_type === 'MENU_REPLY' ? 'Menú' : 'Keyword'}
                     </Badge>
                   </td>
-                  <td className="px-4 py-2.5 text-muted-foreground text-xs">{r.department_id}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground text-xs">{r.department?.name || r.department_id}</td>
                   <td className="px-4 py-2.5">
                     <Switch
                       checked={r.is_active}
@@ -158,6 +166,13 @@ function RoutingRulesTab() {
                     />
                   </td>
                   <td className="px-4 py-2.5 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingRule({ ...r, department_id: r.department?.name || r.department_id })}
+                    >
+                      <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1606,8 +1621,9 @@ function ChannelsTab() {
             <p className="text-sm text-muted-foreground text-center py-8">
               Sin canales — creá uno con el botón de arriba
             </p>
-          )}
-        </div>
+      )}
+
+    </div>
       )}
     </div>
   );
