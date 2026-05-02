@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EngineeringFixService } from './engineering-fix.service';
 
 export interface DiagnosticInput {
   workspaceId: string;
@@ -54,6 +55,7 @@ export class DiagnosticService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly fixService: EngineeringFixService,
   ) {}
 
   async listCases(workspaceId: string) {
@@ -153,6 +155,13 @@ export class DiagnosticService {
     this.notifyAdmins(input.workspaceId, caseRecord.id, classification).catch((err) =>
       this.logger.error(`Failed to notify admins of diagnostic case: ${err?.message}`),
     );
+
+    // Proactive resolution: if a known issue matched, auto-create a fix case
+    if (matchedIssue) {
+      this.fixService.createFixCase(caseRecord.id).catch((err) =>
+        this.logger.error(`Failed to auto-create fix case for ${caseRecord.id}: ${err?.message}`),
+      );
+    }
 
     return {
       case_id: caseRecord.id,
