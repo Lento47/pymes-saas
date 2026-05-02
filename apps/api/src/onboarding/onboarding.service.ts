@@ -14,20 +14,31 @@ export class OnboardingService {
     });
   }
 
-  async createProject(workspaceId: string, data: any) {
-    const createData: any = {
-      workspace: { connect: { id: workspaceId } },
-      plan_key: data.plan_key ?? 'BUSINESS_PLUS',
-      target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : null,
-      checklist: data.checklist ?? [],
-      notes: data.notes,
-      success_criteria: data.success_criteria,
-    };
-    // Only set owner_user_id if provided as a valid string
-    if (typeof data.owner_user_id === 'string' && data.owner_user_id) {
-      createData.owner_user_id = data.owner_user_id;
+  async saveProject(workspaceId: string, data: any) {
+    const existing = await this.prisma.onboardingProject.findUnique({ where: { workspace_id: workspaceId } });
+    if (existing) {
+      return this.prisma.onboardingProject.update({
+        where: { workspace_id: workspaceId },
+        data: {
+          status: data.status ?? existing.status,
+          checklist: data.checklist ?? existing.checklist,
+          notes: data.notes ?? existing.notes,
+          success_criteria: data.success_criteria ?? existing.success_criteria,
+          target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : existing.target_go_live_date,
+        },
+      });
     }
-    return this.prisma.onboardingProject.create({ data: createData });
+    return this.prisma.onboardingProject.create({
+      data: {
+        workspace: { connect: { id: workspaceId } },
+        plan_key: data.plan_key ?? 'BUSINESS_PLUS',
+        checklist: data.checklist ?? [],
+        status: data.status ?? 'IN_PROGRESS',
+        notes: data.notes,
+        success_criteria: data.success_criteria,
+        target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : null,
+      },
+    });
   }
 
   async updateProject(workspaceId: string, data: any) {
