@@ -100,8 +100,13 @@ export default function DashboardPage() {
   const insightList: any[] = Array.isArray(insights) ? insights : [];
 
   const revenueChange = workspaceStats?.revenue_change_pct ?? 0;
-  const revenueStr = revenueChange >= 0 ? `↑ ${revenueChange}%` : `↓ ${Math.abs(revenueChange)}%`;
-  const revenueClass = revenueChange >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
+  const hasPrevRevenue = (workspaceStats?.prev_month_revenue ?? 0) > 0;
+  const revenueStr = hasPrevRevenue
+    ? (revenueChange >= 0 ? `↑ ${revenueChange}%` : `↓ ${Math.abs(revenueChange)}%`)
+    : (workspaceStats?.monthly_revenue > 0 ? "Primer mes" : "Sin datos");
+  const revenueClass = hasPrevRevenue
+    ? (revenueChange >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")
+    : "text-muted-foreground/60";
   const activeConvs = workspaceStats?.activeConversations ?? 0;
   const pipelineStatus = activeConvs > 0 ? dash.active : dash.empty;
   const stageRows = stageList.map(s => ({ id: s.id, name: s.name, color: s.color || "hsl(var(--primary))", dealCount: s.deals?.length ?? 0, totalValue: sumPipelineValue(s.deals ?? []), currency: s.deals?.find(d => d.currency)?.currency ?? "CRC" })).filter(s => s.dealCount > 0).slice(0, 5);
