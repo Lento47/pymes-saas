@@ -90,6 +90,7 @@ export default function DashboardPage() {
   const { data: overdueInvoices, isLoading: invoicesLoading } = useQuery({ queryKey: ["/api/invoices", "overdue-widget"], queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }), refetchInterval: 60000 });
   const { data: pipelineStagesData, isLoading: pipelineLoading } = useQuery({ queryKey: ["/api/pipeline/stages", "dash"], queryFn: () => api.getPipelineStages(), refetchInterval: 60000 });
   const { data: insights } = useQuery({ queryKey: ["/api/insights"], queryFn: api.getInsights, staleTime: 3 * 60 * 1000 });
+  const { data: onboardStatus } = useQuery({ queryKey: ["onboarding-status"], queryFn: api.getOnboardingStatus, staleTime: 5 * 60 * 1000, retry: false });
 
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
@@ -158,6 +159,35 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Onboarding prompt */}
+      {onboardStatus && (!onboardStatus.exists || (onboardStatus.completed < (onboardStatus.total || 15))) && (
+        <div className="px-4 sm:px-6 pb-1">
+          <Link href="/onboarding">
+            <div className="rounded-md border border-[#5771ff]/20 bg-gradient-to-r from-[#5771ff]/5 to-transparent px-5 py-3 cursor-pointer hover:border-[#5771ff]/40 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">🚀</span>
+                  <div>
+                    <p className="text-[13px] font-medium text-foreground">
+                      {onboardStatus.exists ? "Continúa la configuración de tu empresa" : "Completa la configuración de tu empresa"}
+                    </p>
+                    {onboardStatus.exists && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="w-32 h-1 rounded-full bg-border/60 overflow-hidden">
+                          <div className="h-full rounded-full bg-[#5771ff] transition-all" style={{ width: `${(onboardStatus.completed / (onboardStatus.total || 1)) * 100}%` }} />
+                        </div>
+                        <span className="text-[11px] text-muted-foreground">{onboardStatus.completed} de {onboardStatus.total || 15}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground" />
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
 
       {/* ── 2-Column Grid ── */}
       <div className="px-4 sm:px-6 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">

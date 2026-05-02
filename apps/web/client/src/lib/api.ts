@@ -482,6 +482,7 @@ export const api = {
   submitContactSales: (data: any) => request<any>("POST", "/api/contact-sales", data),
   // Onboarding
   getOnboardingProject: () => request<any>("GET", "/api/onboarding"),
+  getOnboardingStatus: () => request<any>("GET", "/api/onboarding/status"),
   saveOnboardingProject: (data: any) => request<any>("POST", "/api/onboarding", data),
   // Feature Flags
   getFeatureFlags: (workspaceId: string) => request<any>("GET", `/api/feature-flags/check/${workspaceId}`),
