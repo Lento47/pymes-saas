@@ -573,7 +573,7 @@ export class PaddleService {
           }
           break;
         default:
-          this.logger.log(`Unhandled Paddle event: ${eventType}`);
+          this.logger.warn(`[DIAG] Unhandled Paddle event type: "${eventType}"`);
       }
 
       await this.prisma.stripeEvent.upsert({
@@ -625,8 +625,13 @@ export class PaddleService {
   // ── Private event handlers ───────────────────────────────────────────────
 
   private async handleSubscriptionEvent(data: any): Promise<void> {
-    const customerId = data.customerId || data.customer_id;
-    if (!customerId) return;
+    this.logger.log(`[DIAG] Subscription event raw keys: ${Object.keys(data).join(', ')}`);
+
+    const customerId = data.customerId || data.customer_id || data.customer?.id;
+    if (!customerId) {
+      this.logger.warn(`[DIAG] No customerId found in subscription event. Keys: ${Object.keys(data).join(', ')}, customer: ${JSON.stringify(data.customer)}`);
+      return;
+    }
 
     const plan = this.mapPaddlePriceToPlan(
       data.items?.[0]?.price?.id || data.items?.[0]?.priceId || '',
@@ -635,6 +640,8 @@ export class PaddleService {
     const status = this.mapPaddleStatus(data.status);
     const customData = data.customData || data.custom_data || {};
     const workspaceSlug: string | undefined = customData?.workspaceSlug || customData?.workspace_slug;
+
+    this.logger.log(`[DIAG] customData keys: ${Object.keys(customData).join(', ')}, workspaceSlug=${workspaceSlug}, plan=${customData?.plan}`);
 
     this.logger.log(`Subscription event: customer=${customerId}, plan=${plan}, status=${status}, slug=${workspaceSlug}`);
 
