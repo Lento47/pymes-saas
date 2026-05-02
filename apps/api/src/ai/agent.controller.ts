@@ -38,20 +38,20 @@ export class AgentController {
     private readonly fixService: EngineeringFixService,
   ) {} 
 
-  @Get('diagnostic-cases/:id')
-  @Roles('ADMIN')
-  async getDiagnosticCase(@Param('id') id: string) {
-    const case_ = await this.fixService.getDiagnosticCaseForFix(id);
-    if (!case_) throw new NotFoundException('Diagnostic case not found');
-    return case_;
-  }
-
   @Get('diagnostic-cases')
   @Roles('ADMIN')
   async listDiagnosticCases(
     @CurrentUser('workspace_id') workspaceId: string,
   ) {
     return this.diagnostic.listCases(workspaceId);
+  }
+
+  @Get('diagnostic-cases/:id')
+  @Roles('ADMIN')
+  async getDiagnosticCase(@Param('id') id: string) {
+    const case_ = await this.fixService.getDiagnosticCaseForFix(id);
+    if (!case_) throw new NotFoundException('Diagnostic case not found');
+    return case_;
   }
 
   @Patch('fix-cases/:id')
