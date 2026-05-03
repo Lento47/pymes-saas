@@ -7,38 +7,35 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ErrorReportsService } from '../../error-reports/error-reports.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 const SILENT_404_PATTERNS = [
-  /\.php(\?.*)?$/i,
-  /\/\.env\d*$/i,
-  /\/\.env\..*$/i,
-  /\/\.git\//i,
-  /\/wp-admin/i,
-  /\/wp-content/i,
-  /\/wp-includes/i,
-  /\/wp-json/i,
-  /\/xmlrpc\.php/i,
-  /\/robots\.txt$/i,
-  /\/favicon\.ico$/i,
-  /^\/$/,
-  /\/vendor\//i,
-  /\/actuator/i,
-  /\/api\/v1\//i,
-  /\/_ignition/i,
-  /\/geoserver/i,
-  /\/sso\/login/i,
-  /\/solr\//i,
-  /\/druid\//i,
-  /\/console/i,
-  /\/Api\/index/i,
-  /\/webtools\//i,
+  /\.php(\?.*)?$/i, /\/\.env\d*$/i, /\/\.env\..*$/i, /\/\.git\//i,
+  /\/wp-admin/i, /\/wp-content/i, /\/wp-includes/i, /\/wp-json/i,
+  /\/xmlrpc\.php/i, /\/robots\.txt$/i, /\/favicon\.ico$/i, /^\/$/,
+  /\/vendor\//i, /\/actuator/i, /\/api\/v1\//i, /\/_ignition/i,
+  /\/geoserver/i, /\/sso\/login/i, /\/solr\//i, /\/druid\//i,
+  /\/console/i, /\/Api\/index/i, /\/webtools\//i,
+];
+
+const ERROR_KEYWORDS: { regex: RegExp; key: string; module: string }[] = [
+  { regex: /whatsapp|meta.*api|access_token/i, key: 'WHATSAPP_CONFIG', module: 'channels' },
+  { regex: /paddle|subscription|billing|plan.*chang/i, key: 'BILLING_FAILURE', module: 'billing' },
+  { regex: /productId|column.*does not exist|P2022/i, key: 'SCHEMA_MISMATCH', module: 'database' },
+  { regex: /foreign key|violates.*constraint|P2003/i, key: 'FK_CONSTRAINT', module: 'database' },
+  { regex: /not found|no existe|not configured/i, key: 'MISSING_CONFIG', module: 'settings' },
+  { regex: /balance|saldo|payment|pago/i, key: 'PAYMENT_ISSUE', module: 'invoices' },
+  { regex: /stock|inventar/i, key: 'INVENTORY_ISSUE', module: 'inventory' },
 ];
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(ApiExceptionFilter.name);
 
-  constructor(private readonly errorReports: ErrorReportsService) {}
+  constructor(
+    private readonly errorReports: ErrorReportsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -62,7 +59,6 @@ export class ApiExceptionFilter implements ExceptionFilter {
         ? (exceptionResponse as any).error
         : undefined;
 
-    // Silently ignore 404s from bots/scanners hitting non-existent PHP, .env, etc.
     if (status === 404) {
       const url = request.originalUrl || request.url || '';
       if (SILENT_404_PATTERNS.some((p) => p.test(url))) {
@@ -70,6 +66,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
         return;
       }
     }
+
+    const msg = typeof message === 'string' ? message : Array.isArray(message) ? message.join(' | ') : String(message);
 
     if (status >= 500) {
       await this.errorReports.createServerReport({
@@ -79,25 +77,54 @@ export class ApiExceptionFilter implements ExceptionFilter {
         category: 'HTTP_EXCEPTION',
         severity: 'ERROR',
         title: errorName ?? 'Unhandled server exception',
-        message: Array.isArray(message) ? message.join(' | ') : String(message),
+        message: msg,
         stack: exception instanceof Error ? exception.stack : null,
         route: request.path,
         url: request.originalUrl,
         method: request.method,
         status_code: status,
         user_agent: request.headers['user-agent'] ?? null,
-        context_json: {
-          params: request.params,
-          query: request.query,
-          workspace_slug: request.headers['x-workspace-slug'] ?? null,
-        },
+        context_json: { params: request.params, query: request.query, workspace_slug: request.headers['x-workspace-slug'] ?? null },
       });
     }
 
-    this.logger.error(
-      `${request.method} ${request.originalUrl} -> ${status}: ${Array.isArray(message) ? message.join(' | ') : message}`,
-      exception instanceof Error ? exception.stack : undefined,
-    );
+    this.logger.error(`${request.method} ${request.originalUrl} -> ${status}: ${msg}`, exception instanceof Error ? exception.stack : undefined);
+
+    // Create diagnostic case for business-relevant errors
+    if (request.user?.workspace_id) {
+      const matched = ERROR_KEYWORDS.find(k => k.regex.test(msg));
+      if (matched || status >= 500 || status === 400) {
+        const errorKey = matched?.key || 'UNKNOWN_ERROR';
+        const module = matched?.module || (request.path?.split('/')[2] || 'unknown');
+        const existing = await (this.prisma as any).supportDiagnosticCase.findFirst({
+          where: { workspace_id: request.user.workspace_id, error_code: errorKey, status: 'OPEN' },
+          select: { id: true },
+        });
+
+        if (!existing) {
+          try {
+            await (this.prisma as any).supportDiagnosticCase.create({
+              data: {
+                workspace_id: request.user.workspace_id,
+                user_id: request.user.id ?? null,
+                module,
+                error_code: errorKey,
+                category: status >= 500 ? 'PLATFORM_INCIDENT' : 'WORKSPACE_CONFIGURATION',
+                risk_level: status >= 500 ? 'high' : (status === 400 ? 'medium' : 'low'),
+                status: 'OPEN',
+                title: `${errorName || 'Error'} en ${module}: ${msg.slice(0, 80)}`,
+                user_description: msg,
+                safe_summary: `Ruta: ${request.method} ${request.path}. Status: ${status}. Revisar configuración o contactar soporte.`,
+                evidence_json: { path: request.path, method: request.method, status, stack: exception instanceof Error ? exception.stack?.slice(0, 500) : null },
+              },
+            });
+            this.logger.log(`Auto-created diagnostic case: ${errorKey} for workspace ${request.user.workspace_id}`);
+          } catch (err: any) {
+            this.logger.error(`Failed to create diagnostic case: ${err?.message}`);
+          }
+        }
+      }
+    }
 
     response.status(status).json({
       statusCode: status,

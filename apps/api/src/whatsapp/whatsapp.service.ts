@@ -28,6 +28,10 @@ export class WhatsAppService {
     bodyText: string,
   ): Promise<{ message_id: string }> {
     const cfg = channel.config_json as any;
+    if (!cfg?.access_token_encrypted) {
+      this.logger.error(`WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`);
+      throw new BadGatewayException('WhatsApp access token no configurado. Verificá la configuración del canal.');
+    }
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -65,6 +69,10 @@ export class WhatsAppService {
     variables: Record<string, string>,
   ): Promise<{ message_id: string }> {
     const cfg = channel.config_json as any;
+    if (!cfg?.access_token_encrypted) {
+      this.logger.error(`WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`);
+      throw new BadGatewayException('WhatsApp access token no configurado. Verificá la configuración del canal.');
+    }
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 

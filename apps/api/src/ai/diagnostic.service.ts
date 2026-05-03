@@ -182,33 +182,43 @@ export class DiagnosticService {
     const msg = (input.user_description || '').toLowerCase() + ' ' + JSON.stringify(evidence).toLowerCase();
 
     if (msg.includes('circular') || msg.includes('undefined import') || msg.includes('cannot create')) {
-      return this.result('PRODUCT_BUG', 'critical', 'Circular dependency detected in NestJS module graph', 'Add forwardRef() to the module at the reported index. Check the deployment logs for the full module chain.');
+      return this.result('PRODUCT_BUG', 'critical', 'Circular dependency detected', 'Add forwardRef() to the module at the reported index. Check deployment logs.');
     }
-    if (msg.includes('paddle') || msg.includes('webhook') || msg.includes('subscription')) {
-      if (msg.includes('not configured') || msg.includes('missing')) {
-        return this.result('WORKSPACE_CONFIGURATION', 'high', 'Billing integration not fully configured', 'Check PADDLE_WEBHOOK_SECRET and PADDLE_API_KEY are set on Railway. Verify webhook URL in Paddle dashboard.');
-      }
-      return this.result('BILLING_OR_PLAN', 'high', 'Paddle billing issue detected', 'Check the Paddle connection settings and subscription status. Use POST /api/billing/sync to re-sync.');
+    if (msg.includes('paddle') || msg.includes('webhook') || msg.includes('subscription') || msg.includes('billing') || msg.includes('plan chang')) {
+      return this.result('BILLING_OR_PLAN', 'high', 'Billing or subscription issue', 'Check PADDLE_WEBHOOK_SECRET, PADDLE_API_KEY, and env vars on Railway. Verify webhook URL in Paddle dashboard.');
     }
-    if (msg.includes('403') || msg.includes('forbidden') || msg.includes('plan') || msg.includes('limit') || msg.includes('quota')) {
-      return this.result('PERMISSION_ISSUE', 'medium', 'Access denied or plan limit reached', 'Check the workspace plan (Ajustes → Facturación). Upgrade if limits are exceeded.');
+    if (msg.includes('whatsapp') || msg.includes('meta api') || msg.includes('access_token') || msg.includes('business account')) {
+      return this.result('WORKSPACE_CONFIGURATION', 'high', 'WhatsApp channel configuration issue', 'Verify access token, phone number ID, and WABA ID in channel settings. Check Meta Developer dashboard.');
     }
-    if (msg.includes('401') || msg.includes('unauthorized') || msg.includes('token') || msg.includes('session')) {
-      return this.result('PERMISSION_ISSUE', 'medium', 'Authentication issue', 'Ask the user to log out and log in again. If persistent, check JWT_SECRET on Railway.');
+    if (msg.includes('403') || msg.includes('forbidden') || msg.includes('plan limit') || msg.includes('quota')) {
+      return this.result('PERMISSION_ISSUE', 'medium', 'Access denied or plan limit reached', 'Check workspace plan (Ajustes → Facturación). Upgrade if limits are exceeded.');
     }
-    if (msg.includes('hacienda') || msg.includes('cabys') || msg.includes('xml') || msg.includes('firma')) {
-      return this.result('PRODUCT_BUG', 'high', 'Hacienda integration issue', 'The XML signing is currently a stub. For staging, unsigned XML may work. For production, XAdES-EPES signing must be integrated.');
+    if (msg.includes('401') || msg.includes('unauthorized') || msg.includes('token expired')) {
+      return this.result('PERMISSION_ISSUE', 'medium', 'Authentication issue', 'Re-login. If persistent, check JWT_SECRET on Railway.');
     }
-    if (msg.includes('resend') || msg.includes('email') || msg.includes('smtp') || msg.includes('webhook secret')) {
-      return this.result('WORKSPACE_CONFIGURATION', 'high', 'Email channel configuration incomplete', 'Verify RESEND_API_KEY, RESEND_WEBHOOK_SECRET, and ENCRYPTION_KEY are set on Railway. For SMTP, check host/user/pass.');
+    if (msg.includes('hacienda') || msg.includes('cabys') || msg.includes('firma digital')) {
+      return this.result('PRODUCT_BUG', 'high', 'Hacienda integration issue', 'Check Hacienda configuration and signing certificate.');
     }
-    if (msg.includes('500') || msg.includes('internal server error')) {
-      return this.result('PLATFORM_INCIDENT', 'high', 'Server error detected', 'Check Railway logs for the full error stack. The ApiExceptionFilter reports these to the error_reports table.');
+    if (msg.includes('resend') || msg.includes('smtp') || msg.includes('email') && msg.includes('fail')) {
+      return this.result('WORKSPACE_CONFIGURATION', 'high', 'Email delivery issue', 'Verify RESEND_API_KEY, SMTP settings in channel configuration.');
+    }
+    if (msg.includes('500') || msg.includes('internal server error') || msg.includes('typeerror') || msg.includes('cannot read propert')) {
+      return this.result('PLATFORM_INCIDENT', 'high', 'Server error or crash detected', 'Check Railway logs for full stack trace. This needs investigation.');
+    }
+    if (msg.includes('foreign key') || msg.includes('constraint') || msg.includes('p2022') || msg.includes('p2003') || msg.includes('productid') || msg.includes('column') && msg.includes('does not exist')) {
+      return this.result('PRODUCT_BUG', 'high', 'Database schema mismatch', 'A Prisma schema or migration issue. Check latest migrations on Railway.');
+    }
+    if (msg.includes('balance') || msg.includes('saldo') || msg.includes('payment') && msg.includes('fail')) {
+      return this.result('BILLING_OR_PLAN', 'medium', 'Payment or balance issue', 'Check invoice and payment records. Verify payment gateway configuration.');
+    }
+    if (msg.includes('stock') || msg.includes('inventar') || (msg.includes('product') && msg.includes('not found'))) {
+      return this.result('WORKSPACE_CONFIGURATION', 'medium', 'Inventory or product issue', 'Check product catalog and inventory settings.');
+    }
+    if (msg.includes('cannot read') || msg.includes('undefined') || msg.includes('null')) {
+      return this.result('PRODUCT_BUG', 'medium', 'Runtime error — undefined value', 'A null/undefined value caused a crash. Check Railway logs for the exact line.');
     }
 
-    return this.result('USER_GUIDANCE', 'low', 'User guidance needed', 'This may be a configuration or usage question. The Support Agent can help with documentation and setup.');
-
-    return { category: 'USER_GUIDANCE', risk_level: 'low', title: 'User guidance needed', recommendation: 'This may be a configuration or usage question.' };
+    return this.result('USER_GUIDANCE', 'low', 'User guidance needed', 'This may be a configuration or usage question. Check the documentation or contact support@pymeshub.lat.');
   }
 
   private result(category: string, risk_level: string, title: string, recommendation: string) {
