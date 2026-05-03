@@ -315,6 +315,8 @@ export class InvoicesService {
     const balanceDue = this.getBalanceDue(invoice);
     const amount = Number(dto.amount ?? 0);
 
+    this.logger.error(`[DIAG] registerPayment: invoice.amount=${JSON.stringify(invoice.amount)}, parsed=${this.parseAmount(invoice.amount)}, payments=${JSON.stringify(invoice.payments?.length)}, amountPaid=${this.getAmountPaid(invoice)}, balance=${balanceDue}`);
+
     if (amount <= 0) {
       throw new BadRequestException('El monto del pago debe ser mayor a cero.');
     }

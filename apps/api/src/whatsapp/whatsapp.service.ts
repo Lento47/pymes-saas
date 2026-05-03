@@ -28,6 +28,10 @@ export class WhatsAppService {
     bodyText: string,
   ): Promise<{ message_id: string }> {
     const cfg = channel.config_json as any;
+    if (!cfg?.access_token_encrypted) {
+      this.logger.warn('WhatsApp channel not configured — skipping send');
+      return { message_id: 'channel-not-configured' };
+    }
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -65,6 +69,10 @@ export class WhatsAppService {
     variables: Record<string, string>,
   ): Promise<{ message_id: string }> {
     const cfg = channel.config_json as any;
+    if (!cfg?.access_token_encrypted) {
+      this.logger.warn('WhatsApp channel not configured — skipping template send');
+      return { message_id: 'channel-not-configured' };
+    }
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
