@@ -26,7 +26,7 @@ import { Resend } from 'resend';
 @Injectable()
 export class PaddleSdkService {
   private paddle: Paddle | null = null;
-  private readonly logger = new Logger(PaddleService.name);
+  private readonly logger = new Logger(PaddleSdkService.name);
 
   constructor(
     private readonly configService: ConfigService,
@@ -804,7 +804,7 @@ export class PaddleSdkService {
   private parsePaddleAmount(raw: unknown, currency: string): number {
     const minor = parseInt(String(raw ?? '0'), 10);
     if (Number.isNaN(minor)) return 0;
-    const divisor = PaddleService.ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase()) ? 1 : 100;
+    const divisor = PaddleSdkService.ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase()) ? 1 : 100;
     return Math.round((minor / divisor) * 100) / 100;
   }
 

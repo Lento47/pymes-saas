@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Logger, Param, Post, Query, RawBodyRequest, Req, Res, UseGuards, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { PaddleService } from './paddle.service';
+import { PaddleSdkService } from './paddle-sdk.service';
 import { BillingInvoiceService } from './billing-invoice.service';
 import { ChangePlanDto } from './dto/change-plan.dto';
 import { CreateCheckoutDto } from './dto/checkout.dto';
@@ -31,7 +31,7 @@ export class BillingController {
   private readonly logger = new Logger(BillingController.name);
 
   constructor(
-    private readonly paddleService: PaddleService,
+    private readonly paddleService: PaddleSdkService,
     private readonly billingInvoice: BillingInvoiceService,
     private readonly configService: ConfigService,
   ) {}
