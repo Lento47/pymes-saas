@@ -26,43 +26,62 @@ function timeAgo(date: string) { try { return formatDistanceToNowStrict(new Date
 
 // ── Clean revenue chart ──
 function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  const W = 400, H = 80;
+  const W = 400, H = 90, PAD = 20;
   const now = new Date();
-  const points = 30;
-  const monthName = now.toLocaleString("es-CR", { month: "short" });
   const today = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthName = now.toLocaleString("es-CR", { month: "short" });
+  const hasRevenue = monthlyRevenue > 0;
+  const maxY = hasRevenue ? monthlyRevenue : 1;
 
-  const ys = Array.from({ length: points }, (_, i) => {
-    const progress = (i + 1) / points;
-    const val = progress * (monthlyRevenue || 1);
-    const noise = Math.sin(i * 0.4) * (monthlyRevenue || 1) * 0.05;
-    return H - Math.max(5, Math.min(H - 3, ((val + noise) / (monthlyRevenue || 1)) * H * 0.7 + H * 0.2));
-  });
-  const xs = ys.map((_, i) => (i / (points - 1)) * W);
-  const activeIdx = hoverIdx ?? Math.min(today - 1, points - 1);
+  const todayX = PAD + ((today / daysInMonth) * (W - PAD * 2));
+  const lineY = hasRevenue ? H - PAD - ((monthlyRevenue / maxY) * (H - PAD * 2)) : H - PAD;
 
-  const pathD = `M ${xs[0]} ${ys[0]} ` + xs.slice(1).map((x, i) => `L ${x} ${ys[i + 1]}`).join(" ");
-  const areaD = pathD + ` L ${W} ${H} L 0 ${H} Z`;
+  const pathD = `M ${PAD} ${lineY} L ${todayX} ${lineY}`;
+  const areaD = `M ${PAD} ${H - PAD} L ${PAD} ${lineY} L ${todayX} ${lineY} L ${todayX} ${H - PAD} Z`;
+
+  const fmtVal = (v: number) => v >= 1000000 ? `₡${(v / 1000000).toFixed(1)}M`
+    : v >= 1000 ? `₡${(v / 1000).toFixed(1)}K`
+    : `₡${Math.round(v)}`;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-full"
-      onMouseMove={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setHoverIdx(Math.round(((e.clientX - rect.left) / rect.width) * (points - 1))); }}
-      onMouseLeave={() => setHoverIdx(null)}>
-      <defs><linearGradient id="rfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.15" /><stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.01" /></linearGradient></defs>
-      {monthlyRevenue === 0 ? (
-        <text x={W / 2} y={H / 2} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="11" opacity="0.5">Track your first invoice to see revenue here.</text>
-      ) : (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full">
+      <defs>
+        <linearGradient id="rfill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.15"/>
+          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.01"/>
+        </linearGradient>
+      </defs>
+
+      {/* X axis */}
+      <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="hsl(var(--border))" strokeWidth="0.5"/>
+      {/* Y axis */}
+      <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="hsl(var(--border))" strokeWidth="0.5"/>
+
+      {/* Day labels */}
+      <text x={PAD} y={H - 2} fill="hsl(var(--muted-foreground))" fontSize="8" opacity="0.5" textAnchor="middle">1</text>
+      <text x={W - PAD} y={H - 2} fill="hsl(var(--muted-foreground))" fontSize="8" opacity="0.5" textAnchor="middle">{daysInMonth}</text>
+
+      {hasRevenue ? (
         <>
-          <path d={areaD} fill="url(#rfill)" />
-          <path d={pathD} fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-          <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="3" fill="hsl(var(--primary))" />
-          {hoverIdx !== null && (
-            <text x={Math.min(W - 35, Math.max(35, xs[activeIdx]))} y={Math.max(14, ys[activeIdx] - 8)} textAnchor="middle" fill="hsl(var(--foreground))" fontSize="10" fontWeight="500">
-              {monthName} {Math.round((activeIdx / points) * 30) || 1}
-            </text>
-          )}
+          {/* Filled area + line */}
+          <path d={areaD} fill="url(#rfill)"/>
+          <path d={pathD} fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+          {/* Today dot */}
+          <circle cx={todayX} cy={lineY} r="3.5" fill="hsl(var(--primary))"/>
+          <circle cx={todayX} cy={lineY} r="7" fill="hsl(var(--primary))" opacity="0.12"/>
+          {/* Value label */}
+          <text x={todayX} y={lineY - 10} textAnchor="middle" fill="hsl(var(--foreground))" fontSize="10" fontWeight="600">
+            {fmtVal(monthlyRevenue)}
+          </text>
+          <text x={todayX} y={H - 2} fill="hsl(var(--primary))" fontSize="8" fontWeight="500" textAnchor="middle">
+            {monthName} {today}
+          </text>
         </>
+      ) : (
+        <text x={W / 2} y={H / 2} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="11" opacity="0.5">
+          Track your first invoice to see revenue here.
+        </text>
       )}
     </svg>
   );
@@ -85,6 +104,7 @@ export default function DashboardPage() {
 
   const { data: todayStats, isLoading: statsLoading } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
   const { data: workspaceStats } = useQuery({ queryKey: ["/api/workspaces/current/stats"], queryFn: api.getWorkspaceStats, refetchInterval: 60000 });
+  const { data: workspace } = useQuery({ queryKey: ["/api/workspaces/current"], queryFn: api.getWorkspace, staleTime: 60 * 1000 });
   const { data: conversations, isLoading: convsLoading } = useQuery({ queryKey: ["/api/conversations", "dash"], queryFn: () => api.getConversations({ limit: "10" }) });
   const { data: tasks, isLoading: tasksLoading } = useQuery({ queryKey: ["/api/tasks", "dash"], queryFn: () => api.getTasks({ limit: "10" }) });
   const { data: overdueInvoices, isLoading: invoicesLoading } = useQuery({ queryKey: ["/api/invoices", "overdue-widget"], queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }), refetchInterval: 60000 });
@@ -129,7 +149,7 @@ export default function DashboardPage() {
       {/* Quick Start Checklist */}
       <div className="px-4 sm:px-6 pt-3 sm:pt-4">
         <QuickStartChecklist
-          progress={workspaceStats?.settings?.quick_start_progress ?? {}}
+          progress={workspace?.settings?.quick_start_progress ?? {}}
           onDismiss={() => {}}
         />
       </div>
