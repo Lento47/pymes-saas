@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
-import { parseJsonValue, stringifyJson } from '../common/prisma/json';
+import { parseJsonValue } from '../common/prisma/json';
 import { ConfigureEmailDto } from './dto/configure-email.dto';
 import { ConfigureWhatsAppDto } from './dto/configure-whatsapp.dto';
 import { ConfigureTelegramDto } from './dto/configure-telegram.dto';
@@ -42,7 +42,7 @@ export class ChannelsService {
         name:         dto.name,
         provider:     dto.provider ?? dto.type.toLowerCase(),
         status:       'PENDING_SETUP',
-        config_json:  stringifyJson({}),
+        config_json:  {},
       },
     });
   }
@@ -135,7 +135,7 @@ export class ChannelsService {
       where: { id },
       data: {
         status:      'ACTIVE',
-        config_json: stringifyJson({
+        config_json: {
           api_key_encrypted,
           from_email: dto.from_email.trim().toLowerCase(),
           from_name: dto.from_name.trim(),
@@ -159,7 +159,7 @@ export class ChannelsService {
                   smtp_tls: existingConfig.smtp_tls ?? true,
                 }
               : {}),
-        }),
+        },
       },
     });
 
@@ -202,7 +202,7 @@ export class ChannelsService {
       where: { id },
       data: {
         status:      'ACTIVE',
-        config_json: stringifyJson(newConfig),
+        config_json: newConfig,
       },
     });
 
@@ -224,7 +224,7 @@ export class ChannelsService {
       where: { id },
       data: {
         status: 'ACTIVE',
-        config_json: stringifyJson({ ...existingConfig, bot_token_encrypted }),
+        config_json: { ...existingConfig, bot_token_encrypted },
       },
     });
 
