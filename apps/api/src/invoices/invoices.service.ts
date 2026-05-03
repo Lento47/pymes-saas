@@ -382,7 +382,7 @@ export class InvoicesService {
 
     // Notificar pago recibido
     const isPaid = result.newStatus === InvoiceStatus.PAID;
-    const admins = await this.prisma.workspaceMembership.findMany({
+    const admins = await this.prisma.workspaceUser.findMany({
       where: { workspace_id: workspaceId, role: { in: ['OWNER'] as any } },
       select: { user_id: true },
       take: 3,
