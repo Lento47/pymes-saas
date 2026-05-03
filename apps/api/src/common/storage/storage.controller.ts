@@ -1,0 +1,48 @@
+import { Controller, Get, Logger, Param, Res } from '@nestjs/common';
+import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const MIME_TYPES: Record<string, string> = {
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+  '.pdf': 'application/pdf', '.json': 'application/json', '.csv': 'text/csv',
+  '.txt': 'text/plain', '.html': 'text/html', '.css': 'text/css',
+  '.js': 'application/javascript', '.xml': 'application/xml',
+  '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.zip': 'application/zip', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg',
+};
+
+@Controller('storage/file')
+export class StorageController {
+  private readonly logger = new Logger(StorageController.name);
+  private readonly basePath: string;
+
+  constructor(private readonly config: ConfigService) {
+    this.basePath = this.config.get<string>('STORAGE_LOCAL_PATH') ?? path.join(process.cwd(), 'uploads');
+  }
+
+  @Get('*')
+  serveFile(@Param('0') key: string, @Res() res: Response) {
+    const filePath = path.join(this.basePath, key);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ statusCode: 404, message: 'Archivo no encontrado' });
+    }
+
+    const ext = path.extname(key).toLowerCase();
+    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
+    stream.on('error', (err) => {
+      this.logger.error(`Error streaming file ${key}:`, err);
+      if (!res.headersSent) {
+        res.status(500).json({ statusCode: 500, message: 'Error al servir el archivo' });
+      }
+    });
+  }
+}
