@@ -6,6 +6,7 @@ import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/telemetry/api-exception.filter';
 import { PrismaExceptionFilter } from './common/prisma/prisma-exception.filter';
 import { ErrorReportsService } from './error-reports/error-reports.service';
+import { PrismaService } from './common/prisma/prisma.service';
 
 process.on('uncaughtException', (err) => {
   console.error('🔥 UNCAUGHT EXCEPTION — process will exit', err);
@@ -75,7 +76,7 @@ async function bootstrap() {
     maxAge: 3600,
   });
 
-  app.useGlobalFilters(new ApiExceptionFilter(app.get(ErrorReportsService)));
+  app.useGlobalFilters(new ApiExceptionFilter(app.get(ErrorReportsService), app.get(PrismaService)));
   app.useGlobalFilters(new PrismaExceptionFilter());
   const port = process.env.PORT ?? 4000;
   const host = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';

@@ -13,7 +13,7 @@ import { DemoModule } from '../demo/demo.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN ?? '15m') as any },
+      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN ?? '30m') as any },
     }),
     DemoModule,
   ],

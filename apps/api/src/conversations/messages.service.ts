@@ -115,18 +115,44 @@ export class MessagesService {
     const senderName = payload.name ?? payload.sender_name ?? senderRef;
     const bodyText = payload.text ?? payload.body ?? payload.content ?? '';
     const subject = payload.subject ?? null;
+    const isEmail = senderRef.includes('@');
+    const normalizedPhone = !isEmail ? senderRef.replace(/\D/g, '') : null;
 
+    // ── Find or create contact (normalize phone to prevent duplicates) ─────────
+    let contact = null;
+    if (isEmail) {
+      contact = await this.prisma.contact.findFirst({
+        where: { workspace_id: workspaceId, email: senderRef },
+      });
+    } else if (normalizedPhone) {
+      const contactRows = await (this.prisma as any).$queryRawUnsafe(
+        `SELECT * FROM "contacts"
+         WHERE workspace_id = $1::uuid
+           AND (phone = $2 OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = $3)
+         LIMIT 1`,
+        workspaceId, senderRef, normalizedPhone,
+      );
+      if (contactRows.length > 0) contact = contactRows[0];
+    }
+
+    if (!contact) {
+      contact = await this.prisma.contact.create({
+        data: {
+          workspace_id: workspaceId,
+          type: 'LEAD',
+          full_name: senderName,
+          email: isEmail ? senderRef : undefined,
+          phone: !isEmail ? senderRef : undefined,
+        },
+      });
+    }
+
+    // ── Find or reuse conversation for this contact+channel ────────────────────
     let conversation = await this.prisma.conversation.findFirst({
       where: {
         workspace_id: workspaceId,
+        contact_id: contact.id,
         channel_id: channel.id,
-        status: { in: ['NEW', 'OPEN', 'PENDING'] },
-        contact: {
-          OR: [
-            { email: senderRef },
-            { phone: senderRef },
-          ],
-        },
       },
       orderBy: { last_message_at: 'desc' },
       select: {
@@ -136,45 +162,17 @@ export class MessagesService {
       },
     });
 
-    if (!conversation) {
-      let contact = await this.prisma.contact.findFirst({
-        where: {
-          workspace_id: workspaceId,
-          OR: [{ email: senderRef }, { phone: senderRef }],
-        },
-      });
-
-      if (!contact) {
-        contact = await this.prisma.contact.create({
-          data: {
-            workspace_id: workspaceId,
-            type: 'LEAD',
-            full_name: senderName,
-            email: senderRef.includes('@') ? senderRef : undefined,
-            phone: !senderRef.includes('@') ? senderRef : undefined,
-          },
-        });
-      }
-
-      // Dedup — check for any existing conversation with this contact+channel
-      // (race condition: two inbound messages arrive simultaneously)
-      const existingConv = await this.prisma.conversation.findFirst({
-        where: {
-          workspace_id: workspaceId,
-          contact_id: contact.id,
-          channel_id: channel.id,
-        },
-        orderBy: { created_at: 'desc' },
-      });
-
-      if (existingConv) {
-        conversation = existingConv;
+    if (conversation) {
+      // If the conversation was previously resolved, reopen it
+      if (!['NEW', 'OPEN', 'PENDING'].includes(conversation.status)) {
         await this.prisma.conversation.update({
-          where: { id: existingConv.id },
+          where: { id: conversation.id },
           data: { status: 'NEW', updated_at: new Date() },
         });
-      } else {
-        conversation = await this.prisma.conversation.create({
+        conversation.status = 'NEW';
+      }
+    } else {
+      conversation = await this.prisma.conversation.create({
         data: {
           workspace_id: workspaceId,
           channel_id: channel.id,
@@ -189,7 +187,6 @@ export class MessagesService {
           workspace_id: true, channel_id: true, status: true,
         },
       });
-      }
     }
 
     const message = await this.prisma.message.create({
