@@ -342,6 +342,7 @@ model RefreshToken {
 
   @@index([token_hash])
   @@index([user_id, workspace_id])
+  @@index([workspace_id])
   @@index([expires_at])
   @@index([family, revoked_at])
   @@map("refresh_tokens")
@@ -563,6 +564,8 @@ model Message {
   @@index([conversation_id])
   @@index([workspace_id, direction])
   @@index([sent_at(sort: Desc)])
+  @@index([conversation_id, sent_at(sort: Desc)])
+  @@index([conversation_id, workspace_id, sent_at])
   @@map("messages")
 }
 
