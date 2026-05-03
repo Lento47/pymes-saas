@@ -127,7 +127,7 @@ export class MessagesService {
     } else if (normalizedPhone) {
       const contactRows = await (this.prisma as any).$queryRawUnsafe(
         `SELECT * FROM "contacts"
-         WHERE workspace_id = $1::uuid
+         WHERE workspace_id = $1
            AND (phone = $2 OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = $3)
          LIMIT 1`,
         workspaceId, senderRef, normalizedPhone,
