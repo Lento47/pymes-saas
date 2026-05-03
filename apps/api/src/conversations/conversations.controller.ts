@@ -188,6 +188,7 @@ export class ConversationsController {
     if (conv?.channel?.type === 'WHATSAPP' && (conv.contact as any)?.phone) {
       try {
         const to = ((conv.contact as any).phone as string).replace(/\D/g, '');
+        this.logger.log(`[DIAG] WhatsApp dispatch: conv=${conversationId}, channel=${conv.channel.id}, phone=${to}`);
         if (template?.external_template_id) {
           await this.whatsAppService.sendTemplateMessage(
             conv.channel,

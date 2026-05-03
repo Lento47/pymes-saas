@@ -174,25 +174,39 @@ export class ChannelsService {
     if (!channel) throw new NotFoundException('Canal no encontrado.');
     if (channel.type !== 'WHATSAPP') throw new BadRequestException('El canal no es de tipo WHATSAPP.');
 
+    this.logger.log(`[DIAG] configureWhatsApp: channel=${id}, tokenProvided=${!!dto.access_token}, tokenLen=${dto.access_token?.length || 0}, phoneId=${dto.phone_number_id}`);
+
     // Keep existing encrypted token if no new one is provided
     const existingConfigWA = parseJsonValue<Record<string, any>>(channel.config_json, {});
-    const access_token_encrypted = dto.access_token
-      ? this.crypto.encrypt(dto.access_token)
-      : existingConfigWA.access_token_encrypted;
+    let access_token_encrypted: string | undefined;
+    if (dto.access_token) {
+      try {
+        access_token_encrypted = this.crypto.encrypt(dto.access_token);
+        this.logger.log(`[DIAG] configureWhatsApp: encrypt OK, encryptedLen=${access_token_encrypted.length}`);
+      } catch (err: any) {
+        this.logger.error(`[DIAG] configureWhatsApp: encrypt FAILED — ${err?.message}`);
+        throw new BadRequestException('Error al guardar el token. Verificá que ENCRYPTION_KEY esté configurada en el servidor.');
+      }
+    } else {
+      access_token_encrypted = existingConfigWA.access_token_encrypted;
+      this.logger.log(`[DIAG] configureWhatsApp: no new token, keeping existing (hasToken=${!!access_token_encrypted})`);
+    }
+
+    const newConfig = {
+      access_token_encrypted,
+      phone_number_id: dto.phone_number_id,
+      waba_id: dto.waba_id,
+    };
 
     const updated = await this.prisma.channel.update({
       where: { id },
       data: {
         status:      'ACTIVE',
-        config_json: stringifyJson({
-          access_token_encrypted,
-          phone_number_id: dto.phone_number_id,
-          waba_id: dto.waba_id,
-        }),
+        config_json: stringifyJson(newConfig),
       },
     });
 
-    this.logger.log(`WHATSAPP canal ${id} configurado para workspace ${workspaceId}`);
+    this.logger.log(`[DIAG] configureWhatsApp: DB updated, configKeys=${Object.keys(newConfig).filter(k => newConfig[k as keyof typeof newConfig] != null).join(',')}`);
     return this.sanitise(updated);
   }
 
