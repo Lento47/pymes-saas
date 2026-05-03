@@ -585,7 +585,10 @@ export default function ConversationPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="border border-border rounded-xl bg-card overflow-hidden">
+          <form
+            className="border border-border rounded-xl bg-card overflow-hidden"
+            onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+          >
             <Textarea
               placeholder="Escribe un mensaje..."
               value={message}
@@ -614,7 +617,7 @@ export default function ConversationPage() {
                 Enviar
               </Button>
             </div>
-          </div>
+          </form>
         </div>
 
         <div
