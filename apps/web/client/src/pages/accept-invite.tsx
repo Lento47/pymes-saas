@@ -21,7 +21,11 @@ type InvitePreview = {
 };
 
 function parseTokenFromUrl() {
-  return new URLSearchParams(window.location.search).get("token") ?? "";
+  const search = new URLSearchParams(window.location.search).get("token");
+  if (search) return search;
+  const hash = window.location.hash;
+  const qi = hash.indexOf("?");
+  return qi >= 0 ? (new URLSearchParams(hash.slice(qi + 1)).get("token") ?? "") : "";
 }
 
 function parseCodeFromUrl() {
