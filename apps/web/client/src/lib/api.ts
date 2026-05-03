@@ -38,6 +38,7 @@ export function setAuthState(token: string, slug: string, refreshToken?: string)
     const s = getStorage();
     s.removeItem('pymes_last_slug');
     s.setItem('pymes_slug', slug);
+    s.setItem('pymes_token', token);
     if (refreshToken) s.setItem('pymes_refresh', refreshToken);
   } catch { /* ignore */ }
 }
@@ -51,12 +52,19 @@ export function clearAuthState() {
     const s = getStorage();
     if (slug) s.setItem('pymes_last_slug', slug);
     s.removeItem('pymes_slug');
+    s.removeItem('pymes_token');
     s.removeItem('pymes_refresh');
     s.removeItem('pymes_last_activity');
   } catch { /* ignore */ }
 }
 
-export function getAuthToken() { return _token; }
+export function getAuthToken() {
+  if (_token) return _token;
+  try {
+    _token = getStorage().getItem('pymes_token');
+    return _token;
+  } catch { return null; }
+}
 export function getWorkspaceSlug() {
   if (_workspaceSlug) return _workspaceSlug;
   try { return getStorage().getItem('pymes_slug') || null; } catch { return null; }
@@ -97,6 +105,7 @@ async function _tryRefresh(): Promise<boolean> {
       if (!res.ok) return false;
       const data = await res.json();
       _token = data.access_token;
+      try { getStorage().setItem('pymes_token', data.access_token); } catch { /* ignore */ }
       if (data.refresh_token) {
         _refreshToken = data.refresh_token;
         try { getStorage().setItem('pymes_refresh', data.refresh_token); } catch { /* ignore */ }
