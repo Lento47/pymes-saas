@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useInboxSocket } from "@/hooks/use-inbox-socket";
@@ -18,6 +19,7 @@ type MobileView = "list" | "thread" | "context";
 export default function InboxPage() {
   useRequireAuth();
   useInboxSocket();
+  const [, navigate] = useLocation();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ConversationStatusFilter>("ALL");
@@ -46,8 +48,7 @@ export default function InboxPage() {
   const selectedConversation = conversations.find((c) => c.id === selectedConversationId) ?? null;
 
   const handleSelectConversation = (id: string) => {
-    setSelectedConversationId(id);
-    setMobileView("thread");
+    navigate(`/inbox/${id}`);
   };
 
   return (
