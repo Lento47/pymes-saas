@@ -723,8 +723,12 @@ export class InvoicesService {
 
   private parseAmount(value: any): number {
     if (value === null || value === undefined) return 0;
-    if (typeof value === 'object' && typeof value.toNumber === 'function') return value.toNumber();
-    return Number(value) || 0;
+    if (typeof value === 'object' && typeof value.toNumber === 'function') {
+      const n = value.toNumber();
+      return isNaN(n) ? 0 : n;
+    }
+    const n = Number(value);
+    return isNaN(n) ? 0 : n;
   }
 
   private getAmountPaid(invoice: any) {
