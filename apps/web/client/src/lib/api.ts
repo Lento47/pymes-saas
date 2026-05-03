@@ -101,6 +101,17 @@ async function _tryRefresh(): Promise<boolean> {
         _refreshToken = data.refresh_token;
         try { getStorage().setItem('pymes_refresh', data.refresh_token); } catch { /* ignore */ }
       }
+      // Reconnect WebSocket with new token after refresh
+      try {
+        const { getSocket, connectSocket } = await import('../hooks/use-socket');
+        const sock = getSocket();
+        if (sock?.connected) {
+          sock.auth = { token: data.access_token };
+          sock.disconnect().connect();
+        } else if (!sock) {
+          connectSocket();
+        }
+      } catch { /* non-critical */ }
       return true;
     } catch {
       return false;
