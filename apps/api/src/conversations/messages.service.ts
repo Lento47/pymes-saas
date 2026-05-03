@@ -156,7 +156,25 @@ export class MessagesService {
         });
       }
 
-      conversation = await this.prisma.conversation.create({
+      // Dedup — check for any existing conversation with this contact+channel
+      // (race condition: two inbound messages arrive simultaneously)
+      const existingConv = await this.prisma.conversation.findFirst({
+        where: {
+          workspace_id: workspaceId,
+          contact_id: contact.id,
+          channel_id: channel.id,
+        },
+        orderBy: { created_at: 'desc' },
+      });
+
+      if (existingConv) {
+        conversation = existingConv;
+        await this.prisma.conversation.update({
+          where: { id: existingConv.id },
+          data: { status: 'NEW', updated_at: new Date() },
+        });
+      } else {
+        conversation = await this.prisma.conversation.create({
         data: {
           workspace_id: workspaceId,
           channel_id: channel.id,
@@ -171,6 +189,7 @@ export class MessagesService {
           workspace_id: true, channel_id: true, status: true,
         },
       });
+      }
     }
 
     const message = await this.prisma.message.create({
