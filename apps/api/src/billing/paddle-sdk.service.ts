@@ -24,7 +24,7 @@ import { Resend } from 'resend';
 // PROD. SOLO SE TOCAN LAS ENV VARS.
 // ───────────────────────────────────────────────────────────────────────────
 @Injectable()
-export class PaddleService {
+export class PaddleSdkService {
   private paddle: Paddle | null = null;
   private readonly logger = new Logger(PaddleService.name);
 

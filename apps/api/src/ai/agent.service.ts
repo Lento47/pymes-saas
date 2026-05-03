@@ -117,7 +117,7 @@ export class AgentService {
       tool({
         name: 'move_deal', description: 'Move a deal to a different pipeline stage',
         parameters: z.object({ id: z.string(), stage_id: z.string() }),
-        execute: async ({ id, stage_id }) => ({ deal: await prisma.deal.update({ where: { id }, data: { stage_id } }) }),
+        execute: async ({ id, stage_id }) => ({ deal: await prisma.deal.update({ where: { id, workspace_id: workspaceId }, data: { stage_id } }) }),
       }),
 
       // ── Documents ──

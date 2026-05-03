@@ -286,9 +286,9 @@ export class AgentToolsService {
     if (args.status !== undefined) data.status = args.status;
     if (args.priority !== undefined) data.priority = args.priority;
     if (args.due_date !== undefined) data.due_at = new Date(args.due_date);
-    if (args.assignee_id !== undefined) data.assignee_id = args.assignee_id;
+    if (args.assignee_id !== undefined) data.assigned_user_id = args.assignee_id;
     const task = await this.prisma.task.update({
-      where: { id: args.id },
+      where: { id: args.id, workspace_id: workspaceId },
       data,
     });
     return { task };
@@ -312,7 +312,7 @@ export class AgentToolsService {
   private async moveDeal(workspaceId: string, args: Record<string, any>) {
     if (!args.id || !args.stage_id) throw new BadRequestException('move_deal requires "id" and "stage_id"');
     const deal = await this.prisma.deal.update({
-      where: { id: args.id },
+      where: { id: args.id, workspace_id: workspaceId },
       data: { stage_id: args.stage_id },
     });
     return { deal };
