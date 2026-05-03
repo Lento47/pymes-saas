@@ -86,9 +86,13 @@ export class ChannelsService {
       });
     }
 
-    await this.prisma.channel.delete({ where: { id } });
-    this.logger.log(`Channel ${id} (${channel?.type}) deleted from workspace ${workspaceId}`);
-    return { message: 'Canal eliminado.' };
+    // Soft-delete: mark as INACTIVE to preserve FK integrity with conversations
+    await this.prisma.channel.update({
+      where: { id },
+      data: { status: 'INACTIVE' },
+    });
+    this.logger.log(`Channel ${id} (${channel?.type}) deactivated from workspace ${workspaceId}`);
+    return { message: 'Canal desactivado.' };
   }
 
   async connect(workspaceId: string, id: string) {
