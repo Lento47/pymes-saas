@@ -16,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useRoute, useLocation, Link } from "wouter";
+import { useRoute, useParams, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
 import { ArrowLeft, Coins, ExternalLink, CheckCircle2, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, Info } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
@@ -60,8 +60,8 @@ export default function ConversationPage() {
   useRequireAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [, params] = useRoute("/inbox/:id");
-  const id = params?.id || "";
+  const { id: rawId } = useParams<{ id: string }>();
+  const id = rawId || "";
   const [message, setMessage] = useState("");
   const [showDelete, setShowDelete] = useState(false);
   const [showContactDialog, setShowContactDialog] = useState(false);
@@ -104,10 +104,11 @@ export default function ConversationPage() {
   });
 
   const { data: messages, isLoading: msgsLoading, refetch: refetchMessages } = useQuery({
-    queryKey: ["/api/conversations", id, "messages"],
+    queryKey: ["conversation-messages", id],
     queryFn: () => api.getMessages(id),
     enabled: !!id,
     refetchInterval: 3000,
+    staleTime: 0,
   });
 
   const { data: members } = useQuery({
@@ -130,7 +131,7 @@ export default function ConversationPage() {
   const sendMutation = useMutation({
     mutationFn: (data: any) => api.sendMessage(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["conversation-messages", id] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setMessage("");
     },
@@ -314,7 +315,7 @@ export default function ConversationPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices", "conversation", id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["conversation-messages", id] });
       toast({ title: "Factura enviada desde este chat" });
     },
     onError: (err: any) => {
