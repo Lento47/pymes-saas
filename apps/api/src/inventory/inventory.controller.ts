@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { WorkspaceUserRole } from '@prisma/client';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -37,7 +38,7 @@ export class InventoryController {
   }
 
   @Get('products/:id')
-  getProduct(@CurrentUser('workspace_id') workspaceId: string, @Param('id') id: string) {
+  getProduct(@CurrentUser('workspace_id') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string) {
     return this.inventory.getProduct(workspaceId, id);
   }
 
@@ -51,7 +52,7 @@ export class InventoryController {
   @Roles(WorkspaceUserRole.ADMIN)
   updateProduct(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateProductDto,
   ) {
     return this.inventory.updateProduct(workspaceId, id, dto);
@@ -59,7 +60,7 @@ export class InventoryController {
 
   @Delete('products/:id')
   @Roles(WorkspaceUserRole.ADMIN)
-  archiveProduct(@CurrentUser('workspace_id') workspaceId: string, @Param('id') id: string) {
+  archiveProduct(@CurrentUser('workspace_id') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string) {
     return this.inventory.archiveProduct(workspaceId, id);
   }
 
@@ -68,7 +69,7 @@ export class InventoryController {
   adjustStock(
     @CurrentUser('workspace_id') workspaceId: string,
     @CurrentUser('id') userId: string,
-    @Param('id') productId: string,
+    @Param('id', ValidateUUIDPipe) productId: string,
     @Body() body: { quantity: number; reason?: string },
   ) {
     return this.inventory.adjustStock(workspaceId, productId, userId, body.quantity, body.reason || '');
@@ -99,7 +100,7 @@ export class InventoryController {
   @Roles(WorkspaceUserRole.ADMIN)
   updateCategory(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() body: { name?: string; description?: string; color?: string },
   ) {
     return this.inventory.updateCategory(workspaceId, id, body);
@@ -107,7 +108,7 @@ export class InventoryController {
 
   @Delete('categories/:id')
   @Roles(WorkspaceUserRole.ADMIN)
-  deleteCategory(@CurrentUser('workspace_id') workspaceId: string, @Param('id') id: string) {
+  deleteCategory(@CurrentUser('workspace_id') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string) {
     return this.inventory.deleteCategory(workspaceId, id);
   }
 }

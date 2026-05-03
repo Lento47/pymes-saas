@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -48,7 +49,7 @@ export class UsersController {
   @Get(':id')
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
   }
@@ -57,7 +58,7 @@ export class UsersController {
   @Patch(':id')
   updateById(
     @CurrentUser() user: AuthUser,
-    @Param('id') targetId: string,
+    @Param('id', ValidateUUIDPipe) targetId: string,
     @Body() dto: UpdateUserDto,
   ) {
     return this.service.updateById(user.workspace_id, user, targetId, dto);
@@ -79,7 +80,7 @@ export class UsersController {
 
   /** GET /users/:id/avatar — mostrar foto de perfil */
   @Get(':id/avatar')
-  async getAvatar(@Param('id') id: string, @Res() res: Response) {
+  async getAvatar(@Param('id', ValidateUUIDPipe) id: string, @Res() res: Response) {
     const { data, contentType } = await this.service.getAvatar(id);
     res.set({ 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400' });
     res.send(data);

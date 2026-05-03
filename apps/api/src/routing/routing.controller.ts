@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { WorkspaceUserRole } from '@prisma/client';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -75,7 +76,7 @@ export class RoutingController {
   @Roles(WorkspaceUserRole.ADMIN)
   async update(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateRoutingRuleDto,
   ) {
     const rule = await this.prisma.routingRule.findFirst({
@@ -106,7 +107,7 @@ export class RoutingController {
   @Roles(WorkspaceUserRole.ADMIN)
   async remove(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
   ) {
     const rule = await this.prisma.routingRule.findFirst({
       where: { id, workspace_id: workspaceId },

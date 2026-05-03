@@ -26,8 +26,11 @@ export class StorageController {
 
   @Get('*')
   serveFile(@Param('0') key: string, @Res() res: Response) {
-    const filePath = path.join(this.basePath, key);
-    if (!fs.existsSync(filePath)) {
+    const resolved = path.resolve(this.basePath, key);
+    if (!resolved.startsWith(path.resolve(this.basePath) + path.sep) && resolved !== path.resolve(this.basePath)) {
+      return res.status(403).json({ statusCode: 403, message: 'Acceso denegado' });
+    }
+    if (!fs.existsSync(resolved)) {
       return res.status(404).json({ statusCode: 404, message: 'Archivo no encontrado' });
     }
 
@@ -36,7 +39,7 @@ export class StorageController {
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    const stream = fs.createReadStream(filePath);
+    const stream = fs.createReadStream(resolved);
     stream.pipe(res);
     stream.on('error', (err) => {
       this.logger.error(`Error streaming file ${key}:`, err);
