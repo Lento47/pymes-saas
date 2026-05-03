@@ -16,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useRoute, useParams, useLocation, Link } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
 import { ArrowLeft, Coins, ExternalLink, CheckCircle2, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, Info } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
@@ -60,8 +60,10 @@ export default function ConversationPage() {
   useRequireAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { id: rawId } = useParams<{ id: string }>();
-  const id = rawId || "";
+  const [, params] = useRoute("/inbox/:id");
+  const id = params?.id || "";
+  const idRef = useRef(id);
+  idRef.current = id;
   const [message, setMessage] = useState("");
   const [showDelete, setShowDelete] = useState(false);
   const [showContactDialog, setShowContactDialog] = useState(false);
@@ -129,7 +131,7 @@ export default function ConversationPage() {
   });
 
   const sendMutation = useMutation({
-    mutationFn: (data: any) => api.sendMessage(id, data),
+    mutationFn: (data: any) => api.sendMessage(idRef.current, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversation-messages", id] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
