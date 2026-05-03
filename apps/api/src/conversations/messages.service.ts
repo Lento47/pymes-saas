@@ -39,7 +39,7 @@ export class MessagesService {
         where: { conversation_id: conversationId, workspace_id: workspaceId },
         skip,
         take: limit,
-        orderBy: { sent_at: 'desc' },
+        orderBy: { sent_at: 'asc' },
         include: {
           sender_user: { select: { id: true, name: true, avatar_url: true } },
         },
@@ -49,8 +49,10 @@ export class MessagesService {
       }),
     ]);
 
+    this.logger.log(`findAll messages: conv=${conversationId}, count=${total}, returned=${data.length}`);
+
     return {
-      data: data.reverse(),
+      data,
       meta: { total, page, limit, pages: Math.ceil(total / limit) },
     };
   }
