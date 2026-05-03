@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { api } from "@/lib/api";
@@ -7,14 +7,12 @@ import { useInboxSocket } from "@/hooks/use-inbox-socket";
 import { InboxHeader } from "./components/InboxHeader";
 import { InboxToolbar } from "./components/InboxToolbar";
 import { ConversationList } from "./components/ConversationList";
-import { ConversationThreadPanel } from "./components/ConversationThreadPanel";
 import { CustomerContextPanel } from "./components/CustomerContextPanel";
 import { buildConversationQueryParams, normalizeConversationResponse } from "./utils";
 import type { ChannelTab, ConversationStatusFilter } from "./types";
 import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import { HelpButton } from "@/components/shared/help-button";
-
-type MobileView = "list" | "thread" | "context";
+import { InboxIcon } from "lucide-react";
 
 export default function InboxPage() {
   useRequireAuth();
@@ -24,8 +22,7 @@ export default function InboxPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ConversationStatusFilter>("ALL");
   const [channelTab, setChannelTab] = useState<ChannelTab>("ALL");
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  const [mobileView, setMobileView] = useState<MobileView>("list");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const params = buildConversationQueryParams({ search, statusFilter, channelTab });
 
@@ -35,32 +32,21 @@ export default function InboxPage() {
   });
 
   const conversations = normalizeConversationResponse(conversationsQuery.data);
-
-  useEffect(() => {
-    if (!selectedConversationId && conversations.length > 0) {
-      setSelectedConversationId(conversations[0].id);
-    }
-    if (selectedConversationId && !conversations.find((c) => c.id === selectedConversationId)) {
-      setSelectedConversationId(conversations[0]?.id ?? null);
-    }
-  }, [conversations, selectedConversationId]);
-
-  const selectedConversation = conversations.find((c) => c.id === selectedConversationId) ?? null;
+  const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
 
   const handleSelectConversation = (id: string) => {
+    setSelectedId(id);
     navigate(`/inbox/${id}`);
   };
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Header: title + subtitle */}
       <InboxHeader />
 
       <div className="px-6 pb-2">
         <DiagnosticButton module="inbox" />
       </div>
 
-      {/* Toolbar: search + filters + new button */}
       <InboxToolbar
         search={search}
         onSearchChange={setSearch}
@@ -75,11 +61,16 @@ export default function InboxPage() {
         <ConversationList
           conversations={conversations}
           isLoading={conversationsQuery.isLoading}
-          selectedId={selectedConversationId}
+          selectedId={selectedId}
           onSelect={handleSelectConversation}
           channelTab={channelTab}
         />
-        <ConversationThreadPanel conversationId={selectedConversationId} conversation={selectedConversation} />
+        <section className="flex items-center justify-center bg-card">
+          <div className="text-center px-8 max-w-[280px]">
+            <InboxIcon className="mx-auto h-10 w-10 text-muted-foreground/25" />
+            <p className="mt-3 text-sm text-muted-foreground/60">Seleccioná una conversación para ver los mensajes</p>
+          </div>
+        </section>
         <CustomerContextPanel conversation={selectedConversation} />
       </div>
 
@@ -88,27 +79,27 @@ export default function InboxPage() {
         <ConversationList
           conversations={conversations}
           isLoading={conversationsQuery.isLoading}
-          selectedId={selectedConversationId}
+          selectedId={selectedId}
           onSelect={handleSelectConversation}
           channelTab={channelTab}
         />
-        <ConversationThreadPanel conversationId={selectedConversationId} conversation={selectedConversation} />
+        <section className="flex items-center justify-center bg-card">
+          <div className="text-center px-8 max-w-[280px]">
+            <InboxIcon className="mx-auto h-10 w-10 text-muted-foreground/25" />
+            <p className="mt-3 text-sm text-muted-foreground/60">Seleccioná una conversación para ver los mensajes</p>
+          </div>
+        </section>
       </div>
 
       {/* Mobile: single column */}
       <div className="md:hidden flex-1 min-h-0">
-        {mobileView === "list" && (
-          <ConversationList
-            conversations={conversations}
-            isLoading={conversationsQuery.isLoading}
-            selectedId={selectedConversationId}
-            onSelect={handleSelectConversation}
-            channelTab={channelTab}
-          />
-        )}
-        {mobileView === "thread" && (
-          <ConversationThreadPanel conversationId={selectedConversationId} conversation={selectedConversation} />
-        )}
+        <ConversationList
+          conversations={conversations}
+          isLoading={conversationsQuery.isLoading}
+          selectedId={selectedId}
+          onSelect={handleSelectConversation}
+          channelTab={channelTab}
+        />
       </div>
       <HelpButton page="Bandeja" />
     </div>
