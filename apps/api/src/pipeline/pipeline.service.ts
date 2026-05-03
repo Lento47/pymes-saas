@@ -92,8 +92,8 @@ export class PipelineService {
       data: {
         workspace_id: workspaceId,
         stage_id: dto.stage_id,
-        contact_id: dto.contact_id ?? null,
-        assigned_user_id: dto.assigned_user_id ?? null,
+        contact_id: dto.contact_id || null,
+        assigned_user_id: dto.assigned_user_id || null,
         title: dto.title,
         value: dto.value ?? null,
         currency: dto.currency ?? 'CRC',

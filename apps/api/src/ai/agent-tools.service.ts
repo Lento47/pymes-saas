@@ -144,9 +144,9 @@ export class AgentToolsService {
   }
 
   private async listAutomations(workspaceId: string) {
-    const automations = await this.prisma.automation.findMany({
+    const automations = await this.prisma.automationRule.findMany({
       where: { workspace_id: workspaceId },
-      select: { id: true, name: true, enabled: true, trigger_type: true, action_type: true },
+      select: { id: true, name: true, enabled: true, trigger_type: true },
       take: 50,
     });
     return { automations };
@@ -250,7 +250,7 @@ export class AgentToolsService {
     if (!args.name || !args.trigger_type) {
       throw new BadRequestException('create_automation requires "name" and "trigger_type"');
     }
-    const auto = await this.prisma.automation.create({
+    const auto = await this.prisma.automationRule.create({
       data: {
         workspace_id: workspaceId,
         name: args.name,
@@ -267,11 +267,11 @@ export class AgentToolsService {
 
   private async toggleAutomation(workspaceId: string, args: Record<string, any>) {
     if (!args.id) throw new BadRequestException('toggle_automation requires "id"');
-    const existing = await this.prisma.automation.findFirst({
+    const existing = await this.prisma.automationRule.findFirst({
       where: { id: args.id, workspace_id: workspaceId },
     });
     if (!existing) throw new BadRequestException(`Automation "${args.id}" not found`);
-    const updated = await this.prisma.automation.update({
+    const updated = await this.prisma.automationRule.update({
       where: { id: args.id },
       data: { enabled: args.enabled !== undefined ? args.enabled : !existing.enabled },
     });

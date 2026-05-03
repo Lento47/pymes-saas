@@ -279,7 +279,7 @@ export class McpController {
         return { conversations };
       }
       case 'list_automations': {
-        const automations = await this.prisma.automation.findMany({ where: { workspace_id: workspaceId }, select: { id: true, name: true, enabled: true, trigger_type: true, action_type: true }, take: 50 });
+        const automations = await this.prisma.automationRule.findMany({ where: { workspace_id: workspaceId }, select: { id: true, name: true, enabled: true, trigger_type: true }, take: 50 });
         return { automations };
       }
       case 'get_billing': {

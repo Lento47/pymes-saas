@@ -67,7 +67,7 @@ export class HaciendaProcessor {
               });
 
               if (invoice) {
-                const admins = await this.prisma.workspaceMembership.findMany({
+                const admins = await this.prisma.workspaceUser.findMany({
                   where: {
                     workspace_id: ws.workspace_id,
                     role: { in: ['OWNER', 'ADMIN'] as any },
