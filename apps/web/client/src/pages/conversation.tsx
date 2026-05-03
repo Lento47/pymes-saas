@@ -61,7 +61,9 @@ export default function ConversationPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/inbox/:id");
-  const id = params?.id || "";
+  const pathId = params?.id || "";
+  const locationId = typeof window !== "undefined" ? window.location.pathname.split("/inbox/")[1]?.split("/")[0] || "" : "";
+  const id = pathId || locationId || "";
   const idRef = useRef(id);
   idRef.current = id;
   const [message, setMessage] = useState("");
