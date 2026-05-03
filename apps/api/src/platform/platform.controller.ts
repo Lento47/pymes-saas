@@ -115,4 +115,14 @@ export class PlatformController {
   async deleteWorkspace(@Param('slug') slug: string) {
     return this.service.deleteWorkspace(slug);
   }
+
+  @Get('stats')
+  getStats() {
+    return this.service.getStats();
+  }
+
+  @Get('workspaces/:slug')
+  getWorkspaceBySlug(@Param('slug') slug: string) {
+    return this.service.getWorkspaceBySlug(slug);
+  }
 }
