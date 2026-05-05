@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useRequireAuth } from "@/hooks/use-auth";
+import { useAuth, useRequireAuth } from "@/hooks/use-auth";
 import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink, ChevronDown, ChevronUp, Building2, UserCircle, LayoutList, Map } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PlaygroundBoard } from "@/components/playground/PlaygroundBoard";
 
 const RISK_ICONS: Record<string, any> = {
@@ -38,10 +38,23 @@ function parseEvidence(evidence: any): { workspace?: any; user?: any } {
 
 export default function SupportPage() {
   useRequireAuth();
+  const { user } = useAuth();
+  // ADMIN/platform-admin keep the workspace-wide view, the playground board
+  // and the status-change actions. Other roles only see "Mis tickets" — the
+  // backend filters by user_id automatically.
+  const isAdmin = user?.role === "ADMIN" || user?.is_platform_admin === true;
   const [view, setView] = useState<"list" | "playground">("list");
   const [filter, setFilter] = useState("OPEN");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  // Deep-link from API-error toasts: ApiError appends "Ticket #abc abierto"
+  // and a future link can navigate to /support?case=<id> to expand it.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const caseId = url.searchParams.get("case");
+    if (caseId) setExpandedId(caseId);
+  }, []);
 
   const { data: cases, isLoading } = useQuery({
     queryKey: ["diagnostic-cases"],
@@ -65,36 +78,40 @@ export default function SupportPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-semibold text-foreground">Soporte</h1>
+            <h1 className="text-xl font-semibold text-foreground">
+              {isAdmin ? "Soporte" : "Mis tickets"}
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {view === "playground" ? "Flujo visual de agentes y casos" :
                openCount > 0 ? `${openCount} caso${openCount > 1 ? "s" : ""} pendiente${openCount > 1 ? "s" : ""}` :
                "Sin casos pendientes"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
-              <button
-                onClick={() => setView("list")}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  view === "list" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <LayoutList className="w-3.5 h-3.5" /> Lista
-              </button>
-              <button
-                onClick={() => setView("playground")}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  view === "playground" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Map className="w-3.5 h-3.5" /> Playground
-              </button>
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
+                <button
+                  onClick={() => setView("list")}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    view === "list" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <LayoutList className="w-3.5 h-3.5" /> Lista
+                </button>
+                <button
+                  onClick={() => setView("playground")}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    view === "playground" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Map className="w-3.5 h-3.5" /> Playground
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {view === "playground" && <PlaygroundBoard />}
+        {isAdmin && view === "playground" && <PlaygroundBoard />}
 
         {view !== "playground" && (
           <>
@@ -130,7 +147,7 @@ export default function SupportPage() {
             </div>
             <p className="text-sm text-muted-foreground">
               {caseList.length === 0
-                ? "No hay casos de soporte todavía"
+                ? (isAdmin ? "No hay casos de soporte todavía" : "No tenés tickets abiertos. Cuando algo falle, abrimos uno automáticamente.")
                 : "No hay casos con ese estado"}
             </p>
           </div>
@@ -197,7 +214,7 @@ export default function SupportPage() {
                               <><ChevronDown className="w-3 h-3" /> Ver más</>
                             )}
                           </button>
-                          {isOpen && (
+                          {isOpen && isAdmin && (
                             <>
                               <button
                                 onClick={(e) => {
