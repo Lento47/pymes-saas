@@ -69,10 +69,54 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
     const msg = typeof message === 'string' ? message : Array.isArray(message) ? message.join(' | ') : String(message);
 
+    // 1) Open or reuse a diagnostic case so we can both link the ErrorReport
+    //    and return the case_id in the HTTP response.
+    let diagnosticCaseId: string | null = null;
+    let errorCode: string | null = null;
+    if (request.user?.workspace_id) {
+      const matched = ERROR_KEYWORDS.find(k => k.regex.test(msg));
+      if (matched || status >= 500 || status === 400) {
+        errorCode = matched?.key ?? 'UNKNOWN_ERROR';
+        const module = matched?.module ?? (request.path?.split('/')[2] || 'unknown');
+        try {
+          const existing = await (this.prisma as any).supportDiagnosticCase.findFirst({
+            where: { workspace_id: request.user.workspace_id, error_code: errorCode, status: 'OPEN' },
+            select: { id: true },
+          });
+          if (existing) {
+            diagnosticCaseId = existing.id;
+          } else {
+            const created = await (this.prisma as any).supportDiagnosticCase.create({
+              data: {
+                workspace_id: request.user.workspace_id,
+                user_id: request.user.id ?? null,
+                module,
+                error_code: errorCode,
+                category: status >= 500 ? 'PLATFORM_INCIDENT' : 'WORKSPACE_CONFIGURATION',
+                risk_level: status >= 500 ? 'high' : (status === 400 ? 'medium' : 'low'),
+                status: 'OPEN',
+                title: `${errorName || 'Error'} en ${module}: ${msg.slice(0, 80)}`,
+                user_description: msg,
+                safe_summary: `Ruta: ${request.method} ${request.path}. Status: ${status}. Revisar configuración o contactar soporte.`,
+                evidence_json: { path: request.path, method: request.method, status, stack: exception instanceof Error ? exception.stack?.slice(0, 500) : null },
+              },
+              select: { id: true },
+            });
+            diagnosticCaseId = created.id;
+            this.logger.log(`Auto-created diagnostic case ${diagnosticCaseId}: ${errorCode} for workspace ${request.user.workspace_id}`);
+          }
+        } catch (err: any) {
+          this.logger.error(`Failed to create/lookup diagnostic case: ${err?.message}`);
+        }
+      }
+    }
+
+    // 2) Persist the ErrorReport (FK links it to the case if we opened one).
     if (status >= 500) {
       await this.errorReports.createServerReport({
         workspace_id: request.user?.workspace_id ?? null,
         user_id: request.user?.id ?? null,
+        diagnostic_case_id: diagnosticCaseId,
         source: 'BACKEND',
         category: 'HTTP_EXCEPTION',
         severity: 'ERROR',
@@ -90,46 +134,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
     this.logger.error(`${request.method} ${request.originalUrl} -> ${status}: ${msg}`, exception instanceof Error ? exception.stack : undefined);
 
-    // Create diagnostic case for business-relevant errors
-    if (request.user?.workspace_id) {
-      const matched = ERROR_KEYWORDS.find(k => k.regex.test(msg));
-      if (matched || status >= 500 || status === 400) {
-        const errorKey = matched?.key || 'UNKNOWN_ERROR';
-        const module = matched?.module || (request.path?.split('/')[2] || 'unknown');
-        const existing = await (this.prisma as any).supportDiagnosticCase.findFirst({
-          where: { workspace_id: request.user.workspace_id, error_code: errorKey, status: 'OPEN' },
-          select: { id: true },
-        });
-
-        if (!existing) {
-          try {
-            await (this.prisma as any).supportDiagnosticCase.create({
-              data: {
-                workspace_id: request.user.workspace_id,
-                user_id: request.user.id ?? null,
-                module,
-                error_code: errorKey,
-                category: status >= 500 ? 'PLATFORM_INCIDENT' : 'WORKSPACE_CONFIGURATION',
-                risk_level: status >= 500 ? 'high' : (status === 400 ? 'medium' : 'low'),
-                status: 'OPEN',
-                title: `${errorName || 'Error'} en ${module}: ${msg.slice(0, 80)}`,
-                user_description: msg,
-                safe_summary: `Ruta: ${request.method} ${request.path}. Status: ${status}. Revisar configuración o contactar soporte.`,
-                evidence_json: { path: request.path, method: request.method, status, stack: exception instanceof Error ? exception.stack?.slice(0, 500) : null },
-              },
-            });
-            this.logger.log(`Auto-created diagnostic case: ${errorKey} for workspace ${request.user.workspace_id}`);
-          } catch (err: any) {
-            this.logger.error(`Failed to create diagnostic case: ${err?.message}`);
-          }
-        }
-      }
-    }
-
+    // 3) Surface the case to the client so the UI can link "Ver ticket".
     response.status(status).json({
       statusCode: status,
       message,
       error: errorName ?? (status >= 500 ? 'Internal Server Error' : 'Request Error'),
+      ...(diagnosticCaseId ? { case_id: diagnosticCaseId, error_code: errorCode } : {}),
     });
   }
 }

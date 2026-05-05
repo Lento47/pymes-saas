@@ -1053,29 +1053,32 @@ model Deal {
 }
 
 model ErrorReport {
-  id           String   @id @default(cuid())
-  workspace_id String?
-  user_id      String?
-  source       String
-  category     String
-  severity     String   @default("ERROR")
-  title        String?
-  message      String   @db.Text
-  stack        String?  @db.Text
-  route        String?
-  url          String?
-  method       String?
-  status_code  Int?
-  user_agent   String?  @db.Text
-  context_json Json?    @db.JsonB
-  occurred_at  DateTime @default(now())
-  created_at   DateTime @default(now())
+  id                 String   @id @default(cuid())
+  workspace_id       String?
+  user_id            String?
+  diagnostic_case_id String?
+  source             String
+  category           String
+  severity           String   @default("ERROR")
+  title              String?
+  message            String   @db.Text
+  stack              String?  @db.Text
+  route              String?
+  url                String?
+  method             String?
+  status_code        Int?
+  user_agent         String?  @db.Text
+  context_json       Json?    @db.JsonB
+  occurred_at        DateTime @default(now())
+  created_at         DateTime @default(now())
 
-  workspace Workspace? @relation(fields: [workspace_id], references: [id], onDelete: SetNull)
-  user      User?      @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  workspace      Workspace?             @relation(fields: [workspace_id], references: [id], onDelete: SetNull)
+  user           User?                  @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  diagnosticCase SupportDiagnosticCase? @relation(fields: [diagnostic_case_id], references: [id], onDelete: SetNull)
 
   @@index([workspace_id])
   @@index([user_id])
+  @@index([diagnostic_case_id])
   @@index([source])
   @@index([category])
   @@index([severity])
@@ -1668,8 +1671,9 @@ model SupportDiagnosticCase {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  workspace Workspace            @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  fixCases  EngineeringFixCase[]
+  workspace    Workspace            @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  fixCases     EngineeringFixCase[]
+  errorReports ErrorReport[]
 
   @@index([workspace_id])
   @@index([error_code])
