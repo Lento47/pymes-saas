@@ -282,6 +282,14 @@ export class WorkspacesService {
 
     const serialized = this.serializeWorkspace(refreshed);
     this.events.emitWorkspaceUpdated(workspaceId, serialized);
+
+    if (settingsChanged) {
+      if (hacienda_username || hacienda_client_id || hacienda_token_url)
+        this.markQuickStartStep(workspaceId, 'hacienda_configured');
+      if (ai_provider || ai_api_key || ai_message_finance_opt_in !== undefined)
+        this.markQuickStartStep(workspaceId, 'invoicing_configured');
+    }
+
     return serialized;
   }
 
@@ -323,9 +331,11 @@ export class WorkspacesService {
         provider,
         model,
         api_key: apiKey,
-      });
+    });
 
-      return {
+    this.markQuickStartStep(workspaceId, 'team_invited');
+
+    return {
         ok: true,
         ...result,
       };
@@ -718,5 +728,34 @@ export class WorkspacesService {
     });
 
     return { message: 'Miembro removido del workspace.' };
+  }
+
+  // ── Quick Start progress tracking ─────────────────────────────────────────
+
+  /**
+   * Mark a quick-start checklist step as completed in workspace settings_json.
+   * Idempotent — if already true, does nothing.
+   */
+  async markQuickStartStep(workspaceId: string, step: string) {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    if (!ws) return;
+
+    const settings: Record<string, any> =
+      ws.settings_json && typeof ws.settings_json === 'object'
+        ? (ws.settings_json as Record<string, any>)
+        : {};
+
+    const current = settings.quick_start_progress || {};
+    if (current[step]) return; // already done
+
+    settings.quick_start_progress = { ...current, [step]: true };
+
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { settings_json: settings },
+    });
   }
 }

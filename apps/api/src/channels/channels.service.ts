@@ -164,6 +164,7 @@ export class ChannelsService {
     });
 
     this.logger.log(`EMAIL canal ${id} configurado para workspace ${workspaceId}`);
+    this.trackQuickStart(workspaceId, 'email_connected');
     return this.sanitise(updated);
   }
 
@@ -207,6 +208,7 @@ export class ChannelsService {
     });
 
     this.logger.log(`[DIAG] configureWhatsApp: DB updated, configKeys=${Object.keys(newConfig).filter(k => newConfig[k as keyof typeof newConfig] != null).join(',')}`);
+    this.trackQuickStart(workspaceId, 'whatsapp_connected');
     return this.sanitise(updated);
   }
 
@@ -263,5 +265,16 @@ export class ChannelsService {
     const ch = await this.prisma.channel.findFirst({ where: { id }, select: { workspace_id: true } });
     if (!ch) throw new NotFoundException('Canal no encontrado.');
     if (ch.workspace_id !== workspaceId) throw new ForbiddenException('Sin acceso a este canal.');
+  }
+
+  private async trackQuickStart(workspaceId: string, step: string) {
+    try {
+      const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
+      const s: any = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const progress = s.quick_start_progress || {};
+      if (progress[step]) return;
+      s.quick_start_progress = { ...progress, [step]: true };
+      await this.prisma.workspace.update({ where: { id: workspaceId }, data: { settings_json: s } });
+    } catch { /* fire-and-forget */ }
   }
 }
