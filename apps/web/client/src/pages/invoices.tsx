@@ -718,9 +718,11 @@ export default function InvoicesPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-[11px] text-muted-foreground/60 font-medium"># Factura</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Contacto</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Total</TableHead>
+            <TableHead className="text-[11px] text-muted-foreground/60 font-medium"># Factura</TableHead>
+            <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Contacto</TableHead>
+            <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Subtotal</TableHead>
+            <TableHead className="text-[11px] text-muted-foreground/60 font-medium">IVA</TableHead>
+            <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Total</TableHead>
                   <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Pagado</TableHead>
                   <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Saldo</TableHead>
                   <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Vencimiento</TableHead>
@@ -749,6 +751,12 @@ export default function InvoicesPage() {
                         {invoice.conversation?.subject && (
                           <div className="text-[11px] text-muted-foreground/60 truncate">{invoice.conversation.subject}</div>
                         )}
+                      </TableCell>
+                      <TableCell className="text-sm text-foreground">
+                        {invoice.subtotal != null ? formatMoney(invoice.subtotal, invoice.currency) : "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-foreground">
+                        {invoice.tax_rate != null ? `${invoice.tax_rate}%` : "—"}
                       </TableCell>
                       <TableCell className="text-sm text-foreground">
                         {formatMoney(invoice.amount, invoice.currency)}

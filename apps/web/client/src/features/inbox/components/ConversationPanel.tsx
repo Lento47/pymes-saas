@@ -7,12 +7,15 @@ import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   ArrowLeft, Send, Loader2, MessageCircle, CheckCircle2, RefreshCw,
-  Trash2, UserPlus, Info,
+  Trash2, UserPlus, Info, Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -106,6 +109,61 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["conversation", id] }),
   });
 
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState({ number: "", amount: "", currency: "USD", due_date: "", description: "", subtotal: "", tax_rate: "13", tax_amount: "" });
+
+  const taxRate = Number(invoiceForm.tax_rate) || 0;
+  const subtotalNum = Number(invoiceForm.subtotal) || Number(invoiceForm.amount) || 0;
+  const autoTax = taxRate > 0 ? (subtotalNum * taxRate / 100).toFixed(2) : "0.00";
+  const autoTotal = taxRate > 0 ? (subtotalNum + Number(autoTax)).toFixed(2) : subtotalNum.toFixed(2);
+
+  const { data: invoicesData } = useQuery({
+    queryKey: ["conversation-invoices", id],
+    queryFn: () => api.getInvoices({ conversation_id: id, limit: "10" }),
+    enabled: !!id,
+  });
+  const invoiceList: any[] = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
+
+  const createInvMut = useMutation({
+    mutationFn: () => api.createInvoice({
+      contact_id: conversation?.contact?.id,
+      conversation_id: id,
+      number: invoiceForm.number,
+      amount: Number(taxRate > 0 ? autoTotal : (invoiceForm.amount || "0")),
+      currency: invoiceForm.currency,
+      due_date: invoiceForm.due_date,
+      description: invoiceForm.description,
+      subtotal: taxRate > 0 ? subtotalNum : undefined,
+      tax_rate: taxRate > 0 ? taxRate : undefined,
+      tax_amount: taxRate > 0 ? Number(autoTax) : undefined,
+      notes: [],
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversation-invoices", id] });
+      setShowInvoice(false);
+      setInvoiceForm({ number: "", amount: "", currency: "USD", due_date: "", description: "", subtotal: "", tax_rate: "13", tax_amount: "" });
+      toast({ title: "Factura creada" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const sendInvMut = useMutation({
+    mutationFn: async (invoice: any) => {
+      const channelId = conversation?.channel?.id;
+      if (!channelId) throw new Error("Canal no válido");
+      const reminder = await api.generateInvoiceReminder(invoice.id);
+      return api.sendInvoiceReminder(invoice.id, { channel_id: channelId, draft_text: reminder?.draft_text });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversation-invoices", id] });
+      qc.invalidateQueries({ queryKey: ["conversation-messages", id] });
+      toast({ title: "Factura enviada" });
+    },
+    onError: (e: any) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
+  });
+
+  const canSendInvoice = ["EMAIL", "WHATSAPP"].includes(channelType.toUpperCase());
+
   const handleSend = () => {
     if (!message.trim()) return;
     sendMut.mutate({ body_text: message, direction: "OUTBOUND" });
@@ -189,6 +247,19 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                  onClick={() => { setInvoiceForm({ number: "", amount: "", currency: "USD", due_date: "", description: "" }); setShowInvoice(true); }}
+                  title="Factura">
+                  <Receipt className="w-3.5 h-3.5 text-muted-foreground" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Factura</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                   onClick={() => setShowDelete(true)}>
                   <Trash2 className="w-3.5 h-3.5" />
@@ -265,6 +336,98 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         </form>
         <p className="text-[10px] text-muted-foreground/50 mt-1 ml-1">Enter para enviar · Shift+Enter para nueva línea</p>
       </div>
+
+      {/* Invoice dialog */}
+      <Dialog open={showInvoice} onOpenChange={setShowInvoice}>
+        <DialogContent className="bg-card border-border sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Facturación</DialogTitle>
+          </DialogHeader>
+
+          {invoiceList.length > 0 && (
+            <div className="space-y-2">
+              {invoiceList.map((inv: any) => (
+                <div key={inv.id} className="rounded-lg border border-border bg-background px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-medium">{inv.number}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {new Intl.NumberFormat("es-CR", { style: "currency", currency: inv.currency, maximumFractionDigits: 0 }).format(inv.amount || 0)} · <StatusBadge status={inv.status} type="invoice" className="inline" />
+                      </div>
+                    </div>
+                    {Number(inv.balance_due ?? 0) > 0 && canSendInvoice && (
+                      <Button size="sm" className="h-7 text-[11px] gap-1" onClick={() => sendInvMut.mutate(inv)} disabled={sendInvMut.isPending}>
+                        {sendInvMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                        Enviar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!conversation?.contact?.id ? (
+            <p className="text-xs text-muted-foreground">Vincula un contacto primero para crear facturas.</p>
+          ) : (
+            <div className="space-y-3 border-t border-border pt-3 mt-2">
+              <p className="text-xs font-medium text-muted-foreground">Nueva factura</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Número</Label>
+                  <Input value={invoiceForm.number} onChange={e => setInvoiceForm(p => ({ ...p, number: e.target.value }))} className="h-7 text-xs bg-background border-border" placeholder="FAC-001" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Moneda</Label>
+                  <Input value={invoiceForm.currency} onChange={e => setInvoiceForm(p => ({ ...p, currency: e.target.value.toUpperCase() }))} className="h-7 text-xs bg-background border-border" placeholder="USD" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Subtotal</Label>
+                  <Input type="number" step="0.01" value={invoiceForm.subtotal} onChange={e => setInvoiceForm(p => ({ ...p, subtotal: e.target.value }))} className="h-7 text-xs bg-background border-border" placeholder={invoiceForm.amount || "0"} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">IVA %</Label>
+                  <Input type="number" step="0.01" value={invoiceForm.tax_rate} onChange={e => setInvoiceForm(p => ({ ...p, tax_rate: e.target.value }))} className="h-7 text-xs bg-background border-border" placeholder="0" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Impuesto</Label>
+                  <Input value={autoTax} disabled className="h-7 text-xs bg-muted border-border" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Total</Label>
+                  <Input value={autoTotal} disabled className="h-7 text-xs bg-muted border-border font-medium" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Vencimiento</Label>
+                  <Input type="date" value={invoiceForm.due_date} onChange={e => setInvoiceForm(p => ({ ...p, due_date: e.target.value }))} className="h-7 text-xs bg-background border-border" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">Descripción</Label>
+                <Input value={invoiceForm.description} onChange={e => setInvoiceForm(p => ({ ...p, description: e.target.value }))} className="h-7 text-xs bg-background border-border" placeholder="Concepto o detalle" />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowInvoice(false)}>Cancelar</Button>
+            {conversation?.contact?.id && (
+              <Button size="sm" className="h-8 text-xs"
+                onClick={() => createInvMut.mutate()}
+                disabled={!invoiceForm.number.trim() || (!Number(autoTotal) && !Number(invoiceForm.amount)) || !invoiceForm.due_date || createInvMut.isPending}>
+                {createInvMut.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null}
+                Guardar factura
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete dialog */}
       <AlertDialog open={showDelete} onOpenChange={setShowDelete}>

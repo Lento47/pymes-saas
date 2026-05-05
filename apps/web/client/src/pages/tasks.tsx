@@ -53,6 +53,23 @@ const PRIORITY_LABELS: Record<string, string> = { LOW: "Baja", MEDIUM: "Media", 
 const STATUS_OPTIONS = ["ALL", "TODO", "IN_PROGRESS", "BLOCKED", "DONE"];
 const PRIORITY_OPTIONS = ["ALL", "LOW", "MEDIUM", "HIGH", "URGENT"];
 
+function TaskDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!text) return null;
+  const long = text.length > 80;
+  return (
+    <div className="text-[11px] text-muted-foreground max-w-[280px]">
+      <span className={!expanded && long ? "line-clamp-2" : ""}>{text}</span>
+      {long && (
+        <button onClick={() => setExpanded(!expanded)}
+          className="text-[10px] text-primary/70 hover:text-primary ml-1 whitespace-nowrap">
+          {expanded ? "Ver menos" : "Ver más"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function TasksPage() {
   useRequireAuth();
   const { messages } = useI18n();
@@ -276,13 +293,11 @@ export default function TasksPage() {
                       <TableCell>
                         <div className="flex items-start gap-2">
                           <PriorityDot priority={task.priority} />
-                          <div>
-                            <div className={cn("text-sm font-medium", task.status === "DONE" ? "line-through text-muted-foreground/60" : "text-foreground")}>
-                              {task.title}
-                            </div>
-                            {task.description && (
-                              <div className="text-[11px] text-muted-foreground truncate max-w-[240px]">{task.description}</div>
-                            )}
+              <div>
+                <div className={cn("text-sm font-medium", task.status === "DONE" ? "line-through text-muted-foreground/60" : "text-foreground")}>
+                  {task.title}
+                </div>
+                <TaskDescription text={task.description || ""} />
                           </div>
                         </div>
                       </TableCell>

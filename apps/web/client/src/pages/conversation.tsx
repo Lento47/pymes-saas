@@ -88,7 +88,14 @@ export default function ConversationPage() {
     currency: "USD",
     due_date: "",
     description: "",
+    subtotal: "",
+    tax_rate: "13",
+    tax_amount: "",
   });
+  const taxRateNum = Number(invoiceForm.tax_rate) || 0;
+  const invSubtotal = Number(invoiceForm.subtotal) || Number(invoiceForm.amount) || 0;
+  const invTax = taxRateNum > 0 ? (invSubtotal * taxRateNum / 100).toFixed(2) : "0.00";
+  const invTotal = taxRateNum > 0 ? (invSubtotal + Number(invTax)).toFixed(2) : invSubtotal.toFixed(2);
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
     paid_at: "",
@@ -250,10 +257,13 @@ export default function ConversationPage() {
         contact_id: conversation.contact.id,
         conversation_id: id,
         number: invoiceForm.number,
-        amount: Number(invoiceForm.amount),
+        amount: Number(taxRateNum > 0 ? invTotal : (invoiceForm.amount || "0")),
         currency: invoiceForm.currency,
         due_date: invoiceForm.due_date,
         description: invoiceForm.description,
+        subtotal: taxRateNum > 0 ? invSubtotal : undefined,
+        tax_rate: taxRateNum > 0 ? taxRateNum : undefined,
+        tax_amount: taxRateNum > 0 ? Number(invTax) : undefined,
         notes: [],
       }),
     onSuccess: () => {
@@ -266,6 +276,9 @@ export default function ConversationPage() {
         currency: "USD",
         due_date: "",
         description: "",
+        subtotal: "",
+        tax_rate: "13",
+        tax_amount: "",
       });
       toast({ title: "Factura creada y guardada" });
     },
@@ -1045,15 +1058,39 @@ export default function ConversationPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Monto total</Label>
+                    <Label className="text-xs text-muted-foreground">Subtotal</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      value={invoiceForm.amount}
-                      onChange={(e) => setInvoiceForm((prev) => ({ ...prev, amount: e.target.value }))}
+                      value={invoiceForm.subtotal}
+                      onChange={(e) => setInvoiceForm((prev) => ({ ...prev, subtotal: e.target.value }))}
                       className="h-8 text-xs bg-background border-border"
+                      placeholder={invoiceForm.amount || "0"}
                     />
                   </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">IVA %</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={invoiceForm.tax_rate}
+                      onChange={(e) => setInvoiceForm((prev) => ({ ...prev, tax_rate: e.target.value }))}
+                      className="h-8 text-xs bg-background border-border"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Impuesto</Label>
+                    <Input value={invTax} disabled className="h-8 text-xs bg-muted border-border" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Total</Label>
+                    <Input value={invTotal} disabled className="h-8 text-xs bg-muted border-border font-medium" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Vencimiento</Label>
                     <Input
@@ -1087,8 +1124,8 @@ export default function ConversationPage() {
                   !contact ||
                   createInvoiceMutation.isPending ||
                   !invoiceForm.number.trim() ||
-                  !invoiceForm.amount ||
-                  !invoiceForm.due_date
+                  !invoiceForm.due_date ||
+                  (!Number(invTotal) && !Number(invoiceForm.amount))
                 }
               >
                 {createInvoiceMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
