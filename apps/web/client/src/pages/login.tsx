@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { setAuthState } from "@/lib/api";
+import { api, setAuthState } from "@/lib/api";
 // SSO: SAML auto-detect on login — see handleSubmit
 import {
   ArrowLeft,
