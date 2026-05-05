@@ -9,7 +9,7 @@ import { EngineeringFixService } from './engineering-fix.service';
 export interface DiagnosticInput {
   workspaceId: string;
   userId?: string;
-  module: string;
+  module?: string;
   error_code?: string;
   trace_id?: string;
   user_description?: string;

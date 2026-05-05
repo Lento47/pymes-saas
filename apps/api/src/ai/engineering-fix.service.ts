@@ -40,6 +40,11 @@ export class EngineeringFixService {
 
     // Auto-generate fix proposal via AI (fire-and-forget)
     this.proposeFixAndUpdate(fixCase.id, diagnostic, diagnosticCaseId, diagnostic.workspace_id).catch(err => {
+      this.logger.error(`Auto fix proposal failed for ${fixCase.id}: ${err?.message}`);
+    });
+
+    return fixCase;
+  }
 
   private async proposeFixAndUpdate(
     fixCaseId: string,
