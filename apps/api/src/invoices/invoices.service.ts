@@ -129,6 +129,18 @@ export class InvoicesService {
       throw new BadRequestException('La factura debe tener al menos una línea de detalle o un monto mayor a cero.');
     }
 
+    // Check if approvals_signature addon is active — if so, route to PENDING_APPROVAL
+    let initialStatus = dto.issuance_mode === InvoiceIssuanceMode.HACIENDA ? InvoiceStatus.DRAFT : InvoiceStatus.SENT;
+    if (initialStatus === InvoiceStatus.SENT) {
+      const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { plan: true, settings_json: true } });
+      if (ws && ws.plan !== 'ENTERPRISE' && ws.plan !== 'BUSINESS_PLUS') {
+        const settings = (ws.settings_json as Record<string, any>) ?? {};
+        if (settings.approvals_signature_active) {
+          initialStatus = InvoiceStatus.PENDING_APPROVAL;
+        }
+      }
+    }
+
     const invoice = await this.prisma.invoice.create({
       data: {
         workspace_id: workspaceId,
@@ -144,7 +156,7 @@ export class InvoicesService {
         due_date: new Date(dto.due_date),
         description: dto.description,
         notes_json: (dto.notes as any) ?? undefined,
-        status: dto.issuance_mode === InvoiceIssuanceMode.HACIENDA ? InvoiceStatus.DRAFT : InvoiceStatus.SENT,
+        status: initialStatus,
         document_type: dto.document_type ?? InvoiceDocumentType.FACTURA_ELECTRONICA,
         issuance_mode: dto.issuance_mode ?? InvoiceIssuanceMode.MANUAL_ONLY,
         hacienda_status: dto.hacienda_status ?? HaciendaStatus.DRAFT,
@@ -1257,5 +1269,64 @@ export class InvoicesService {
       s.quick_start_progress = { ...progress, [step]: true };
       await this.prisma.workspace.update({ where: { id: workspaceId }, data: { settings_json: s } });
     } catch { /* fire-and-forget */ }
+  }
+
+  // ── Invoice approval workflow ─────────────────────────────────────────────
+
+  async getPendingApprovals(workspaceId: string) {
+    return this.prisma.invoice.findMany({
+      where: { workspace_id: workspaceId, status: 'PENDING_APPROVAL' },
+      include: {
+        contact: { select: { id: true, full_name: true, company_name: true } },
+        lines: true,
+        payments: { select: { id: true, amount: true } },
+      },
+      orderBy: { created_at: 'desc' },
+      take: 20,
+    });
+  }
+
+  async approveInvoice(workspaceId: string, userId: string, id: string) {
+    const invoice = await this.getInvoiceOrThrow(workspaceId, id);
+    if (invoice.status !== 'PENDING_APPROVAL') {
+      throw new BadRequestException('Solo se pueden aprobar facturas en estado PENDING_APPROVAL.');
+    }
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: { status: 'SENT', updated_at: new Date() },
+      include: {
+        contact: { select: { id: true, full_name: true, company_name: true } },
+      },
+    });
+
+    this.notificationsService.create(workspaceId, {
+      user_id: invoice.created_by_user_id ?? undefined,
+      type: 'invoice_approved',
+      title: 'Factura aprobada',
+      body: `La factura ${invoice.number} fue aprobada.`,
+      related_entity_type: 'invoice',
+      related_entity_id: id,
+    }).catch(() => {});
+
+    return updated;
+  }
+
+  async rejectInvoice(workspaceId: string, id: string, reason: string) {
+    const invoice = await this.getInvoiceOrThrow(workspaceId, id);
+    if (invoice.status !== 'PENDING_APPROVAL') {
+      throw new BadRequestException('Solo se pueden rechazar facturas en estado PENDING_APPROVAL.');
+    }
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: {
+        status: 'DRAFT',
+        updated_at: new Date(),
+        notes_json: { ...(invoice.notes_json as any || {}), rejection_reason: reason || 'Rechazada' },
+      },
+    });
+
+    return updated;
   }
 }

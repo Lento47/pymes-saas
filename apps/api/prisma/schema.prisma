@@ -143,6 +143,7 @@ enum TaskSource {
 
 enum InvoiceStatus {
   DRAFT
+  PENDING_APPROVAL
   SENT
   PARTIALLY_PAID
   PAID
