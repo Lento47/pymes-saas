@@ -64,17 +64,34 @@ export class DiagnosticService {
   async listCases(workspaceId: string, opts?: { userId?: string }) {
     const where: any = { workspace_id: workspaceId };
     if (opts?.userId) where.user_id = opts.userId;
-    return (this.prisma as any).supportDiagnosticCase.findMany({
+    const cases = await (this.prisma as any).supportDiagnosticCase.findMany({
       where,
       orderBy: { created_at: 'desc' },
       take: 50,
     });
+
+    // Mask internal error details from non-admin users
+    if (opts?.userId) {
+      return cases.map((c: any) => ({
+        ...c,
+        title: 'Error procesando tu solicitud',
+        user_description: 'Nuestro equipo está revisando este incidente.',
+      }));
+    }
+    return cases;
   }
 
   async getCase(id: string, opts: { workspaceId: string; userId?: string }) {
     const where: any = { id, workspace_id: opts.workspaceId };
     if (opts.userId) where.user_id = opts.userId;
-    return (this.prisma as any).supportDiagnosticCase.findFirst({ where });
+    const case_ = await (this.prisma as any).supportDiagnosticCase.findFirst({ where });
+    if (!case_) return null;
+    // Mask internal error details for non-admin users
+    if (opts.userId) {
+      case_.title = 'Error procesando tu solicitud';
+      case_.user_description = 'Nuestro equipo está revisando este incidente.';
+    }
+    return case_;
   }
 
   async updateCaseStatus(id: string, status: string) {
