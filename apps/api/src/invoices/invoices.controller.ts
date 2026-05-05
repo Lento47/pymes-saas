@@ -61,9 +61,14 @@ export class InvoicesController {
   @Roles(WorkspaceUserRole.AGENT)
   getTemplates(
     @CurrentUser('workspace_id') workspaceId: string,
-    @Query('industry') industry?: string,
   ) {
-    return this.invoicesService.getInvoiceTemplates(workspaceId, industry);
+    return this.invoicesService.getTemplates(workspaceId);
+  }
+
+  @Get('pending-approvals')
+  @Roles(WorkspaceUserRole.ADMIN)
+  getPendingApprovals(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.invoicesService.getPendingApprovals(workspaceId);
   }
 
   @Get(':id')
@@ -214,27 +219,3 @@ export class InvoicesController {
   }
 
   @Post(':id/approve')
-  @Roles(WorkspaceUserRole.ADMIN)
-  approveInvoice(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ValidateUUIDPipe) id: string,
-  ) {
-    return this.invoicesService.approveInvoice(user.workspace_id, user.id, id);
-  }
-
-  @Post(':id/reject')
-  @Roles(WorkspaceUserRole.ADMIN)
-  rejectInvoice(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ValidateUUIDPipe) id: string,
-    @Body('reason') reason: string,
-  ) {
-    return this.invoicesService.rejectInvoice(user.workspace_id, id, reason);
-  }
-
-  @Get('pending-approvals')
-  @Roles(WorkspaceUserRole.ADMIN)
-  getPendingApprovals(@CurrentUser('workspace_id') workspaceId: string) {
-    return this.invoicesService.getPendingApprovals(workspaceId);
-  }
-}

@@ -71,8 +71,20 @@ export class PaddleSdkService {
       return existing.provider_customer_id;
     }
 
-    const customer = await paddle.customers.create({ email, name });
-    const customerId = customer.id;
+    // Check if a Paddle customer already exists with this email
+    let customerId: string;
+    try {
+      const customers = await paddle.customers.list({ email: [email] });
+      if (customers?.data?.length > 0) {
+        customerId = customers.data[0].id;
+      } else {
+        const customer = await paddle.customers.create({ email, name });
+        customerId = customer.id;
+      }
+    } catch (err: any) {
+      this.logger.error(`Error creating/getting customer: ${err?.message}`);
+      throw err;
+    }
 
     if (existing) {
       await this.prisma.workspaceSubscription.update({
