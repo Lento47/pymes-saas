@@ -277,6 +277,7 @@ model User {
   name              String
   avatar_url        String?
   password_hash     String?
+  google_id         String?   @unique
   status            UserStatus @default(ACTIVE)
   is_platform_admin Boolean    @default(false)
 

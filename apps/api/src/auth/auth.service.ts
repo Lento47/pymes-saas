@@ -292,6 +292,143 @@ export class AuthService {
     };
   }
 
+  // ── Google OAuth ────────────────────────────────────────────────────────────
+
+  async googleLogin(profile: { googleId: string; email: string; name: string; avatarUrl: string | null }) {
+    // 1. Try by google_id first
+    let user = await this.prisma.user.findUnique({
+      where: { google_id: profile.googleId },
+    });
+
+    if (user) {
+      if (user.status !== 'ACTIVE') {
+        throw new UnauthorizedException('Usuario inactivo o suspendido.');
+      }
+    } else {
+      // 2. Try by email — link Google account if found
+      user = await this.prisma.user.findUnique({
+        where: { email: profile.email },
+      });
+
+      if (user) {
+        if (user.status !== 'ACTIVE') {
+          throw new UnauthorizedException('Usuario inactivo o suspendido.');
+        }
+        // Link google_id to existing account
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { google_id: profile.googleId },
+        });
+      }
+    }
+
+    if (!user) {
+      // 3. New user — create account + workspace
+      user = await this.prisma.user.create({
+        data: {
+          email: profile.email,
+          name: profile.name,
+          google_id: profile.googleId,
+          avatar_url: profile.avatarUrl,
+          status: 'ACTIVE',
+        },
+      });
+
+      const slug = await this.generateUniqueWorkspaceSlug();
+      const workspace = await this.prisma.workspace.create({
+        data: {
+          name: `${profile.name}'s Workspace`,
+          slug,
+          status: 'ACTIVE',
+          plan: 'FREE',
+          workspace_users: {
+            create: {
+              user_id: user.id,
+              role: 'OWNER',
+              is_owner: true,
+            },
+          },
+        },
+      });
+
+      this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch(() => {});
+
+      const access_token = this.signToken({
+        sub: user.id, email: user.email, workspace_id: workspace.id,
+        role: 'OWNER', is_platform_admin: false,
+      });
+      const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
+
+      return {
+        access_token, refresh_token,
+        user: {
+          id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url,
+          role: 'OWNER', is_owner: true, is_platform_admin: false,
+          workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan },
+        },
+      };
+    }
+
+    // Existing user — resolve workspace membership
+    const memberships = await this.prisma.workspaceUser.findMany({
+      where: { user_id: user.id },
+      include: { workspace: { select: { id: true, slug: true, name: true, plan: true } } },
+      orderBy: { created_at: 'asc' },
+    });
+
+    if (memberships.length === 0) {
+      // User exists but has no workspace — create one
+      const slug = await this.generateUniqueWorkspaceSlug();
+      const workspace = await this.prisma.workspace.create({
+        data: {
+          name: `${user.name}'s Workspace`,
+          slug,
+          status: 'ACTIVE',
+          plan: 'FREE',
+          workspace_users: {
+            create: {
+              user_id: user.id,
+              role: 'OWNER',
+              is_owner: true,
+            },
+          },
+        },
+      });
+
+      const access_token = this.signToken({
+        sub: user.id, email: user.email, workspace_id: workspace.id,
+        role: 'OWNER', is_platform_admin: user.is_platform_admin,
+      });
+      const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
+
+      return {
+        access_token, refresh_token,
+        user: {
+          id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url,
+          role: 'OWNER', is_owner: true, is_platform_admin: user.is_platform_admin,
+          workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan },
+        },
+      };
+    }
+
+    // Use first membership
+    const m = memberships[0];
+    const access_token = this.signToken({
+      sub: user.id, email: user.email, workspace_id: m.workspace_id,
+      role: m.role, is_platform_admin: user.is_platform_admin,
+    });
+    const refresh_token = await this.refreshTokenService.create(user.id, m.workspace_id);
+
+    return {
+      access_token, refresh_token,
+      user: {
+        id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url,
+        role: m.role, is_owner: m.is_owner, is_platform_admin: user.is_platform_admin,
+        workspace: { id: m.workspace.id, name: m.workspace.name, slug: m.workspace.slug, plan: m.workspace.plan },
+      },
+    };
+  }
+
   async getInvitePreview(rawToken?: string) {
     const payload = this.verifyInviteToken(rawToken);
     const workspace = await this.prisma.workspace.findUnique({
