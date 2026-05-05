@@ -219,3 +219,21 @@ export class InvoicesController {
   }
 
   @Post(':id/approve')
+  @Roles(WorkspaceUserRole.ADMIN)
+  approveInvoice(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ValidateUUIDPipe) id: string,
+  ) {
+    return this.invoicesService.approveInvoice(user.workspace_id, user.id, id);
+  }
+
+  @Post(':id/reject')
+  @Roles(WorkspaceUserRole.ADMIN)
+  rejectInvoice(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ValidateUUIDPipe) id: string,
+    @Body('reason') reason: string,
+  ) {
+    return this.invoicesService.rejectInvoice(user.workspace_id, id, reason);
+  }
+}

@@ -1273,6 +1273,10 @@ export class InvoicesService {
 
   // ── Invoice approval workflow ─────────────────────────────────────────────
 
+  getTemplates(industry?: string) {
+    return getTemplatesByIndustry(industry);
+  }
+
   async getPendingApprovals(workspaceId: string) {
     return this.prisma.invoice.findMany({
       where: { workspace_id: workspaceId, status: 'PENDING_APPROVAL' },
@@ -1300,14 +1304,22 @@ export class InvoicesService {
       },
     });
 
-    this.notificationsService.create(workspaceId, {
-      user_id: invoice.created_by_user_id ?? undefined,
-      type: 'invoice_approved',
-      title: 'Factura aprobada',
-      body: `La factura ${invoice.number} fue aprobada.`,
-      related_entity_type: 'invoice',
-      related_entity_id: id,
-    }).catch(() => {});
+    // Notify workspace admin about the approval
+    const admins = await this.prisma.workspaceUser.findMany({
+      where: { workspace_id: workspaceId, role: { in: ['OWNER', 'ADMIN'] as any } },
+      select: { user_id: true },
+      take: 3,
+    });
+    for (const admin of admins) {
+      this.notificationsService.create(workspaceId, {
+        user_id: admin.user_id,
+        type: 'invoice_approved',
+        title: 'Factura aprobada',
+        body: `La factura ${invoice.number} fue aprobada.`,
+        related_entity_type: 'invoice',
+        related_entity_id: id,
+      }).catch(() => {});
+    }
 
     return updated;
   }

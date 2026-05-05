@@ -74,9 +74,10 @@ export class PaddleSdkService {
     // Check if a Paddle customer already exists with this email
     let customerId: string;
     try {
-      const customers = await paddle.customers.list({ email: [email] });
-      if (customers?.data?.length > 0) {
-        customerId = customers.data[0].id;
+      const searchResult: any = await paddle.customers.list({ email: [email] });
+      const customers = searchResult?.result || searchResult?.items || [];
+      if (customers.length > 0) {
+        customerId = customers[0].id;
       } else {
         const customer = await paddle.customers.create({ email, name });
         customerId = customer.id;
