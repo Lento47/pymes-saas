@@ -653,6 +653,9 @@ model Invoice {
   reference_invoice_id     String?
   number                   String
   amount                   Decimal             @db.Decimal(12, 2)
+  subtotal                 Decimal?            @db.Decimal(12, 2)
+  tax_rate                 Decimal?            @db.Decimal(5, 2)
+  tax_amount               Decimal?            @db.Decimal(12, 2)
   currency                 String              @default("USD")
   due_date                 DateTime
   paid_at                  DateTime?

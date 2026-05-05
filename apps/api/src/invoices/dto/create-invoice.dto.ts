@@ -44,6 +44,21 @@ export class CreateInvoiceDto {
   amount: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  subtotal?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  tax_rate?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  tax_amount?: number;
+
+  @IsOptional()
   @IsString()
   @Length(1, 10)
   @Transform(({ value }) => (value === '' ? undefined : value))
