@@ -92,7 +92,10 @@ export function getRefreshToken() {
   if (_refreshToken) return _refreshToken;
   try { return getStorage().getItem('pymes_refresh') || null; } catch { return null; }
 }
-export function isLoggedIn() { return !!_token; }
+export function isLoggedIn() {
+  if (_token) return true;
+  try { return !!getStorage().getItem('pymes_token'); } catch { return false; }
+}
 
 /**
  * Extracts a human-readable message from API errors.
