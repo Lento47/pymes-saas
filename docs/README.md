@@ -2,99 +2,85 @@
 
 ## 1. Proposito
 
-Este directorio contiene la documentacion maestra de PymeHub como producto SaaS B2B multi-tenant orientado a pymes. El paquete esta diseñado para cubrir de forma coherente la capa legal externa, la capa interna de cumplimiento, la operacion diaria del servicio y los requisitos tecnicos que el producto debe implementar para sostener lo que se promete a clientes, prospectos, proveedores y terceros.
+Este directorio contiene la documentacion maestra de PymeHub como producto SaaS B2B multi-tenant orientado a pymes. El paquete cubre la capa contractual externa, las politicas internas de cumplimiento, la operacion del servicio, y las especificaciones tecnicas del API.
 
-El objetivo del paquete no es convertirse en un tratado teorico ni en una certificacion formal por si mismo. Su objetivo es dejar el repositorio listo para operar con orden, demostrar control documental y servir como base seria para validacion legal, fiscal, de privacidad, seguridad, soporte y producto.
+El objetivo no es teoria ni certificacion: es dejar el repositorio listo para operar con orden, demostrar control documental, y servir como base seria para validacion legal, fiscal, de privacidad, seguridad, soporte y producto.
 
-## 2. Alcance
+## 2. Alcance y separacion por rama
 
-Este paquete aplica a:
+Este paquete vive en `main-api` y aplica a:
 
 - el sitio y dominio `[DOMINIO]`;
-- el producto PymeHub y sus modulos de inbox, CRM, tareas, documentos, OCR, automatizaciones, resúmenes IA, insights, notificaciones y administracion multi-tenant;
+- el producto PymeHub (inbox, CRM, tareas, documentos, OCR, automatizaciones, IA, multi-tenant);
 - la operacion de `[NOMBRE_EMPRESA]` en `[JURISDICCION]`;
 - los clientes B2B de PymeHub;
-- los miembros internos, contratistas y proveedores autorizados que acceden a datos o sistemas del servicio.
+- los miembros internos, contratistas y proveedores autorizados.
 
-No sustituye asesoria legal, fiscal o regulatoria local. Cuando exista una zona que requiera validacion externa, el documento correspondiente deja fijado el criterio operativo de trabajo y el punto exacto que debe confirmarse con asesoria.
+Documentacion **especifica del frontend** (design system, despliegue Cloudflare Pages) vive en `main-web/docs/web/`. Esa rama solo contiene docs frontend.
 
-## 3. Convenciones documentales
+No sustituye asesoria legal, fiscal o regulatoria local.
 
-### 3.1 Placeholders controlados
+## 3. Estructura
 
-Los siguientes placeholders deben permanecer consistentes hasta su sustitucion definitiva:
+```
+docs/
+├── legal/                        ← LEGAL (cara externa + politicas internas)
+│   ├── contracts/                  contratos: T&C, MSA, DPA, NDA, AUP, cancelacion, privacidad
+│   ├── policies/                   politicas internas: seguridad, accesos, datos, incidentes, backups
+│   └── corporate/                  figura legal, marca, checklist de cumplimiento pais
+├── business/                     ← OPERACION COMERCIAL/FISCAL
+│   ├── costa-rica-tax-invoicing-guide.md
+│   ├── cabys-tax-matrix.md
+│   ├── pricing-billing-policy.md
+│   └── vendor-risk-register.md
+├── operations/                   ← OPERACION DEL SERVICIO
+│   └── (SLA, soporte, onboarding, offboarding, reclamos, releases, change mgmt)
+├── risk/                         ← REGISTROS VIVOS
+│   ├── risk-register.md
+│   └── subprocessors-list.md
+├── technical/                    ← INGENIERIA Y SPECS DEL API
+│   ├── api-deployment/             despliegue del API a Railway
+│   ├── api-spec/                   requisitos del producto (legal acceptance, auditoria, IA, OCR, multi-tenant)
+│   ├── architecture/               diagramas, boundaries, third-party services
+│   └── security-audits/            historial de remediaciones de seguridad
+└── templates/                    ← PLANTILLAS REUTILIZABLES
+    └── (onboarding, incidentes, privacidad, facturacion, ordenes de servicio)
+```
+
+## 4. Convenciones
+
+### 4.1 Placeholders controlados
 
 - `[NOMBRE_EMPRESA]`
 - `[CORREO_LEGAL]`
 - `[DOMINIO]`
 - `[JURISDICCION]`
 
-Otros placeholders adicionales podran usarse cuando un dato todavia no se haya definido formalmente, siempre que el documento deje claro si se trata de un dato operativo, legal, comercial o tecnico pendiente.
+### 4.2 Estandar editorial
 
-### 3.2 Estandar editorial
+Cada documento debe incluir, en la medida aplicable: proposito, alcance, definiciones clave, roles, reglas, procedimiento, evidencia, excepciones, frecuencia de revision, control documental, relacion con otros documentos.
 
-Salvo que la naturaleza del archivo exija otra estructura, cada documento debe incluir, en la medida aplicable:
+### 4.3 Control documental minimo
 
-1. proposito;
-2. alcance;
-3. definiciones clave;
-4. roles y responsables;
-5. reglas o politica obligatoria;
-6. procedimiento o flujo operativo;
-7. evidencia y registros;
-8. excepciones y escalamiento;
-9. frecuencia de revision;
-10. control documental;
-11. relacion con otros documentos.
+Por defecto en cada archivo: owner, ultima revision, proxima revision, estado (vigente / en revision / pendiente de validacion externa), version, dependencias.
 
-### 3.3 Control documental minimo
+## 5. Principios
 
-Todo documento de este paquete debe interpretarse con los siguientes metadatos por defecto, aun cuando no esten desarrollados como tabla formal dentro de cada archivo:
-
-- owner del documento: responsable funcional del tema;
-- ultima revision: fecha en que el documento fue revisado internamente;
-- proxima revision: fecha objetivo de revalidacion;
-- estado: vigente, en revision o pendiente de validacion externa;
-- version: numeracion o identificador de control;
-- dependencias: otros documentos o procesos relacionados.
-
-## 4. Principios del paquete
-
-- La documentacion esta adaptada a la operacion real de PymeHub y no a un SaaS generico.
-- Se diferencia con claridad entre documentos externos al cliente, politicas internas y especificaciones que el producto debe implementar.
-- Ningun documento debe prometer algo que PymeHub no pueda sostener operativamente o tecnicamente.
-- Toda afirmacion relevante debe poder rastrearse a una evidencia, flujo, control o backlog de implementacion.
-- Donde exista incertidumbre normativa especifica, se documenta el criterio operativo y la necesidad de validacion externa, pero no se inventa certeza.
-
-## 5. Estructura del paquete
-
-- [`legal/`](./legal): documentos contractuales, privacidad, tratamiento de datos, cancelacion, uso aceptable y plantillas de confidencialidad.
-- [`business/`](./business): definiciones societarias, guia fiscal y de facturacion para Costa Rica, pricing, checklist de salida y revision de marca/dominio.
-- [`security/`](./security): marco de seguridad, accesos, incidentes, backups, retencion, clasificacion, vendors, subprocesadores, riesgos y desarrollo seguro.
-- [`operations/`](./operations): soporte, SLA, onboarding, offboarding, reclamos, gestion de cambios y comunicacion de releases.
-- [`product-compliance/`](./product-compliance): requisitos de aceptacion legal, auditoria, UI de privacidad, IA, OCR, aislamiento multi-tenant y backlog tecnico.
-- [`architecture/`](./architecture): flujos de datos, limites del sistema y mapa de servicios de terceros.
-- [`templates/`](./templates): plantillas operativas reutilizables para ventas, privacidad, incidentes, facturacion y onboarding.
+- La documentacion esta adaptada a la operacion real, no a un SaaS generico.
+- Se diferencia con claridad entre documentos externos al cliente (`legal/contracts/`), politicas internas (`legal/policies/`), specs tecnicas (`technical/api-spec/`) y operacion (`operations/`, `business/`).
+- Ningun documento debe prometer algo que no se pueda sostener tecnicamente.
+- Toda afirmacion relevante debe rastrearse a evidencia, flujo, control o backlog.
+- Donde haya incertidumbre normativa, se documenta el criterio operativo y la necesidad de validacion externa.
 
 ## 6. Orden de uso recomendado
 
 1. Completar placeholders corporativos y de jurisdiccion.
-2. Validar la capa `legal/` y `business/` con asesoria local y contador.
-3. Publicar o preparar la publicacion de los documentos externos vigentes.
-4. Convertir `product-compliance/` en backlog tecnico priorizado.
-5. Mantener `subprocessors-list.md`, `vendor-risk-register.md` y `risk-register.md` como registros vivos.
-6. Versionar las politicas publicadas y conservar evidencia de su aceptacion.
+2. Validar `legal/contracts/` y `legal/corporate/` con asesoria local + contador.
+3. Publicar paginas legales externas.
+4. Convertir `technical/api-spec/compliance-implementation-backlog.md` en backlog tecnico priorizado.
+5. Mantener `risk/risk-register.md`, `risk/subprocessors-list.md` y `business/vendor-risk-register.md` como registros vivos.
+6. Versionar las politicas publicadas y conservar evidencia de aceptacion.
 
-## 7. Estado esperado del repositorio
+## 7. Relacion con la rama frontend
 
-Al mantener este paquete actualizado, el repositorio debe quedar preparado para:
-
-- publicar paginas legales consistentes con la operacion real;
-- contratar clientes B2B con base documental clara;
-- gestionar soporte, incidentes, cancelaciones, exportaciones y borrado con criterio uniforme;
-- demostrar orden minimo sobre accesos, datos, riesgos y proveedores;
-- traducir obligaciones documentales en trabajo concreto de producto y operacion.
-
-## 8. Relacion con otros documentos
-
-Este `README` funciona como indice maestro y norma editorial del paquete. Debe revisarse cada vez que se agregue una nueva politica, se cambie la estructura del directorio o se incorpore una nueva linea de negocio, proveedor critico o capacidad de producto que altere el mapa de cumplimiento de PymeHub.
+La regla del proyecto: **frontend → main-web, backend + cross-cutting → main-api, sin mezcla**. Cada push gatilla CI + deploy en su plataforma respectiva (Cloudflare Pages para `main-web`, Railway para `main-api`).
