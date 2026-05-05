@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 import {
   TrendingUp, Receipt, CheckSquare, BarChart4, ChevronDown, Sparkles, ArrowRight,
   ShieldCheck, TriangleAlert, CircleAlert, Info, Plus, FileText, MessageCircle, Package,
@@ -112,6 +113,18 @@ export default function DashboardPage() {
   const { data: insights } = useQuery({ queryKey: ["/api/insights"], queryFn: api.getInsights, staleTime: 3 * 60 * 1000 });
   const { data: onboardStatus } = useQuery({ queryKey: ["onboarding-status"], queryFn: api.getOnboardingStatus, staleTime: 5 * 60 * 1000, retry: false });
   const { data: lowStock } = useQuery({ queryKey: ["low-stock-dash"], queryFn: api.getLowStock, refetchInterval: 120000, retry: false });
+  const { data: pendingApprovals } = useQuery({ queryKey: ["pending-approvals"], queryFn: api.getPendingApprovals, refetchInterval: 30000, retry: false });
+
+  const approveMut = useMutation({
+    mutationFn: (id: string) => api.approveInvoice(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pending-approvals"] }),
+  });
+  const rejectMut = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => api.rejectInvoice(id, reason),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pending-approvals"] }),
+  });
+
+  const approvalList: any[] = Array.isArray(pendingApprovals) ? pendingApprovals : [];
 
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
@@ -154,6 +167,48 @@ export default function DashboardPage() {
           onDismiss={() => {}}
         />
       </div>
+
+      {/* Pending approvals */}
+      {approvalList.length > 0 && (
+        <div className="px-4 sm:px-6 pb-3">
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldCheck className="w-[15px] h-[15px] text-amber-400" />
+              <h2 className="text-sm font-medium text-foreground">Facturas pendientes de aprobación</h2>
+              <span className="text-[11px] text-muted-foreground">{approvalList.length}</span>
+            </div>
+            <div className="space-y-2">
+              {approvalList.map((inv: any) => (
+                <div key={inv.id} className="flex items-center justify-between rounded-lg border border-border bg-background/50 px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-foreground truncate">{inv.number}</span>
+                      <span className="text-[10px] text-muted-foreground">{inv.contact?.full_name || "—"}</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                      {new Intl.NumberFormat("es-CR", { style: "currency", currency: inv.currency ?? "USD", maximumFractionDigits: 0 }).format(inv.amount ?? 0)}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                    <button
+                      onClick={() => rejectMut.mutate({ id: inv.id, reason: "Rechazada" })}
+                      disabled={rejectMut.isPending}
+                      className="h-6 px-2 text-[10px] rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
+                      Rechazar
+                    </button>
+                    <button
+                      onClick={() => approveMut.mutate(inv.id)}
+                      disabled={approveMut.isPending}
+                      className="h-6 px-2 text-[10px] rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 transition-colors">
+                      Aprobar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="px-4 sm:px-6 pb-1">
         <DiagnosticButton module="dashboard" />
