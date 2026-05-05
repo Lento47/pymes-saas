@@ -56,7 +56,7 @@ export function HubbyBuddy() {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 transition-all duration-700 ${
+      className={`fixed bottom-6 right-6 z-30 transition-all duration-700 ${
         visible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-20 opacity-0 scale-75'
       }`}
       style={{ pointerEvents: visible ? 'auto' : 'none' }}
