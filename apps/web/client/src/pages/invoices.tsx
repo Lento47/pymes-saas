@@ -991,6 +991,10 @@ export default function InvoicesPage() {
                 <div><span className="text-muted-foreground/60">Saldo</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)}</div></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                <div><span className="text-muted-foreground/60">Subtotal</span><div className="text-foreground mt-0.5">{selectedInvoice.subtotal != null ? formatMoney(selectedInvoice.subtotal, selectedInvoice.currency) : "—"}</div></div>
+                <div><span className="text-muted-foreground/60">IVA</span><div className="text-foreground mt-0.5">{selectedInvoice.tax_rate != null ? `${selectedInvoice.tax_rate}%` : "—"}{selectedInvoice.tax_amount != null ? ` (${formatMoney(selectedInvoice.tax_amount, selectedInvoice.currency)})` : ""}</div></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div><span className="text-muted-foreground/60">Emisión</span><div className="text-foreground mt-0.5">{selectedInvoice.issue_date ? format(new Date(selectedInvoice.issue_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
                 <div><span className="text-muted-foreground/60">Vencimiento</span><div className="text-foreground mt-0.5">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
               </div>
