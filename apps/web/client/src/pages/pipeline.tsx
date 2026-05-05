@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, memo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -20,9 +20,11 @@ const PRIORITY_LABELS: Record<Deal["priority"], string> = { LOW: "Baja", MEDIUM:
 function fmtCRC(val: string | null, currency: string) { if (!val) return null; const n = parseFloat(val); if (isNaN(n)) return null; return new Intl.NumberFormat("es-CR", { style: "currency", currency, maximumFractionDigits: 0 }).format(n); }
 function columnTotal(deals: Deal[]) { const s = deals.reduce((acc, d) => acc + (d.value ? parseFloat(d.value) : 0), 0); if (s === 0) return null; return new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", maximumFractionDigits: 0 }).format(s); }
 
-function DealCard({ deal, onDragStart, onClick }: { deal: Deal; onDragStart: (e: React.DragEvent, dealId: string) => void; onClick: (deal: Deal) => void; }) {
+const DealCard = memo(function DealCard({ deal, onDragStart, onClick }: { deal: Deal; onDragStart: (e: React.DragEvent, dealId: string) => void; onClick: (deal: Deal) => void; }) {
+  const handleDragStart = useCallback((e: React.DragEvent) => onDragStart(e, deal.id), [onDragStart, deal.id]);
+  const handleClick = useCallback(() => onClick(deal), [onClick, deal]);
   return (
-    <div draggable onDragStart={(e) => onDragStart(e, deal.id)} onClick={() => onClick(deal)}
+    <div draggable onDragStart={handleDragStart} onClick={handleClick}
       className="rounded-xl p-3 cursor-grab active:cursor-grabbing select-none transition-all duration-200 hover:scale-[1.01] hover:shadow-lg active:opacity-70 group"
       style={{ background: 'hsl(var(--foreground)/0.015)', border: '1px solid hsl(var(--foreground)/0.04)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
       <div className="flex items-start gap-2">
@@ -59,7 +61,7 @@ function DealCard({ deal, onDragStart, onClick }: { deal: Deal; onDragStart: (e:
       </div>
     </div>
   );
-}
+});
 
 function KanbanColumn({ stage, onDragStart, onDrop, onAddDeal, onClickDeal }: { stage: Stage; onDragStart: (e: React.DragEvent, dealId: string) => void; onDrop: (e: React.DragEvent, stageId: string) => void; onAddDeal: (stageId: string) => void; onClickDeal: (deal: Deal) => void; }) {
   const [over, setOver] = useState(false);
@@ -98,8 +100,10 @@ export default function PipelinePage() {
   const [defaultStage, setDefaultStage] = useState<string>();
   const moveMut = useMutation({ mutationFn: ({ dealId, stageId }: { dealId: string; stageId: string }) => api.moveDeal(dealId, stageId), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }), onError: (err: any) => toast({ title: "Error al mover deal", description: err?.message || "No se pudo mover.", variant: "destructive" }) });
 
-  const handleDragStart = (e: React.DragEvent, dealId: string) => { e.dataTransfer.setData("dealId", dealId); e.dataTransfer.effectAllowed = "move"; };
-  const handleDrop = (e: React.DragEvent, stageId: string) => { const dealId = e.dataTransfer.getData("dealId"); if (dealId) moveMut.mutate({ dealId, stageId }); };
+  const handleDragStart = useCallback((e: React.DragEvent, dealId: string) => { e.dataTransfer.setData("dealId", dealId); e.dataTransfer.effectAllowed = "move"; }, []);
+  const handleDrop = useCallback((e: React.DragEvent, stageId: string) => { const dealId = e.dataTransfer.getData("dealId"); if (dealId) moveMut.mutate({ dealId, stageId }); }, [moveMut]);
+  const handleAddDeal = useCallback((sid: string) => { setEditingDeal(null); setDefaultStage(sid); setModalOpen(true); }, []);
+  const handleClickDeal = useCallback((d: Deal) => { setEditingDeal(d); setModalOpen(true); }, []);
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
@@ -127,7 +131,7 @@ export default function PipelinePage() {
           <div className="flex gap-3 p-4 h-full items-start" style={{ minWidth: stages.length * 280 }}>
             {stages.map(stage => (
               <KanbanColumn key={stage.id} stage={stage} onDragStart={handleDragStart} onDrop={handleDrop}
-                onAddDeal={(sid) => { setEditingDeal(null); setDefaultStage(sid); setModalOpen(true); }} onClickDeal={(d) => { setEditingDeal(d); setModalOpen(true); }} />
+                onAddDeal={handleAddDeal} onClickDeal={handleClickDeal} />
             ))}
           </div>
         </div>

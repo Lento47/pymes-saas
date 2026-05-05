@@ -1,17 +1,19 @@
+import { memo, useCallback } from "react";
 import { formatDistanceToNow, formatDistanceToNowStrict } from "date-fns";
 import type { InboxConversation } from "../types";
 import { AvatarFallback } from "@/components/shared/avatar-fallback";
 import { ChannelBadge } from "@/components/shared/channel-badge";
 
-export function ConversationListItem({
+function ConversationListItemImpl({
   conversation,
   selected,
-  onClick,
+  onSelect,
 }: {
   conversation: InboxConversation;
   selected: boolean;
-  onClick: () => void;
+  onSelect: (id: string) => void;
 }) {
+  const onClick = useCallback(() => onSelect(conversation.id), [onSelect, conversation.id]);
   const contactName =
     conversation.contact?.full_name ||
     conversation.contact?.name ||
@@ -85,3 +87,5 @@ export function ConversationListItem({
     </button>
   );
 }
+
+export const ConversationListItem = memo(ConversationListItemImpl);

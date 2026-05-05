@@ -36,13 +36,19 @@ export function connectSocket() {
   const token = getAuthToken();
   if (!token) return null;
 
+  // Exponential backoff with jitter so an upstream outage doesn't cause every
+  // tab in every browser to slam the backend with synchronized retries.
+  // socket.io's algorithm: min(reconnectionDelay * 2^attempt, reconnectionDelayMax)
+  // ± randomizationFactor.
   _socket = io(`${WS_URL}/ws`, {
     path: '/socket.io',
     auth: { token },
     transports: ['websocket', 'polling'],
     reconnection: true,
-    reconnectionAttempts: 10,
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
+    reconnectionDelayMax: 30_000,
+    randomizationFactor: 0.5,
   });
 
   _socket.on('connect', () => {

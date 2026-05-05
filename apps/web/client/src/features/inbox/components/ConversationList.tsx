@@ -57,7 +57,7 @@ export function ConversationList({
                 key={conversation.id}
                 conversation={conversation}
                 selected={conversation.id === selectedId}
-                onClick={() => onSelect(conversation.id)}
+                onSelect={onSelect}
               />
             ))}
           </div>
