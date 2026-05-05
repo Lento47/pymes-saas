@@ -49,6 +49,7 @@ import InventoryPage from "@/pages/inventory";
 import InventoryDetailPage from "@/pages/inventory-detail";
 import InventoryMovementsPage from "@/pages/inventory-movements";
 import AdminDashboard from "@/pages/admin/dashboard";
+import { NoindexMeta } from "@/components/shared/noindex-meta";
 import AdminWorkspaces from "@/pages/admin/workspaces";
 import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
 import AdminUsers from "@/pages/admin/users";
@@ -197,6 +198,7 @@ export default function App() {
 
   return (
     <AppErrorBoundary>
+      <NoindexMeta />
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
           <ThemeProvider>

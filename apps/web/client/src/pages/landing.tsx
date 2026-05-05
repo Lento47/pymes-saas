@@ -477,7 +477,7 @@ export default function Landing() {
           <div className="relative w-[max(1536px,100vw,calc(100vh*1.5))]">
             <img
               src="/images/hero-bg.png"
-              alt=""
+              alt="PymesHub — plataforma de gestión empresarial para PYMEs"
               aria-hidden="true"
               loading="eager"
               className="block h-auto w-full max-w-none opacity-[0.92]"
