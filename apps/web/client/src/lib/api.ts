@@ -1,5 +1,24 @@
 import { reportClientError } from "@/lib/error-reporting";
 
+// Errors thrown from `request()` carry the support-case the backend opened
+// (api-exception.filter returns `case_id` and `error_code` on 4xx/5xx that
+// match the auto-ticket rules). The message is suffixed with the ticket so
+// existing `toast({ description: err.message })` call sites surface it
+// without each one having to special-case ApiError.
+export class ApiError extends Error {
+  readonly status?: number;
+  readonly case_id?: string;
+  readonly error_code?: string;
+  constructor(message: string, opts: { status?: number; case_id?: string; error_code?: string } = {}) {
+    const suffix = opts.case_id ? ` · Ticket #${opts.case_id.slice(-6)} abierto` : "";
+    super(`${message}${suffix}`);
+    this.name = "ApiError";
+    this.status = opts.status;
+    this.case_id = opts.case_id;
+    this.error_code = opts.error_code;
+  }
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // IMPORTANTE — URL DEL BACKEND API
 //
@@ -202,10 +221,15 @@ async function request<T>(
 
   if (!res.ok) {
     const raw = (await res.text()) || res.statusText;
-    let message = raw;
+    let message: string = raw;
+    let case_id: string | undefined;
+    let error_code: string | undefined;
     try {
       const parsed = JSON.parse(raw);
-      message = parsed.message || parsed.error || raw;
+      const msg = parsed.message ?? parsed.error ?? raw;
+      message = Array.isArray(msg) ? msg.join(" · ") : String(msg);
+      case_id = typeof parsed.case_id === "string" ? parsed.case_id : undefined;
+      error_code = typeof parsed.error_code === "string" ? parsed.error_code : undefined;
     } catch { /* not JSON, use raw text */ }
     if (res.status >= 500 && !path.includes("/error-reports/client")) {
       void reportClientError({
@@ -217,10 +241,10 @@ async function request<T>(
         method,
         status_code: res.status,
         url: `${API_BASE}${path}`,
-        context_json: { path },
+        context_json: { path, case_id, error_code },
       });
     }
-    throw new Error(message);
+    throw new ApiError(message, { status: res.status, case_id, error_code });
   }
 
   const contentType = res.headers.get("content-type");
