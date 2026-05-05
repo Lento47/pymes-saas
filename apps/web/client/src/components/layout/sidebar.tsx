@@ -11,12 +11,12 @@ import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api, getWorkspaceSlug } from "@/lib/api";
 import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
-  Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot, MessageCircle,
+  Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot,
   Sun, Moon, Search, Menu, X, ChevronRight, Building2,
   CreditCard, Layers, Plug, PlugZap, Shuffle, BrainCircuit, ShieldCheck, UserCircle, LifeBuoy,
 } from "lucide-react";
 
-type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "notifications" | "chat" | "settings" | "help";
+type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "notifications" | "settings" | "help";
 type NavItem = { path: string; icon: any; key: NavKey; badge?: "unread" | "overdue" };
 
 function navLabel(copy: any, key: NavKey): string {
@@ -54,7 +54,6 @@ interface NavGroup {
 // Plan minimum for each nav item (items not listed are available to all)
 const PLAN_MIN: Record<string, string> = {
   pipeline: 'STARTER',
-  chat: 'ENTERPRISE',
   agent: 'ENTERPRISE',
 };
 
@@ -81,7 +80,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: "assistants",
     items: [
-      { path: "/chat",          icon: MessageCircle,    key: "chat" },
       { path: "/agent",         icon: Bot,             key: "agent" },
       { path: "/help",          icon: CircleHelp,       key: "help" },
       { path: "/notifications", icon: BellRing,        key: "notifications", badge: "unread" },
