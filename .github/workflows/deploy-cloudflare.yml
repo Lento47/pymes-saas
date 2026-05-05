@@ -3,8 +3,16 @@ name: Deploy to Cloudflare Pages
 on:
   push:
     branches: [main-web]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**.md'
   pull_request:
     branches: [main-web]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**.md'
 
 jobs:
   branch-guard:
