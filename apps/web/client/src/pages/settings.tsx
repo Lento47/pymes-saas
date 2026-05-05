@@ -2826,7 +2826,7 @@ export default function Settings() {
         <div className="px-6 py-5 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">{copy.pageTitle}</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Gestiona tu workspace, equipo e integraciones</p>
+            <p className="text-sm text-gray-500 mt-0.5">Gestiona tu workspace y equipo</p>
           </div>
         </div>
       </ModuleHero>
@@ -2842,13 +2842,12 @@ export default function Settings() {
           {defaultTab === "departments" && <DepartmentsTab />}
           {defaultTab === "channels" && <ChannelsTab />}
           {defaultTab === "routing" && <RoutingRulesTab />}
-          {defaultTab === "integrations" && <IntegrationsTab />}
           {defaultTab === "ai" && <AiTab />}
           {defaultTab === "apitokens" && isPlanAtLeast('BUSINESS') && <ApiTokensTab />}
           {defaultTab === "saml" && isPlanAtLeast('BUSINESS') && <SamlConfig />}
           {defaultTab === "enterprise" && isPlanAtLeast('BUSINESS_PLUS') && <EnterpriseSettingsTab />}
           {defaultTab === "platform" && isPlatformAdmin && <PlatformTab />}
-          {!["profile","workspace","billing","members","departments","channels","routing","integrations","ai","apitokens","saml","enterprise","platform"].includes(defaultTab) && <WorkspaceTab />}
+          {!["profile","workspace","billing","members","departments","channels","routing","ai","apitokens","saml","enterprise","platform"].includes(defaultTab) && <WorkspaceTab />}
         </CardContent>
       </Card>
       <HelpButton page="Configuración" />

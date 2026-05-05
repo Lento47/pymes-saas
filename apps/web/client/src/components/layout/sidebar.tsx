@@ -99,7 +99,6 @@ const SETTINGS_ITEMS = [
   { href: "/settings?tab=departments", icon: Layers, label: "Departamentos" },
   { href: "/settings?tab=channels", icon: PlugZap, label: "Canales" },
   { href: "/settings?tab=routing", icon: Shuffle, label: "Enrutamiento" },
-  { href: "/settings?tab=integrations", icon: Plug, label: "Integraciones" },
   { href: "/settings?tab=ai", icon: BrainCircuit, label: "Inteligencia Artificial" },
   { href: "/settings?tab=platform", icon: ShieldCheck, label: "Plataforma" },
 ] as const;
