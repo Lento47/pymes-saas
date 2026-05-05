@@ -276,6 +276,21 @@ export default function BillingPage() {
     retry: false,
   });
 
+  const { data: addonPrices } = useQuery({
+    queryKey: ["/api/billing/addon-prices"],
+    queryFn: api.getAddonPrices,
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  const addonCheckoutMut = useMutation({
+    mutationFn: (addonKey: string) => api.createAddonCheckout(addonKey),
+    onSuccess: (data: any) => {
+      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   // ────────────────────────────────────────────────────────────────────────
   // IMPORTANTE — FUENTE DE VERDAD DE LOS PRICE IDs:
   // SIEMPRE LEEMOS DESDE EL BACKEND (`api.getBillingPrices()` => pricesData),
@@ -897,6 +912,36 @@ function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Add-ons */}
+      {addonPrices && Object.keys(addonPrices).length > 0 && (
+        <section className="mt-8">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Suma capacidad cuando la necesites</h2>
+            <p className="text-sm text-muted-foreground">Mantén tu plan base simple y agrega usuarios pagados conforme crece tu equipo.</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Usuarios extra disponibles para planes pagados</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(addonPrices as Record<string, any>).map(([key, info]: [string, any]) => (
+              <div key={key}
+                className="rounded-xl border border-border bg-card p-5 flex flex-col gap-3 transition-colors hover:border-primary/30">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">{info.label}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">{info.description}</p>
+                </div>
+                <div className="flex items-center justify-between mt-auto pt-2 border-t border-border">
+                  <span className="text-lg font-bold text-foreground">${info.priceUSD}<span className="text-xs text-muted-foreground font-normal">/mes</span></span>
+                  <Button size="sm" className="h-8 text-xs"
+                    onClick={() => addonCheckoutMut.mutate(key)}
+                    disabled={addonCheckoutMut.isPending}>
+                    {addonCheckoutMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Agregar"}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       <HelpButton page="Facturación" />

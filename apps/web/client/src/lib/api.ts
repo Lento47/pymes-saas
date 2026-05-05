@@ -380,7 +380,12 @@ export const api = {
   // (4) PADDLE_ENVIRONMENT=production.
   // ────────────────────────────────────────────────────────────────────────
   createCheckout: (priceId: string) => request<any>("POST", "/api/billing/checkout", { priceId }),
-  getBillingPrices: () => request<any>("GET", "/api/billing/prices"),
+  getBillingPrices: () =>
+    request<any>("GET", "/api/billing/prices"),
+  getAddonPrices: () =>
+    request<any>("GET", "/api/billing/addon-prices"),
+  createAddonCheckout: (addonKey: string) =>
+    request<any>("POST", "/api/billing/checkout-addon", { addonKey }),
   getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
   getBillingInvoices: (params?: { page?: number; limit?: number; search?: string }) => {
     const qs = params ? "?" + new URLSearchParams(
