@@ -150,6 +150,7 @@ export default function DashboardPage() {
       <div className="px-4 sm:px-6 pt-3 sm:pt-4">
         <QuickStartChecklist
           progress={workspace?.settings?.quick_start_progress ?? {}}
+          plan={user?.workspace?.plan}
           onDismiss={() => {}}
         />
       </div>

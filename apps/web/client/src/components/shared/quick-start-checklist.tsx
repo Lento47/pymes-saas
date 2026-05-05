@@ -12,6 +12,7 @@ interface ChecklistItem {
 
 interface Props {
   progress: Record<string, boolean>;
+  plan?: string;
   onDismiss: () => void;
 }
 
@@ -25,12 +26,24 @@ const ITEMS: ChecklistItem[] = [
   { key: "team_invited", label: "Invitar a tu equipo", link: "/settings", done: false },
 ];
 
-export default function QuickStartChecklist({ progress, onDismiss }: Props) {
+const ORDER = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
+const ITEM_PLAN_MIN: Record<string, string> = {
+  pipeline_created: 'STARTER',
+};
+
+export default function QuickStartChecklist({ progress, plan, onDismiss }: Props) {
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed) return null;
 
-  const items = ITEMS.map((item) => ({
+  const items = ITEMS
+    .filter((item) => {
+      const minPlan = ITEM_PLAN_MIN[item.key];
+      if (!minPlan) return true;
+      const userPlan = plan ?? 'FREE';
+      return ORDER.indexOf(userPlan) >= ORDER.indexOf(minPlan);
+    })
+    .map((item) => ({
     ...item,
     done: !!progress[item.key],
   }));
