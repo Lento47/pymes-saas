@@ -321,6 +321,7 @@ export class PaddleSdkService {
         const url = `${baseUrl}/customers?email=${encodeURIComponent(info.email)}`;
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${paddleApiKey}`, 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(10_000),
         });
         if (res.ok) {
           const body: any = await res.json();

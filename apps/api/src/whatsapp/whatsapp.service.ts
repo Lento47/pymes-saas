@@ -49,6 +49,7 @@ export class WhatsAppService {
         type: 'text',
         text: { body: bodyText },
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const data: any = await res.json();
@@ -107,6 +108,7 @@ export class WhatsAppService {
           ...(components.length > 0 ? { components } : {}),
         },
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const data: any = await res.json();

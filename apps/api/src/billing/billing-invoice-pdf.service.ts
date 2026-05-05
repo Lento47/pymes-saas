@@ -43,7 +43,7 @@ let logoBuffer: Buffer | null = null;
 async function getLogoBuffer(): Promise<Buffer | null> {
   if (logoBuffer) return logoBuffer;
   try {
-    const res = await fetch(LOGO_URL);
+    const res = await fetch(LOGO_URL, { signal: AbortSignal.timeout(8_000) });
     if (!res.ok) return null;
     logoBuffer = Buffer.from(await res.arrayBuffer());
     return logoBuffer;

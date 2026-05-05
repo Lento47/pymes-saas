@@ -5,7 +5,6 @@ import { generateBillingInvoicePdf, type BillingInvoicePdfData } from './billing
 @Injectable()
 export class BillingInvoiceService {
   private readonly logger = new Logger(BillingInvoiceService.name);
-  private counter = 0;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -42,31 +41,43 @@ export class BillingInvoiceService {
       total: subtotal,
     }];
 
-    const number = await this.nextNumber();
+    // ATOMIC: number generation + insert in one serializable transaction to
+    // prevent duplicate invoice numbers across replicas.
+    const invoice = await this.prisma.$transaction(async (tx) => {
+      const year = new Date().getFullYear();
+      const prefix = `PH-${year}-`;
+      const last = await tx.billingInvoice.findFirst({
+        where: { number: { startsWith: prefix } },
+        orderBy: { number: 'desc' },
+        select: { number: true },
+      });
+      const seq = last ? (parseInt(last.number.slice(prefix.length), 10) + 1) : 1;
+      const number = `${prefix}${String(seq).padStart(4, '0')}`;
 
-    const invoice = await this.prisma.billingInvoice.create({
-      data: {
-        number,
-        workspace_id: workspaceId,
-        subscription_id: subscriptionId,
-        status: (params.status as any) || 'PAID',
-        client_name: params.clientName,
-        client_email: params.clientEmail,
-        plan_name: params.planName,
-        plan_interval: params.planInterval,
-        seats: params.seats,
-        line_items: lineItems as any,
-        subtotal,
-        tax_rate: taxRate,
-        tax_amount: taxAmount,
-        total,
-        currency,
-        notes: params.notes,
-        issued_at: new Date(),
-      },
-    });
+      return tx.billingInvoice.create({
+        data: {
+          number,
+          workspace_id: workspaceId,
+          subscription_id: subscriptionId,
+          status: (params.status as any) || 'PAID',
+          client_name: params.clientName,
+          client_email: params.clientEmail,
+          plan_name: params.planName,
+          plan_interval: params.planInterval,
+          seats: params.seats,
+          line_items: lineItems as any,
+          subtotal,
+          tax_rate: taxRate,
+          tax_amount: taxAmount,
+          total,
+          currency,
+          notes: params.notes,
+          issued_at: new Date(),
+        },
+      });
+    }, { isolationLevel: 'Serializable' });
 
-    this.logger.log(`Generated billing invoice ${number} for workspace ${workspaceId}`);
+    this.logger.log(`Generated billing invoice ${invoice.number} for workspace ${workspaceId}`);
     return invoice;
   }
 
@@ -135,23 +146,5 @@ export class BillingInvoiceService {
       data,
       meta: { total, page, limit, pages: Math.ceil(total / limit) },
     };
-  }
-
-  private async nextNumber(): Promise<string> {
-    const year = new Date().getFullYear();
-    if (this.counter === 0) {
-      const last = await this.prisma.billingInvoice.findFirst({
-        where: { number: { startsWith: `PH-${year}` } },
-        orderBy: { number: 'desc' },
-        select: { number: true },
-      });
-      if (last) {
-        const seq = parseInt(last.number.split('-')[2] || '0', 10);
-        this.counter = seq + 1;
-      } else {
-        this.counter = 1;
-      }
-    }
-    return `PH-${year}-${String(this.counter++).padStart(4, '0')}`;
   }
 }

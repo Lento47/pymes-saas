@@ -64,6 +64,7 @@ export class HaciendaAuthService {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: body.toString(),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!response.ok) {
