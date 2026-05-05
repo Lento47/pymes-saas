@@ -162,8 +162,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     onError: (e: any) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
   });
 
-  const canSendInvoice = ["EMAIL", "WHATSAPP"].includes(channelType.toUpperCase());
-
   const handleSend = () => {
     if (!message.trim()) return;
     sendMut.mutate({ body_text: message, direction: "OUTBOUND" });
@@ -175,6 +173,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const contact = conversation?.contact;
   const contactName = contact?.full_name || "Desconocido";
   const channelType = conversation?.channel?.type || "";
+  const canSendInvoice = ["EMAIL", "WHATSAPP"].includes(channelType.toUpperCase());
 
   useEffect(() => {
     if (bottomRef.current) bottomRef.current.scrollIntoView({ behavior: "auto" });
@@ -248,7 +247,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
-                  onClick={() => { setInvoiceForm({ number: "", amount: "", currency: "USD", due_date: "", description: "" }); setShowInvoice(true); }}
+                  onClick={() => { setInvoiceForm({ number: "", amount: "", currency: "USD", due_date: "", description: "", subtotal: "", tax_rate: "13", tax_amount: "" }); setShowInvoice(true); }}
                   title="Factura">
                   <Receipt className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
