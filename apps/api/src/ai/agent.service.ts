@@ -172,7 +172,7 @@ export class AgentService {
         parameters: z.object({ description: z.string().describe('Description of the error or issue to diagnose') }),
         execute: async ({ description }: { description: string }) => {
           const service = this.diagnostic;
-          const result = await service.diagnose({ workspace_id: workspaceId, user_description: description });
+          const result = await service.diagnose({ workspaceId, user_description: description });
           return { diagnosis: result };
         },
       }),

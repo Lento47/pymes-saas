@@ -367,7 +367,7 @@ export class AgentToolsService {
 
   private async diagnose(workspaceId: string, args: Record<string, any>) {
     const result = await this.diagnostic.diagnose({
-      workspace_id: workspaceId,
+      workspaceId,
       user_description: args.description || args.user_description || '',
       error_report_id: args.error_report_id,
     });

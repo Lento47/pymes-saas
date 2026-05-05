@@ -425,7 +425,7 @@ Responde con JSON puro (sin markdown):
 
   // ── Generate fix proposal from diagnostic case ──────────────────────────────
 
-  async generateFixProposal(diagnosticCase: {
+  async generateFixProposal(workspaceId: string, diagnosticCase: {
     module: string;
     error_code: string | null;
     title: string;
@@ -437,7 +437,7 @@ Responde con JSON puro (sin markdown):
     route: string | null;
     method: string | null;
   } | null): Promise<{ fix_summary: string; files_changed_json: { file: string; reason: string; diff_suggestion: string }[] } | null> {
-    const config = await this.getWorkspaceOrGlobalConfig();
+    const config = await this.getConfig(workspaceId);
     if (!config) return null;
 
     const system = `Eres un ingeniero de software senior especializado en NestJS, TypeScript, Prisma y PostgreSQL. Tu trabajo es analizar errores del SaaS "PymesHub" y proponer arreglos concretos.

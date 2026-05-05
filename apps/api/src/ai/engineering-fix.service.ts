@@ -14,7 +14,7 @@ export class EngineeringFixService {
   async createFixCase(diagnosticCaseId: string) {
     const diagnostic = await this.prisma.supportDiagnosticCase.findUnique({
       where: { id: diagnosticCaseId },
-      select: { id: true, module: true, error_code: true, title: true, user_description: true, safe_summary: true },
+      select: { id: true, workspace_id: true, module: true, error_code: true, title: true, user_description: true, safe_summary: true },
     });
 
     if (!diagnostic) {
@@ -39,19 +39,15 @@ export class EngineeringFixService {
     this.logger.log(`Engineering fix case created: ${fixCase.id}, branch: ${branchName}`);
 
     // Auto-generate fix proposal via AI (fire-and-forget)
-    this.proposeFixAndUpdate(fixCase.id, diagnostic, diagnosticCaseId).catch(err => {
-      this.logger.error(`Auto fix proposal failed for ${fixCase.id}: ${err?.message}`);
-    });
-
-    return fixCase;
-  }
+    this.proposeFixAndUpdate(fixCase.id, diagnostic, diagnosticCaseId, diagnostic.workspace_id).catch(err => {
 
   private async proposeFixAndUpdate(
     fixCaseId: string,
-    diagnostic: { module: string; error_code: string | null; title: string; user_description: string | null; safe_summary: string | null },
+    diagnostic: { workspace_id: string; module: string; error_code: string | null; title: string; user_description: string | null; safe_summary: string | null },
     diagnosticCaseId: string,
+    workspaceId: string,
   ) {
-    const proposal = await this.aiService.generateFixProposal(diagnostic);
+    const proposal = await this.aiService.generateFixProposal(workspaceId, diagnostic);
     if (!proposal) {
       await this.updateFixStatus(fixCaseId, { status: 'INVESTIGATING', error_log: 'AI fix proposal generation failed' });
       return;
