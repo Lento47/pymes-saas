@@ -241,6 +241,39 @@ export class PlanLimitsService {
     );
   }
 
+  async enforceWhatsappAnalytics(workspaceId: string): Promise<void> {
+    const ws = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { plan: true, settings_json: true },
+    });
+    if (ws.plan === 'ENTERPRISE' || ws.plan === 'BUSINESS_PLUS') return;
+    const settings = (ws.settings_json as Record<string, any>) ?? {};
+    if (settings.whatsapp_premium_active) return;
+    throw new ForbiddenException('WhatsApp + Analíticas requiere el add-on activo o plan ENTERPRISE.');
+  }
+
+  async enforceAdvancedInventory(workspaceId: string): Promise<void> {
+    const ws = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { plan: true, settings_json: true },
+    });
+    if (ws.plan === 'ENTERPRISE' || ws.plan === 'BUSINESS_PLUS') return;
+    const settings = (ws.settings_json as Record<string, any>) ?? {};
+    if (settings.advanced_inventory_active) return;
+    throw new ForbiddenException('Inventario avanzado requiere el add-on activo o plan ENTERPRISE.');
+  }
+
+  async enforceApprovalsSignature(workspaceId: string): Promise<void> {
+    const ws = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { plan: true, settings_json: true },
+    });
+    if (ws.plan === 'ENTERPRISE' || ws.plan === 'BUSINESS_PLUS') return;
+    const settings = (ws.settings_json as Record<string, any>) ?? {};
+    if (settings.approvals_signature_active) return;
+    throw new ForbiddenException('Aprobaciones y firma digital requiere el add-on activo o plan ENTERPRISE.');
+  }
+
   // ── evaluatePlanLimit — centralized reusable evaluation ──────────────────
 
   async evaluatePlanLimit(
@@ -331,8 +364,19 @@ export class PlanLimitsService {
   async checkUserLimit(workspaceId: string): Promise<void> {
     const plan = await this.getWorkspacePlan(workspaceId);
     const limits = await this.getEffectiveLimits(workspaceId);
-    const limit = limits.users;
+    let limit = limits.users;
     if (limit === 'custom' || limit === Infinity) return;
+
+    // Extra user add-on: add +1 per extra user purchased
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const settings = (ws?.settings_json as Record<string, any>) ?? {};
+    if (settings.extra_user_active) {
+      const extraUsers = settings.extra_user_count ?? 1;
+      limit = (limit as number) + extraUsers;
+    }
 
     const current = await this.prisma.workspaceUser.count({ where: { workspace_id: workspaceId } });
     if (current >= (limit as number)) {

@@ -55,7 +55,7 @@ export class BillingController {
         user.workspace_id,
         customerId,
         dto.priceId,
-        `${appUrl}/settings/billing?paddle=success`,
+        user.email,
       );
 
       return result;
@@ -187,5 +187,22 @@ export class BillingController {
     @Body() dto?: { customerId?: string; subscriptionId?: string },
   ) {
     return this.paddleService.syncSubscription(user.workspace_id, dto?.customerId, dto?.subscriptionId);
+  }
+
+  @Get('addon-prices')
+  @UseGuards(JwtAuthGuard)
+  getAddonPrices() {
+    return this.paddleService.getAvailableAddonPrices();
+  }
+
+  @Post('checkout-addon')
+  @UseGuards(JwtAuthGuard)
+  async createAddonCheckout(
+    @CurrentUser() user: AuthUser,
+    @Body('addonKey') addonKey: string,
+  ) {
+    if (!addonKey) throw new BadRequestException('addonKey is required');
+    const customerId = await this.paddleService.createOrGetCustomer(user.workspace_id, user.email);
+    return this.paddleService.createAddonTransaction(user.workspace_id, customerId, user.email, addonKey);
   }
 }

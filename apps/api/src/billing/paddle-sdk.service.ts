@@ -96,40 +96,6 @@ export class PaddleSdkService {
 
   // ── Checkout / Transaction ───────────────────────────────────────────────
 
-  async createTransaction(
-    workspaceId: string,
-    customerId: string,
-    priceId: string,
-    successUrl?: string,
-  ) {
-    const paddle = this.requireClient();
-
-    const transaction = await paddle.transactions.create({
-      items: [{ priceId, quantity: 1 }],
-      customerId,
-      checkout: successUrl ? { url: successUrl } : undefined,
-    });
-
-    // Store the transaction for reference
-    await this.prisma.stripeEvent.create({
-      data: {
-        workspace_id: workspaceId,
-        external_id: transaction.id,
-        type: 'transaction.created',
-        data: {
-          transaction_id: transaction.id,
-          price_id: priceId,
-        } as any,
-        processed: false,
-      },
-    });
-
-    return {
-      transactionId: transaction.id,
-      checkoutUrl: transaction.checkout?.url ?? null,
-    };
-  }
-
   // ── Customer Portal ──────────────────────────────────────────────────────
 
   async getPortalLink(workspaceId: string): Promise<string> {
@@ -1014,6 +980,62 @@ export class PaddleSdkService {
       enterprise_monthly: this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_MONTHLY') ?? null,
       enterprise_annual: this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_ANNUAL') ?? null,
     };
+  }
+
+  // ── Add-on prices ──────────────────────────────────────────────────────────
+
+  addons = {
+    extra_user:        { label: 'Usuario extra',           description: 'Agrega otro compañero sin cambiar de plan.',  priceUSD: 8 },
+    whatsapp_premium:  { label: 'WhatsApp + Analíticas',   description: 'Reportes de conversaciones, tiempos de respuesta, métricas de canal y estadísticas avanzadas de WhatsApp.', priceUSD: 19 },
+    advanced_inventory:{ label: 'Inventario avanzado',     description: 'Gestión completa de inventario y seguimiento.', priceUSD: 29 },
+    ai_assistant:      { label: 'Asistente IA',            description: 'Sugerencias y automatizaciones con inteligencia artificial.', priceUSD: 29 },
+    approvals_signature:{ label: 'Aprobaciones y firma digital', description: 'Flujos de aprobación y firma digital integrada.', priceUSD: 25 },
+  };
+
+  getAvailableAddonPrices(): Record<string, { priceId: string | null; label: string; description: string; priceUSD: number }> {
+    const result: Record<string, any> = {};
+    for (const [key, info] of Object.entries(this.addons)) {
+      const priceId = this.configService.get<string>(`PADDLE_PRICE_ADDON_${key.toUpperCase()}`) ?? null;
+      result[key] = { priceId, label: info.label, description: info.description, priceUSD: info.priceUSD };
+    }
+    return result;
+  }
+
+  async createAddonTransaction(workspaceId: string, customerId: string, email: string, addonKey: string): Promise<{ transactionId: string; checkoutUrl: string | null }> {
+    const info = this.addons[addonKey as keyof typeof this.addons];
+    if (!info) throw new BadRequestException(`Add-on desconocido: ${addonKey}`);
+
+    const priceId = this.configService.get<string>(`PADDLE_PRICE_ADDON_${addonKey.toUpperCase()}`);
+    if (!priceId) throw new BadRequestException(`Add-on "${addonKey}" no está configurado (falta PADDLE_PRICE_ADDON_${addonKey.toUpperCase()})`);
+
+    return this.createTransaction(workspaceId, customerId, priceId, email, addonKey);
+  }
+
+  async createTransaction(
+    workspaceId: string,
+    customerId: string,
+    priceId: string,
+    email: string,
+    addonKey?: string,
+  ): Promise<{ transactionId: string; checkoutUrl: string | null }> {
+    const paddle = this.requireClient();
+    const appUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
+
+    const customData: any = { workspaceSlug: async () => {
+      const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { slug: true } });
+      return ws.slug;
+    }};
+    if (addonKey) customData.addon = addonKey;
+
+    const transaction = await paddle.transactions.create({
+      items: [{ priceId, quantity: 1 }],
+      customerId,
+      customData,
+      checkout: { url: `${appUrl}/settings/billing?paddle=success` },
+    });
+
+    this.logger.log(`Transaction created: ${transaction.id}, priceId=${priceId}, addon=${addonKey || 'N/A'}`);
+    return { transactionId: transaction.id, checkoutUrl: transaction.checkout?.url ?? null };
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
