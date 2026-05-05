@@ -38,19 +38,36 @@ export class AgentController {
     private readonly fixService: EngineeringFixService,
   ) {} 
 
+  // ADMINs see every case in the workspace. AGENT/VIEWER see only the
+  // cases they personally triggered (auto-opened from their requests or
+  // explicitly escalated by them) so they can track their own tickets.
   @Get('diagnostic-cases')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'AGENT', 'VIEWER')
   async listDiagnosticCases(
-    @CurrentUser('workspace_id') workspaceId: string,
+    @CurrentUser() user: { id: string; workspace_id: string; role: string; is_platform_admin: boolean },
   ) {
-    return this.diagnostic.listCases(workspaceId);
+    const seesAll = user.role === 'ADMIN' || user.is_platform_admin;
+    return this.diagnostic.listCases(user.workspace_id, seesAll ? undefined : { userId: user.id });
   }
 
   @Get('diagnostic-cases/:id')
-  @Roles('ADMIN')
-  async getDiagnosticCase(@Param('id') id: string) {
-    const case_ = await this.fixService.getDiagnosticCaseForFix(id);
+  @Roles('ADMIN', 'AGENT', 'VIEWER')
+  async getDiagnosticCase(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; workspace_id: string; role: string; is_platform_admin: boolean },
+  ) {
+    const seesAll = user.role === 'ADMIN' || user.is_platform_admin;
+    // Non-admins only see their own cases; return 404 (not 403) to avoid
+    // revealing whether a case for another user exists.
+    const case_ = await this.diagnostic.getCase(id, {
+      workspaceId: user.workspace_id,
+      userId: seesAll ? undefined : user.id,
+    });
     if (!case_) throw new NotFoundException('Diagnostic case not found');
+    // ADMIN gets the engineering view (selectable fields for fix workflow).
+    if (seesAll) {
+      return this.fixService.getDiagnosticCaseForFix(id);
+    }
     return case_;
   }
 

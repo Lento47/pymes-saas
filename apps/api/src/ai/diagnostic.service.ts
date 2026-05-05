@@ -58,12 +58,23 @@ export class DiagnosticService {
     private readonly fixService: EngineeringFixService,
   ) {}
 
-  async listCases(workspaceId: string) {
+  // ADMIN/platform-admin: full workspace view. Otherwise scope to caller's
+  // own cases so VIEWER/AGENT users see "Mis tickets" without leaking
+  // unrelated incidents from other teammates.
+  async listCases(workspaceId: string, opts?: { userId?: string }) {
+    const where: any = { workspace_id: workspaceId };
+    if (opts?.userId) where.user_id = opts.userId;
     return (this.prisma as any).supportDiagnosticCase.findMany({
-      where: { workspace_id: workspaceId },
+      where,
       orderBy: { created_at: 'desc' },
       take: 50,
     });
+  }
+
+  async getCase(id: string, opts: { workspaceId: string; userId?: string }) {
+    const where: any = { id, workspace_id: opts.workspaceId };
+    if (opts.userId) where.user_id = opts.userId;
+    return (this.prisma as any).supportDiagnosticCase.findFirst({ where });
   }
 
   async updateCaseStatus(id: string, status: string) {
