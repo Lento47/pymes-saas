@@ -166,10 +166,10 @@ export class AuthController {
       const result = await this.authService.googleLogin(profile);
       // Redirect to frontend with token in hash
       const frontendUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
-      res.redirect(`${frontendUrl}/#/login?token=${encodeURIComponent(result.access_token)}&refresh_token=${encodeURIComponent(result.refresh_token)}&slug=${encodeURIComponent(result.user.workspace.slug)}`);
+      res.redirect(`${frontendUrl}/login?token=${encodeURIComponent(result.access_token)}&refresh_token=${encodeURIComponent(result.refresh_token)}&slug=${encodeURIComponent(result.user.workspace.slug)}`);
     } catch (err: any) {
       const frontendUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
-      res.redirect(`${frontendUrl}/#/login?error=${encodeURIComponent(err?.message || 'google_auth_failed')}`);
+      res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(err?.message || 'google_auth_failed')}`);
     }
   }
 
