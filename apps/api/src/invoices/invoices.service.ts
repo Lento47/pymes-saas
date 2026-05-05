@@ -136,7 +136,7 @@ export class InvoicesService {
       if (ws && ws.plan !== 'ENTERPRISE' && ws.plan !== 'BUSINESS_PLUS') {
         const settings = (ws.settings_json as Record<string, any>) ?? {};
         if (settings.approvals_signature_active) {
-          initialStatus = InvoiceStatus.PENDING_APPROVAL;
+          initialStatus = 'PENDING_APPROVAL' as any;
         }
       }
     }
