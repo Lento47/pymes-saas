@@ -26,6 +26,11 @@ const ERROR_KEYWORDS: { regex: RegExp; key: string; module: string }[] = [
   { regex: /not found|no existe|not configured/i, key: 'MISSING_CONFIG', module: 'settings' },
   { regex: /balance|saldo|payment|pago/i, key: 'PAYMENT_ISSUE', module: 'invoices' },
   { regex: /stock|inventar/i, key: 'INVENTORY_ISSUE', module: 'inventory' },
+  { regex: /bullmq|queue|job.*fail|redis.*connect|worker.*error/i, key: 'QUEUE_FAILURE', module: 'workers' },
+  { regex: /socket|websocket|ws.*disconnect|connection.*refused/i, key: 'SOCKET_ERROR', module: 'gateways' },
+  { regex: /timeout|timed out|ECONNREFUSED|ENOTFOUND|ECONNRESET/i, key: 'CONNECTIVITY_ISSUE', module: 'infra' },
+  { regex: /memory|disk.*full|ENOSPC|heap.*limit/i, key: 'RESOURCE_ISSUE', module: 'infra' },
+  { regex: /resolve.*credentials|invalid.*credentials|sign.*error/i, key: 'AUTH_ERROR', module: 'auth' },
 ];
 
 @Catch()

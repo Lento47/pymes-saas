@@ -6,6 +6,8 @@ import { InsightsService } from '../insights/insights.service';
 import { SearchService } from '../search/search.service';
 import { DocsService } from '../docs/docs.service';
 import { SupportRouterService, AgentType } from './support-router.service';
+import { DiagnosticService } from './diagnostic.service';
+import { EngineeringFixService } from './engineering-fix.service';
 import { Agent, tool, run as agentRun, Runner } from '@openai/agents';
 import { z } from 'zod';
 
@@ -27,6 +29,8 @@ export class AgentService {
     private readonly searchService: SearchService,
     private readonly docsService: DocsService,
     private readonly router: SupportRouterService,
+    private readonly diagnostic: DiagnosticService,
+    private readonly fixService: EngineeringFixService,
   ) {}
 
   private async logToolCall(
@@ -161,6 +165,52 @@ export class AgentService {
         },
       }),
 
+      // ── Support / Diagnostics ──
+      tool({
+        name: 'diagnose',
+        description: 'Diagnose a reported error or issue. Returns matched known issues, risk level, category, and fix recommendations.',
+        parameters: z.object({ description: z.string().describe('Description of the error or issue to diagnose') }),
+        execute: async ({ description }: { description: string }) => {
+          const service = this.diagnostic;
+          const result = await service.diagnose({ workspace_id: workspaceId, user_description: description });
+          return { diagnosis: result };
+        },
+      }),
+      tool({
+        name: 'list_diagnostic_cases',
+        description: 'List open diagnostic cases for this workspace with statuses and risk levels.',
+        parameters: z.object({}),
+        execute: async () => {
+          const cases = await this.diagnostic.listCases(workspaceId);
+          return { diagnostic_cases: cases };
+        },
+      }),
+      tool({
+        name: 'list_fix_cases',
+        description: 'List engineering fix cases with their status (PENDING, FIX_READY, PENDING_APPROVAL, etc.).',
+        parameters: z.object({}),
+        execute: async () => {
+          const cases = await this.fixService.listFixCases(workspaceId);
+          return { fix_cases: cases };
+        },
+      }),
+      tool({
+        name: 'approve_fix',
+        description: 'Approve a fix case (requires ADMIN role). Changes status from FIX_READY/PENDING_APPROVAL to PR_OPENED.',
+        parameters: z.object({ fix_case_id: z.string().describe('The ID of the fix case to approve') }),
+        execute: async ({ fix_case_id }: { fix_case_id: string }) => {
+          return this.fixService.approveFix(fix_case_id);
+        },
+      }),
+      tool({
+        name: 'reject_fix',
+        description: 'Reject a fix case with a reason (requires ADMIN role). Resets to PENDING status.',
+        parameters: z.object({ fix_case_id: z.string().describe('The ID of the fix case to reject'), reason: z.string().optional().describe('Why the fix was rejected') }),
+        execute: async ({ fix_case_id, reason }: { fix_case_id: string; reason?: string }) => {
+          return this.fixService.rejectFix(fix_case_id, reason || '');
+        },
+      }),
+
       // ── Docs ──
       tool({
         name: 'search_pymeshub_docs',
@@ -225,7 +275,7 @@ export class AgentService {
       name: 'HubbyAgent',
       instructions: `Eres HubbyAgent de PyMesHub. Si el usuario pide CREAR, ACTUALIZAR, ELIMINAR o CONSULTAR datos, usás tus herramientas. Si solo saluda o conversa, respondés normal.
 
-HERRAMIENTAS (solo para operaciones CRUD):
+HERRAMIENTAS DE DATOS (solo para operaciones CRUD):
 create_contact(full_name*, email?, phone?, type?) | update_contact(id*, ...) | list_contacts(search?)
 create_task(title*, description?, priority?, due_date?) | update_task(id*, ...) | list_tasks(status?)
 create_deal(title*, stage_id*, value?, contact_id?) | move_deal(id*, stage_id*) | list_pipeline_deals()
@@ -234,12 +284,23 @@ list_invoices() | list_conversations(status?) | get_conversation_detail(id*) | r
 list_documents(search?) | get_stats() | get_insights() | search(q*)
 get_billing(), get_billing_invoices() [READ ONLY] | get_workspace() | get_settings()
 
+HERRAMIENTAS DE SOPORTE (diagnóstico y arreglos):
+diagnose(description) — analiza un error y encuentra casos conocidos
+list_diagnostic_cases() — lista casos de diagnóstico abiertos
+list_fix_cases() — lista casos de arreglo con su estado
+approve_fix(fix_case_id*) — aprueba un arreglo propuesto
+reject_fix(fix_case_id*, reason) — rechaza un arreglo con motivo
+
 REGLAS:
-1. Si el usuario pide crear/leer/actualizar/eliminar → USÁ LA TOOL. No expliques cómo hacerlo.
-2. Si el usuario solo saluda o charla → respondé amablemente en 1-2 oraciones en español.
-3. NUNCA menciones Android, iPhone, Google, Gmail, Outlook, Excel, ATV, Hacienda, Zapier, IFTTT.
-4. Si mencionan algo externo → "Eso no es parte de PyMesHub. ¿Qué operación de PyMesHub necesitas?"
-5. Respuestas en español.`,
+1. Si el usuario reporta un error → USÁ diagnose(). No expliques cómo arreglarlo manualmente.
+2. Si el usuario pide ver casos de diagnóstico → USÁ list_diagnostic_cases().
+3. Si el usuario pide ver arreglos disponibles → USÁ list_fix_cases().
+4. Si el usuario pide aprobar/rechazar un arreglo → USÁ approve_fix() o reject_fix().
+5. Para crear/leer/actualizar/eliminar datos → USÁ LA TOOL. No expliques cómo hacerlo.
+6. Si el usuario solo saluda o charla → respondé amablemente en 1-2 oraciones en español.
+7. NUNCA menciones Android, iPhone, Google, Gmail, Outlook, Excel, ATV, Hacienda, Zapier, IFTTT.
+8. Si mencionan algo externo → "Eso no es parte de PyMesHub. ¿Qué operación de PyMesHub necesitas?"
+9. Respuestas en español.`,
       model,
       tools,
       modelSettings: { temperature: 0.2, maxTokens: 1024 },

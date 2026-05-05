@@ -422,4 +422,56 @@ Responde con JSON puro (sin markdown):
       return null;
     }
   }
+
+  // ── Generate fix proposal from diagnostic case ──────────────────────────────
+
+  async generateFixProposal(diagnosticCase: {
+    module: string;
+    error_code: string | null;
+    title: string;
+    user_description: string | null;
+    safe_summary: string | null;
+  }, errorReport?: {
+    message: string;
+    stack: string | null;
+    route: string | null;
+    method: string | null;
+  } | null): Promise<{ fix_summary: string; files_changed_json: { file: string; reason: string; diff_suggestion: string }[] } | null> {
+    const config = await this.getWorkspaceOrGlobalConfig();
+    if (!config) return null;
+
+    const system = `Eres un ingeniero de software senior especializado en NestJS, TypeScript, Prisma y PostgreSQL. Tu trabajo es analizar errores del SaaS "PymesHub" y proponer arreglos concretos.
+
+Para cada error, responde con un JSON que tenga esta estructura:
+{
+  "fix_summary": "explicación breve del fix (1-3 oraciones en español)",
+  "files_changed": [
+    { "file": "ruta/relativa/al/archivo.ts", "reason": "por qué este archivo necesita cambios", "diff_suggestion": "sugerencia de código concreto para arreglarlo" }
+  ]
+}
+
+Reglas:
+- NUNCA inventes archivos o código que no tenga sentido con el stack (NestJS + Prisma + TypeScript)
+- Si el error es de CONFIGURACIÓN (env vars, credenciales, webhooks), indicalo en el summary y sugiere acciones de configuración en lugar de código
+- Si el error es de BASE DE DATOS (constraints, columnas, migraciones), sugiere arreglos de esquema/migración
+- Sé conservador y seguro — no sugieras cambios destructivos`;
+
+    const user = `Error en módulo "${diagnosticCase.module}":
+Código: ${diagnosticCase.error_code || 'N/A'}
+Título: ${diagnosticCase.title}
+Descripción del usuario: ${diagnosticCase.user_description || 'N/A'}
+Resumen: ${diagnosticCase.safe_summary || 'N/A'}
+${errorReport ? `Mensaje de error: ${errorReport.message}\nRuta: ${errorReport.method || '?'} ${errorReport.route || '?'}\n${errorReport.stack ? `Stack: ${errorReport.stack.slice(0, 800)}` : ''}` : ''}
+
+Propone un fix concreto y seguro.`;
+
+    try {
+      const { text } = await this.chat(config, system, user, 1200, 0.3);
+      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      return JSON.parse(clean);
+    } catch (err) {
+      this.logger.error(`Error generando fix proposal: ${(err as Error).message}`);
+      return null;
+    }
+  }
 }

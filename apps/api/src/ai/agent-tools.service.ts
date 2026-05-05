@@ -2,6 +2,8 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { InsightsService } from '../insights/insights.service';
 import { SearchService } from '../search/search.service';
+import { DiagnosticService } from './diagnostic.service';
+import { EngineeringFixService } from './engineering-fix.service';
 
 @Injectable()
 export class AgentToolsService {
@@ -11,6 +13,8 @@ export class AgentToolsService {
     private readonly prisma: PrismaService,
     private readonly insights: InsightsService,
     private readonly searchService: SearchService,
+    private readonly diagnostic: DiagnosticService,
+    private readonly fixService: EngineeringFixService,
   ) {}
 
   async execute(workspaceId: string, tool: string, args: Record<string, any>): Promise<any> {
@@ -61,6 +65,16 @@ export class AgentToolsService {
         return this.getSettings(workspaceId);
       case 'get_errors':
         return this.getErrors(workspaceId, args);
+      case 'diagnose':
+        return this.diagnose(workspaceId, args);
+      case 'list_diagnostic_cases':
+        return this.listDiagnosticCases(workspaceId);
+      case 'list_fix_cases':
+        return this.listFixCases(workspaceId);
+      case 'approve_fix':
+        return this.approveFix(args);
+      case 'reject_fix':
+        return this.rejectFix(args);
       default:
         throw new BadRequestException(`Unknown tool: ${tool}`);
     }
@@ -349,5 +363,34 @@ export class AgentToolsService {
         ? `${errors.length} error(es) reciente(s). ${errors.filter((e: any) => e.status_code && e.status_code >= 500).length} son del servidor (5xx).`
         : 'No hay errores recientes en este workspace.',
     };
+  }
+
+  private async diagnose(workspaceId: string, args: Record<string, any>) {
+    const result = await this.diagnostic.diagnose({
+      workspace_id: workspaceId,
+      user_description: args.description || args.user_description || '',
+      error_report_id: args.error_report_id,
+    });
+    return { diagnosis: result };
+  }
+
+  private async listDiagnosticCases(workspaceId: string) {
+    const cases = await this.diagnostic.listCases(workspaceId);
+    return { diagnostic_cases: cases };
+  }
+
+  private async listFixCases(workspaceId: string) {
+    const cases = await this.fixService.listFixCases(workspaceId);
+    return { fix_cases: cases };
+  }
+
+  private async approveFix(args: Record<string, any>) {
+    if (!args.fix_case_id) throw new BadRequestException('approve_fix requires fix_case_id');
+    return this.fixService.approveFix(args.fix_case_id);
+  }
+
+  private async rejectFix(args: Record<string, any>) {
+    if (!args.fix_case_id) throw new BadRequestException('reject_fix requires fix_case_id');
+    return this.fixService.rejectFix(args.fix_case_id, args.reason || '');
   }
 }

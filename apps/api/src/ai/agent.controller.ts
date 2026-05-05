@@ -97,6 +97,33 @@ export class AgentController {
     return this.fixService.createFixCase(diagnosticCaseId);
   }
 
+  @Post('fix-cases/:id/approve')
+  @Roles('ADMIN')
+  async approveFixCase(@Param('id') fixCaseId: string) {
+    return this.fixService.approveFix(fixCaseId);
+  }
+
+  @Post('fix-cases/:id/reject')
+  @Roles('ADMIN')
+  async rejectFixCase(
+    @Param('id') fixCaseId: string,
+    @Body('reason') reason: string,
+  ) {
+    return this.fixService.rejectFix(fixCaseId, reason);
+  }
+
+  @Get('fix-cases')
+  @Roles('ADMIN')
+  async listFixCases(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.fixService.listFixCases(workspaceId);
+  }
+
+  @Get('fix-cases/:id')
+  @Roles('ADMIN')
+  async getFixCase(@Param('id') fixCaseId: string) {
+    return this.fixService.getFixCase(fixCaseId);
+  }
+
   @Post('diagnose')
   @Roles('ADMIN', 'AGENT', 'VIEWER')
   async diagnose(
