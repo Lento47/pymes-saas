@@ -124,7 +124,7 @@ export class AgentToolsService {
   private async listInvoices(workspaceId: string) {
     const invoices = await this.prisma.invoice.findMany({
       where: { workspace_id: workspaceId },
-      select: { id: true, number: true, amount: true, status: true, due_date: true },
+      select: { id: true, number: true, amount: true, subtotal: true, tax_rate: true, tax_amount: true, status: true, due_date: true },
       take: 50,
       orderBy: { created_at: 'desc' },
     });

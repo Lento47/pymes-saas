@@ -200,12 +200,12 @@ export class AgentService {
       if (agentEnabled) {
         const [tasks, invoices, contacts] = await Promise.all([
           this.prisma.task.findMany({ where: { workspace_id: workspaceId, status: { in: ['TODO', 'IN_PROGRESS'] } }, select: { title: true, priority: true, status: true, due_at: true }, take: 10, orderBy: { created_at: 'desc' } }),
-          this.prisma.invoice.findMany({ where: { workspace_id: workspaceId }, select: { number: true, amount: true, status: true, due_date: true }, take: 5, orderBy: { due_date: 'desc' } }),
+          this.prisma.invoice.findMany({ where: { workspace_id: workspaceId }, select: { number: true, amount: true, subtotal: true, tax_rate: true, tax_amount: true, status: true, due_date: true }, take: 5, orderBy: { due_date: 'desc' } }),
           this.prisma.contact.count({ where: { workspace_id: workspaceId } }),
         ]);
         const ctx: string[] = [`Workspace: ${ws?.name} (Plan: ${ws?.plan})`];
         if (tasks.length) ctx.push(`Tareas pendientes: ${tasks.map((t: any) => t.title).join(', ')}`);
-        if (invoices.length) ctx.push(`Facturas: ${invoices.map((i: any) => `${i.number} (${i.status})`).join(', ')}`);
+          if (invoices.length) ctx.push(`Facturas: ${invoices.map((i: any) => `${i.number} (${i.status}) total:${i.amount} subtotal:${i.subtotal ?? i.amount} iva:${i.tax_rate ?? 0}%`).join(', ')}`);
         if (contacts) ctx.push(`Contactos totales: ${contacts}`);
         inputWithContext = `Contexto:\n${ctx.join('\n')}\n\nPregunta: ${input}`;
       }
