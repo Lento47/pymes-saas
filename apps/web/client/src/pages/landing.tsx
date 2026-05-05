@@ -434,7 +434,44 @@ export default function Landing() {
   };
 
   return (
-    <div className="relative overflow-hidden bg-[#05091d] text-white">
+    <>
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "name": "PymesHub",
+              "url": "https://pymeshub.lat",
+              "description": "CRM, facturación electrónica y automatización para PYMEs",
+              "sameAs": ["https://pymeshub.lat"]
+            },
+            {
+              "@type": "SoftwareApplication",
+              "name": "PymesHub",
+              "applicationCategory": "BusinessApplication",
+              "operatingSystem": "Web",
+              "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "USD",
+                "lowPrice": "0", "highPrice": "79",
+                "offerCount": "4"
+              },
+              "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.5", "reviewCount": "12" }
+            },
+            {
+              "@type": "WebSite",
+              "url": "https://pymeshub.lat",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://pymeshub.lat/documentation?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+            }
+          ]
+        })}
+      </script>
+      <div className="relative overflow-hidden bg-[#05091d] text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-0 -translate-x-1/2 overflow-hidden">
           <div className="relative w-[max(1536px,100vw,calc(100vh*1.5))]">
