@@ -175,6 +175,8 @@ export class InvoicesService {
       });
     }
 
+    this.trackQuickStart(workspaceId, 'invoicing_configured');
+
     return this.serializeInvoice(invoice);
   }
 
@@ -1244,5 +1246,16 @@ export class InvoicesService {
     });
 
     return { xml };
+  }
+
+  private async trackQuickStart(workspaceId: string, step: string) {
+    try {
+      const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
+      const s: any = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const progress = s.quick_start_progress || {};
+      if (progress[step]) return;
+      s.quick_start_progress = { ...progress, [step]: true };
+      await this.prisma.workspace.update({ where: { id: workspaceId }, data: { settings_json: s } });
+    } catch { /* fire-and-forget */ }
   }
 }
