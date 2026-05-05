@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { apiErrorDescription } from '@/lib/api-error';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,7 +33,7 @@ export function ConversationNotes({ conversationId, initialNotes, onSaved }: Pro
       toast({ title: 'Notas guardadas' });
       setTimeout(() => setSaved(false), 2000);
     } catch (err: any) {
-      toast({ title: 'Error', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }

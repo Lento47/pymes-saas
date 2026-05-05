@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -87,7 +88,7 @@ export default function DocumentsPage() {
       toast({ title: "Archivo subido correctamente" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al subir", description: err.message, variant: "destructive" });
+      toast({ title: "Error al subir", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -98,7 +99,7 @@ export default function DocumentsPage() {
       toast({ title: "Archivo eliminado" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al eliminar", description: err.message, variant: "destructive" });
+      toast({ title: "Error al eliminar", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -121,7 +122,7 @@ export default function DocumentsPage() {
         toast({ title: "No se pudo obtener la URL de descarga", variant: "destructive" });
       }
     } catch (err: any) {
-      toast({ title: "Error al descargar", description: err.message, variant: "destructive" });
+      toast({ title: "Error al descargar", description: apiErrorDescription(err), variant: "destructive" });
     } finally {
       setDownloadingId(null);
     }

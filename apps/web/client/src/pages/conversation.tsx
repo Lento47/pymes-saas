@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -146,7 +147,7 @@ export default function ConversationPage() {
       setMessage("");
     },
     onError: (err: any) => {
-      toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
+      toast({ title: "Error al enviar", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -175,7 +176,7 @@ export default function ConversationPage() {
       setLocation("/inbox");
     },
     onError: (err: any) => {
-      toast({ title: "Error al eliminar", description: err.message, variant: "destructive" });
+      toast({ title: "Error al eliminar", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -189,7 +190,7 @@ export default function ConversationPage() {
       toast({ title: "Contacto vinculado" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al vincular contacto", description: err.message, variant: "destructive" });
+      toast({ title: "Error al vincular contacto", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -223,7 +224,7 @@ export default function ConversationPage() {
       toast({ title: "Contacto creado y vinculado" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al crear contacto", description: err.message, variant: "destructive" });
+      toast({ title: "Error al crear contacto", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -247,7 +248,7 @@ export default function ConversationPage() {
       toast({ title: "Contacto actualizado" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al actualizar contacto", description: err.message, variant: "destructive" });
+      toast({ title: "Error al actualizar contacto", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -283,7 +284,7 @@ export default function ConversationPage() {
       toast({ title: "Factura creada y guardada" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al crear factura", description: err.message, variant: "destructive" });
+      toast({ title: "Error al crear factura", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -311,7 +312,7 @@ export default function ConversationPage() {
       toast({ title: "Pago registrado" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al registrar pago", description: err.message, variant: "destructive" });
+      toast({ title: "Error al registrar pago", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -335,7 +336,7 @@ export default function ConversationPage() {
       toast({ title: "Factura enviada desde este chat" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al enviar factura", description: err.message, variant: "destructive" });
+      toast({ title: "Error al enviar factura", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 

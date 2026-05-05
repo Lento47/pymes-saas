@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, parsePlanError } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth, useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -46,8 +47,8 @@ export default function AutomationsPage() {
     );
   }, [automations, searchQuery]);
 
-  const toggleMut = useMutation({ mutationFn: (id: string) => api.toggleAutomation(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/automations"] }), onError: (err: any) => toast({ title: 'Error', description: err?.message || 'No se pudo cambiar el estado.', variant: 'destructive' }) });
-  const deleteMut = useMutation({ mutationFn: (id: string) => api.deleteAutomation(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/automations"] }); setDeleteId(null); toast({ title: 'Automatización eliminada' }); }, onError: (err: any) => toast({ title: 'Error', description: err?.message || 'No se pudo eliminar.', variant: 'destructive' }) });
+  const toggleMut = useMutation({ mutationFn: (id: string) => api.toggleAutomation(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/automations"] }), onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err, 'No se pudo cambiar el estado.'), variant: 'destructive' }) });
+  const deleteMut = useMutation({ mutationFn: (id: string) => api.deleteAutomation(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/automations"] }); setDeleteId(null); toast({ title: 'Automatización eliminada' }); }, onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err, 'No se pudo eliminar.'), variant: 'destructive' }) });
 
   const createMut = useMutation({
     mutationFn: (data: any) => api.createAutomation(data),

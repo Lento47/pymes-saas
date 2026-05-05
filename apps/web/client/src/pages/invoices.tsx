@@ -24,6 +24,7 @@ import {
   Upload,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
 import CsvImportModal from "@/components/import/csv-import-modal";
 import { useRequireAuth } from "@/hooks/use-auth";
@@ -136,9 +137,9 @@ function formatMoney(amount: unknown, currency = "USD") {
   }).format(value);
 }
 
-function getErrorMessage(err: any) {
-  return err?.message ?? "Ocurrió un error inesperado";
-}
+// Replaced by `apiErrorDescription` from "@/lib/api-error" so the toast can
+// surface the auto-opened support ticket as a clickable link, not just text.
+const getErrorMessage = (err: unknown) => apiErrorDescription(err, "Ocurrió un error inesperado");
 
 export default function InvoicesPage() {
   useRequireAuth();

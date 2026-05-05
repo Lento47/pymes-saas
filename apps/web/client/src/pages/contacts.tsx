@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, parsePlanError } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/components/providers/i18n-provider";
@@ -104,7 +105,7 @@ export default function ContactsPage() {
       toast({ title: "Contact deleted" });
     },
     onError: (err: any) => {
-      toast({ title: "Failed to delete contact", description: err.message, variant: "destructive" });
+      toast({ title: "Failed to delete contact", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 

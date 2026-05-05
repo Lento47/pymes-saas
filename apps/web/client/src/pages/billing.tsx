@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { usePaddle } from "@/hooks/use-paddle";
 import { api, getAuthToken } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { ADD_ONS } from "@/data/pricing.data";
 import { PageHeader } from "@/components/shared/page-header";
 import { PageLoader } from "@/components/shared/loading-spinner";
@@ -323,7 +324,7 @@ export default function BillingPage() {
             refreshUser();
             queryClient.invalidateQueries({ queryKey: ["subscription"] });
           } catch (err: any) {
-            toast({ title: "Error", description: err?.message || "No se pudo cancelar el plan.", variant: "destructive" });
+            toast({ title: "Error", description: apiErrorDescription(err, "No se pudo cancelar el plan."), variant: "destructive" });
           } finally { setLoading(null); }
         }
       } else {
@@ -359,7 +360,7 @@ export default function BillingPage() {
       });
     } catch (err: any) {
       if (err?.message !== 'Checkout closed') {
-        toast({ title: "Error", description: err?.message || "No se pudo abrir el checkout.", variant: "destructive" });
+        toast({ title: "Error", description: apiErrorDescription(err, "No se pudo abrir el checkout."), variant: "destructive" });
       }
     } finally {
       setLoading(null);
@@ -380,7 +381,7 @@ export default function BillingPage() {
         settings: { displayMode: 'overlay', theme: 'dark', locale: 'es', successUrl: `${window.location.origin}/settings/billing?paddle=success` },
       });
     } catch (err: any) {
-      if (err?.message !== 'Checkout closed') toast({ title: "Error", description: err?.message, variant: "destructive" });
+      if (err?.message !== 'Checkout closed') toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
     } finally { setLoading(null); }
   };
 

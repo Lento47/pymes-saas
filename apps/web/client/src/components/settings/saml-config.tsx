@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { apiErrorDescription } from '@/lib/api-error';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +42,7 @@ export function SamlConfig() {
       qc.invalidateQueries({ queryKey: ['/api/workspaces/current'] });
       toast({ title: 'Configuración SAML guardada' });
     },
-    onError: (err: any) => toast({ title: 'Error', description: err?.message, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
   });
 
   const slug = workspace?.slug || 'TU_SLUG';

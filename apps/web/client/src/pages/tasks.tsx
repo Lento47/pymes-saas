@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/components/providers/i18n-provider";
@@ -113,7 +114,7 @@ export default function TasksPage() {
       toast({ title: editingId ? "Tarea actualizada" : "Tarea creada" });
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -125,7 +126,7 @@ export default function TasksPage() {
       toast({ title: "Tarea eliminada" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al eliminar", description: err.message, variant: "destructive" });
+      toast({ title: "Error al eliminar", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -137,7 +138,7 @@ export default function TasksPage() {
       toast({ title: "Tarea completada" });
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 

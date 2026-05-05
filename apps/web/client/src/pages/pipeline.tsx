@@ -1,6 +1,7 @@
 import { useState, useRef, memo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Plus, User, Calendar, DollarSign, Trash2, Trophy, GripVertical, KanbanSquare, Upload } from "lucide-react";
@@ -98,7 +99,7 @@ export default function PipelinePage() {
   const [modalOpen, setModalOpen] = useState(false); const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [defaultStage, setDefaultStage] = useState<string>();
-  const moveMut = useMutation({ mutationFn: ({ dealId, stageId }: { dealId: string; stageId: string }) => api.moveDeal(dealId, stageId), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }), onError: (err: any) => toast({ title: "Error al mover deal", description: err?.message || "No se pudo mover.", variant: "destructive" }) });
+  const moveMut = useMutation({ mutationFn: ({ dealId, stageId }: { dealId: string; stageId: string }) => api.moveDeal(dealId, stageId), onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }), onError: (err: any) => toast({ title: "Error al mover deal", description: apiErrorDescription(err, "No se pudo mover."), variant: "destructive" }) });
 
   const handleDragStart = useCallback((e: React.DragEvent, dealId: string) => { e.dataTransfer.setData("dealId", dealId); e.dataTransfer.effectAllowed = "move"; }, []);
   const handleDrop = useCallback((e: React.DragEvent, stageId: string) => { const dealId = e.dataTransfer.getData("dealId"); if (dealId) moveMut.mutate({ dealId, stageId }); }, [moveMut]);

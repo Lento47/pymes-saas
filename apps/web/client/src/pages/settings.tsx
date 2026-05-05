@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { openExternal } from "@/lib/platform";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { useAuth } from "@/hooks/use-auth";
@@ -40,13 +41,13 @@ function RoutingRulesTab() {
   const createRule = useMutation({
     mutationFn: api.createRoutingRule,
     onSuccess: () => { refetch(); toast({ title: 'Regla creada' }); },
-    onError: (err: any) => toast({ title: 'Error', description: err?.message, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
   });
 
   const deleteRule = useMutation({
     mutationFn: (id: string) => api.deleteRoutingRule(id),
     onSuccess: () => { refetch(); toast({ title: 'Regla eliminada' }); },
-    onError: (err: any) => toast({ title: 'Error', description: err?.message, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
   });
 
   const toggleRule = useMutation({
@@ -59,7 +60,7 @@ function RoutingRulesTab() {
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       api.updateRoutingRule(id, data),
     onSuccess: () => { refetch(); toast({ title: 'Regla actualizada' }); },
-    onError: (err: any) => toast({ title: 'Error', description: err?.message, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
   });
 
   const [newRule, setNewRule] = useState({ name: '', pattern: '', match_type: 'KEYWORD', department_id: '', channel_id: '', priority: 0, is_active: true });
@@ -1141,7 +1142,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
         toast({ title: "Conexión SMTP exitosa", description: "El servidor SMTP respondió correctamente." });
       } else {
         const err = await res.json().catch(() => ({}));
-        toast({ title: "Error SMTP", description: err.message || "No se pudo conectar al servidor SMTP.", variant: "destructive" });
+        toast({ title: "Error SMTP", description: apiErrorDescription(err, "No se pudo conectar al servidor SMTP."), variant: "destructive" });
       }
     } catch (e: any) {
       toast({ title: "Error SMTP", description: e.message || "No se pudo conectar.", variant: "destructive" });
@@ -2724,13 +2725,13 @@ function ApiTokensTab() {
       setNewToken(data?.token || null);
       toast({ title: 'Token creado' });
     },
-    onError: (err: any) => toast({ title: 'Error', description: err?.message, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
   });
 
   const revokeToken = useMutation({
     mutationFn: (id: string) => api.revokeApiToken(id),
     onSuccess: () => { refetch(); toast({ title: 'Token revocado' }); },
-    onError: (err: any) => toast({ title: 'Error', description: err?.message, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
   });
 
   const [name, setName] = useState('');

@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -92,7 +93,7 @@ export default function EnterpriseSettingsTab() {
         },
       }),
     onSuccess: () => toast({ title: "Configuración guardada" }),
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" }),
   });
 
   if (isLoading) {
