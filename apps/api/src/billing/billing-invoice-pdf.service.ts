@@ -23,17 +23,21 @@ export interface BillingInvoicePdfData {
   dueDate?: Date;
 }
 
+// Black & white invoice palette. The PymesHub logo (separate image at
+// LOGO_URL) is the only branded element. Status badges and totals lose
+// their semantic colour cues — the text itself ("PAID", "OVERDUE")
+// carries the distinction.
 const BRAND = {
-  primary: '#1a56db',
-  primaryLight: '#e8f0fe',
-  dark: '#111827',
-  gray: '#6b7280',
+  primary: '#000000',
+  primaryLight: '#f3f4f6',
+  dark: '#000000',
+  gray: '#4b5563',
   grayLight: '#9ca3af',
   light: '#f8fafc',
   white: '#ffffff',
-  border: '#e5e7eb',
-  success: '#16a34a',
-  danger: '#dc2626',
+  border: '#d1d5db',
+  success: '#000000',
+  danger: '#000000',
 };
 
 const LOGO_URL = 'https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/pymesHubic.png';
