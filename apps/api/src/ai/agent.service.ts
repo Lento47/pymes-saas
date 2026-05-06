@@ -199,7 +199,7 @@ export class AgentService {
         description: 'Approve a fix case (requires ADMIN role). Changes status from FIX_READY/PENDING_APPROVAL to PR_OPENED.',
         parameters: z.object({ fix_case_id: z.string().describe('The ID of the fix case to approve') }),
         execute: async ({ fix_case_id }: { fix_case_id: string }) => {
-          return this.fixService.approveFix(fix_case_id);
+          return this.fixService.approveFix(fix_case_id, { workspaceId, isPlatformAdmin: false });
         },
       }),
       tool({
@@ -207,7 +207,7 @@ export class AgentService {
         description: 'Reject a fix case with a reason (requires ADMIN role). Resets to PENDING status.',
         parameters: z.object({ fix_case_id: z.string().describe('The ID of the fix case to reject'), reason: z.string().optional().describe('Why the fix was rejected') }),
         execute: async ({ fix_case_id, reason }: { fix_case_id: string; reason?: string }) => {
-          return this.fixService.rejectFix(fix_case_id, reason || '');
+          return this.fixService.rejectFix(fix_case_id, reason || '', { workspaceId, isPlatformAdmin: false });
         },
       }),
 

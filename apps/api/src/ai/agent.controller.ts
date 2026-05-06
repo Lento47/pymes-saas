@@ -76,8 +76,12 @@ export class AgentController {
   async updateDiagnosticCaseStatus(
     @Param('id') id: string,
     @Body('status') status: string,
+    @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
   ) {
-    return this.diagnostic.updateCaseStatus(id, status);
+    return this.diagnostic.updateCaseStatus(id, status, {
+      workspaceId: user.workspace_id,
+      isPlatformAdmin: user.is_platform_admin,
+    });
   }
 
   @Patch('fix-cases/:id')
@@ -85,22 +89,36 @@ export class AgentController {
   async updateFixCase(
     @Param('id') fixCaseId: string,
     @Body() body: { status?: string; pr_url?: string; pr_number?: number; files_changed?: any; test_added?: any; fix_summary?: string; rollback_notes?: string; error_log?: string },
+    @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
   ) {
-    return this.fixService.updateFixStatus(fixCaseId, body);
+    return this.fixService.updateFixStatus(fixCaseId, body, {
+      workspaceId: user.workspace_id,
+      isPlatformAdmin: user.is_platform_admin,
+    });
   }
 
   @Post('fix-cases')
   @Roles('ADMIN')
   async createFixCase(
     @Body('diagnostic_case_id') diagnosticCaseId: string,
+    @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
   ) {
-    return this.fixService.createFixCase(diagnosticCaseId);
+    return this.fixService.createFixCase(diagnosticCaseId, {
+      workspaceId: user.workspace_id,
+      isPlatformAdmin: user.is_platform_admin,
+    });
   }
 
   @Post('fix-cases/:id/approve')
   @Roles('ADMIN')
-  async approveFixCase(@Param('id') fixCaseId: string) {
-    return this.fixService.approveFix(fixCaseId);
+  async approveFixCase(
+    @Param('id') fixCaseId: string,
+    @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
+  ) {
+    return this.fixService.approveFix(fixCaseId, {
+      workspaceId: user.workspace_id,
+      isPlatformAdmin: user.is_platform_admin,
+    });
   }
 
   @Post('fix-cases/:id/reject')
@@ -108,8 +126,12 @@ export class AgentController {
   async rejectFixCase(
     @Param('id') fixCaseId: string,
     @Body('reason') reason: string,
+    @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
   ) {
-    return this.fixService.rejectFix(fixCaseId, reason);
+    return this.fixService.rejectFix(fixCaseId, reason, {
+      workspaceId: user.workspace_id,
+      isPlatformAdmin: user.is_platform_admin,
+    });
   }
 
   @Get('fix-cases')
@@ -120,8 +142,14 @@ export class AgentController {
 
   @Get('fix-cases/:id')
   @Roles('ADMIN')
-  async getFixCase(@Param('id') fixCaseId: string) {
-    return this.fixService.getFixCase(fixCaseId);
+  async getFixCase(
+    @Param('id') fixCaseId: string,
+    @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
+  ) {
+    return this.fixService.getFixCase(fixCaseId, {
+      workspaceId: user.workspace_id,
+      isPlatformAdmin: user.is_platform_admin,
+    });
   }
 
   @Post('diagnose')

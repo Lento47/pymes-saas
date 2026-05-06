@@ -1,6 +1,8 @@
 import {
+  ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -96,7 +98,22 @@ export class DiagnosticService {
     return case_;
   }
 
-  async updateCaseStatus(id: string, status: string) {
+  async updateCaseStatus(
+    id: string,
+    status: string,
+    actor: { workspaceId: string; isPlatformAdmin: boolean },
+  ) {
+    // RBAC: a workspace-scoped admin can only update cases that belong
+    // to their own workspace. Platform admins can act cross-workspace.
+    const existing = await (this.prisma as any).supportDiagnosticCase.findUnique({
+      where: { id },
+      select: { id: true, workspace_id: true },
+    });
+    if (!existing) throw new NotFoundException('Diagnostic case not found');
+    if (!actor.isPlatformAdmin && existing.workspace_id !== actor.workspaceId) {
+      throw new ForbiddenException('Diagnostic case belongs to another workspace');
+    }
+
     const updated = await (this.prisma as any).supportDiagnosticCase.update({
       where: { id },
       data: { status },

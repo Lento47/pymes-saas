@@ -1,6 +1,16 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AiService } from './ai.service';
+
+interface RbacActor {
+  workspaceId: string;
+  isPlatformAdmin: boolean;
+}
 
 @Injectable()
 export class EngineeringFixService {
@@ -11,15 +21,61 @@ export class EngineeringFixService {
     private readonly aiService: AiService,
   ) {}
 
-  async createFixCase(diagnosticCaseId: string) {
+  /**
+   * Look up a fix case and verify the caller's workspace owns the
+   * underlying diagnostic case. Platform admins bypass the check
+   * (they need to act cross-workspace from the platform/admin UI).
+   */
+  private async assertFixCaseAccessible(fixCaseId: string, actor: RbacActor) {
+    const fixCase = await (this.prisma as any).engineeringFixCase.findUnique({
+      where: { id: fixCaseId },
+      include: { diagnosticCase: { select: { workspace_id: true } } },
+    });
+    if (!fixCase) throw new NotFoundException('Fix case not found');
+    if (
+      !actor.isPlatformAdmin &&
+      fixCase.diagnosticCase?.workspace_id !== actor.workspaceId
+    ) {
+      throw new ForbiddenException('Fix case belongs to another workspace');
+    }
+    return fixCase;
+  }
+
+  /**
+   * Same idea, for diagnostic-case lookups before mutating fix flow.
+   */
+  private async assertDiagnosticAccessible(
+    diagnosticCaseId: string,
+    actor: RbacActor,
+  ) {
     const diagnostic = await this.prisma.supportDiagnosticCase.findUnique({
       where: { id: diagnosticCaseId },
-      select: { id: true, workspace_id: true, module: true, error_code: true, title: true, user_description: true, safe_summary: true },
+      select: {
+        id: true,
+        workspace_id: true,
+        module: true,
+        error_code: true,
+        title: true,
+        user_description: true,
+        safe_summary: true,
+      },
     });
-
     if (!diagnostic) {
       throw new NotFoundException(`Diagnostic case ${diagnosticCaseId} not found`);
     }
+    if (
+      !actor.isPlatformAdmin &&
+      diagnostic.workspace_id !== actor.workspaceId
+    ) {
+      throw new ForbiddenException(
+        'Diagnostic case belongs to another workspace',
+      );
+    }
+    return diagnostic;
+  }
+
+  async createFixCase(diagnosticCaseId: string, actor: RbacActor) {
+    const diagnostic = await this.assertDiagnosticAccessible(diagnosticCaseId, actor);
 
     const branchName = `fix/${diagnostic.module}-${diagnostic.error_code || diagnostic.id.slice(0, 8)}-${diagnostic.id.slice(0, 6)}`.toLowerCase().replace(/[^a-z0-9/-]/g, '-');
 
@@ -72,18 +128,16 @@ export class EngineeringFixService {
     this.logger.log(`Fix proposal generated for ${fixCaseId}`);
   }
 
-  async approveFix(fixCaseId: string) {
-    const fixCase = await this.prisma.engineeringFixCase.findUnique({ where: { id: fixCaseId } });
-    if (!fixCase) throw new NotFoundException('Fix case not found');
+  async approveFix(fixCaseId: string, actor: RbacActor) {
+    const fixCase = await this.assertFixCaseAccessible(fixCaseId, actor);
     if (fixCase.status !== 'FIX_READY' && fixCase.status !== 'PENDING_APPROVAL') {
       throw new Error('Fix case must be in FIX_READY or PENDING_APPROVAL status to approve');
     }
     return this.updateFixStatus(fixCaseId, { status: 'PR_OPENED' });
   }
 
-  async rejectFix(fixCaseId: string, reason: string) {
-    const fixCase = await this.prisma.engineeringFixCase.findUnique({ where: { id: fixCaseId } });
-    if (!fixCase) throw new NotFoundException('Fix case not found');
+  async rejectFix(fixCaseId: string, reason: string, actor: RbacActor) {
+    await this.assertFixCaseAccessible(fixCaseId, actor);
     return this.updateFixStatus(fixCaseId, {
       status: 'PENDING',
       error_log: reason || 'Rejected by admin',
@@ -103,14 +157,20 @@ export class EngineeringFixService {
     });
   }
 
-  async getFixCase(fixCaseId: string) {
+  async getFixCase(fixCaseId: string, actor: RbacActor) {
     const fixCase = await (this.prisma as any).engineeringFixCase.findUnique({
       where: { id: fixCaseId },
       include: {
-        diagnosticCase: { select: { id: true, title: true, module: true, error_code: true, category: true, risk_level: true, user_description: true, safe_summary: true, evidence_json: true } },
+        diagnosticCase: { select: { id: true, workspace_id: true, title: true, module: true, error_code: true, category: true, risk_level: true, user_description: true, safe_summary: true, evidence_json: true } },
       },
     });
     if (!fixCase) throw new NotFoundException('Fix case not found');
+    if (
+      !actor.isPlatformAdmin &&
+      fixCase.diagnosticCase?.workspace_id !== actor.workspaceId
+    ) {
+      throw new ForbiddenException('Fix case belongs to another workspace');
+    }
     return fixCase;
   }
 
@@ -147,7 +207,14 @@ export class EngineeringFixService {
       rollback_notes?: string;
       error_log?: string;
     },
+    actor?: RbacActor,
   ) {
+    // approveFix/rejectFix call this from inside the service after
+    // already running assertFixCaseAccessible. External callers
+    // (controller, agent script) supply actor and we re-check here.
+    if (actor) {
+      await this.assertFixCaseAccessible(fixCaseId, actor);
+    }
     const updateData: any = { updated_at: new Date() };
     if (data.status) updateData.status = data.status;
     if (data.pr_url !== undefined) updateData.pr_url = data.pr_url;

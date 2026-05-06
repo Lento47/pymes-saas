@@ -96,6 +96,29 @@ export class RunbooksService {
         },
       });
 
+      // Mirror the execution to the workspace audit log so OWNER/ADMIN
+      // see "support ran $runbook on this workspace" in their feed.
+      // Best-effort: a failure here doesn't roll back the runbook.
+      await this.prisma.auditLog
+        .create({
+          data: {
+            workspace_id: input.workspaceId,
+            user_id: input.executedByUserId,
+            action: 'runbook.executed',
+            entity_type: 'runbook_execution',
+            entity_id: finished.id,
+            after_json: {
+              runbook_name: input.runbookName,
+              parameters: input.params,
+              summary: result.summary,
+              duration_ms: durationMs,
+            } as any,
+          },
+        })
+        .catch((err: any) => {
+          this.logger.warn(`AuditLog write failed for runbook ${input.runbookName}: ${err?.message}`);
+        });
+
       this.logger.log(
         `Runbook ${input.runbookName} succeeded for workspace=${input.workspaceId} user=${input.executedByUserId} duration=${durationMs}ms`,
       );
