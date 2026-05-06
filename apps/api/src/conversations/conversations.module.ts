@@ -18,7 +18,7 @@ import { SlaService } from './sla.service';
     EventsModule,
     forwardRef(() => EmailModule),
     forwardRef(() => WhatsAppModule),
-    AiModule,
+    forwardRef(() => AiModule),
     forwardRef(() => TasksModule),
     NotificationsModule,
     AutomationsModule,

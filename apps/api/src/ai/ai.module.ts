@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { AgentService } from './agent.service';
 import { AgentToolsService } from './agent-tools.service';
@@ -10,9 +10,10 @@ import { PrismaModule } from '../common/prisma/prisma.module';
 import { CryptoModule } from '../common/crypto/crypto.module';
 import { InsightsModule } from '../insights/insights.module';
 import { SearchModule } from '../search/search.module';
+import { ConversationsModule } from '../conversations/conversations.module';
 
 @Module({
-  imports: [PrismaModule, CryptoModule, InsightsModule, SearchModule],
+  imports: [PrismaModule, CryptoModule, InsightsModule, SearchModule, forwardRef(() => ConversationsModule)],
   providers: [AiService, AgentService, AgentToolsService],
   controllers: [AgentController, AgentToolsController, AiAssistantController, PublicAgentController],
   exports: [AiService, AgentService, AgentToolsService],

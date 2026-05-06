@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { InsightsService } from '../insights/insights.service';
 import { SearchService } from '../search/search.service';
+import { ConversationsService } from '../conversations/conversations.service';
 
 @Injectable()
 export class AgentToolsService {
@@ -11,6 +12,8 @@ export class AgentToolsService {
     private readonly prisma: PrismaService,
     private readonly insights: InsightsService,
     private readonly searchService: SearchService,
+    @Inject(forwardRef(() => ConversationsService))
+    private readonly conversations: ConversationsService,
   ) {}
 
   async execute(workspaceId: string, tool: string, args: Record<string, any>): Promise<any> {
@@ -43,6 +46,8 @@ export class AgentToolsService {
         return this.resolveConversation(workspaceId, args);
       case 'update_conversation':
         return this.updateConversation(workspaceId, args);
+      case 'assign_conversation':
+        return this.assignConversation(workspaceId, args);
       case 'list_automations':
         return this.listAutomations(workspaceId);
       case 'create_automation':
@@ -251,44 +256,39 @@ export class AgentToolsService {
   private async resolveConversation(workspaceId: string, args: Record<string, any>) {
     const id = args.id || args.conversation_id;
     if (!id) throw new Error('resolve_conversation requires "id"');
-    const conv = await this.prisma.conversation.findFirst({
-      where: { id, workspace_id: workspaceId },
-      select: { id: true, status: true },
-    });
-    if (!conv) throw new Error(`Conversation "${id}" not found`);
-    if (conv.status === 'RESOLVED') {
-      return { conversation: conv, already_resolved: true };
-    }
-    const updated = await this.prisma.conversation.update({
-      where: { id },
-      data: { status: 'RESOLVED', resolved_at: new Date(), updated_at: new Date() },
-      select: { id: true, status: true, resolved_at: true },
-    });
-    return { conversation: updated, resolved: true };
+    const conversation = await this.conversations.resolve(workspaceId, id);
+    return { conversation, resolved: true };
+  }
+
+  private async assignConversation(workspaceId: string, args: Record<string, any>) {
+    const id = args.id || args.conversation_id;
+    const userId = args.user_id || args.assigned_user_id;
+    if (!id || !userId) throw new Error('assign_conversation requires "id" and "user_id"');
+    const conversation = await this.conversations.assign(workspaceId, id, userId);
+    return { conversation, assigned: true };
   }
 
   private async updateConversation(workspaceId: string, args: Record<string, any>) {
     const id = args.id || args.conversation_id;
     if (!id) throw new Error('update_conversation requires "id"');
-    const conv = await this.prisma.conversation.findFirst({
-      where: { id, workspace_id: workspaceId },
-      select: { id: true },
-    });
-    if (!conv) throw new Error(`Conversation "${id}" not found`);
-    const data: any = { updated_at: new Date() };
-    if (args.status !== undefined && args.status !== null) {
-      data.status = args.status;
-      if (args.status === 'RESOLVED') data.resolved_at = new Date();
+    if (args.status === 'RESOLVED') {
+      const conversation = await this.conversations.resolve(workspaceId, id);
+      return { conversation };
     }
-    if (args.priority !== undefined && args.priority !== null) data.priority = args.priority;
-    if (args.category !== undefined) data.category = args.category;
-    if (args.assigned_user_id !== undefined) data.assigned_user_id = args.assigned_user_id;
-    const updated = await this.prisma.conversation.update({
-      where: { id },
-      data,
-      select: { id: true, status: true, priority: true, category: true, assigned_user_id: true, resolved_at: true },
-    });
-    return { conversation: updated };
+    if (args.assigned_user_id) {
+      await this.conversations.assign(workspaceId, id, args.assigned_user_id);
+    }
+    const dto: any = {};
+    if (args.status !== undefined && args.status !== null) dto.status = args.status;
+    if (args.priority !== undefined && args.priority !== null) dto.priority = args.priority;
+    if (args.category !== undefined) dto.category = args.category;
+    if (Object.keys(dto).length === 0 && !args.assigned_user_id) {
+      throw new Error('update_conversation requires at least one field to change');
+    }
+    const conversation = Object.keys(dto).length
+      ? await this.conversations.update(workspaceId, id, dto)
+      : await this.conversations.findOne(workspaceId, id);
+    return { conversation };
   }
 
   private async createAutomation(workspaceId: string, args: Record<string, any>) {

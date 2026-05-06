@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { parseJsonValue } from '../common/prisma/json';
 import { InsightsService } from '../insights/insights.service';
 import { SearchService } from '../search/search.service';
+import { ConversationsService } from '../conversations/conversations.service';
 import { Agent, tool, run as agentRun, Runner } from '@openai/agents';
 import { z } from 'zod';
 
@@ -16,6 +17,8 @@ export class AgentService {
     private readonly crypto: CryptoService,
     private readonly insights: InsightsService,
     private readonly searchService: SearchService,
+    @Inject(forwardRef(() => ConversationsService))
+    private readonly conversations: ConversationsService,
   ) {}
 
   async getAgentApiKey(workspaceId: string): Promise<string | null> {
@@ -36,6 +39,7 @@ export class AgentService {
     const prisma = this.prisma;
     const insights = this.insights;
     const searchSvc = this.searchService;
+    const conversationsSvc = this.conversations;
 
     return [
       // ── Workspace ──
@@ -194,17 +198,12 @@ export class AgentService {
       tool({
         name: 'resolve_conversation', description: 'Mark a conversation/case as RESOLVED. Use this when the user asks to resolve, close, or finish a case.',
         parameters: z.object({ id: z.string().describe('Conversation ID to resolve') }),
-        execute: async ({ id }) => {
-          const conv = await prisma.conversation.findFirst({ where: { id, workspace_id: workspaceId }, select: { id: true, status: true } });
-          if (!conv) throw new Error(`Conversation "${id}" not found`);
-          if (conv.status === 'RESOLVED') return { conversation: conv, already_resolved: true };
-          const updated = await prisma.conversation.update({
-            where: { id },
-            data: { status: 'RESOLVED', resolved_at: new Date(), updated_at: new Date() },
-            select: { id: true, status: true, resolved_at: true },
-          });
-          return { conversation: updated, resolved: true };
-        },
+        execute: async ({ id }) => ({ conversation: await conversationsSvc.resolve(workspaceId, id), resolved: true }),
+      }),
+      tool({
+        name: 'assign_conversation', description: 'Assign a conversation/case to a workspace user.',
+        parameters: z.object({ id: z.string(), user_id: z.string() }),
+        execute: async ({ id, user_id }) => ({ conversation: await conversationsSvc.assign(workspaceId, id, user_id), assigned: true }),
       }),
       tool({
         name: 'update_conversation', description: 'Update conversation fields: status (NEW/OPEN/PENDING/RESOLVED/CLOSED), priority (LOW/MEDIUM/HIGH/URGENT), category, or assigned user.',
@@ -216,17 +215,20 @@ export class AgentService {
           assigned_user_id: z.string().optional().nullable(),
         }),
         execute: async (args) => {
-          const conv = await prisma.conversation.findFirst({ where: { id: args.id, workspace_id: workspaceId }, select: { id: true } });
-          if (!conv) throw new Error(`Conversation "${args.id}" not found`);
-          const data: any = { updated_at: new Date() };
-          if (args.status !== undefined && args.status !== null) {
-            data.status = args.status;
-            if (args.status === 'RESOLVED') data.resolved_at = new Date();
+          if (args.status === 'RESOLVED') {
+            return { conversation: await conversationsSvc.resolve(workspaceId, args.id) };
           }
-          if (args.priority !== undefined && args.priority !== null) data.priority = args.priority;
-          if (args.category !== undefined) data.category = args.category;
-          if (args.assigned_user_id !== undefined) data.assigned_user_id = args.assigned_user_id;
-          return { conversation: await prisma.conversation.update({ where: { id: args.id }, data, select: { id: true, status: true, priority: true, category: true, assigned_user_id: true, resolved_at: true } }) };
+          if (args.assigned_user_id) {
+            await conversationsSvc.assign(workspaceId, args.id, args.assigned_user_id);
+          }
+          const dto: any = {};
+          if (args.status !== undefined && args.status !== null) dto.status = args.status;
+          if (args.priority !== undefined && args.priority !== null) dto.priority = args.priority;
+          if (args.category !== undefined) dto.category = args.category;
+          if (Object.keys(dto).length === 0 && !args.assigned_user_id) {
+            throw new Error('update_conversation requires at least one field to change');
+          }
+          return { conversation: Object.keys(dto).length ? await conversationsSvc.update(workspaceId, args.id, dto) : await conversationsSvc.findOne(workspaceId, args.id) };
         },
       }),
 
@@ -363,7 +365,7 @@ create_contact(full_name*, email?, phone?, type?) | update_contact(id*, ...) | l
 create_task(title*, description?, priority?, due_date?) | update_task(id*, ...) | list_tasks(status?)
 create_deal(title*, stage_id*, value?, contact_id?) | move_deal(id*, stage_id*) | list_pipeline_deals()
 create_automation(name*, trigger_type*) | list_automations() | toggle_automation(id*)
-list_invoices() | list_conversations(status?) | get_conversation_detail(id*) | reply_conversation(id*, text*) | resolve_conversation(id*) | update_conversation(id*, status?, priority?, category?, assigned_user_id?)
+list_invoices() | list_conversations(status?) | get_conversation_detail(id*) | reply_conversation(id*, text*) | resolve_conversation(id*) | assign_conversation(id*, user_id*) | update_conversation(id*, status?, priority?, category?, assigned_user_id?)
 list_documents(search?) | get_stats() | get_insights() | search(q*)
 get_billing(), get_billing_invoices() [READ ONLY] | get_workspace() | get_settings()
 
