@@ -254,6 +254,7 @@ model Workspace {
   routing_rules         RoutingRule[]
   agent_sessions        AgentSession[]
   diagnostic_cases      SupportDiagnosticCase[]
+  runbook_executions    RunbookExecution[]
 
   // Business+ Enterprise relations
   enterprise_config  WorkspaceEnterpriseConfig?
@@ -293,6 +294,7 @@ model User {
   automation_rules          AutomationRule[]   @relation("RuleCreator")
   notifications             Notification[]
   audit_logs                AuditLog[]
+  runbook_executions        RunbookExecution[]
   outbound_messages         Message[]          @relation("MessageSender")
   department_memberships    DepartmentMember[]
   refresh_tokens            RefreshToken[]
@@ -1679,6 +1681,7 @@ model SupportDiagnosticCase {
   workspace    Workspace            @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   fixCases     EngineeringFixCase[]
   errorReports ErrorReport[]
+  runbookExecutions RunbookExecution[]
 
   @@index([workspace_id])
   @@index([error_code])
@@ -1747,6 +1750,39 @@ model EngineeringFixCase {
   @@index([status])
   @@index([diagnostic_case_id])
   @@map("engineering_fix_cases")
+}
+
+// ============================================================
+// RUNBOOKS — pre-approved support actions executed by the support
+// agent without going through engineering / a code PR. Every
+// invocation creates a row here for audit; the row is the source of
+// truth for "what did support do to this workspace".
+// ============================================================
+
+model RunbookExecution {
+  id                  String   @id @default(cuid())
+  workspace_id        String
+  diagnostic_case_id  String?
+  runbook_name        String   // matches a key in src/runbooks/runbooks.registry.ts
+  parameters_json     Json     @db.JsonB
+  executed_by_user_id String?
+  status              String   @default("PENDING") // PENDING | RUNNING | SUCCESS | FAILURE
+  result_json         Json?    @db.JsonB
+  error_log           String?  @db.Text
+  duration_ms         Int?
+
+  created_at   DateTime  @default(now())
+  completed_at DateTime?
+
+  workspace      Workspace              @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  diagnosticCase SupportDiagnosticCase? @relation(fields: [diagnostic_case_id], references: [id], onDelete: SetNull)
+  executedByUser User?                  @relation(fields: [executed_by_user_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([runbook_name])
+  @@index([status])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@map("runbook_executions")
 }
 
 // ============================================================

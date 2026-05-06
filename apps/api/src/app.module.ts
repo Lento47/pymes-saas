@@ -32,6 +32,7 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { InviteCodesModule } from './invite-codes/invite-codes.module';
 import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
+import { RunbooksModule } from './runbooks/runbooks.module';
 import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { HealthModule } from './health/health.module';
@@ -106,6 +107,7 @@ import { InventoryModule } from './inventory/inventory.module';
     I18nModule,
     TelegramModule,
     PlatformModule,
+    RunbooksModule,
 
     WorkersModule,
     EventsModule,
