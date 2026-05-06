@@ -44,6 +44,7 @@ import NotFound from "@/pages/not-found";
 import Chat from "@/pages/chat";
 import Agent from "@/pages/agent";
 import OnboardingPage from "@/pages/onboarding";
+import SetupPage from "@/pages/setup";
 import SupportPage from "@/pages/support";
 import InventoryPage from "@/pages/inventory";
 import InventoryDetailPage from "@/pages/inventory-detail";
@@ -83,6 +84,7 @@ function AppRouter() {
       <Route path="/register" component={Register} />
       <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/setup" component={SetupPage} />
       <Route path="/product">
         {() => <ProductPage />}
       </Route>
