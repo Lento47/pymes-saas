@@ -157,6 +157,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     setSettingsMenuOpen(false);
   }, [location, isMobile]);
 
+  // Close the Configuración flyout whenever the sidebar collapses.
+  // The flyout is positioned absolutely from a getBoundingClientRect()
+  // snapshot taken when the user clicked Configuración. If the sidebar
+  // closes, that anchor disappears but the flyout would otherwise stay
+  // floating at its old offset.
+  useEffect(() => {
+    if (!sidebarOpen) setSettingsMenuOpen(false);
+  }, [sidebarOpen]);
+
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
     if (isMobile && sidebarOpen) {
