@@ -923,12 +923,12 @@ export class PaddleSdkService {
     }
 
     // Email con PDF adjunto — fire-and-forget, no bloquea el webhook.
-    this.sendInvoiceEmail(invoiceId, clientEmail, owner?.user?.name ?? null).catch((err) =>
+    this.sendInvoiceEmail(sub.workspace_id, invoiceId, clientEmail, owner?.user?.name ?? null).catch((err) =>
       this.logger.warn(`Invoice email failed for invoice ${invoiceId}: ${err.message}`),
     );
   }
 
-  private async sendInvoiceEmail(invoiceId: string, to: string, recipientName: string | null) {
+  private async sendInvoiceEmail(workspaceId: string, invoiceId: string, to: string, recipientName: string | null) {
     const apiKey = this.configService.get<string>('RESEND_API_KEY');
     if (!apiKey) {
       this.logger.warn('RESEND_API_KEY not configured, skipping invoice email');
@@ -940,7 +940,7 @@ export class PaddleSdkService {
     }
 
     // Genera el PDF y los datos para el cuerpo del email.
-    const { buffer, filename } = await this.billingInvoice.getPdfBuffer(invoiceId);
+    const { buffer, filename } = await this.billingInvoice.getPdfBuffer(workspaceId, invoiceId);
     const inv = await this.prisma.billingInvoice.findUniqueOrThrow({
       where: { id: invoiceId },
       select: { number: true, plan_name: true, total: true, currency: true, issued_at: true },

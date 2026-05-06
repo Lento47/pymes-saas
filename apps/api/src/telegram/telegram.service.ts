@@ -16,8 +16,6 @@ export interface TelegramWebhookInfo {
   allowed_updates?: string[];
 }
 
-export type { TelegramWebhookInfo };
-
 @Injectable()
 export class TelegramService {
   private readonly logger = new Logger(TelegramService.name);
