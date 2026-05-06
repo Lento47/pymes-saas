@@ -14,6 +14,7 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import AcceptInvite from "@/pages/accept-invite";
 import Pricing from "@/pages/pricing";
+import SeoLandingPage from "@/pages/seo-landing-page";
 import Dashboard from "@/pages/dashboard";
 import Inbox from "@/pages/inbox";
 import Conversation from "@/pages/conversation";
@@ -67,6 +68,27 @@ function AppRouter() {
       <Route path="/register" component={Register} />
       <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/whatsapp-shared-inbox">
+        {() => <SeoLandingPage slug="whatsapp-shared-inbox" />}
+      </Route>
+      <Route path="/crm-for-smbs">
+        {() => <SeoLandingPage slug="crm-for-smbs" />}
+      </Route>
+      <Route path="/client-management">
+        {() => <SeoLandingPage slug="client-management" />}
+      </Route>
+      <Route path="/workflow-automation">
+        {() => <SeoLandingPage slug="workflow-automation" />}
+      </Route>
+      <Route path="/whatsapp-crm">
+        {() => <SeoLandingPage slug="whatsapp-crm" />}
+      </Route>
+      <Route path="/invoicing">
+        {() => <SeoLandingPage slug="invoicing" />}
+      </Route>
+      <Route path="/team-inbox">
+        {() => <SeoLandingPage slug="team-inbox" />}
+      </Route>
       <Route path="/documentation">
         {() => <DocumentationCenterPage />}
       </Route>

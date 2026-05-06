@@ -22,6 +22,7 @@ import { LandingHubby } from "@/components/shared/landing-hubby";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { cn } from "@/lib/utils";
+import { applySeoMetadata, buildSoftwareSchema } from "@/lib/seo";
 import {
   Carousel,
   CarouselContent,
@@ -213,6 +214,18 @@ function useReveal() {
 export default function Landing() {
   const { messages } = useI18n();
   const copy = messages.landing;
+
+  useEffect(() => {
+    const description =
+      "PymesHub centralizes WhatsApp, email, clients, tasks, invoicing, pipeline visibility, and workflow automation for growing SMB teams.";
+
+    applySeoMetadata({
+      canonicalPath: "/",
+      description,
+      title: "PymesHub | CRM, WhatsApp inbox, invoicing and workflows for SMBs",
+      jsonLd: buildSoftwareSchema("/", "PymesHub", description),
+    });
+  }, []);
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -1056,6 +1069,33 @@ export default function Landing() {
                     </span>
                   ))}
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 pb-20 md:px-8" aria-labelledby="seo-use-cases-title">
+          <div className="mx-auto max-w-7xl rounded-[32px] border border-white/[0.08] bg-white/[0.03] p-6 md:p-8">
+            <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+              <div>
+                <p className="font-marketing text-xs font-semibold uppercase tracking-[0.34em] text-[#dfff4a]/68">
+                  {copy.seoHub.eyebrow}
+                </p>
+                <h2 id="seo-use-cases-title" className="font-marketing mt-3 text-3xl font-semibold tracking-[-0.04em] md:text-4xl">
+                  {copy.seoHub.title}
+                </h2>
+                <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/72">
+                  {copy.seoHub.description}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {copy.seoHub.links.map((item) => (
+                  <Link key={item.href} href={item.href}>
+                    <a className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5 font-marketing text-sm text-white/74 transition hover:border-[#dfff4a]/42 hover:text-white">
+                      {item.label}
+                    </a>
+                  </Link>
+                ))}
               </div>
             </div>
           </div>
