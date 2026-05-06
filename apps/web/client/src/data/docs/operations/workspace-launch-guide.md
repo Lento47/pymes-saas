@@ -40,10 +40,63 @@ Invita a los miembros del equipo inicial y asigna el rol correcto desde el princ
 
 ### 5.1 WhatsApp
 
-1. Conecta tu número de WhatsApp Business a través de la integración en Configuración > Canales.
-2. Configura las plantillas de mensaje necesarias para iniciar conversaciones (recordatorios, bienvenida, seguimiento).
-3. Asegúrate de contar con el opt-in de tus clientes antes de enviar mensajes proactivos.
-4. Revisa la Política de WhatsApp e IA de PymesHub para entender las obligaciones del canal.
+WhatsApp se integra vía **WhatsApp Business Platform** (Cloud API de Meta). El proceso tiene dos partes: una en Meta y una en PymesHub.
+
+**Antes de empezar**
+
+- Una cuenta de **Meta Business** verificada (no es la cuenta personal de Facebook). Verificá tu negocio en `business.facebook.com → Configuración → Información del negocio`. La verificación puede tomar de 1 a 3 días si Meta solicita documentos.
+- Un **número de teléfono dedicado** para WhatsApp Business. No puede tener una cuenta de WhatsApp personal o Business activa en el celular — Meta lo migra a la Cloud API y deja de funcionar en la app móvil.
+- Tarjeta corporativa cargada en Meta Business para el método de pago de WhatsApp (las primeras 1.000 conversaciones de servicio al cliente cada mes son gratis; las plantillas de marketing/utilidad y servicio se cobran por conversación según el país).
+
+**Paso 1 — Crear la WhatsApp Business Account (WABA) en Meta**
+
+1. En `business.facebook.com → Configuración del negocio → Cuentas → Cuentas de WhatsApp`, dale **Agregar → Crear una cuenta nueva de WhatsApp**.
+2. Asociá la WABA a tu **App de Meta** (Type: *Business*). Si todavía no tenés App, creala en `developers.facebook.com → Mis apps → Crear app → Business`.
+3. Agregá el producto **WhatsApp** dentro de la App. Esto te da las pantallas de *API Setup*, *Configuration* y *Webhooks*.
+4. En *API Setup* agregá tu número de teléfono dedicado y verificalo por SMS o llamada. Anotá el **Display name** (debe coincidir con tu marca) y esperá la aprobación de Meta — toma de minutos a unas horas.
+
+**Paso 2 — Recopilar las credenciales que pide PymesHub**
+
+Necesitás cuatro valores. Los primeros tres están en `developers.facebook.com → Tu App → WhatsApp → API Setup`:
+
+- **WhatsApp Business Account ID** (`WABA_ID`) — identifica la WABA. Aparece bajo el selector de número.
+- **Phone Number ID** (`PHONE_NUMBER_ID`) — identifica el número específico. Es un entero de ~15 dígitos, **no** el número telefónico humano.
+- **App Secret** (Configuration → Basic). Se usa para verificar la firma `X-Hub-Signature-256` de cada webhook entrante; sin él, PymesHub rechaza la llamada.
+- **Access Token permanente** — el token temporal que Meta muestra en *API Setup* expira a las 24h y no sirve para producción. Generá uno permanente con un **System User**:
+  1. `business.facebook.com → Configuración del negocio → Usuarios → Usuarios del sistema → Agregar`. Tipo *Admin*.
+  2. **Asignar activos** al system user: tu App de Meta y la WABA, ambas con permisos *Manage*.
+  3. **Generate New Token** → seleccioná la App → marcá los permisos `whatsapp_business_management` y `whatsapp_business_messaging` → expiración *Never* → copiá el token. Guardalo en un gestor de secretos: Meta no lo vuelve a mostrar.
+
+**Paso 3 — Configurar el webhook en Meta**
+
+1. En `developers.facebook.com → Tu App → WhatsApp → Configuration → Webhook`, dale **Edit** y completá:
+   - **Callback URL**: `https://api.pymeshub.lat/api/inbound/whatsapp/webhook`
+   - **Verify Token**: una cadena aleatoria que te inventás; tiene que coincidir exactamente con el `WHATSAPP_WEBHOOK_VERIFY_TOKEN` que PymesHub espera. Si tu workspace está en cuenta managed, pediselo al admin de plataforma; si autoalojás PymesHub, lo definís vos en la variable de entorno.
+   - **Verify and Save**: Meta hace un GET de prueba contra el endpoint. Si responde con el challenge correcto, queda verificado.
+2. **Suscribite** a los eventos. Como mínimo: `messages` (mensajes entrantes y estados de entrega). Los demás (`message_template_status_update`, `account_alerts`) son opcionales pero recomendados para que PymesHub te avise si una plantilla queda rechazada.
+3. **App Secret**: copiá el valor de *App → Settings → Basic → App Secret* y guardalo: PymesHub lo usa internamente como `WHATSAPP_APP_SECRET` para validar la firma HMAC-SHA256 de cada webhook.
+
+**Paso 4 — Pegar las credenciales en PymesHub**
+
+1. Iniciá sesión en tu workspace y andá a **Configuración → Canales → WhatsApp → Conectar**.
+2. Pegá: `Phone Number ID`, `WABA ID`, `Access Token permanente`. El sistema valida en el momento haciendo una llamada de prueba a `/me` de Meta.
+3. Si la cuenta es managed, el admin de plataforma carga `WHATSAPP_APP_SECRET` y `WHATSAPP_WEBHOOK_VERIFY_TOKEN` en la configuración del workspace. Si autoalojás, los definís como variables de entorno del API.
+4. Mandá un mensaje de prueba al número desde otro WhatsApp; debería aparecer en el inbox en menos de 5 segundos.
+
+**Paso 5 — Plantillas de mensaje**
+
+WhatsApp **no permite** iniciar una conversación con un cliente si pasaron más de 24 h desde su último mensaje, salvo usando una **plantilla aprobada**. Para recordatorios, bienvenidas y seguimientos:
+
+1. Creá la plantilla en `business.facebook.com → Cuentas de WhatsApp → tu WABA → Plantillas de mensaje → Crear plantilla`.
+2. Categoría: *Utilidad* (notificaciones operativas), *Marketing* (promociones — más caras y con consentimiento explícito) o *Autenticación* (OTPs).
+3. Esperá la revisión de Meta — usualmente 1 hora a 24 h. Las plantillas rechazadas se pueden corregir y reenviar.
+4. Una vez aprobada, sincronizá las plantillas en PymesHub desde **Configuración → Canales → WhatsApp → Sincronizar plantillas**.
+
+**Cumplimiento y opt-in**
+
+- Asegurate de tener **opt-in documentado** de cada cliente antes de enviarle mensajes proactivos. Sirve un check explícito en formulario, una respuesta por email, o una conversación previa donde el cliente acepte recibir notificaciones por WhatsApp.
+- Revisá la [Política de WhatsApp e IA](/legal/whatsapp-ai-policy) de PymesHub para las reglas operativas del canal y los usos permitidos del agente AI.
+- Meta puede suspender la WABA por *quality rating low* si un porcentaje alto de tus envíos resulta en bloqueos o reportes. Monitoreá la calidad en Meta Business → Insights.
 
 ### 5.2 Correo electrónico
 
