@@ -54,7 +54,7 @@ export default function QuickStartChecklist({ progress, plan, onDismiss }: Props
   if (allDone) return null;
 
   return (
-    <div className="relative rounded-xl border border-[#5771ff]/20 bg-gradient-to-br from-[#5771ff]/[0.04] to-card/40 p-5 animate-in fade-in slide-in-from-top-4 duration-500">
+    <div className="relative rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.04] to-card/40 p-5 animate-in fade-in slide-in-from-top-4 duration-500">
       <button
         onClick={() => setDismissed(true)}
         className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
@@ -75,7 +75,7 @@ export default function QuickStartChecklist({ progress, plan, onDismiss }: Props
         <div
           className={cn(
             "h-full rounded-full transition-all duration-500",
-            doneCount >= 5 ? "bg-emerald-500" : "bg-[#5771ff]",
+            doneCount >= 5 ? "bg-emerald-500" : "bg-primary",
           )}
           style={{ width: `${(doneCount / items.length) * 100}%` }}
         />
@@ -90,7 +90,7 @@ export default function QuickStartChecklist({ progress, plan, onDismiss }: Props
                 "flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors cursor-pointer group",
                 item.done
                   ? "text-muted-foreground/60"
-                  : "hover:bg-[#5771ff]/5 text-muted-foreground hover:text-foreground",
+                  : "hover:bg-primary/5 text-muted-foreground hover:text-foreground",
               )}
             >
               <div

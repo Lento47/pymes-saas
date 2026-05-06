@@ -60,7 +60,7 @@ export default function TemplateBrowser({ open, onClose, type }: Props) {
       <DialogContent className="bg-card border-border max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-foreground flex items-center gap-2">
-            <Icon className="w-5 h-5 text-[#5771ff]" />
+            <Icon className="w-5 h-5 text-primary" />
             Plantillas de {type === "automation" ? "Automatización" : type === "message" ? "Mensajes" : "Facturas"}
           </DialogTitle>
         </DialogHeader>
@@ -77,7 +77,7 @@ export default function TemplateBrowser({ open, onClose, type }: Props) {
         ) : (
           <div className="grid gap-3">
             {(templates as any[]).map((t: any) => (
-              <div key={t.id} className="rounded-lg border border-border bg-[hsl(var(--elevated))] p-4 hover:border-[#5771ff]/30 transition-colors">
+              <div key={t.id} className="rounded-lg border border-border bg-[hsl(var(--elevated))] p-4 hover:border-primary/30 transition-colors">
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <h4 className="text-sm font-medium text-foreground">{t.name}</h4>

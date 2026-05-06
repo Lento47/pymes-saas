@@ -107,7 +107,7 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleFileDrop}
             onClick={() => fileInputRef.current?.click()}
-            className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-10 cursor-pointer hover:border-[#5771ff]/50 transition-colors"
+            className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-10 cursor-pointer hover:border-primary/50 transition-colors"
           >
             <Upload className="w-8 h-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Arrastra un archivo CSV o haz clic para seleccionar</p>

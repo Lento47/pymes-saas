@@ -93,24 +93,24 @@ export default function OnboardingTour() {
         <div
           className={cn(
             "relative max-w-md w-full mx-4",
-            "rounded-2xl border border-[#5771ff]/30",
-            "bg-[#0c1125]/95 backdrop-blur-xl shadow-2xl",
+            "rounded-2xl border border-primary/30",
+            "bg-card/95 backdrop-blur-xl shadow-2xl",
             "animate-in fade-in zoom-in-95 duration-300",
           )}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 pt-5 pb-2">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5771ff] to-[#D97706] flex items-center justify-center text-sm font-bold text-white">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-amber-600 flex items-center justify-center text-sm font-bold text-primary-foreground">
                 {step + 1}
               </div>
-              <span className="text-xs text-white/60">
+              <span className="text-xs text-foreground/60">
                 Paso {step + 1} de {TOUR_STEPS.length}
               </span>
             </div>
             <button
               onClick={finish}
-              className="text-white/40 hover:text-white/80 transition-colors"
+              className="text-foreground/40 hover:text-foreground/80 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -118,8 +118,8 @@ export default function OnboardingTour() {
 
           {/* Content */}
           <div className="px-6 py-4">
-            <h3 className="text-lg font-semibold text-white mb-2">{current.title}</h3>
-            <p className="text-sm text-white/70 leading-relaxed">{current.description}</p>
+            <h3 className="text-lg font-semibold text-foreground mb-2">{current.title}</h3>
+            <p className="text-sm text-foreground/70 leading-relaxed">{current.description}</p>
           </div>
 
           {/* Footer */}
@@ -131,7 +131,7 @@ export default function OnboardingTour() {
                   key={i}
                   className={cn(
                     "w-1.5 h-1.5 rounded-full transition-colors",
-                    i <= step ? "bg-[#5771ff]" : "bg-white/20",
+                    i <= step ? "bg-primary" : "bg-muted",
                   )}
                 />
               ))}
@@ -140,13 +140,13 @@ export default function OnboardingTour() {
             <div className="flex gap-2">
               <button
                 onClick={finish}
-                className="text-xs text-white/50 hover:text-white/80 transition-colors px-2 py-1"
+                className="text-xs text-foreground/50 hover:text-foreground/80 transition-colors px-2 py-1"
               >
                 Saltar
               </button>
               <button
                 onClick={next}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#5771ff] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#5771ff]/80 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/80 transition-colors"
               >
                 {step + 1 >= TOUR_STEPS.length ? "¡Listo!" : "Siguiente"}
                 <ArrowRight className="w-3 h-3" />

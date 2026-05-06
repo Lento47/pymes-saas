@@ -6,7 +6,7 @@ const CHANNEL_STYLES: Record<string, string> = {
 
 export function ChannelBadge({ channel }: { channel?: string | null }) {
   if (!channel) return null;
-  const style = CHANNEL_STYLES[channel] || "bg-white/10 text-slate-300";
+  const style = CHANNEL_STYLES[channel] || "bg-muted text-muted-foreground";
   return (
     <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${style}`}>
       {channel}

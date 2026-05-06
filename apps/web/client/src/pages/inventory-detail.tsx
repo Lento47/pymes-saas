@@ -49,7 +49,7 @@ export default function InventoryDetailPage() {
     );
   }
 
-  const catColor = product.category?.color || "#5771ff";
+  const catColor = product.category?.color || "hsl(var(--primary))";
   const margin = product.cost_price ? parseFloat(product.unit_price) - parseFloat(product.cost_price) : null;
   const marginPct = margin && product.cost_price && parseFloat(product.cost_price) > 0
     ? Math.round((margin / parseFloat(product.cost_price)) * 100)

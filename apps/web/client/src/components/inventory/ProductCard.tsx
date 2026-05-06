@@ -60,7 +60,7 @@ export function ProductCard({ product, onEdit, onArchive, onAdjust, viewMode }: 
     );
   }
 
-  const catColor = product.category?.color || "#5771ff";
+  const catColor = product.category?.color || "hsl(var(--primary))";
   const isLowStock = product.track_inventory && product.type === "PRODUCT" && product.current_stock <= product.min_stock;
   const isOutOfStock = product.track_inventory && product.type === "PRODUCT" && product.current_stock <= 0;
 

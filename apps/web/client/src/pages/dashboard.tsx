@@ -90,10 +90,10 @@ function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
 
 // ── Insight styles ──
 const INSIGHT_STYLES: Record<string, { Icon: any; color: string; bg: string }> = {
-  danger:   { Icon: CircleAlert,    color: "#ef4444", bg: "bg-red-500/10 dark:bg-red-500/[0.12]" },
-  warning:  { Icon: TriangleAlert, color: "#f59e0b", bg: "bg-amber-500/10 dark:bg-amber-500/[0.12]" },
-  positive: { Icon: ShieldCheck,   color: "#22c55e", bg: "bg-emerald-500/10 dark:bg-emerald-500/[0.12]" },
-  info:     { Icon: Info,          color: "#818cf8", bg: "bg-indigo-500/10 dark:bg-indigo-500/[0.12]" },
+  danger:   { Icon: CircleAlert,    color: "hsl(var(--danger))",  bg: "bg-red-500/10" },
+  warning:  { Icon: TriangleAlert, color: "hsl(var(--warning))", bg: "bg-amber-500/10" },
+  positive: { Icon: ShieldCheck,   color: "hsl(var(--success))", bg: "bg-emerald-500/10" },
+  info:     { Icon: Info,          color: "#818cf8",              bg: "bg-indigo-500/10" },
 };
 
 export default function DashboardPage() {
@@ -139,7 +139,7 @@ export default function DashboardPage() {
     ? (revenueChange >= 0 ? `↑ ${revenueChange}%` : `↓ ${Math.abs(revenueChange)}%`)
     : (workspaceStats?.monthly_revenue > 0 ? "Primer mes" : "Sin datos");
   const revenueClass = hasPrevRevenue
-    ? (revenueChange >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")
+    ? (revenueChange >= 0 ? "text-emerald-500" : "text-red-500")
     : "text-muted-foreground/60";
   const activeConvs = workspaceStats?.activeConversations ?? 0;
   const pipelineStatus = activeConvs > 0 ? dash.active : dash.empty;
@@ -237,7 +237,7 @@ export default function DashboardPage() {
               <div className="w-px h-4 sm:h-5 bg-border/60 shrink-0" />
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{urgentTasks} {dash.tasks}</span><span className="font-semibold text-foreground/80">{dash.urgent}</span></div>
               <div className="w-px h-4 sm:h-5 bg-border/60 shrink-0" />
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.pipeline}</span><span className={`font-semibold ${activeConvs > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>{pipelineStatus}</span></div>
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.pipeline}</span><span className={`font-semibold ${activeConvs > 0 ? "text-emerald-500" : "text-muted-foreground/40"}`}>{pipelineStatus}</span></div>
             </div>
           </div>
         </div>
@@ -247,7 +247,7 @@ export default function DashboardPage() {
       {onboardStatus && (!onboardStatus.exists || (onboardStatus.completed < (onboardStatus.total || 15))) && (
         <div className="px-4 sm:px-6 pb-1">
           <Link href="/onboarding">
-            <div className="rounded-md border border-[#5771ff]/20 bg-gradient-to-r from-[#5771ff]/5 to-transparent px-5 py-3 cursor-pointer hover:border-[#5771ff]/40 transition-colors">
+            <div className="rounded-md border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-5 py-3 cursor-pointer hover:border-primary/40 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-lg">🚀</span>
@@ -258,7 +258,7 @@ export default function DashboardPage() {
                     {onboardStatus.exists && (
                       <div className="flex items-center gap-2 mt-1">
                         <div className="w-32 h-1 rounded-full bg-border/60 overflow-hidden">
-                          <div className="h-full rounded-full bg-[#5771ff] transition-all" style={{ width: `${(onboardStatus.completed / (onboardStatus.total || 1)) * 100}%` }} />
+                          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(onboardStatus.completed / (onboardStatus.total || 1)) * 100}%` }} />
                         </div>
                         <span className="text-[11px] text-muted-foreground">{onboardStatus.completed} de {onboardStatus.total || 15}</span>
                       </div>
@@ -338,9 +338,9 @@ export default function DashboardPage() {
                     <div className="w-[18px] h-[18px] rounded-full border-2 border-border/60 cursor-pointer hover:border-primary/50 transition-colors shrink-0" />
                     <span className="flex-1 text-[13px] text-foreground truncate">{task.title}</span>
                     <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${
-                      task.priority === "HIGH" ? "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20" :
-                      task.priority === "MEDIUM" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20" :
-                      "bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20"
+            task.priority === "HIGH" ? "bg-red-500/10 text-red-500 border-red-500/20" :
+            task.priority === "MEDIUM" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+            "bg-slate-500/10 text-slate-500 border-slate-500/20"
                     }`}>
                       {task.priority === "HIGH" ? dash.high : task.priority === "MEDIUM" ? dash.medium : dash.low}
                     </span>

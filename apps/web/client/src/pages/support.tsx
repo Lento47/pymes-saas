@@ -122,7 +122,7 @@ export default function SupportPage() {
               onClick={() => setFilter(status)}
               className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
                 filter === status
-                  ? "border-[#5771ff]/50 bg-[#5771ff]/10 text-[#5771ff]"
+                  ? "border-primary/50 bg-primary/10 text-primary"
                   : "border-border/60 text-muted-foreground hover:text-foreground hover:border-border"
               }`}
             >
@@ -165,7 +165,7 @@ export default function SupportPage() {
                 <div
                   key={c.id}
                   className={`rounded-md border bg-card/40 transition-colors ${
-                    isOpen ? "border-[#5771ff]/20" : "border-border/60 opacity-60"
+                    isOpen ? "border-primary/20" : "border-border/60 opacity-60"
                   }`}
                 >
                   <div className="p-5">

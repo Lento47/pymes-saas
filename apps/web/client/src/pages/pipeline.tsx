@@ -15,7 +15,7 @@ interface Deal { id: string; title: string; value: string | null; currency: stri
 
 interface Stage { id: string; name: string; color: string; order: number; deals: Deal[]; }
 
-const PRIORITY_COLORS: Record<Deal["priority"], string> = { LOW: "text-muted-foreground/50", MEDIUM: "text-[#a78bfa]", HIGH: "text-amber-400", URGENT: "text-rose-400", };
+const PRIORITY_COLORS: Record<Deal["priority"], string> = { LOW: "text-muted-foreground/50", MEDIUM: "text-violet-400", HIGH: "text-amber-400", URGENT: "text-rose-400", };
 const PRIORITY_LABELS: Record<Deal["priority"], string> = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", URGENT: "Urgente", };
 
 function fmtCRC(val: string | null, currency: string) { if (!val) return null; const n = parseFloat(val); if (isNaN(n)) return null; return new Intl.NumberFormat("es-CR", { style: "currency", currency, maximumFractionDigits: 0 }).format(n); }
@@ -35,7 +35,7 @@ const DealCard = memo(function DealCard({ deal, onDragStart, onClick }: { deal: 
           {deal.value && (
             <div className="flex items-center gap-1 mb-1.5">
               <DollarSign style={{ width: 10, height: 10 }} className="text-muted-foreground/40" />
-              <span className="text-[12px] font-semibold text-[#a78bfa]">{fmtCRC(deal.value, deal.currency)}</span>
+              <span className="text-[12px] font-semibold text-violet-400">{fmtCRC(deal.value, deal.currency)}</span>
             </div>
           )}
           {deal.contact && (
@@ -110,7 +110,7 @@ export default function PipelinePage() {
     <div className="flex flex-col h-full overflow-hidden bg-background">
       <header className="shrink-0 flex items-center justify-between px-6 py-3" style={{ borderBottom: '1px solid hsl(var(--foreground)/0.04)' }}>
         <div className="flex items-center gap-3">
-          <KanbanSquare style={{ width: 16, height: 16, color: '#a78bfa' }} />
+          <KanbanSquare style={{ width: 16, height: 16 }} className="text-violet-400" />
           <h1 className="text-[15px] font-semibold text-foreground">Pipeline</h1>
           <span className="text-[11px] text-muted-foreground/40 ml-1">{stages?.length || 0} etapas</span>
         </div>
@@ -119,7 +119,7 @@ export default function PipelinePage() {
             <Upload style={{ width: 13, height: 13 }} />Import CSV
           </Button>
           <Button onClick={() => { setEditingDeal(null); setDefaultStage(undefined); setModalOpen(true); }}
-          size="sm" className="gap-1.5 rounded-xl text-[12px]" style={{ background: '#8b7cf6', color: 'hsl(var(--fg))' }}>
+          size="sm" className="gap-1.5 rounded-xl text-[12px] bg-primary text-primary-foreground hover:bg-primary/90">
           <Plus style={{ width: 13, height: 13 }} />Nuevo deal
         </Button>
         </div>

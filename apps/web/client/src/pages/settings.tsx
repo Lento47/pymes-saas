@@ -1287,11 +1287,11 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           </div>
         </div>
 
-        <div className="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-blue-700 dark:text-blue-200">
+        <div className="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-blue-400">
           <p>
             Dirección inbound activa: <span className="font-mono">{resolvedInboundEmail || "sin definir"}</span>
           </p>
-          <p className="mt-1 text-blue-600/80 dark:text-blue-100/80">
+          <p className="mt-1 text-blue-300/80">
             Recomendado si tienes varios buzones: configurar esta dirección en Resend y además enviar <span className="font-mono">X-Channel-Id</span>.
           </p>
         </div>
@@ -2770,7 +2770,7 @@ function ApiTokensTab() {
             <span className="text-sm font-semibold text-yellow-400">¡Guardá este token! No se mostrará de nuevo.</span>
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 bg-foreground/[0.04] rounded px-3 py-2 text-xs text-yellow-600 dark:text-yellow-200 break-all font-mono">{newToken}</code>
+            <code className="flex-1 bg-foreground/[0.04] rounded px-3 py-2 text-xs text-yellow-400 break-all font-mono">{newToken}</code>
             <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(newToken); toast({ title: 'Copiado' }); }}><Copy className="h-4 w-4" /></Button>
           </div>
         </div>

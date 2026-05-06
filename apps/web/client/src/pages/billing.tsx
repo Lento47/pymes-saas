@@ -442,8 +442,8 @@ export default function BillingPage() {
           </Alert>
         )}
         {addonParam && (
-          <Alert className="border-[#F59E0B]/20 bg-[#F59E0B]/5">
-            <AlertDescription className="text-[#F59E0B] text-xs">
+          <Alert className="border-warning/20 bg-warning/5">
+            <AlertDescription className="text-warning text-xs">
               {addonLabels[addonParam] || addonParam} activado correctamente. Ya podés usar sus funciones.
             </AlertDescription>
           </Alert>
