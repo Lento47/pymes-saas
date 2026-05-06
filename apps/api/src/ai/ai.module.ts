@@ -12,15 +12,33 @@ import { InsightsModule } from '../insights/insights.module';
 import { SearchModule } from '../search/search.module';
 import { DocsModule } from '../docs/docs.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { EmailModule } from '../email/email.module';
 import { SupportRouterService } from './support-router.service';
 import { DiagnosticService } from './diagnostic.service';
 import { EngineeringFixService } from './engineering-fix.service';
+import { SupportNotificationService } from './support-notification.service';
 
 @Module({
-  imports: [PrismaModule, CryptoModule, InsightsModule, SearchModule, DocsModule, forwardRef(() => NotificationsModule)],
-  providers: [AiService, AgentService, AgentToolsService, SupportRouterService, DiagnosticService, EngineeringFixService],
+  imports: [
+    PrismaModule,
+    CryptoModule,
+    InsightsModule,
+    SearchModule,
+    DocsModule,
+    forwardRef(() => NotificationsModule),
+    forwardRef(() => EmailModule),
+  ],
+  providers: [
+    AiService,
+    AgentService,
+    AgentToolsService,
+    SupportRouterService,
+    DiagnosticService,
+    EngineeringFixService,
+    SupportNotificationService,
+  ],
   controllers: [AgentController, AgentToolsController, AiAssistantController, PublicAgentController],
-  exports: [AiService, AgentService, AgentToolsService],
+  exports: [AiService, AgentService, AgentToolsService, SupportNotificationService],
 })
 export class AiModule {}
 

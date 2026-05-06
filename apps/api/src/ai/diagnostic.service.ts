@@ -5,6 +5,7 @@ import {
 import { PrismaService } from '../common/prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EngineeringFixService } from './engineering-fix.service';
+import { SupportNotificationService } from './support-notification.service';
 
 export interface DiagnosticInput {
   workspaceId: string;
@@ -56,6 +57,7 @@ export class DiagnosticService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly fixService: EngineeringFixService,
+    private readonly supportNotifications: SupportNotificationService,
   ) {}
 
   // ADMIN/platform-admin: full workspace view. Otherwise scope to caller's
@@ -95,10 +97,24 @@ export class DiagnosticService {
   }
 
   async updateCaseStatus(id: string, status: string) {
-    return (this.prisma as any).supportDiagnosticCase.update({
+    const updated = await (this.prisma as any).supportDiagnosticCase.update({
       where: { id },
       data: { status },
     });
+
+    // Phase 2: when a case flips to RESOLVED, fire-and-forget the
+    // user notification (in-app + email when channel exists).
+    // Errors inside notifyResolution are caught internally so they
+    // never roll back the status update.
+    if (status === 'RESOLVED') {
+      this.supportNotifications.notifyResolution(id).catch((err) => {
+        this.logger.warn(
+          `notifyResolution failed for diagnostic case ${id}: ${err?.message}`,
+        );
+      });
+    }
+
+    return updated;
   }
 
   async diagnose(input: DiagnosticInput): Promise<DiagnosticResult> {
