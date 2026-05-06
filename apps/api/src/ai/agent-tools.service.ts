@@ -39,6 +39,10 @@ export class AgentToolsService {
         return this.getConversationDetail(workspaceId, args);
       case 'reply_conversation':
         return this.replyConversation(workspaceId, args);
+      case 'resolve_conversation':
+        return this.resolveConversation(workspaceId, args);
+      case 'update_conversation':
+        return this.updateConversation(workspaceId, args);
       case 'list_automations':
         return this.listAutomations(workspaceId);
       case 'create_automation':
@@ -242,6 +246,49 @@ export class AgentToolsService {
       },
     });
     return { message: msg };
+  }
+
+  private async resolveConversation(workspaceId: string, args: Record<string, any>) {
+    const id = args.id || args.conversation_id;
+    if (!id) throw new Error('resolve_conversation requires "id"');
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id, workspace_id: workspaceId },
+      select: { id: true, status: true },
+    });
+    if (!conv) throw new Error(`Conversation "${id}" not found`);
+    if (conv.status === 'RESOLVED') {
+      return { conversation: conv, already_resolved: true };
+    }
+    const updated = await this.prisma.conversation.update({
+      where: { id },
+      data: { status: 'RESOLVED', resolved_at: new Date(), updated_at: new Date() },
+      select: { id: true, status: true, resolved_at: true },
+    });
+    return { conversation: updated, resolved: true };
+  }
+
+  private async updateConversation(workspaceId: string, args: Record<string, any>) {
+    const id = args.id || args.conversation_id;
+    if (!id) throw new Error('update_conversation requires "id"');
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id, workspace_id: workspaceId },
+      select: { id: true },
+    });
+    if (!conv) throw new Error(`Conversation "${id}" not found`);
+    const data: any = { updated_at: new Date() };
+    if (args.status !== undefined && args.status !== null) {
+      data.status = args.status;
+      if (args.status === 'RESOLVED') data.resolved_at = new Date();
+    }
+    if (args.priority !== undefined && args.priority !== null) data.priority = args.priority;
+    if (args.category !== undefined) data.category = args.category;
+    if (args.assigned_user_id !== undefined) data.assigned_user_id = args.assigned_user_id;
+    const updated = await this.prisma.conversation.update({
+      where: { id },
+      data,
+      select: { id: true, status: true, priority: true, category: true, assigned_user_id: true, resolved_at: true },
+    });
+    return { conversation: updated };
   }
 
   private async createAutomation(workspaceId: string, args: Record<string, any>) {

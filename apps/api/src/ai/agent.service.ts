@@ -191,6 +191,44 @@ export class AgentService {
           message: await prisma.message.create({ data: { workspace_id: workspaceId, conversation_id: id, direction: 'OUTBOUND', body_text: text, sender_name: 'HubbyAgent' } }),
         }),
       }),
+      tool({
+        name: 'resolve_conversation', description: 'Mark a conversation/case as RESOLVED. Use this when the user asks to resolve, close, or finish a case.',
+        parameters: z.object({ id: z.string().describe('Conversation ID to resolve') }),
+        execute: async ({ id }) => {
+          const conv = await prisma.conversation.findFirst({ where: { id, workspace_id: workspaceId }, select: { id: true, status: true } });
+          if (!conv) throw new Error(`Conversation "${id}" not found`);
+          if (conv.status === 'RESOLVED') return { conversation: conv, already_resolved: true };
+          const updated = await prisma.conversation.update({
+            where: { id },
+            data: { status: 'RESOLVED', resolved_at: new Date(), updated_at: new Date() },
+            select: { id: true, status: true, resolved_at: true },
+          });
+          return { conversation: updated, resolved: true };
+        },
+      }),
+      tool({
+        name: 'update_conversation', description: 'Update conversation fields: status (NEW/OPEN/PENDING/RESOLVED/CLOSED), priority (LOW/MEDIUM/HIGH/URGENT), category, or assigned user.',
+        parameters: z.object({
+          id: z.string(),
+          status: z.enum(['NEW','OPEN','PENDING','RESOLVED','CLOSED']).optional().nullable(),
+          priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable(),
+          category: z.string().optional().nullable(),
+          assigned_user_id: z.string().optional().nullable(),
+        }),
+        execute: async (args) => {
+          const conv = await prisma.conversation.findFirst({ where: { id: args.id, workspace_id: workspaceId }, select: { id: true } });
+          if (!conv) throw new Error(`Conversation "${args.id}" not found`);
+          const data: any = { updated_at: new Date() };
+          if (args.status !== undefined && args.status !== null) {
+            data.status = args.status;
+            if (args.status === 'RESOLVED') data.resolved_at = new Date();
+          }
+          if (args.priority !== undefined && args.priority !== null) data.priority = args.priority;
+          if (args.category !== undefined) data.category = args.category;
+          if (args.assigned_user_id !== undefined) data.assigned_user_id = args.assigned_user_id;
+          return { conversation: await prisma.conversation.update({ where: { id: args.id }, data, select: { id: true, status: true, priority: true, category: true, assigned_user_id: true, resolved_at: true } }) };
+        },
+      }),
 
       // ── Automations ──
       tool({
@@ -325,16 +363,18 @@ create_contact(full_name*, email?, phone?, type?) | update_contact(id*, ...) | l
 create_task(title*, description?, priority?, due_date?) | update_task(id*, ...) | list_tasks(status?)
 create_deal(title*, stage_id*, value?, contact_id?) | move_deal(id*, stage_id*) | list_pipeline_deals()
 create_automation(name*, trigger_type*) | list_automations() | toggle_automation(id*)
-list_invoices() | list_conversations(status?) | get_conversation_detail(id*) | reply_conversation(id*, text*)
+list_invoices() | list_conversations(status?) | get_conversation_detail(id*) | reply_conversation(id*, text*) | resolve_conversation(id*) | update_conversation(id*, status?, priority?, category?, assigned_user_id?)
 list_documents(search?) | get_stats() | get_insights() | search(q*)
 get_billing(), get_billing_invoices() [READ ONLY] | get_workspace() | get_settings()
 
 REGLAS:
 1. Si el usuario pide crear/leer/actualizar/eliminar → USÁ LA TOOL. No expliques cómo hacerlo.
-2. Si el usuario solo saluda o charla → respondé amablemente en 1-2 oraciones en español.
-3. NUNCA menciones Android, iPhone, Google, Gmail, Outlook, Excel, ATV, Hacienda, Zapier, IFTTT.
-4. Si mencionan algo externo → "Eso no es parte de PyMesHub. ¿Qué operación de PyMesHub necesitas?"
-5. Respuestas en español.`,
+2. Si el usuario pide RESOLVER/CERRAR/FINALIZAR un caso o conversación → llamá resolve_conversation(id). NO digas que está resuelto sin haber llamado la tool.
+3. Para cambios de estado/prioridad/categoría/asignación de un caso → usá update_conversation.
+4. Si el usuario solo saluda o charla → respondé amablemente en 1-2 oraciones en español.
+5. NUNCA menciones Android, iPhone, Google, Gmail, Outlook, Excel, ATV, Hacienda, Zapier, IFTTT.
+6. Si mencionan algo externo → "Eso no es parte de PyMesHub. ¿Qué operación de PyMesHub necesitas?"
+7. Respuestas en español.`,
       model,
       tools,
       modelSettings: { temperature: 0.2, maxTokens: 1024 },
