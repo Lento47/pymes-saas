@@ -255,6 +255,7 @@ model Workspace {
   agent_sessions        AgentSession[]
   diagnostic_cases      SupportDiagnosticCase[]
   runbook_executions    RunbookExecution[]
+  support_case_comments SupportCaseComment[]
 
   // Business+ Enterprise relations
   enterprise_config  WorkspaceEnterpriseConfig?
@@ -295,6 +296,7 @@ model User {
   notifications             Notification[]
   audit_logs                AuditLog[]
   runbook_executions        RunbookExecution[]
+  support_case_comments     SupportCaseComment[]
   outbound_messages         Message[]          @relation("MessageSender")
   department_memberships    DepartmentMember[]
   refresh_tokens            RefreshToken[]
