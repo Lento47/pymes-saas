@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { setAuthState, api } from "@/lib/api";
+import { api } from "@/lib/api";
 // SSO: SAML auto-detect on login — see handleSubmit
 import {
   ArrowLeft,
@@ -84,7 +84,7 @@ function Field({
 }
 
 export default function LoginPage() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, loginWithSsoCode, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const { messages } = useI18n();
   const copy = messages.login;
@@ -114,7 +114,11 @@ export default function LoginPage() {
     }
   }, [isAuthenticated]);
 
-  // Handle Google OAuth callback (token in URL)
+  // Handle SAML / Google OAuth callback. The API redirects here with
+  // ?code=<60s-jwt>&slug=<workspaceSlug> instead of putting access /
+  // refresh tokens directly in the URL (C4 fix). We redeem the code
+  // via POST /auth/sso-exchange, then strip it from the URL so a
+  // refresh doesn't try to redeem an already-consumed code.
   useEffect(() => {
     const getParam = (name: string) => {
       const search = new URLSearchParams(window.location.search).get(name);
@@ -123,14 +127,26 @@ export default function LoginPage() {
       const qi = hash.indexOf("?");
       return qi >= 0 ? (new URLSearchParams(hash.slice(qi + 1)).get(name) ?? null) : null;
     };
-    const token = getParam("token");
-    const slug = getParam("slug");
-    const refreshToken = getParam("refresh_token");
-    if (token && slug) {
-      setAuthState(token, slug, refreshToken ?? undefined);
-      window.location.hash = "#/";
-      window.location.reload();
+    const ssoError = getParam("error");
+    if (ssoError === "sso_failed" || ssoError === "google_auth_failed") {
+      toast({ title: "Error", description: "No pudimos completar el inicio de sesión SSO.", variant: "destructive" });
+      history.replaceState(null, "", "/login");
+      return;
     }
+    const code = getParam("code");
+    if (!code) return;
+    setLoading(true);
+    loginWithSsoCode(code)
+      .then(() => {
+        window.location.hash = "#/";
+        history.replaceState(null, "", "/");
+        window.location.reload();
+      })
+      .catch((err: any) => {
+        toast({ title: "Error", description: err?.message || "Código SSO inválido o expirado.", variant: "destructive" });
+        history.replaceState(null, "", "/login");
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent, preselectedSlug?: string) => {

@@ -521,6 +521,15 @@ export const api = {
   createRoutingRule: (data: any) => request<any>("POST", "/api/routing/rules", data),
   updateRoutingRule: (id: string, data: any) => request<any>("PATCH", `/api/routing/rules/${id}`, data),
   deleteRoutingRule: (id: string) => request<any>("DELETE", `/api/routing/rules/${id}`),
+  // SSO exchange — redeems the short-lived ?code= code from a SAML or
+  // Google OAuth redirect for real access + refresh tokens. Used by the
+  // login page when it lands at /login?code=...&slug=...
+  ssoExchange: (code: string) =>
+    request<{
+      access_token: string;
+      refresh_token?: string;
+      user: any;
+    }>("POST", "/api/auth/sso-exchange", { code }),
   // SAML
   checkSamlStatus: (workspaceSlug?: string) => {
     const qs = workspaceSlug ? `?slug=${encodeURIComponent(workspaceSlug)}` : "";

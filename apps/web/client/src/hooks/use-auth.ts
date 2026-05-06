@@ -180,6 +180,15 @@ export function useAuth() {
     return res;
   };
 
+  // Redeems a short-lived SSO exchange code (from a SAML or Google
+  // OAuth callback) for real access + refresh tokens. The login page
+  // calls this on mount when it detects ?code=... in the URL.
+  const loginWithSsoCode = async (code: string) => {
+    const res = await api.ssoExchange(code);
+    applyAuthResult(res as any);
+    return res;
+  };
+
   const logout = async () => {
     try { await api.logout(); } catch { /* best-effort */ }
     disconnectSocket(); // ← WebSocket se corta al hacer logout
@@ -212,6 +221,7 @@ export function useAuth() {
     login,
     register,
     acceptInvite,
+    loginWithSsoCode,
     logout,
     switchWorkspace,
     refreshUser: hydrateUser,
