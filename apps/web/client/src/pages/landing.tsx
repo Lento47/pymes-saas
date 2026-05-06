@@ -23,6 +23,7 @@ import { LandingHubby } from "@/components/shared/landing-hubby";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { cn } from "@/lib/utils";
+import { applySeoMetadata, buildSoftwareSchema } from "@/lib/seo";
 import {
   Carousel,
   CarouselContent,
@@ -222,6 +223,17 @@ export default function Landing() {
     const onScroll = () => setScrolled(window.scrollY > 60);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const description =
+      "PymesHub centralizes WhatsApp, email, clients, tasks, invoicing, pipeline visibility, and workflow automation for growing SMB teams.";
+    applySeoMetadata({
+      canonicalPath: "/",
+      description,
+      title: "PymesHub | CRM, WhatsApp inbox, invoicing and workflows for SMBs",
+      jsonLd: buildSoftwareSchema("/", "PymesHub", description),
+    });
   }, []);
 
   const revealCards = useReveal();
@@ -1097,6 +1109,33 @@ export default function Landing() {
         </section>
 
       </main>
+
+      {copy.seoHub && (
+        <section className="border-t border-white/10 px-4 py-16 md:px-8">
+          <div className="mx-auto max-w-7xl text-center">
+            <p className="font-marketing text-xs font-semibold uppercase tracking-[0.32em] text-[#F59E0B]/68">
+              {copy.seoHub.eyebrow}
+            </p>
+            <h2 className="font-marketing mt-3 text-2xl font-semibold tracking-[-0.03em] md:text-3xl">
+              {copy.seoHub.title}
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#95a0cc]/70">
+              {copy.seoHub.description}
+            </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              {copy.seoHub.links.map((link: { href: string; label: string }) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-[#F59E0B]/40 hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <Footer />
       <LandingHubby />

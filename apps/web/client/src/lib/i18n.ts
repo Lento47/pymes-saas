@@ -255,6 +255,20 @@ export const translations = {
       trustOffer: "Join now and get lifetime free access to the plan you choose when we launch.",
       trustFootnote: "We only ask for 15 minutes to understand your real operation.",
       trustSignals: ["Closed beta", "First 50 businesses", "Free early access", "Built with operators"],
+      seoHub: {
+        eyebrow: "Explore use cases",
+        title: "Built for the SMB workflows your buyers actually search for.",
+        description: "Go deeper into the customer operations jobs PymesHub supports: WhatsApp CRM, shared inbox, client management, invoicing, and workflow automation for growing teams.",
+        links: [
+          { href: "/whatsapp-shared-inbox", label: "WhatsApp shared inbox" },
+          { href: "/crm-for-smbs", label: "CRM for SMBs" },
+          { href: "/client-management", label: "Client management" },
+          { href: "/workflow-automation", label: "Workflow automation" },
+          { href: "/whatsapp-crm", label: "WhatsApp CRM" },
+          { href: "/invoicing", label: "Invoicing workflows" },
+          { href: "/team-inbox", label: "Team inbox" },
+        ],
+      },
       platform: {
         eyebrow: "Platform",
         title: "Enterprise control for fast-moving revenue teams.",
@@ -924,6 +938,20 @@ export const translations = {
       trustOffer: "Si te sumas ahora, ayudas a definir el producto y accedes con condiciones preferentes cuando lancemos.",
       trustFootnote: "Solo pedimos 15 minutos de tu tiempo para entender tu operación real.",
       trustSignals: ["Beta cerrada", "Primeros 50 negocios", "Acceso anticipado gratis", "Construido con operadores"],
+      seoHub: {
+        eyebrow: "Casos de uso",
+        title: "Flujos de trabajo SMB que tus compradores ya están buscando.",
+        description: "Profundiza en los casos de uso operativos que PymesHub soporta: WhatsApp CRM, bandeja compartida, gestión de clientes, facturación, y automatización de flujos para equipos en crecimiento.",
+        links: [
+          { href: "/whatsapp-shared-inbox", label: "WhatsApp bandeja compartida" },
+          { href: "/crm-for-smbs", label: "CRM para PYMEs" },
+          { href: "/client-management", label: "Gestión de clientes" },
+          { href: "/workflow-automation", label: "Automatización de flujos" },
+          { href: "/whatsapp-crm", label: "WhatsApp CRM" },
+          { href: "/invoicing", label: "Flujos de facturación" },
+          { href: "/team-inbox", label: "Bandeja de equipo" },
+        ],
+      },
       platform: {
         eyebrow: "Para pymes que crecen",
         title: "Sin IT. Sin complicación. Sin fuga de dinero.",
