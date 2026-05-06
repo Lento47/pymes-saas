@@ -8,6 +8,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EngineeringFixService } from './engineering-fix.service';
 import { SupportNotificationService } from './support-notification.service';
+import { KnowledgeBaseService } from './knowledge-base.service';
 
 export interface DiagnosticInput {
   workspaceId: string;
@@ -60,6 +61,7 @@ export class DiagnosticService {
     private readonly notifications: NotificationsService,
     private readonly fixService: EngineeringFixService,
     private readonly supportNotifications: SupportNotificationService,
+    private readonly knowledgeBase: KnowledgeBaseService,
   ) {}
 
   // ADMIN/platform-admin: full workspace view. Otherwise scope to caller's
@@ -127,6 +129,16 @@ export class DiagnosticService {
       this.supportNotifications.notifyResolution(id).catch((err) => {
         this.logger.warn(
           `notifyResolution failed for diagnostic case ${id}: ${err?.message}`,
+        );
+      });
+
+      // Phase 4: feed the knowledge-base. The service decides
+      // whether the case is worth promoting (needs error_code +
+      // resolution body ≥ 50 chars) and whether to refresh an
+      // existing entry vs create a new auto-learned one.
+      this.knowledgeBase.learnFromCase(id).catch((err) => {
+        this.logger.warn(
+          `learnFromCase failed for diagnostic case ${id}: ${err?.message}`,
         );
       });
     }

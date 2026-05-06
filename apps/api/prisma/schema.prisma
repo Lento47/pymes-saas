@@ -1706,6 +1706,15 @@ model SupportKnownIssue {
   fixed_in_version  String?
   is_active         Boolean @default(true)
 
+  // Phase 4 — auto-learning fields. When a resolved diagnostic case
+  // promotes itself into the known-issue catalog, `auto_learned` is
+  // true. seen_count tracks recurrence so ops can prioritize fixes;
+  // last_seen_* are pure observability.
+  auto_learned       Boolean   @default(false)
+  seen_count         Int       @default(0)
+  last_seen_case_id  String?
+  last_seen_at       DateTime?
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -1713,6 +1722,7 @@ model SupportKnownIssue {
   @@index([module])
   @@index([severity])
   @@index([fix_status])
+  @@index([auto_learned])
   @@map("support_known_issues")
 }
 
