@@ -22,7 +22,7 @@ import { SlaService } from './sla.service';
     forwardRef(() => WhatsAppModule),
     forwardRef(() => TelegramModule),
     forwardRef(() => MessageTemplatesModule),
-    AiModule,
+    forwardRef(() => AiModule),
     forwardRef(() => TasksModule),
     NotificationsModule,
     AutomationsModule,
