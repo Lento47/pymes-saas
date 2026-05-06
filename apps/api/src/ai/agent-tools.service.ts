@@ -3,6 +3,10 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { InsightsService } from '../insights/insights.service';
 import { SearchService } from '../search/search.service';
 import { ConversationsService } from '../conversations/conversations.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { EventsGateway } from '../gateways/events.gateway';
 
 @Injectable()
 export class AgentToolsService {
@@ -14,6 +18,12 @@ export class AgentToolsService {
     private readonly searchService: SearchService,
     @Inject(forwardRef(() => ConversationsService))
     private readonly conversations: ConversationsService,
+    private readonly notifications: NotificationsService,
+    @Inject(forwardRef(() => EmailService))
+    private readonly emailService: EmailService,
+    @Inject(forwardRef(() => WhatsAppService))
+    private readonly whatsAppService: WhatsAppService,
+    private readonly events: EventsGateway,
   ) {}
 
   async execute(workspaceId: string, tool: string, args: Record<string, any>): Promise<any> {
@@ -48,6 +58,12 @@ export class AgentToolsService {
         return this.updateConversation(workspaceId, args);
       case 'assign_conversation':
         return this.assignConversation(workspaceId, args);
+      case 'create_conversation':
+        return this.createConversation(workspaceId, args);
+      case 'add_internal_note':
+        return this.addInternalNote(workspaceId, args);
+      case 'notify_user':
+        return this.notifyUser(workspaceId, args);
       case 'list_automations':
         return this.listAutomations(workspaceId);
       case 'create_automation':
@@ -241,16 +257,112 @@ export class AgentToolsService {
     const id = args.id || args.conversation_id;
     const text = args.text || args.message;
     if (!id || !text) throw new Error('reply_conversation requires "id" and "text"');
-    const msg = await this.prisma.message.create({
+
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id, workspace_id: workspaceId },
+      include: { contact: true, channel: true },
+    });
+    if (!conv) throw new Error(`Conversation "${id}" not found`);
+
+    const message = await this.prisma.message.create({
       data: {
         workspace_id: workspaceId,
         conversation_id: id,
         direction: 'OUTBOUND',
         body_text: text,
         sender_name: 'HubbyAgent',
+        sent_at: new Date(),
       },
     });
-    return { message: msg };
+
+    await this.conversations.touchLastMessage(id);
+    this.events.emitNewMessage(id, workspaceId, message);
+
+    let dispatched: string | null = null;
+    if (conv.channel?.type === 'EMAIL' && (conv.contact as any)?.email) {
+      try {
+        await this.emailService.sendOutbound(
+          conv.channel,
+          (conv.contact as any).email,
+          (conv as any).subject ?? 'Nuevo mensaje',
+          text,
+          text,
+        );
+        dispatched = 'EMAIL';
+      } catch (err: any) {
+        this.logger.error(`Email dispatch failed: ${err?.message}`);
+      }
+    } else if (conv.channel?.type === 'WHATSAPP' && (conv.contact as any)?.phone) {
+      try {
+        const to = ((conv.contact as any).phone as string).replace(/\D/g, '');
+        await this.whatsAppService.sendMessage(conv.channel, to, text);
+        dispatched = 'WHATSAPP';
+      } catch (err: any) {
+        this.logger.error(`WhatsApp dispatch failed: ${err?.message}`);
+      }
+    }
+
+    if (conv.assigned_user_id) {
+      this.notifications
+        .create(workspaceId, {
+          user_id: conv.assigned_user_id,
+          type: 'agent_reply',
+          title: 'HubbyAgent respondió un caso',
+          body: text.slice(0, 140),
+          related_entity_type: 'conversation',
+          related_entity_id: id,
+        })
+        .catch((err) => this.logger.error('notify assigned user failed', err));
+    }
+
+    return { message, dispatched };
+  }
+
+  private async createConversation(workspaceId: string, args: Record<string, any>) {
+    const channel_id = args.channel_id;
+    if (!channel_id) throw new Error('create_conversation requires "channel_id"');
+    const dto: any = {
+      channel_id,
+      contact_id: args.contact_id || undefined,
+      subject: args.subject || undefined,
+      priority: args.priority || undefined,
+      category: args.category || undefined,
+      assigned_user_id: args.assigned_user_id || undefined,
+    };
+    const conversation = await this.conversations.create(workspaceId, dto);
+    return { conversation, opened: true };
+  }
+
+  private async addInternalNote(workspaceId: string, args: Record<string, any>) {
+    const id = args.id || args.conversation_id;
+    const notes = args.notes ?? args.note ?? args.text;
+    if (!id || typeof notes !== 'string') {
+      throw new Error('add_internal_note requires "id" and "notes"');
+    }
+    const conversation = await this.conversations.update(workspaceId, id, { notes });
+    return { conversation };
+  }
+
+  private async notifyUser(workspaceId: string, args: Record<string, any>) {
+    const user_id = args.user_id;
+    const title = args.title;
+    if (!user_id || !title) throw new Error('notify_user requires "user_id" and "title"');
+
+    const member = await this.prisma.workspaceUser.findFirst({
+      where: { workspace_id: workspaceId, user_id },
+      select: { id: true },
+    });
+    if (!member) throw new Error(`User "${user_id}" is not a member of this workspace`);
+
+    const notification = await this.notifications.create(workspaceId, {
+      user_id,
+      type: args.type || 'agent_message',
+      title,
+      body: args.body ?? '',
+      related_entity_type: args.related_entity_type,
+      related_entity_id: args.related_entity_id,
+    });
+    return { notification };
   }
 
   private async resolveConversation(workspaceId: string, args: Record<string, any>) {

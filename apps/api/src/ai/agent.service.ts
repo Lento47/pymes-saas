@@ -5,6 +5,7 @@ import { parseJsonValue } from '../common/prisma/json';
 import { InsightsService } from '../insights/insights.service';
 import { SearchService } from '../search/search.service';
 import { ConversationsService } from '../conversations/conversations.service';
+import { AgentToolsService } from './agent-tools.service';
 import { Agent, tool, run as agentRun, Runner } from '@openai/agents';
 import { z } from 'zod';
 
@@ -19,6 +20,7 @@ export class AgentService {
     private readonly searchService: SearchService,
     @Inject(forwardRef(() => ConversationsService))
     private readonly conversations: ConversationsService,
+    private readonly toolsExecutor: AgentToolsService,
   ) {}
 
   async getAgentApiKey(workspaceId: string): Promise<string | null> {
@@ -40,6 +42,7 @@ export class AgentService {
     const insights = this.insights;
     const searchSvc = this.searchService;
     const conversationsSvc = this.conversations;
+    const exec = this.toolsExecutor;
 
     return [
       // ── Workspace ──
@@ -189,11 +192,38 @@ export class AgentService {
         },
       }),
       tool({
-        name: 'reply_conversation', description: 'Send a reply to a conversation. Use ONLY if user explicitly asks.',
+        name: 'reply_conversation', description: 'Send an OUTBOUND reply to a conversation. Delivers via the conversation channel (email/WhatsApp), bumps last_message_at, emits real-time event, and notifies the assigned agent. Use ONLY if user explicitly asks.',
         parameters: z.object({ id: z.string(), text: z.string() }),
-        execute: async ({ id, text }) => ({
-          message: await prisma.message.create({ data: { workspace_id: workspaceId, conversation_id: id, direction: 'OUTBOUND', body_text: text, sender_name: 'HubbyAgent' } }),
+        execute: async ({ id, text }) => exec.execute(workspaceId, 'reply_conversation', { id, text }),
+      }),
+      tool({
+        name: 'create_conversation', description: 'Open a new conversation/ticket on a given channel. Optionally tied to a contact; can pre-set subject, priority, category, or assignee.',
+        parameters: z.object({
+          channel_id: z.string().describe('Channel ID (use list_channels-style tooling or get_settings to find one)'),
+          contact_id: z.string().optional().nullable(),
+          subject: z.string().optional().nullable(),
+          priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable(),
+          category: z.string().optional().nullable(),
+          assigned_user_id: z.string().optional().nullable(),
         }),
+        execute: async (args) => exec.execute(workspaceId, 'create_conversation', args),
+      }),
+      tool({
+        name: 'add_internal_note', description: 'Add or replace the internal team note on a conversation. NOT visible to the customer — for team-only context.',
+        parameters: z.object({ id: z.string(), notes: z.string() }),
+        execute: async ({ id, notes }) => exec.execute(workspaceId, 'add_internal_note', { id, notes }),
+      }),
+      tool({
+        name: 'notify_user', description: 'Send an in-app notification to a workspace user. Use to ping someone about a case, task, or update.',
+        parameters: z.object({
+          user_id: z.string(),
+          title: z.string(),
+          body: z.string().optional().nullable(),
+          type: z.string().optional().nullable(),
+          related_entity_type: z.string().optional().nullable(),
+          related_entity_id: z.string().optional().nullable(),
+        }),
+        execute: async (args) => exec.execute(workspaceId, 'notify_user', args),
       }),
       tool({
         name: 'resolve_conversation', description: 'Mark a conversation/case as RESOLVED. Use this when the user asks to resolve, close, or finish a case.',
@@ -365,18 +395,21 @@ create_contact(full_name*, email?, phone?, type?) | update_contact(id*, ...) | l
 create_task(title*, description?, priority?, due_date?) | update_task(id*, ...) | list_tasks(status?)
 create_deal(title*, stage_id*, value?, contact_id?) | move_deal(id*, stage_id*) | list_pipeline_deals()
 create_automation(name*, trigger_type*) | list_automations() | toggle_automation(id*)
-list_invoices() | list_conversations(status?) | get_conversation_detail(id*) | reply_conversation(id*, text*) | resolve_conversation(id*) | assign_conversation(id*, user_id*) | update_conversation(id*, status?, priority?, category?, assigned_user_id?)
+list_invoices() | list_conversations(status?) | get_conversation_detail(id*) | reply_conversation(id*, text*) | resolve_conversation(id*) | assign_conversation(id*, user_id*) | update_conversation(id*, status?, priority?, category?, assigned_user_id?) | create_conversation(channel_id*, contact_id?, subject?, priority?, category?, assigned_user_id?) | add_internal_note(id*, notes*) | notify_user(user_id*, title*, body?, related_entity_type?, related_entity_id?)
 list_documents(search?) | get_stats() | get_insights() | search(q*)
 get_billing(), get_billing_invoices() [READ ONLY] | get_workspace() | get_settings()
 
 REGLAS:
 1. Si el usuario pide crear/leer/actualizar/eliminar → USÁ LA TOOL. No expliques cómo hacerlo.
-2. Si el usuario pide RESOLVER/CERRAR/FINALIZAR un caso o conversación → llamá resolve_conversation(id). NO digas que está resuelto sin haber llamado la tool.
-3. Para cambios de estado/prioridad/categoría/asignación de un caso → usá update_conversation.
-4. Si el usuario solo saluda o charla → respondé amablemente en 1-2 oraciones en español.
-5. NUNCA menciones Android, iPhone, Google, Gmail, Outlook, Excel, ATV, Hacienda, Zapier, IFTTT.
-6. Si mencionan algo externo → "Eso no es parte de PyMesHub. ¿Qué operación de PyMesHub necesitas?"
-7. Respuestas en español.`,
+2. Si el usuario pide RESOLVER/CERRAR/FINALIZAR un caso → llamá resolve_conversation(id). NO digas que está resuelto sin haber llamado la tool.
+3. Si el usuario pide ABRIR un nuevo caso/ticket → usá create_conversation. Necesitás channel_id (mirá get_settings o list_channels).
+4. Para responder al cliente → reply_conversation. Para una nota interna del equipo → add_internal_note. NO mezcles los dos.
+5. Para avisar a un compañero del workspace → notify_user(user_id, title, body).
+6. Para cambios de estado/prioridad/categoría/asignación → update_conversation o assign_conversation.
+7. Si el usuario solo saluda o charla → respondé amablemente en 1-2 oraciones en español.
+8. NUNCA menciones Android, iPhone, Google, Gmail, Outlook, Excel, ATV, Hacienda, Zapier, IFTTT.
+9. Si mencionan algo externo → "Eso no es parte de PyMesHub. ¿Qué operación de PyMesHub necesitas?"
+10. Respuestas en español.`,
       model,
       tools,
       modelSettings: { temperature: 0.2, maxTokens: 1024 },
