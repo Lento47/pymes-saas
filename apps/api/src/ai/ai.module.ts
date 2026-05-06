@@ -17,6 +17,7 @@ import { DiagnosticService } from './diagnostic.service';
 import { EngineeringFixService } from './engineering-fix.service';
 import { SupportNotificationService } from './support-notification.service';
 import { KnowledgeBaseService } from './knowledge-base.service';
+import { CaseCommentsService } from './case-comments.service';
 
 // NOTE: do NOT import EmailModule here. Adding it creates a cycle
 // AiModule → EmailModule → ConversationsModule → AiModule (the last
@@ -43,6 +44,7 @@ import { KnowledgeBaseService } from './knowledge-base.service';
     EngineeringFixService,
     SupportNotificationService,
     KnowledgeBaseService,
+    CaseCommentsService,
   ],
   controllers: [AgentController, AgentToolsController, AiAssistantController, PublicAgentController],
   exports: [AiService, AgentService, AgentToolsService, SupportNotificationService, KnowledgeBaseService],

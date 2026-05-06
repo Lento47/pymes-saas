@@ -1682,6 +1682,7 @@ model SupportDiagnosticCase {
   fixCases     EngineeringFixCase[]
   errorReports ErrorReport[]
   runbookExecutions RunbookExecution[]
+  comments      SupportCaseComment[]
 
   @@index([workspace_id])
   @@index([error_code])
@@ -1724,6 +1725,26 @@ model SupportKnownIssue {
   @@index([fix_status])
   @@index([auto_learned])
   @@map("support_known_issues")
+}
+
+// ============================================================
+// SUPPORT CASE COMMENTS — internal discussion on cases
+// ============================================================
+
+model SupportCaseComment {
+  id           String   @id @default(cuid())
+  case_id      String
+  workspace_id String
+  user_id      String?
+  body         String   @db.Text
+  created_at   DateTime @default(now())
+
+  case      SupportDiagnosticCase @relation(fields: [case_id], references: [id], onDelete: Cascade)
+  workspace Workspace             @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User?                 @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([case_id, created_at])
+  @@map("support_case_comments")
 }
 
 // ============================================================

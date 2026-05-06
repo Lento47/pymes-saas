@@ -24,6 +24,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { SupportRouterService } from './support-router.service';
 import { DiagnosticService } from './diagnostic.service';
 import { EngineeringFixService } from './engineering-fix.service';
+import { CaseCommentsService } from './case-comments.service';
 
 @Controller('agent')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -36,6 +37,7 @@ export class AgentController {
     private readonly router: SupportRouterService,
     private readonly diagnostic: DiagnosticService,
     private readonly fixService: EngineeringFixService,
+    private readonly caseComments: CaseCommentsService,
   ) {} 
 
   // ADMINs see every case in the workspace. AGENT/VIEWER see only the
@@ -150,6 +152,26 @@ export class AgentController {
       workspaceId: user.workspace_id,
       isPlatformAdmin: user.is_platform_admin,
     });
+  }
+
+  @Get('diagnostic-cases/:id/comments')
+  @Roles('ADMIN', 'AGENT', 'VIEWER')
+  async listComments(
+    @Param('id') caseId: string,
+    @CurrentUser('workspace_id') workspaceId: string,
+  ) {
+    return this.caseComments.findByCaseId(caseId);
+  }
+
+  @Post('diagnostic-cases/:id/comments')
+  @Roles('ADMIN')
+  async createComment(
+    @Param('id') caseId: string,
+    @Body('body') body: string,
+    @CurrentUser('workspace_id') workspaceId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.caseComments.create(caseId, workspaceId, userId, body);
   }
 
   @Post('diagnose')
