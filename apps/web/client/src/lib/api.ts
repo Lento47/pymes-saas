@@ -559,6 +559,9 @@ export const api = {
     request<any>("PATCH", `/api/agent/diagnostic-cases/${id}/status`, { status }),
   createFixCase: (diagnosticCaseId: string) =>
     request<any>("POST", "/api/agent/fix-cases", { diagnostic_case_id: diagnosticCaseId }),
+  getCaseComments: (caseId: string) => request<any>("GET", `/api/agent/diagnostic-cases/${caseId}/comments`),
+  createCaseComment: (caseId: string, body: string) =>
+    request<any>("POST", `/api/agent/diagnostic-cases/${caseId}/comments`, { body }),
   // Inventory
   getProducts: (params?: string) => request<any>("GET", `/api/inventory/products${params ? `?${params}` : ''}`),
   getProduct: (id: string) => request<any>("GET", `/api/inventory/products/${id}`),

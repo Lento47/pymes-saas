@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth, useRequireAuth } from "@/hooks/use-auth";
-import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink, ChevronDown, ChevronUp, Building2, UserCircle, LayoutList, Map } from "lucide-react";
+import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink, ChevronDown, ChevronUp, Building2, UserCircle, LayoutList, Map, MessageSquare, Send, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PlaygroundBoard } from "@/components/playground/PlaygroundBoard";
 
@@ -26,15 +26,32 @@ const STATUS_COLORS: Record<string, string> = {
   ESCALATED: "bg-red-500/10 text-red-400 border-red-500/30",
 };
 
-function parseEvidence(evidence: any): { workspace?: any; user?: any } {
+function parseEvidence(evidence: any): { workspace?: any; user?: any; path?: string; method?: string; source?: string; status?: number; stack?: string } {
   if (!evidence) return {};
   try {
     const e = typeof evidence === "string" ? JSON.parse(evidence) : evidence;
-    return { workspace: e.workspace, user: e.user };
+    return {
+      workspace: e.workspace,
+      user: e.user,
+      path: e.path,
+      method: e.method,
+      source: e.source,
+      status: e.status,
+      stack: e.stack,
+    };
   } catch {
     return {};
   }
 }
+
+const CATEGORY_LABELS: Record<string, string> = {
+  USER_GUIDANCE: "Guía de usuario",
+  PERMISSION_ISSUE: "Permisos",
+  PRODUCT_BUG: "Bug del producto",
+  BILLING_OR_PLAN: "Facturación",
+  WORKSPACE_CONFIGURATION: "Configuración",
+  PLATFORM_INCIDENT: "Incidente de plataforma",
+};
 
 export default function SupportPage() {
   useRequireAuth();
@@ -46,6 +63,7 @@ export default function SupportPage() {
   const [view, setView] = useState<"list" | "playground">("list");
   const [filter, setFilter] = useState("OPEN");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState("");
   const queryClient = useQueryClient();
 
   // Deep-link from API-error toasts: ApiError appends "Ticket #abc abierto"
@@ -66,6 +84,21 @@ export default function SupportPage() {
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.updateDiagnosticCaseStatus(id, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diagnostic-cases"] }),
+  });
+
+  const { data: comments, isLoading: commentsLoading } = useQuery({
+    queryKey: ["case-comments", expandedId],
+    queryFn: () => (expandedId ? api.getCaseComments(expandedId) : null),
+    enabled: !!expandedId && isAdmin,
+  });
+
+  const commentMut = useMutation({
+    mutationFn: ({ caseId, body }: { caseId: string; body: string }) =>
+      api.createCaseComment(caseId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["case-comments", expandedId] });
+      setNewComment("");
+    },
   });
 
   const caseList: any[] = Array.isArray(cases) ? cases : [];
@@ -245,6 +278,20 @@ export default function SupportPage() {
 
                   {isExpanded && (
                     <div className="border-t border-border/60 px-5 py-4 space-y-3 bg-muted/20">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {c.category && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                            {CATEGORY_LABELS[c.category] || c.category}
+                          </span>
+                        )}
+                        {c.error_code && (
+                          <span className="text-[10px] text-muted-foreground/60 font-mono">{c.error_code}</span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground/40">
+                          Actualizado: {new Date(c.updated_at).toLocaleDateString("es-CR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+
                       {(evidence.workspace || evidence.user) && (
                         <div className="flex flex-wrap gap-4">
                           {evidence.workspace && (
@@ -265,12 +312,46 @@ export default function SupportPage() {
                           )}
                         </div>
                       )}
+
+                      {(evidence.path || evidence.method || evidence.source) && (
+                        <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground/60">
+                          {evidence.source && <span>Source: <span className="text-foreground/70">{evidence.source}</span></span>}
+                          {evidence.method && evidence.path && (
+                            <span className="font-mono">
+                              <span className="text-muted-foreground/40">{evidence.method}</span>{" "}
+                              <span className="text-foreground/60">{evidence.path}</span>
+                            </span>
+                          )}
+                          {evidence.status && <span>HTTP {evidence.status}</span>}
+                        </div>
+                      )}
+
+                      {evidence.stack && isAdmin && (
+                        <details className="mt-2">
+                          <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground">Ver stack trace</summary>
+                          <pre className="mt-2 text-[10px] font-mono text-muted-foreground/70 bg-black/20 rounded-md p-3 overflow-auto max-h-64 whitespace-pre-wrap">
+                            {evidence.stack}
+                          </pre>
+                        </details>
+                      )}
+
                       {c.safe_summary && (
                         <div>
                           <p className="text-[11px] text-muted-foreground mb-1">Recomendación:</p>
                           <p className="text-xs text-foreground/80 leading-relaxed">{c.safe_summary}</p>
                         </div>
                       )}
+
+                      {isAdmin && c.resolution_json && (
+                        <div>
+                          <p className="text-[11px] text-muted-foreground mb-1">Resolución:</p>
+                          <div className="text-xs text-foreground/70 space-y-1">
+                            {(c.resolution_json as any).resolution && <p>{(c.resolution_json as any).resolution}</p>}
+                            {(c.resolution_json as any).workaround && <p className="text-muted-foreground/60">Workaround: {(c.resolution_json as any).workaround}</p>}
+                          </div>
+                        </div>
+                      )}
+
                       {c.trace_id && (
                         <div className="text-[10px] text-muted-foreground/50 font-mono">
                           Trace: {c.trace_id}
@@ -279,6 +360,69 @@ export default function SupportPage() {
                       <div className="text-[10px] text-muted-foreground/40 font-mono">
                         ID: {c.id}
                       </div>
+
+                      {isAdmin && (
+                        <div className="border-t border-border/40 pt-4 mt-3">
+                          <p className="text-[11px] text-muted-foreground mb-3 flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3" /> Comentarios
+                          </p>
+                          {commentsLoading ? (
+                            <div className="flex items-center gap-2 py-2">
+                              <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                              <span className="text-[11px] text-muted-foreground">Cargando...</span>
+                            </div>
+                          ) : (
+                            <div className="space-y-2 mb-3">
+                              {(Array.isArray(comments) ? comments : []).map((cm: any) => (
+                                <div key={cm.id} className="flex items-start gap-2 text-xs">
+                                  <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 text-[9px] font-bold">
+                                    {(cm.user?.name || cm.user?.email || "?").charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-foreground/80">{cm.user?.name || "Sistema"}</span>
+                                      <span className="text-[10px] text-muted-foreground/50">
+                                        {new Date(cm.created_at).toLocaleDateString("es-CR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                      </span>
+                                    </div>
+                                    <p className="text-muted-foreground/70 leading-relaxed">{cm.body}</p>
+                                  </div>
+                                </div>
+                              ))}
+                              {(comments === null || (Array.isArray(comments) && comments.length === 0)) && (
+                                <p className="text-[11px] text-muted-foreground/50">Sin comentarios todavía.</p>
+                              )}
+                            </div>
+                          )}
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              if (!newComment.trim()) return;
+                              commentMut.mutate({ caseId: c.id, body: newComment });
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <input
+                              type="text"
+                              value={newComment}
+                              onChange={(e) => setNewComment(e.target.value)}
+                              placeholder="Escribí un comentario..."
+                              className="flex-1 px-3 py-1.5 text-xs rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50"
+                            />
+                            <button
+                              type="submit"
+                              disabled={commentMut.isPending || !newComment.trim()}
+                              className="p-1.5 rounded-md text-primary hover:bg-primary/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {commentMut.isPending ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Send className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </form>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
