@@ -7,7 +7,9 @@ const PLAN_RATE_LIMITS: Record<string, number> = {
   FREE: 60,
   STARTER: 120,
   GROWTH: 300,
-  ENTERPRISE: 1000,
+  BUSINESS: 600,
+  ENTERPRISE: 600, // Legacy → same as BUSINESS
+  BUSINESS_PLUS: 1000,
 };
 
 @Injectable()
@@ -36,6 +38,8 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
           select: { plan: true },
         });
         plan = ws?.plan || 'FREE';
+        // Normalize legacy ENTERPRISE → BUSINESS for rate limits
+        if (plan === 'ENTERPRISE') plan = 'BUSINESS';
       } catch {
         // Fallback to FREE on DB error
       }

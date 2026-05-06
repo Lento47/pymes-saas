@@ -19,6 +19,10 @@ if (OTEL_ENABLED) {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { Resource } = require('@opentelemetry/resources');
 
+  // IMPORTANTE — OTEL DEFAULT A localhost:4318 (COLECTOR LOCAL DE DEV).
+  // EN PRODUCCION SETEAR `OTEL_EXPORTER_OTLP_ENDPOINT` AL ENDPOINT DEL
+  // OBSERVABILITY VENDOR (Honeycomb, Grafana Cloud, Datadog, ETC.).
+  // SI SE QUEDA EN localhost EN PROD, LOS TRACES NO SE EXPORTAN A NINGUN LADO.
   const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318';
 
   const sdk = new NodeSDK({

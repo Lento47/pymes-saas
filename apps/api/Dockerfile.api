@@ -8,43 +8,54 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy manifests first for better layer caching
-COPY package.json pnpm-lock.yaml ./
+# Copy workspace manifests for proper monorepo dependency resolution
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/shared-types/package.json ./packages/shared-types/
 
 # Install all dependencies (including devDependencies needed for build)
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --filter saas-api
 
-# Copy the rest of the source
-COPY . .
+# Copy the API source
+COPY apps/api/ ./apps/api/
+COPY packages/ ./packages/
 
-# Generate Prisma client (schema wasn't available during postinstall)
-RUN pnpm exec prisma generate
+# Generate Prisma client
+RUN cd apps/api && pnpm exec prisma generate
 
 # Compile TypeScript → dist/
-RUN pnpm run build
-
-# Prune dev dependencies so the production install is lean
-RUN pnpm prune --prod --no-optional
+RUN pnpm --filter saas-api run build
 
 # ─────────────────────────────────────────────
 # Stage 2 — Runner
 # ─────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 # Security: do not run as root
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 
-# Copy only what is needed at runtime
-COPY --from=builder --chown=appuser:appgroup /app/dist       ./dist
-COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
+# Copy workspace setup for production
 COPY --from=builder --chown=appuser:appgroup /app/package.json ./package.json
+COPY --from=builder --chown=appuser:appgroup /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=builder --chown=appuser:appgroup /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=builder --chown=appuser:appgroup /app/apps/api/package.json ./apps/api/package.json
+COPY --from=builder --chown=appuser:appgroup /app/packages/shared-types/package.json ./packages/shared-types/package.json
 
-# Copy Prisma schema so migrations can run inside the container
-COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
+# Install production deps only
+RUN pnpm install --frozen-lockfile --filter saas-api --prod
+
+# Copy built artifacts
+COPY --from=builder --chown=appuser:appgroup /app/apps/api/dist ./apps/api/dist
+COPY --from=builder --chown=appuser:appgroup /app/apps/api/prisma ./apps/api/prisma
+COPY --from=builder --chown=appuser:appgroup /app/packages/shared-types ./packages/shared-types
 
 USER appuser
+
+WORKDIR /app/apps/api
 
 EXPOSE 4000
 

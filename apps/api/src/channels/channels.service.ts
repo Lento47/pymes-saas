@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
-import { parseJsonValue, stringifyJson } from '../common/prisma/json';
+import { parseJsonValue } from '../common/prisma/json';
 import { ConfigureEmailDto } from './dto/configure-email.dto';
 import { ConfigureWhatsAppDto } from './dto/configure-whatsapp.dto';
 import { ConfigureTelegramDto } from './dto/configure-telegram.dto';
@@ -42,14 +42,14 @@ export class ChannelsService {
         name:         dto.name,
         provider:     dto.provider ?? dto.type.toLowerCase(),
         status:       'PENDING_SETUP',
-        config_json:  stringifyJson({}),
+        config_json:  {},
       },
     });
   }
 
   async findAll(workspaceId: string) {
     const channels = await this.prisma.channel.findMany({
-      where:   { workspace_id: workspaceId },
+      where:   { workspace_id: workspaceId, status: { not: 'INACTIVE' } },
       orderBy: { created_at: 'asc' },
     });
     return channels.map(ch => this.sanitise(ch));
@@ -86,9 +86,13 @@ export class ChannelsService {
       });
     }
 
-    await this.prisma.channel.delete({ where: { id } });
-    this.logger.log(`Channel ${id} (${channel?.type}) deleted from workspace ${workspaceId}`);
-    return { message: 'Canal eliminado.' };
+    // Soft-delete: mark as INACTIVE to preserve FK integrity with conversations
+    await this.prisma.channel.update({
+      where: { id },
+      data: { status: 'INACTIVE' },
+    });
+    this.logger.log(`Channel ${id} (${channel?.type}) deactivated from workspace ${workspaceId}`);
+    return { message: 'Canal desactivado.' };
   }
 
   async connect(workspaceId: string, id: string) {
@@ -123,22 +127,44 @@ export class ChannelsService {
       ? this.crypto.encrypt(dto.api_key)
       : existingConfig.api_key_encrypted;
 
+    const smtp_pass_encrypted = dto.smtp_password
+      ? this.crypto.encrypt(dto.smtp_password)
+      : existingConfig.smtp_pass_encrypted;
+
     const updated = await this.prisma.channel.update({
       where: { id },
       data: {
         status:      'ACTIVE',
-        config_json: stringifyJson({
+        config_json: {
           api_key_encrypted,
           from_email: dto.from_email.trim().toLowerCase(),
           from_name: dto.from_name.trim(),
           ...(dto.inbound_email?.trim()
             ? { inbound_email: dto.inbound_email.trim().toLowerCase() }
             : {}),
-        }),
+          ...(dto.smtp_host?.trim()
+            ? {
+                smtp_host: dto.smtp_host.trim(),
+                smtp_port: dto.smtp_port ?? 587,
+                smtp_user: dto.smtp_user?.trim(),
+                smtp_pass_encrypted,
+                smtp_tls: dto.smtp_tls ?? true,
+              }
+            : existingConfig.smtp_host
+              ? {
+                  smtp_host: existingConfig.smtp_host,
+                  smtp_port: existingConfig.smtp_port ?? 587,
+                  smtp_user: existingConfig.smtp_user,
+                  smtp_pass_encrypted,
+                  smtp_tls: existingConfig.smtp_tls ?? true,
+                }
+              : {}),
+        },
       },
     });
 
     this.logger.log(`EMAIL canal ${id} configurado para workspace ${workspaceId}`);
+    this.trackQuickStart(workspaceId, 'email_connected');
     return this.sanitise(updated);
   }
 
@@ -149,25 +175,40 @@ export class ChannelsService {
     if (!channel) throw new NotFoundException('Canal no encontrado.');
     if (channel.type !== 'WHATSAPP') throw new BadRequestException('El canal no es de tipo WHATSAPP.');
 
+    this.logger.log(`[DIAG] configureWhatsApp: channel=${id}, tokenProvided=${!!dto.access_token}, tokenLen=${dto.access_token?.length || 0}, phoneId=${dto.phone_number_id}`);
+
     // Keep existing encrypted token if no new one is provided
     const existingConfigWA = parseJsonValue<Record<string, any>>(channel.config_json, {});
-    const access_token_encrypted = dto.access_token
-      ? this.crypto.encrypt(dto.access_token)
-      : existingConfigWA.access_token_encrypted;
+    let access_token_encrypted: string | undefined;
+    if (dto.access_token) {
+      try {
+        access_token_encrypted = this.crypto.encrypt(dto.access_token);
+        this.logger.log(`[DIAG] configureWhatsApp: encrypt OK, encryptedLen=${access_token_encrypted.length}`);
+      } catch (err: any) {
+        this.logger.error(`[DIAG] configureWhatsApp: encrypt FAILED — ${err?.message}`);
+        throw new BadRequestException('Error al guardar el token. Verificá que ENCRYPTION_KEY esté configurada en el servidor.');
+      }
+    } else {
+      access_token_encrypted = existingConfigWA.access_token_encrypted;
+      this.logger.log(`[DIAG] configureWhatsApp: no new token, keeping existing (hasToken=${!!access_token_encrypted})`);
+    }
+
+    const newConfig = {
+      access_token_encrypted,
+      phone_number_id: dto.phone_number_id,
+      waba_id: dto.waba_id,
+    };
 
     const updated = await this.prisma.channel.update({
       where: { id },
       data: {
         status:      'ACTIVE',
-        config_json: stringifyJson({
-          access_token_encrypted,
-          phone_number_id: dto.phone_number_id,
-          waba_id: dto.waba_id,
-        }),
+        config_json: newConfig,
       },
     });
 
-    this.logger.log(`WHATSAPP canal ${id} configurado para workspace ${workspaceId}`);
+    this.logger.log(`[DIAG] configureWhatsApp: DB updated, configKeys=${Object.keys(newConfig).filter(k => newConfig[k as keyof typeof newConfig] != null).join(',')}`);
+    this.trackQuickStart(workspaceId, 'whatsapp_connected');
     return this.sanitise(updated);
   }
 
@@ -185,7 +226,7 @@ export class ChannelsService {
       where: { id },
       data: {
         status: 'ACTIVE',
-        config_json: stringifyJson({ ...existingConfig, bot_token_encrypted }),
+        config_json: { ...existingConfig, bot_token_encrypted },
       },
     });
 
@@ -224,5 +265,16 @@ export class ChannelsService {
     const ch = await this.prisma.channel.findFirst({ where: { id }, select: { workspace_id: true } });
     if (!ch) throw new NotFoundException('Canal no encontrado.');
     if (ch.workspace_id !== workspaceId) throw new ForbiddenException('Sin acceso a este canal.');
+  }
+
+  private async trackQuickStart(workspaceId: string, step: string) {
+    try {
+      const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
+      const s: any = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const progress = s.quick_start_progress || {};
+      if (progress[step]) return;
+      s.quick_start_progress = { ...progress, [step]: true };
+      await this.prisma.workspace.update({ where: { id: workspaceId }, data: { settings_json: s } });
+    } catch { /* fire-and-forget */ }
   }
 }

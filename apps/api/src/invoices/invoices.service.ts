@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -22,9 +23,13 @@ import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { CreateInvoicePaymentDto } from './dto/create-invoice-payment.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AiService } from '../ai/ai.service';
+import { INVOICE_TEMPLATES, getTemplatesByIndustry, type InvoiceTemplate } from './invoice-templates.data';
 
 @Injectable()
 export class InvoicesService {
+  private readonly logger = new Logger(InvoicesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
@@ -33,6 +38,7 @@ export class InvoicesService {
     private readonly haciendaXmlBuilder: HaciendaXmlBuilderService,
     private readonly planLimits: PlanLimitsService,
     private readonly notificationsService: NotificationsService,
+    private readonly ai: AiService,
   ) {}
 
   async findAll(workspaceId: string, filters: FilterInvoicesDto) {
@@ -123,6 +129,18 @@ export class InvoicesService {
       throw new BadRequestException('La factura debe tener al menos una línea de detalle o un monto mayor a cero.');
     }
 
+    // Check if approvals_signature addon is active — if so, route to PENDING_APPROVAL
+    let initialStatus = dto.issuance_mode === InvoiceIssuanceMode.HACIENDA ? InvoiceStatus.DRAFT : InvoiceStatus.SENT;
+    if (initialStatus === InvoiceStatus.SENT) {
+      const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { plan: true, settings_json: true } });
+      if (ws && ws.plan !== 'ENTERPRISE' && ws.plan !== 'BUSINESS_PLUS') {
+        const settings = (ws.settings_json as Record<string, any>) ?? {};
+        if (settings.approvals_signature_active) {
+          initialStatus = 'PENDING_APPROVAL' as any;
+        }
+      }
+    }
+
     const invoice = await this.prisma.invoice.create({
       data: {
         workspace_id: workspaceId,
@@ -131,11 +149,14 @@ export class InvoicesService {
         reference_invoice_id: dto.reference_invoice_id,
         number: dto.number,
         amount: computedAmount,
+        subtotal: dto.subtotal,
+        tax_rate: dto.tax_rate,
+        tax_amount: dto.tax_amount,
         currency: dto.currency ?? 'USD',
         due_date: new Date(dto.due_date),
         description: dto.description,
         notes_json: (dto.notes as any) ?? undefined,
-        status: dto.issuance_mode === InvoiceIssuanceMode.HACIENDA ? InvoiceStatus.DRAFT : InvoiceStatus.SENT,
+        status: initialStatus,
         document_type: dto.document_type ?? InvoiceDocumentType.FACTURA_ELECTRONICA,
         issuance_mode: dto.issuance_mode ?? InvoiceIssuanceMode.MANUAL_ONLY,
         hacienda_status: dto.hacienda_status ?? HaciendaStatus.DRAFT,
@@ -165,6 +186,8 @@ export class InvoicesService {
         },
       });
     }
+
+    this.trackQuickStart(workspaceId, 'invoicing_configured');
 
     return this.serializeInvoice(invoice);
   }
@@ -221,6 +244,9 @@ export class InvoicesService {
           ...(dto.issuance_mode !== undefined && { issuance_mode: dto.issuance_mode }),
           ...(dto.hacienda_status !== undefined && { hacienda_status: dto.hacienda_status }),
           ...(dto.amount !== undefined && { amount: preparedLines?.totalAmount ?? dto.amount }),
+          ...(dto.subtotal !== undefined && { subtotal: dto.subtotal }),
+          ...(dto.tax_rate !== undefined && { tax_rate: dto.tax_rate }),
+          ...(dto.tax_amount !== undefined && { tax_amount: dto.tax_amount }),
           ...(dto.currency !== undefined && { currency: dto.currency }),
           ...(dto.due_date !== undefined && { due_date: new Date(dto.due_date) }),
           ...(dto.description !== undefined && { description: dto.description }),
@@ -271,6 +297,19 @@ export class InvoicesService {
           })
         : invoice;
 
+    const prevStatus = existing.status as string;
+    const nextStatus = finalStatus as string;
+
+    if (prevStatus === 'DRAFT' && nextStatus === 'SENT') {
+      await this.deductStock(workspaceId, id).catch((err) =>
+        this.logger.error(`Stock deduction on update failed: ${err?.message}`),
+      );
+    } else if (nextStatus === 'CANCELLED' && prevStatus !== 'DRAFT') {
+      await this.reverseStock(workspaceId, id).catch((err) =>
+        this.logger.error(`Stock reversal on cancel failed: ${err?.message}`),
+      );
+    }
+
     return this.serializeInvoice(normalized);
   }
 
@@ -295,6 +334,8 @@ export class InvoicesService {
 
     const balanceDue = this.getBalanceDue(invoice);
     const amount = Number(dto.amount ?? 0);
+
+    this.logger.error(`[DIAG] registerPayment: invoice.amount=${JSON.stringify(invoice.amount)}, parsed=${this.parseAmount(invoice.amount)}, payments=${JSON.stringify(invoice.payments?.length)}, amountPaid=${this.getAmountPaid(invoice)}, balance=${balanceDue}`);
 
     if (amount <= 0) {
       throw new BadRequestException('El monto del pago debe ser mayor a cero.');
@@ -361,7 +402,7 @@ export class InvoicesService {
 
     // Notificar pago recibido
     const isPaid = result.newStatus === InvoiceStatus.PAID;
-    const admins = await this.prisma.workspaceMembership.findMany({
+    const admins = await this.prisma.workspaceUser.findMany({
       where: { workspace_id: workspaceId, role: { in: ['OWNER'] as any } },
       select: { user_id: true },
       take: 3,
@@ -499,6 +540,10 @@ export class InvoicesService {
       },
       include: this.invoiceInclude(),
     });
+
+    await this.deductStock(workspaceId, id).catch((err) =>
+      this.logger.error(`Stock deduction failed for invoice ${id}: ${err?.message}`),
+    );
 
     return this.serializeInvoice(updated);
   }
@@ -684,7 +729,7 @@ export class InvoicesService {
 
   private serializeInvoice(invoice: any) {
     const amountPaid = this.getAmountPaid(invoice);
-    const totalAmount = Number(invoice.amount ?? 0);
+    const totalAmount = this.parseAmount(invoice.amount);
     const balanceDue = Math.max(0, totalAmount - amountPaid);
 
     return {
@@ -698,15 +743,25 @@ export class InvoicesService {
     };
   }
 
+  private parseAmount(value: any): number {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'object' && typeof value.toNumber === 'function') {
+      const n = value.toNumber();
+      return isNaN(n) ? 0 : n;
+    }
+    const n = Number(value);
+    return isNaN(n) ? 0 : n;
+  }
+
   private getAmountPaid(invoice: any) {
     return (invoice.payments ?? []).reduce(
-      (sum: number, payment: any) => sum + Number(payment.amount ?? 0),
+      (sum: number, payment: any) => sum + this.parseAmount(payment.amount),
       0,
     );
   }
 
   private getBalanceDue(invoice: any) {
-    return Math.max(0, Number(invoice.amount ?? 0) - this.getAmountPaid(invoice));
+    return Math.max(0, this.parseAmount(invoice.amount) - this.getAmountPaid(invoice));
   }
 
   private validateStateTransition(current: InvoiceStatus, next: InvoiceStatus): void {
@@ -859,6 +914,7 @@ export class InvoicesService {
         tax_rate: taxRate || null,
         exoneration_json: line.exoneration ?? undefined,
         metadata_json: Array.isArray(line.metadata) ? line.metadata : undefined,
+        product_id: line.product_id ?? null,
       };
     });
 
@@ -866,6 +922,87 @@ export class InvoicesService {
       totalAmount: prepared.reduce((sum, line) => sum + Number(line.total_line_amount), 0),
       lines: prepared,
     };
+  }
+
+  private async deductStock(workspaceId: string, invoiceId: string) {
+    const lines = await (this.prisma as any).invoiceLine.findMany({
+      where: { invoice_id: invoiceId, workspace_id: workspaceId, product_id: { not: null } },
+      include: { product: { select: { id: true, track_inventory: true, type: true, current_stock: true } } },
+    });
+
+    for (const line of lines) {
+      if (!line.product || !line.product.track_inventory || line.product.type === 'SERVICE') continue;
+
+      const existingMovement = await (this.prisma as any).stockMovement.findFirst({
+        where: { product_id: line.product_id, reference_type: 'invoice', reference_id: invoiceId, type: 'OUT' },
+      });
+      if (existingMovement) continue;
+
+      const qty = Math.round(Number(line.quantity));
+      if (qty <= 0) continue;
+
+      const previousStock = line.product.current_stock;
+      const newStock = Math.max(0, previousStock - qty);
+
+      await (this.prisma as any).product.update({
+        where: { id: line.product_id },
+        data: { current_stock: newStock },
+      });
+
+      await (this.prisma as any).stockMovement.create({
+        data: {
+          workspace_id: workspaceId,
+          product_id: line.product_id,
+          type: 'OUT',
+          quantity: qty,
+          previous_stock: previousStock,
+          new_stock: newStock,
+          reason: `Factura #${line.invoice_id?.slice(0, 8)}`,
+          reference_type: 'invoice',
+          reference_id: invoiceId,
+        },
+      });
+    }
+  }
+
+  private async reverseStock(workspaceId: string, invoiceId: string) {
+    const movements = await (this.prisma as any).stockMovement.findMany({
+      where: { reference_type: 'invoice', reference_id: invoiceId, type: 'OUT' },
+    });
+
+    for (const mov of movements) {
+      const alreadyReversed = await (this.prisma as any).stockMovement.findFirst({
+        where: { product_id: mov.product_id, reference_type: 'invoice', reference_id: invoiceId, type: 'REVERSAL', quantity: mov.quantity },
+      });
+      if (alreadyReversed) continue;
+
+      const product = await (this.prisma as any).product.findUnique({
+        where: { id: mov.product_id },
+        select: { current_stock: true },
+      });
+      if (!product) continue;
+
+      const newStock = product.current_stock + mov.quantity;
+
+      await (this.prisma as any).product.update({
+        where: { id: mov.product_id },
+        data: { current_stock: newStock },
+      });
+
+      await (this.prisma as any).stockMovement.create({
+        data: {
+          workspace_id: workspaceId,
+          product_id: mov.product_id,
+          type: 'REVERSAL',
+          quantity: mov.quantity,
+          previous_stock: product.current_stock,
+          new_stock: newStock,
+          reason: `Reversión factura #${invoiceId?.slice(0, 8)}`,
+          reference_type: 'invoice',
+          reference_id: invoiceId,
+        },
+      });
+    }
   }
 
   private mapHaciendaStatus(value?: string): HaciendaStatus {
@@ -971,5 +1108,237 @@ export class InvoicesService {
     if (!settings.hacienda_username) missing.push('usuario Hacienda');
     if (!settings.hacienda_password) missing.push('contraseña Hacienda');
     return missing;
+  }
+
+  async getInvoiceTemplates(workspaceId: string, industry?: string) {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { id: true },
+    });
+    if (!ws) throw new NotFoundException('Workspace no encontrado.');
+
+    return getTemplatesByIndustry(industry);
+  }
+
+  async validateForHacienda(workspaceId: string, invoiceId: string) {
+    const invoice = await this.getInvoiceOrThrow(workspaceId, invoiceId);
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: {
+        settings_json: true,
+        workspace_tax_profile: true,
+      },
+    });
+
+    const issues: Array<{ field: string; severity: 'error' | 'warning'; message: string }> = [];
+    let valid = true;
+
+    const taxProfile = workspace?.workspace_tax_profile;
+    const settings = parseJsonValue<Record<string, any>>(workspace?.settings_json ?? null, {});
+
+    const missingProfile = this.getMissingWorkspaceTaxProfileFields(taxProfile);
+    if (missingProfile.length > 0) {
+      valid = false;
+      missingProfile.forEach(f => issues.push({
+        field: 'perfil_fiscal',
+        severity: 'error',
+        message: `Falta completar en Ajustes → Facturación CR: ${f}`,
+      }));
+    }
+
+    const missingSettings = this.getMissingWorkspaceHaciendaSettings(settings);
+    if (missingSettings.length > 0) {
+      valid = false;
+      missingSettings.forEach(f => issues.push({
+        field: 'config_hacienda',
+        severity: 'error',
+        message: `Falta configurar en Ajustes → Facturación CR: ${f}`,
+      }));
+    }
+
+    if (!invoice.activity_code) {
+      valid = false;
+      issues.push({ field: 'activity_code', severity: 'error', message: 'El código de actividad económica es obligatorio.' });
+    }
+    if (!invoice.sale_condition) {
+      issues.push({ field: 'sale_condition', severity: 'warning', message: 'Condición de venta no definida (01=contado, 02=crédito).' });
+    }
+    if (!invoice.payment_method) {
+      issues.push({ field: 'payment_method', severity: 'warning', message: 'Medio de pago no definido.' });
+    }
+
+    if (invoice.lines && invoice.lines.length > 0) {
+      for (let i = 0; i < invoice.lines.length; i++) {
+        const line = invoice.lines[i];
+        if (!line.cabys_code) {
+          valid = false;
+          issues.push({ field: `linea_${i + 1}_cabys`, severity: 'error', message: `Línea ${i + 1}: falta código CABYS.` });
+        }
+        if (!line.tax_code) {
+          issues.push({ field: `linea_${i + 1}_tax`, severity: 'warning', message: `Línea ${i + 1}: código de impuesto no definido.` });
+        }
+      }
+    } else {
+      valid = false;
+      issues.push({ field: 'lineas', severity: 'error', message: 'La factura debe tener al menos una línea de detalle.' });
+    }
+
+    let ai_review: string | null = null;
+    try {
+      const firstLine = invoice.lines?.[0];
+      const result = await this.ai.reviewInvoiceForHacienda(workspaceId, {
+        document_type: invoice.document_type,
+        activity_code: invoice.activity_code ?? undefined,
+        sale_condition: invoice.sale_condition ?? undefined,
+        payment_method: invoice.payment_method ?? undefined,
+        cabys_code: firstLine?.cabys_code ?? undefined,
+        tax_rate: firstLine?.tax_rate != null ? String(firstLine.tax_rate) : undefined,
+        line_description: firstLine?.description ?? undefined,
+        currency: invoice.currency,
+        amount: invoice.amount != null ? String(invoice.amount) : undefined,
+        contact_name: invoice.contact?.full_name ?? undefined,
+      });
+      if (result) {
+        if (result.issues?.length) {
+          valid = false;
+          result.issues.forEach((issue: { field: string; severity: 'error' | 'warning'; message: string }) => issues.push(issue));
+        }
+        ai_review = result.ai_review || null;
+      }
+    } catch (err) {
+      this.logger.warn(`AI review failed for invoice ${invoiceId}: ${(err as Error).message}`);
+    }
+
+    return { valid, issues, ai_review };
+  }
+
+  async explainHaciendaError(workspaceId: string, invoiceId: string) {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, workspace_id: workspaceId },
+      select: { hacienda_last_error: true, hacienda_status: true },
+    });
+    if (!invoice) throw new NotFoundException('Factura no encontrada.');
+    if (!invoice.hacienda_last_error) throw new BadRequestException('Esta factura no tiene errores de Hacienda registrados.');
+
+    const aiResult = await this.ai.explainHaciendaError(workspaceId, invoice.hacienda_last_error);
+
+    return {
+      error_code: 'HACIENDA_RECHAZO',
+      technical_message: invoice.hacienda_last_error,
+      plain_explanation: aiResult?.explanation ?? 'No se pudo generar una explicación automática. Contactá soporte para más detalles.',
+      suggested_fix: aiResult?.suggested_fix ?? null,
+    };
+  }
+
+  async getXmlPreview(workspaceId: string, invoiceId: string) {
+    const invoice = await this.getInvoiceOrThrow(workspaceId, invoiceId);
+    if (invoice.issuance_mode !== InvoiceIssuanceMode.HACIENDA) {
+      throw new BadRequestException('La factura no está configurada para emisión Hacienda.');
+    }
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { workspace_tax_profile: true },
+    });
+
+    const referenceInvoice = invoice.reference_invoice_id
+      ? await this.prisma.invoice.findFirst({
+          where: { id: invoice.reference_invoice_id, workspace_id: workspaceId },
+          select: { clave: true, number: true, issue_date: true },
+        })
+      : null;
+
+    const lines = invoice.lines?.length ? invoice.lines : this.buildFallbackLines(invoice);
+    const xml = this.haciendaXmlBuilder.buildInvoiceXml({
+      invoice,
+      workspaceTaxProfile: workspace?.workspace_tax_profile ?? {},
+      contact: invoice.contact ?? {},
+      lines,
+      referenceInvoice,
+    });
+
+    return { xml };
+  }
+
+  private async trackQuickStart(workspaceId: string, step: string) {
+    try {
+      const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
+      const s: any = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const progress = s.quick_start_progress || {};
+      if (progress[step]) return;
+      s.quick_start_progress = { ...progress, [step]: true };
+      await this.prisma.workspace.update({ where: { id: workspaceId }, data: { settings_json: s } });
+    } catch { /* fire-and-forget */ }
+  }
+
+  // ── Invoice approval workflow ─────────────────────────────────────────────
+
+  getTemplates(industry?: string) {
+    return getTemplatesByIndustry(industry);
+  }
+
+  async getPendingApprovals(workspaceId: string) {
+    return this.prisma.invoice.findMany({
+      where: { workspace_id: workspaceId, status: 'PENDING_APPROVAL' },
+      include: {
+        contact: { select: { id: true, full_name: true, company_name: true } },
+        lines: true,
+        payments: { select: { id: true, amount: true } },
+      },
+      orderBy: { created_at: 'desc' },
+      take: 20,
+    });
+  }
+
+  async approveInvoice(workspaceId: string, userId: string, id: string) {
+    const invoice = await this.getInvoiceOrThrow(workspaceId, id);
+    if (invoice.status !== 'PENDING_APPROVAL') {
+      throw new BadRequestException('Solo se pueden aprobar facturas en estado PENDING_APPROVAL.');
+    }
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: { status: 'SENT', updated_at: new Date() },
+      include: {
+        contact: { select: { id: true, full_name: true, company_name: true } },
+      },
+    });
+
+    // Notify workspace admin about the approval
+    const admins = await this.prisma.workspaceUser.findMany({
+      where: { workspace_id: workspaceId, role: { in: ['OWNER', 'ADMIN'] as any } },
+      select: { user_id: true },
+      take: 3,
+    });
+    for (const admin of admins) {
+      this.notificationsService.create(workspaceId, {
+        user_id: admin.user_id,
+        type: 'invoice_approved',
+        title: 'Factura aprobada',
+        body: `La factura ${invoice.number} fue aprobada.`,
+        related_entity_type: 'invoice',
+        related_entity_id: id,
+      }).catch(() => {});
+    }
+
+    return updated;
+  }
+
+  async rejectInvoice(workspaceId: string, id: string, reason: string) {
+    const invoice = await this.getInvoiceOrThrow(workspaceId, id);
+    if (invoice.status !== 'PENDING_APPROVAL') {
+      throw new BadRequestException('Solo se pueden rechazar facturas en estado PENDING_APPROVAL.');
+    }
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: {
+        status: 'DRAFT',
+        updated_at: new Date(),
+        notes_json: { ...(invoice.notes_json as any || {}), rejection_reason: reason || 'Rechazada' },
+      },
+    });
+
+    return updated;
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { parseJsonValue } from '../common/prisma/json';
@@ -120,7 +120,7 @@ export class AiService {
     if (!res.ok) {
       const errorText = await res.text();
       this.logger.error(`${config.provider} API error ${res.status}:`, errorText);
-      throw new Error('Failed to process with AI. Please try again later.');
+      throw new InternalServerErrorException('Failed to process with AI. Please try again later.');
     }
     const d = await res.json() as any;
     return { text: d.choices[0].message.content?.trim() ?? '', tokens: d.usage?.total_tokens ?? 0 };
@@ -152,7 +152,7 @@ export class AiService {
     if (!res.ok) {
       const errorText = await res.text();
       this.logger.error(`Anthropic API error ${res.status}:`, errorText);
-      throw new Error('Failed to process with AI. Please try again later.');
+      throw new InternalServerErrorException('Failed to process with AI. Please try again later.');
     }
     const d = await res.json() as any;
     return {
@@ -187,7 +187,7 @@ export class AiService {
     if (!res.ok) {
       const errorText = await res.text();
       this.logger.error(`Gemini API error ${res.status}:`, errorText);
-      throw new Error('Failed to process with AI. Please try again later.');
+      throw new InternalServerErrorException('Failed to process with AI. Please try again later.');
     }
     const d = await res.json() as any;
     return {
@@ -269,7 +269,7 @@ export class AiService {
     daysOverdue: number;
   }): Promise<PaymentReminderDraftResult> {
     const config = await this.getConfig(input.workspaceId);
-    if (!config) throw new Error('No hay API key de IA configurada. Configúrala en Ajustes → Inteligencia Artificial.');
+    if (!config) throw new BadRequestException('No hay API key de IA configurada. Configúrala en Ajustes → Inteligencia Artificial.');
 
     const isOverdue = input.daysOverdue > 0;
     const system = isOverdue
@@ -288,33 +288,189 @@ export class AiService {
     ].join('\n');
 
     const { text, tokens } = await this.chat(config, system, user, 200, 0.4);
-    if (!text) throw new Error('La IA devolvió un borrador vacío.');
+    if (!text) throw new BadRequestException('La IA devolvió un borrador vacío.');
     return { draft_text: text, tokens_used: tokens };
   }
 
   async analyzeDocument(
     workspaceId: string,
-    meta: { fileName: string; mimeType: string; fileSize: number },
+    meta: { fileName: string; mimeType: string; fileSize: number; ocrText?: string },
   ): Promise<{ extractedText: string; summary: string; extractedData: any } | null> {
     const config = await this.getConfig(workspaceId);
     if (!config) return null;
 
-    const system = `Eres un asistente de extracción de documentos. Analiza la metadata del documento y genera:
-1. Un texto simulado de lo que podría contener el documento basado en su nombre y tipo.
-2. Un resumen breve en español del contenido inferido.
-3. Datos estructurados inferidos (ej: tipo de documento, categoría).
-Responde en formato JSON puro: { "extractedText": "...", "summary": "...", "extractedData": {...} }`;
+    const hasRealOcr = meta.ocrText && meta.ocrText.length > 50 && !meta.ocrText.startsWith(meta.fileName);
 
-    const user = `Analiza este documento:
-- Nombre: ${meta.fileName}
-- Tipo MIME: ${meta.mimeType}
-- Tamaño: ${(meta.fileSize / 1024).toFixed(1)} KB`;
+    if (!hasRealOcr) {
+      return null; // skip AI — no meaningful text to analyze
+    }
+
+    const system = `Eres un asistente de extracción de documentos. Extrae y estructura la información del siguiente texto obtenido por OCR.
+Responde en formato JSON puro: { "extractedText": "<texto original>", "summary": "<resumen conciso en español>", "extractedData": { "docType": "<tipo de documento>", "total": <monto numérico si es factura>, "date": "<fecha si se encuentra>", "entities": ["<nombres de empresas o personas>"] } }`;
+
+    const user = `Documento: ${meta.fileName} (${(meta.fileSize / 1024).toFixed(1)} KB)\n\nTexto extraído:\n${meta.ocrText!.slice(0, 4000)}`;
 
     try {
-      const { text } = await this.chat(config, system, user, 300, 0.3);
+      const { text } = await this.chat(config, system, user, 500, 0.3);
       const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
       return JSON.parse(clean);
     } catch {
+      return null;
+    }
+  }
+
+  async explainHaciendaError(
+    workspaceId: string,
+    errorMessage: string,
+  ): Promise<{ explanation: string; suggested_fix: string } | null> {
+    const config = await this.getConfig(workspaceId);
+    if (!config) return null;
+
+    const system = `Eres un experto en facturación electrónica de Costa Rica (Hacienda).
+El usuario recibió un error del API de Hacienda y necesita entenderlo en español sencillo.
+Responde con JSON puro (sin markdown):
+{
+  "explanation": "explicación clara en español de 2-3 oraciones de qué significa el error",
+  "suggested_fix": "paso a paso concreto para corregir el problema, en español, máximo 4 pasos"
+}`;
+
+    const user = `Error de Hacienda:\n${errorMessage.slice(0, 2000)}`;
+
+    try {
+      const { text } = await this.chat(config, system, user, 400, 0.3);
+      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      return JSON.parse(clean);
+    } catch (err) {
+      this.logger.error(`Error explicando error de Hacienda: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
+  async reviewInvoiceForHacienda(
+    workspaceId: string,
+    invoiceData: {
+      document_type: string;
+      activity_code?: string;
+      sale_condition?: string;
+      payment_method?: string;
+      cabys_code?: string;
+      tax_rate?: string;
+      line_description?: string;
+      currency?: string;
+      amount?: string;
+      contact_name?: string;
+    },
+  ): Promise<{ valid: boolean; issues: Array<{ field: string; severity: 'error' | 'warning'; message: string }>; ai_review: string } | null> {
+    const config = await this.getConfig(workspaceId);
+    if (!config) return null;
+
+    const system = `Eres un auditor de facturación electrónica de Costa Rica (Hacienda). Revisa los datos de una factura y detecta problemas.
+Reglas de Hacienda CR:
+- activity_code es obligatorio (código de actividad económica)
+- cabys_code es obligatorio por línea (catálogo CABYS)
+- tax_rate debe ser 0 o 13 (IVA en CR)
+- document_type debe ser válido
+- sale_condition: 01=contado, 02=crédito
+- payment_method: 01=efectivo, 02=tarjeta, 03=transferencia
+
+Responde con JSON puro (sin markdown):
+{
+  "valid": true|false,
+  "issues": [
+    { "field": "nombre del campo", "severity": "error" | "warning", "message": "descripción en español" }
+  ],
+  "ai_review": "revisión general en español de 2-3 oraciones resumiendo el estado de la factura"
+}`;
+
+    const user = `Datos de la factura a revisar:\n${JSON.stringify(invoiceData, null, 2)}`;
+
+    try {
+      const { text } = await this.chat(config, system, user, 500, 0.3);
+      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      return JSON.parse(clean);
+    } catch (err) {
+      this.logger.error(`Error revisando factura para Hacienda: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
+  async explainInvoiceXml(
+    workspaceId: string,
+    xml: string,
+  ): Promise<{ sections: Array<{ name: string; explanation: string }>; summary: string } | null> {
+    const config = await this.getConfig(workspaceId);
+    if (!config) return null;
+
+    const system = `Eres un experto en facturación electrónica de Costa Rica (Hacienda). Explica el XML de una Factura Electrónica.
+Desglosa cada sección en español claro para una PYME.
+Responde con JSON puro (sin markdown):
+{
+  "sections": [
+    { "name": "nombre de la sección en español", "explanation": "qué contiene esta sección, qué valida Hacienda, 1-2 oraciones" }
+  ],
+  "summary": "resumen general de la factura en español, 2-3 oraciones"
+}`;
+
+    const user = `XML de Factura Electrónica de Costa Rica:\n\n${xml.slice(0, 6000)}`;
+
+    try {
+      const { text } = await this.chat(config, system, user, 600, 0.3);
+      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      return JSON.parse(clean);
+    } catch (err) {
+      this.logger.error(`Error explicando XML de factura: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
+  // ── Generate fix proposal from diagnostic case ──────────────────────────────
+
+  async generateFixProposal(workspaceId: string, diagnosticCase: {
+    module: string;
+    error_code: string | null;
+    title: string;
+    user_description: string | null;
+    safe_summary: string | null;
+  }, errorReport?: {
+    message: string;
+    stack: string | null;
+    route: string | null;
+    method: string | null;
+  } | null): Promise<{ fix_summary: string; files_changed_json: { file: string; reason: string; diff_suggestion: string }[] } | null> {
+    const config = await this.getConfig(workspaceId);
+    if (!config) return null;
+
+    const system = `Eres un ingeniero de software senior especializado en NestJS, TypeScript, Prisma y PostgreSQL. Tu trabajo es analizar errores del SaaS "PymesHub" y proponer arreglos concretos.
+
+Para cada error, responde con un JSON que tenga esta estructura:
+{
+  "fix_summary": "explicación breve del fix (1-3 oraciones en español)",
+  "files_changed": [
+    { "file": "ruta/relativa/al/archivo.ts", "reason": "por qué este archivo necesita cambios", "diff_suggestion": "sugerencia de código concreto para arreglarlo" }
+  ]
+}
+
+Reglas:
+- NUNCA inventes archivos o código que no tenga sentido con el stack (NestJS + Prisma + TypeScript)
+- Si el error es de CONFIGURACIÓN (env vars, credenciales, webhooks), indicalo en el summary y sugiere acciones de configuración en lugar de código
+- Si el error es de BASE DE DATOS (constraints, columnas, migraciones), sugiere arreglos de esquema/migración
+- Sé conservador y seguro — no sugieras cambios destructivos`;
+
+    const user = `Error en módulo "${diagnosticCase.module}":
+Código: ${diagnosticCase.error_code || 'N/A'}
+Título: ${diagnosticCase.title}
+Descripción del usuario: ${diagnosticCase.user_description || 'N/A'}
+Resumen: ${diagnosticCase.safe_summary || 'N/A'}
+${errorReport ? `Mensaje de error: ${errorReport.message}\nRuta: ${errorReport.method || '?'} ${errorReport.route || '?'}\n${errorReport.stack ? `Stack: ${errorReport.stack.slice(0, 800)}` : ''}` : ''}
+
+Propone un fix concreto y seguro.`;
+
+    try {
+      const { text } = await this.chat(config, system, user, 1200, 0.3);
+      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      return JSON.parse(clean);
+    } catch (err) {
+      this.logger.error(`Error generando fix proposal: ${(err as Error).message}`);
       return null;
     }
   }

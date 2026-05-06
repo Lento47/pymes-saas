@@ -61,4 +61,8 @@ export class InvoiceLineDto {
   @IsOptional()
   @IsArray()
   metadata?: unknown[];
+
+  @IsOptional()
+  @IsString()
+  product_id?: string;
 }

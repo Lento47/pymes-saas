@@ -25,9 +25,10 @@ export class MessagesService {
     private readonly automationsService: AutomationsService,
   ) { }
 
-  async findAll(workspaceId: string, conversationId: string, page = 1, limit = 50) {
+  async findAll(workspaceId: string, conversationId: string, page = 1, limit = 100) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
+      select: { id: true },
     });
     if (!conv) throw new NotFoundException('Conversación no encontrada.');
 
@@ -44,9 +45,11 @@ export class MessagesService {
         },
       }),
       this.prisma.message.count({
-        where: { conversation_id: conversationId },
+        where: { conversation_id: conversationId, workspace_id: workspaceId },
       }),
     ]);
+
+    this.logger.log(`findAll messages: conv=${conversationId}, count=${total}, returned=${data.length}`);
 
     return {
       data,
@@ -62,6 +65,7 @@ export class MessagesService {
   ) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
+      select: { id: true },
     });
     if (!conv) throw new NotFoundException('Conversación no encontrada.');
 
@@ -111,42 +115,63 @@ export class MessagesService {
     const senderName = payload.name ?? payload.sender_name ?? senderRef;
     const bodyText = payload.text ?? payload.body ?? payload.content ?? '';
     const subject = payload.subject ?? null;
+    const isEmail = senderRef.includes('@');
+    const normalizedPhone = !isEmail ? senderRef.replace(/\D/g, '') : null;
 
+    // ── Find or create contact (normalize phone to prevent duplicates) ─────────
+    let contact = null;
+    if (isEmail) {
+      contact = await this.prisma.contact.findFirst({
+        where: { workspace_id: workspaceId, email: senderRef },
+      });
+    } else if (normalizedPhone) {
+      const contactRows = await (this.prisma as any).$queryRawUnsafe(
+        `SELECT * FROM "contacts"
+         WHERE workspace_id = $1
+           AND (phone = $2 OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = $3)
+         LIMIT 1`,
+        workspaceId, senderRef, normalizedPhone,
+      );
+      if (contactRows.length > 0) contact = contactRows[0];
+    }
+
+    if (!contact) {
+      contact = await this.prisma.contact.create({
+        data: {
+          workspace_id: workspaceId,
+          type: 'LEAD',
+          full_name: senderName,
+          email: isEmail ? senderRef : undefined,
+          phone: !isEmail ? senderRef : undefined,
+        },
+      });
+    }
+
+    // ── Find or reuse conversation for this contact+channel ────────────────────
     let conversation = await this.prisma.conversation.findFirst({
       where: {
         workspace_id: workspaceId,
+        contact_id: contact.id,
         channel_id: channel.id,
-        status: { in: ['NEW', 'OPEN', 'PENDING'] },
-        contact: {
-          OR: [
-            { email: senderRef },
-            { phone: senderRef },
-          ],
-        },
       },
       orderBy: { last_message_at: 'desc' },
+      select: {
+        id: true, assigned_user_id: true, subject: true,
+        contact_id: true, first_response_at: true, status: true,
+        workspace_id: true, channel_id: true,
+      },
     });
 
-    if (!conversation) {
-      let contact = await this.prisma.contact.findFirst({
-        where: {
-          workspace_id: workspaceId,
-          OR: [{ email: senderRef }, { phone: senderRef }],
-        },
-      });
-
-      if (!contact) {
-        contact = await this.prisma.contact.create({
-          data: {
-            workspace_id: workspaceId,
-            type: 'LEAD',
-            full_name: senderName,
-            email: senderRef.includes('@') ? senderRef : undefined,
-            phone: !senderRef.includes('@') ? senderRef : undefined,
-          },
+    if (conversation) {
+      // If the conversation was previously resolved, reopen it
+      if (!['NEW', 'OPEN', 'PENDING'].includes(conversation.status)) {
+        await this.prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { status: 'NEW', updated_at: new Date() },
         });
+        conversation.status = 'NEW';
       }
-
+    } else {
       conversation = await this.prisma.conversation.create({
         data: {
           workspace_id: workspaceId,
@@ -155,6 +180,11 @@ export class MessagesService {
           subject: subject ?? `Mensaje de ${senderName}`,
           status: 'NEW',
           priority: 'MEDIUM',
+        },
+        select: {
+          id: true, assigned_user_id: true, subject: true,
+          contact_id: true, first_response_at: true,
+          workspace_id: true, channel_id: true, status: true,
         },
       });
     }
@@ -175,7 +205,35 @@ export class MessagesService {
 
     await this.prisma.conversation.update({
       where: { id: conversation.id },
-      data: { last_message_at: new Date(), updated_at: new Date() },
+      data: {
+        last_message_at: new Date(),
+        updated_at: new Date(),
+        // WhatsApp 24h service window tracking (safe if columns exist, skipped otherwise)
+        ...(channel.type === 'WHATSAPP'
+          ? {
+              last_customer_message_at: new Date(),
+              service_window_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+              is_service_window_open: true,
+              requires_template_for_outbound: false,
+            }
+          : {}),
+        // Set first_response_at on first agent outbound reply
+        ...(message.direction === 'OUTBOUND' && !conversation.first_response_at
+          ? { first_response_at: new Date() }
+          : {}),
+      },
+      select: { id: true },
+    }).catch((err: any) => {
+      // Silently skip if columns don't exist yet (migration pending)
+      if (err?.code === 'P2025' || err?.message?.includes('column')) {
+        // Fallback: update only existing columns
+        return this.prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { last_message_at: new Date(), updated_at: new Date() },
+          select: { id: true },
+        });
+      }
+      throw err;
     });
 
     // Emitir en tiempo real
@@ -255,6 +313,7 @@ export class MessagesService {
       data: {
         category: result.category,
       },
+      select: { id: true },
     });
 
     // Create task for HIGH or CRITICAL urgency if task_title is provided

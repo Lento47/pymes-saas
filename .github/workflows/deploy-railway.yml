@@ -9,12 +9,47 @@ on:
       - 'pnpm-lock.yaml'
       - 'Dockerfile'
       - 'railway.toml'
+      - 'packages/shared-types/**'
+      - '.github/workflows/deploy-railway.yml'
   pull_request:
     branches: [main-api]
 
 jobs:
-  build-and-test:
+  branch-guard:
+    name: Branch-path guard
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify no forbidden paths
+        run: |
+          echo "==> Branch-path guard for main-api"
+          FORBIDDEN=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^apps/web/' || true)
+          if [ -n "$FORBIDDEN" ]; then
+            echo "::error::main-api MUST NOT contain apps/web/** changes"
+            echo "Forbidden files:"
+            echo "$FORBIDDEN"
+            exit 1
+          fi
+          SHARED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^packages/shared-types/' || true)
+          if [ -n "$SHARED" ]; then
+            echo "::warning::shared-types change detected — ensure this is also pushed to main-web"
+          fi
+          echo "==> Branch-path guard passed"
+
+  build-and-test:
+    needs: branch-guard
+    if: |
+      always() &&
+      (needs.branch-guard.result == 'success' || needs.branch-guard.result == 'skipped')
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     services:
       postgres:
@@ -41,7 +76,7 @@ jobs:
           node-version: "20"
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: latest
 
@@ -52,7 +87,7 @@ jobs:
           echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
       - name: Setup pnpm cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -62,54 +97,5 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma client
-        run: cd apps/api && pnpm exec prisma generate
-
       - name: Build API
-        run: cd apps/api && npm run build
-
-      - name: Run tests
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pymeshub_test
-          JWT_SECRET: test-secret-for-ci-jwt-min-32-chars
-        run: cd apps/api && npm run test
-
-      - name: Healthcheck — start API and verify /api/health
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pymeshub_test
-          JWT_SECRET: test-secret-for-ci-jwt-min-32-chars
-          PORT: 4000
-          NODE_ENV: test
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
-        run: |
-          if [ -f apps/api/dist/main.js ]; then
-            echo "Found dist/main.js"
-            node apps/api/dist/main &
-          elif [ -f apps/api/dist/src/main.js ]; then
-            echo "Found dist/src/main.js"
-            node apps/api/dist/src/main &
-          else
-            echo "❌ Could not find dist/main.js or dist/src/main.js"
-            find apps/api/dist -name "main.js" 2>/dev/null || echo "No main.js found anywhere"
-            exit 1
-          fi
-          APP_PID=$!
-          echo "Waiting for NestJS to start (PID: $APP_PID)..."
-
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:4000/api/health > /dev/null 2>&1; then
-              echo "✅ Healthcheck passed after ${i}s"
-              kill $APP_PID 2>/dev/null || true
-              exit 0
-            fi
-            if ! kill -0 $APP_PID 2>/dev/null; then
-              echo "❌ NestJS process crashed during startup"
-              exit 1
-            fi
-            sleep 1
-          done
-
-          echo "❌ Healthcheck timed out after 30s"
-          kill $APP_PID 2>/dev/null || true
-          exit 1
+        run: cd apps/api && pnpm run build

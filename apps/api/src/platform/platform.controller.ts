@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { PlatformService } from './platform.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PlatformAdminGuard } from '../auth/guards/platform-admin.guard';
@@ -20,7 +21,6 @@ import { UpdatePlatformUserStatusDto } from './dto/update-platform-user-status.d
 import { UpdateWorkspaceBillingDto } from './dto/update-workspace-billing.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
-import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 
 @Controller('platform')
 @UseGuards(JwtAuthGuard, PlatformAdminGuard)
@@ -110,5 +110,20 @@ export class PlatformController {
   @Delete('users/:userId')
   deleteUser(@Param('userId', ValidateUUIDPipe) userId: string, @CurrentUser() user: AuthUser) {
     return this.service.deleteUser(userId, user.id);
+  }
+
+  @Delete('workspaces/:slug')
+  async deleteWorkspace(@Param('slug') slug: string) {
+    return this.service.deleteWorkspace(slug);
+  }
+
+  @Get('stats')
+  getStats() {
+    return this.service.getStats();
+  }
+
+  @Get('workspaces/:slug')
+  getWorkspaceBySlug(@Param('slug') slug: string) {
+    return this.service.getWorkspaceBySlug(slug);
   }
 }

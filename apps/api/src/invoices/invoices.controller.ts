@@ -15,6 +15,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { FeatureFlagGuard, RequireFeature } from '../feature-flags/feature-flags.guard';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
@@ -25,7 +26,7 @@ import { InvoicesService } from './invoices.service';
 import { RemindersService } from './reminders.service';
 
 @Controller('invoices')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
 export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
@@ -54,6 +55,20 @@ export class InvoicesController {
   @Roles(WorkspaceUserRole.AGENT)
   detectOverdue(@CurrentUser('workspace_id') workspaceId: string) {
     return this.remindersService.detectOverdue(workspaceId);
+  }
+
+  @Get('templates')
+  @Roles(WorkspaceUserRole.AGENT)
+  getTemplates(
+    @CurrentUser('workspace_id') workspaceId: string,
+  ) {
+    return this.invoicesService.getTemplates(workspaceId);
+  }
+
+  @Get('pending-approvals')
+  @Roles(WorkspaceUserRole.ADMIN)
+  getPendingApprovals(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.invoicesService.getPendingApprovals(workspaceId);
   }
 
   @Get(':id')
@@ -96,6 +111,7 @@ export class InvoicesController {
 
   @Post(':id/submit')
   @Roles(WorkspaceUserRole.AGENT)
+  @RequireFeature('hacienda')
   submitToHacienda(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -123,6 +139,7 @@ export class InvoicesController {
 
   @Post(':id/reminder')
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequireFeature('invoice_reminders')
   generateReminder(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -132,6 +149,7 @@ export class InvoicesController {
 
   @Post(':id/reminder/send')
   @Roles(WorkspaceUserRole.ADMIN)
+  @RequireFeature('invoice_reminders')
   sendReminder(
     @CurrentUser() user: AuthUser,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -142,6 +160,7 @@ export class InvoicesController {
 
   @Post(':id/credit-note')
   @Roles(WorkspaceUserRole.AGENT)
+  @RequireFeature('credit_notes')
   createCreditNote(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -152,6 +171,7 @@ export class InvoicesController {
 
   @Post(':id/debit-note')
   @Roles(WorkspaceUserRole.AGENT)
+  @RequireFeature('credit_notes')
   createDebitNote(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -168,5 +188,52 @@ export class InvoicesController {
     @Body() dto: { number?: string; description?: string; notes?: unknown[] },
   ) {
     return this.invoicesService.createReceiverMessage(workspaceId, id, dto);
+  }
+
+  @Post(':id/hacienda-validate')
+  @Roles(WorkspaceUserRole.AGENT)
+  @RequireFeature('hacienda')
+  validateForHacienda(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id', ValidateUUIDPipe) id: string,
+  ) {
+    return this.invoicesService.validateForHacienda(workspaceId, id);
+  }
+
+  @Get(':id/hacienda-error-explain')
+  @Roles(WorkspaceUserRole.AGENT)
+  explainHaciendaError(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id', ValidateUUIDPipe) id: string,
+  ) {
+    return this.invoicesService.explainHaciendaError(workspaceId, id);
+  }
+
+  @Get(':id/xml-preview')
+  @Roles(WorkspaceUserRole.AGENT)
+  getXmlPreview(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id', ValidateUUIDPipe) id: string,
+  ) {
+    return this.invoicesService.getXmlPreview(workspaceId, id);
+  }
+
+  @Post(':id/approve')
+  @Roles(WorkspaceUserRole.ADMIN)
+  approveInvoice(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ValidateUUIDPipe) id: string,
+  ) {
+    return this.invoicesService.approveInvoice(user.workspace_id, user.id, id);
+  }
+
+  @Post(':id/reject')
+  @Roles(WorkspaceUserRole.ADMIN)
+  rejectInvoice(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ValidateUUIDPipe) id: string,
+    @Body('reason') reason: string,
+  ) {
+    return this.invoicesService.rejectInvoice(user.workspace_id, id, reason);
   }
 }

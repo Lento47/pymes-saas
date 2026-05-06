@@ -37,6 +37,7 @@ export class RefreshTokenService {
   async rotate(rawToken: string): Promise<{
     accessToken: string;
     refreshToken: string;
+    user?: { id: string; email: string; name: string; role: string; is_owner: boolean; is_platform_admin: boolean; workspace: { id: string; name: string; slug: string; plan: string } };
   }> {
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
@@ -48,7 +49,6 @@ export class RefreshTokenService {
     if (!stored) throw new UnauthorizedException('Token de refresco inválido.');
 
     if (stored.revoked_at) {
-      // Reuse detected — nuke entire family
       await this.prisma.refreshToken.updateMany({
         where: { family: stored.family, revoked_at: null },
         data: { revoked_at: new Date() },
@@ -60,35 +60,51 @@ export class RefreshTokenService {
       throw new UnauthorizedException('Token de refresco expirado.');
     }
 
-    const membership = await this.prisma.workspaceUser.findUnique({
-      where: {
-        workspace_id_user_id: {
-          workspace_id: stored.workspace_id,
-          user_id: stored.user_id,
+    const [membership, workspace] = await Promise.all([
+      this.prisma.workspaceUser.findUnique({
+        where: {
+          workspace_id_user_id: {
+            workspace_id: stored.workspace_id,
+            user_id: stored.user_id,
+          },
         },
-      },
-    });
+      }),
+      this.prisma.workspace.findUnique({
+        where: { id: stored.workspace_id },
+        select: { id: true, name: true, slug: true, plan: true },
+      }),
+    ]);
     if (!membership) throw new UnauthorizedException('Sin acceso al workspace.');
 
-    // Revoke used token
     await this.prisma.refreshToken.update({
       where: { id: stored.id },
       data: { revoked_at: new Date() },
     });
 
-    // Issue rotated refresh token (same family)
-    const newRefreshToken = await this.create(stored.user_id, stored.workspace_id, stored.family);
+    const [newRefreshToken, accessToken] = await Promise.all([
+      this.create(stored.user_id, stored.workspace_id, stored.family),
+      Promise.resolve(this.jwtService.sign({
+        sub: stored.user_id,
+        email: stored.user.email,
+        workspace_id: stored.workspace_id,
+        role: membership.role,
+        is_platform_admin: stored.user.is_platform_admin,
+      })),
+    ]);
 
-    // Issue new short-lived access token
-    const accessToken = this.jwtService.sign({
-      sub: stored.user_id,
-      email: stored.user.email,
-      workspace_id: stored.workspace_id,
-      role: membership.role,
-      is_platform_admin: stored.user.is_platform_admin,
-    });
-
-    return { accessToken, refreshToken: newRefreshToken };
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+      user: {
+        id: stored.user_id,
+        email: stored.user.email,
+        name: stored.user.name,
+        role: membership.role,
+        is_owner: membership.is_owner,
+        is_platform_admin: stored.user.is_platform_admin,
+        workspace: workspace ? { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan } : { id: stored.workspace_id, name: '', slug: '', plan: 'FREE' },
+      },
+    };
   }
 
   /** Revoke all active refresh tokens for a user in a workspace (logout). */

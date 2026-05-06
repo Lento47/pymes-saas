@@ -27,7 +27,13 @@ export class WhatsAppService {
     to: string,
     bodyText: string,
   ): Promise<{ message_id: string }> {
-    const cfg = channel.config_json as any;
+    const raw = channel.config_json;
+    const cfg: any = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : (raw || {});
+    this.logger.log(`[DIAG] sendMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(',')}`);
+    if (!cfg?.access_token_encrypted) {
+      this.logger.error(`WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`);
+      throw new BadGatewayException('WhatsApp access token no configurado. Verificá la configuración del canal.');
+    }
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
@@ -43,6 +49,7 @@ export class WhatsAppService {
         type: 'text',
         text: { body: bodyText },
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const data: any = await res.json();
@@ -51,6 +58,65 @@ export class WhatsAppService {
       this.logger.error('Meta API error:', JSON.stringify(data));
       throw new BadGatewayException(
         data?.error?.message ?? 'Error enviando mensaje por WhatsApp',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  async sendTemplateMessage(
+    channel: any,
+    to: string,
+    templateName: string,
+    language: string,
+    variables: Record<string, string>,
+  ): Promise<{ message_id: string }> {
+    const raw = channel.config_json;
+    const cfg: any = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : (raw || {});
+    this.logger.log(`[DIAG] sendTemplateMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(',')}`);
+    if (!cfg?.access_token_encrypted) {
+      this.logger.error(`WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`);
+      throw new BadGatewayException('WhatsApp access token no configurado. Verificá la configuración del canal.');
+    }
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const components: any[] = [];
+    if (Object.keys(variables).length > 0) {
+      components.push({
+        type: 'body',
+        parameters: Object.values(variables).map((v) => ({
+          type: 'text',
+          text: v,
+        })),
+      });
+    }
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: language || 'es' },
+          ...(components.length > 0 ? { components } : {}),
+        },
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta template API error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando plantilla por WhatsApp',
       );
     }
 

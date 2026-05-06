@@ -4,7 +4,18 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/telemetry/api-exception.filter';
+import { PrismaExceptionFilter } from './common/prisma/prisma-exception.filter';
 import { ErrorReportsService } from './error-reports/error-reports.service';
+import { PrismaService } from './common/prisma/prisma.service';
+
+process.on('uncaughtException', (err) => {
+  console.error('🔥 UNCAUGHT EXCEPTION — process will exit', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️ UNHANDLED REJECTION', reason);
+});
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -37,6 +48,14 @@ async function bootstrap() {
   }));
 
   // ✅ SECURITY: Strict CORS configuration with origin validation
+  // ──────────────────────────────────────────────────────────────────────
+  // IMPORTANTE — ORIGENES CORS:
+  //   PROD  → SOLO `pymeshub.lat` Y `www.pymeshub.lat`. SI SE AGREGA UN
+  //           DOMINIO NUEVO (ej. `app.pymeshub.lat`), AGREGARLO ACA O EN
+  //           `CORS_ORIGIN` EN RAILWAY (FORMATO: COMA-SEPARADO).
+  //   DEV   → LOCALHOST EN VARIOS PUERTOS + `tauri://localhost` (DESKTOP).
+  //           ESTAS URLS NUNCA DEBEN ACTIVARSE EN PROD — `NODE_ENV` LO GUARDA.
+  // ──────────────────────────────────────────────────────────────────────
   const corsOrigins =
     process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) ??
     (process.env.NODE_ENV === 'production'
@@ -57,7 +76,8 @@ async function bootstrap() {
     maxAge: 3600,
   });
 
-  app.useGlobalFilters(new ApiExceptionFilter(app.get(ErrorReportsService)));
+  app.useGlobalFilters(new ApiExceptionFilter(app.get(ErrorReportsService), app.get(PrismaService)));
+  app.useGlobalFilters(new PrismaExceptionFilter());
   const port = process.env.PORT ?? 4000;
   const host = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
   await app.listen(port, host);

@@ -5,7 +5,6 @@ import { generateBillingInvoicePdf, type BillingInvoicePdfData } from './billing
 @Injectable()
 export class BillingInvoiceService {
   private readonly logger = new Logger(BillingInvoiceService.name);
-  private counter = 0;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -19,48 +18,66 @@ export class BillingInvoiceService {
       planInterval: string;
       seats: number;
       amount: number;
+      // OPCIONAL — SI EL CALLER YA TIENE EL DESGLOSE DE PADDLE, PASAR
+      // subtotal+taxAmount EVITA RECALCULAR Y CONTAR IVA DOS VECES.
+      subtotal?: number;
+      taxAmount?: number;
+      taxRate?: number;
       currency?: string;
       notes?: string;
       status?: string;
     },
   ) {
     const currency = params.currency || 'USD';
-    const taxRate = currency === 'CRC' ? 13 : 0;
-    const taxAmount = Math.round(params.amount * (taxRate / 100) * 100) / 100;
-    const total = Math.round((params.amount + taxAmount) * 100) / 100;
+    const subtotal = params.subtotal ?? params.amount;
+    const taxRate = params.taxRate ?? (currency === 'CRC' ? 13 : 0);
+    const taxAmount = params.taxAmount ?? Math.round(subtotal * (taxRate / 100) * 100) / 100;
+    const total = Math.round((subtotal + taxAmount) * 100) / 100;
 
     const lineItems = [{
       description: `Plan ${params.planName} — ${params.planInterval === 'MONTHLY' ? 'Mensual' : 'Anual'}`,
       quantity: 1,
-      unitPrice: params.amount,
-      total: params.amount,
+      unitPrice: subtotal,
+      total: subtotal,
     }];
 
-    const number = await this.nextNumber();
+    // ATOMIC: number generation + insert in one serializable transaction to
+    // prevent duplicate invoice numbers across replicas.
+    const invoice = await this.prisma.$transaction(async (tx) => {
+      const year = new Date().getFullYear();
+      const prefix = `PH-${year}-`;
+      const last = await tx.billingInvoice.findFirst({
+        where: { number: { startsWith: prefix } },
+        orderBy: { number: 'desc' },
+        select: { number: true },
+      });
+      const seq = last ? (parseInt(last.number.slice(prefix.length), 10) + 1) : 1;
+      const number = `${prefix}${String(seq).padStart(4, '0')}`;
 
-    const invoice = await this.prisma.billingInvoice.create({
-      data: {
-        number,
-        workspace_id: workspaceId,
-        subscription_id: subscriptionId,
-        status: (params.status as any) || 'PAID',
-        client_name: params.clientName,
-        client_email: params.clientEmail,
-        plan_name: params.planName,
-        plan_interval: params.planInterval,
-        seats: params.seats,
-        line_items: lineItems as any,
-        subtotal: params.amount,
-        tax_rate: taxRate,
-        tax_amount: taxAmount,
-        total,
-        currency,
-        notes: params.notes,
-        issued_at: new Date(),
-      },
-    });
+      return tx.billingInvoice.create({
+        data: {
+          number,
+          workspace_id: workspaceId,
+          subscription_id: subscriptionId,
+          status: (params.status as any) || 'PAID',
+          client_name: params.clientName,
+          client_email: params.clientEmail,
+          plan_name: params.planName,
+          plan_interval: params.planInterval,
+          seats: params.seats,
+          line_items: lineItems as any,
+          subtotal,
+          tax_rate: taxRate,
+          tax_amount: taxAmount,
+          total,
+          currency,
+          notes: params.notes,
+          issued_at: new Date(),
+        },
+      });
+    }, { isolationLevel: 'Serializable' });
 
-    this.logger.log(`Generated billing invoice ${number} for workspace ${workspaceId}`);
+    this.logger.log(`Generated billing invoice ${invoice.number} for workspace ${workspaceId}`);
     return invoice;
   }
 
@@ -101,28 +118,36 @@ export class BillingInvoiceService {
     return { buffer, filename: `invoice-${inv.number}.pdf` };
   }
 
-  async findByWorkspace(workspaceId: string) {
-    return this.prisma.billingInvoice.findMany({
-      where: { workspace_id: workspaceId },
-      orderBy: { issued_at: 'desc' },
-    });
-  }
+  async findByWorkspace(workspaceId: string, filters?: { page?: number; limit?: number; search?: string }) {
+    const page = filters?.page ?? 1;
+    const limit = Math.min(filters?.limit ?? 10, 100);
+    const skip = (page - 1) * limit;
 
-  private async nextNumber(): Promise<string> {
-    const year = new Date().getFullYear();
-    if (this.counter === 0) {
-      const last = await this.prisma.billingInvoice.findFirst({
-        where: { number: { startsWith: `PH-${year}` } },
-        orderBy: { number: 'desc' },
-        select: { number: true },
-      });
-      if (last) {
-        const seq = parseInt(last.number.split('-')[2] || '0', 10);
-        this.counter = seq + 1;
-      } else {
-        this.counter = 1;
-      }
+    const where: any = { workspace_id: workspaceId };
+
+    if (filters?.search) {
+      const s = filters.search;
+      where.OR = [
+        { number: { contains: s, mode: 'insensitive' } },
+        { client_name: { contains: s, mode: 'insensitive' } },
+        { plan_name: { contains: s, mode: 'insensitive' } },
+        { status: { contains: s, mode: 'insensitive' } },
+      ];
     }
-    return `PH-${year}-${String(this.counter++).padStart(4, '0')}`;
+
+    const [data, total] = await Promise.all([
+      this.prisma.billingInvoice.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { issued_at: 'desc' },
+      }),
+      this.prisma.billingInvoice.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, pages: Math.ceil(total / limit) },
+    };
   }
 }

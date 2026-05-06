@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -14,8 +8,9 @@ import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { InviteTokenPayload } from './invite-token.types';
 import { RegisterDto } from './dto/register.dto';
-import { JwtPayload } from './strategies/jwt.strategy';
+import { JwtPayload, AuthUser } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
+import { DemoDataService } from '../demo/demo-data.service';
 
 @Injectable()
 export class AuthService {
@@ -23,6 +18,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly refreshTokenService: RefreshTokenService,
+    private readonly demoData: DemoDataService,
   ) {}
 
   // ── Login ──────────────────────────────────────────────────────────────────
@@ -77,14 +73,17 @@ export class AuthService {
     });
     if (!workspace) throw new UnauthorizedException('Workspace no encontrado.');
 
-    const membership = await this.prisma.workspaceUser.findUnique({
-      where: {
-        workspace_id_user_id: {
-          workspace_id: workspace.id,
-          user_id: user.id,
+    const [membership, refresh_token] = await Promise.all([
+      this.prisma.workspaceUser.findUnique({
+        where: {
+          workspace_id_user_id: {
+            workspace_id: workspace.id,
+            user_id: user.id,
+          },
         },
-      },
-    });
+      }),
+      this.refreshTokenService.create(user.id, workspace.id),
+    ]);
     if (!membership) throw new UnauthorizedException('Sin acceso a este workspace.');
 
     const access_token = this.signToken({
@@ -94,8 +93,6 @@ export class AuthService {
       role: membership.role,
       is_platform_admin: user.is_platform_admin,
     });
-
-    const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
 
     return {
       access_token,
@@ -132,7 +129,7 @@ export class AuthService {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('El email ya está registrado.');
 
-    const password_hash = await bcrypt.hash(dto.password, 12);
+    const password_hash = await bcrypt.hash(dto.password, 10);
 
     const user = await this.prisma.user.create({
       data: {
@@ -159,6 +156,23 @@ export class AuthService {
           },
         },
       },
+    });
+
+    // ──────────────────────────────────────────────────────────────────────
+    // IMPORTANTE — DATA DEMO AUTOMATICA EN CADA REGISTRO (DEV ONLY)
+    //
+    // HOY CADA NUEVO WORKSPACE RECIBE CONTACTOS, FACTURAS, CONVERSACIONES
+    // Y AUTOMATIZACIONES FAKE. UTIL EN DEV/SANDBOX PARA QUE LA UI SE VEA
+    // POBLADA AL ENTRAR.
+    //
+    // AL PASAR A PRODUCCION:
+    //   - REMOVER ESTA LLAMADA, O
+    //   - GATEAR DETRAS DE FEATURE FLAG (`ENABLE_DEMO_DATA=true`), O
+    //   - MOVER A UNA OPCION OPT-IN EN EL ONBOARDING.
+    // EN PROD INFLA LA BD CON DATA QUE EL USUARIO NO PIDIO.
+    // ──────────────────────────────────────────────────────────────────────
+    this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch((err) => {
+      // Silent — demo data population failures are non-critical
     });
 
     const access_token = this.signToken({
@@ -278,6 +292,143 @@ export class AuthService {
     };
   }
 
+  // ── Google OAuth ────────────────────────────────────────────────────────────
+
+  async googleLogin(profile: { googleId: string; email: string; name: string; avatarUrl: string | null }) {
+    // 1. Try by google_id first
+    let user = await this.prisma.user.findUnique({
+      where: { google_id: profile.googleId },
+    });
+
+    if (user) {
+      if (user.status !== 'ACTIVE') {
+        throw new UnauthorizedException('Usuario inactivo o suspendido.');
+      }
+    } else {
+      // 2. Try by email — link Google account if found
+      user = await this.prisma.user.findUnique({
+        where: { email: profile.email },
+      });
+
+      if (user) {
+        if (user.status !== 'ACTIVE') {
+          throw new UnauthorizedException('Usuario inactivo o suspendido.');
+        }
+        // Link google_id to existing account
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { google_id: profile.googleId },
+        });
+      }
+    }
+
+    if (!user) {
+      // 3. New user — create account + workspace
+      user = await this.prisma.user.create({
+        data: {
+          email: profile.email,
+          name: profile.name,
+          google_id: profile.googleId,
+          avatar_url: profile.avatarUrl,
+          status: 'ACTIVE',
+        },
+      });
+
+      const slug = await this.generateUniqueWorkspaceSlug();
+      const workspace = await this.prisma.workspace.create({
+        data: {
+          name: `${profile.name}'s Workspace`,
+          slug,
+          status: 'ACTIVE',
+          plan: 'FREE',
+          workspace_users: {
+            create: {
+              user_id: user.id,
+              role: 'OWNER',
+              is_owner: true,
+            },
+          },
+        },
+      });
+
+      this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch(() => {});
+
+      const access_token = this.signToken({
+        sub: user.id, email: user.email, workspace_id: workspace.id,
+        role: 'OWNER', is_platform_admin: false,
+      });
+      const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
+
+      return {
+        access_token, refresh_token,
+        user: {
+          id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url,
+          role: 'OWNER', is_owner: true, is_platform_admin: false,
+          workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan },
+        },
+      };
+    }
+
+    // Existing user — resolve workspace membership
+    const memberships = await this.prisma.workspaceUser.findMany({
+      where: { user_id: user.id },
+      include: { workspace: { select: { id: true, slug: true, name: true, plan: true } } },
+      orderBy: { created_at: 'asc' },
+    });
+
+    if (memberships.length === 0) {
+      // User exists but has no workspace — create one
+      const slug = await this.generateUniqueWorkspaceSlug();
+      const workspace = await this.prisma.workspace.create({
+        data: {
+          name: `${user.name}'s Workspace`,
+          slug,
+          status: 'ACTIVE',
+          plan: 'FREE',
+          workspace_users: {
+            create: {
+              user_id: user.id,
+              role: 'OWNER',
+              is_owner: true,
+            },
+          },
+        },
+      });
+
+      const access_token = this.signToken({
+        sub: user.id, email: user.email, workspace_id: workspace.id,
+        role: 'OWNER', is_platform_admin: user.is_platform_admin,
+      });
+      const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
+
+      return {
+        access_token, refresh_token,
+        user: {
+          id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url,
+          role: 'OWNER', is_owner: true, is_platform_admin: user.is_platform_admin,
+          workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan },
+        },
+      };
+    }
+
+    // Use first membership
+    const m = memberships[0];
+    const access_token = this.signToken({
+      sub: user.id, email: user.email, workspace_id: m.workspace_id,
+      role: m.role, is_platform_admin: user.is_platform_admin,
+    });
+    const refresh_token = await this.refreshTokenService.create(user.id, m.workspace_id);
+
+    return {
+      access_token, refresh_token,
+      user: {
+        id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url,
+        role: m.role, is_owner: m.is_owner, is_platform_admin: user.is_platform_admin,
+        workspace: { id: m.workspace.id, name: m.workspace.name, slug: m.workspace.slug, plan: m.workspace.plan },
+      },
+    };
+  }
+
   async getInvitePreview(rawToken?: string) {
     const payload = this.verifyInviteToken(rawToken);
     const workspace = await this.prisma.workspace.findUnique({
@@ -312,6 +463,74 @@ export class AuthService {
         slug: workspace.slug,
       },
       role: membership.role,
+    };
+  }
+
+  async getInviteCodePreview(code: string) {
+    const record = await this.prisma.invitationCode.findUnique({
+      where: { code: code.toUpperCase() },
+      include: { workspace: { select: { id: true, name: true, slug: true } } },
+    });
+    if (!record) throw new BadRequestException('Código de invitación no encontrado.');
+    if (!record.is_active || new Date() > record.expires_at) {
+      throw new BadRequestException('Este código ya expiró.');
+    }
+    if (record.used_count >= record.max_uses) {
+      throw new BadRequestException('Este código ya alcanzó el límite de usos.');
+    }
+    return {
+      code_id: record.id,
+      workspace_name: record.workspace.name,
+      workspace_slug: record.workspace.slug,
+      role: record.role,
+      requires_account_setup: false,
+    };
+  }
+
+  async redeemInviteCode(dto: { code: string; name?: string; password?: string }, userId: string) {
+    const record = await this.prisma.invitationCode.findUnique({
+      where: { code: dto.code.toUpperCase() },
+      include: { workspace: { select: { id: true, name: true, slug: true } } },
+    });
+    if (!record) throw new BadRequestException('Código de invitación no encontrado.');
+    if (!record.is_active || new Date() > record.expires_at) {
+      throw new BadRequestException('Este código ya expiró.');
+    }
+    if (record.used_count >= record.max_uses) {
+      throw new BadRequestException('Este código ya alcanzó el límite de usos.');
+    }
+
+    const workspace = record.workspace;
+
+    const existingMembership = await this.prisma.workspaceUser.findUnique({
+      where: {
+        workspace_id_user_id: {
+          workspace_id: workspace.id,
+          user_id: userId,
+        },
+      },
+    });
+    if (existingMembership) throw new BadRequestException('Ya eres miembro de este workspace.');
+
+    await this.prisma.workspaceUser.create({
+      data: {
+        workspace_id: workspace.id,
+        user_id: userId,
+        role: record.role as any,
+        is_owner: false,
+      },
+    });
+
+    await this.prisma.invitationCode.update({
+      where: { id: record.id },
+      data: { used_count: { increment: 1 } },
+    });
+
+    return {
+      workspace_id: workspace.id,
+      workspace_name: workspace.name,
+      workspace_slug: workspace.slug,
+      role: record.role,
     };
   }
 
@@ -351,7 +570,7 @@ export class AuthService {
         throw new BadRequestException('La contraseña es requerida para activar la invitación.');
       }
 
-      const password_hash = await bcrypt.hash(dto.password, 12);
+      const password_hash = await bcrypt.hash(dto.password, 10);
       resolvedUser = await this.prisma.user.update({
         where: { id: user.id },
         data: {
@@ -397,22 +616,26 @@ export class AuthService {
 
   // ── Me ─────────────────────────────────────────────────────────────────────
 
-  async getMe(userId: string, workspaceId: string) {
-    const membership = await this.prisma.workspaceUser.findUniqueOrThrow({
-      where: {
-        workspace_id_user_id: { workspace_id: workspaceId, user_id: userId },
-      },
-      include: {
-        user: { select: { id: true, email: true, name: true, avatar_url: true, status: true, created_at: true, is_platform_admin: true } },
-        workspace: { select: { id: true, name: true, slug: true, plan: true, timezone: true, locale: true } },
-      },
+  async getMe(user: AuthUser) {
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: user.workspace_id },
+      select: { id: true, name: true, slug: true, plan: true, timezone: true, locale: true },
+    });
+
+    const userData = await this.prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: { avatar_url: true, name: true },
     });
 
     return {
-      ...membership.user,
-      role: membership.role,
-      is_owner: membership.is_owner,
-      workspace: membership.workspace,
+      id: user.id,
+      email: user.email,
+      name: userData.name,
+      avatar_url: userData.avatar_url,
+      role: user.role,
+      is_owner: user.is_owner,
+      is_platform_admin: user.is_platform_admin,
+      workspace,
     };
   }
 
@@ -493,7 +716,7 @@ export class AuthService {
       });
       if (!exists) return candidate;
     }
-    throw new Error('Could not generate unique workspace slug.');
+    throw new InternalServerErrorException('Could not generate unique workspace slug.');
   }
 
   private verifyInviteToken(rawToken?: string): InviteTokenPayload {

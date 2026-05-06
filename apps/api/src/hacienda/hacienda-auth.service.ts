@@ -46,6 +46,13 @@ export class HaciendaAuthService {
 
     const body = new URLSearchParams();
     body.set('grant_type', 'password');
+    // ────────────────────────────────────────────────────────────────────
+    // IMPORTANTE — `api-stag` ES EL CLIENT ID DE STAGING DE HACIENDA.
+    // EN PRODUCCION CADA WORKSPACE DEBE TENER `hacienda_client_id` SETEADO
+    // CON SU CLIENT ID PROD (`api-prod` U OTRO SEGUN HACIENDA). EL DEFAULT
+    // ES SOLO PARA DEV/SANDBOX. SI ESTA CAYENDO ACA EN PROD, EL WORKSPACE
+    // NO TERMINO DE CONFIGURAR FACTURACION ELECTRONICA.
+    // ────────────────────────────────────────────────────────────────────
     body.set('client_id', settings.hacienda_client_id ?? 'api-stag');
     body.set('username', settings.hacienda_username);
     body.set('password', password);
@@ -57,6 +64,7 @@ export class HaciendaAuthService {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: body.toString(),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!response.ok) {

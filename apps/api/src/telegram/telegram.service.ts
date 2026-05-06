@@ -16,6 +16,8 @@ export interface TelegramWebhookInfo {
   allowed_updates?: string[];
 }
 
+export type { TelegramWebhookInfo };
+
 @Injectable()
 export class TelegramService {
   private readonly logger = new Logger(TelegramService.name);
@@ -34,7 +36,7 @@ export class TelegramService {
    */
   private async getBotToken(channelId: string): Promise<string | null> {
     const channel = await this.prisma.channel.findFirst({
-      where: { id: channelId, type: 'TELEGRAM' },
+      where: { id: channelId, type: 'TELEGRAM', status: 'ACTIVE' },
       select: { config_json: true },
     });
 
@@ -98,27 +100,30 @@ export class TelegramService {
     const webhookUrl = `${baseUrl}/api/inbound/telegram/webhook/${channelId}`;
 
     try {
-      // Set webhook with optional parameters
       await bot.telegram.setWebhook(webhookUrl, {
         allowed_updates: ['message', 'edited_message', 'callback_query'],
         max_connections: 40,
       });
 
-      // Store bot instance for later use
       this.bots.set(channelId, bot);
       this.webhookCache.set(channelId, { url: webhookUrl, timestamp: Date.now() });
 
-      this.logger.log(`✓ Telegram webhook registered: channel=${channelId}, url=${webhookUrl}`);
+      this.logger.log(`Telegram webhook registered: channel=${channelId}, url=${webhookUrl}`);
     } catch (err) {
-      this.logger.error(`✗ Failed to register webhook: ${(err as Error).message}`);
+      this.logger.error(`Failed to register webhook: ${(err as Error).message}`);
       throw new BadRequestException(`Failed to register webhook: ${(err as Error).message}`);
     }
   }
 
   /**
-   * Process incoming Telegram update
+   * Process incoming Telegram update with deduplication and metadata storage
    */
-  async processUpdate(channelId: string, update: any): Promise<void> {
+  async processUpdate(channelId: string, update: any): Promise<{ processed: boolean; duplicate?: boolean }> {
+    // Validate payload structure
+    if (!update || typeof update !== 'object') {
+      return { processed: false };
+    }
+
     try {
       const channel = await this.prisma.channel.findFirst({
         where: { id: channelId, type: 'TELEGRAM', status: 'ACTIVE' },
@@ -126,27 +131,33 @@ export class TelegramService {
       });
 
       if (!channel) {
-        this.logger.warn(`Channel ${channelId} not found or inactive`);
-        return;
+        this.logger.warn(`Inactive or missing Telegram channel ${channelId} — rejecting webhook`);
+        return { processed: false };
       }
 
       const message = update?.message || update?.edited_message;
-      if (!message) {
-        return; // Ignore non-message updates
-      }
+      if (!message) return { processed: false };
 
-      // Check if message has content
       const hasContent = !!(message.text || message.caption || message.photo || message.document || message.video || message.audio || message.voice);
-      if (!hasContent) {
-        return;
-      }
+      if (!hasContent) return { processed: false };
 
       const from = message.from;
       const chat = message.chat;
+      if (!from || !chat) return { processed: false };
 
-      if (!from || !chat) {
-        this.logger.warn('Invalid message structure: missing from or chat');
-        return;
+      // Deduplication: check if this telegram_message_id was already processed
+      const tgMessageId = String(message.message_id);
+      const existing = await this.prisma.message.findFirst({
+        where: {
+          workspace_id: channel.workspace_id,
+          telegram_message_id: tgMessageId,
+        },
+        select: { id: true },
+      });
+
+      if (existing) {
+        this.logger.debug(`Duplicate Telegram message ${tgMessageId} — skipping`);
+        return { processed: true, duplicate: true };
       }
 
       const text = message.text || message.caption || '';
@@ -159,51 +170,22 @@ export class TelegramService {
 
       // Extract attachments
       const attachments: any[] = [];
-      if (message.photo && message.photo.length > 0) {
-        const largestPhoto = message.photo[message.photo.length - 1];
-        attachments.push({
-          type: 'photo',
-          file_id: largestPhoto.file_id,
-          width: largestPhoto.width,
-          height: largestPhoto.height,
-        });
+      if (message.photo?.length) {
+        attachments.push({ type: 'photo', file_id: message.photo[message.photo.length - 1].file_id });
       }
       if (message.document) {
-        attachments.push({
-          type: 'document',
-          file_id: message.document.file_id,
-          file_name: message.document.file_name,
-          mime_type: message.document.mime_type,
-          file_size: message.document.file_size,
-        });
+        attachments.push({ type: 'document', file_id: message.document.file_id, file_name: message.document.file_name });
       }
       if (message.video) {
-        attachments.push({
-          type: 'video',
-          file_id: message.video.file_id,
-          duration: message.video.duration,
-          width: message.video.width,
-          height: message.video.height,
-        });
+        attachments.push({ type: 'video', file_id: message.video.file_id });
       }
       if (message.audio) {
-        attachments.push({
-          type: 'audio',
-          file_id: message.audio.file_id,
-          duration: message.audio.duration,
-          performer: message.audio.performer,
-          title: message.audio.title,
-        });
+        attachments.push({ type: 'audio', file_id: message.audio.file_id });
       }
       if (message.voice) {
-        attachments.push({
-          type: 'voice',
-          file_id: message.voice.file_id,
-          duration: message.voice.duration,
-        });
+        attachments.push({ type: 'voice', file_id: message.voice.file_id });
       }
 
-      // Create inbound message
       await this.messagesService.receiveInbound(
         channel.workspace_id,
         channel.id,
@@ -211,9 +193,14 @@ export class TelegramService {
           body_text: text,
           sender_name: senderName,
           sender_ref: senderRef,
-          external_id: String(message.message_id),
+          external_id: tgMessageId,
           conversation_ref: conversationRef,
           raw_payload: update,
+          // Telegram metadata for storage
+          telegram_chat_id: String(chat.id),
+          telegram_user_id: from.id ? String(from.id) : undefined,
+          telegram_message_id: tgMessageId,
+          message_type: message.photo ? 'image' : message.document ? 'file' : message.video ? 'video' : message.audio ? 'audio' : 'text',
           attachments: attachments.length > 0 ? attachments : undefined,
           metadata: {
             telegram_user_id: from.id,
@@ -223,9 +210,12 @@ export class TelegramService {
           },
         },
       );
+
+      this.logger.debug(`Telegram message ${tgMessageId} from ${senderRef} → workspace ${channel.workspace_id}`);
+      return { processed: true };
     } catch (err) {
-      this.logger.error(`Error processing Telegram update: ${(err as Error).message}`);
-      // Don't throw - Telegram expects 200 OK regardless
+      this.logger.error(`Telegram inbound error: ${(err as Error).message}`);
+      return { processed: false };
     }
   }
 
@@ -241,7 +231,7 @@ export class TelegramService {
       await bot.telegram.deleteWebhook();
       this.bots.delete(channelId);
       this.webhookCache.delete(channelId);
-      this.logger.log(`✓ Telegram webhook removed for channel ${channelId}`);
+      this.logger.log(`Telegram webhook removed for channel ${channelId}`);
     } catch (err) {
       this.logger.error(`Failed to remove webhook: ${(err as Error).message}`);
     }
@@ -265,7 +255,7 @@ export class TelegramService {
       const result = await bot.telegram.sendMessage(chatId, text, {
         parse_mode: 'HTML',
       });
-      this.logger.log(`✓ Message sent to chat ${chatId} in channel ${channelId}`);
+      this.logger.log(`Message sent to chat ${chatId} in channel ${channelId}`);
       return result;
     } catch (err) {
       this.logger.error(`Failed to send message: ${(err as Error).message}`);

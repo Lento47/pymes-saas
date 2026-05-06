@@ -1,7 +1,9 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { InsightsService } from '../insights/insights.service';
 import { SearchService } from '../search/search.service';
+import { DiagnosticService } from './diagnostic.service';
+import { EngineeringFixService } from './engineering-fix.service';
 import { ConversationsService } from '../conversations/conversations.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
@@ -16,6 +18,8 @@ export class AgentToolsService {
     private readonly prisma: PrismaService,
     private readonly insights: InsightsService,
     private readonly searchService: SearchService,
+    private readonly diagnostic: DiagnosticService,
+    private readonly fixService: EngineeringFixService,
     @Inject(forwardRef(() => ConversationsService))
     private readonly conversations: ConversationsService,
     private readonly notifications: NotificationsService,
@@ -84,8 +88,20 @@ export class AgentToolsService {
         return this.listDocuments(workspaceId, args);
       case 'get_settings':
         return this.getSettings(workspaceId);
+      case 'get_errors':
+        return this.getErrors(workspaceId, args);
+      case 'diagnose':
+        return this.diagnose(workspaceId, args);
+      case 'list_diagnostic_cases':
+        return this.listDiagnosticCases(workspaceId);
+      case 'list_fix_cases':
+        return this.listFixCases(workspaceId);
+      case 'approve_fix':
+        return this.approveFix(args);
+      case 'reject_fix':
+        return this.rejectFix(args);
       default:
-        throw new Error(`Unknown tool: ${tool}`);
+        throw new BadRequestException(`Unknown tool: ${tool}`);
     }
   }
 
@@ -147,7 +163,7 @@ export class AgentToolsService {
   private async listInvoices(workspaceId: string) {
     const invoices = await this.prisma.invoice.findMany({
       where: { workspace_id: workspaceId },
-      select: { id: true, number: true, amount: true, status: true, due_date: true },
+      select: { id: true, number: true, amount: true, subtotal: true, tax_rate: true, tax_amount: true, status: true, due_date: true },
       take: 50,
       orderBy: { created_at: 'desc' },
     });
@@ -167,9 +183,9 @@ export class AgentToolsService {
   }
 
   private async listAutomations(workspaceId: string) {
-    const automations = await this.prisma.automation.findMany({
+    const automations = await this.prisma.automationRule.findMany({
       where: { workspace_id: workspaceId },
-      select: { id: true, name: true, enabled: true, trigger_type: true, action_type: true },
+      select: { id: true, name: true, enabled: true, trigger_type: true },
       take: 50,
     });
     return { automations };
@@ -228,7 +244,7 @@ export class AgentToolsService {
 
   private async search(workspaceId: string, args: Record<string, any>) {
     const q = args.q || args.query || '';
-    if (!q) throw new Error('search requires a "q" argument');
+    if (!q) throw new BadRequestException('search requires a "q" argument');
     const typesArr = args.types ? (args.types as string).split(',').map((t: string) => t.trim()) : [];
     const results = await this.searchService.search(workspaceId, q, typesArr, 10);
     return { results };
@@ -236,7 +252,7 @@ export class AgentToolsService {
 
   private async getConversationDetail(workspaceId: string, args: Record<string, any>) {
     const id = args.id || args.conversation_id;
-    if (!id) throw new Error('get_conversation_detail requires "id" argument');
+    if (!id) throw new BadRequestException('get_conversation_detail requires "id" argument');
     const [conv, messages] = await Promise.all([
       this.prisma.conversation.findFirst({
         where: { id, workspace_id: workspaceId },
@@ -249,20 +265,20 @@ export class AgentToolsService {
         orderBy: { sent_at: 'asc' },
       }),
     ]);
-    if (!conv) throw new Error(`Conversation "${id}" not found`);
+    if (!conv) throw new BadRequestException(`Conversation "${id}" not found`);
     return { conversation: conv, messages };
   }
 
   private async replyConversation(workspaceId: string, args: Record<string, any>) {
     const id = args.id || args.conversation_id;
     const text = args.text || args.message;
-    if (!id || !text) throw new Error('reply_conversation requires "id" and "text"');
+    if (!id || !text) throw new BadRequestException('reply_conversation requires "id" and "text"');
 
     const conv = await this.prisma.conversation.findFirst({
       where: { id, workspace_id: workspaceId },
       include: { contact: true, channel: true },
     });
-    if (!conv) throw new Error(`Conversation "${id}" not found`);
+    if (!conv) throw new BadRequestException(`Conversation "${id}" not found`);
 
     const message = await this.prisma.message.create({
       data: {
@@ -318,9 +334,47 @@ export class AgentToolsService {
     return { message, dispatched };
   }
 
+  private async resolveConversation(workspaceId: string, args: Record<string, any>) {
+    const id = args.id || args.conversation_id;
+    if (!id) throw new BadRequestException('resolve_conversation requires "id"');
+    const conversation = await this.conversations.resolve(workspaceId, id);
+    return { conversation, resolved: true };
+  }
+
+  private async assignConversation(workspaceId: string, args: Record<string, any>) {
+    const id = args.id || args.conversation_id;
+    const userId = args.user_id || args.assigned_user_id;
+    if (!id || !userId) throw new BadRequestException('assign_conversation requires "id" and "user_id"');
+    const conversation = await this.conversations.assign(workspaceId, id, userId);
+    return { conversation, assigned: true };
+  }
+
+  private async updateConversation(workspaceId: string, args: Record<string, any>) {
+    const id = args.id || args.conversation_id;
+    if (!id) throw new BadRequestException('update_conversation requires "id"');
+    if (args.status === 'RESOLVED') {
+      const conversation = await this.conversations.resolve(workspaceId, id);
+      return { conversation };
+    }
+    if (args.assigned_user_id) {
+      await this.conversations.assign(workspaceId, id, args.assigned_user_id);
+    }
+    const dto: any = {};
+    if (args.status !== undefined && args.status !== null) dto.status = args.status;
+    if (args.priority !== undefined && args.priority !== null) dto.priority = args.priority;
+    if (args.category !== undefined) dto.category = args.category;
+    if (Object.keys(dto).length === 0 && !args.assigned_user_id) {
+      throw new BadRequestException('update_conversation requires at least one field to change');
+    }
+    const conversation = Object.keys(dto).length
+      ? await this.conversations.update(workspaceId, id, dto)
+      : await this.conversations.findOne(workspaceId, id);
+    return { conversation };
+  }
+
   private async createConversation(workspaceId: string, args: Record<string, any>) {
     const channel_id = args.channel_id;
-    if (!channel_id) throw new Error('create_conversation requires "channel_id"');
+    if (!channel_id) throw new BadRequestException('create_conversation requires "channel_id"');
     const dto: any = {
       channel_id,
       contact_id: args.contact_id || undefined,
@@ -337,7 +391,7 @@ export class AgentToolsService {
     const id = args.id || args.conversation_id;
     const notes = args.notes ?? args.note ?? args.text;
     if (!id || typeof notes !== 'string') {
-      throw new Error('add_internal_note requires "id" and "notes"');
+      throw new BadRequestException('add_internal_note requires "id" and "notes"');
     }
     const conversation = await this.conversations.update(workspaceId, id, { notes });
     return { conversation };
@@ -346,13 +400,13 @@ export class AgentToolsService {
   private async notifyUser(workspaceId: string, args: Record<string, any>) {
     const user_id = args.user_id;
     const title = args.title;
-    if (!user_id || !title) throw new Error('notify_user requires "user_id" and "title"');
+    if (!user_id || !title) throw new BadRequestException('notify_user requires "user_id" and "title"');
 
     const member = await this.prisma.workspaceUser.findFirst({
       where: { workspace_id: workspaceId, user_id },
       select: { id: true },
     });
-    if (!member) throw new Error(`User "${user_id}" is not a member of this workspace`);
+    if (!member) throw new BadRequestException(`User "${user_id}" is not a member of this workspace`);
 
     const notification = await this.notifications.create(workspaceId, {
       user_id,
@@ -365,49 +419,11 @@ export class AgentToolsService {
     return { notification };
   }
 
-  private async resolveConversation(workspaceId: string, args: Record<string, any>) {
-    const id = args.id || args.conversation_id;
-    if (!id) throw new Error('resolve_conversation requires "id"');
-    const conversation = await this.conversations.resolve(workspaceId, id);
-    return { conversation, resolved: true };
-  }
-
-  private async assignConversation(workspaceId: string, args: Record<string, any>) {
-    const id = args.id || args.conversation_id;
-    const userId = args.user_id || args.assigned_user_id;
-    if (!id || !userId) throw new Error('assign_conversation requires "id" and "user_id"');
-    const conversation = await this.conversations.assign(workspaceId, id, userId);
-    return { conversation, assigned: true };
-  }
-
-  private async updateConversation(workspaceId: string, args: Record<string, any>) {
-    const id = args.id || args.conversation_id;
-    if (!id) throw new Error('update_conversation requires "id"');
-    if (args.status === 'RESOLVED') {
-      const conversation = await this.conversations.resolve(workspaceId, id);
-      return { conversation };
-    }
-    if (args.assigned_user_id) {
-      await this.conversations.assign(workspaceId, id, args.assigned_user_id);
-    }
-    const dto: any = {};
-    if (args.status !== undefined && args.status !== null) dto.status = args.status;
-    if (args.priority !== undefined && args.priority !== null) dto.priority = args.priority;
-    if (args.category !== undefined) dto.category = args.category;
-    if (Object.keys(dto).length === 0 && !args.assigned_user_id) {
-      throw new Error('update_conversation requires at least one field to change');
-    }
-    const conversation = Object.keys(dto).length
-      ? await this.conversations.update(workspaceId, id, dto)
-      : await this.conversations.findOne(workspaceId, id);
-    return { conversation };
-  }
-
   private async createAutomation(workspaceId: string, args: Record<string, any>) {
     if (!args.name || !args.trigger_type) {
-      throw new Error('create_automation requires "name" and "trigger_type"');
+      throw new BadRequestException('create_automation requires "name" and "trigger_type"');
     }
-    const auto = await this.prisma.automation.create({
+    const auto = await this.prisma.automationRule.create({
       data: {
         workspace_id: workspaceId,
         name: args.name,
@@ -423,12 +439,12 @@ export class AgentToolsService {
   }
 
   private async toggleAutomation(workspaceId: string, args: Record<string, any>) {
-    if (!args.id) throw new Error('toggle_automation requires "id"');
-    const existing = await this.prisma.automation.findFirst({
+    if (!args.id) throw new BadRequestException('toggle_automation requires "id"');
+    const existing = await this.prisma.automationRule.findFirst({
       where: { id: args.id, workspace_id: workspaceId },
     });
-    if (!existing) throw new Error(`Automation "${args.id}" not found`);
-    const updated = await this.prisma.automation.update({
+    if (!existing) throw new BadRequestException(`Automation "${args.id}" not found`);
+    const updated = await this.prisma.automationRule.update({
       where: { id: args.id },
       data: { enabled: args.enabled !== undefined ? args.enabled : !existing.enabled },
     });
@@ -436,23 +452,23 @@ export class AgentToolsService {
   }
 
   private async updateTask(workspaceId: string, args: Record<string, any>) {
-    if (!args.id) throw new Error('update_task requires "id"');
+    if (!args.id) throw new BadRequestException('update_task requires "id"');
     const data: any = {};
     if (args.title !== undefined) data.title = args.title;
     if (args.description !== undefined) data.description = args.description;
     if (args.status !== undefined) data.status = args.status;
     if (args.priority !== undefined) data.priority = args.priority;
     if (args.due_date !== undefined) data.due_at = new Date(args.due_date);
-    if (args.assignee_id !== undefined) data.assignee_id = args.assignee_id;
+    if (args.assignee_id !== undefined) data.assigned_user_id = args.assignee_id;
     const task = await this.prisma.task.update({
-      where: { id: args.id },
+      where: { id: args.id, workspace_id: workspaceId },
       data,
     });
     return { task };
   }
 
   private async createDeal(workspaceId: string, args: Record<string, any>) {
-    if (!args.title || !args.stage_id) throw new Error('create_deal requires "title" and "stage_id"');
+    if (!args.title || !args.stage_id) throw new BadRequestException('create_deal requires "title" and "stage_id"');
     const deal = await this.prisma.deal.create({
       data: {
         workspace_id: workspaceId,
@@ -467,9 +483,9 @@ export class AgentToolsService {
   }
 
   private async moveDeal(workspaceId: string, args: Record<string, any>) {
-    if (!args.id || !args.stage_id) throw new Error('move_deal requires "id" and "stage_id"');
+    if (!args.id || !args.stage_id) throw new BadRequestException('move_deal requires "id" and "stage_id"');
     const deal = await this.prisma.deal.update({
-      where: { id: args.id },
+      where: { id: args.id, workspace_id: workspaceId },
       data: { stage_id: args.stage_id },
     });
     return { deal };
@@ -485,5 +501,55 @@ export class AgentToolsService {
       orderBy: { created_at: 'desc' },
     });
     return { documents: docs };
+  }
+
+  private async getErrors(workspaceId: string, args: Record<string, any>) {
+    const limit = Math.min(args.limit || 10, 50);
+    const errors = await (this.prisma as any).errorReport.findMany({
+      where: { workspace_id: workspaceId },
+      select: {
+        id: true, source: true, category: true, severity: true, title: true,
+        message: true, route: true, method: true, status_code: true,
+        occurred_at: true, context_json: true,
+      },
+      orderBy: { occurred_at: 'desc' },
+      take: limit,
+    });
+    return {
+      errors,
+      count: errors.length,
+      summary: errors.length > 0
+        ? `${errors.length} error(es) reciente(s). ${errors.filter((e: any) => e.status_code && e.status_code >= 500).length} son del servidor (5xx).`
+        : 'No hay errores recientes en este workspace.',
+    };
+  }
+
+  private async diagnose(workspaceId: string, args: Record<string, any>) {
+    const result = await this.diagnostic.diagnose({
+      workspaceId,
+      user_description: args.description || args.user_description || '',
+      error_report_id: args.error_report_id,
+    });
+    return { diagnosis: result };
+  }
+
+  private async listDiagnosticCases(workspaceId: string) {
+    const cases = await this.diagnostic.listCases(workspaceId);
+    return { diagnostic_cases: cases };
+  }
+
+  private async listFixCases(workspaceId: string) {
+    const cases = await this.fixService.listFixCases(workspaceId);
+    return { fix_cases: cases };
+  }
+
+  private async approveFix(args: Record<string, any>) {
+    if (!args.fix_case_id) throw new BadRequestException('approve_fix requires fix_case_id');
+    return this.fixService.approveFix(args.fix_case_id);
+  }
+
+  private async rejectFix(args: Record<string, any>) {
+    if (!args.fix_case_id) throw new BadRequestException('reject_fix requires fix_case_id');
+    return this.fixService.rejectFix(args.fix_case_id, args.reason || '');
   }
 }

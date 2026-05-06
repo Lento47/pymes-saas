@@ -11,16 +11,23 @@ import { CryptoService } from '../common/crypto/crypto.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MessagesService } from '../conversations/messages.service';
 import { parseJsonValue } from '../common/prisma/json';
+import { SmtpService } from './smtp.service';
 
 /**
  * Shape of config_json stored in the EMAIL channel.
  * api_key is stored encrypted as api_key_encrypted.
+ * SMTP credentials stored encrypted as smtp_pass_encrypted.
  */
 interface EmailChannelConfig {
-  api_key_encrypted: string;
+  api_key_encrypted?: string;
   from_email: string;
   inbound_email?: string;
   from_name: string;
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_user?: string;
+  smtp_pass_encrypted?: string;
+  smtp_tls?: boolean;
 }
 
 /**
@@ -44,6 +51,7 @@ export class EmailService {
   constructor(
     private readonly crypto: CryptoService,
     private readonly prisma: PrismaService,
+    private readonly smtp: SmtpService,
     @Inject(forwardRef(() => MessagesService))
     private readonly messagesService: MessagesService,
   ) {}
@@ -71,13 +79,40 @@ export class EmailService {
   ): Promise<{ id: string }> {
     const config = parseJsonValue<EmailChannelConfig>(channel.config_json, {} as EmailChannelConfig);
 
-    if (!config?.api_key_encrypted) {
-      throw new BadGatewayException(
-        'Email channel is not configured — api_key_encrypted is missing.',
+    if (!config?.from_email) {
+      throw new BadGatewayException('Email channel is not configured — from_email is missing.');
+    }
+
+    const from = `${config.from_name} <${config.from_email}>`;
+
+    // Try SMTP first
+    if (config.smtp_host && config.smtp_user && config.smtp_pass_encrypted) {
+      let pass: string;
+      try {
+        pass = this.crypto.decrypt(config.smtp_pass_encrypted);
+      } catch {
+        throw new BadGatewayException('Failed to decrypt SMTP password. Check ENCRYPTION_KEY in .env.');
+      }
+
+      return this.smtp.send(
+        {
+          host: config.smtp_host,
+          port: config.smtp_port ?? 587,
+          user: config.smtp_user,
+          password: pass,
+          tls: config.smtp_tls ?? true,
+        },
+        { from, to, subject, html: bodyHtml, text: bodyText },
       );
     }
 
-    // Decrypt the stored API key
+    // Fallback to Resend
+    if (!config?.api_key_encrypted) {
+      throw new BadGatewayException(
+        'Email channel is not configured — neither SMTP nor Resend API key found.',
+      );
+    }
+
     let apiKey: string;
     try {
       apiKey = this.crypto.decrypt(config.api_key_encrypted);
@@ -86,8 +121,6 @@ export class EmailService {
         'Failed to decrypt the Resend API key. Check ENCRYPTION_KEY in .env.',
       );
     }
-
-    const from = `${config.from_name} <${config.from_email}>`;
 
     const resend = new Resend(apiKey);
 
@@ -111,6 +144,34 @@ export class EmailService {
       throw new BadGatewayException(
         `Resend failed to send email: ${err?.message ?? 'Unknown error'}`,
       );
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // INBOUND (webhook)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  async testSmtpConnection(smtpConfig: { host: string; port: number; user: string; password: string; tls: boolean; from_email: string; from_name: string }): Promise<{ success: boolean; message: string }> {
+    try {
+      const result = await this.smtp.send(
+        {
+          host: smtpConfig.host,
+          port: smtpConfig.port,
+          user: smtpConfig.user,
+          password: smtpConfig.password,
+          tls: smtpConfig.tls,
+        },
+        {
+          from: `${smtpConfig.from_name} <${smtpConfig.from_email}>`,
+          to: smtpConfig.from_email,
+          subject: 'PymesHub — Prueba de conexión SMTP',
+          html: '<p>Si recibiste este correo, tu configuración SMTP funciona correctamente.</p>',
+        },
+      );
+      return { success: true, message: `Conexión exitosa — Message ID: ${result.id}` };
+    } catch (err: any) {
+      this.logger.warn(`SMTP test failed: ${err?.message ?? err}`);
+      return { success: false, message: err?.message ?? 'Error de conexión SMTP' };
     }
   }
 

@@ -6,6 +6,8 @@ import { MessagesService } from './messages.service';
 import { EventsModule } from '../gateways/events.module';
 import { EmailModule } from '../email/email.module';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
+import { MessageTemplatesModule } from '../message-templates/message-templates.module';
+import { TelegramModule } from '../telegram/telegram.module';
 import { AiModule } from '../ai/ai.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -18,6 +20,8 @@ import { SlaService } from './sla.service';
     EventsModule,
     forwardRef(() => EmailModule),
     forwardRef(() => WhatsAppModule),
+    forwardRef(() => TelegramModule),
+    forwardRef(() => MessageTemplatesModule),
     forwardRef(() => AiModule),
     forwardRef(() => TasksModule),
     NotificationsModule,

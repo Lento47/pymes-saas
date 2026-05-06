@@ -53,6 +53,14 @@ export class PipelineService {
     });
   }
 
+  async getDeals(workspaceId: string) {
+    return this.prisma.deal.findMany({
+      where: { stage: { workspace_id: workspaceId } },
+      orderBy: { created_at: 'desc' },
+      include: DEAL_INCLUDE,
+    });
+  }
+
   async createStage(workspaceId: string, dto: CreateStageDto) {
     const agg = await this.prisma.dealStage.aggregate({
       where: { workspace_id: workspaceId },
@@ -84,8 +92,8 @@ export class PipelineService {
       data: {
         workspace_id: workspaceId,
         stage_id: dto.stage_id,
-        contact_id: dto.contact_id ?? null,
-        assigned_user_id: dto.assigned_user_id ?? null,
+        contact_id: dto.contact_id || null,
+        assigned_user_id: dto.assigned_user_id || null,
         title: dto.title,
         value: dto.value ?? null,
         currency: dto.currency ?? 'CRC',
@@ -107,6 +115,7 @@ export class PipelineService {
       }).catch(() => {});
     }
 
+    this.trackQuickStart(workspaceId, 'pipeline_created');
     return deal;
   }
 
@@ -214,5 +223,16 @@ export class PipelineService {
     const deal = await this.prisma.deal.findFirst({ where: { id, workspace_id: workspaceId } });
     if (!deal) throw new NotFoundException('Deal not found');
     return deal;
+  }
+
+  private async trackQuickStart(workspaceId: string, step: string) {
+    try {
+      const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
+      const s: any = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const progress = s.quick_start_progress || {};
+      if (progress[step]) return;
+      s.quick_start_progress = { ...progress, [step]: true };
+      await this.prisma.workspace.update({ where: { id: workspaceId }, data: { settings_json: s } });
+    } catch { /* fire-and-forget */ }
   }
 }

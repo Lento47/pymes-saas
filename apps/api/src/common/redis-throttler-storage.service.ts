@@ -7,6 +7,13 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
   private redis: Redis | null = null;
 
   constructor() {
+    // ────────────────────────────────────────────────────────────────────
+    // IMPORTANTE — DEFAULT A localhost:6379 PARA DEV.
+    // EN PRODUCCION SETEAR `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`
+    // CON LAS CREDENCIALES DEL REDIS MANEJADO (Railway/Upstash/etc).
+    // SI NO SE PUEDE CONECTAR, EL THROTTLER CAE A IN-MEMORY (PER-INSTANCE),
+    // QUE NO SIRVE EN MULTI-REPLICA — EL RATE LIMIT SE FRAGMENTA POR REPLICA.
+    // ────────────────────────────────────────────────────────────────────
     const host = process.env.REDIS_HOST || 'localhost';
     const port = parseInt(process.env.REDIS_PORT || '6379', 10);
     const password = process.env.REDIS_PASSWORD || undefined;
@@ -21,8 +28,11 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
         lazyConnect: true,
         retryStrategy: (times) => Math.min(times * 100, 3000),
       });
+      this.redis.on('error', () => {
+        // Silently suppress — fallback to in-memory below
+      });
       this.redis.connect().catch(() => {
-        this.redis = null; // Fallback to in-memory on connection failure
+        this.redis = null;
       });
     } catch {
       this.redis = null;

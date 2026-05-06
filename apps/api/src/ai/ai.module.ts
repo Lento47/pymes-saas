@@ -10,11 +10,15 @@ import { PrismaModule } from '../common/prisma/prisma.module';
 import { CryptoModule } from '../common/crypto/crypto.module';
 import { InsightsModule } from '../insights/insights.module';
 import { SearchModule } from '../search/search.module';
-import { ConversationsModule } from '../conversations/conversations.module';
+import { DocsModule } from '../docs/docs.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ConversationsModule } from '../conversations/conversations.module';
 import { EmailModule } from '../email/email.module';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { EventsModule } from '../gateways/events.module';
+import { SupportRouterService } from './support-router.service';
+import { DiagnosticService } from './diagnostic.service';
+import { EngineeringFixService } from './engineering-fix.service';
 
 @Module({
   imports: [
@@ -22,15 +26,15 @@ import { EventsModule } from '../gateways/events.module';
     CryptoModule,
     InsightsModule,
     SearchModule,
+    DocsModule,
+    forwardRef(() => NotificationsModule),
     forwardRef(() => ConversationsModule),
-    NotificationsModule,
     forwardRef(() => EmailModule),
     forwardRef(() => WhatsAppModule),
     EventsModule,
   ],
-  providers: [AiService, AgentService, AgentToolsService],
+  providers: [AiService, AgentService, AgentToolsService, SupportRouterService, DiagnosticService, EngineeringFixService],
   controllers: [AgentController, AgentToolsController, AiAssistantController, PublicAgentController],
   exports: [AiService, AgentService, AgentToolsService],
 })
 export class AiModule {}
-

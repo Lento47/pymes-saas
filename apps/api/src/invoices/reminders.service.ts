@@ -35,7 +35,7 @@ export class RemindersService {
     });
 
     if (updated.count > 0) {
-      const admins = await this.prisma.workspaceMembership.findMany({
+      const admins = await this.prisma.workspaceUser.findMany({
         where: { workspace_id: workspaceId, role: { in: ['OWNER'] as any } },
         select: { user_id: true },
         take: 3,

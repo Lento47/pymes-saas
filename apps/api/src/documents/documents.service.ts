@@ -9,6 +9,8 @@ import { UpdateDocumentDto } from './dto/update-document.dto';
 import { FilterDocumentsDto } from './dto/filter-documents.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { AutomationsService } from '../automations/automations.service';
+import { QueueService } from '../workers/queue.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -31,6 +33,8 @@ export class DocumentsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly automationsService: AutomationsService,
+    private readonly queueService: QueueService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   // ── POST /documents/upload ─────────────────────────────────────────────────
@@ -50,6 +54,8 @@ export class DocumentsService {
     if (file.size > MAX_FILE_SIZE) {
       throw new BadRequestException('El archivo supera el límite de 25 MB.');
     }
+
+    await this.planLimits.checkDocumentLimit(workspaceId);
 
     // Validar que contact/conversation/task pertenecen al workspace
     if (metadata.contact_id) {
@@ -96,8 +102,8 @@ export class DocumentsService {
       data:  { storage_key: key, status: 'UPLOADED' },
     });
 
-    // TODO: encolar en BullMQ para OCR + clasificación
-    // await this.documentQueue.add('process', { documentId: doc.id });
+    // Enqueue document for AI-powered OCR processing
+    await this.queueService.enqueueDocument(updated.id, workspaceId);
 
     await this.automationsService.triggerRules(
       workspaceId,
@@ -190,8 +196,8 @@ export class DocumentsService {
       data:  { status: 'PROCESSING', updated_at: new Date() },
     });
 
-    // TODO: re-encolar en BullMQ
-    // await this.documentQueue.add('process', { documentId: id, force: true });
+    // Re-enqueue for reprocessing
+    await this.queueService.enqueueDocument(id, workspaceId);
 
     return { message: 'Documento encolado para reprocesamiento.', id };
   }

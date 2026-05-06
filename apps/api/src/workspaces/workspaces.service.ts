@@ -43,9 +43,15 @@ export class WorkspacesService {
     return {
       ...workspace,
       workspace_tax_profile: taxProfile,
+      settings: {
+        quick_start_progress: settings.quick_start_progress ?? {} as Record<string, boolean>,
+      },
       ai_message_finance_opt_in: settings.ai_message_finance_opt_in === true,
       ai_provider: settings.ai_provider ?? null,
       ai_model: settings.ai_model ?? null,
+      // IMPORTANTE — DEFAULT A `staging` PARA DEV. EN PROD, CADA WORKSPACE
+      // DEBE FIJAR EXPLICITAMENTE `hacienda_environment='production'` EN
+      // SUS SETTINGS, SINO LAS FACTURAS VAN AL AMBIENTE STAGING DE HACIENDA.
       hacienda_environment: settings.hacienda_environment ?? 'staging',
       hacienda_callback_url: settings.hacienda_callback_url ?? null,
       hacienda_username_set: !!(settings.hacienda_username),
@@ -81,6 +87,16 @@ export class WorkspacesService {
     });
 
     return this.serializeWorkspace(workspace);
+  }
+
+  // ── GET /workspaces/current/dashboard ────────────────────────────────────
+
+  async getDashboard(workspaceId: string) {
+    const [workspace, stats] = await Promise.all([
+      this.getCurrent(workspaceId),
+      this.getStats(workspaceId),
+    ]);
+    return { workspace, stats };
   }
 
   // ── GET /workspaces/current/subscription ─────────────────────────────────
@@ -279,6 +295,14 @@ export class WorkspacesService {
 
     const serialized = this.serializeWorkspace(refreshed);
     this.events.emitWorkspaceUpdated(workspaceId, serialized);
+
+    if (settingsChanged) {
+      if (hacienda_username || hacienda_client_id || hacienda_token_url)
+        this.markQuickStartStep(workspaceId, 'hacienda_configured');
+      if (ai_provider || ai_api_key || ai_message_finance_opt_in !== undefined)
+        this.markQuickStartStep(workspaceId, 'invoicing_configured');
+    }
+
     return serialized;
   }
 
@@ -320,9 +344,11 @@ export class WorkspacesService {
         provider,
         model,
         api_key: apiKey,
-      });
+    });
 
-      return {
+    this.markQuickStartStep(workspaceId, 'team_invited');
+
+    return {
         ok: true,
         ...result,
       };
@@ -364,60 +390,60 @@ export class WorkspacesService {
   // ── GET /workspaces/current/stats ─────────────────────────────────────────
 
   async getStats(workspaceId: string) {
-    const [contacts, conversations, tasks, documents, automations, members] = await Promise.all([
-      this.prisma.contact.count({ where: { workspace_id: workspaceId } }),
-      this.prisma.conversation.count({ where: { workspace_id: workspaceId } }),
-      this.prisma.task.count({ where: { workspace_id: workspaceId } }),
-      this.prisma.document.count({ where: { workspace_id: workspaceId } }),
-      this.prisma.automationRule.count({ where: { workspace_id: workspaceId } }),
-      this.prisma.workspaceUser.count({ where: { workspace_id: workspaceId } }),
-    ]);
-
-    const activeConversations = await this.prisma.conversation.count({
-      where: { workspace_id: workspaceId, status: { in: ['NEW', 'OPEN'] } },
-    });
-
-    const pendingTasks = await this.prisma.task.count({
-      where: { workspace_id: workspaceId, status: { in: ['TODO', 'IN_PROGRESS'] } },
-    });
-
-    const totalDocumentSize = await this.prisma.document.aggregate({
-      where: { workspace_id: workspaceId },
-      _sum: { file_size: true },
-    });
-
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-    const [monthlyRevenue, prevMonthRevenue] = await Promise.all([
-      this.prisma.invoice.aggregate({
-        where: { workspace_id: workspaceId, created_at: { gte: startOfMonth } },
-        _sum: { amount: true },
-      }),
-      this.prisma.invoice.aggregate({
-        where: { workspace_id: workspaceId, created_at: { gte: startOfPrevMonth, lte: endOfPrevMonth } },
-        _sum: { amount: true },
-      }),
-    ]);
+    const [row] = await this.prisma.$queryRawUnsafe<
+      Array<{
+        contacts: number | bigint;
+        conversations: number | bigint;
+        tasks: number | bigint;
+        documents: number | bigint;
+        automations: number | bigint;
+        members: number | bigint;
+        active_conversations: number | bigint;
+        pending_tasks: number | bigint;
+        total_document_bytes: number | bigint;
+        monthly_revenue: number | string;
+        prev_month_revenue: number | string;
+      }>
+    >(
+      `SELECT
+        (SELECT COUNT(*) FROM contacts      WHERE workspace_id = $1)::int AS contacts,
+        (SELECT COUNT(*) FROM conversations WHERE workspace_id = $1)::int AS conversations,
+        (SELECT COUNT(*) FROM tasks         WHERE workspace_id = $1)::int AS tasks,
+        (SELECT COUNT(*) FROM documents     WHERE workspace_id = $1)::int AS documents,
+        (SELECT COUNT(*) FROM automation_rules WHERE workspace_id = $1)::int AS automations,
+        (SELECT COUNT(*) FROM workspace_users   WHERE workspace_id = $1)::int AS members,
+        (SELECT COUNT(*) FROM conversations WHERE workspace_id = $1 AND status IN ('NEW','OPEN'))::int AS active_conversations,
+        (SELECT COUNT(*) FROM tasks         WHERE workspace_id = $1 AND status IN ('TODO','IN_PROGRESS'))::int AS pending_tasks,
+        COALESCE((SELECT SUM(file_size) FROM documents WHERE workspace_id = $1), 0)::bigint AS total_document_bytes,
+        COALESCE((SELECT SUM(amount) FROM invoices WHERE workspace_id = $1 AND created_at >= $2 AND status != 'CANCELLED'), 0) AS monthly_revenue,
+        COALESCE((SELECT SUM(amount) FROM invoices WHERE workspace_id = $1 AND created_at >= $3 AND created_at <= $4 AND status != 'CANCELLED'), 0) AS prev_month_revenue`,
+      workspaceId,
+      startOfMonth,
+      startOfPrevMonth,
+      endOfPrevMonth,
+    );
 
-    const revenueThisMonth = Number(monthlyRevenue._sum.amount ?? 0);
-    const revenuePrevMonth = Number(prevMonthRevenue._sum.amount ?? 0);
+    const revenueThisMonth = Number(row.monthly_revenue ?? 0);
+    const revenuePrevMonth = Number(row.prev_month_revenue ?? 0);
     const revenueChange = revenuePrevMonth > 0
-      ? ((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth * 100)
-      : 0;
+      ? Math.round(((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth * 100))
+      : (revenueThisMonth > 0 ? 100 : 0);
 
     return {
-      contacts,
-      conversations,
-      activeConversations,
-      tasks,
-      pendingTasks,
-      documents,
-      documentStorageBytes: totalDocumentSize._sum.file_size ?? 0,
-      automations,
-      members,
+      contacts: Number(row.contacts ?? 0),
+      conversations: Number(row.conversations ?? 0),
+      activeConversations: Number(row.active_conversations ?? 0),
+      tasks: Number(row.tasks ?? 0),
+      pendingTasks: Number(row.pending_tasks ?? 0),
+      documents: Number(row.documents ?? 0),
+      documentStorageBytes: Number(row.total_document_bytes ?? 0),
+      automations: Number(row.automations ?? 0),
+      members: Number(row.members ?? 0),
       monthly_revenue: revenueThisMonth,
       prev_month_revenue: revenuePrevMonth,
       revenue_change_pct: Math.round(revenueChange),
@@ -476,7 +502,7 @@ export class WorkspacesService {
         orderBy: { created_at: 'desc' },
       });
     }
-    throw new Error('Invalid export type. Use: contacts | tasks | conversations');
+    throw new BadRequestException(`Invalid export type. Use: contacts | tasks | conversations`);
   }
 
   // ── GET /workspaces/current/members ───────────────────────────────────────
@@ -579,7 +605,7 @@ export class WorkspacesService {
     );
 
     const desktopUrl = `pymeshub://accept-invite?token=${encodeURIComponent(inviteToken)}`;
-    const browserUrl = `https://app.pymeshub.lat/#/accept-invite?token=${encodeURIComponent(inviteToken)}`;
+    const browserUrl = `https://pymeshub.lat/accept-invite?token=${encodeURIComponent(inviteToken)}`;
 
     await this.sendInviteEmail({
       workspaceId,
@@ -715,5 +741,34 @@ export class WorkspacesService {
     });
 
     return { message: 'Miembro removido del workspace.' };
+  }
+
+  // ── Quick Start progress tracking ─────────────────────────────────────────
+
+  /**
+   * Mark a quick-start checklist step as completed in workspace settings_json.
+   * Idempotent — if already true, does nothing.
+   */
+  async markQuickStartStep(workspaceId: string, step: string) {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    if (!ws) return;
+
+    const settings: Record<string, any> =
+      ws.settings_json && typeof ws.settings_json === 'object'
+        ? (ws.settings_json as Record<string, any>)
+        : {};
+
+    const current = settings.quick_start_progress || {};
+    if (current[step]) return; // already done
+
+    settings.quick_start_progress = { ...current, [step]: true };
+
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { settings_json: settings },
+    });
   }
 }

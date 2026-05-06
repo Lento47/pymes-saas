@@ -1,10 +1,14 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
+  Patch,
+  Param,
   Req,
   Res,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -14,7 +18,12 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AgentService } from './agent.service';
 import { AgentToolsService } from './agent-tools.service';
 import { AgentStreamDto } from './agent.dto';
+import { CreateEscalationDto } from './agent-escalation.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { PrismaService } from '../common/prisma/prisma.service';
+import { SupportRouterService } from './support-router.service';
+import { DiagnosticService } from './diagnostic.service';
+import { EngineeringFixService } from './engineering-fix.service';
 
 @Controller('agent')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,14 +32,153 @@ export class AgentController {
     private readonly agentService: AgentService,
     private readonly toolsService: AgentToolsService,
     private readonly planLimits: PlanLimitsService,
+    private readonly prisma: PrismaService,
+    private readonly router: SupportRouterService,
+    private readonly diagnostic: DiagnosticService,
+    private readonly fixService: EngineeringFixService,
   ) {} 
+
+  // ADMINs see every case in the workspace. AGENT/VIEWER see only the
+  // cases they personally triggered (auto-opened from their requests or
+  // explicitly escalated by them) so they can track their own tickets.
+  @Get('diagnostic-cases')
+  @Roles('ADMIN', 'AGENT', 'VIEWER')
+  async listDiagnosticCases(
+    @CurrentUser() user: { id: string; workspace_id: string; role: string; is_platform_admin: boolean },
+  ) {
+    const seesAll = user.role === 'ADMIN' || user.is_platform_admin;
+    return this.diagnostic.listCases(user.workspace_id, seesAll ? undefined : { userId: user.id });
+  }
+
+  @Get('diagnostic-cases/:id')
+  @Roles('ADMIN', 'AGENT', 'VIEWER')
+  async getDiagnosticCase(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; workspace_id: string; role: string; is_platform_admin: boolean },
+  ) {
+    const seesAll = user.role === 'ADMIN' || user.is_platform_admin;
+    // Non-admins only see their own cases; return 404 (not 403) to avoid
+    // revealing whether a case for another user exists.
+    const case_ = await this.diagnostic.getCase(id, {
+      workspaceId: user.workspace_id,
+      userId: seesAll ? undefined : user.id,
+    });
+    if (!case_) throw new NotFoundException('Diagnostic case not found');
+    // ADMIN gets the engineering view (selectable fields for fix workflow).
+    if (seesAll) {
+      return this.fixService.getDiagnosticCaseForFix(id);
+    }
+    return case_;
+  }
+
+  @Patch('diagnostic-cases/:id/status')
+  @Roles('ADMIN')
+  async updateDiagnosticCaseStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
+    return this.diagnostic.updateCaseStatus(id, status);
+  }
+
+  @Patch('fix-cases/:id')
+  @Roles('ADMIN')
+  async updateFixCase(
+    @Param('id') fixCaseId: string,
+    @Body() body: { status?: string; pr_url?: string; pr_number?: number; files_changed?: any; test_added?: any; fix_summary?: string; rollback_notes?: string; error_log?: string },
+  ) {
+    return this.fixService.updateFixStatus(fixCaseId, body);
+  }
+
+  @Post('fix-cases')
+  @Roles('ADMIN')
+  async createFixCase(
+    @Body('diagnostic_case_id') diagnosticCaseId: string,
+  ) {
+    return this.fixService.createFixCase(diagnosticCaseId);
+  }
+
+  @Post('fix-cases/:id/approve')
+  @Roles('ADMIN')
+  async approveFixCase(@Param('id') fixCaseId: string) {
+    return this.fixService.approveFix(fixCaseId);
+  }
+
+  @Post('fix-cases/:id/reject')
+  @Roles('ADMIN')
+  async rejectFixCase(
+    @Param('id') fixCaseId: string,
+    @Body('reason') reason: string,
+  ) {
+    return this.fixService.rejectFix(fixCaseId, reason);
+  }
+
+  @Get('fix-cases')
+  @Roles('ADMIN')
+  async listFixCases(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.fixService.listFixCases(workspaceId);
+  }
+
+  @Get('fix-cases/:id')
+  @Roles('ADMIN')
+  async getFixCase(@Param('id') fixCaseId: string) {
+    return this.fixService.getFixCase(fixCaseId);
+  }
+
+  @Post('diagnose')
+  @Roles('ADMIN', 'AGENT', 'VIEWER')
+  async diagnose(
+    @Body() body: { module: string; error_code?: string; trace_id?: string; user_description?: string },
+    @CurrentUser('workspace_id') workspaceId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    await this.planLimits.enforceDiagnosticLimit(workspaceId);
+    const result = await this.diagnostic.diagnose({
+      workspaceId,
+      userId,
+      module: body.module || 'unknown',
+      error_code: body.error_code,
+      trace_id: body.trace_id,
+      user_description: body.user_description,
+    });
+    return result;
+  }
+
+  @Post('escalate')
+  @Roles('ADMIN', 'AGENT', 'VIEWER')
+  async escalate(
+    @Body() dto: CreateEscalationDto,
+    @CurrentUser('workspace_id') workspaceId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    await this.planLimits.enforceAiAccess(workspaceId);
+
+    const escalation = await this.prisma.agentEscalation.create({
+      data: {
+        workspace_id: workspaceId,
+        user_id: userId,
+        summary: dto.summary,
+        severity: dto.severity || 'MEDIUM',
+        evidence_json: (dto.evidence as any) || undefined,
+        status: 'OPEN',
+      },
+    });
+
+    return {
+      id: escalation.id,
+      status: escalation.status,
+      severity: escalation.severity,
+      summary: escalation.summary,
+      created_at: escalation.created_at,
+    };
+  }
 
   @Post('execute')
   @Roles('ADMIN', 'AGENT', 'VIEWER')
-  executeTool(
+  async executeTool(
     @Body() body: { tool: string; arguments?: Record<string, any> },
     @CurrentUser('workspace_id') workspaceId: string,
   ) {
+    await this.planLimits.enforceAiAccess(workspaceId);
     return this.toolsService.execute(workspaceId, body.tool, body.arguments || {});
   }
 
@@ -42,11 +190,20 @@ export class AgentController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    await this.planLimits.enforcePlanTier(workspaceId, 'ENTERPRISE', 'HubbyAgent');
+    await this.planLimits.enforceAiAccess(workspaceId);
+    const input = dto.message || dto.input;
+    if (!input || typeof input !== 'string') {
+      res.status(400).json({ error: 'Se requiere message o input' });
+      return;
+    }
+
+    const { agent, confidence } = this.router.classifyIntent(input);
+    const conversationId = dto.conversationId || dto.conversation_id;
     const result = await this.agentService.streamWorkflow(
       workspaceId,
-      dto.input,
-      dto.conversation_id,
+      input,
+      conversationId,
+      agent,
     );
 
     if ('error' in result) {
@@ -59,6 +216,7 @@ export class AgentController {
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'X-Agent-Type': result.agent_type,
     });
 
     const reader = result.stream.getReader();

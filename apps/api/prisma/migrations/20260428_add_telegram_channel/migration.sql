@@ -1,2 +1,0 @@
--- Add TELEGRAM to ChannelType enum
-ALTER TYPE "ChannelType" ADD VALUE IF NOT EXISTS 'TELEGRAM';

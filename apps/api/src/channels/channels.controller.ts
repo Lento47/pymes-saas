@@ -39,11 +39,21 @@ export class ChannelsController {
   }
 
   @Get()
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findAll(@CurrentUser('workspace_id') workspaceId: string) {
     return this.channelsService.findAll(workspaceId);
   }
 
+  @Get('whatsapp-config')
+  getWhatsAppConfig() {
+    return {
+      webhookUrl: 'https://pymeshub.lat/api/inbound/whatsapp/webhook',
+      verifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || '',
+    };
+  }
+
   @Get(':id')
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findOne(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,

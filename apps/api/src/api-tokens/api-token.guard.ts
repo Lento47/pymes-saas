@@ -27,7 +27,7 @@ export class ApiTokenGuard implements CanActivate {
 
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : auth;
 
-    // Not a PymeHub token — let JWT guard handle it
+    // Not a PymesHub token — let JWT guard handle it
     if (!token.startsWith('pym_')) {
       return true;
     }

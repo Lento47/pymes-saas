@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SAML } from '@node-saml/node-saml';
 
@@ -65,7 +65,7 @@ export class SamlService {
 
     if (!email) {
       this.logger.error(`SAML response missing email for workspace ${workspaceSlug}`);
-      throw new Error('SAML response missing email attribute');
+      throw new BadRequestException(`SAML response missing email attribute`);
     }
 
     return {

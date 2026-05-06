@@ -29,9 +29,9 @@ import { PlanLimitsModule } from './common/plan-limits/plan-limits.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { InsightsModule } from './insights/insights.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { InviteCodesModule } from './invite-codes/invite-codes.module';
 import { ErrorReportsModule } from './error-reports/error-reports.module';
 import { PlatformModule } from './platform/platform.module';
-// ApiTokensModule — API token management for Enterprise plan
 import { HaciendaModule } from './hacienda/hacienda.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { HealthModule } from './health/health.module';
@@ -44,10 +44,23 @@ import { SamlModule } from './auth/saml/saml.module';
 import { I18nModule } from './common/i18n/i18n.module';
 import { TelegramModule } from './telegram/telegram.module';
 
+// Demo data & templates
+import { DemoModule } from './demo/demo.module';
+import { TemplateModule } from './templates/template.module';
+import { ImportModule } from './import/import.module';
+import { EnterpriseModule } from './enterprise/enterprise.module';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
+import { SlaModule } from './sla/sla.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
+import { ContactSalesModule } from './contact-sales/contact-sales.module';
+import { UsageMeteringModule } from './usage-metering/usage-metering.module';
+import { MessageTemplatesModule } from './message-templates/message-templates.module';
+import { ProductMetricsModule } from './common/metrics/product-metrics.module';
+import { InventoryModule } from './inventory/inventory.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
-    // Multiple throttle tiers: default (100/min) and strict auth tier (10/15min)
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60_000, limit: 100 },
       { name: 'auth', ttl: 15 * 60_000, limit: 10 },
@@ -80,6 +93,7 @@ import { TelegramModule } from './telegram/telegram.module';
     DepartmentsModule,
     InsightsModule,
     InvoicesModule,
+    InviteCodesModule,
     HaciendaModule,
     PipelineModule,
     AiModule,
@@ -90,7 +104,6 @@ import { TelegramModule } from './telegram/telegram.module';
     RoutingModule,
     SamlModule,
     I18nModule,
-    // Telegram module
     TelegramModule,
     PlatformModule,
 
@@ -98,7 +111,24 @@ import { TelegramModule } from './telegram/telegram.module';
     EventsModule,
     EmailModule,
     WhatsAppModule,
-    TelegramModule,
+
+    // Business+ Enterprise
+    EnterpriseModule,
+    FeatureFlagsModule,
+    SlaModule,
+    OnboardingModule,
+    ContactSalesModule,
+    UsageMeteringModule,
+    MessageTemplatesModule,
+    InventoryModule,
+
+    // Metrics
+    ProductMetricsModule,
+
+    // Demo & Templates
+    DemoModule,
+    TemplateModule,
+    ImportModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: PlanThrottlerGuard },
@@ -106,4 +136,4 @@ import { TelegramModule } from './telegram/telegram.module';
     RedisThrottlerStorage,
   ],
 })
-export class AppModule { }
+export class AppModule {}

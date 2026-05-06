@@ -4,6 +4,10 @@ import { CryptoService } from '../common/crypto/crypto.service';
 import { parseJsonValue } from '../common/prisma/json';
 import { InsightsService } from '../insights/insights.service';
 import { SearchService } from '../search/search.service';
+import { DocsService } from '../docs/docs.service';
+import { SupportRouterService, AgentType } from './support-router.service';
+import { DiagnosticService } from './diagnostic.service';
+import { EngineeringFixService } from './engineering-fix.service';
 import { ConversationsService } from '../conversations/conversations.service';
 import { AgentToolsService } from './agent-tools.service';
 import { Agent, tool, run as agentRun, Runner } from '@openai/agents';
@@ -12,16 +16,54 @@ import { z } from 'zod';
 @Injectable()
 export class AgentService {
   private readonly logger = new Logger(AgentService.name);
+  private currentSessionId: string | null = null;
+
+  private static readonly WRITE_TOOLS = new Set([
+    'create_contact', 'update_contact', 'create_task', 'update_task',
+    'create_deal', 'move_deal', 'reply_conversation',
+    'create_automation', 'toggle_automation',
+    'resolve_conversation', 'assign_conversation', 'update_conversation',
+    'create_conversation', 'add_internal_note', 'notify_user',
+  ]);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
     private readonly insights: InsightsService,
     private readonly searchService: SearchService,
+    private readonly docsService: DocsService,
+    private readonly router: SupportRouterService,
+    private readonly diagnostic: DiagnosticService,
+    private readonly fixService: EngineeringFixService,
     @Inject(forwardRef(() => ConversationsService))
     private readonly conversations: ConversationsService,
     private readonly toolsExecutor: AgentToolsService,
   ) {}
+
+  private async logToolCall(
+    agentType: string,
+    toolName: string,
+    input: any,
+    output: any,
+    riskLevel: string,
+  ): Promise<void> {
+    if (!this.currentSessionId) return;
+    try {
+      await this.prisma.agentToolCall.create({
+        data: {
+          session_id: this.currentSessionId,
+          agent_type: agentType,
+          tool_name: toolName,
+          input_json: input as any,
+          output_json: output as any,
+          risk_level: riskLevel,
+          allowed: true,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to log tool call ${toolName}: ${(err as Error).message}`);
+    }
+  }
 
   async getAgentApiKey(workspaceId: string): Promise<string | null> {
     const ws = await this.prisma.workspace.findUnique({
@@ -37,11 +79,16 @@ export class AgentService {
     return null;
   }
 
-  private createTools(workspaceId: string) {
+  classifyIntent(input: string): { agent: AgentType; confidence: number } {
+    return this.router.classifyIntent(input);
+  }
+
+  private createTools(workspaceId: string, agentType: AgentType = 'hubby') {
+    const allowedTools = new Set(this.router.getToolSet(agentType));
     const prisma = this.prisma;
     const insights = this.insights;
     const searchSvc = this.searchService;
-    const conversationsSvc = this.conversations;
+    const docsSvc = this.docsService;
     const exec = this.toolsExecutor;
 
     return [
@@ -53,241 +100,6 @@ export class AgentService {
       }),
       tool({
         name: 'get_stats', description: 'Get workspace statistics: counts of contacts, tasks, invoices, conversations',
-        parameters: z.object({}),
-        execute: async () => {
-          const [contacts, tasks, invoices, conversations] = await Promise.all([
-            prisma.contact.count({ where: { workspace_id: workspaceId } }),
-            prisma.task.count({ where: { workspace_id: workspaceId } }),
-            prisma.invoice.count({ where: { workspace_id: workspaceId } }),
-            prisma.conversation.count({ where: { workspace_id: workspaceId } }),
-          ]);
-          return { stats: { contacts, tasks, invoices, conversations } };
-        },
-      }),
-      tool({
-        name: 'get_insights', description: 'Get AI-generated business insights: trends, risks, recommendations for the workspace',
-        parameters: z.object({}),
-        execute: async () => ({ insights: await insights.getInsights(workspaceId) }),
-      }),
-      tool({
-        name: 'search', description: 'Full-text search across contacts, conversations, tasks, and documents',
-        parameters: z.object({ q: z.string().describe('Search query'), types: z.string().optional().nullable().describe('Comma-separated: contact,conversation,task,document') }),
-        execute: async ({ q, types }) => {
-          const typeArr = types ? types.split(',').map((t: string) => t.trim()) : [];
-          return { results: await searchSvc.search(workspaceId, q, typeArr, 10) };
-        },
-      }),
-
-      // ── Contacts ──
-      tool({
-        name: 'list_contacts', description: 'List all contacts in the workspace. Optional search filter.',
-        parameters: z.object({ search: z.string().optional().nullable() }),
-        execute: async ({ search }) => {
-          const where: any = { workspace_id: workspaceId };
-          if (search) where.full_name = { contains: search, mode: 'insensitive' };
-          return { contacts: await prisma.contact.findMany({ where, select: { id: true, full_name: true, email: true, phone: true, type: true }, take: 50 }) };
-        },
-      }),
-      tool({
-        name: 'create_contact', description: 'Create a new contact in PyMesHub. Requires full_name. Optional: email, phone, company_name, type.',
-        parameters: z.object({
-          full_name: z.string().describe('Full name of the contact'),
-          email: z.string().optional().nullable(),
-          phone: z.string().optional().nullable(),
-          company_name: z.string().optional().nullable(),
-          type: z.enum(['CUSTOMER','LEAD','SUPPLIER','PARTNER']).optional().nullable().default('CUSTOMER'),
-        }),
-        execute: async (args) => ({
-          contact: await prisma.contact.create({
-            data: {
-              workspace_id: workspaceId,
-              full_name: args.full_name,
-              email: args.email || undefined,
-              phone: args.phone || undefined,
-              company_name: args.company_name || undefined,
-              type: (args.type as any) || 'CUSTOMER',
-            },
-          }),
-        }),
-      }),
-      tool({
-        name: 'update_contact', description: 'Update an existing contact in PyMesHub',
-        parameters: z.object({
-          id: z.string().describe('Contact ID'),
-          full_name: z.string().optional().nullable(),
-          email: z.string().optional().nullable(),
-          phone: z.string().optional().nullable(),
-          company_name: z.string().optional().nullable(),
-          type: z.enum(['CUSTOMER','LEAD','SUPPLIER','PARTNER']).optional().nullable(),
-        }),
-        execute: async (args) => {
-          const data: any = {};
-          if (args.full_name !== undefined) data.full_name = args.full_name;
-          if (args.email !== undefined) data.email = args.email;
-          if (args.phone !== undefined) data.phone = args.phone;
-          if (args.company_name !== undefined) data.company_name = args.company_name;
-          if (args.type !== undefined) data.type = args.type;
-          return { contact: await prisma.contact.update({ where: { id: args.id }, data }) };
-        },
-      }),
-
-      // ── Tasks ──
-      tool({
-        name: 'list_tasks', description: 'List all tasks. Filter by status (TODO, IN_PROGRESS, DONE, BLOCKED).',
-        parameters: z.object({ status: z.string().optional().nullable() }),
-        execute: async ({ status }) => {
-          const where: any = { workspace_id: workspaceId };
-          if (status) where.status = status;
-          return { tasks: await prisma.task.findMany({ where, select: { id: true, title: true, status: true, priority: true, due_at: true }, take: 50, orderBy: { created_at: 'desc' } }) };
-        },
-      }),
-      tool({
-        name: 'create_task', description: 'Create a new task in the workspace',
-        parameters: z.object({ title: z.string(), description: z.string().optional().nullable(), priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable().default('MEDIUM'), due_date: z.string().optional().nullable() }),
-        execute: async (args) => ({
-          task: await prisma.task.create({ data: { workspace_id: workspaceId, title: args.title, description: args.description || '', priority: args.priority || 'MEDIUM', due_at: args.due_date ? new Date(args.due_date) : undefined, status: 'TODO' } }),
-        }),
-      }),
-      tool({
-        name: 'update_task', description: 'Update an existing task',
-        parameters: z.object({ id: z.string(), title: z.string().optional().nullable(), description: z.string().optional().nullable(), status: z.enum(['TODO','IN_PROGRESS','DONE','BLOCKED']).optional().nullable(), priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable(), due_date: z.string().optional().nullable() }),
-        execute: async (args) => {
-          const data: any = {};
-          if (args.title !== undefined) data.title = args.title;
-          if (args.description !== undefined) data.description = args.description;
-          if (args.status !== undefined) data.status = args.status;
-          if (args.priority !== undefined) data.priority = args.priority;
-          if (args.due_date !== undefined) data.due_at = new Date(args.due_date);
-          return { task: await prisma.task.update({ where: { id: args.id }, data }) };
-        },
-      }),
-
-      // ── Invoices ──
-      tool({
-        name: 'list_invoices', description: 'List all invoices with amounts, statuses, and due dates',
-        parameters: z.object({}),
-        execute: async () => ({ invoices: await prisma.invoice.findMany({ where: { workspace_id: workspaceId }, select: { id: true, number: true, amount: true, status: true, due_date: true }, take: 50, orderBy: { created_at: 'desc' } }) }),
-      }),
-
-      // ── Conversations ──
-      tool({
-        name: 'list_conversations', description: 'List conversations. Filter by status (NEW, OPEN, PENDING, RESOLVED, CLOSED).',
-        parameters: z.object({ status: z.string().optional().nullable() }),
-        execute: async ({ status }) => {
-          const where: any = { workspace_id: workspaceId };
-          if (status) where.status = status;
-          return { conversations: await prisma.conversation.findMany({ where, select: { id: true, subject: true, status: true, priority: true, created_at: true }, take: 50, orderBy: { created_at: 'desc' } }) };
-        },
-      }),
-      tool({
-        name: 'get_conversation_detail', description: 'Get conversation details and full message history',
-        parameters: z.object({ id: z.string() }),
-        execute: async ({ id }) => {
-          const [conv, messages] = await Promise.all([
-            prisma.conversation.findFirst({ where: { id, workspace_id: workspaceId }, select: { id: true, subject: true, status: true, priority: true, category: true, created_at: true, contact: { select: { full_name: true, email: true } } } }),
-            prisma.message.findMany({ where: { conversation_id: id, workspace_id: workspaceId }, select: { id: true, direction: true, body_text: true, sender_name: true, sent_at: true }, take: 100, orderBy: { sent_at: 'asc' } }),
-          ]);
-          if (!conv) throw new Error(`Conversation "${id}" not found`);
-          return { conversation: conv, messages };
-        },
-      }),
-      tool({
-        name: 'reply_conversation', description: 'Send an OUTBOUND reply to a conversation. Delivers via the conversation channel (email/WhatsApp), bumps last_message_at, emits real-time event, and notifies the assigned agent. Use ONLY if user explicitly asks.',
-        parameters: z.object({ id: z.string(), text: z.string() }),
-        execute: async ({ id, text }) => exec.execute(workspaceId, 'reply_conversation', { id, text }),
-      }),
-      tool({
-        name: 'create_conversation', description: 'Open a new conversation/ticket on a given channel. Optionally tied to a contact; can pre-set subject, priority, category, or assignee.',
-        parameters: z.object({
-          channel_id: z.string().describe('Channel ID (use list_channels-style tooling or get_settings to find one)'),
-          contact_id: z.string().optional().nullable(),
-          subject: z.string().optional().nullable(),
-          priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable(),
-          category: z.string().optional().nullable(),
-          assigned_user_id: z.string().optional().nullable(),
-        }),
-        execute: async (args) => exec.execute(workspaceId, 'create_conversation', args),
-      }),
-      tool({
-        name: 'add_internal_note', description: 'Add or replace the internal team note on a conversation. NOT visible to the customer — for team-only context.',
-        parameters: z.object({ id: z.string(), notes: z.string() }),
-        execute: async ({ id, notes }) => exec.execute(workspaceId, 'add_internal_note', { id, notes }),
-      }),
-      tool({
-        name: 'notify_user', description: 'Send an in-app notification to a workspace user. Use to ping someone about a case, task, or update.',
-        parameters: z.object({
-          user_id: z.string(),
-          title: z.string(),
-          body: z.string().optional().nullable(),
-          type: z.string().optional().nullable(),
-          related_entity_type: z.string().optional().nullable(),
-          related_entity_id: z.string().optional().nullable(),
-        }),
-        execute: async (args) => exec.execute(workspaceId, 'notify_user', args),
-      }),
-      tool({
-        name: 'resolve_conversation', description: 'Mark a conversation/case as RESOLVED. Use this when the user asks to resolve, close, or finish a case.',
-        parameters: z.object({ id: z.string().describe('Conversation ID to resolve') }),
-        execute: async ({ id }) => ({ conversation: await conversationsSvc.resolve(workspaceId, id), resolved: true }),
-      }),
-      tool({
-        name: 'assign_conversation', description: 'Assign a conversation/case to a workspace user.',
-        parameters: z.object({ id: z.string(), user_id: z.string() }),
-        execute: async ({ id, user_id }) => ({ conversation: await conversationsSvc.assign(workspaceId, id, user_id), assigned: true }),
-      }),
-      tool({
-        name: 'update_conversation', description: 'Update conversation fields: status (NEW/OPEN/PENDING/RESOLVED/CLOSED), priority (LOW/MEDIUM/HIGH/URGENT), category, or assigned user.',
-        parameters: z.object({
-          id: z.string(),
-          status: z.enum(['NEW','OPEN','PENDING','RESOLVED','CLOSED']).optional().nullable(),
-          priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable(),
-          category: z.string().optional().nullable(),
-          assigned_user_id: z.string().optional().nullable(),
-        }),
-        execute: async (args) => {
-          if (args.status === 'RESOLVED') {
-            return { conversation: await conversationsSvc.resolve(workspaceId, args.id) };
-          }
-          if (args.assigned_user_id) {
-            await conversationsSvc.assign(workspaceId, args.id, args.assigned_user_id);
-          }
-          const dto: any = {};
-          if (args.status !== undefined && args.status !== null) dto.status = args.status;
-          if (args.priority !== undefined && args.priority !== null) dto.priority = args.priority;
-          if (args.category !== undefined) dto.category = args.category;
-          if (Object.keys(dto).length === 0 && !args.assigned_user_id) {
-            throw new Error('update_conversation requires at least one field to change');
-          }
-          return { conversation: Object.keys(dto).length ? await conversationsSvc.update(workspaceId, args.id, dto) : await conversationsSvc.findOne(workspaceId, args.id) };
-        },
-      }),
-
-      // ── Automations ──
-      tool({
-        name: 'list_automations', description: 'List all workflow automations and their statuses',
-        parameters: z.object({}),
-        execute: async () => ({ automations: await prisma.automation.findMany({ where: { workspace_id: workspaceId }, select: { id: true, name: true, enabled: true, trigger_type: true }, take: 50 }) }),
-      }),
-      tool({
-        name: 'create_automation', description: 'Create a new workflow automation rule',
-        parameters: z.object({ name: z.string(), trigger_type: z.string() }),
-        execute: async (args: any) => ({
-          automation: await prisma.automation.create({ data: { workspace_id: workspaceId, name: args.name, description: '', trigger_type: args.trigger_type, trigger_config_json: args.trigger_config || args.trigger_config_json || {}, action_config_json: args.action_config || args.action_config_json || {} } }),
-        }),
-      }),
-      tool({
-        name: 'toggle_automation', description: 'Enable or disable an automation rule',
-        parameters: z.object({ id: z.string(), enabled: z.boolean().optional().nullable() }),
-        execute: async ({ id, enabled }) => {
-          const existing = await prisma.automation.findFirst({ where: { id, workspace_id: workspaceId } });
-          if (!existing) throw new Error(`Automation "${id}" not found`);
-          return { automation: await prisma.automation.update({ where: { id }, data: { enabled: enabled !== undefined ? enabled : !existing.enabled } }) };
-        },
-      }),
-
-      // ── Billing (read-only) ──
-      tool({
-        name: 'get_billing', description: 'Get subscription and billing info (READ-ONLY)',
         parameters: z.object({}),
         execute: async () => {
           const [sub, ws] = await Promise.all([
@@ -317,7 +129,7 @@ export class AgentService {
       tool({
         name: 'move_deal', description: 'Move a deal to a different pipeline stage',
         parameters: z.object({ id: z.string(), stage_id: z.string() }),
-        execute: async ({ id, stage_id }) => ({ deal: await prisma.deal.update({ where: { id }, data: { stage_id } }) }),
+        execute: async ({ id, stage_id }) => ({ deal: await prisma.deal.update({ where: { id, workspace_id: workspaceId }, data: { stage_id } }) }),
       }),
 
       // ── Documents ──
@@ -343,14 +155,158 @@ export class AgentService {
           return { workspace: ws, members };
         },
       }),
-    ];
+
+      // ── Conversations (read) ──
+      tool({
+        name: 'list_conversations', description: 'List conversations/cases. Filter by status (NEW, OPEN, PENDING, RESOLVED, CLOSED).',
+        parameters: z.object({ status: z.string().optional().nullable() }),
+        execute: async ({ status }) => exec.execute(workspaceId, 'list_conversations', { status: status ?? undefined }),
+      }),
+      tool({
+        name: 'get_conversation_detail', description: 'Get conversation details and full message history',
+        parameters: z.object({ id: z.string() }),
+        execute: async ({ id }) => exec.execute(workspaceId, 'get_conversation_detail', { id }),
+      }),
+
+      // ── Conversations (write) — actually do the work, no pretending ──
+      tool({
+        name: 'reply_conversation', description: 'Send an OUTBOUND reply to a conversation. Persists, bumps last_message_at, emits real-time event, dispatches via the conversation channel (email/WhatsApp), and notifies the assigned agent.',
+        parameters: z.object({ id: z.string(), text: z.string() }),
+        execute: async ({ id, text }) => exec.execute(workspaceId, 'reply_conversation', { id, text }),
+      }),
+      tool({
+        name: 'resolve_conversation', description: 'Mark a conversation/case as RESOLVED. Use when the user asks to resolve, close, or finish a case.',
+        parameters: z.object({ id: z.string().describe('Conversation ID to resolve') }),
+        execute: async ({ id }) => exec.execute(workspaceId, 'resolve_conversation', { id }),
+      }),
+      tool({
+        name: 'assign_conversation', description: 'Assign a conversation/case to a workspace user.',
+        parameters: z.object({ id: z.string(), user_id: z.string() }),
+        execute: async ({ id, user_id }) => exec.execute(workspaceId, 'assign_conversation', { id, user_id }),
+      }),
+      tool({
+        name: 'update_conversation', description: 'Update conversation fields: status (NEW/OPEN/PENDING/RESOLVED/CLOSED), priority (LOW/MEDIUM/HIGH/URGENT), category, or assigned user.',
+        parameters: z.object({
+          id: z.string(),
+          status: z.enum(['NEW','OPEN','PENDING','RESOLVED','CLOSED']).optional().nullable(),
+          priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable(),
+          category: z.string().optional().nullable(),
+          assigned_user_id: z.string().optional().nullable(),
+        }),
+        execute: async (args) => exec.execute(workspaceId, 'update_conversation', args),
+      }),
+      tool({
+        name: 'create_conversation', description: 'Open a new conversation/ticket on a given channel. Optionally tied to a contact; can pre-set subject, priority, category, or assignee.',
+        parameters: z.object({
+          channel_id: z.string().describe('Channel ID (use get_settings or list_channels-style tooling to find one)'),
+          contact_id: z.string().optional().nullable(),
+          subject: z.string().optional().nullable(),
+          priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional().nullable(),
+          category: z.string().optional().nullable(),
+          assigned_user_id: z.string().optional().nullable(),
+        }),
+        execute: async (args) => exec.execute(workspaceId, 'create_conversation', args),
+      }),
+      tool({
+        name: 'add_internal_note', description: 'Add or replace the internal team note on a conversation. NOT visible to the customer — for team-only context.',
+        parameters: z.object({ id: z.string(), notes: z.string() }),
+        execute: async ({ id, notes }) => exec.execute(workspaceId, 'add_internal_note', { id, notes }),
+      }),
+      tool({
+        name: 'notify_user', description: 'Send an in-app notification to a workspace user. Use to ping someone about a case, task, or update.',
+        parameters: z.object({
+          user_id: z.string(),
+          title: z.string(),
+          body: z.string().optional().nullable(),
+          type: z.string().optional().nullable(),
+          related_entity_type: z.string().optional().nullable(),
+          related_entity_id: z.string().optional().nullable(),
+        }),
+        execute: async (args) => exec.execute(workspaceId, 'notify_user', args),
+      }),
+
+      // ── Errors ──
+      tool({
+        name: 'get_errors',
+        description: 'Get recent errors from this workspace for diagnostics. Returns error messages, status codes, routes, and timestamps.',
+        parameters: z.object({ limit: z.number().optional().describe('Max errors to return (default 10, max 50)') }),
+        execute: async ({ limit }: { limit?: number }) => {
+          const take = Math.min(limit || 10, 50);
+          const errors = await (prisma as any).errorReport.findMany({
+            where: { workspace_id: workspaceId },
+            select: { id: true, source: true, category: true, severity: true, title: true, message: true, route: true, method: true, status_code: true, occurred_at: true, context_json: true },
+            orderBy: { occurred_at: 'desc' },
+            take,
+          });
+          return { errors, count: errors.length };
+        },
+      }),
+
+      // ── Support / Diagnostics ──
+      tool({
+        name: 'diagnose',
+        description: 'Diagnose a reported error or issue. Returns matched known issues, risk level, category, and fix recommendations.',
+        parameters: z.object({ description: z.string().describe('Description of the error or issue to diagnose') }),
+        execute: async ({ description }: { description: string }) => {
+          const service = this.diagnostic;
+          const result = await service.diagnose({ workspaceId, user_description: description });
+          return { diagnosis: result };
+        },
+      }),
+      tool({
+        name: 'list_diagnostic_cases',
+        description: 'List open diagnostic cases for this workspace with statuses and risk levels.',
+        parameters: z.object({}),
+        execute: async () => {
+          const cases = await this.diagnostic.listCases(workspaceId);
+          return { diagnostic_cases: cases };
+        },
+      }),
+      tool({
+        name: 'list_fix_cases',
+        description: 'List engineering fix cases with their status (PENDING, FIX_READY, PENDING_APPROVAL, etc.).',
+        parameters: z.object({}),
+        execute: async () => {
+          const cases = await this.fixService.listFixCases(workspaceId);
+          return { fix_cases: cases };
+        },
+      }),
+      tool({
+        name: 'approve_fix',
+        description: 'Approve a fix case (requires ADMIN role). Changes status from FIX_READY/PENDING_APPROVAL to PR_OPENED.',
+        parameters: z.object({ fix_case_id: z.string().describe('The ID of the fix case to approve') }),
+        execute: async ({ fix_case_id }: { fix_case_id: string }) => {
+          return this.fixService.approveFix(fix_case_id);
+        },
+      }),
+      tool({
+        name: 'reject_fix',
+        description: 'Reject a fix case with a reason (requires ADMIN role). Resets to PENDING status.',
+        parameters: z.object({ fix_case_id: z.string().describe('The ID of the fix case to reject'), reason: z.string().optional().describe('Why the fix was rejected') }),
+        execute: async ({ fix_case_id, reason }: { fix_case_id: string; reason?: string }) => {
+          return this.fixService.rejectFix(fix_case_id, reason || '');
+        },
+      }),
+
+      // ── Docs ──
+      tool({
+        name: 'search_pymeshub_docs',
+        description: 'Search official PymesHub documentation for help articles, guides, policies, and product information. Use this when the user asks how something works or needs documentation.',
+        parameters: z.object({ query: z.string().describe('Search query for PymesHub documentation') }),
+        execute: async ({ query }: { query: string }) => {
+          const results = docsSvc.search(query);
+          return { query, results, total: results.length };
+        },
+      }),
+    ].filter((t: any) => allowedTools.has(t.name));
   }
 
   async streamWorkflow(
     workspaceId: string,
     input: string,
     conversationId?: string,
-  ): Promise<{ stream: ReadableStream; model: string } | { error: string }> {
+    agentType: AgentType = 'hubby',
+  ): Promise<{ stream: ReadableStream; model: string; agent_type: string } | { error: string }> {
     const apiKey = await this.getAgentApiKey(workspaceId);
     if (!apiKey) {
       return { error: 'API Key de OpenAI no configurada. Configúrala en Ajustes → IA.' };
@@ -371,12 +327,12 @@ export class AgentService {
       if (agentEnabled) {
         const [tasks, invoices, contacts] = await Promise.all([
           this.prisma.task.findMany({ where: { workspace_id: workspaceId, status: { in: ['TODO', 'IN_PROGRESS'] } }, select: { title: true, priority: true, status: true, due_at: true }, take: 10, orderBy: { created_at: 'desc' } }),
-          this.prisma.invoice.findMany({ where: { workspace_id: workspaceId }, select: { number: true, amount: true, status: true, due_date: true }, take: 5, orderBy: { due_date: 'desc' } }),
+          this.prisma.invoice.findMany({ where: { workspace_id: workspaceId }, select: { number: true, amount: true, subtotal: true, tax_rate: true, tax_amount: true, status: true, due_date: true }, take: 5, orderBy: { due_date: 'desc' } }),
           this.prisma.contact.count({ where: { workspace_id: workspaceId } }),
         ]);
         const ctx: string[] = [`Workspace: ${ws?.name} (Plan: ${ws?.plan})`];
         if (tasks.length) ctx.push(`Tareas pendientes: ${tasks.map((t: any) => t.title).join(', ')}`);
-        if (invoices.length) ctx.push(`Facturas: ${invoices.map((i: any) => `${i.number} (${i.status})`).join(', ')}`);
+          if (invoices.length) ctx.push(`Facturas: ${invoices.map((i: any) => `${i.number} (${i.status}) total:${i.amount} subtotal:${i.subtotal ?? i.amount} iva:${i.tax_rate ?? 0}%`).join(', ')}`);
         if (contacts) ctx.push(`Contactos totales: ${contacts}`);
         inputWithContext = `Contexto:\n${ctx.join('\n')}\n\nPregunta: ${input}`;
       }
@@ -384,32 +340,57 @@ export class AgentService {
       this.logger.warn(`Error building agent context: ${(err as Error).message}`);
     }
 
-    const tools = this.createTools(workspaceId);
+    const tools = this.createTools(workspaceId, agentType);
+
+    // Create agent session for audit trail
+    const session = await this.prisma.agentSession.create({
+      data: { workspace_id: workspaceId, agent_type: agentType, status: 'ACTIVE' },
+    });
+    this.currentSessionId = session.id;
 
     const agent = new Agent({
       name: 'HubbyAgent',
       instructions: `Eres HubbyAgent de PyMesHub. Si el usuario pide CREAR, ACTUALIZAR, ELIMINAR o CONSULTAR datos, usás tus herramientas. Si solo saluda o conversa, respondés normal.
 
-HERRAMIENTAS (solo para operaciones CRUD):
+HERRAMIENTAS DE DATOS (solo para operaciones CRUD):
 create_contact(full_name*, email?, phone?, type?) | update_contact(id*, ...) | list_contacts(search?)
 create_task(title*, description?, priority?, due_date?) | update_task(id*, ...) | list_tasks(status?)
 create_deal(title*, stage_id*, value?, contact_id?) | move_deal(id*, stage_id*) | list_pipeline_deals()
 create_automation(name*, trigger_type*) | list_automations() | toggle_automation(id*)
-list_invoices() | list_conversations(status?) | get_conversation_detail(id*) | reply_conversation(id*, text*) | resolve_conversation(id*) | assign_conversation(id*, user_id*) | update_conversation(id*, status?, priority?, category?, assigned_user_id?) | create_conversation(channel_id*, contact_id?, subject?, priority?, category?, assigned_user_id?) | add_internal_note(id*, notes*) | notify_user(user_id*, title*, body?, related_entity_type?, related_entity_id?)
-list_documents(search?) | get_stats() | get_insights() | search(q*)
+list_invoices() | list_documents(search?) | get_stats() | get_insights() | search(q*)
 get_billing(), get_billing_invoices() [READ ONLY] | get_workspace() | get_settings()
 
+HERRAMIENTAS DE CASOS / CONVERSACIONES:
+list_conversations(status?) | get_conversation_detail(id*)
+reply_conversation(id*, text*) — responde al cliente, dispara email/WhatsApp
+resolve_conversation(id*) — marca el caso como RESUELTO
+assign_conversation(id*, user_id*) — asigna a un compañero
+update_conversation(id*, status?, priority?, category?, assigned_user_id?)
+create_conversation(channel_id*, contact_id?, subject?, priority?, category?, assigned_user_id?) — abre nuevo ticket
+add_internal_note(id*, notes*) — nota interna del equipo (no visible al cliente)
+notify_user(user_id*, title*, body?) — notificación in-app a un compañero
+
+HERRAMIENTAS DE SOPORTE (diagnóstico y arreglos):
+diagnose(description) — analiza un error y encuentra casos conocidos
+list_diagnostic_cases() — lista casos de diagnóstico abiertos
+list_fix_cases() — lista casos de arreglo con su estado
+approve_fix(fix_case_id*) — aprueba un arreglo propuesto
+reject_fix(fix_case_id*, reason) — rechaza un arreglo con motivo
+
 REGLAS:
-1. Si el usuario pide crear/leer/actualizar/eliminar → USÁ LA TOOL. No expliques cómo hacerlo.
-2. Si el usuario pide RESOLVER/CERRAR/FINALIZAR un caso → llamá resolve_conversation(id). NO digas que está resuelto sin haber llamado la tool.
-3. Si el usuario pide ABRIR un nuevo caso/ticket → usá create_conversation. Necesitás channel_id (mirá get_settings o list_channels).
-4. Para responder al cliente → reply_conversation. Para una nota interna del equipo → add_internal_note. NO mezcles los dos.
-5. Para avisar a un compañero del workspace → notify_user(user_id, title, body).
-6. Para cambios de estado/prioridad/categoría/asignación → update_conversation o assign_conversation.
-7. Si el usuario solo saluda o charla → respondé amablemente en 1-2 oraciones en español.
-8. NUNCA menciones Android, iPhone, Google, Gmail, Outlook, Excel, ATV, Hacienda, Zapier, IFTTT.
-9. Si mencionan algo externo → "Eso no es parte de PyMesHub. ¿Qué operación de PyMesHub necesitas?"
-10. Respuestas en español.`,
+1. Si el usuario reporta un error → USÁ diagnose(). No expliques cómo arreglarlo manualmente.
+2. Si el usuario pide ver casos de diagnóstico → USÁ list_diagnostic_cases().
+3. Si el usuario pide ver arreglos disponibles → USÁ list_fix_cases().
+4. Si el usuario pide aprobar/rechazar un arreglo → USÁ approve_fix() o reject_fix().
+5. Si el usuario pide RESOLVER/CERRAR/FINALIZAR un caso → USÁ resolve_conversation(id). NO digas que está resuelto sin haber llamado la tool.
+6. Si el usuario pide ABRIR un nuevo caso/ticket → USÁ create_conversation. Necesitás channel_id (mirá get_settings).
+7. Para responder al cliente → reply_conversation. Para una nota interna → add_internal_note. NO mezcles los dos.
+8. Para avisar a un compañero → notify_user(user_id, title, body).
+9. Para crear/leer/actualizar/eliminar otros datos → USÁ LA TOOL. No expliques cómo hacerlo.
+10. Si el usuario solo saluda o charla → respondé amablemente en 1-2 oraciones en español.
+11. NUNCA menciones Android, iPhone, Google, Gmail, Outlook, Excel, ATV, Hacienda, Zapier, IFTTT.
+12. Si mencionan algo externo → "Eso no es parte de PyMesHub. ¿Qué operación de PyMesHub necesitas?"
+13. Respuestas en español.`,
       model,
       tools,
       modelSettings: { temperature: 0.2, maxTokens: 1024 },
@@ -434,6 +415,24 @@ REGLAS:
 
       this.logger.log(`Agent response length: ${finalOutput.length}, preview: ${finalOutput.slice(0, 100)}`);
 
+      // Log tool calls from agent result
+      try {
+        const rawItems = (result as any).rawResponses ?? (result as any).newItems ?? [];
+        for (const item of rawItems) {
+          if (item.type === 'function_call' || item.type === 'function_call_output') {
+            const toolName = item.name || item.function_name || 'unknown';
+            const isWrite = AgentService.WRITE_TOOLS.has(toolName);
+            await this.logToolCall('hubby', toolName,
+              item.arguments ? JSON.parse(typeof item.arguments === 'string' ? item.arguments : '{}') : {},
+              item.output || item.return_value || {},
+              isWrite ? 'medium' : 'low',
+            );
+          }
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to extract tool calls: ${(err as Error).message}`);
+      }
+
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
         async start(controller) {
@@ -450,7 +449,7 @@ REGLAS:
         },
       });
 
-      return { stream, model };
+      return { stream, model, agent_type: agentType };
     } catch (err: any) {
       this.logger.error(`Agent SDK error: ${err.message}`);
       return { error: `Error del agente: ${err.message}` };
@@ -459,7 +458,7 @@ REGLAS:
 
   async streamPublic(
     input: string,
-  ): Promise<{ stream: ReadableStream; model: string } | { error: string }> {
+  ): Promise<{ stream: ReadableStream; model: string; agent_type: string } | { error: string }> {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return { error: 'OpenAI API key not configured on server.' };
@@ -522,7 +521,7 @@ REGLAS:
         },
       });
 
-      return { stream, model: 'gpt-4.1-mini' };
+      return { stream, model: 'gpt-4.1-mini', agent_type: 'hubby' };
     } catch (err: any) {
       this.logger.error(`Public agent error: ${err.message}`);
       return { error: `Error: ${err.message}` };

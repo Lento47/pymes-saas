@@ -524,6 +524,56 @@ export class PlatformService {
     return { message: `Usuario ${user.email} eliminado.` };
   }
 
+  async deleteWorkspace(slug: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { slug },
+      select: { id: true, name: true, status: true },
+    });
+    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+
+    await this.prisma.workspace.update({
+      where: { id: workspace.id },
+      data: { status: 'DELETED', slug: `${slug}-deleted-${Date.now()}` },
+    });
+
+    return { message: `Workspace "${workspace.name}" marcado como eliminado.` };
+  }
+
+  // ── GET /platform/stats ────────────────────────────────────────────────────
+
+  async getStats() {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [totalWorkspaces, totalUsers, activeUsers, totalConversations, totalInvoices] = await Promise.all([
+      this.prisma.workspace.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.user.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.user.count({ where: { status: 'ACTIVE', updated_at: { gte: thirtyDaysAgo } } }),
+      this.prisma.conversation.count(),
+      this.prisma.invoice.count(),
+    ]);
+    return { totalWorkspaces, totalUsers, activeUsers, totalConversations, totalInvoices };
+  }
+
+  // ── GET /platform/workspaces/:slug ─────────────────────────────────────────
+
+  async getWorkspaceBySlug(slug: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { slug },
+      select: {
+        id: true, name: true, slug: true, plan: true, status: true,
+        timezone: true, locale: true, created_at: true,
+        _count: { select: { workspace_users: true, conversations: true, invoices: true } },
+      },
+    });
+    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+
+    return {
+      ...workspace,
+      member_count: workspace._count.workspace_users,
+      conversation_count: workspace._count.conversations,
+      invoice_count: workspace._count.invoices,
+    };
+  }
+
   private async ensureUserExists(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

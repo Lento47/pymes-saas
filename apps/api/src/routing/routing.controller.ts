@@ -10,12 +10,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { WorkspaceUserRole } from '@prisma/client';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { CreateRoutingRuleDto } from './dto/create-routing-rule.dto';
 import { UpdateRoutingRuleDto } from './dto/update-routing-rule.dto';
 
@@ -24,7 +24,7 @@ const INCLUDE = {
   channel: { select: { id: true, name: true, type: true } },
 } as const;
 
-@Controller('routing-rules')
+@Controller('routing/rules')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class RoutingController {
   constructor(private readonly prisma: PrismaService) {}
@@ -40,10 +40,12 @@ export class RoutingController {
 
   @Post()
   @Roles(WorkspaceUserRole.ADMIN)
-  create(
+  async create(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateRoutingRuleDto,
   ) {
+    const departmentId = await this.resolveDepartment(workspaceId, dto.department_id);
+
     return this.prisma.routingRule.create({
       data: {
         workspace_id: workspaceId,
@@ -51,12 +53,23 @@ export class RoutingController {
         name: dto.name,
         match_type: dto.match_type ?? 'KEYWORD',
         pattern: dto.pattern.trim().toLowerCase(),
-        department_id: dto.department_id,
+        department_id: departmentId,
         priority: dto.priority ?? 0,
         is_active: dto.is_active ?? true,
       },
       include: INCLUDE,
     });
+  }
+
+  private async resolveDepartment(workspaceId: string, nameOrId: string): Promise<string> {
+    const existing = await this.prisma.department.findFirst({
+      where: { workspace_id: workspaceId, OR: [{ id: nameOrId }, { name: nameOrId }] },
+    });
+    if (existing) return existing.id;
+    const created = await this.prisma.department.create({
+      data: { workspace_id: workspaceId, name: nameOrId },
+    });
+    return created.id;
   }
 
   @Patch(':id')

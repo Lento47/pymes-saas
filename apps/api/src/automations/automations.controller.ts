@@ -18,11 +18,12 @@ import { UpdateAutomationDto } from './dto/update-automation.dto';
 import { FilterAutomationsDto } from './dto/filter-automations.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { FeatureFlagGuard, RequireFeature } from '../feature-flags/feature-flags.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
 @Controller('automations')
 export class AutomationsController {
   constructor(
@@ -41,6 +42,7 @@ export class AutomationsController {
 
   @Post()
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @RequireFeature('automations')
   async create(
     @CurrentUser() user: any,
     @Body() dto: CreateAutomationDto,
@@ -64,6 +66,7 @@ export class AutomationsController {
 
   @Patch(':id')
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @RequireFeature('automations')
   update(
     @CurrentUser() user: any,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -74,6 +77,7 @@ export class AutomationsController {
 
   @Post(':id/toggle')
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @RequireFeature('automations')
   toggle(
     @CurrentUser() user: any,
     @Param('id', ValidateUUIDPipe) id: string,
@@ -97,6 +101,7 @@ export class AutomationsController {
   }
   @Delete(':id')
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @RequireFeature('automations')
   remove(
     @CurrentUser() user: any,
     @Param('id', ValidateUUIDPipe) id: string,
