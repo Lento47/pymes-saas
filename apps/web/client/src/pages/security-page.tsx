@@ -33,7 +33,7 @@ export default function SecurityPage() {
                 const Icon = icons[i % icons.length];
                 return (
                 <article key={title} className="glass-panel rounded-[28px] p-7 flex gap-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))] p-2 text-white/90"><Icon className="h-6 w-6" /></div>
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(245,158,11,0.12))] p-2 text-white/90"><Icon className="h-6 w-6" /></div>
                   <div><h3 className="font-marketing text-xl font-semibold tracking-[-0.03em]">{title}</h3><p className="mt-3 text-sm leading-7 text-white/75">{desc}</p></div>
                 </article>
                 );

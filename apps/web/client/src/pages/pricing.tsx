@@ -173,7 +173,7 @@ export default function PricingPage() {
                     key={addOn.key}
                     className={cn(
                       'rounded-2xl border border-indigo-400/15 bg-indigo-900/20 p-5 transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-indigo-900/30',
-                      isSeat && 'border-[#F59E0B]/40 bg-gradient-to-br from-[#F59E0B]/12 to-indigo-900/25 shadow-[0_18px_60px_rgba(223,255,74,0.10)]'
+                      isSeat && 'border-[#F59E0B]/40 bg-gradient-to-br from-[#F59E0B]/12 to-indigo-900/25 shadow-[0_18px_60px_rgba(245,158,11,0.10)]'
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">

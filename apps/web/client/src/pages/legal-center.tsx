@@ -263,7 +263,7 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(245,158,11,0.12))]">
                         <ShieldCheck className="h-5 w-5 text-white/80" />
                       </div>
                       <Badge variant="outline" className="border-sky-500/30 bg-sky-500/10 text-sky-300">

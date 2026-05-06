@@ -82,7 +82,7 @@ return (
 
             <div className="rounded-[34px] border border-white/[0.08] bg-white/[0.04] px-7 py-8 md:px-10 md:py-10">
               <div className="flex items-start justify-between gap-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))] text-white/90">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(245,158,11,0.12))] text-white/90">
                   <BookOpen className="h-6 w-6" />
                 </div>
                 <span className="rounded-full border border-[#F59E0B]/28 bg-[#F59E0B]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#F59E0B]">

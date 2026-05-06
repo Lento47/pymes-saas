@@ -35,7 +35,7 @@ export default function PlatformPage() {
                 { icon: ShieldCheck, title: "Audit Logs", desc: "Registro completo de acciones por usuario, workspace y timestamp." },
                 { icon: LockKeyhole, title: "SSO Empresarial", desc: "SAML 2.0 para Azure AD, Okta, PingOne. Sin contraseñas compartidas." }].map(({ icon: Icon, title, desc }) => (
                 <article key={title} className="glass-panel rounded-[28px] p-7">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))] p-2 text-white/90"><Icon className="h-6 w-6" /></div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(245,158,11,0.12))] p-2 text-white/90"><Icon className="h-6 w-6" /></div>
                   <h3 className="font-marketing mt-7 text-2xl font-semibold tracking-[-0.03em]">{title}</h3>
                   <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/72">{desc}</p>
                 </article>

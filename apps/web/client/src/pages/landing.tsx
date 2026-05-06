@@ -112,8 +112,8 @@ function PerformanceChart({ labels }: { labels: readonly string[] }) {
           <stop offset="100%" stopColor="#FDE68A" />
         </linearGradient>
         <linearGradient id="request-area" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="rgba(222,255,74,0.40)" />
-          <stop offset="100%" stopColor="rgba(222,255,74,0.02)" />
+          <stop offset="0%" stopColor="rgba(245,158,11,0.40)" />
+          <stop offset="100%" stopColor="rgba(245,158,11,0.02)" />
         </linearGradient>
         <filter id="request-glow" x="-30%" y="-30%" width="160%" height="160%">
           <feGaussianBlur stdDeviation="5" result="blur" />
@@ -184,14 +184,14 @@ function OrbitGraphic() {
       <div className="absolute inset-5 rounded-full border border-[#5f72ff]/25" />
       <div className="absolute inset-11 rounded-full border border-[#5f72ff]/20" />
       <div className="absolute inset-[4.65rem] rounded-full border border-[#5f72ff]/15" />
-      <div className="animate-pulse-halo absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(233,255,93,0.95)_0%,rgba(232,255,89,0.2)_40%,transparent_72%)]" />
-      <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#F59E0B]/35 bg-[#10173a]/90 text-[#F59E0B] shadow-[0_0_32px_rgba(232,255,89,0.35)]">
+      <div className="animate-pulse-halo absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(245,158,11,0.95)_0%,rgba(245,158,11,0.2)_40%,transparent_72%)]" />
+      <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#F59E0B]/35 bg-[#10173a]/90 text-[#F59E0B] shadow-[0_0_32px_rgba(245,158,11,0.35)]">
         <Sparkles className="h-6 w-6" />
       </div>
       <div className="absolute left-[18%] top-[34%] h-3 w-3 rounded-full bg-[#5c72ff]/80 shadow-[0_0_6px_rgba(92,114,255,0.65)]" />
       <div className="absolute bottom-[18%] right-[14%] h-3.5 w-3.5 rounded-full bg-[#5c72ff]/70 shadow-[0_0_18px_rgba(92,114,255,0.55)]" />
       <div className="absolute right-[26%] top-[13%] h-2.5 w-2.5 rounded-full bg-[#9db0ff]/90 shadow-[0_0_14px_rgba(157,176,255,0.7)]" />
-      <div className="absolute left-[50%] top-[8%] h-2 w-2 -translate-x-1/2 rounded-full bg-[#F59E0B]/70 shadow-[0_0_14px_rgba(232,255,89,0.7)]" />
+      <div className="absolute left-[50%] top-[8%] h-2 w-2 -translate-x-1/2 rounded-full bg-[#F59E0B]/70 shadow-[0_0_14px_rgba(245,158,11,0.7)]" />
     </div>
   );
 }
@@ -862,7 +862,7 @@ export default function Landing() {
 
                   <CarouselItem className="basis-full">
                     <article className="glass-panel rounded-xl p-6">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#FDE68A]">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(245,158,11,0.28),rgba(217,119,6,0.16))] p-2 text-[#FDE68A]">
                         <img
                           src="/landing-icons/Smart-automations.png"
                           alt=""
@@ -1030,7 +1030,7 @@ export default function Landing() {
               </article>
 
               <article className="glass-panel rounded-xl p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#FDE68A]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(245,158,11,0.28),rgba(217,119,6,0.16))] p-2 text-[#FDE68A]">
                   <img
                     src="/landing-icons/Smart-automations.png"
                     alt=""
