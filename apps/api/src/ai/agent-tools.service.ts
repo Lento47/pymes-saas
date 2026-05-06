@@ -72,9 +72,9 @@ export class AgentToolsService {
       case 'list_fix_cases':
         return this.listFixCases(workspaceId);
       case 'approve_fix':
-        return this.approveFix(args);
+        return this.approveFix(workspaceId, args);
       case 'reject_fix':
-        return this.rejectFix(args);
+        return this.rejectFix(workspaceId, args);
       default:
         throw new BadRequestException(`Unknown tool: ${tool}`);
     }
@@ -384,13 +384,13 @@ export class AgentToolsService {
     return { fix_cases: cases };
   }
 
-  private async approveFix(args: Record<string, any>) {
+  private async approveFix(workspaceId: string, args: Record<string, any>) {
     if (!args.fix_case_id) throw new BadRequestException('approve_fix requires fix_case_id');
-    return this.fixService.approveFix(args.fix_case_id);
+    return this.fixService.approveFix(args.fix_case_id, { workspaceId, isPlatformAdmin: false });
   }
 
-  private async rejectFix(args: Record<string, any>) {
+  private async rejectFix(workspaceId: string, args: Record<string, any>) {
     if (!args.fix_case_id) throw new BadRequestException('reject_fix requires fix_case_id');
-    return this.fixService.rejectFix(args.fix_case_id, args.reason || '');
+    return this.fixService.rejectFix(args.fix_case_id, args.reason || '', { workspaceId, isPlatformAdmin: false });
   }
 }

@@ -99,7 +99,7 @@ const markConversationResolved: RunbookEntry = {
     name: 'mark-conversation-resolved',
     title: 'Forzar cierre de conversación',
     description:
-      'Marca una conversación como CLOSED y registra una nota de soporte. ' +
+      'Marca una conversación como RESOLVED. ' +
       'Útil cuando la UI normal no permite cerrarla (agente offline, SLA al límite).',
     reversalNotes:
       'Reversible desde la UI: abrir la conversación y reabrirla. ' +
@@ -135,7 +135,7 @@ const markConversationResolved: RunbookEntry = {
         `Conversation ${conversationId} not found in workspace ${ctx.workspaceId}`,
       );
     }
-    if (conv.status === ConversationStatus.CLOSED) {
+    if (conv.status === ConversationStatus.RESOLVED) {
       return {
         summary: 'La conversación ya estaba cerrada — no se hicieron cambios.',
         details: { conversation_id: conversationId, no_op: true },
@@ -145,7 +145,7 @@ const markConversationResolved: RunbookEntry = {
     await ctx.prisma.conversation.update({
       where: { id: conversationId },
       data: {
-        status: ConversationStatus.CLOSED,
+        status: ConversationStatus.RESOLVED,
         resolved_at: new Date(),
       },
     });
@@ -154,7 +154,7 @@ const markConversationResolved: RunbookEntry = {
     // — the service persists params on every execution. No need to also
     // dump it on the Conversation row (which has no internal_notes field).
     return {
-      summary: 'Conversación marcada como CLOSED.',
+      summary: 'Conversación marcada como RESOLVED.',
       details: {
         conversation_id: conversationId,
         previous_status: conv.status,

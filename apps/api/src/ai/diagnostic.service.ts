@@ -217,11 +217,19 @@ export class DiagnosticService {
       this.logger.error(`Failed to notify admins of diagnostic case: ${err?.message}`),
     );
 
-    // Proactive resolution: if a known issue matched, auto-create a fix case
+    // Proactive resolution: if a known issue matched, auto-create a fix case.
+    // Internal/system-triggered call: actor is the case's own workspace
+    // (the diagnostic case lives there), and we mark isPlatformAdmin=true
+    // so the assert passes regardless — this isn't user-initiated.
     if (matchedIssue) {
-      this.fixService.createFixCase(caseRecord.id).catch((err) =>
-        this.logger.error(`Failed to auto-create fix case for ${caseRecord.id}: ${err?.message}`),
-      );
+      this.fixService
+        .createFixCase(caseRecord.id, {
+          workspaceId: input.workspaceId,
+          isPlatformAdmin: true,
+        })
+        .catch((err) =>
+          this.logger.error(`Failed to auto-create fix case for ${caseRecord.id}: ${err?.message}`),
+        );
     }
 
     return {
