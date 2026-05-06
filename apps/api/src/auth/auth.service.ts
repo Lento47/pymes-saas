@@ -3,7 +3,7 @@ import { BadRequestException, ConflictException, Injectable, InternalServerError
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { InviteTokenPayload } from './invite-token.types';
@@ -234,27 +234,17 @@ export class AuthService {
       },
     });
 
+    // C3 fix: do NOT auto-provision a workspace membership. A malicious
+    // IdP that authenticates an unrelated email would otherwise be added
+    // to the target workspace as AGENT. Admins must invite the user
+    // through the standard invitation flow before SSO will let them in.
     if (!membership) {
-      // Auto-provision user into workspace if not a member
-      const ws = await this.prisma.workspace.findUnique({
-        where: { id: workspaceId },
-        select: { plan: true },
-      });
-
-      await this.prisma.workspaceUser.create({
-        data: {
-          workspace_id: workspaceId,
-          user_id: user.id,
-          role: 'AGENT',
-          is_owner: false,
-        },
-      });
+      throw new UnauthorizedException(
+        'Tu cuenta no tiene acceso a este workspace. Pide a un administrador que te invite.',
+      );
     }
 
-    const effectiveMembership = membership || {
-      role: 'AGENT',
-      is_owner: false,
-    };
+    const effectiveMembership = membership;
 
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
@@ -288,6 +278,71 @@ export class AuthService {
           slug: workspace.slug,
           plan: workspace.plan,
         },
+      },
+    };
+  }
+
+  // ── Unified SSO exchange (SAML + Google) ───────────────────────────────────
+  //
+  // After a successful SSO callback, mint a 60-second one-shot JWT
+  // "exchange code" instead of putting the access/refresh token in the
+  // redirect URL. The SPA redeems this code via POST /auth/sso-exchange.
+  // C4 fix: bounds Referer / browser-history exposure to a 60s
+  // non-renewable code instead of a 15m access token + multi-week
+  // refresh token.
+
+  mintSsoExchangeCode(userId: string, workspaceId: string): string {
+    return this.jwtService.sign(
+      { sub: userId, workspace_id: workspaceId, type: 'sso-exchange', jti: randomUUID() },
+      { expiresIn: '60s' },
+    );
+  }
+
+  async consumeSsoExchangeCode(code: string) {
+    if (!code) throw new BadRequestException('Código requerido.');
+    let payload: { sub: string; workspace_id: string; type?: string };
+    try {
+      payload = this.jwtService.verify(code);
+    } catch {
+      throw new UnauthorizedException('Código inválido o expirado.');
+    }
+    if (payload?.type !== 'sso-exchange' || !payload.sub || !payload.workspace_id) {
+      throw new UnauthorizedException('Código inválido.');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user || user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Usuario inválido.');
+    }
+    const membership = await this.prisma.workspaceUser.findUnique({
+      where: { workspace_id_user_id: { workspace_id: payload.workspace_id, user_id: user.id } },
+    });
+    if (!membership) {
+      throw new UnauthorizedException('Sin acceso al workspace.');
+    }
+    const workspace = await this.prisma.workspace.findUnique({ where: { id: payload.workspace_id } });
+    if (!workspace) throw new UnauthorizedException('Workspace no encontrado.');
+
+    const access_token = this.signToken({
+      sub: user.id,
+      email: user.email,
+      workspace_id: workspace.id,
+      role: membership.role,
+      is_platform_admin: user.is_platform_admin,
+    });
+    const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
+    return {
+      access_token,
+      refresh_token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar_url: user.avatar_url,
+        role: membership.role,
+        is_owner: membership.is_owner,
+        is_platform_admin: user.is_platform_admin,
+        workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan },
       },
     };
   }

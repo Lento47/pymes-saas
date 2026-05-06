@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -162,27 +163,42 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: any, @Res() res: any) {
     const profile = req.user as { googleId: string; email: string; name: string; avatarUrl: string | null };
+    const frontendUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
     try {
+      // Resolve / create the user via Google profile, then mint a 60s
+      // exchange code instead of putting the access + refresh token in
+      // the URL (C4 fix). The SPA redeems the code at POST /auth/sso-exchange.
       const result = await this.authService.googleLogin(profile);
-      // Redirect to frontend with token in hash
-      const frontendUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
-      res.redirect(`${frontendUrl}/login?token=${encodeURIComponent(result.access_token)}&refresh_token=${encodeURIComponent(result.refresh_token)}&slug=${encodeURIComponent(result.user.workspace.slug)}`);
+      const code = this.authService.mintSsoExchangeCode(result.user.id, result.user.workspace.id);
+      res.redirect(
+        `${frontendUrl}/login?code=${encodeURIComponent(code)}&slug=${encodeURIComponent(result.user.workspace.slug)}`,
+      );
     } catch (err: any) {
-      const frontendUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
-      res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(err?.message || 'google_auth_failed')}`);
+      // Don't interpolate err.message — it leaks into Referer / proxy logs.
+      res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
     }
   }
 
-  // POST variant for SPA/mobile (receives Google credential/ID token directly)
-  @Post('google')
+  // Unified SSO exchange endpoint — used by both SAML and Google callbacks.
+  @Post('sso-exchange')
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
-  async googleLogin(@Body() body: { credential?: string; email?: string; googleId?: string; name?: string; avatarUrl?: string }) {
-    if (!body.email) throw new UnauthorizedException('Email is required from Google profile.');
-    return this.authService.googleLogin({
-      googleId: body.googleId || body.email,
-      email: body.email,
-      name: body.name || body.email.split('@')[0],
-      avatarUrl: body.avatarUrl || null,
-    });
+  async ssoExchange(@Body('code') code: string) {
+    return this.authService.consumeSsoExchangeCode(code);
+  }
+
+  // The previous POST /auth/google accepted an unverified email + googleId
+  // from the request body — a complete authentication bypass. It is now
+  // disabled. Clients that need server-side Google sign-in must:
+  //   1. Use GET /auth/google → /auth/google/callback (Passport-protected),
+  //      then POST /auth/sso-exchange with the returned `code`; OR
+  //   2. Implement Google ID-token verification via google-auth-library
+  //      and re-enable this endpoint with verified credentials only.
+  @Post('google')
+  @HttpCode(HttpStatus.GONE)
+  googleLoginDeprecated() {
+    throw new BadRequestException(
+      'POST /auth/google is disabled. Use GET /auth/google then redeem the code at POST /auth/sso-exchange.',
+    );
   }
 }

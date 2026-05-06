@@ -70,13 +70,22 @@ export class SamlController {
       throw new BadRequestException(`Workspace "${workspaceSlug}" not found`);
     }
 
+    const baseRedirect = process.env.CORS_ORIGIN?.split(',')[0] || 'https://pymeshub.lat';
     try {
+      // ssoLogin verifies the user exists and is a member of the
+      // workspace. We then mint a 60-second one-shot exchange code
+      // and put THAT in the redirect URL — never the access/refresh
+      // token. The SPA redeems the code at POST /auth/sso-exchange.
+      // C4: bounds Referer / browser-history exposure to a 60s
+      // non-renewable code instead of a long-lived bearer token.
       const auth = await this.authService.ssoLogin(ws.id, result.email.toLowerCase());
+      const code = this.authService.mintSsoExchangeCode(auth.user.id, ws.id);
       this.logger.log(`SAML login success: ${result.email} → workspace ${ws.id}`);
-      res.redirect(`${process.env.CORS_ORIGIN?.split(',')[0] || 'https://pymeshub.lat'}/login?token=${auth.access_token}&slug=${ws.slug}`);
+      res.redirect(`${baseRedirect}/login?code=${encodeURIComponent(code)}&slug=${ws.slug}`);
     } catch (err: any) {
       this.logger.warn(`SAML login failed for ${result.email}: ${err.message}`);
-      res.redirect(`${process.env.CORS_ORIGIN?.split(',')[0] || 'https://pymeshub.lat'}/login?error=sso_failed&message=${encodeURIComponent(err.message)}`);
+      // Don't echo err.message into the URL — it ends up in proxy logs.
+      res.redirect(`${baseRedirect}/login?error=sso_failed`);
     }
   }
 
