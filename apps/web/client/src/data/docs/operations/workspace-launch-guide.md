@@ -100,9 +100,117 @@ WhatsApp **no permite** iniciar una conversación con un cliente si pasaron más
 
 ### 5.2 Correo electrónico
 
-1. Configura la bandeja de correo unificada en Configuración > Canales.
-2. Define reglas de enrutamiento: qué mensajes van a qué departamento o agente.
-3. Si usas un dominio propio, configura los registros DNS necesarios (SPF, DKIM, DMARC).
+PymesHub envía correo a través de **Resend** (API moderna sobre HTTPS) y opcionalmente recibe correo entrante vía webhook. La configuración tiene tres partes: dominio en Resend, API key, y conexión en PymesHub.
+
+**Antes de empezar**
+
+- Una cuenta en `resend.com` (plan free incluye 3.000 envíos/mes y un dominio).
+- Si usás un dominio propio (`tuempresa.com`), acceso al panel de DNS de tu registrador (Cloudflare, GoDaddy, Namecheap, etc.). Si todavía no tenés dominio, podés empezar con la dirección compartida `onboarding@resend.dev` y migrar después.
+- Una dirección "from" decidida (ej. `notificaciones@tuempresa.com`, `soporte@tuempresa.com`). Usá una dirección no-personal — el correo sale firmado con esa dirección y los clientes responden ahí.
+
+**Paso 1 — Agregar y verificar el dominio en Resend**
+
+1. En `resend.com → Domains → Add Domain`, ingresá tu dominio raíz (`tuempresa.com`, sin `www` y sin protocolo).
+2. Resend te muestra **3 registros DNS** que debés copiar a tu registrador. Los nombres exactos varían pero siempre son del tipo:
+   - `MX` para enrutar inbound a los servidores de Resend (sólo si vas a recibir correo entrante).
+   - `TXT` con un valor que empieza por `v=spf1 include:amazonses.com ~all` (registro **SPF**).
+   - `TXT` con prefijo `resend._domainkey` y un valor largo (registro **DKIM**).
+3. **Recomendado**: agregar también un registro **DMARC** (`TXT` en `_dmarc.tuempresa.com` con `v=DMARC1; p=quarantine; rua=mailto:tu@correo.com`). No es obligatorio para enviar pero mejora la entregabilidad y evita que tus correos terminen en spam.
+4. Esperá la verificación. Resend reintenta cada minuto y suele tardar 5–60 minutos según la propagación DNS de tu registrador. El estado en `Domains` cambia a `Verified` cuando todos los registros validan.
+
+**Paso 2 — Crear la API key**
+
+1. En `resend.com → API Keys → Create API Key`, dale un nombre descriptivo (`pymeshub-prod`).
+2. Permiso: `Sending access` (es el que usa PymesHub para enviar). Si vas a usar inbound, también necesitás `Full access`.
+3. Restringí la API key a tu dominio verificado (campo *Domain*) para limitar el blast radius si la key se filtra.
+4. Copiá la key (`re_...`) en el momento — Resend no la vuelve a mostrar. Guardala en un gestor de secretos.
+
+**Paso 3 — Conectar el canal en PymesHub**
+
+1. **Configuración → Canales → Email → Conectar**.
+2. Pegá:
+   - **API Key**: la `re_...` del paso 2.
+   - **From email**: la dirección de envío (debe ser de un dominio verificado en Resend, p. ej. `notificaciones@tuempresa.com`).
+   - **From name**: el nombre que ven los destinatarios (`Soporte PymesHub`, `Ventas TuEmpresa`).
+   - **Inbound email** (opcional): la dirección a donde reenviás los correos entrantes (`hola@tuempresa.com`).
+3. PymesHub guarda la API key cifrada con `ENCRYPTION_KEY` y hace una llamada de prueba a `/domains` de Resend para validar.
+4. Mandá un correo de prueba desde **Configuración → Canales → Email → Enviar prueba**. Te debe llegar en menos de 1 minuto.
+
+**Paso 4 — Recibir correo entrante (opcional)**
+
+Para que las respuestas de tus clientes lleguen al inbox de PymesHub:
+
+1. En `resend.com → Webhooks → Add Webhook`:
+   - **Endpoint URL**: `https://api.pymeshub.lat/api/inbound/email/webhook`
+   - **Events**: marcá `email.delivered`, `email.bounced`, `email.complained`, y los de inbound (`email.received` si tu plan lo incluye).
+2. Resend te muestra un **Webhook Signing Secret** (formato `whsec_...`). PymesHub lo verifica con la firma Svix (headers `svix-signature`, `svix-id`, `svix-timestamp`) — sin firma válida la llamada se rechaza con 401.
+3. Si tu workspace es managed, el admin de plataforma carga `RESEND_WEBHOOK_SECRET` en la config del workspace. Si autoalojás, definilo como variable de entorno del API.
+4. Configurá el reenvío de tu dirección entrante hacia Resend según la guía de Resend Inbound. Para dominios en Cloudflare Email Routing, agregás una regla que reenvía a la dirección que Resend te asigna.
+
+**Paso 5 — Reglas de enrutamiento**
+
+Una vez conectado, definí en **Configuración → Canales → Email → Reglas**:
+
+- Qué dirección recibe qué tipo de correo (soporte, ventas, finanzas).
+- A qué departamento o agente se asigna automáticamente.
+- Etiquetas auto-aplicadas según asunto, remitente o palabras clave.
+
+**Cumplimiento**
+
+- Incluí siempre un link de baja en correos de marketing (Resend lo agrega automáticamente si activás *Add unsubscribe headers*).
+- En Costa Rica, los correos comerciales no solicitados están limitados por Ley 8968. Documentá el opt-in igual que con WhatsApp.
+
+### 5.3 Telegram
+
+Telegram es el canal más simple de los tres: no requiere verificación de empresa ni cuenta de pago. Toda la configuración la hace PymesHub automáticamente una vez que pegás el token del bot.
+
+**Paso 1 — Crear el bot con BotFather**
+
+1. Abrí Telegram (web, móvil o desktop) y buscá `@BotFather` → start.
+2. Mandá el comando `/newbot`.
+3. BotFather te pide:
+   - **Display name** del bot (`Soporte TuEmpresa`).
+   - **Username** terminado en `bot` (`tuempresa_soporte_bot`). Debe ser único en todo Telegram.
+4. BotFather responde con un mensaje que incluye el **token** (formato `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`). **Copialo** — es la única credencial que necesitás.
+
+**Paso 2 — Configurar el bot (opcional pero recomendado)**
+
+Mientras seguís en el chat con BotFather:
+
+- `/setdescription` → texto corto que aparece arriba del bot cuando un usuario lo abre por primera vez.
+- `/setabouttext` → texto que aparece en el perfil del bot.
+- `/setuserpic` → foto de perfil del bot (logo de tu empresa, mínimo 512×512 px).
+- `/setcommands` → lista de comandos visibles. Para soporte, suele ser:
+  ```
+  start - Iniciar conversación
+  ayuda - Ver opciones de ayuda
+  agente - Hablar con una persona
+  ```
+- `/setprivacy` → `Disable` si querés que el bot reciba todos los mensajes en grupos. Para soporte 1-a-1 (DM con el bot) no importa.
+
+**Paso 3 — Conectar el canal en PymesHub**
+
+1. **Configuración → Canales → Telegram → Conectar**.
+2. Pegá el **token** del bot. PymesHub lo guarda cifrado.
+3. Al guardar, PymesHub **automáticamente**:
+   - Llama a `setWebhook` de Telegram apuntando a `https://api.pymeshub.lat/api/inbound/telegram/webhook/{channelId}`.
+   - Genera un secret aleatorio por canal y lo registra como `secret_token` en Telegram. Cada update entrante debe traer ese mismo secret en el header `X-Telegram-Bot-Api-Secret-Token` o se rechaza con 401.
+   - Suscribe a los tipos de update relevantes (`message`, `edited_message`, `callback_query`).
+4. PymesHub muestra el estado del webhook en **Configuración → Canales → Telegram → Estado del webhook** (URL registrada, últimos errores reportados por Telegram, conteo de updates pendientes).
+
+No tenés que tocar nada más en el lado de Telegram — toda la configuración del webhook la maneja el server.
+
+**Paso 4 — Probar el bot**
+
+1. Buscá tu bot en Telegram por su username (`@tuempresa_soporte_bot`).
+2. Mandá `/start`. El mensaje debería aparecer en el inbox de PymesHub en menos de 5 segundos.
+3. Respondé desde PymesHub. La respuesta llega al chat de Telegram.
+
+**Cumplimiento y buenas prácticas**
+
+- Telegram **no** tiene restricciones tan estrictas como WhatsApp para iniciar conversaciones, pero el bot solo puede mandar mensajes a usuarios que primero le hayan escrito a él. No podés agregarlo a chats no solicitados.
+- Si un usuario bloquea el bot, los mensajes posteriores fallan con `403 Forbidden: bot was blocked by the user`. PymesHub marca esa conversación como cerrada automáticamente.
+- Para soporte multi-agente, conviene crear **un solo bot por workspace** y dejar que PymesHub se encargue de la asignación interna; un bot por agente fragmenta la conversación.
 
 ## 6. Paso 4 — Organizar departamentos
 
