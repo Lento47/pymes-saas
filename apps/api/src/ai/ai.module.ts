@@ -12,11 +12,17 @@ import { InsightsModule } from '../insights/insights.module';
 import { SearchModule } from '../search/search.module';
 import { DocsModule } from '../docs/docs.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { EmailModule } from '../email/email.module';
 import { SupportRouterService } from './support-router.service';
 import { DiagnosticService } from './diagnostic.service';
 import { EngineeringFixService } from './engineering-fix.service';
 import { SupportNotificationService } from './support-notification.service';
+
+// NOTE: do NOT import EmailModule here. Adding it creates a cycle
+// AiModule → EmailModule → ConversationsModule → AiModule (the last
+// link is eager because ConversationsModule.imports has AiModule
+// without forwardRef, and MessagesService injects AiService directly).
+// Email-based support notifications are dispatched via a downstream
+// transactional-email path that doesn't share AiModule's DI graph.
 
 @Module({
   imports: [
@@ -26,7 +32,6 @@ import { SupportNotificationService } from './support-notification.service';
     SearchModule,
     DocsModule,
     forwardRef(() => NotificationsModule),
-    forwardRef(() => EmailModule),
   ],
   providers: [
     AiService,
