@@ -89,6 +89,16 @@ export class WorkspacesService {
     return this.serializeWorkspace(workspace);
   }
 
+  // ── GET /workspaces/current/dashboard ────────────────────────────────────
+
+  async getDashboard(workspaceId: string) {
+    const [workspace, stats] = await Promise.all([
+      this.getCurrent(workspaceId),
+      this.getStats(workspaceId),
+    ]);
+    return { workspace, stats };
+  }
+
   // ── GET /workspaces/current/subscription ─────────────────────────────────
 
   async getSubscription(workspaceId: string) {
@@ -380,60 +390,60 @@ export class WorkspacesService {
   // ── GET /workspaces/current/stats ─────────────────────────────────────────
 
   async getStats(workspaceId: string) {
-    const [contacts, conversations, tasks, documents, automations, members] = await Promise.all([
-      this.prisma.contact.count({ where: { workspace_id: workspaceId } }),
-      this.prisma.conversation.count({ where: { workspace_id: workspaceId } }),
-      this.prisma.task.count({ where: { workspace_id: workspaceId } }),
-      this.prisma.document.count({ where: { workspace_id: workspaceId } }),
-      this.prisma.automationRule.count({ where: { workspace_id: workspaceId } }),
-      this.prisma.workspaceUser.count({ where: { workspace_id: workspaceId } }),
-    ]);
-
-    const activeConversations = await this.prisma.conversation.count({
-      where: { workspace_id: workspaceId, status: { in: ['NEW', 'OPEN'] } },
-    });
-
-    const pendingTasks = await this.prisma.task.count({
-      where: { workspace_id: workspaceId, status: { in: ['TODO', 'IN_PROGRESS'] } },
-    });
-
-    const totalDocumentSize = await this.prisma.document.aggregate({
-      where: { workspace_id: workspaceId },
-      _sum: { file_size: true },
-    });
-
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-    const [monthlyRevenue, prevMonthRevenue] = await Promise.all([
-      this.prisma.invoice.aggregate({
-        where: { workspace_id: workspaceId, created_at: { gte: startOfMonth }, status: { not: 'CANCELLED' } },
-        _sum: { amount: true },
-      }),
-      this.prisma.invoice.aggregate({
-        where: { workspace_id: workspaceId, created_at: { gte: startOfPrevMonth, lte: endOfPrevMonth }, status: { not: 'CANCELLED' } },
-        _sum: { amount: true },
-      }),
-    ]);
+    const [row] = await this.prisma.$queryRawUnsafe<
+      Array<{
+        contacts: number | bigint;
+        conversations: number | bigint;
+        tasks: number | bigint;
+        documents: number | bigint;
+        automations: number | bigint;
+        members: number | bigint;
+        active_conversations: number | bigint;
+        pending_tasks: number | bigint;
+        total_document_bytes: number | bigint;
+        monthly_revenue: number | string;
+        prev_month_revenue: number | string;
+      }>
+    >(
+      `SELECT
+        (SELECT COUNT(*) FROM contacts      WHERE workspace_id = $1)::int AS contacts,
+        (SELECT COUNT(*) FROM conversations WHERE workspace_id = $1)::int AS conversations,
+        (SELECT COUNT(*) FROM tasks         WHERE workspace_id = $1)::int AS tasks,
+        (SELECT COUNT(*) FROM documents     WHERE workspace_id = $1)::int AS documents,
+        (SELECT COUNT(*) FROM automation_rules WHERE workspace_id = $1)::int AS automations,
+        (SELECT COUNT(*) FROM workspace_users   WHERE workspace_id = $1)::int AS members,
+        (SELECT COUNT(*) FROM conversations WHERE workspace_id = $1 AND status IN ('NEW','OPEN'))::int AS active_conversations,
+        (SELECT COUNT(*) FROM tasks         WHERE workspace_id = $1 AND status IN ('TODO','IN_PROGRESS'))::int AS pending_tasks,
+        COALESCE((SELECT SUM(file_size) FROM documents WHERE workspace_id = $1), 0)::bigint AS total_document_bytes,
+        COALESCE((SELECT SUM(amount) FROM invoices WHERE workspace_id = $1 AND created_at >= $2 AND status != 'CANCELLED'), 0) AS monthly_revenue,
+        COALESCE((SELECT SUM(amount) FROM invoices WHERE workspace_id = $1 AND created_at >= $3 AND created_at <= $4 AND status != 'CANCELLED'), 0) AS prev_month_revenue`,
+      workspaceId,
+      startOfMonth,
+      startOfPrevMonth,
+      endOfPrevMonth,
+    );
 
-    const revenueThisMonth = Number(monthlyRevenue._sum.amount ?? 0);
-    const revenuePrevMonth = Number(prevMonthRevenue._sum.amount ?? 0);
+    const revenueThisMonth = Number(row.monthly_revenue ?? 0);
+    const revenuePrevMonth = Number(row.prev_month_revenue ?? 0);
     const revenueChange = revenuePrevMonth > 0
       ? Math.round(((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth * 100))
       : (revenueThisMonth > 0 ? 100 : 0);
 
     return {
-      contacts,
-      conversations,
-      activeConversations,
-      tasks,
-      pendingTasks,
-      documents,
-      documentStorageBytes: totalDocumentSize._sum.file_size ?? 0,
-      automations,
-      members,
+      contacts: Number(row.contacts ?? 0),
+      conversations: Number(row.conversations ?? 0),
+      activeConversations: Number(row.active_conversations ?? 0),
+      tasks: Number(row.tasks ?? 0),
+      pendingTasks: Number(row.pending_tasks ?? 0),
+      documents: Number(row.documents ?? 0),
+      documentStorageBytes: Number(row.total_document_bytes ?? 0),
+      automations: Number(row.automations ?? 0),
+      members: Number(row.members ?? 0),
       monthly_revenue: revenueThisMonth,
       prev_month_revenue: revenuePrevMonth,
       revenue_change_pct: Math.round(revenueChange),
