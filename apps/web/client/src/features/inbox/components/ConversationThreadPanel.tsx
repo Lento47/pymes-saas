@@ -11,11 +11,11 @@ export function ConversationThreadPanel({
     return (
       <section className="flex items-center justify-center bg-background">
         <div className="text-center px-8 max-w-[280px]">
-          <InboxIcon className="mx-auto h-10 w-10 text-muted-foreground/30" />
+          <InboxIcon className="mx-auto h-10 w-10 text-muted-foreground/65" />
           <h3 className="mt-4 text-sm font-medium text-foreground">
             Seleccioná una conversación
           </h3>
-          <p className="mt-2 text-[13px] text-muted-foreground/50 leading-relaxed">
+          <p className="mt-2 text-[13px] text-muted-foreground/80 leading-relaxed">
             Elegí una conversación para ver el historial y responder.
           </p>
         </div>
@@ -34,7 +34,7 @@ export function ConversationThreadPanel({
           <p className="text-[13px] font-medium text-foreground truncate">
             {conversation.contact?.full_name || "Desconocido"}
           </p>
-          <p className="text-[11px] text-muted-foreground/50 truncate">
+          <p className="text-[11px] text-muted-foreground/80 truncate">
             {conversation.channel?.name || "Sin canal"}
           </p>
         </div>
@@ -42,7 +42,7 @@ export function ConversationThreadPanel({
 
       {/* Messages area */}
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <div className="text-center text-[13px] text-muted-foreground/50 mt-12">
+        <div className="text-center text-[13px] text-muted-foreground/80 mt-12">
           El historial de mensajes se cargará aquí.
         </div>
       </div>
@@ -52,7 +52,7 @@ export function ConversationThreadPanel({
         <div className="flex items-center gap-2">
           <input
             placeholder="Escribí tu mensaje..."
-            className="flex-1 h-9 rounded-xl border border-border bg-muted/30 px-4 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-primary/30 transition-colors"
+            className="flex-1 h-9 rounded-xl border border-border bg-muted/30 px-4 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/80 focus:border-primary/30 transition-colors"
           />
           <button className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shrink-0 hover:opacity-90 transition-opacity">
             <ArrowUp className="h-4 w-4 text-primary-foreground" />

@@ -251,14 +251,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               <div className="flex flex-col items-center justify-center shrink-0 gap-0.5">
                 <ChevronDown
                   className={cn(
-                    "w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-300 rotate-180",
+                    "w-3.5 h-3.5 text-muted-foreground/80 transition-transform duration-300 rotate-180",
                     multipleWorkspaces && wsMenuOpen && "text-primary/70",
                     !multipleWorkspaces && "opacity-30 cursor-default"
                   )}
                 />
                 <ChevronDown
                   className={cn(
-                    "w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-300",
+                    "w-3.5 h-3.5 text-muted-foreground/80 transition-transform duration-300",
                     multipleWorkspaces && wsMenuOpen && "text-primary/70",
                     !multipleWorkspaces && "opacity-30 cursor-default"
                   )}
@@ -299,7 +299,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 </div>
                 {multipleWorkspaces && (
                   <div className="border-t border-border/40 px-3 py-2 bg-sidebar-accent/20">
-                    <p className="text-xs text-muted-foreground/50">{myWorkspaces?.length} workspace{(myWorkspaces?.length ?? 0) > 1 ? "s" : ""} available</p>
+                    <p className="text-xs text-muted-foreground/80">{myWorkspaces?.length} workspace{(myWorkspaces?.length ?? 0) > 1 ? "s" : ""} available</p>
                   </div>
                 )}
               </div>
@@ -311,7 +311,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sidebar-accent/20 hover:scrollbar-thumb-sidebar-accent/30">
           {NAV_GROUPS.map((group) => (
             <div key={group.key} className="space-y-1.5">
-              <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50 flex items-center gap-2">
+              <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-2">
                 <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                 <span>{(copy.groups as any)[group.key]}</span>
               </div>
@@ -427,7 +427,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               onClick={logout}
               className={cn(
                 "p-1.5 rounded-md transition-all duration-200 shrink-0",
-                "text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10"
+                "text-muted-foreground/80 hover:text-destructive hover:bg-destructive/10"
               )}
               title={copy.logout}
             >
@@ -459,11 +459,11 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           {/* Search Bar */}
           <div className="relative flex-1 max-w-[420px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/75" />
             <input
               className={cn(
                 "w-full h-9 pl-9 pr-3 rounded-lg border border-border/40 bg-sidebar-accent/20",
-                "text-sm text-foreground placeholder:text-muted-foreground/40",
+                "text-sm text-foreground placeholder:text-muted-foreground/75",
                 "focus:outline-none focus:border-primary/40 focus:bg-sidebar-accent/30",
                 "transition-all duration-200"
               )}

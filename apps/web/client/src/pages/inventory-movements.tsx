@@ -32,7 +32,7 @@ export default function InventoryMovementsPage() {
           <div className="text-muted-foreground py-4">Cargando...</div>
         ) : movements.length === 0 ? (
           <div className="text-center py-16">
-            <Package className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+            <Package className="h-10 w-10 text-muted-foreground/65 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">Sin movimientos todavía</p>
           </div>
         ) : (

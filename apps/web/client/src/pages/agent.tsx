@@ -239,14 +239,14 @@ export default function Agent() {
             <Sparkles style={{ width: 13, height: 13, color: 'hsl(var(--fg))' }} />
           </div>
           <h1 className="text-[13px] font-semibold text-foreground tracking-tight">Asistente IA</h1>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-muted-foreground/50"
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-muted-foreground/80"
             style={{ background: 'hsl(var(--primary) / 0.10)', border: '1px solid hsl(var(--primary) / 0.15)' }}>
             {isStreaming ? 'Respondiendo' : 'GPT-5.4'}
           </span>
         </div>
         {hasMessages && (
           <button onClick={handleNewConversation}
-            className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-muted-foreground/80 hover:bg-foreground/[0.04] transition-all duration-200"
+            className="p-1.5 rounded-lg text-muted-foreground/75 hover:text-muted-foreground/80 hover:bg-foreground/[0.04] transition-all duration-200"
             title="Nueva conversación">
             <Trash2 style={{ width: 14, height: 14 }} />
           </button>
@@ -269,7 +269,7 @@ export default function Agent() {
               <Sparkles style={{ width: 24, height: 24, color: 'hsl(var(--fg))' }} />
             </div>
             <h2 className="text-xl font-semibold text-foreground mb-1.5 tracking-tight">Asistente IA</h2>
-            <p className="text-sm text-muted-foreground/50 text-center mb-10 max-w-sm leading-relaxed">
+            <p className="text-sm text-muted-foreground/80 text-center mb-10 max-w-sm leading-relaxed">
               Tu agente inteligente para consultas, análisis y automatizaciones.
             </p>
 
@@ -281,7 +281,7 @@ export default function Agent() {
                   onMouseEnter={e => { e.currentTarget.style.background = 'hsl(var(--primary) / 0.06)'; e.currentTarget.style.borderColor = 'hsl(var(--primary) / 0.20)'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'hsl(var(--foreground)/0.015)'; e.currentTarget.style.borderColor = 'hsl(var(--foreground)/0.04)'; }}>
                   <span className="block text-[13px] text-foreground/75 group-hover:text-foreground transition-colors leading-snug">{text}</span>
-                  <span className="block text-[10px] text-muted-foreground/40 mt-0.5">{sub}</span>
+                  <span className="block text-[10px] text-muted-foreground/75 mt-0.5">{sub}</span>
                 </button>
               ))}
             </div>
@@ -376,7 +376,7 @@ export default function Agent() {
                   <div className="flex items-center gap-2 mb-3">
                     <activeForm.icon style={{ width: 14, height: 14, color: 'hsl(var(--primary) / 0.6)' }} />
                     <span className="text-[13px] font-medium text-foreground/85">{activeForm.title}</span>
-                    <button onClick={() => setActiveForm(null)} className="ml-auto p-0.5 rounded hover:bg-white/5 text-muted-foreground/40">
+                    <button onClick={() => setActiveForm(null)} className="ml-auto p-0.5 rounded hover:bg-white/5 text-muted-foreground/75">
                       <X style={{ width: 12, height: 12 }} />
                     </button>
                   </div>
@@ -384,7 +384,7 @@ export default function Agent() {
                     <div className="space-y-2">
                       {activeForm.fields.map(f => (
                         <div key={f.name}>
-                          <label className="block text-[11px] font-medium mb-1 text-muted-foreground/50">{f.label}{f.required ? ' *' : ''}</label>
+                          <label className="block text-[11px] font-medium mb-1 text-muted-foreground/80">{f.label}{f.required ? ' *' : ''}</label>
                           {f.type === 'select' ? (
                             <select value={activeForm.values[f.name]} onChange={e => updateFormValue(f.name, e.target.value)} disabled={activeForm.isSubmitting}
                               className="w-full rounded-lg px-3 py-1.5 text-[13px] outline-none disabled:opacity-40 text-foreground/85"
@@ -427,7 +427,7 @@ export default function Agent() {
               <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl animate-fade-in"
                 style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)', color: '#fca5a5' }}>
                 <span className="text-[13px]">{error}</span>
-                <button onClick={() => setError(null)} className="ml-auto p-0.5 rounded hover:bg-white/5 text-muted-foreground/50"><X style={{ width: 10, height: 10 }} /></button>
+                <button onClick={() => setError(null)} className="ml-auto p-0.5 rounded hover:bg-white/5 text-muted-foreground/80"><X style={{ width: 10, height: 10 }} /></button>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -479,7 +479,7 @@ export default function Agent() {
             <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
               placeholder={pageContext ? `Necesito ayuda con ${pageContext}...` : "Preguntame algo..."}
               disabled={isStreaming} rows={1}
-              className="flex-1 resize-none bg-transparent text-[14px] outline-none disabled:opacity-30 text-foreground/85 placeholder:text-muted-foreground/40"
+              className="flex-1 resize-none bg-transparent text-[14px] outline-none disabled:opacity-30 text-foreground/85 placeholder:text-muted-foreground/75"
               style={{ maxHeight: '120px' }}
               onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }} />
             <button onClick={() => handleSend()} disabled={!input.trim() || isStreaming}

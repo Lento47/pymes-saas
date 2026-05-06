@@ -620,7 +620,7 @@ export default function ConversationPage() {
               data-testid="input-message"
             />
             <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
-              <span className="text-[10px] text-muted-foreground/50">Shift+Enter para nueva línea</span>
+              <span className="text-[10px] text-muted-foreground/80">Shift+Enter para nueva línea</span>
               <Button
                 size="sm"
                 className="h-7 px-3 gap-1.5 text-xs"

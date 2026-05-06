@@ -37,7 +37,7 @@ function DateSeparator({ date }: { date: Date }) {
   return (
     <div className="flex items-center gap-3 my-3">
       <div className="flex-1 h-px bg-border/60" />
-      <span className="text-[10px] text-muted-foreground/50 shrink-0">
+      <span className="text-[10px] text-muted-foreground/80 shrink-0">
         {format(date, "d MMM yyyy", { locale: es })}
       </span>
       <div className="flex-1 h-px bg-border/60" />
@@ -333,7 +333,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
             {sendMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </form>
-        <p className="text-[10px] text-muted-foreground/50 mt-1 ml-1">Enter para enviar · Shift+Enter para nueva línea</p>
+        <p className="text-[10px] text-muted-foreground/80 mt-1 ml-1">Enter para enviar · Shift+Enter para nueva línea</p>
       </div>
 
       {/* Invoice dialog */}

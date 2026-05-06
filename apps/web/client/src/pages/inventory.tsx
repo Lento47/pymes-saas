@@ -163,7 +163,7 @@ export default function InventoryPage() {
           </div>
         ) : sorted.length === 0 ? (
           <div className="text-center py-20">
-            <Package className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+            <Package className="h-12 w-12 text-muted-foreground/55 mx-auto mb-4" />
             <p className="text-sm text-muted-foreground mb-1">
               {search || catFilter !== "all" || lowStockOnly ? "Sin resultados para estos filtros" : "Agrega tu primer producto para usarlo en facturas"}
             </p>

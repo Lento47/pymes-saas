@@ -231,13 +231,13 @@ export default function DashboardPage() {
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary/80" />
             </div>
             <div className="flex items-center gap-3 sm:gap-6 flex-1 flex-wrap text-[11px] sm:text-[13px]">
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.revenue}</span><span className={`font-semibold ${revenueClass}`}>{revenueStr}</span><span className="text-muted-foreground/40 text-[10px] sm:text-[11px]">{dash.vsLastMonth}</span></div>
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.revenue}</span><span className={`font-semibold ${revenueClass}`}>{revenueStr}</span><span className="text-muted-foreground/75 text-[10px] sm:text-[11px]">{dash.vsLastMonth}</span></div>
               <div className="w-px h-4 sm:h-5 bg-border/60 shrink-0" />
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{overdueCount} {dash.invoices}</span><span className="font-semibold text-foreground/80">{dash.pending}</span></div>
               <div className="w-px h-4 sm:h-5 bg-border/60 shrink-0" />
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{urgentTasks} {dash.tasks}</span><span className="font-semibold text-foreground/80">{dash.urgent}</span></div>
               <div className="w-px h-4 sm:h-5 bg-border/60 shrink-0" />
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.pipeline}</span><span className={`font-semibold ${activeConvs > 0 ? "text-emerald-500" : "text-muted-foreground/40"}`}>{pipelineStatus}</span></div>
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.pipeline}</span><span className={`font-semibold ${activeConvs > 0 ? "text-emerald-500" : "text-muted-foreground/75"}`}>{pipelineStatus}</span></div>
             </div>
           </div>
         </div>
@@ -304,7 +304,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-sm font-medium text-foreground">{dash.revenueOverview}</h2>
-                <span className="text-[11px] text-muted-foreground/50">{monthName}</span>
+                <span className="text-[11px] text-muted-foreground/80">{monthName}</span>
               </div>
             </div>
             <div className="flex items-end gap-6">
@@ -323,7 +323,7 @@ export default function DashboardPage() {
             <div className="flex items-center border-b border-border/60">
               {(["tasks", "messages"] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
-                  className={`px-5 py-3 text-[13px] font-medium transition-colors relative ${activeTab === tab ? "text-foreground" : "text-muted-foreground/50 hover:text-muted-foreground"}`}>
+                  className={`px-5 py-3 text-[13px] font-medium transition-colors relative ${activeTab === tab ? "text-foreground" : "text-muted-foreground/80 hover:text-muted-foreground"}`}>
                   {tab === "tasks" ? dash.tasks : dash.newMessages}
                   {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-full" />}
                 </button>
@@ -332,7 +332,7 @@ export default function DashboardPage() {
             <div className="divide-y divide-border/60">
               {activeTab === "tasks" ? (
                 taskList.length === 0 ? (
-                  <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/50">{dash.noTasks}</div>
+                  <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noTasks}</div>
                 ) : taskList.slice(0, 5).map((task: any) => (
                   <div key={task.id} className="flex items-center gap-3 px-5 py-3">
                     <div className="w-[18px] h-[18px] rounded-full border-2 border-border/60 cursor-pointer hover:border-primary/50 transition-colors shrink-0" />
@@ -349,7 +349,7 @@ export default function DashboardPage() {
                 ))
               ) : (
                 convList.length === 0 ? (
-                  <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/50">{dash.noMessagesToday}</div>
+                  <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noMessagesToday}</div>
                 ) : convList.slice(0, 5).map((conv: any) => (
                   <Link key={conv.id} href={`/inbox/${conv.id}`}>
                     <div className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.02] transition-colors cursor-pointer">
@@ -357,7 +357,7 @@ export default function DashboardPage() {
                         {conv.contact?.full_name?.charAt(0) || "?"}
                       </div>
                       <span className="flex-1 text-[13px] text-foreground truncate">{conv.contact?.full_name || dash.unknownContact}</span>
-                      <span className="text-[11px] text-muted-foreground/50">{conv.updated_at && format(new Date(conv.updated_at), "HH:mm")}</span>
+                      <span className="text-[11px] text-muted-foreground/80">{conv.updated_at && format(new Date(conv.updated_at), "HH:mm")}</span>
                     </div>
                   </Link>
                 ))
@@ -382,7 +382,7 @@ export default function DashboardPage() {
             {pipelineLoading ? <Skeleton className="h-16 w-full" /> : stageRows.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-[13px] text-muted-foreground/70">You don't have any opportunities yet.</p>
-                <p className="text-[11px] text-muted-foreground/40 mt-1">Create your first opportunity to track potential deals.</p>
+                <p className="text-[11px] text-muted-foreground/75 mt-1">Create your first opportunity to track potential deals.</p>
                 <Link href="/pipeline"><button className="mt-3 text-[12px] px-4 py-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors">{dash.newOpportunity}</button></Link>
               </div>
             ) : (

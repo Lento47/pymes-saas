@@ -25,12 +25,12 @@ export function InboxToolbar({
         {/* Left: search + filters */}
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="relative w-[260px]">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-[14px] w-[14px] -translate-y-1/2 text-muted-foreground/40" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-[14px] w-[14px] -translate-y-1/2 text-muted-foreground/75" />
             <input
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Buscar conversaciones..."
-              className="w-full h-8 pl-8 pr-3 rounded-md border-0 border-b border-border/60 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/40 transition-colors"
+              className="w-full h-8 pl-8 pr-3 rounded-md border-0 border-b border-border/60 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:border-primary/40 transition-colors"
             />
           </div>
 

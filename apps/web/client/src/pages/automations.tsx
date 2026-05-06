@@ -154,14 +154,14 @@ export default function AutomationsPage() {
                     </div>
                     <span className="text-[10px] text-muted-foreground">{triggerLabel(auto.trigger_type)}</span>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/20" />
+                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/55" />
                   <div className="flex flex-col items-center gap-1">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted/30 border border-border/40">
                       <GitBranch className="w-3.5 h-3.5 text-muted-foreground" />
                     </div>
                     <span className="text-[10px] text-muted-foreground/60">Condiciones</span>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/20" />
+                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/55" />
                   <div className="flex flex-col items-center gap-1">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />

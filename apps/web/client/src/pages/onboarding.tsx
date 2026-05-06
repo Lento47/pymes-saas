@@ -118,7 +118,7 @@ export default function OnboardingPage() {
                 >
                   {item.completed
                     ? <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
-                    : <Circle className="w-5 h-5 text-muted-foreground/40 shrink-0" />
+                    : <Circle className="w-5 h-5 text-muted-foreground/75 shrink-0" />
                   }
                   <span className={cn("text-sm", item.completed ? "text-muted-foreground line-through" : "text-foreground")}>{item.label}</span>
                   {item.notes && <span className="text-xs text-muted-foreground ml-auto">{item.notes}</span>}

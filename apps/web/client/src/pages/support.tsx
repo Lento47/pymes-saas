@@ -217,14 +217,14 @@ export default function SupportPage() {
                           <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusColor}`}>
                             {c.status}
                           </span>
-                          <span className="text-[10px] text-muted-foreground/50 uppercase">{c.module}</span>
+                          <span className="text-[10px] text-muted-foreground/80 uppercase">{c.module}</span>
                           {c.error_code && (
-                            <span className="text-[10px] text-muted-foreground/40 font-mono">{c.error_code}</span>
+                            <span className="text-[10px] text-muted-foreground/75 font-mono">{c.error_code}</span>
                           )}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 shrink-0">
-                        <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground/80 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {new Date(c.created_at).toLocaleDateString("es-CR", {
                             month: "short",
@@ -287,7 +287,7 @@ export default function SupportPage() {
                         {c.error_code && (
                           <span className="text-[10px] text-muted-foreground/60 font-mono">{c.error_code}</span>
                         )}
-                        <span className="text-[10px] text-muted-foreground/40">
+                        <span className="text-[10px] text-muted-foreground/75">
                           Actualizado: {new Date(c.updated_at).toLocaleDateString("es-CR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
@@ -299,7 +299,7 @@ export default function SupportPage() {
                               <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
                               <span className="text-muted-foreground">Workspace:</span>
                               <span className="text-foreground font-medium">{evidence.workspace.name}</span>
-                              <span className="text-muted-foreground/50">({evidence.workspace.slug} · {evidence.workspace.plan})</span>
+                              <span className="text-muted-foreground/80">({evidence.workspace.slug} · {evidence.workspace.plan})</span>
                             </div>
                           )}
                           {evidence.user && (
@@ -307,7 +307,7 @@ export default function SupportPage() {
                               <UserCircle className="w-3.5 h-3.5 text-muted-foreground" />
                               <span className="text-muted-foreground">Usuario:</span>
                               <span className="text-foreground font-medium">{evidence.user.name}</span>
-                              <span className="text-muted-foreground/50">({evidence.user.email} · {evidence.user.role})</span>
+                              <span className="text-muted-foreground/80">({evidence.user.email} · {evidence.user.role})</span>
                             </div>
                           )}
                         </div>
@@ -318,7 +318,7 @@ export default function SupportPage() {
                           {evidence.source && <span>Source: <span className="text-foreground/70">{evidence.source}</span></span>}
                           {evidence.method && evidence.path && (
                             <span className="font-mono">
-                              <span className="text-muted-foreground/40">{evidence.method}</span>{" "}
+                              <span className="text-muted-foreground/75">{evidence.method}</span>{" "}
                               <span className="text-foreground/60">{evidence.path}</span>
                             </span>
                           )}
@@ -353,11 +353,11 @@ export default function SupportPage() {
                       )}
 
                       {c.trace_id && (
-                        <div className="text-[10px] text-muted-foreground/50 font-mono">
+                        <div className="text-[10px] text-muted-foreground/80 font-mono">
                           Trace: {c.trace_id}
                         </div>
                       )}
-                      <div className="text-[10px] text-muted-foreground/40 font-mono">
+                      <div className="text-[10px] text-muted-foreground/75 font-mono">
                         ID: {c.id}
                       </div>
 
@@ -381,7 +381,7 @@ export default function SupportPage() {
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
                                       <span className="font-medium text-foreground/80">{cm.user?.name || "Sistema"}</span>
-                                      <span className="text-[10px] text-muted-foreground/50">
+                                      <span className="text-[10px] text-muted-foreground/80">
                                         {new Date(cm.created_at).toLocaleDateString("es-CR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                                       </span>
                                     </div>
@@ -390,7 +390,7 @@ export default function SupportPage() {
                                 </div>
                               ))}
                               {(comments === null || (Array.isArray(comments) && comments.length === 0)) && (
-                                <p className="text-[11px] text-muted-foreground/50">Sin comentarios todavía.</p>
+                                <p className="text-[11px] text-muted-foreground/80">Sin comentarios todavía.</p>
                               )}
                             </div>
                           )}
@@ -407,7 +407,7 @@ export default function SupportPage() {
                               value={newComment}
                               onChange={(e) => setNewComment(e.target.value)}
                               placeholder="Escribí un comentario..."
-                              className="flex-1 px-3 py-1.5 text-xs rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50"
+                              className="flex-1 px-3 py-1.5 text-xs rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground/80 focus:outline-none focus:border-primary/50"
                             />
                             <button
                               type="submit"

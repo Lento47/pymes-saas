@@ -71,7 +71,7 @@ function AgentMascot({ agent, deptCases }: { agent: AgentState; deptCases: any[]
         style={{ backgroundColor: agent.busy ? "#ef4444" : "#22c55e" }}
         title={agent.busy ? "Ocupado" : "Disponible"}
       />
-      <span className="text-[8px] text-muted-foreground/50 mt-0.5 italic">{callout}</span>
+      <span className="text-[8px] text-muted-foreground/80 mt-0.5 italic">{callout}</span>
     </div>
   );
 }
@@ -305,7 +305,7 @@ export function PlaygroundBoard() {
                     </div>
                   ) : (
                     <div className="mt-1 rounded-lg border border-dashed border-border/40 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground/50">Sin casos activos</p>
+                      <p className="text-[10px] text-muted-foreground/80">Sin casos activos</p>
                     </div>
                   )}
                 </div>
@@ -320,7 +320,7 @@ export function PlaygroundBoard() {
                     </div>
                   ) : (
                     <div className="mt-1 rounded-lg border border-dashed border-border/40 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground/50">Sin casos delegados</p>
+                      <p className="text-[10px] text-muted-foreground/80">Sin casos delegados</p>
                     </div>
                   )}
                 </div>
@@ -341,7 +341,7 @@ export function PlaygroundBoard() {
             ))}
             {(!casesByDept.resolved || casesByDept.resolved.length === 0) && (
               <div className="rounded-lg border border-dashed border-border/40 p-3 text-center">
-                <p className="text-[10px] text-muted-foreground/50">Los casos completados se archivan aquí</p>
+                <p className="text-[10px] text-muted-foreground/80">Los casos completados se archivan aquí</p>
               </div>
             )}
           </div>

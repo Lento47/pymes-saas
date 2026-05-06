@@ -42,7 +42,7 @@ export default function InventoryDetailPage() {
   if (!product) {
     return (
       <div className="min-h-full bg-background flex flex-col items-center justify-center gap-3">
-        <Package className="h-10 w-10 text-muted-foreground/30" />
+        <Package className="h-10 w-10 text-muted-foreground/65" />
         <span className="text-sm text-muted-foreground">Producto no encontrado</span>
         <Link href="/inventory"><Button variant="outline" size="sm">Volver al inventario</Button></Link>
       </div>
@@ -142,8 +142,8 @@ export default function InventoryDetailPage() {
                     <span className="text-muted-foreground font-medium w-16">{LABELS[m.type] || m.type}</span>
                     <span className="font-mono font-medium text-foreground w-12 text-right">{m.quantity}</span>
                     <span className="text-muted-foreground/60 font-mono">{m.previous_stock} → {m.new_stock}</span>
-                    <span className="text-muted-foreground/50 flex-1 truncate">{m.reason || "—"}</span>
-                    <span className="text-muted-foreground/40 flex items-center gap-1 shrink-0">
+                    <span className="text-muted-foreground/80 flex-1 truncate">{m.reason || "—"}</span>
+                    <span className="text-muted-foreground/75 flex items-center gap-1 shrink-0">
                       <Clock className="w-3 h-3" />
                       {new Date(m.created_at).toLocaleDateString("es-CR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </span>
