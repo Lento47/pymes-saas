@@ -1,5 +1,6 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createHash } from 'crypto';
 import { SAML } from '@node-saml/node-saml';
 
 export interface SamlIdpConfig {
@@ -13,7 +14,35 @@ export interface SamlIdpConfig {
 export class SamlService {
   private readonly logger = new Logger(SamlService.name);
 
+  /**
+   * In-memory cache of consumed SAML response hashes to defeat replay
+   * (C5). Key: sha256(SAMLResponse). Value: expiry epoch ms.
+   * NOTE: single-process only; for multi-instance deployments this MUST
+   * be backed by Redis. Track via TODO so ops migrates before scaling.
+   */
+  private readonly assertionCache = new Map<string, number>();
+
   constructor(private readonly config: ConfigService) {}
+
+  private rememberAssertion(id: string, notOnOrAfter: number) {
+    if (this.assertionCache.size > 1000) {
+      const now = Date.now();
+      for (const [k, exp] of this.assertionCache) {
+        if (exp <= now) this.assertionCache.delete(k);
+      }
+    }
+    this.assertionCache.set(id, notOnOrAfter);
+  }
+
+  private isReplay(id: string): boolean {
+    const exp = this.assertionCache.get(id);
+    if (!exp) return false;
+    if (exp <= Date.now()) {
+      this.assertionCache.delete(id);
+      return false;
+    }
+    return true;
+  }
 
   private createSaml(spConfig: { entityId: string; acsUrl: string }, idpConfig: SamlIdpConfig): SAML {
     return new SAML({
@@ -52,8 +81,22 @@ export class SamlService {
       acsUrl: `${baseUrl}/api/auth/saml/${workspaceSlug}/callback`,
     };
 
+    // Replay protection (C5): the SAML library validates signature,
+    // audience, and NotOnOrAfter, but does not cache assertion IDs. Hash
+    // the full base64 response and reject if we've seen it within the
+    // 10-minute TTL window (well past clock skew).
+    const responseHash = createHash('sha256').update(samlResponse).digest('hex');
+    if (this.isReplay(responseHash)) {
+      this.logger.warn(`SAML replay detected for workspace ${workspaceSlug}`);
+      throw new UnauthorizedException('SAML response already consumed.');
+    }
+
     const saml = this.createSaml(sp, idpConfig);
     const result = await saml.validatePostResponseAsync({ SAMLResponse: samlResponse });
+
+    // Successful validation — remember this response hash so future
+    // submissions of the same SAMLResponse are rejected.
+    this.rememberAssertion(responseHash, Date.now() + 10 * 60 * 1000);
 
     const profile = result.profile || {} as Record<string, any>;
     const email = (profile?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ||
