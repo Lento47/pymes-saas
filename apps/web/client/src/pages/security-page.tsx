@@ -23,7 +23,7 @@ export default function SecurityPage() {
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">{copy.eyebrow || "Trust & Compliance"}</p>
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">{copy.eyebrow || "Trust & Compliance"}</p>
               <h1 className="font-marketing mt-5 text-5xl font-extrabold leading-[0.96] tracking-[-0.05em] sm:text-6xl md:text-[5rem]">{copy.title || "Security is not a feature. It is the foundation."}</h1>
               <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70 md:text-lg">{copy.description || "Multi-tenant isolation, audit logs, SSO, encryption, DPA and more."}</p>
             </div>

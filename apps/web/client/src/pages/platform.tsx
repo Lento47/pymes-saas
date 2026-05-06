@@ -11,7 +11,7 @@ export default function PlatformPage() {
 
   return (
     <div className="dark relative min-h-screen overflow-hidden bg-background text-white">
-      <div className="pointer-events-none absolute inset-0"><div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(42,60,180,0.08),transparent_36%)]" /><div className="animate-pulse-halo absolute -left-[23rem] top-[-3rem] h-[48rem] w-[48rem] rounded-full border border-[#dfff4a]/12" /></div>
+      <div className="pointer-events-none absolute inset-0"><div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(42,60,180,0.08),transparent_36%)]" /><div className="animate-pulse-halo absolute -left-[23rem] top-[-3rem] h-[48rem] w-[48rem] rounded-full border border-[#F59E0B]/12" /></div>
       <main className="relative z-10">
         <nav className="flex items-center justify-between px-4 py-5 md:px-8">
           <Link href="/"><a><BrandLockup compact /></a></Link>
@@ -23,7 +23,7 @@ export default function PlatformPage() {
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">{copy.eyebrow}</p>
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">{copy.eyebrow}</p>
               <h1 className="font-marketing mt-5 text-5xl font-extrabold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl md:text-[5rem]">{copy.title}</h1>
               <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70 md:text-lg">{copy.description}</p>
             </div>

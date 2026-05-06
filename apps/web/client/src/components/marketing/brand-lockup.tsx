@@ -48,7 +48,7 @@ export function BrandLockup({
           aria-hidden="true"
           className={cn(
             compact ? "h-8 w-8" : "h-9 w-9",
-            "text-[#e7ff5a] drop-shadow-[0_0_12px_rgba(231,255,90,0.4)]",
+            "text-[#FBBF24] drop-shadow-[0_0_12px_rgba(231,255,90,0.4)]",
             markClassName
           )}
           fill="none"

@@ -50,7 +50,7 @@ export function LanguageSwitcher({
               "rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] transition",
               active
                 ? isMarketing
-                  ? "bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] text-[#071126]"
+                  ? "bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] text-[#071126]"
                   : "bg-primary text-primary-foreground shadow-sm"
                 : isMarketing
                   ? "text-foreground/75 hover:text-white"

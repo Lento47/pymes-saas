@@ -22,7 +22,7 @@ export default function DocumentationCenterPage() {
     <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-10rem] top-[4rem] h-72 w-72 rounded-full bg-[#5870ff]/12 blur-[120px]" />
-        <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#dfff4a]/10 blur-[150px]" />
+        <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#F59E0B]/10 blur-[150px]" />
       </div>
 
       <div className="relative z-10 px-4 pb-16 pt-6 md:px-8 md:pb-24">
@@ -110,8 +110,8 @@ export default function DocumentationCenterPage() {
             {/* Legal y Cumplimiento — bridge section */}
             <section className="mt-20 border-t border-white/[0.06] pt-16">
               <div className="flex items-center gap-3 mb-8">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#dfff4a]/8">
-                  <ShieldCheck className="h-5 w-5 text-[#dfff4a]" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F59E0B]/8">
+                  <ShieldCheck className="h-5 w-5 text-[#F59E0B]" />
                 </div>
                 <div>
                   <h2 className="font-marketing text-lg font-semibold tracking-[-0.02em] text-white">

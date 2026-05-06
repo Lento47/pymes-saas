@@ -144,7 +144,7 @@ html.light .marketing-grid {
 .marketing-canvas {
   background:
     radial-gradient(circle at 18% 10%, rgba(87, 113, 255, 0.24), transparent 28rem),
-    radial-gradient(circle at 86% 18%, rgba(213, 255, 99, 0.12), transparent 24rem),
+    radial-gradient(circle at 86% 18%, rgba(245, 158, 11, 0.12), transparent 24rem),
     linear-gradient(180deg, #05091d 0%, #060a20 42%, #040817 100%);
   color: #fff;
 }

@@ -185,9 +185,9 @@ export default function LoginPage() {
           </div>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(42,60,180,0.12),transparent_36%),linear-gradient(180deg,rgba(3,8,24,0.06),rgba(5,9,29,0.48)_36%,#05091d_100%)]" />
         </div>
-        <div className="animate-pulse-halo absolute -left-[23rem] top-[-3rem] h-[48rem] w-[48rem] rounded-full border border-[#dfff4a]/22 shadow-[0_0_120px_rgba(223,255,74,0.18)]" />
+        <div className="animate-pulse-halo absolute -left-[23rem] top-[-3rem] h-[48rem] w-[48rem] rounded-full border border-[#F59E0B]/22 shadow-[0_0_120px_rgba(245,158,11,0.18)]" />
         <div className="absolute -left-[17rem] top-[3rem] h-[38rem] w-[38rem] rounded-full border border-[#6c7eff]/18" />
-        <div className="absolute bottom-[10%] right-[6%] h-48 w-48 rounded-full bg-[#dfff4a]/12 blur-[110px]" />
+        <div className="absolute bottom-[10%] right-[6%] h-48 w-48 rounded-full bg-[#F59E0B]/12 blur-[110px]" />
       </div>
 
       <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
@@ -289,7 +289,7 @@ export default function LoginPage() {
                 type="submit"
                 disabled={loading}
                 data-testid="button-login"
-                className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
+                className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading && <Loader2 className="h-5 w-5 animate-spin" />}
                 {copy.logIn}
@@ -349,7 +349,7 @@ export default function LoginPage() {
               <p className="text-sm text-white/85">
                 {copy.noWorkspace}{" "}
                 <Link href="/">
-                  <a className="font-medium text-[#dfff4a] transition hover:text-[#efff8a]">
+                  <a className="font-medium text-[#F59E0B] transition hover:text-[#F59E0B]">
                     {copy.explore}
                   </a>
                 </Link>
@@ -357,7 +357,7 @@ export default function LoginPage() {
 
               <p className="text-sm text-white/85">
                 <Link href="/register">
-                  <a className="font-medium text-[#dfff4a] transition hover:text-[#efff8a]">
+                  <a className="font-medium text-[#F59E0B] transition hover:text-[#F59E0B]">
                     Create account →
                   </a>
                 </Link>

@@ -40,7 +40,7 @@ export function LegalCenterPage() {
     <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-10rem] top-[4rem] h-72 w-72 rounded-full bg-[#5870ff]/12 blur-[120px]" />
-        <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#dfff4a]/10 blur-[150px]" />
+        <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#F59E0B]/10 blur-[150px]" />
         <div className="marketing-grid absolute inset-x-0 bottom-0 h-[32rem] opacity-40" />
       </div>
 
@@ -65,7 +65,7 @@ export function LegalCenterPage() {
           </nav>
 
           <section className="mx-auto max-w-4xl pt-16 text-center md:pt-20">
-            <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+            <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
               {copy.eyebrow}
             </p>
             <h1 className="font-marketing mt-5 text-5xl font-extrabold leading-[0.98] tracking-[-0.05em] text-white sm:text-6xl md:text-[5rem]">
@@ -124,7 +124,7 @@ export function LegalCenterPage() {
                 <Mail className="mx-auto h-5 w-5 text-white/30" />
                 <p className="mt-3 text-sm text-white/50">
                   {copy.contactPrivacy}{" "}
-                  <a href="mailto:privacidad@pymeshub.lat" className="text-[#dfff4a]/80 underline underline-offset-4 transition hover:text-[#dfff4a]">
+                  <a href="mailto:privacidad@pymeshub.lat" className="text-[#F59E0B]/80 underline underline-offset-4 transition hover:text-[#F59E0B]">
                     privacidad@pymeshub.lat
                   </a>
                 </p>
@@ -159,7 +159,7 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
       <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute left-[-10rem] top-[4rem] h-72 w-72 rounded-full bg-[#5870ff]/12 blur-[120px]" />
-          <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#dfff4a]/10 blur-[150px]" />
+          <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#F59E0B]/10 blur-[150px]" />
         </div>
         <div className="relative z-10 px-4 pb-16 pt-6 md:px-8 md:pb-24">
           <div className="mx-auto max-w-7xl">
@@ -198,7 +198,7 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
     <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-10rem] top-[4rem] h-72 w-72 rounded-full bg-[#5870ff]/12 blur-[120px]" />
-        <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#dfff4a]/10 blur-[150px]" />
+        <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#F59E0B]/10 blur-[150px]" />
       </div>
 
       <div className="relative z-10 px-4 pb-16 pt-6 md:px-8 md:pb-24">
@@ -237,7 +237,7 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                           className={cn(
                             "block rounded-lg px-3 py-2 text-sm transition",
                             isActive
-                              ? "bg-white/[0.06] text-[#dfff4a] font-medium"
+                              ? "bg-white/[0.06] text-[#F59E0B] font-medium"
                               : "text-white/48 hover:bg-white/[0.04] hover:text-white/80",
                           )}
                         >
@@ -283,14 +283,14 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                       prose-h2:text-xl prose-h2:font-semibold prose-h2:mt-10 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-white/[0.06]
                       prose-h3:text-base prose-h3:font-semibold prose-h3:mt-8 prose-h3:mb-3
                       prose-p:text-white/75 prose-p:leading-7
-                      prose-a:text-[#dfff4a]/80 prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-[#dfff4a]
+                      prose-a:text-[#F59E0B]/80 prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-[#F59E0B]
                       prose-strong:text-white/90 prose-strong:font-semibold
                       prose-ul:text-white/70 prose-ol:text-white/70
                       prose-li:my-1
-                      prose-code:text-[#dfff4a]/70 prose-code:bg-white/[0.04] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+                      prose-code:text-[#F59E0B]/70 prose-code:bg-white/[0.04] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
                       prose-pre:bg-white/[0.02] prose-pre:border prose-pre:border-white/[0.06]
                       prose-table:text-white/70 prose-th:text-white/80 prose-th:font-semibold prose-td:border-white/[0.06] prose-th:border-white/[0.06]
-                      prose-blockquote:border-l-[#dfff4a]/30 prose-blockquote:text-white/60
+                      prose-blockquote:border-l-[#F59E0B]/30 prose-blockquote:text-white/60
                       prose-hr:border-white/[0.06]
                       max-w-none
                     ">
@@ -302,13 +302,13 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                 ) : (
                   <div className="mt-8 space-y-8">
                     <section>
-                      <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#dfff4a]/72">
+                      <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#F59E0B]/72">
                         {copy.purpose}
                       </h2>
                       <p className="mt-3 text-sm leading-7 text-white/68">{doc.purpose}</p>
                     </section>
                     <section>
-                      <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#dfff4a]/72">
+                      <h2 className="font-marketing text-xs font-semibold uppercase tracking-[0.22em] text-[#F59E0B]/72">
                         {copy.coverage}
                       </h2>
                       <ul className="mt-3 space-y-3">
@@ -317,7 +317,7 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                             key={item}
                             className="flex items-start gap-3 rounded-xl border border-white/[0.05] bg-white/[0.01] px-4 py-3"
                           >
-                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#dfff4a]/10 text-[10px] font-semibold text-[#dfff4a]/70">
+                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F59E0B]/10 text-[10px] font-semibold text-[#F59E0B]/70">
                               {idx + 1}
                             </span>
                             <span className="text-sm leading-6 text-white/74">{item}</span>
@@ -355,7 +355,7 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                 <div className="mt-8 rounded-xl border border-white/[0.06] bg-white/[0.01] p-5 text-center">
                   <p className="text-sm text-white/45">
                     {copy.contactPrivacy}{" "}
-                    <a href="mailto:privacidad@pymeshub.lat" className="text-[#dfff4a]/75 underline underline-offset-4 transition hover:text-[#dfff4a]">
+                    <a href="mailto:privacidad@pymeshub.lat" className="text-[#F59E0B]/75 underline underline-offset-4 transition hover:text-[#F59E0B]">
                       privacidad@pymeshub.lat
                     </a>
                   </p>

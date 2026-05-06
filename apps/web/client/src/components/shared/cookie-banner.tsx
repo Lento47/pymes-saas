@@ -66,7 +66,7 @@ export function CookieBanner() {
         {!settingsOpen ? (
           <>
             <div className="flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-[#dfff4a] mt-0.5 shrink-0" />
+              <ShieldCheck className="w-5 h-5 text-[#F59E0B] mt-0.5 shrink-0" />
               <div className="flex-1 space-y-2">
                 <p className="text-sm font-semibold text-foreground">
                   Este sitio usa cookies
@@ -86,7 +86,7 @@ export function CookieBanner() {
             </div>
 
             <div className="mt-4 flex gap-2">
-              <button onClick={() => apply("accept_all")} className="flex-1 rounded-full bg-[linear-gradient(90deg,#efff53,#78efd0)] py-2.5 text-xs font-semibold text-[#071126] transition hover:opacity-90">
+              <button onClick={() => apply("accept_all")} className="flex-1 rounded-full bg-[linear-gradient(90deg,#F59E0B,#D97706)] py-2.5 text-xs font-semibold text-[#071126] transition hover:opacity-90">
                 Aceptar todas
               </button>
               <button onClick={() => apply("reject_non_essential")} className="flex-1 rounded-full border border-white/15 py-2.5 text-xs font-semibold text-foreground/85 transition hover:border-white/30">
@@ -100,7 +100,7 @@ export function CookieBanner() {
         ) : (
           <>
             <div className="flex items-center gap-2 mb-4">
-              <Cookie className="w-4 h-4 text-[#dfff4a]" />
+              <Cookie className="w-4 h-4 text-[#F59E0B]" />
               <p className="text-sm font-semibold text-foreground">Preferencias de cookies</p>
             </div>
 
@@ -155,7 +155,7 @@ export function CookieBanner() {
               <button onClick={() => setSettingsOpen(false)} className="flex-1 rounded-full border border-white/15 py-2.5 text-xs font-semibold text-foreground/85">
                 Volver
               </button>
-              <button onClick={() => apply("custom")} className="flex-1 rounded-full bg-[linear-gradient(90deg,#efff53,#78efd0)] py-2.5 text-xs font-semibold text-[#071126]">
+              <button onClick={() => apply("custom")} className="flex-1 rounded-full bg-[linear-gradient(90deg,#F59E0B,#D97706)] py-2.5 text-xs font-semibold text-[#071126]">
                 Guardar preferencias
               </button>
             </div>

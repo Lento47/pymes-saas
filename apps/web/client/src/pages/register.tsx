@@ -180,9 +180,9 @@ export default function RegisterPage() {
           </div>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(42,60,180,0.12),transparent_36%),linear-gradient(180deg,rgba(3,8,24,0.06),rgba(5,9,29,0.48)_36%,#05091d_100%)]" />
         </div>
-        <div className="animate-pulse-halo absolute -left-[23rem] top-[-3rem] h-[48rem] w-[48rem] rounded-full border border-[#dfff4a]/22 shadow-[0_0_120px_rgba(223,255,74,0.18)]" />
+        <div className="animate-pulse-halo absolute -left-[23rem] top-[-3rem] h-[48rem] w-[48rem] rounded-full border border-[#F59E0B]/22 shadow-[0_0_120px_rgba(245,158,11,0.18)]" />
         <div className="absolute -left-[17rem] top-[3rem] h-[38rem] w-[38rem] rounded-full border border-[#6c7eff]/18" />
-        <div className="absolute bottom-[10%] right-[6%] h-48 w-48 rounded-full bg-[#dfff4a]/12 blur-[110px]" />
+        <div className="absolute bottom-[10%] right-[6%] h-48 w-48 rounded-full bg-[#F59E0B]/12 blur-[110px]" />
       </div>
 
       <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
@@ -203,7 +203,7 @@ export default function RegisterPage() {
             {success ? (
               <div className="mt-10 space-y-7">
                 <div className="text-center">
-                  <CheckCircle2 className="mx-auto h-12 w-12 text-[#dfff4a]" />
+                  <CheckCircle2 className="mx-auto h-12 w-12 text-[#F59E0B]" />
                   <h1 className="font-marketing mt-5 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl md:text-4xl">
                     {reg.workspaceCreated}
                   </h1>
@@ -219,7 +219,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-[0.18em] text-white/58">{reg.slug}</p>
-                    <p className="mt-1 break-all font-mono text-lg font-semibold text-[#dfff4a]">
+                    <p className="mt-1 break-all font-mono text-lg font-semibold text-[#F59E0B]">
                       {success.workspaceSlug}
                     </p>
                   </div>
@@ -241,7 +241,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={continueToWorkspace}
-                  className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px]"
+                  className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px]"
                 >
                   {reg.continueToWorkspace}
                   <ArrowRight className="h-5 w-5" />
@@ -313,7 +313,7 @@ export default function RegisterPage() {
                   <button
                     type="submit"
                     disabled={loading || pass.length < 12}
-                    className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
+                    className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {loading && <Loader2 className="h-5 w-5 animate-spin" />}
                     {loading ? reg.creating : reg.createAccount}
@@ -337,7 +337,7 @@ export default function RegisterPage() {
               <p className="text-sm text-[#b3bcdf]/58">
                 {reg.alreadyHaveAccount}{" "}
                 <Link href="/login">
-                  <a className="font-medium text-[#dfff4a] transition hover:text-[#efff8a]">
+                  <a className="font-medium text-[#F59E0B] transition hover:text-[#FDE68A]">
                     {reg.logIn}
                   </a>
                 </Link>

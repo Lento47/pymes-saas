@@ -71,7 +71,7 @@ function MarketingMenuAction({
         <div className={cn(
           "flex h-8 w-8 items-center justify-center rounded-lg shrink-0",
           featured
-            ? "bg-[#dfff4a]/10 text-[#dfff4a]"
+            ? "bg-[#F59E0B]/10 text-[#F59E0B]"
             : "bg-white/[0.06] text-white/50 group-hover:text-white/80"
         )}>
           <Icon className="h-4 w-4" />
@@ -108,8 +108,8 @@ function PerformanceChart({ labels }: { labels: readonly string[] }) {
     <svg viewBox="0 0 460 260" className="h-full w-full" aria-hidden="true">
       <defs>
         <linearGradient id="request-line" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0%" stopColor="#dfff4a" />
-          <stop offset="100%" stopColor="#f5ff9b" />
+          <stop offset="0%" stopColor="#F59E0B" />
+          <stop offset="100%" stopColor="#FDE68A" />
         </linearGradient>
         <linearGradient id="request-area" x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor="rgba(222,255,74,0.40)" />
@@ -185,13 +185,13 @@ function OrbitGraphic() {
       <div className="absolute inset-11 rounded-full border border-[#5f72ff]/20" />
       <div className="absolute inset-[4.65rem] rounded-full border border-[#5f72ff]/15" />
       <div className="animate-pulse-halo absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(233,255,93,0.95)_0%,rgba(232,255,89,0.2)_40%,transparent_72%)]" />
-      <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#e8ff59]/35 bg-[#10173a]/90 text-[#e8ff59] shadow-[0_0_32px_rgba(232,255,89,0.35)]">
+      <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#F59E0B]/35 bg-[#10173a]/90 text-[#F59E0B] shadow-[0_0_32px_rgba(232,255,89,0.35)]">
         <Sparkles className="h-6 w-6" />
       </div>
       <div className="absolute left-[18%] top-[34%] h-3 w-3 rounded-full bg-[#5c72ff]/80 shadow-[0_0_6px_rgba(92,114,255,0.65)]" />
       <div className="absolute bottom-[18%] right-[14%] h-3.5 w-3.5 rounded-full bg-[#5c72ff]/70 shadow-[0_0_18px_rgba(92,114,255,0.55)]" />
       <div className="absolute right-[26%] top-[13%] h-2.5 w-2.5 rounded-full bg-[#9db0ff]/90 shadow-[0_0_14px_rgba(157,176,255,0.7)]" />
-      <div className="absolute left-[50%] top-[8%] h-2 w-2 -translate-x-1/2 rounded-full bg-[#e8ff59]/70 shadow-[0_0_14px_rgba(232,255,89,0.7)]" />
+      <div className="absolute left-[50%] top-[8%] h-2 w-2 -translate-x-1/2 rounded-full bg-[#F59E0B]/70 shadow-[0_0_14px_rgba(232,255,89,0.7)]" />
     </div>
   );
 }
@@ -487,9 +487,9 @@ export default function Landing() {
         </div>
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0.04)_0%,rgba(5,9,29,0.06)_22%,rgba(5,9,29,0.18)_44%,rgba(5,9,29,0.42)_64%,#05091d_86%)]" />
         <div className="animate-drift-x absolute left-[-10rem] top-[8rem] h-80 w-80 rounded-full bg-[#5771ff]/16 blur-[110px]" />
-        <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#d5ff63]/12 blur-[130px]" />
+        <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#F59E0B]/12 blur-[130px]" />
         <div className="absolute right-[20%] top-[30%] h-72 w-72 rounded-full bg-[#4F6EF7]/8 blur-[100px]" />
-        <div className="absolute left-[38%] top-[-4rem] h-64 w-64 rounded-full bg-[#CBFF47]/5 blur-[90px]" />
+        <div className="absolute left-[38%] top-[-4rem] h-64 w-64 rounded-full bg-[#F59E0B]/5 blur-[90px]" />
         <div className="marketing-grid absolute inset-x-0 bottom-0 h-[36rem] opacity-50" />
       </div>
 
@@ -558,7 +558,7 @@ export default function Landing() {
                     </a>
                   </Link>
                   <Link href="/register">
-                    <a className="font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
+                    <a className="font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
                       {copy.nav.getStarted}
                       <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                     </a>
@@ -592,7 +592,7 @@ export default function Landing() {
                       </a>
                     </Link>
                     <Link href="/register">
-                      <a className="font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px]">
+                      <a className="font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px]">
                         {copy.nav.getStarted}
                         <ArrowRight className="h-3 w-3 inline" />
                       </a>
@@ -650,7 +650,7 @@ export default function Landing() {
 
             <div className="mx-auto max-w-4xl pt-16 text-center md:pt-20">
               <div className="glass-panel-soft inline-flex items-center gap-3 rounded-full px-5 py-2.5 text-sm text-white/84">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_14px_rgba(223,255,74,0.85)]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_14px_rgba(245,158,11,0.85)]" />
                 {copy.intro}
               </div>
 
@@ -661,7 +661,7 @@ export default function Landing() {
               </h1>
 
               <p
-                className="soft-glow mt-3 md:mt-4 text-[1.25rem] font-medium leading-[1.1] tracking-[-0.03em] text-[#e7ff5a] sm:text-[1.75rem] md:text-[2.5rem]"
+                className="soft-glow mt-3 md:mt-4 text-[1.25rem] font-medium leading-[1.1] tracking-[-0.03em] text-[#FBBF24] sm:text-[1.75rem] md:text-[2.5rem]"
                 style={{
                   fontFamily:
                     'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -694,7 +694,7 @@ export default function Landing() {
 
               <div className="mt-8 flex items-center justify-center gap-3">
                 <div className="flex -space-x-2">
-                  {["#4F6EF7","#CBFF47","#7FC8F8","#F87171"].map((c, i) => (
+                  {["#4F6EF7","#F59E0B","#7FC8F8","#F87171"].map((c, i) => (
                     <span key={i} className="h-7 w-7 rounded-full border-2 border-[#05091d]" style={{ background: c, opacity: 0.88 }} />
                   ))}
                 </div>
@@ -726,14 +726,14 @@ export default function Landing() {
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-[10px] text-white/30">{row.time}</span>
-                          {row.dot && <span className="h-1.5 w-1.5 rounded-full bg-[#CBFF47] shadow-[0_0_6px_rgba(203,255,71,0.8)]" />}
+                          {row.dot && <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B] shadow-[0_0_6px_rgba(203,255,71,0.8)]" />}
                         </div>
                       </div>
                     ))}
                   </div>
                   <div className="mt-3 flex items-center justify-between rounded-xl bg-white/[0.02] px-3 py-2">
                     <span className="text-xs text-white/30">3 active threads · avg reply 6 min</span>
-                    <span className="rounded-full bg-[#CBFF47]/10 px-2 py-0.5 text-[10px] font-semibold text-[#CBFF47]">SLA 94%</span>
+                    <span className="rounded-full bg-[#F59E0B]/10 px-2 py-0.5 text-[10px] font-semibold text-[#F59E0B]">SLA 94%</span>
                   </div>
                 </div>
               </div>
@@ -769,7 +769,7 @@ export default function Landing() {
                             <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
                               {signal.label}
                             </span>
-                            <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
+                            <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#F59E0B]/74">
                               {signal.value}
                             </span>
                           </div>
@@ -784,7 +784,7 @@ export default function Landing() {
                               key={index}
                               className={`h-2.5 w-2.5 rounded-full ${
                                 active
-                                  ? "bg-[#dfff4a] "
+                                  ? "bg-[#F59E0B] "
                                   : "bg-[#6b7dff]/28"
                               }`}
                             />
@@ -829,7 +829,7 @@ export default function Landing() {
                               <span className="font-marketing text-5xl font-semibold tracking-[-0.04em]">
                                 2.45M
                               </span>
-                              <span className="rounded-full border border-[#dfff4a]/30 bg-[#dfff4a]/10 px-3 py-1 text-sm font-semibold text-[#dfff4a]">
+                              <span className="rounded-full border border-[#F59E0B]/30 bg-[#F59E0B]/10 px-3 py-1 text-sm font-semibold text-[#F59E0B]">
                                 +18.6%
                               </span>
                             </div>
@@ -862,7 +862,7 @@ export default function Landing() {
 
                   <CarouselItem className="basis-full">
                     <article className="glass-panel rounded-xl p-6">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#FDE68A]">
                         <img
                           src="/landing-icons/Smart-automations.png"
                           alt=""
@@ -884,8 +884,8 @@ export default function Landing() {
                           <span className="font-marketing text-sm font-semibold text-white/84">
                             {copy.overview.automations.statusLabel}
                           </span>
-                          <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
-                            <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_4px_rgba(223,255,74,0.8)]" />
+                          <span className="flex items-center gap-2 text-sm text-[#F59E0B]">
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_4px_rgba(245,158,11,0.8)]" />
                             {copy.overview.automations.statusValue}
                           </span>
                         </div>
@@ -922,7 +922,7 @@ export default function Landing() {
                   const channelColors: Record<string, string> = {
                     WhatsApp: "#25D366",
                     Email: "#4F6EF7",
-                    Invoices: "#dfff4a",
+                    Invoices: "#F59E0B",
                     Pipeline: "#8B7CF6",
                   };
                   return (
@@ -939,7 +939,7 @@ export default function Landing() {
                           <span className="min-w-0 flex-1 font-marketing text-sm font-semibold text-white/88">
                             {signal.label}
                           </span>
-                          <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#dfff4a]/74">
+                          <span className="max-w-[8.75rem] whitespace-normal text-right text-[0.68rem] uppercase leading-[1.35] tracking-[0.12em] text-[#F59E0B]/74">
                             {signal.value}
                           </span>
                         </div>
@@ -956,7 +956,7 @@ export default function Landing() {
                         key={index}
                         className={`h-2.5 w-2.5 rounded-full ${
                           active
-                            ? "bg-[#dfff4a] "
+                            ? "bg-[#F59E0B] "
                             : "bg-[#6b7dff]/28"
                         }`}
                       />
@@ -999,7 +999,7 @@ export default function Landing() {
                         <span className="font-marketing text-5xl font-semibold tracking-[-0.04em]">
                           2.45M
                         </span>
-                        <span className="rounded-full border border-[#dfff4a]/30 bg-[#dfff4a]/10 px-3 py-1 text-sm font-semibold text-[#dfff4a]">
+                        <span className="rounded-full border border-[#F59E0B]/30 bg-[#F59E0B]/10 px-3 py-1 text-sm font-semibold text-[#F59E0B]">
                           +18.6%
                         </span>
                       </div>
@@ -1030,7 +1030,7 @@ export default function Landing() {
               </article>
 
               <article className="glass-panel rounded-xl p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#f4ffb1]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(233,255,93,0.28),rgba(121,244,211,0.16))] p-2 text-[#FDE68A]">
                   <img
                     src="/landing-icons/Smart-automations.png"
                     alt=""
@@ -1050,7 +1050,7 @@ export default function Landing() {
                 <div className="mt-3 space-y-2">
                   {[
                     { step: "New lead", action: "Assign agent", color: "#4F6EF7" },
-                    { step: "Proposal sent", action: "Schedule reminder", color: "#CBFF47" },
+                    { step: "Proposal sent", action: "Schedule reminder", color: "#F59E0B" },
                     { step: "Invoice issued", action: "Send follow-up", color: "#25D366" },
                   ].map((chip) => (
                     <div key={chip.step} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
@@ -1067,8 +1067,8 @@ export default function Landing() {
                     <span className="font-marketing text-sm font-semibold text-white/84">
                       {copy.overview.automations.statusLabel}
                     </span>
-                    <span className="flex items-center gap-2 text-sm text-[#dfff4a]">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_4px_rgba(223,255,74,0.8)]" />
+                    <span className="flex items-center gap-2 text-sm text-[#F59E0B]">
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_4px_rgba(245,158,11,0.8)]" />
                       {copy.overview.automations.statusValue}
                     </span>
                   </div>

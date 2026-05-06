@@ -21,7 +21,7 @@ export default function NotFound() {
             </p>
             <a
               href="/login?expired=true"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-6 py-3 text-sm font-semibold text-[#071126] transition hover:translate-y-[-1px]"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-6 py-3 text-sm font-semibold text-[#071126] transition hover:translate-y-[-1px]"
             >
               <LogIn className="h-4 w-4" />
               Ir al login

@@ -101,7 +101,7 @@ export default function OnboardingTour() {
           {/* Header */}
           <div className="flex items-center justify-between px-6 pt-5 pb-2">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5771ff] to-[#7ff4d2] flex items-center justify-center text-sm font-bold text-white">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5771ff] to-[#D97706] flex items-center justify-center text-sm font-bold text-white">
                 {step + 1}
               </div>
               <span className="text-xs text-white/60">

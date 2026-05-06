@@ -27,7 +27,7 @@ export function MarketingTopBar({
       )}
     >
       <Link href="/">
-        <a className="min-w-0 rounded-xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#dfff4a] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05091d]">
+        <a className="min-w-0 rounded-xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05091d]">
           <BrandLockup compact />
         </a>
       </Link>
@@ -43,7 +43,7 @@ export function MarketingTopBar({
         )}
         {primaryLabel && (
           <Link href={primaryHref}>
-            <a className="glow-button font-marketing inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-4 py-2 text-xs font-bold text-[#071126] transition hover:translate-y-[-1px] sm:text-sm">
+            <a className="glow-button font-marketing inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-4 py-2 text-xs font-bold text-[#071126] transition hover:translate-y-[-1px] sm:text-sm">
               {primaryLabel}
               <ArrowRight className="h-3.5 w-3.5" />
             </a>

@@ -23,7 +23,7 @@ export default function WorkflowsPage() {
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.08fr_0.92fr]">
             <article className="glass-panel rounded-[34px] p-8 md:p-10">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">{copy.eyebrow || "Operational flows"}</p>
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">{copy.eyebrow || "Operational flows"}</p>
               <h1 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">{copy.title || "Move handoffs forward without losing context."}</h1>
               <p className="mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">{copy.description || "Guide teams from inbound message to invoice, onboarding, and support with one shared thread."}</p>
             </article>

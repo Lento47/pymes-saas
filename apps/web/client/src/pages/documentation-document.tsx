@@ -54,7 +54,7 @@ return (
   <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
     <div className="pointer-events-none absolute inset-0">
       <div className="absolute left-[-10rem] top-[4rem] h-72 w-72 rounded-full bg-[#5870ff]/12 blur-[120px]" />
-      <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#dfff4a]/10 blur-[150px]" />
+      <div className="absolute right-[-8rem] top-[12rem] h-96 w-96 rounded-full bg-[#F59E0B]/10 blur-[150px]" />
     </div>
 
     <div className="relative z-10 px-4 pb-16 pt-6 md:px-8 md:pb-24">
@@ -85,7 +85,7 @@ return (
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(232,255,89,0.12))] text-white/90">
                   <BookOpen className="h-6 w-6" />
                 </div>
-                <span className="rounded-full border border-[#dfff4a]/28 bg-[#dfff4a]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#dfff4a]">
+                <span className="rounded-full border border-[#F59E0B]/28 bg-[#F59E0B]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#F59E0B]">
                   {copy.publicBadge}
                 </span>
               </div>
@@ -98,14 +98,14 @@ return (
                   prose-h2:text-xl prose-h2:font-semibold prose-h2:mt-10 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-white/[0.06]
                   prose-h3:text-base prose-h3:font-semibold prose-h3:mt-8 prose-h3:mb-3
                   prose-p:text-white/75 prose-p:leading-7
-                  prose-a:text-[#dfff4a]/80 prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-[#dfff4a]
+                  prose-a:text-[#F59E0B]/80 prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-[#F59E0B]
                   prose-strong:text-white/90 prose-strong:font-semibold
                   prose-ul:text-white/70 prose-ol:text-white/70
                   prose-li:my-1
-                  prose-code:text-[#dfff4a]/70 prose-code:bg-white/[0.04] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+                  prose-code:text-[#F59E0B]/70 prose-code:bg-white/[0.04] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
                   prose-pre:bg-white/[0.02] prose-pre:border prose-pre:border-white/[0.06]
                   prose-table:text-white/70 prose-th:text-white/80 prose-th:font-semibold prose-td:border-white/[0.06] prose-th:border-white/[0.06]
-                  prose-blockquote:border-l-[#dfff4a]/30 prose-blockquote:text-white/65
+                  prose-blockquote:border-l-[#F59E0B]/30 prose-blockquote:text-white/65
                   prose-hr:border-white/[0.06]
                   max-w-none
                 ">
@@ -116,14 +116,14 @@ return (
               ) : (
                 <div className="mt-10 space-y-8">
                   <section className="space-y-3">
-                    <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-[#dfff4a]/72">
+                    <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-[#F59E0B]/72">
                       {copy.purpose}
                     </p>
                     <p className="text-sm leading-7 text-[#bcc5ee]/72">{doc.purpose}</p>
                   </section>
 
                   <section className="space-y-3">
-                    <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-[#dfff4a]/72">
+                    <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-[#F59E0B]/72">
                       {copy.coverage}
                     </p>
                     <ul className="space-y-3">

@@ -69,7 +69,7 @@ function MarketingMenuAction({
         <div className={cn(
           "flex h-8 w-8 items-center justify-center rounded-lg shrink-0",
           featured
-            ? "bg-[#dfff4a]/10 text-[#dfff4a]"
+            ? "bg-[#F59E0B]/10 text-[#F59E0B]"
             : "bg-white/[0.06] text-white/50 group-hover:text-white/80"
         )}>
           <Icon className="h-4 w-4" />
@@ -106,8 +106,8 @@ function PerformanceChart({ labels }: { labels: readonly string[] }) {
     <svg viewBox="0 0 460 260" className="h-full w-full" aria-hidden="true">
       <defs>
         <linearGradient id="request-line" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0%" stopColor="#dfff4a" />
-          <stop offset="100%" stopColor="#f5ff9b" />
+          <stop offset="0%" stopColor="#F59E0B" />
+          <stop offset="100%" stopColor="#FDE68A" />
         </linearGradient>
         <linearGradient id="request-area" x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor="rgba(222,255,74,0.40)" />
@@ -183,13 +183,13 @@ function OrbitGraphic() {
       <div className="absolute inset-11 rounded-full border border-[#5f72ff]/20" />
       <div className="absolute inset-[4.65rem] rounded-full border border-[#5f72ff]/15" />
       <div className="animate-pulse-halo absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(233,255,93,0.95)_0%,rgba(232,255,89,0.2)_40%,transparent_72%)]" />
-      <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#e8ff59]/35 bg-[#10173a]/90 text-[#e8ff59] shadow-[0_0_32px_rgba(232,255,89,0.35)]">
+      <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#F59E0B]/35 bg-[#10173a]/90 text-[#F59E0B] shadow-[0_0_32px_rgba(232,255,89,0.35)]">
         <Sparkles className="h-6 w-6" />
       </div>
       <div className="absolute left-[18%] top-[34%] h-3 w-3 rounded-full bg-[#5c72ff]/80 shadow-[0_0_16px_rgba(92,114,255,0.65)]" />
       <div className="absolute bottom-[18%] right-[14%] h-3.5 w-3.5 rounded-full bg-[#5c72ff]/70 shadow-[0_0_18px_rgba(92,114,255,0.55)]" />
       <div className="absolute right-[26%] top-[13%] h-2.5 w-2.5 rounded-full bg-[#9db0ff]/90 shadow-[0_0_14px_rgba(157,176,255,0.7)]" />
-      <div className="absolute left-[50%] top-[8%] h-2 w-2 -translate-x-1/2 rounded-full bg-[#e8ff59]/70 shadow-[0_0_14px_rgba(232,255,89,0.7)]" />
+      <div className="absolute left-[50%] top-[8%] h-2 w-2 -translate-x-1/2 rounded-full bg-[#F59E0B]/70 shadow-[0_0_14px_rgba(232,255,89,0.7)]" />
     </div>
   );
 }
@@ -432,7 +432,7 @@ export default function Landing() {
         </div>
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0.04)_0%,rgba(5,9,29,0.06)_22%,rgba(5,9,29,0.18)_44%,rgba(5,9,29,0.42)_64%,#05091d_86%)]" />
         <div className="animate-drift-x absolute left-[-10rem] top-[8rem] h-80 w-80 rounded-full bg-[#5771ff]/16 blur-[110px]" />
-        <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#d5ff63]/12 blur-[130px]" />
+        <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#F59E0B]/12 blur-[130px]" />
         <div className="marketing-grid absolute inset-x-0 bottom-0 h-[36rem] opacity-50" />
       </div>
 
@@ -494,7 +494,7 @@ export default function Landing() {
                     </a>
                   </Link>
                   <Link href="/login">
-                    <a className="glow-button font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
+                    <a className="glow-button font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
                       {copy.nav.getStarted}
                       <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                     </a>
@@ -528,7 +528,7 @@ export default function Landing() {
                       </a>
                     </Link>
                     <Link href="/login">
-                      <a className="glow-button font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#dfff4a_55%,#7ff4d2_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px]">
+                      <a className="glow-button font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px]">
                         {copy.nav.getStarted}
                         <ArrowRight className="h-3 w-3 inline" />
                       </a>
@@ -585,7 +585,7 @@ export default function Landing() {
             </div>
 
             <div className="mx-auto max-w-4xl pt-16 text-center md:pt-16">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
                 {copy.platform.eyebrow}
               </p>
               <h1 className="font-marketing mt-5 text-5xl font-extrabold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl md:text-[5rem]">
@@ -601,7 +601,7 @@ export default function Landing() {
         <section id="platform" className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
                 {copy.platform.eyebrow}
               </p>
               <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-white md:text-6xl">
@@ -642,7 +642,7 @@ export default function Landing() {
                           <ul className="mt-8 space-y-3 text-sm leading-7 text-white/78">
                             {card.bullets.map((bullet) => (
                               <li key={bullet} className="flex gap-3">
-                                <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_14px_rgba(223,255,74,0.65)]" />
+                                <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_14px_rgba(245,158,11,0.65)]" />
                                 <span>{bullet}</span>
                               </li>
                             ))}
@@ -686,7 +686,7 @@ export default function Landing() {
                     <ul className="mt-8 space-y-3 text-sm leading-7 text-white/78">
                       {card.bullets.map((bullet) => (
                         <li key={bullet} className="flex gap-3">
-                          <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#dfff4a] shadow-[0_0_14px_rgba(223,255,74,0.65)]" />
+                          <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_14px_rgba(245,158,11,0.65)]" />
                           <span>{bullet}</span>
                         </li>
                       ))}
@@ -701,7 +701,7 @@ export default function Landing() {
         <section id="workflows" className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.08fr_0.92fr]">
             <article className="glass-panel rounded-[34px] p-8 md:p-10">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
                 {copy.workflows.eyebrow}
               </p>
               <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
@@ -747,8 +747,8 @@ export default function Landing() {
                       {copy.workflows.flowHeadline}
                     </h3>
                   </div>
-                  <div className="flex items-center gap-2 rounded-full border border-[#dfff4a]/28 bg-[#dfff4a]/10 px-3 py-1.5 text-sm text-[#dfff4a]">
-                    <span className="h-2 w-2 rounded-full bg-[#dfff4a]" />
+                  <div className="flex items-center gap-2 rounded-full border border-[#F59E0B]/28 bg-[#F59E0B]/10 px-3 py-1.5 text-sm text-[#F59E0B]">
+                    <span className="h-2 w-2 rounded-full bg-[#F59E0B]" />
                     {copy.workflows.flowLive}
                   </div>
                 </div>
@@ -757,7 +757,7 @@ export default function Landing() {
                   {copy.workflows.flowSteps.map(([title, detail], index) => (
                     <div key={title} className="flex gap-4 rounded-[22px] border border-white/8 bg-foreground/[0.03] px-4 py-4">
                       <div className="flex flex-col items-center">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#efff53,#7ff4d2)] text-sm font-bold text-[#051127]">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#F59E0B,#D97706)] text-sm font-bold text-[#051127]">
                           {index + 1}
                         </span>
                         {index < 3 && <span className="mt-2 h-8 w-px bg-white/10" />}
@@ -799,7 +799,7 @@ export default function Landing() {
             <div className="glass-panel rounded-[34px] px-8 py-10 md:px-12 md:py-14">
               <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
                 <div>
-                  <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+                  <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
                     {copy.insights.eyebrow}
                   </p>
                   <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
@@ -830,7 +830,7 @@ export default function Landing() {
         <section id="security" className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
                 {copy.security.eyebrow}
               </p>
               <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">
@@ -848,7 +848,7 @@ export default function Landing() {
                   {copy.security.cards.map((item) => (
                     <CarouselItem key={item.title} className="basis-full">
                       <article className="glass-panel rounded-[28px] p-7">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(232,255,89,0.18),rgba(116,244,212,0.15))] p-2 text-[#eaff9d]">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(232,255,89,0.18),rgba(116,244,212,0.15))] p-2 text-[rgba(233,255,93]">
                           <img
                             src="/landing-icons/security.png"
                             alt=""
@@ -877,7 +877,7 @@ export default function Landing() {
             <div className="hidden md:grid mt-14 grid gap-6 md:grid-cols-3">
               {copy.security.cards.map((item) => (
                 <article key={item.title} className="glass-panel rounded-[28px] p-7">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(232,255,89,0.18),rgba(116,244,212,0.15))] p-2 text-[#eaff9d]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(232,255,89,0.18),rgba(116,244,212,0.15))] p-2 text-[rgba(233,255,93]">
                     <img
                       src="/landing-icons/security.png"
                       alt=""
@@ -909,9 +909,9 @@ export default function Landing() {
                     "linear-gradient(180deg, rgba(6, 11, 33, 0.08) 0%, rgba(6, 11, 33, 0.18) 55%, rgba(6, 11, 33, 0.34) 100%)",
                 }}
               />
-              <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(223,255,74,0.08),transparent_68%)]" />
+              <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.08),transparent_68%)]" />
               <div className="relative z-10 mx-auto max-w-4xl [text-shadow:0_2px_18px_rgba(4,8,28,0.55)]">
-                <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#dfff4a]/72">
+                <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
                   {copy.security.ctaEyebrow}
                 </p>
                 <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
@@ -922,7 +922,7 @@ export default function Landing() {
                 </p>
                 <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
                   <Link href="/login">
-                    <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#efff53_0%,#ddff47_55%,#78efd0_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
+                    <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
                       {copy.security.ctaPrimary}
                       <ArrowRight className="h-5 w-5" />
                     </a>
