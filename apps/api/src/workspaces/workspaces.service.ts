@@ -43,6 +43,9 @@ export class WorkspacesService {
     return {
       ...workspace,
       workspace_tax_profile: taxProfile,
+      settings: {
+        quick_start_progress: settings.quick_start_progress ?? {} as Record<string, boolean>,
+      },
       ai_message_finance_opt_in: settings.ai_message_finance_opt_in === true,
       ai_provider: settings.ai_provider ?? null,
       ai_model: settings.ai_model ?? null,
