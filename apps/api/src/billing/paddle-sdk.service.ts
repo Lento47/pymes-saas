@@ -795,7 +795,7 @@ export class PaddleSdkService {
     const transactionId: string | undefined = data.id || data.transactionId;
     this.logger.log(`Transaction completed: tx=${transactionId} sub=${subscriptionId}`);
 
-    const sub = await this.prisma.workspaceSubscription.findFirst({
+    let sub = await this.prisma.workspaceSubscription.findFirst({
       where: { provider_subscription_id: subscriptionId },
       select: {
         id: true,
@@ -807,60 +807,77 @@ export class PaddleSdkService {
     });
 
     if (!sub) {
-      // subscription.activated might not have fired (e.g., Paddle sandbox trial).
-      // Create the subscription record and update workspace plan from the transaction data itself.
+      // subscription.activated might not have fired (e.g., Paddle sandbox
+      // trial, or first checkout where transaction.completed beats
+      // subscription.activated). Create the record on-the-fly from the
+      // transaction's customData so we still upgrade the plan AND so the
+      // invoice-generation block below has a `sub` to run against.
       const customData = data.customData || data.custom_data || {};
       const wsSlug = customData?.workspaceSlug || customData?.workspace_slug;
       const plan = this.mapPaddlePriceToPlan(data.items?.[0]?.price?.id || '');
       const customerId = data.customerId || data.customer_id;
 
-      if (wsSlug && plan !== 'FREE') {
-        const ws = await this.prisma.workspace.findUnique({
-          where: { slug: wsSlug },
-          select: { id: true, name: true },
-        });
-        if (ws) {
-          await this.prisma.workspaceSubscription.create({
-            data: {
-              workspace_id: ws.id,
-              provider_subscription_id: subscriptionId,
-              provider_customer_id: customerId,
-              provider: 'PADDLE',
-              status: 'ACTIVE',
-              plan,
-              current_period_start: data.billingPeriod?.startsAt
-                ? new Date(data.billingPeriod.startsAt) : new Date(),
-              current_period_end: data.billingPeriod?.endsAt
-                ? new Date(data.billingPeriod.endsAt) : undefined,
-            },
-          });
-          await this.prisma.workspace.update({
-            where: { id: ws.id },
-            data: { plan },
-          });
-          this.logger.log(`Created subscription from transaction: ws=${ws.id}, plan=${plan}, sub=${subscriptionId}`);
-          await this.resolveBillingCases(ws.id, 'SUBSCRIPTION_WORKSPACE_MISMATCH');
-          return;
-        }
+      if (!wsSlug || plan === 'FREE') {
+        this.logger.warn(`Transaction completed but no subscription found for ${subscriptionId} (and could not create from customData: slug=${wsSlug}, plan=${plan})`);
+        return;
       }
 
-      this.logger.warn(`Transaction completed but no subscription found for ${subscriptionId} (and could not create from customData: slug=${wsSlug}, plan=${plan})`);
-      return;
+      const ws = await this.prisma.workspace.findUnique({
+        where: { slug: wsSlug },
+        select: { id: true, name: true, slug: true },
+      });
+      if (!ws) {
+        this.logger.warn(`Transaction completed but workspace ${wsSlug} not found for sub ${subscriptionId}`);
+        return;
+      }
+
+      const created = await this.prisma.workspaceSubscription.create({
+        data: {
+          workspace_id: ws.id,
+          provider_subscription_id: subscriptionId,
+          provider_customer_id: customerId,
+          provider: 'PADDLE',
+          status: 'ACTIVE',
+          plan,
+          current_period_start: data.billingPeriod?.startsAt
+            ? new Date(data.billingPeriod.startsAt) : new Date(),
+          current_period_end: data.billingPeriod?.endsAt
+            ? new Date(data.billingPeriod.endsAt) : undefined,
+        },
+        select: { id: true },
+      });
+      await this.prisma.workspace.update({
+        where: { id: ws.id },
+        data: { plan },
+      });
+      this.logger.log(`Created subscription from transaction: ws=${ws.id}, plan=${plan}, sub=${subscriptionId}`);
+      await this.resolveBillingCases(ws.id, 'SUBSCRIPTION_WORKSPACE_MISMATCH');
+
+      // Fall through to the invoice-generation block with the freshly
+      // created subscription. Previously this branch returned early and
+      // the customer's first paid plan never produced a BillingInvoice.
+      sub = {
+        id: created.id,
+        workspace_id: ws.id,
+        plan,
+        status: 'ACTIVE',
+        workspace: { name: ws.name, slug: ws.slug },
+      };
+    } else {
+      this.logger.log(`Transaction handler: ws=${sub.workspace_id}, current plan=${sub.plan}, sub status=${sub.status}`);
+
+      await this.prisma.workspaceSubscription.update({
+        where: { id: sub.id },
+        data: { status: 'ACTIVE', plan: sub.plan },
+      });
+
+      this.logger.log(`Updating workspace ${sub.workspace_id} plan to ${sub.plan}`);
+      await this.prisma.workspace.update({
+        where: { id: sub.workspace_id },
+        data: { plan: sub.plan },
+      });
+      this.logger.log(`Workspace ${sub.workspace_id} plan updated to ${sub.plan}`);
     }
-
-    this.logger.log(`Transaction handler: ws=${sub.workspace_id}, current plan=${sub.plan}, sub status=${sub.status}`);
-
-    await this.prisma.workspaceSubscription.update({
-      where: { id: sub.id },
-      data: { status: 'ACTIVE', plan: sub.plan },
-    });
-
-    this.logger.log(`Updating workspace ${sub.workspace_id} plan to ${sub.plan}`);
-    await this.prisma.workspace.update({
-      where: { id: sub.workspace_id },
-      data: { plan: sub.plan },
-    });
-    this.logger.log(`Workspace ${sub.workspace_id} plan updated to ${sub.plan}`);
 
     // DEDUPE — `transaction.completed` y `transaction.paid` pueden disparar por
     // la misma compra. Marcamos la factura con `[paddle_tx:<id>]` en notes y
