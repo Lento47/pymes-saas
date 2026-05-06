@@ -49,7 +49,7 @@ const TABS: PrerequisiteTab[] = [
     ],
     ctaLabel: 'Crear workspace',
     ctaHref: '/register',
-    helpHref: '/documentation/workspace-launch-guide',
+    helpHref: '/documentation/workspace-launch-guide#4-paso-2-configurar-roles-y-accesos',
   },
   {
     value: 'plan',
@@ -84,7 +84,7 @@ const TABS: PrerequisiteTab[] = [
     ],
     ctaLabel: 'Empezar configuración',
     ctaHref: '/register',
-    helpHref: '/documentation/workspace-launch-guide',
+    helpHref: '/documentation/costa-rica-tax-invoicing-guide',
   },
   {
     value: 'channels',
@@ -102,7 +102,7 @@ const TABS: PrerequisiteTab[] = [
     ],
     ctaLabel: 'Crear workspace',
     ctaHref: '/register',
-    helpHref: '/documentation/platform-overview',
+    helpHref: '/documentation/workspace-launch-guide#5-paso-3-configurar-canales',
   },
 ];
 

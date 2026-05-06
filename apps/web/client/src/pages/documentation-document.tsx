@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -8,6 +9,28 @@ import { useI18n } from "@/components/providers/i18n-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { getDocumentationBySlug } from "@/lib/documentation";
 import { DOCS_CONTENT } from "@/data/docs/docs-content";
+
+/**
+ * GitHub-style heading slug. Lowercases, strips diacritics, replaces
+ * spaces with dashes, drops anything non-alphanumeric. So
+ * "5.1 WhatsApp" → "51-whatsapp"; "5.2 Correo electrónico" → "52-correo-electronico".
+ */
+function slugifyHeading(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // strip combining diacritics
+    .replace(/[^a-z0-9\s-]/g, " ") // non-alphanumeric → space (so em-dash, period collapse)
+    .trim()
+    .replace(/\s+/g, "-");
+}
+
+function extractText(node: any): string {
+  if (typeof node === "string") return node;
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (node?.props?.children) return extractText(node.props.children);
+  return "";
+}
 
 interface DocumentationDocumentPageProps {
   slug: string;
@@ -20,6 +43,21 @@ export default function DocumentationDocumentPage({
   const copy = messages.documentation;
   const doc = getDocumentationBySlug(slug);
   const markdown = DOCS_CONTENT[slug] ?? "";
+
+  // After the markdown finishes rendering, jump to the hash target
+  // (e.g. /documentation/workspace-launch-guide#51-whatsapp). The browser
+  // can't do this on its own because the heading IDs only exist once
+  // ReactMarkdown has rendered the content.
+  useEffect(() => {
+    if (!markdown) return;
+    const hash = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
+    if (!hash) return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(hash);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [slug, markdown]);
 
   if (!doc || doc.visibility !== "public") {
     return (
@@ -109,7 +147,17 @@ return (
                   prose-hr:border-white/[0.06]
                   max-w-none
                 ">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h2: ({ children, ...props }: any) => (
+                        <h2 id={slugifyHeading(extractText(children))} {...props}>{children}</h2>
+                      ),
+                      h3: ({ children, ...props }: any) => (
+                        <h3 id={slugifyHeading(extractText(children))} {...props}>{children}</h3>
+                      ),
+                    }}
+                  >
                     {markdown}
                   </ReactMarkdown>
                 </div>
