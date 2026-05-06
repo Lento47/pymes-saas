@@ -428,6 +428,7 @@ export const api = {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return request<any>("GET", `/api/audit${qs}`);
   },
+  getDashboard: () => request<any>("GET", "/api/workspaces/current/dashboard"),
   getWorkspaceStats: () => request<any>("GET", "/api/workspaces/current/stats"),
   getTodayStats: () => request<any>("GET", "/api/workspaces/current/stats/today"),
   exportData: (type: string) => request<any>("GET", `/api/workspaces/current/export?type=${type}`),

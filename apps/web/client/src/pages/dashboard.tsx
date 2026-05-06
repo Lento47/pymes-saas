@@ -104,8 +104,9 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"tasks" | "messages">("tasks");
 
   const { data: todayStats, isLoading: statsLoading } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
-  const { data: workspaceStats } = useQuery({ queryKey: ["/api/workspaces/current/stats"], queryFn: api.getWorkspaceStats, refetchInterval: 60000 });
-  const { data: workspace } = useQuery({ queryKey: ["/api/workspaces/current"], queryFn: api.getWorkspace, staleTime: 0, refetchOnMount: true });
+  const { data: dashboard } = useQuery({ queryKey: ["/api/workspaces/current/dashboard"], queryFn: api.getDashboard, staleTime: 0, refetchOnMount: true, refetchInterval: 60000 });
+  const workspaceStats = dashboard?.stats;
+  const workspace = dashboard?.workspace;
   const { data: conversations, isLoading: convsLoading } = useQuery({ queryKey: ["/api/conversations", "dash"], queryFn: () => api.getConversations({ limit: "10" }) });
   const { data: tasks, isLoading: tasksLoading } = useQuery({ queryKey: ["/api/tasks", "dash"], queryFn: () => api.getTasks({ limit: "10" }) });
   const { data: overdueInvoices, isLoading: invoicesLoading } = useQuery({ queryKey: ["/api/invoices", "overdue-widget"], queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }), refetchInterval: 60000 });
