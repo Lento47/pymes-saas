@@ -9,6 +9,7 @@ import { TasksService } from '../tasks/tasks.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Priority } from '@prisma/client';
 import { AutomationsService } from '../automations/automations.service';
+import { RoutingService } from '../routing/routing.service';
 import { stringifyJson } from '../common/prisma/json';
 
 @Injectable()
@@ -23,6 +24,7 @@ export class MessagesService {
     private readonly tasksService: TasksService,
     private readonly notificationsService: NotificationsService,
     private readonly automationsService: AutomationsService,
+    private readonly routingService: RoutingService,
   ) { }
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 100) {
@@ -198,6 +200,32 @@ export class MessagesService {
           workspace_id: true, channel_id: true, status: true,
         },
       });
+    }
+
+    // Auto-route new conversation to department based on routing rules
+    const route = await this.routingService.resolveQueue(workspaceId, channel.id, bodyText);
+    if (route) {
+      const member = await this.prisma.departmentMember.findFirst({
+        where: { department_id: route.department_id, workspace_id: workspaceId },
+        orderBy: { is_lead: 'desc' },
+        select: { user_id: true },
+      });
+      const updateData: any = {
+        department_id: route.department_id,
+        ...(member ? { assigned_user_id: member.user_id } : {}),
+      };
+      if (route.set_priority) updateData.priority = route.set_priority;
+      const updated = await this.prisma.conversation.update({
+        where: { id: conversation.id },
+        data: updateData,
+        select: {
+          id: true, assigned_user_id: true, subject: true,
+          contact_id: true, first_response_at: true,
+          workspace_id: true, channel_id: true, status: true,
+          priority: true,
+        },
+      });
+      conversation = updated;
     }
 
     const message = await this.prisma.message.create({

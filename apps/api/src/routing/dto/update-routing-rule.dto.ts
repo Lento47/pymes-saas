@@ -1,4 +1,4 @@
-import { RoutingMatchType } from '@prisma/client';
+import { RoutingMatchType, Priority } from '@prisma/client';
 import {
   IsBoolean,
   IsEnum,
@@ -37,4 +37,8 @@ export class UpdateRoutingRuleDto {
   @IsOptional()
   @IsBoolean()
   is_active?: boolean;
+
+  @IsOptional()
+  @IsEnum(Priority)
+  set_priority?: Priority | null;
 }

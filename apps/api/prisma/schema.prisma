@@ -870,6 +870,7 @@ model RoutingRule {
   pattern       String
   department_id String
   priority      Int              @default(0)
+  set_priority  Priority?
   is_active     Boolean          @default(true)
 
   created_at DateTime @default(now())

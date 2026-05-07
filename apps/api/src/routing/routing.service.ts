@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { Priority } from '@prisma/client';
+
+export interface RoutingResult {
+  department_id: string;
+  set_priority?: Priority | null;
+}
 
 @Injectable()
 export class RoutingService {
@@ -18,7 +24,7 @@ export class RoutingService {
     workspaceId: string,
     channelId: string,
     messageText: string,
-  ): Promise<string | null> {
+  ): Promise<RoutingResult | null> {
     const rules = await this.prisma.routingRule.findMany({
       where: {
         workspace_id: workspaceId,
@@ -39,9 +45,9 @@ export class RoutingService {
     for (const rule of sorted) {
       const pattern = rule.pattern.trim().toLowerCase();
       if (rule.match_type === 'MENU_REPLY') {
-        if (text === pattern) return rule.department_id;
+        if (text === pattern) return { department_id: rule.department_id, set_priority: rule.set_priority as Priority | null | undefined };
       } else {
-        if (text.includes(pattern)) return rule.department_id;
+        if (text.includes(pattern)) return { department_id: rule.department_id, set_priority: rule.set_priority as Priority | null | undefined };
       }
     }
 
