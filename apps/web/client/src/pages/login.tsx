@@ -83,6 +83,8 @@ function Field({
   );
 }
 
+declare const FB: any; // Facebook SDK injected by index.html
+
 export default function LoginPage() {
   const { login, loginWithSsoCode, isAuthenticated } = useAuth();
   const { toast } = useToast();
