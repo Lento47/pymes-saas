@@ -7,6 +7,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="facebook-domain-verification" content="tqiw1daxs7dmllz4kli9gdk9y6jecr" />
+    <link rel="privacy-policy" href="/privacy-policy.html" />
+    <link rel="terms-of-service" href="/terms-of-service.html" />
 
     <title>PymesHub — CRM, facturación electrónica y automatización para PYMEs</title>
     <meta name="description" content="Centralizá conversaciones de WhatsApp, email y Telegram. Facturá electrónicamente con Hacienda CR. Automatizá tareas y gestioná tu pipeline de ventas. Todo en un solo lugar." />
@@ -82,14 +84,15 @@
     </script>
   </head>
   <body>
-    <!-- Google OAuth verification — visible in HTML source, React removes on mount -->
-    <div id="seo-legal">
-      <p>PymesHub — CRM, facturación electrónica y automatización para PYMEs. Centralizá conversaciones de WhatsApp, email y Telegram.</p>
-      <a href="/privacy-policy.html">Política de privacidad</a>
-      <a href="/terms-of-service.html">Términos del servicio</a>
+    <div id="root" style="min-height:100vh">
+      <!-- Google OAuth verification — crawlers see this, React.render() replaces entire #root -->
+      <div id="seo-legal">
+        <h1>PymesHub — CRM, facturación electrónica y automatización para PYMEs</h1>
+        <p>Centralizá conversaciones de WhatsApp, email y Telegram. Facturá electrónicamente con Hacienda CR. Automatizá tareas y gestioná tu pipeline de ventas.</p>
+        <a href="/privacy-policy.html">Política de privacidad</a>
+        <a href="/terms-of-service.html">Términos del servicio</a>
+      </div>
     </div>
-
-    <div id="root" style="min-height:100vh"></div>
     <script type="module" src="/src/main.tsx"></script>
     <!-- Facebook SDK — async, non-blocking -->
     <script>

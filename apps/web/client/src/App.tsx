@@ -1,5 +1,4 @@
 import { Loader2 } from "lucide-react";
-import { useEffect } from "react";
 import { Switch, Route, Router, Redirect } from "wouter";
 import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -220,11 +219,6 @@ function AppRouter() {
 
 export default function App() {
   normalizeInitialLocation();
-
-  useEffect(() => {
-    const el = document.getElementById('seo-legal');
-    if (el) el.remove();
-  }, []);
 
   return (
     <AppErrorBoundary>
