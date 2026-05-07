@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { FacebookStrategy } from './strategies/facebook.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { RefreshTokenService } from './refresh-token.service';
 import { DemoModule } from '../demo/demo.module';
@@ -27,7 +28,7 @@ import { DemoModule } from '../demo/demo.module';
     DemoModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, RolesGuard, RefreshTokenService],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, FacebookStrategy, RolesGuard, RefreshTokenService],
   exports: [JwtModule, PassportModule, RolesGuard, RefreshTokenService, AuthService],
 })
 export class AuthModule {}

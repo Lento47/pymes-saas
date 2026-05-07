@@ -217,4 +217,28 @@ export class AuthController {
       'POST /auth/google is disabled. Use GET /auth/google then redeem the code at POST /auth/sso-exchange.',
     );
   }
+
+  // ── Facebook OAuth ────────────────────────────────────────────────────────
+
+  @Get('facebook')
+  @UseGuards(AuthGuard('facebook'))
+  facebookAuth() {
+    // Initiates Facebook OAuth flow — redirects to Facebook
+  }
+
+  @Get('facebook/callback')
+  @UseGuards(AuthGuard('facebook'))
+  async facebookAuthCallback(@Req() req: any, @Res() res: any) {
+    const profile = req.user as { facebookId: string; email: string; name: string; avatarUrl: string | null };
+    const frontendUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
+    try {
+      const result = await this.authService.facebookLogin(profile);
+      const code = this.authService.mintSsoExchangeCode(result.user.id, result.user.workspace.id);
+      res.redirect(
+        `${frontendUrl}/login?code=${encodeURIComponent(code)}&slug=${encodeURIComponent(result.user.workspace.slug)}`,
+      );
+    } catch (err: any) {
+      res.redirect(`${frontendUrl}/login?error=facebook_auth_failed`);
+    }
+  }
 }
