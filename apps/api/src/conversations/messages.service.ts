@@ -135,6 +135,17 @@ export class MessagesService {
       if (contactRows.length > 0) contact = contactRows[0];
     }
 
+    if (contact) {
+      // Auto-update name for LEAD contacts created from incoming messages
+      if (contact.type === 'LEAD' && contact.full_name !== senderName) {
+        await this.prisma.contact.update({
+          where: { id: contact.id },
+          data: { full_name: senderName, updated_at: new Date() },
+        });
+        contact.full_name = senderName;
+      }
+    }
+
     if (!contact) {
       contact = await this.prisma.contact.create({
         data: {

@@ -103,6 +103,26 @@ export class ContactsService {
       }
     }
 
+    // Evitar duplicados por teléfono normalizado
+    if (dto.phone) {
+      const normalized = dto.phone.replace(/\D/g, '');
+      if (normalized.length >= 7) {
+        const rows: any[] = await (this.prisma as any).$queryRawUnsafe(
+          `SELECT id FROM "contacts"
+           WHERE workspace_id = $1
+             AND phone IS NOT NULL
+             AND REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = $2
+           LIMIT 1`,
+          workspaceId, normalized,
+        );
+        if (rows.length > 0) {
+          throw new ConflictException(
+            `Ya existe un contacto con ese número de teléfono en este workspace.`,
+          );
+        }
+      }
+    }
+
     return this.prisma.contact.create({
       data: {
         workspace_id:  workspaceId,

@@ -6,6 +6,7 @@ import {
   IsString,
   Length,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ContactType } from '@prisma/client';
 
 export class CreateContactDto {
@@ -27,6 +28,7 @@ export class CreateContactDto {
 
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/\D/g, '') : value))
   phone?: string;
 
   @IsOptional()
