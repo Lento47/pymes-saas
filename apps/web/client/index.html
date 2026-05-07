@@ -82,16 +82,14 @@
     </script>
   </head>
   <body>
-    <div id="root" style="min-height:100vh">
-      <!-- Google OAuth verification — hidden by CSS before React mounts -->
-      <div id="seo-fallback">
-        <h1>PymesHub — CRM, facturación electrónica y automatización para PYMEs</h1>
-        <p>Centralizá conversaciones de WhatsApp, email y Telegram. Facturá electrónicamente con Hacienda CR. Automatizá tareas y gestioná tu pipeline de ventas. Todo en un solo lugar para equipos PYME en crecimiento.</p>
-        <a href="/privacy-policy.html">Política de privacidad</a>
-        <a href="/terms-of-service.html">Términos del servicio</a>
-      </div>
-      <style>#seo-fallback{display:none}</style>
+    <!-- Google OAuth verification — visible in HTML source, React removes on mount -->
+    <div id="seo-legal">
+      <p>PymesHub — CRM, facturación electrónica y automatización para PYMEs. Centralizá conversaciones de WhatsApp, email y Telegram.</p>
+      <a href="/privacy-policy.html">Política de privacidad</a>
+      <a href="/terms-of-service.html">Términos del servicio</a>
     </div>
+
+    <div id="root" style="min-height:100vh"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
