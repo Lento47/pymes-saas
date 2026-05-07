@@ -149,6 +149,29 @@ export default function LoginPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Facebook SDK callback — fires when user completes the FB.login() dialog.
+  useEffect(() => {
+    (window as any).handleFbLogin = () => {
+      if (typeof FB === 'undefined') return;
+      FB.getLoginStatus((response: any) => {
+        if (response.status === 'connected') {
+          setLoading(true);
+          api.facebookTokenLogin(response.authResponse.accessToken)
+            .then(res => loginWithSsoCode(res.code))
+            .then(() => {
+              window.location.hash = "#/";
+              history.replaceState(null, "", "/");
+              window.location.reload();
+            })
+            .catch(() => {
+              toast({ title: "Error", description: "No pudimos completar el inicio de sesión con Facebook.", variant: "destructive" });
+            })
+            .finally(() => setLoading(false));
+        }
+      });
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent, preselectedSlug?: string) => {
     e.preventDefault();
     setLoading(true);
@@ -328,11 +351,21 @@ export default function LoginPage() {
               </a>
               <a
                 href="/api/auth/facebook"
+                id="fb-login-fallback"
                 className="mt-3 bg-[#1877F2] font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full px-6 py-4 text-lg font-semibold text-white transition hover:translate-y-[-1px] hover:bg-[#166fe5]"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                 {copy.facebookLogin}
               </a>
+              <div
+                className="fb-login-button mt-3 w-full"
+                data-config-id="1375303354406780"
+                data-size="large"
+                data-button-type="continue_with"
+                data-layout="default"
+                data-scope="public_profile"
+                data-onlogin="window.handleFbLogin()"
+              />
             </div>
 
             <div className="mt-8">

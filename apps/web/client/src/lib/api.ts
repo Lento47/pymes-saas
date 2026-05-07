@@ -530,6 +530,13 @@ export const api = {
       refresh_token?: string;
       user: any;
     }>("POST", "/api/auth/sso-exchange", { code }),
+  // Facebook token exchange — the SDK gives us an access token,
+  // we validate it server-side and get back SSO credentials.
+  facebookTokenLogin: (accessToken: string) =>
+    request<{
+      code: string;
+      slug: string;
+    }>("POST", "/api/auth/facebook/token", { accessToken }),
   // SAML
   checkSamlStatus: (workspaceSlug?: string) => {
     const qs = workspaceSlug ? `?slug=${encodeURIComponent(workspaceSlug)}` : "";
