@@ -17,7 +17,6 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       clientSecret: process.env.FACEBOOK_APP_SECRET!,
       callbackURL: `${process.env.PUBLIC_URL ?? 'https://pymeshub.lat'}/api/auth/facebook/callback`,
       profileFields: ['id', 'displayName', 'emails', 'photos'],
-      scope: ['email'],
     });
   }
 
@@ -29,8 +28,8 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
   ): Promise<any> {
     const facebookProfile: FacebookProfile = {
       facebookId: profile.id,
-      email: profile.emails?.[0]?.value ?? '',
-      name: profile.displayName,
+      email: profile.emails?.[0]?.value || `fb-${profile.id}@pymeshub.lat`,
+      name: profile.displayName || 'Usuario de Facebook',
       avatarUrl: profile.photos?.[0]?.value ?? null,
     };
     done(null, facebookProfile);
