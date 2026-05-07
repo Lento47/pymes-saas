@@ -492,6 +492,20 @@ export class AuthService {
     };
   }
 
+  async exchangeFacebookToken(accessToken: string): Promise<{ facebookId: string; email: string; name: string; avatarUrl: string | null }> {
+    const url = `https://graph.facebook.com/v25.0/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new UnauthorizedException('Token de Facebook inválido.');
+    const data = await res.json() as any;
+    if (!data?.id) throw new UnauthorizedException('Token de Facebook inválido.');
+    return {
+      facebookId: data.id,
+      email: data.email || `fb-${data.id}@pymeshub.lat`,
+      name: data.name || 'Usuario de Facebook',
+      avatarUrl: data.picture?.data?.url || null,
+    };
+  }
+
   async facebookLogin(profile: { facebookId: string; email: string; name: string; avatarUrl: string | null }) {
     let user = await this.prisma.user.findUnique({
       where: { facebook_id: profile.facebookId },
