@@ -82,7 +82,16 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static fallback — visible to Google OAuth verifier before React mounts -->
+      <footer style="padding:2rem;text-align:center;background:#05091d;color:#818cf8;font-size:14px">
+        <p>PymesHub — CRM, WhatsApp inbox, invoicing and workflows for SMBs</p>
+        <p style="margin-top:1rem;display:flex;gap:2rem;justify-content:center;flex-wrap:wrap">
+          <a href="/legal/privacy-policy" style="color:#818cf8">Política de privacidad</a>
+          <a href="/legal/terms-of-service" style="color:#818cf8">Términos del servicio</a>
+        </p>
+      </footer>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
