@@ -69,6 +69,7 @@ function createRedisConnection(config: ConfigService) {
       { name: QUEUE_NAMES.AUTOMATION },
       { name: QUEUE_NAMES.FOLLOWUP },
       { name: QUEUE_NAMES.SUMMARY },
+      { name: QUEUE_NAMES.HACIENDA },
     ),
   ],
   providers: [

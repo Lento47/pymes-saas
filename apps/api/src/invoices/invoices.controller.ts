@@ -9,6 +9,7 @@ import {
   Post,
   Query,
   UseGuards,
+  Logger,
 } from '@nestjs/common';
 import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -28,6 +29,8 @@ import { RemindersService } from './reminders.service';
 @Controller('invoices')
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
 export class InvoicesController {
+  private readonly logger = new Logger(InvoicesController.name);
+
   constructor(
     private readonly invoicesService: InvoicesService,
     private readonly remindersService: RemindersService,
@@ -116,7 +119,9 @@ export class InvoicesController {
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
   ) {
-    return this.invoicesService.submitToHacienda(workspaceId, id);
+    void this.invoicesService.submitToHacienda(workspaceId, id)
+      .catch(err => this.logger.error(`Hacienda submit failed for invoice ${id}: ${(err as Error).message}`));
+    return this.invoicesService.findOne(workspaceId, id);
   }
 
   @Get(':id/hacienda-status')

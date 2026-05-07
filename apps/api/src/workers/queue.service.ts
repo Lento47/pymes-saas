@@ -20,6 +20,9 @@ export class QueueService {
 
     @InjectQueue(QUEUE_NAMES.SUMMARY)
     private readonly summaryQueue: Queue,
+
+    @InjectQueue(QUEUE_NAMES.HACIENDA)
+    private readonly haciendaQueue: Queue,
   ) {}
 
   async enqueueClassifier(messageId: string, workspaceId: string): Promise<void> {

@@ -4,4 +4,5 @@ export const QUEUE_NAMES = {
   AUTOMATION:   'automation',
   FOLLOWUP:     'followup',
   SUMMARY:      'summary',
+  HACIENDA:     'hacienda',
 } as const;
