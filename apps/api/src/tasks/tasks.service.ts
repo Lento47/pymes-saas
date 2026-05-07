@@ -38,6 +38,10 @@ export class TasksService {
     if (contact_id)       where.contact_id       = contact_id;
     if (conversation_id)  where.conversation_id  = conversation_id;
 
+    if (!status && overdue !== 'true') {
+      where.status = { notIn: ['DONE', 'ARCHIVED'] };
+    }
+
     if (overdue === 'true') {
       where.due_at     = { lt: new Date() };
       where.status     = { notIn: ['DONE', 'ARCHIVED'] };

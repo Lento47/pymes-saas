@@ -34,8 +34,9 @@ export class ApiTokensService {
       select: { plan: true, settings_json: true },
     });
 
-    if (ws?.plan !== 'ENTERPRISE') {
-      throw new ForbiddenException('API tokens require Business+ (Enterprise) plan.');
+    const allowedPlans = ['ENTERPRISE', 'BUSINESS_PLUS'];
+    if (!allowedPlans.includes(ws?.plan ?? '')) {
+      throw new ForbiddenException('API tokens require Enterprise or Business+ plan.');
     }
 
     const settings = parseJsonValue<Record<string, any>>(ws.settings_json, {});
@@ -81,7 +82,7 @@ export class ApiTokensService {
 
     // Find the workspace that has this token
     const allWorkspaces = await this.prisma.workspace.findMany({
-      where: { plan: 'ENTERPRISE' },
+      where: { plan: { in: ['ENTERPRISE', 'BUSINESS_PLUS'] } },
       select: { id: true, settings_json: true },
     });
 
