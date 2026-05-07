@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useRequireAuth } from "@/hooks/use-auth";
+import { useRequireAuth, useAuth } from "@/hooks/use-auth";
 import { useInboxSocket } from "@/hooks/use-inbox-socket";
 import { InboxHeader } from "./components/InboxHeader";
 import { InboxToolbar } from "./components/InboxToolbar";
@@ -17,13 +17,14 @@ import { InboxIcon } from "lucide-react";
 export default function InboxPage() {
   useRequireAuth();
   useInboxSocket();
+  const { user } = useAuth();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ConversationStatusFilter>("ALL");
   const [channelTab, setChannelTab] = useState<ChannelTab>("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const params = buildConversationQueryParams({ search, statusFilter, channelTab });
+  const params = buildConversationQueryParams({ search, statusFilter, channelTab, assignedUserId: user?.id });
 
   const conversationsQuery = useQuery({
     queryKey: ["conversations", params],

@@ -4,7 +4,8 @@ export type ChannelTab =
   | "TELEGRAM"
   | "EMAIL"
   | "FORM"
-  | "UNASSIGNED";
+  | "UNASSIGNED"
+  | "MINE";
 
 export type ConversationStatusFilter =
   | "ALL"
