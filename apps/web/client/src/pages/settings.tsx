@@ -63,7 +63,7 @@ function RoutingRulesTab() {
     onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
   });
 
-  const [newRule, setNewRule] = useState({ name: '', pattern: '', match_type: 'KEYWORD', department_id: '', channel_id: '', priority: 0, is_active: true });
+  const [newRule, setNewRule] = useState({ name: '', pattern: '', match_type: 'KEYWORD', department_id: '', channel_id: '', priority: 0, is_active: true, set_priority: '' });
   const [editingRule, setEditingRule] = useState<any>(null);
 
   return (
@@ -105,6 +105,19 @@ function RoutingRulesTab() {
                 <Label className="text-foreground">ID del Canal (opcional)</Label>
                 <Input value={newRule.channel_id} onChange={e => setNewRule({ ...newRule, channel_id: e.target.value })} placeholder="Dejar vacío para todos" className="bg-[hsl(var(--elevated))] border-border" />
               </div>
+              <div>
+                <Label className="text-foreground">Prioridad de conversación</Label>
+                <Select value={newRule.set_priority} onValueChange={v => setNewRule({ ...newRule, set_priority: v })}>
+                  <SelectTrigger className="bg-[hsl(var(--elevated))] border-border"><SelectValue placeholder="Sin cambio" /></SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="NONE">Sin cambio</SelectItem>
+                    <SelectItem value="LOW">Baja</SelectItem>
+                    <SelectItem value="MEDIUM">Media</SelectItem>
+                    <SelectItem value="HIGH">Alta</SelectItem>
+                    <SelectItem value="URGENT">Urgente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button
                 className="w-full"
                 disabled={createRule.isPending || !newRule.name || !newRule.pattern || !newRule.department_id}
@@ -117,8 +130,9 @@ function RoutingRulesTab() {
                     channel_id: newRule.channel_id || undefined,
                     priority: newRule.priority,
                     is_active: newRule.is_active,
+                    ...(newRule.set_priority && newRule.set_priority !== 'NONE' ? { set_priority: newRule.set_priority } : {}),
                   });
-                  setNewRule({ name: '', pattern: '', match_type: 'KEYWORD', department_id: '', channel_id: '', priority: 0, is_active: true });
+                  setNewRule({ name: '', pattern: '', match_type: 'KEYWORD', department_id: '', channel_id: '', priority: 0, is_active: true, set_priority: '' });
                 }}
               >
                 {createRule.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
@@ -145,6 +159,7 @@ function RoutingRulesTab() {
                 <th className="text-left px-4 py-2 text-muted-foreground font-medium">Patrón</th>
                 <th className="text-left px-4 py-2 text-muted-foreground font-medium">Tipo</th>
                 <th className="text-left px-4 py-2 text-muted-foreground font-medium">Depto</th>
+                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Prioridad</th>
                 <th className="text-left px-4 py-2 text-muted-foreground font-medium">Activo</th>
                 <th className="text-right px-4 py-2 text-muted-foreground font-medium"></th>
               </tr>
@@ -160,6 +175,13 @@ function RoutingRulesTab() {
                     </Badge>
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground text-xs">{r.department?.name || r.department_id}</td>
+                  <td className="px-4 py-2.5">
+                    {r.set_priority ? (
+                      <Badge variant={r.set_priority === 'URGENT' ? 'destructive' : r.set_priority === 'HIGH' ? 'default' : r.set_priority === 'MEDIUM' ? 'secondary' : 'outline'}>
+                        {r.set_priority === 'LOW' ? 'Baja' : r.set_priority === 'MEDIUM' ? 'Media' : r.set_priority === 'HIGH' ? 'Alta' : r.set_priority === 'URGENT' ? 'Urgente' : r.set_priority}
+                      </Badge>
+                    ) : <span className="text-muted-foreground/40 text-xs">—</span>}
+                  </td>
                   <td className="px-4 py-2.5">
                     <Switch
                       checked={r.is_active}
@@ -227,6 +249,19 @@ function RoutingRulesTab() {
                 <Label className="text-foreground">Prioridad</Label>
                 <Input type="number" min={0} value={editingRule.priority ?? 0} onChange={e => setEditingRule({ ...editingRule, priority: parseInt(e.target.value) || 0 })} className="bg-[hsl(var(--elevated))] border-border w-20" />
               </div>
+              <div>
+                <Label className="text-foreground">Prioridad de conversación</Label>
+                <Select value={editingRule.set_priority || 'NONE'} onValueChange={v => setEditingRule({ ...editingRule, set_priority: v === 'NONE' ? null : v })}>
+                  <SelectTrigger className="bg-[hsl(var(--elevated))] border-border"><SelectValue placeholder="Sin cambio" /></SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="NONE">Sin cambio</SelectItem>
+                    <SelectItem value="LOW">Baja</SelectItem>
+                    <SelectItem value="MEDIUM">Media</SelectItem>
+                    <SelectItem value="HIGH">Alta</SelectItem>
+                    <SelectItem value="URGENT">Urgente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex gap-2 pt-2">
                 <Button
                   className="flex-1"
@@ -241,6 +276,7 @@ function RoutingRulesTab() {
                         department_id: editingRule.department_id,
                         channel_id: editingRule.channel_id || undefined,
                         priority: editingRule.priority,
+                        set_priority: editingRule.set_priority || null,
                       },
                     });
                     setEditingRule(null);
