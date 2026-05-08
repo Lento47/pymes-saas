@@ -554,7 +554,7 @@ export class AuthService {
     if (!id || !hash) throw new UnauthorizedException('Datos de Telegram incompletos.');
 
     // Verify HMAC-SHA256 signature
-    const botToken = this.config.get<string>('TELEGRAM_BOT_TOKEN') || process.env.TELEGRAM_BOT_TOKEN;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken) throw new UnauthorizedException('TELEGRAM_BOT_TOKEN not configured.');
 
     const secret = crypto.createHash('sha256').update(botToken).digest();

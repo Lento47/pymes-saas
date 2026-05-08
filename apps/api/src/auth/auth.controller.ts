@@ -192,7 +192,8 @@ export class AuthController {
     } catch (err: any) {
       // Don't interpolate err.message — it leaks into Referer / proxy logs.
       res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
-}
+    }
+  }
 
   @Post('telegram/token')
   @HttpCode(HttpStatus.OK)
