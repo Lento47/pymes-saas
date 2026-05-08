@@ -95,6 +95,9 @@ export class RemindersService {
           },
         },
         payments: true,
+        lines: {
+          include: { product: { select: { name: true } } },
+        },
       },
     });
 
@@ -142,11 +145,19 @@ export class RemindersService {
       daysOverdue,
     });
 
+    let draftText = aiResult.draft_text;
+    if (invoice.lines?.length > 0) {
+      const items = invoice.lines.map(l =>
+        `- ${l.quantity}x ${(l as any).product?.name || l.description} — ${new Intl.NumberFormat('es-CR', { style: 'currency', currency: invoice.currency }).format(Number(l.total_line_amount))}`
+      ).join('\n');
+      draftText += `\n\n📦 Productos:\n${items}`;
+    }
+
     return this.prisma.paymentReminder.create({
       data: {
         workspace_id: workspaceId,
         invoice_id: invoiceId,
-        draft_text: aiResult.draft_text,
+        draft_text: draftText,
         tokens_used: aiResult.tokens_used,
       },
     });
