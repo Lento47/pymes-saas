@@ -93,10 +93,9 @@ export class TelegramService {
     await this.removeWebhook(channelId).catch(() => {});
 
     const bot = new Telegraf(token);
-    const baseUrl = this.config.get<string>('APP_URL');
-    if (!baseUrl) {
-      throw new BadRequestException('APP_URL not configured');
-    }
+    const baseUrl = this.config.get<string>('APP_URL')
+      ?? process.env.PUBLIC_URL
+      ?? 'https://pymeshub.lat';
 
     const webhookUrl = `${baseUrl}/api/inbound/telegram/webhook/${channelId}`;
 
