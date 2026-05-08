@@ -1589,7 +1589,7 @@ function ChannelsTab() {
 
   const { data: inactiveData } = useQuery({
     queryKey: ["/api/channels", "inactive"],
-    queryFn: () => api.getChannels("include_inactive=true"),
+    queryFn: () => api.getAllChannels(),
   });
   const inactiveChannels = Array.isArray(inactiveData) ? inactiveData.filter((c: any) => c.status === "INACTIVE") : [];
 
