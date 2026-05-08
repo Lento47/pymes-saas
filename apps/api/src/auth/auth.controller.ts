@@ -195,21 +195,6 @@ export class AuthController {
     }
   }
 
-  @Post('telegram/token')
-  @HttpCode(HttpStatus.OK)
-  async telegramTokenLogin(@Body() body: any) {
-    const profile = await this.authService.verifyTelegramAuth(body);
-    const result = await this.authService.telegramLogin(profile);
-    const code = this.authService.mintSsoExchangeCode(result.user.id, result.user.workspace.id);
-    return {
-      code,
-      slug: result.user.workspace.slug,
-      access_token: result.access_token,
-      refresh_token: result.refresh_token,
-      user: result.user,
-    };
-  }
-
   // Unified SSO exchange endpoint — used by both SAML and Google callbacks.
   @Post('sso-exchange')
   @Throttle({ auth: { limit: 10, ttl: 60_000 } })
