@@ -1,8 +1,8 @@
-# Paquete Documental Maestro de PymeHub
+# Paquete Documental Maestro de PymesHub
 
 ## 1. Proposito
 
-Este directorio contiene la documentacion maestra de PymeHub como producto SaaS B2B multi-tenant orientado a pymes. El paquete cubre la capa contractual externa, las politicas internas de cumplimiento, la operacion del servicio, y las especificaciones tecnicas del API.
+Este directorio contiene la documentacion maestra de PymesHub como producto SaaS B2B multi-tenant orientado a pymes. El paquete cubre la capa contractual externa, las politicas internas de cumplimiento, la operacion del servicio, y las especificaciones tecnicas del API.
 
 El objetivo no es teoria ni certificacion: es dejar el repositorio listo para operar con orden, demostrar control documental, y servir como base seria para validacion legal, fiscal, de privacidad, seguridad, soporte y producto.
 
@@ -10,10 +10,10 @@ El objetivo no es teoria ni certificacion: es dejar el repositorio listo para op
 
 Este paquete vive en `main-api` y aplica a:
 
-- el sitio y dominio `[DOMINIO]`;
-- el producto PymeHub (inbox, CRM, tareas, documentos, OCR, automatizaciones, IA, multi-tenant);
-- la operacion de `[NOMBRE_EMPRESA]` en `[JURISDICCION]`;
-- los clientes B2B de PymeHub;
+- el sitio y dominio `pymeshub.lat`;
+- el producto PymesHub (inbox, CRM, tareas, documentos, OCR, automatizaciones, IA, multi-tenant);
+- la operacion de `Otnel S.A.` en `Costa Rica`;
+- los clientes B2B de PymesHub;
 - los miembros internos, contratistas y proveedores autorizados.
 
 Documentacion **especifica del frontend** (design system, despliegue Cloudflare Pages) vive en `main-web/docs/web/`. Esa rama solo contiene docs frontend.
@@ -51,10 +51,10 @@ docs/
 
 ### 4.1 Placeholders controlados
 
-- `[NOMBRE_EMPRESA]`
-- `[CORREO_LEGAL]`
-- `[DOMINIO]`
-- `[JURISDICCION]`
+- `Otnel S.A.`
+- `privacidad@pymeshub.lat`
+- `pymeshub.lat`
+- `Costa Rica`
 
 ### 4.2 Estandar editorial
 

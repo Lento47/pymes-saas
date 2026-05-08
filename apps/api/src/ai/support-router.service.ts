@@ -57,28 +57,28 @@ export class SupportRouterService {
       'get_billing_invoices', 'list_pipeline_deals', 'list_documents',
       'create_contact', 'update_contact', 'create_task', 'update_task',
       'create_deal', 'move_deal', 'reply_conversation',
-      'create_automation', 'toggle_automation', 'search_pymeshub_docs',
+      'create_automation', 'toggle_automation', 'search_PymesHub_docs',
       'get_errors',
     ],
-    docs: ['search_pymeshub_docs'],
+    docs: ['search_PymesHub_docs'],
     onboarding: [
-      'get_workspace', 'get_settings', 'search_pymeshub_docs',
+      'get_workspace', 'get_settings', 'search_PymesHub_docs',
       'create_contact', 'create_task',
     ],
     inbox: [
       'list_conversations', 'get_conversation_detail', 'reply_conversation',
-      'list_contacts', 'create_contact', 'search_pymeshub_docs',
+      'list_contacts', 'create_contact', 'search_PymesHub_docs',
     ],
     billing: [
       'get_billing', 'get_billing_invoices', 'get_workspace',
-      'search_pymeshub_docs',
+      'search_PymesHub_docs',
     ],
     troubleshooting: [
       'get_workspace', 'get_settings', 'get_stats', 'search',
-      'search_pymeshub_docs', 'list_conversations', 'get_conversation_detail',
+      'search_PymesHub_docs', 'list_conversations', 'get_conversation_detail',
       'get_errors',
     ],
-    escalation: ['search_pymeshub_docs'], // minimal tools, just documents for context
+    escalation: ['search_PymesHub_docs'], // minimal tools, just documents for context
   };
 
   classifyIntent(input: string): { agent: AgentType; confidence: number } {

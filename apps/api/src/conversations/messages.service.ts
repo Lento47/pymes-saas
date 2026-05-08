@@ -394,7 +394,7 @@ export class MessagesService {
           }
         : {
             id: 'system',
-            email: 'system@pymeshub.ai',
+            email: 'system@PymesHub.ai',
             name: 'Sistema IA',
             workspace_id: workspaceId,
             role: 'OWNER',

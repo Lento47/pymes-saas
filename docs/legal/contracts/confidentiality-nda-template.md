@@ -1,12 +1,12 @@
-# Plantilla Base de NDA / Confidencialidad para PymeHub
+# Plantilla Base de NDA / Confidencialidad para PymesHub
 
 ## Partes
 
-Este acuerdo de confidencialidad se celebra entre `[NOMBRE_EMPRESA]` y `[NOMBRE_CONTRAPARTE]`, conjuntamente las `Partes`, con efecto a partir de `[FECHA]`.
+Este acuerdo de confidencialidad se celebra entre `Otnel S.A.` y `[NOMBRE_CONTRAPARTE]`, conjuntamente las `Partes`, con efecto a partir de `[FECHA]`.
 
 ## Objeto
 
-Las Partes desean explorar, negociar o ejecutar una relacion vinculada con PymeHub, incluyendo demos, pilotos, partnerships, integraciones, soporte, pruebas de concepto, due diligence o colaboracion tecnica.
+Las Partes desean explorar, negociar o ejecutar una relacion vinculada con PymesHub, incluyendo demos, pilotos, partnerships, integraciones, soporte, pruebas de concepto, due diligence o colaboracion tecnica.
 
 ## Informacion confidencial
 
@@ -47,4 +47,4 @@ Este NDA tendra vigencia de `[PLAZO_ACUERDO]` y la obligacion de confidencialida
 
 ## Ley aplicable
 
-Este acuerdo se rige por las leyes de `[JURISDICCION]`.
+Este acuerdo se rige por las leyes de `Costa Rica`.

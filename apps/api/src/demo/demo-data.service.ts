@@ -185,12 +185,12 @@ export class DemoDataService {
             workspace_id: workspaceId,
             stage_id: stages.find(s => s.order === 1)!.id,
             contact_id: contacts['Consultores Asociados'],
-            title: 'Implementación CRM PymeHub',
+            title: 'Implementación CRM PymesHub',
             value: 1200000,
             currency: 'CRC',
             priority: 'HIGH',
             status: 'OPEN',
-            notes: 'Cliente interesado en migrar de Excel a PymeHub. Demo realizada el 15 de abril.',
+            notes: 'Cliente interesado en migrar de Excel a PymesHub. Demo realizada el 15 de abril.',
           },
           {
             workspace_id: workspaceId,
@@ -222,9 +222,9 @@ export class DemoDataService {
       await this.prisma.message.createMany({
         data: [
           { workspace_id: workspaceId, conversation_id: conv1.id, direction: 'INBOUND', sender_name: 'Carlos (Tecnología Digital)', sender_ref: 'tg:+50633332222', body_text: 'Hola, necesito una cotización para desarrollar un e-commerce con carrito de compras. ¿Me pueden ayudar?', sent_at: new Date(now2 - 3600000 * 3) },
-          { workspace_id: workspaceId, conversation_id: conv1.id, direction: 'OUTBOUND', sender_name: 'Equipo PymeHub', sender_ref: 'agent', body_text: '¡Claro que sí! ¿Cuántos productos aproximadamente y para qué fecha lo necesitarías?', sent_at: new Date(now2 - 3600000 * 2) },
+          { workspace_id: workspaceId, conversation_id: conv1.id, direction: 'OUTBOUND', sender_name: 'Equipo PymesHub', sender_ref: 'agent', body_text: '¡Claro que sí! ¿Cuántos productos aproximadamente y para qué fecha lo necesitarías?', sent_at: new Date(now2 - 3600000 * 2) },
           { workspace_id: workspaceId, conversation_id: conv1.id, direction: 'INBOUND', sender_name: 'Carlos (Tecnología Digital)', sender_ref: 'tg:+50633332222', body_text: 'Unos 200 productos. Lo necesito para junio.', sent_at: new Date(now2 - 3600000 * 1) },
-          { workspace_id: workspaceId, conversation_id: conv1.id, direction: 'OUTBOUND', sender_name: 'Equipo PymeHub', sender_ref: 'agent', body_text: 'Perfecto. Te preparo la cotización hoy mismo y te la envío. ¿A qué correo?', sent_at: new Date(now2 - 1800000) },
+          { workspace_id: workspaceId, conversation_id: conv1.id, direction: 'OUTBOUND', sender_name: 'Equipo PymesHub', sender_ref: 'agent', body_text: 'Perfecto. Te preparo la cotización hoy mismo y te la envío. ¿A qué correo?', sent_at: new Date(now2 - 1800000) },
           { workspace_id: workspaceId, conversation_id: conv1.id, direction: 'INBOUND', sender_name: 'Carlos (Tecnología Digital)', sender_ref: 'tg:+50633332222', body_text: 'info@tecdigital.cr ¡Gracias!', sent_at: new Date(now2 - 900000) },
         ],
       });
@@ -248,7 +248,7 @@ export class DemoDataService {
       await this.prisma.message.createMany({
         data: [
           { workspace_id: workspaceId, conversation_id: conv2.id, direction: 'INBOUND', sender_name: 'Administración El Sabor', sender_ref: 'admin@elsabor.cr', body_text: 'Hola, la factura DEMO-003 tiene un error en el monto del IVA. ¿Pueden revisarla?', sent_at: new Date(now2 - 7200000) },
-          { workspace_id: workspaceId, conversation_id: conv2.id, direction: 'OUTBOUND', sender_name: 'Equipo PymeHub', sender_ref: 'agent', body_text: 'Revisamos de inmediato y te confirmamos.', sent_at: new Date(now2 - 3600000) },
+          { workspace_id: workspaceId, conversation_id: conv2.id, direction: 'OUTBOUND', sender_name: 'Equipo PymesHub', sender_ref: 'agent', body_text: 'Revisamos de inmediato y te confirmamos.', sent_at: new Date(now2 - 3600000) },
           { workspace_id: workspaceId, conversation_id: conv2.id, direction: 'INBOUND', sender_name: 'Administración El Sabor', sender_ref: 'admin@elsabor.cr', body_text: 'Gracias, quedo atenta.', sent_at: new Date(now2 - 1800000) },
         ],
       });

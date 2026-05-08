@@ -153,7 +153,7 @@ describe('AuthService', () => {
       expect(mockPrisma.workspace.create).toHaveBeenCalledTimes(1);
     });
 
-    it('allows public registration with non-pymeshub email domains', async () => {
+    it('allows public registration with non-PymesHub email domains', async () => {
       const dto = { email: 'owner@customer-company.com', name: 'Customer Owner', password: 'password123' };
       const user = { id: 'u-public', email: dto.email, name: dto.name, avatar_url: null };
       const workspace = { id: 'w-public', name: `${dto.name}'s Workspace`, slug: 'customer-123', plan: 'FREE' };

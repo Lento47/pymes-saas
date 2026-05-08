@@ -1,4 +1,4 @@
-# Plantilla de Solicitud de Privacidad para PymeHub
+# Plantilla de Solicitud de Privacidad para PymesHub
 
 ## 1. Datos del solicitante
 

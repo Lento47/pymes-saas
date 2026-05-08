@@ -1,16 +1,16 @@
-# Flujo de Datos de PymeHub
+# Flujo de Datos de PymesHub
 
 ## 1. Proposito
 
-Este documento describe de manera narrativa y visual como circulan los datos dentro de PymeHub. Su objetivo es servir como referencia de cumplimiento, seguridad y arquitectura para entender puntos de entrada, procesamiento, almacenamiento, transferencia y salida.
+Este documento describe de manera narrativa y visual como circulan los datos dentro de PymesHub. Su objetivo es servir como referencia de cumplimiento, seguridad y arquitectura para entender puntos de entrada, procesamiento, almacenamiento, transferencia y salida.
 
 ## 2. Flujo resumido
 
-PymeHub recibe datos desde usuarios del cliente y desde canales externos. La capa principal de control es la API, que autentica, autoriza, valida el contexto de workspace y coordina persistencia, integraciones, jobs, OCR, IA, notificaciones y logs. Los datos se almacenan en base de datos y storage, y determinadas operaciones se procesan de forma asincrona por workers.
+PymesHub recibe datos desde usuarios del cliente y desde canales externos. La capa principal de control es la API, que autentica, autoriza, valida el contexto de workspace y coordina persistencia, integraciones, jobs, OCR, IA, notificaciones y logs. Los datos se almacenan en base de datos y storage, y determinadas operaciones se procesan de forma asincrona por workers.
 
 ```mermaid
 flowchart LR
-    U["Usuario / Cliente final"] --> W["Frontend Web PymeHub"]
+    U["Usuario / Cliente final"] --> W["Frontend Web PymesHub"]
     W --> A["API NestJS"]
     E["Email / Formularios / API / WhatsApp"] --> A
     A --> DB["PostgreSQL"]

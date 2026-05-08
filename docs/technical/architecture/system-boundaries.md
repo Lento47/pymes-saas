@@ -1,10 +1,10 @@
-# Limites del Sistema de PymeHub
+# Limites del Sistema de PymesHub
 
 ## 1. Proposito
 
-Este documento delimita que funciones controla directamente PymeHub y cuales dependen parcial o totalmente de terceros. Su objetivo es evitar promesas ambiguas sobre el alcance real del producto y apoyar el analisis de riesgo y cumplimiento.
+Este documento delimita que funciones controla directamente PymesHub y cuales dependen parcial o totalmente de terceros. Su objetivo es evitar promesas ambiguas sobre el alcance real del producto y apoyar el analisis de riesgo y cumplimiento.
 
-## 2. Lo que controla PymeHub
+## 2. Lo que controla PymesHub
 
 - autenticacion y gestion de workspaces;
 - logica de roles y permisos del producto;
@@ -24,4 +24,4 @@ Este documento delimita que funciones controla directamente PymeHub y cuales dep
 
 ## 4. Implicacion de cumplimiento
 
-PymeHub controla su logica de autorizacion, retencion, experiencia de usuario y operacion propia, pero depende de terceros para disponibilidad parcial, region de datos, terminos auxiliares y ciertas medidas de seguridad subyacentes. Esa dependencia debe reflejarse en privacidad, DPA, vendor risk y comunicaciones a clientes.
+PymesHub controla su logica de autorizacion, retencion, experiencia de usuario y operacion propia, pero depende de terceros para disponibilidad parcial, region de datos, terminos auxiliares y ciertas medidas de seguridad subyacentes. Esa dependencia debe reflejarse en privacidad, DPA, vendor risk y comunicaciones a clientes.

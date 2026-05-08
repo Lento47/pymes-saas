@@ -1,8 +1,8 @@
-# Notas de Aislamiento Multi-Tenant para PymeHub
+# Notas de Aislamiento Multi-Tenant para PymesHub
 
 ## 1. Proposito
 
-Esta especificacion define el criterio minimo de aislamiento multi-tenant que PymeHub debe sostener para evitar mezcla, exposicion o acceso cruzado entre workspaces.
+Esta especificacion define el criterio minimo de aislamiento multi-tenant que PymesHub debe sostener para evitar mezcla, exposicion o acceso cruzado entre workspaces.
 
 ## 2. Principio general
 

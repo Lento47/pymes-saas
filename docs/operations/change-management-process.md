@@ -1,8 +1,8 @@
-# Proceso de Gestion de Cambios de PymeHub
+# Proceso de Gestion de Cambios de PymesHub
 
 ## 1. Proposito
 
-Este proceso busca reducir regresiones operativas y asegurar que los cambios con impacto relevante en PymeHub se evalúen, aprueben, comuniquen y puedan revertirse razonablemente.
+Este proceso busca reducir regresiones operativas y asegurar que los cambios con impacto relevante en PymesHub se evalúen, aprueben, comuniquen y puedan revertirse razonablemente.
 
 ## 2. Cambios con control reforzado
 

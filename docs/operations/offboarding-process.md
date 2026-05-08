@@ -1,8 +1,8 @@
-# Proceso de Offboarding de Clientes en PymeHub
+# Proceso de Offboarding de Clientes en PymesHub
 
 ## 1. Proposito
 
-Este procedimiento gestiona la salida ordenada de un cliente de PymeHub, asegurando control sobre cancelacion, exportacion, cierre de acceso, retencion y evidencias necesarias.
+Este procedimiento gestiona la salida ordenada de un cliente de PymesHub, asegurando control sobre cancelacion, exportacion, cierre de acceso, retencion y evidencias necesarias.
 
 ## 2. Entradas del proceso
 

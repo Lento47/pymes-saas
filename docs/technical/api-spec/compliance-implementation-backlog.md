@@ -1,4 +1,4 @@
-# Backlog de Implementacion de Cumplimiento para PymeHub
+# Backlog de Implementacion de Cumplimiento para PymesHub
 
 ## 1. Proposito
 

@@ -21,7 +21,7 @@
 # Option A: Via CLI
 npm install -g wrangler
 wrangler login
-wrangler pages project create pymeshub-web
+wrangler pages project create PymesHub-web
 
 # Option B: Via Cloudflare Dashboard
 # Go to Workers & Pages > Pages > Create application > Connect to Git
@@ -40,11 +40,11 @@ wrangler pages project create pymeshub-web
 ### 1.4 Add Environment Variables
 In Cloudflare Pages settings:
 ```
-API_URL = https://api.pymeshub.com
-VITE_API_URL = https://api.pymeshub.com
-VITE_WEBSOCKET_URL = wss://api.pymeshub.com
-VITE_APP_NAME = PymeHub
-VITE_APP_URL = https://pymeshub.com
+API_URL = https://api.PymesHub.com
+VITE_API_URL = https://api.PymesHub.com
+VITE_WEBSOCKET_URL = wss://api.PymesHub.com
+VITE_APP_NAME = PymesHub
+VITE_APP_URL = https://PymesHub.com
 ```
 
 ---
@@ -78,7 +78,7 @@ WHATSAPP_API_KEY=your-whatsapp-key
 AWS_S3_BUCKET=your-bucket
 AWS_ACCESS_KEY_ID=your-key
 AWS_SECRET_ACCESS_KEY=your-secret
-FRONTEND_URL=https://pymeshub.com
+FRONTEND_URL=https://PymesHub.com
 ```
 
 ### 2.5 Configure Health Check
@@ -141,7 +141,7 @@ Update your domain's DNS records (in Cloudflare):
 
 ```
 @ (root)          A    → Auto (Cloudflare)
-www                CNAME → pymeshub.com (Cloudflare)
+www                CNAME → PymesHub.com (Cloudflare)
 api                CNAME → yourservice.railway.app
 ```
 
@@ -153,13 +153,13 @@ Cloudflare will auto-provision SSL certificates.
 
 ### 7.1 Test Frontend
 ```bash
-curl https://pymeshub.com
+curl https://PymesHub.com
 # Should return HTML from React app
 ```
 
 ### 7.2 Test API
 ```bash
-curl https://api.pymeshub.com/api/health
+curl https://api.PymesHub.com/api/health
 # Should return: {"status":"ok","timestamp":"2024-..."}
 ```
 
@@ -171,7 +171,7 @@ railway logs
 ```
 
 ### 7.4 Test Full Workflow
-1. Go to https://pymeshub.com
+1. Go to https://PymesHub.com
 2. Login / Create account
 3. Test inbox, contacts, invoices
 4. Check API calls in browser DevTools
@@ -218,8 +218,8 @@ ls -la dist/public
 railway logs
 
 # Verify Docker build
-docker build -t pymeshub-api .
-docker run -p 4000:4000 pymeshub-api
+docker build -t PymesHub-api .
+docker run -p 4000:4000 PymesHub-api
 ```
 
 ### API Connection Issues

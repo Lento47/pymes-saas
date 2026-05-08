@@ -70,7 +70,7 @@ export class SamlController {
       throw new BadRequestException(`Workspace "${workspaceSlug}" not found`);
     }
 
-    const baseRedirect = process.env.CORS_ORIGIN?.split(',')[0] || 'https://pymeshub.lat';
+    const baseRedirect = process.env.CORS_ORIGIN?.split(',')[0] || 'https://PymesHub.lat';
     try {
       // ssoLogin verifies the user exists and is a member of the
       // workspace. We then mint a 60-second one-shot exchange code

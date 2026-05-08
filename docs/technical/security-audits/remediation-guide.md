@@ -208,9 +208,9 @@ bootstrap();
 ```typescript
 // main.ts
 const TRUSTED_ORIGINS = [
-  'https://pymeshub.lat',
-  'https://www.pymeshub.lat',
-  'https://app.pymeshub.lat',
+  'https://PymesHub.lat',
+  'https://www.PymesHub.lat',
+  'https://app.PymesHub.lat',
   // dev only:
   process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : null,
   process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:5000' : null,
@@ -235,7 +235,7 @@ app.enableCors({
 ```typescript
 const corsOrigins = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) ?? 
   (process.env.NODE_ENV === 'production' 
-    ? ['https://pymeshub.lat', 'https://www.pymeshub.lat']
+    ? ['https://PymesHub.lat', 'https://www.PymesHub.lat']
     : ['http://localhost:5000', 'http://127.0.0.1:5000', 'tauri://localhost']
   );
 ```
@@ -503,13 +503,13 @@ curl -H "Origin: https://evil.com" http://localhost:4000/api/health
 Update .env for production:
 ```bash
 JWT_SECRET=<generate-32+-char-random-string>
-CORS_ORIGIN=https://pymeshub.lat,https://www.pymeshub.lat,tauri://localhost
+CORS_ORIGIN=https://PymesHub.lat,https://www.PymesHub.lat,tauri://localhost
 NODE_ENV=production
 ```
 
 Verify Helmet headers:
 ```bash
-curl -i https://api.pymeshub.lat/api/health
+curl -i https://api.PymesHub.lat/api/health
 # Should see:
 # x-content-type-options: nosniff
 # x-frame-options: DENY

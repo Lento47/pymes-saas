@@ -95,7 +95,7 @@ export class TelegramService {
     const bot = new Telegraf(token);
     const baseUrl = this.config.get<string>('APP_URL')
       ?? process.env.PUBLIC_URL
-      ?? 'https://pymeshub.lat';
+      ?? 'https://PymesHub.lat';
 
     const webhookUrl = `${baseUrl}/api/inbound/telegram/webhook/${channelId}`;
 

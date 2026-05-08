@@ -22,7 +22,7 @@ export class HaciendaWebhookController {
 
   @Post()
   async receiveCallback(
-    @Headers('x-pymeshub-webhook-token') headerToken: string | undefined,
+    @Headers('x-PymesHub-webhook-token') headerToken: string | undefined,
     @Query('token') queryToken: string | undefined,
     @Body() payload: any,
     @Headers('user-agent') userAgent?: string,

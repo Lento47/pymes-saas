@@ -1,4 +1,4 @@
-# Configuración del Bot de Telegram para PyMesHub
+# Configuración del Bot de Telegram para PymesHub
 
 ## Requisitos previos
 
@@ -11,14 +11,14 @@
 1. Abre Telegram y busca `@BotFather`
 2. Usa el comando `/newbot`
 3. Sigue las instrucciones:
-   - Ingresa el nombre del bot (ej: "PyMesHub Bot")
-   - Ingresa un username único que termine en `_bot` (ej: `pymeshub_bot`)
+   - Ingresa el nombre del bot (ej: "PymesHub Bot")
+   - Ingresa un username único que termine en `_bot` (ej: `PymesHub_bot`)
 4. BotFather te dará un **API Token** similar a:
    ```
    123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
    ```
 
-## Configuración en PyMesHub
+## Configuración en PymesHub
 
 ### 1. Crear un canal de Telegram
 
@@ -62,7 +62,7 @@ GET /inbound/telegram/{channelId}/webhook-status
 **Respuesta esperada:**
 ```json
 {
-  "url": "https://api.pymeshub.lat/api/inbound/telegram/webhook/{channelId}",
+  "url": "https://api.PymesHub.lat/api/inbound/telegram/webhook/{channelId}",
   "has_custom_certificate": false,
   "pending_update_count": 0,
   "ip_address": "123.45.67.89",
@@ -88,7 +88,7 @@ POST /inbound/telegram/{channelId}/register-webhook
 
 1. El usuario envía un mensaje al bot en Telegram
 2. Telegram envía el update al webhook configurado
-3. El webhook procesa el mensaje y lo crea como conversación en PyMesHub
+3. El webhook procesa el mensaje y lo crea como conversación en PymesHub
 4. El mensaje aparece en el módulo de conversaciones
 
 **Tipos de mensajes soportados:**
@@ -100,7 +100,7 @@ POST /inbound/telegram/{channelId}/register-webhook
 
 ### Enviar mensajes
 
-Los mensajes se envían automáticamente al usar la funcionalidad de respuesta en PyMesHub.
+Los mensajes se envían automáticamente al usar la funcionalidad de respuesta en PymesHub.
 
 ## Resolución de Problemas
 
@@ -129,7 +129,7 @@ En `.env` o `.env.production`:
 
 ```env
 # URL base de la aplicación (necesaria para webhooks)
-APP_URL=https://api.pymeshub.lat
+APP_URL=https://api.PymesHub.lat
 
 # El token del bot se configura por canal en la UI, no en variables de entorno
 ```

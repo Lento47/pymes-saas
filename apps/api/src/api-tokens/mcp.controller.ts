@@ -46,7 +46,7 @@ const TOOLS = [
 ];
 
 function getToolsForResponse(): any[] {
-  if (process.env.PYMESHUB_MCP_COMPAT_MODE === 'true') {
+  if (process.env.PymesHub_MCP_COMPAT_MODE === 'true') {
     return [
       { name: 'get_workspace', description: 'Get workspace info', inputSchema: { type: 'object', properties: {} } },
       { name: 'list_contacts', description: 'List contacts', inputSchema: { type: 'object', properties: {} } },
@@ -85,7 +85,7 @@ export class McpController {
       'X-Accel-Buffering': 'no',
     });
     const base = req.headers['x-forwarded-proto'] || 'https';
-    const host = req.headers.host || 'api.pymeshub.lat';
+    const host = req.headers.host || 'api.PymesHub.lat';
     sseSend(res, { jsonrpc: '2.0', result: { endpoint: `${base}://${host}/api/mcp`, ready: true } });
 
     // Keep alive — send ping every 15s to prevent proxy/nginx timeout
@@ -116,7 +116,7 @@ export class McpController {
     if (body.method === 'initialize') {
       sseSend(res, {
         jsonrpc: '2.0', id: body.id,
-        result: { protocolVersion: '1.0', capabilities: { tools: {} }, serverInfo: { name: 'PyMesHub', version: '1.0' } },
+        result: { protocolVersion: '1.0', capabilities: { tools: {} }, serverInfo: { name: 'PymesHub', version: '1.0' } },
       });
     } else if (body.method === 'tools/list') {
       sseSend(res, { jsonrpc: '2.0', id: body.id,         result: { tools: getToolsForResponse() } });
@@ -161,7 +161,7 @@ export class McpController {
           result: {
             protocolVersion: '1.0',
             capabilities: { tools: {} },
-            serverInfo: { name: 'PyMesHub MCP', version: '1.0' },
+            serverInfo: { name: 'PymesHub MCP', version: '1.0' },
           },
         });
       }
@@ -195,7 +195,7 @@ export class McpController {
       case 'initialize':
         return res.json({
           jsonrpc: '2.0', id: body.id,
-          result: { protocolVersion: '1.0', capabilities: { tools: {} }, serverInfo: { name: 'PyMesHub MCP', version: '1.0' } },
+          result: { protocolVersion: '1.0', capabilities: { tools: {} }, serverInfo: { name: 'PymesHub MCP', version: '1.0' } },
         });
       case 'tools/list':
         return res.json({ jsonrpc: '2.0', id: body.id,         result: { tools: getToolsForResponse() } });

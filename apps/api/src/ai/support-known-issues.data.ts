@@ -49,7 +49,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     category: 'WORKSPACE_CONFIGURATION',
     severity: 'high',
     description: 'Paddle subscription events (activated, canceled, payment completed) are not arriving at the webhook endpoint, causing the workspace plan to remain stuck at FREE.',
-    workaround: 'Verify PADDLE_WEBHOOK_SECRET is set on Railway. Check Paddle dashboard → Developer Tools → Notifications that the webhook URL is https://api.pymeshub.lat/api/billing/webhook.',
+    workaround: 'Verify PADDLE_WEBHOOK_SECRET is set on Railway. Check Paddle dashboard → Developer Tools → Notifications that the webhook URL is https://api.PymesHub.lat/api/billing/webhook.',
     fix_status: 'DOCUMENTED',
   },
   {

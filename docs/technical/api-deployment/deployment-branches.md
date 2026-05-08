@@ -1,19 +1,19 @@
-# PymeHub SaaS - Branch-Based Deployment Guide
+# PymesHub SaaS - Branch-Based Deployment Guide
 
 ## 🏗️ Architecture
 
 ### Your Infrastructure
 ```
 GitHub Branches:
-├── main-web          → Cloudflare Pages (pymeshub.lat)
-├── main-api          → Railway (api.pymeshub.lat)
+├── main-web          → Cloudflare Pages (PymesHub.lat)
+├── main-api          → Railway (api.PymesHub.lat)
 └── main              → Stable production releases
 
-Your Domain: pymeshub.lat
-├── pymeshub.lat               → Frontend (Cloudflare Pages)
-├── www.pymeshub.lat           → Frontend (Cloudflare Pages)
-├── api.pymeshub.lat           → Backend API (Railway)
-└── download.pymeshub.lat      → File downloads (Future: MSI installer)
+Your Domain: PymesHub.lat
+├── PymesHub.lat               → Frontend (Cloudflare Pages)
+├── www.PymesHub.lat           → Frontend (Cloudflare Pages)
+├── api.PymesHub.lat           → Backend API (Railway)
+└── download.PymesHub.lat      → File downloads (Future: MSI installer)
 ```
 
 ---
@@ -22,14 +22,14 @@ Your Domain: pymeshub.lat
 
 ### `main-web` (Frontend)
 - **Contains:** `apps/web/`, build configs, landing page
-- **Deploys to:** Cloudflare Pages (pymeshub.lat)
+- **Deploys to:** Cloudflare Pages (PymesHub.lat)
 - **Triggers on:** Push to `main-web` branch
 - **Build:** `cd apps/web && pnpm run build`
 - **Output:** `apps/web/dist/public`
 
 ### `main-api` (Backend)
 - **Contains:** `apps/api/`, Docker file, database migrations
-- **Deploys to:** Railway (api.pymeshub.lat)
+- **Deploys to:** Railway (api.PymesHub.lat)
 - **Triggers on:** Push to `main-api` branch
 - **Build:** Docker build via Dockerfile
 - **Output:** Node.js container running NestJS API
@@ -54,7 +54,7 @@ wrangler login
 
 **1.2 Create Pages Project**
 - Go to https://dash.cloudflare.com
-- Select your pymeshub.lat domain
+- Select your PymesHub.lat domain
 - Workers & Pages > Pages > Create application > Connect to Git
 - Repository: pymes-saas
 - Production branch: main-web
@@ -63,11 +63,11 @@ wrangler login
 
 **1.3 Environment Variables**
 ```
-API_URL=https://api.pymeshub.lat
-VITE_API_URL=https://api.pymeshub.lat
-VITE_WEBSOCKET_URL=wss://api.pymeshub.lat
-VITE_APP_NAME=PymeHub
-VITE_APP_URL=https://pymeshub.lat
+API_URL=https://api.PymesHub.lat
+VITE_API_URL=https://api.PymesHub.lat
+VITE_WEBSOCKET_URL=wss://api.PymesHub.lat
+VITE_APP_NAME=PymesHub
+VITE_APP_URL=https://PymesHub.lat
 ```
 
 **1.4 Deploy**
@@ -99,7 +99,7 @@ WHATSAPP_API_KEY=your-whatsapp-key
 AWS_S3_BUCKET=your-bucket
 AWS_ACCESS_KEY_ID=your-key
 AWS_SECRET_ACCESS_KEY=your-secret
-FRONTEND_URL=https://pymeshub.lat
+FRONTEND_URL=https://PymesHub.lat
 ```
 
 **2.4 Health Check**
@@ -118,7 +118,7 @@ git push origin main-api
 ```
 Record Type    Name              Value                    TTL
 A              @                 Auto (Cloudflare)        Auto
-CNAME          www               pymeshub.lat             Auto
+CNAME          www               PymesHub.lat             Auto
 CNAME          api               your-railway-domain      Auto
 ```
 
@@ -128,21 +128,21 @@ CNAME          api               your-railway-domain      Auto
 
 ### Test Frontend
 ```bash
-curl https://pymeshub.lat
+curl https://PymesHub.lat
 # Should return React app HTML
 ```
 
 ### Test Backend
 ```bash
-curl https://api.pymeshub.lat/api/health
+curl https://api.PymesHub.lat/api/health
 # Should return: {"status":"ok","timestamp":"..."}
 ```
 
 ### Test Connection
-1. Go to https://pymeshub.lat
+1. Go to https://PymesHub.lat
 2. Login with test credentials
 3. Open DevTools > Network
-4. Check API calls to api.pymeshub.lat
+4. Check API calls to api.PymesHub.lat
 
 ---
 
@@ -256,14 +256,14 @@ ls -la dist/public
 railway logs
 
 # Test Docker build
-docker build -t pymeshub-api .
-docker run -p 4000:4000 pymeshub-api
+docker build -t PymesHub-api .
+docker run -p 4000:4000 PymesHub-api
 ```
 
 ### API Unreachable
 - Verify Railway deployment is healthy
 - Check API_URL in Cloudflare Pages env vars
-- Verify CORS in NestJS (should allow pymeshub.lat)
+- Verify CORS in NestJS (should allow PymesHub.lat)
 
 ### Database Connection Error
 - Railway > PostgreSQL > Check connection status
@@ -317,7 +317,7 @@ This validates branch-scope, runs `prisma generate` (API only), and performs a t
 ## 🎯 Next Steps
 
 1. ✅ Create Cloudflare & Railway accounts
-2. ✅ Setup domain (pymeshub.lat)
+2. ✅ Setup domain (PymesHub.lat)
 3. ✅ Connect GitHub (auto-deploy enabled)
 4. ✅ Add environment variables
 5. ✅ Configure DNS

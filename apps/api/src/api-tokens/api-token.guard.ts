@@ -34,7 +34,7 @@ export class ApiTokenGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const auth = request.headers.authorization || request.headers['x-pymeshub-api-token'] || request.headers['pymeshub_founder_api_key'] || '';
+    const auth = request.headers.authorization || request.headers['x-PymesHub-api-token'] || request.headers['PymesHub_founder_api_key'] || '';
 
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : auth;
 
@@ -45,7 +45,7 @@ export class ApiTokenGuard implements CanActivate {
     }
 
     // Founder API key — full access (break-glass / super-admin).
-    const founderKey = this.config.get<string>('PYMESHUB_FOUNDER_API_KEY');
+    const founderKey = this.config.get<string>('PymesHub_FOUNDER_API_KEY');
     if (founderKey && safeEqual(token, founderKey)) {
       request.api_role = ApiRole.FOUNDER;
       request.is_super_admin = true;
@@ -58,7 +58,7 @@ export class ApiTokenGuard implements CanActivate {
     }
 
     // User API key — limited access.
-    const userKey = this.config.get<string>('PYMESHUB_USER_API_KEY');
+    const userKey = this.config.get<string>('PymesHub_USER_API_KEY');
     if (userKey && safeEqual(token, userKey)) {
       request.api_role = ApiRole.USER;
       request.api_token_authenticated = true;
@@ -67,7 +67,7 @@ export class ApiTokenGuard implements CanActivate {
     }
 
     // Legacy master token — treats as founder.
-    const masterToken = this.config.get<string>('PYMESHUB_MASTER_API_TOKEN');
+    const masterToken = this.config.get<string>('PymesHub_MASTER_API_TOKEN');
     if (masterToken && safeEqual(token, masterToken)) {
       request.api_role = ApiRole.FOUNDER;
       request.is_super_admin = true;

@@ -21,14 +21,14 @@ export class AgentToolsController {
 
   @Post('tool')
   async execute(@Body() dto: AgentToolDto, @Req() req: any) {
-    const auth = req.headers?.authorization || req.headers?.['pymeshub_founder_api_key'] || '';
+    const auth = req.headers?.authorization || req.headers?.['PymesHub_founder_api_key'] || '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : auth;
 
-    if (!process.env.PYMESHUB_FOUNDER_API_KEY) {
-      throw new BadRequestException('PYMESHUB_FOUNDER_API_KEY not configured on server');
+    if (!process.env.PymesHub_FOUNDER_API_KEY) {
+      throw new BadRequestException('PymesHub_FOUNDER_API_KEY not configured on server');
     }
 
-    if (!safeEqual(token, process.env.PYMESHUB_FOUNDER_API_KEY)) {
+    if (!safeEqual(token, process.env.PymesHub_FOUNDER_API_KEY)) {
       throw new UnauthorizedException('Invalid API token');
     }
 

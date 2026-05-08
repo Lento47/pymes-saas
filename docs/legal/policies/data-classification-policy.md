@@ -1,8 +1,8 @@
-# Politica de Clasificacion de Datos de PymeHub
+# Politica de Clasificacion de Datos de PymesHub
 
 ## 1. Proposito
 
-Esta politica clasifica la informacion tratada por PymeHub para aplicar controles proporcionales al riesgo y evitar tratamientos indiferenciados entre informacion publica, operativa, sensible o secreta.
+Esta politica clasifica la informacion tratada por PymesHub para aplicar controles proporcionales al riesgo y evitar tratamientos indiferenciados entre informacion publica, operativa, sensible o secreta.
 
 ## 2. Niveles de clasificacion
 
@@ -33,7 +33,7 @@ Contraseñas, llaves API, tokens, certificados, secretos de infraestructura y ot
 - Los secretos nunca deben tratarse como datos internos comunes.
 - Los datos del cliente deben presumirse, al menos, `Confidencial` y generalmente `Sensible de cliente`.
 
-## 4. Aplicacion practica en PymeHub
+## 4. Aplicacion practica en PymesHub
 
 - prompts y outputs de IA: `Confidencial` o `Sensible de cliente` segun contenido.
 - logs: `Interna`, `Confidencial` o `Sensible de cliente` segun el payload y los identificadores presentes.

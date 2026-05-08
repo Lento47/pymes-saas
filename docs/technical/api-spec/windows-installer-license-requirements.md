@@ -1,8 +1,8 @@
-# Requisitos de Licencia y Avisos para Instalacion de Windows de PymeHub
+# Requisitos de Licencia y Avisos para Instalacion de Windows de PymesHub
 
 ## 1. Proposito
 
-Este documento define los requisitos minimos que debe cumplir cualquier instalador de Windows o empaquetado desktop de PymeHub antes de distribuirse a usuarios finales o clientes.
+Este documento define los requisitos minimos que debe cumplir cualquier instalador de Windows o empaquetado desktop de PymesHub antes de distribuirse a usuarios finales o clientes.
 
 ## 2. Alcance
 
@@ -17,7 +17,7 @@ Aplica a:
 
 - El instalador debe mostrar la licencia o terminos aplicables antes de finalizar la instalacion.
 - Debe mostrar la politica de privacidad o un enlace claro a la version vigente.
-- Debe mostrar el nombre del proveedor `[NOMBRE_EMPRESA]` y un canal de contacto legal o de soporte.
+- Debe mostrar el nombre del proveedor `Otnel S.A.` y un canal de contacto legal o de soporte.
 - Si existe recoleccion de telemetria, actualizaciones automaticas o servicios en segundo plano, eso debe informarse.
 - La aceptacion no debe quedar implicita si el modelo legal requiere aceptacion expresa.
 
@@ -32,7 +32,7 @@ El flujo de instalacion deberia poder demostrar:
 
 ## 5. Reglas de producto
 
-- Si PymeHub se distribuye en Windows, la instalacion no debe omitir la capa legal solo porque ya exista dentro de la app web.
+- Si PymesHub se distribuye en Windows, la instalacion no debe omitir la capa legal solo porque ya exista dentro de la app web.
 - Si el instalador solo prepara el cliente y el uso final sigue dependiendo de login web o SaaS, igualmente debe mostrar la licencia del software cliente y los avisos relevantes.
 
 ## 6. Estado actual

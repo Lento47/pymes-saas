@@ -1,14 +1,14 @@
-# Plantilla de Notificacion de Incidente para Clientes de PymeHub
+# Plantilla de Notificacion de Incidente para Clientes de PymesHub
 
 ## 1. Asunto sugerido
 
-Notificacion de incidente de seguridad o disponibilidad en PymeHub
+Notificacion de incidente de seguridad o disponibilidad en PymesHub
 
 ## 2. Cuerpo base
 
 Estimado cliente,
 
-Le informamos que `[NOMBRE_EMPRESA]` detecto un incidente que afecto o pudo afectar parte de los servicios de PymeHub el dia `[FECHA]`.
+Le informamos que `Otnel S.A.` detecto un incidente que afecto o pudo afectar parte de los servicios de PymesHub el dia `[FECHA]`.
 
 ### Resumen
 
@@ -30,4 +30,4 @@ Le informamos que `[NOMBRE_EMPRESA]` detecto un incidente que afecto o pudo afec
 
 Seguimos investigando y compartiremos actualizaciones relevantes por este mismo canal o mediante `[CANAL]`.
 
-Contacto: `[CORREO_LEGAL]`
+Contacto: `privacidad@pymeshub.lat`

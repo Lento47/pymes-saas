@@ -971,7 +971,7 @@ export class PaddleSdkService {
     const resend = new Resend(apiKey);
     try {
       await resend.emails.send({
-        from: 'PymesHub <billing@pymeshub.lat>',
+        from: 'PymesHub <billing@PymesHub.lat>',
         to,
         subject: `Factura ${inv.number} — ${inv.plan_name} (${monthName})`,
         html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111827">
@@ -982,9 +982,9 @@ export class PaddleSdkService {
             <span style="color:#6b7280;font-size:12px;display:block">Numero de factura</span>
             <strong style="font-size:14px">${inv.number}</strong>
           </p>
-          <p>Adjuntamos la factura en PDF. Tambien podes descargarla desde <a href="https://pymeshub.lat/settings/billing" style="color:#1a56db">Configuracion → Facturacion</a>.</p>
+          <p>Adjuntamos la factura en PDF. Tambien podes descargarla desde <a href="https://PymesHub.lat/settings/billing" style="color:#1a56db">Configuracion → Facturacion</a>.</p>
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0"/>
-          <p style="color:#9ca3af;font-size:11px">PymesHub — Plataforma SaaS para PYMEs · Costa Rica<br/>support@pymeshub.com · pymeshub.lat</p>
+          <p style="color:#9ca3af;font-size:11px">PymesHub — Plataforma SaaS para PYMEs · Costa Rica<br/>support@PymesHub.com · PymesHub.lat</p>
         </div>`,
         attachments: [
           {
@@ -1049,7 +1049,7 @@ export class PaddleSdkService {
     addonKey?: string,
   ): Promise<{ transactionId: string; checkoutUrl: string | null }> {
     const paddle = this.requireClient();
-    const appUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
+    const appUrl = process.env.PUBLIC_URL ?? 'https://PymesHub.lat';
 
     const customData: any = { workspaceSlug: async () => {
       const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { slug: true } });

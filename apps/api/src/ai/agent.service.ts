@@ -86,7 +86,7 @@ export class AgentService {
     return [
       // ── Workspace ──
       tool({
-        name: 'get_workspace', description: 'Get current PyMesHub workspace info (name, plan, status)',
+        name: 'get_workspace', description: 'Get current PymesHub workspace info (name, plan, status)',
         parameters: z.object({}),
         execute: async () => ({ workspace: await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { id: true, name: true, slug: true, plan: true, status: true, created_at: true } }) }),
       }),
@@ -213,7 +213,7 @@ export class AgentService {
 
       // ── Docs ──
       tool({
-        name: 'search_pymeshub_docs',
+        name: 'search_PymesHub_docs',
         description: 'Search official PymesHub documentation for help articles, guides, policies, and product information. Use this when the user asks how something works or needs documentation.',
         parameters: z.object({ query: z.string().describe('Search query for PymesHub documentation') }),
         execute: async ({ query }: { query: string }) => {
@@ -273,7 +273,7 @@ export class AgentService {
 
     const agent = new Agent({
       name: 'HubbyAgent',
-      instructions: `Eres HubbyAgent de PyMesHub. Si el usuario pide CREAR, ACTUALIZAR, ELIMINAR o CONSULTAR datos, usás tus herramientas. Si solo saluda o conversa, respondés normal.
+      instructions: `Eres HubbyAgent de PymesHub. Si el usuario pide CREAR, ACTUALIZAR, ELIMINAR o CONSULTAR datos, usás tus herramientas. Si solo saluda o conversa, respondés normal.
 
 HERRAMIENTAS DE DATOS (solo para operaciones CRUD):
 create_contact(full_name*, email?, phone?, type?) | update_contact(id*, ...) | list_contacts(search?)
@@ -299,7 +299,7 @@ REGLAS:
 5. Para crear/leer/actualizar/eliminar datos → USÁ LA TOOL. No expliques cómo hacerlo.
 6. Si el usuario solo saluda o charla → respondé amablemente en 1-2 oraciones en español.
 7. NUNCA menciones Android, iPhone, Google, Gmail, Outlook, Excel, ATV, Hacienda, Zapier, IFTTT.
-8. Si mencionan algo externo → "Eso no es parte de PyMesHub. ¿Qué operación de PyMesHub necesitas?"
+8. Si mencionan algo externo → "Eso no es parte de PymesHub. ¿Qué operación de PymesHub necesitas?"
 9. Respuestas en español.`,
       model,
       tools,
@@ -347,7 +347,7 @@ REGLAS:
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            const output = finalOutput || '¡Hola! Soy Hubby, tu asistente de PyMesHub. ¿En qué puedo ayudarte?';
+            const output = finalOutput || '¡Hola! Soy Hubby, tu asistente de PymesHub. ¿En qué puedo ayudarte?';
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: output })}\n\n`));
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: output } })}\n\n`));
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
@@ -376,13 +376,13 @@ REGLAS:
 
     const agent = new Agent({
       name: 'HubbyLanding',
-      instructions: `Eres Hubby 🐾, el asistente virtual de PyMesHub (pymeshub.lat), la plataforma todo-en-uno para PYMEs.
+      instructions: `Eres Hubby 🐾, el asistente virtual de PymesHub (PymesHub.lat), la plataforma todo-en-uno para PYMEs.
 
-Tu trabajo es ayudar a visitantes a entender qué es PyMesHub y convencerlos de probarla.
+Tu trabajo es ayudar a visitantes a entender qué es PymesHub y convencerlos de probarla.
 
 ⚠️ IMPORTANTE: Respuestas CORTAS (máximo 3-4 oraciones). Sé cálido, directo y entusiasta.
 
-MÓDULOS QUE OFRECE PYMESHUB:
+MÓDULOS QUE OFRECE PymesHub:
 - 📥 Bandeja unificada (WhatsApp, email, chat en un solo lugar)
 - 👥 CRM y contactos
 - ✅ Tareas y seguimiento
@@ -397,10 +397,10 @@ PLANES: Free (gratis), Starter ($29/mes), Growth ($79/mes), Enterprise (personal
 
 REGLAS:
 1. Respuestas de 3-4 oraciones máximo. NUNCA des respuestas largas.
-2. Si preguntan por precios, mencioná los planes y dirigilos a pymeshub.lat/pricing.
+2. Si preguntan por precios, mencioná los planes y dirigilos a PymesHub.lat/pricing.
 3. Si preguntan por funcionalidades, describí brevemente el módulo relevante.
-4. Si preguntan algo que no sabés, decí "Esa es una excelente pregunta. Te recomiendo visitar pymeshub.lat o contactar a nuestro equipo."
-5. Siempre cerrá invitando a registrarse gratis en pymeshub.lat.
+4. Si preguntan algo que no sabés, decí "Esa es una excelente pregunta. Te recomiendo visitar PymesHub.lat o contactar a nuestro equipo."
+5. Siempre cerrá invitando a registrarse gratis en PymesHub.lat.
 6. No inventes features que no existan.
 7. No des soporte técnico — para eso deben crear una cuenta.`,
       model: process.env.OPENAI_AGENT_MODEL || 'gpt-4.1-mini',

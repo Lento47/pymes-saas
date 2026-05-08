@@ -169,7 +169,7 @@ export class InboundController {
   receiveWebhook(
     @Param('provider') provider: string,
     @Headers('x-workspace-id') workspaceId: string,
-    @Headers('x-pymeshub-webhook-token') token: string | undefined,
+    @Headers('x-PymesHub-webhook-token') token: string | undefined,
     @Body() payload: Record<string, any>,
   ) {
     // Generic inbound endpoint — caller must present a shared secret. The

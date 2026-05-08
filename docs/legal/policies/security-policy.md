@@ -1,8 +1,8 @@
-# Politica de Seguridad de la Informacion de PymeHub
+# Politica de Seguridad de la Informacion de PymesHub
 
 ## 1. Proposito
 
-Esta politica establece el marco general de seguridad de la informacion de PymeHub. Su finalidad es proteger la confidencialidad, integridad y disponibilidad del servicio, de los datos de clientes y de la operacion interna de `[NOMBRE_EMPRESA]`.
+Esta politica establece el marco general de seguridad de la informacion de PymesHub. Su finalidad es proteger la confidencialidad, integridad y disponibilidad del servicio, de los datos de clientes y de la operacion interna de `Otnel S.A.`.
 
 ## 2. Alcance
 
@@ -64,7 +64,7 @@ Aplica a:
 - restauracion desde backup cuando corresponda;
 - bloqueo, suspension o mitigacion urgente de acceso o funcionalidad riesgosa.
 
-## 7. Reglas especificas para PymeHub
+## 7. Reglas especificas para PymesHub
 
 - Toda entidad sensible del producto debe quedar scoped por `workspace`.
 - El soporte no debe acceder a datos de cliente sin justificacion operativa razonable y trazabilidad.

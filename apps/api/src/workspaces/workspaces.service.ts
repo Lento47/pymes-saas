@@ -604,8 +604,8 @@ export class WorkspacesService {
       { expiresIn: '7d' },
     );
 
-    const desktopUrl = `pymeshub://accept-invite?token=${encodeURIComponent(inviteToken)}`;
-    const browserUrl = `https://pymeshub.lat/accept-invite?token=${encodeURIComponent(inviteToken)}`;
+    const desktopUrl = `PymesHub://accept-invite?token=${encodeURIComponent(inviteToken)}`;
+    const browserUrl = `https://PymesHub.lat/accept-invite?token=${encodeURIComponent(inviteToken)}`;
 
     await this.sendInviteEmail({
       workspaceId,
@@ -649,7 +649,7 @@ export class WorkspacesService {
       return;
     }
 
-    const subject = `Te invitaron a ${params.workspaceName} en Pymeshub`;
+    const subject = `Te invitaron a ${params.workspaceName} en PymesHub`;
     const bodyHtml = `
       <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
         <h2 style="margin-bottom: 12px;">Invitación a ${params.workspaceName}</h2>
@@ -662,7 +662,7 @@ export class WorkspacesService {
       </div>
     `.trim();
     const bodyText = [
-      `Te invitaron a ${params.workspaceName} en Pymeshub.`,
+      `Te invitaron a ${params.workspaceName} en PymesHub.`,
       `Rol: ${params.role}`,
       `Abrir en la app: ${params.desktopUrl}`,
       `Abrir en navegador: ${params.browserUrl}`,

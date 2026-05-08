@@ -123,7 +123,7 @@ export class DocsService {
         'Ciclos de facturación mensual. Renovación automática salvo cancelación antes de la fecha de renovación.',
         'Pagos no reembolsables una vez iniciado el período, excepto cobro duplicado o error manifiesto.',
         'Impuestos aplicables según normativa costarricense. Paddle maneja la conversión de moneda.',
-        'Chargebacks: PymeHub puede suspender el servicio hasta regularización y cobrar costos razonables.',
+        'Chargebacks: PymesHub puede suspender el servicio hasta regularización y cobrar costos razonables.',
       ],
     },
     {
@@ -156,9 +156,9 @@ export class DocsService {
       slug: 'data-processing-addendum',
       title: 'Data Processing Addendum (DPA)',
       category: 'legal',
-      summary: 'Reglas vinculantes cuando el cliente es responsable y PymeHub actúa como encargado del tratamiento.',
+      summary: 'Reglas vinculantes cuando el cliente es responsable y PymesHub actúa como encargado del tratamiento.',
       sections: [
-        'PymeHub trata datos solo conforme a instrucciones documentadas del cliente.',
+        'PymesHub trata datos solo conforme a instrucciones documentadas del cliente.',
         'Subencargados autorizados con lista pública y mecanismo de objeción.',
         'Medidas de seguridad técnicas, administrativas y físicas.',
         'Notificación de incidentes sin demora indebida.',
@@ -170,7 +170,7 @@ export class DocsService {
       slug: 'acceptable-use-policy',
       title: 'Política de Uso Aceptable (AUP)',
       category: 'legal',
-      summary: 'Conductas permitidas y prohibidas al usar PymeHub.',
+      summary: 'Conductas permitidas y prohibidas al usar PymesHub.',
       sections: [
         'Prohibido: uso ilegal, spam, malware, infracción de propiedad intelectual, datos sensibles sin autorización.',
         'Reglas específicas de WhatsApp: opt-in obligatorio, respetar opt-out, usar plantillas aprobadas.',
@@ -182,7 +182,7 @@ export class DocsService {
       slug: 'subprocessors-notice',
       title: 'Aviso de Subencargados',
       category: 'legal',
-      summary: 'Lista pública de terceros que tratan datos por cuenta de PymeHub.',
+      summary: 'Lista pública de terceros que tratan datos por cuenta de PymesHub.',
       sections: [
         'Proveedores listados con función, categorías de datos y región de tratamiento.',
         'Actualizaciones notificadas con anticipación. Cliente puede objetar por motivos razonables.',

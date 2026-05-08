@@ -1,14 +1,14 @@
-# Master Service Agreement (MSA) de PymeHub
+# Master Service Agreement (MSA) de PymesHub
 
 ## 1. Proposito
 
-Este Master Service Agreement regula la relacion contractual B2B entre `[NOMBRE_EMPRESA]` y el cliente para la prestacion de PymeHub y de servicios asociados. Su objetivo es establecer, con mayor nivel de detalle que los terminos publicos, el marco base para ordenes de servicio, suscripciones, onboarding, soporte, tratamiento de datos, seguridad, responsabilidad y terminacion.
+Este Master Service Agreement regula la relacion contractual B2B entre `Otnel S.A.` y el cliente para la prestacion de PymesHub y de servicios asociados. Su objetivo es establecer, con mayor nivel de detalle que los terminos publicos, el marco base para ordenes de servicio, suscripciones, onboarding, soporte, tratamiento de datos, seguridad, responsabilidad y terminacion.
 
 ## 2. Partes
 
 Este acuerdo se celebra entre:
 
-- `[NOMBRE_EMPRESA]`, con domicilio en `[JURISDICCION]`, en calidad de proveedor del servicio; y
+- `Otnel S.A.`, con domicilio en `Costa Rica`, en calidad de proveedor del servicio; y
 - el cliente identificado en la orden de servicio, cotizacion aceptada, propuesta comercial o alta contractual correspondiente.
 
 ## 3. Estructura contractual y jerarquia documental
@@ -32,16 +32,16 @@ En caso de contradiccion material, el orden de prevalencia sera:
 
 ## 4. Definiciones clave
 
-- `Servicio`: acceso a PymeHub y a las funcionalidades contratadas.
+- `Servicio`: acceso a PymesHub y a las funcionalidades contratadas.
 - `Suscripcion`: derecho de uso del servicio por el periodo contratado.
 - `Servicios profesionales`: onboarding, configuracion, migracion, capacitacion, integraciones o soporte adicional prestado fuera del servicio base.
-- `Datos del Cliente`: toda informacion cargada o generada por el cliente dentro de PymeHub.
+- `Datos del Cliente`: toda informacion cargada o generada por el cliente dentro de PymesHub.
 - `Usuario autorizado`: persona habilitada por el cliente para usar el servicio.
 - `Servicios de terceros`: herramientas externas de infraestructura, almacenamiento, correo, IA, monitoreo, pagos o similares.
 
 ## 5. Objeto
 
-El Proveedor prestara al cliente acceso a PymeHub como servicio SaaS para gestion operativa, incluyendo segun el plan contratado funciones de conversaciones, tareas, contactos, documentos, OCR, automatizaciones, resúmenes IA, reportes, notificaciones y administracion multi-tenant, asi como servicios complementarios expresamente acordados.
+El Proveedor prestara al cliente acceso a PymesHub como servicio SaaS para gestion operativa, incluyendo segun el plan contratado funciones de conversaciones, tareas, contactos, documentos, OCR, automatizaciones, resúmenes IA, reportes, notificaciones y administracion multi-tenant, asi como servicios complementarios expresamente acordados.
 
 ## 6. Provision del servicio
 
@@ -93,7 +93,7 @@ El cliente se obliga a:
 - custodiar credenciales y asignar roles apropiados;
 - usar el servicio conforme a ley, contrato y politicas aplicables;
 - no cargar contenidos ilicitos ni usar el servicio para fines prohibidos;
-- mantener base juridica suficiente para los datos que trate mediante PymeHub;
+- mantener base juridica suficiente para los datos que trate mediante PymesHub;
 - colaborar razonablemente en soporte, investigaciones y validaciones necesarias.
 
 ## 10. Soporte y SLA
@@ -110,7 +110,7 @@ Este MSA entra en vigor desde su aceptacion o firma y se mantendra mientras exis
 
 ## 13. Cambios del servicio
 
-El Proveedor podra modificar interfaces, funcionalidades, arquitectura o servicios de terceros utilizados por PymeHub cuando ello sea razonablemente necesario para operar, asegurar o evolucionar el servicio. Si el cambio es material para la experiencia contratada del cliente, debera comunicarse por medios razonables con antelacion compatible con el impacto.
+El Proveedor podra modificar interfaces, funcionalidades, arquitectura o servicios de terceros utilizados por PymesHub cuando ello sea razonablemente necesario para operar, asegurar o evolucionar el servicio. Si el cambio es material para la experiencia contratada del cliente, debera comunicarse por medios razonables con antelacion compatible con el impacto.
 
 ## 14. Datos del cliente y tratamiento
 
@@ -133,11 +133,11 @@ Las obligaciones de confidencialidad no aplican a informacion publica, recibida 
 
 ## 17. Propiedad intelectual
 
-El Servicio, su software, documentacion, marcas, procesos, arquitectura y mejoras pertenecen al Proveedor o a sus licenciantes. El cliente no adquiere propiedad sobre PymeHub por el mero pago de la suscripcion. Los Datos del Cliente siguen perteneciendo al cliente o a sus respectivos titulares, sin perjuicio de las autorizaciones tecnicas necesarias para operar el servicio.
+El Servicio, su software, documentacion, marcas, procesos, arquitectura y mejoras pertenecen al Proveedor o a sus licenciantes. El cliente no adquiere propiedad sobre PymesHub por el mero pago de la suscripcion. Los Datos del Cliente siguen perteneciendo al cliente o a sus respectivos titulares, sin perjuicio de las autorizaciones tecnicas necesarias para operar el servicio.
 
 ## 18. Servicios de terceros
 
-El cliente reconoce que PymeHub depende, en todo o en parte, de servicios de terceros. El Proveedor no sera responsable por interrupciones exclusivamente imputables a tales terceros, sin perjuicio de su deber de gestion razonable, mitigacion y comunicacion cuando el impacto sea relevante.
+El cliente reconoce que PymesHub depende, en todo o en parte, de servicios de terceros. El Proveedor no sera responsable por interrupciones exclusivamente imputables a tales terceros, sin perjuicio de su deber de gestion razonable, mitigacion y comunicacion cuando el impacto sea relevante.
 
 ## 19. OCR, automatizacion e IA
 
@@ -190,7 +190,7 @@ La relacion contractual debe poder apoyarse en evidencia minima, incluyendo:
 
 ## 27. Ley aplicable y jurisdiccion
 
-Este acuerdo se rige por las leyes de `[JURISDICCION]`. Toda controversia se sometera a la jurisdiccion competente de `[JURISDICCION]`, salvo que las partes acuerden expresamente otro mecanismo.
+Este acuerdo se rige por las leyes de `Costa Rica`. Toda controversia se sometera a la jurisdiccion competente de `Costa Rica`, salvo que las partes acuerden expresamente otro mecanismo.
 
 ## 28. Relacion con otros documentos
 

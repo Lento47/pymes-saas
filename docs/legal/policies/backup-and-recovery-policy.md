@@ -1,8 +1,8 @@
-# Politica de Backups y Recuperacion de PymeHub
+# Politica de Backups y Recuperacion de PymesHub
 
 ## 1. Proposito
 
-Esta politica define que debe respaldarse, como debe protegerse y como debe recuperarse la informacion necesaria para restaurar PymeHub ante errores, corrupcion, incidentes o perdida de infraestructura.
+Esta politica define que debe respaldarse, como debe protegerse y como debe recuperarse la informacion necesaria para restaurar PymesHub ante errores, corrupcion, incidentes o perdida de infraestructura.
 
 ## 2. Alcance
 

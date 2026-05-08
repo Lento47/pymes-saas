@@ -2,7 +2,7 @@
 
 ## Overview
 
-PyMesHub integrates with Telegram Bot API to receive and send messages. The bot automatically processes incoming messages and creates conversations in the platform.
+PymesHub integrates with Telegram Bot API to receive and send messages. The bot automatically processes incoming messages and creates conversations in the platform.
 
 ## Architecture
 
@@ -17,7 +17,7 @@ TelegramService.processUpdate()
          ↓
 MessagesService.receiveInbound()
          ↓
-Conversation created in PyMesHub
+Conversation created in PymesHub
 ```
 
 ## Endpoints
@@ -125,7 +125,7 @@ Get detailed webhook status and debug info.
 {
   "ok": true,
   "data": {
-    "url": "https://api.pymeshub.lat/api/inbound/telegram/webhook/uuid",
+    "url": "https://api.PymesHub.lat/api/inbound/telegram/webhook/uuid",
     "has_custom_certificate": false,
     "pending_update_count": 0,
     "ip_address": "192.0.2.1",
@@ -173,8 +173,8 @@ Get bot details like name, username, and capabilities.
   "data": {
     "id": 123456789,
     "is_bot": true,
-    "first_name": "PyMesHub Bot",
-    "username": "pymeshub_bot",
+    "first_name": "PymesHub Bot",
+    "username": "PymesHub_bot",
     "can_join_groups": true,
     "can_read_all_group_messages": false,
     "supports_inline_queries": false
@@ -317,7 +317,7 @@ const hash = crypto
 
 ```env
 # Base URL for webhook URLs
-APP_URL=https://api.pymeshub.lat
+APP_URL=https://api.PymesHub.lat
 
 # Bot token is configured per-channel (stored encrypted)
 # Not stored as env var for security
@@ -344,7 +344,7 @@ Telegram limits:
 - **Webhook**: 100 connections concurrent
 - **API Calls**: ~30 per second per token
 
-PyMesHub will:
+PymesHub will:
 - Queue excess messages in BullMQ
 - Retry failed sends with exponential backoff
 - Log rate limit errors
@@ -356,21 +356,21 @@ PyMesHub will:
 ### Check Webhook Status
 ```bash
 curl -X GET \
-  https://api.pymeshub.lat/api/inbound/telegram/channel-uuid/webhook-status \
+  https://api.PymesHub.lat/api/inbound/telegram/channel-uuid/webhook-status \
   -H "Authorization: Bearer JWT_TOKEN"
 ```
 
 ### Get Bot Info
 ```bash
 curl -X GET \
-  https://api.pymeshub.lat/api/inbound/telegram/channel-uuid/bot-info \
+  https://api.PymesHub.lat/api/inbound/telegram/channel-uuid/bot-info \
   -H "Authorization: Bearer JWT_TOKEN"
 ```
 
 ### Send Test Message
 ```bash
 curl -X POST \
-  https://api.pymeshub.lat/api/inbound/telegram/channel-uuid/send-test-message \
+  https://api.PymesHub.lat/api/inbound/telegram/channel-uuid/send-test-message \
   -H "Authorization: Bearer JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

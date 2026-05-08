@@ -64,8 +64,8 @@ export class ContactSalesService {
   }
 
   private async sendNotifications(data: any, inquiryId: string) {
-    const salesEmail = process.env.CONTACT_SALES_EMAIL || 'ventas@pymeshub.lat';
-    const from = 'PymesHub <no-reply@pymeshub.lat>';
+    const salesEmail = process.env.CONTACT_SALES_EMAIL || 'ventas@PymesHub.lat';
+    const from = 'PymesHub <no-reply@PymesHub.lat>';
 
     const features = [];
     if (data.channels_needed?.length) features.push(`Canales: ${data.channels_needed.join(', ')}`);
@@ -115,7 +115,7 @@ export class ContactSalesService {
       const confirmHtml = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
         <h2 style="color:#5771ff">¡Gracias por tu interés, ${data.contact_name}!</h2>
         <p style="color:#333">Hemos recibido tu solicitud de información sobre PymesHub Business+. Nuestro equipo de ventas te contactará en las próximas 24 horas hábiles.</p>
-        <p style="color:#333">Mientras tanto, puedes probar PymesHub gratis en <a href="https://app.pymeshub.lat/register" style="color:#5771ff">app.pymeshub.lat/register</a></p>
+        <p style="color:#333">Mientras tanto, puedes probar PymesHub gratis en <a href="https://app.PymesHub.lat/register" style="color:#5771ff">app.PymesHub.lat/register</a></p>
         <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
         <p style="color:#888;font-size:12px">PymesHub — Otnel S.A., Limón, Costa Rica</p>
       </div>`;
