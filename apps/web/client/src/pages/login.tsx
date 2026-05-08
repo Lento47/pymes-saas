@@ -389,7 +389,7 @@ export default function LoginPage() {
                 onClick={() => {
                   if (typeof FB === 'undefined') return;
                   FB.login((resp: any) => {
-                    if (resp?.authResponse?.accessToken) window.handleFbLogin(resp.authResponse.accessToken);
+                    if (resp?.authResponse?.accessToken) (window as any).handleFbLogin(resp.authResponse.accessToken);
                   }, { config_id: '1375303354406780', scope: 'public_profile' });
                 }}
                 className="mt-3 bg-[#1877F2] font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full px-6 py-4 text-lg font-semibold text-white transition hover:translate-y-[-1px] hover:bg-[#166fe5] cursor-pointer border-none"
