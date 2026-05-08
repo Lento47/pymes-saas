@@ -51,7 +51,7 @@ async function bootstrap() {
   // ──────────────────────────────────────────────────────────────────────
   // IMPORTANTE — ORIGENES CORS:
   //   PROD  → SOLO `PymesHub.lat` Y `www.PymesHub.lat`. SI SE AGREGA UN
-  //           DOMINIO NUEVO (ej. `app.PymesHub.lat`), AGREGARLO ACA O EN
+  //           DOMINIO NUEVO (ej. `app.pymeshub.lat`), AGREGARLO ACA O EN
   //           `CORS_ORIGIN` EN RAILWAY (FORMATO: COMA-SEPARADO).
   //   DEV   → LOCALHOST EN VARIOS PUERTOS + `tauri://localhost` (DESKTOP).
   //           ESTAS URLS NUNCA DEBEN ACTIVARSE EN PROD — `NODE_ENV` LO GUARDA.
@@ -59,7 +59,7 @@ async function bootstrap() {
   const corsOrigins =
     process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) ??
     (process.env.NODE_ENV === 'production'
-      ? ['https://PymesHub.lat', 'https://www.PymesHub.lat']
+      ? ['https://pymeshub.lat', 'https://www.PymesHub.lat']
       : [
           'http://localhost:5000',
           'http://127.0.0.1:5000',

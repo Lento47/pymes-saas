@@ -299,7 +299,7 @@ export class DiagnosticService {
       return this.result('PRODUCT_BUG', 'medium', 'Runtime error — undefined value', 'A null/undefined value caused a crash. Check Railway logs for the exact line.');
     }
 
-    return this.result('USER_GUIDANCE', 'low', 'User guidance needed', 'This may be a configuration or usage question. Check the documentation or contact support@PymesHub.lat.');
+    return this.result('USER_GUIDANCE', 'low', 'User guidance needed', 'This may be a configuration or usage question. Check the documentation or contact support@pymeshub.lat.');
   }
 
   private result(category: string, risk_level: string, title: string, recommendation: string) {

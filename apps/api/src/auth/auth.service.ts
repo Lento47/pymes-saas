@@ -500,7 +500,7 @@ export class AuthService {
     if (!data?.id) throw new UnauthorizedException('Token de Facebook inválido.');
     return {
       facebookId: data.id,
-      email: data.email || `fb-${data.id}@PymesHub.lat`,
+      email: data.email || `fb-${data.id}@pymeshub.lat`,
       name: data.name || 'Usuario de Facebook',
       avatarUrl: data.picture?.data?.url || null,
     };

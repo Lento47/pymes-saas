@@ -62,7 +62,7 @@ GET /inbound/telegram/{channelId}/webhook-status
 **Respuesta esperada:**
 ```json
 {
-  "url": "https://api.PymesHub.lat/api/inbound/telegram/webhook/{channelId}",
+  "url": "https://api.pymeshub.lat/api/inbound/telegram/webhook/{channelId}",
   "has_custom_certificate": false,
   "pending_update_count": 0,
   "ip_address": "123.45.67.89",
@@ -129,7 +129,7 @@ En `.env` o `.env.production`:
 
 ```env
 # URL base de la aplicación (necesaria para webhooks)
-APP_URL=https://api.PymesHub.lat
+APP_URL=https://api.pymeshub.lat
 
 # El token del bot se configura por canal en la UI, no en variables de entorno
 ```

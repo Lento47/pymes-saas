@@ -85,7 +85,7 @@ export class McpController {
       'X-Accel-Buffering': 'no',
     });
     const base = req.headers['x-forwarded-proto'] || 'https';
-    const host = req.headers.host || 'api.PymesHub.lat';
+    const host = req.headers.host || 'api.pymeshub.lat';
     sseSend(res, { jsonrpc: '2.0', result: { endpoint: `${base}://${host}/api/mcp`, ready: true } });
 
     // Keep alive — send ping every 15s to prevent proxy/nginx timeout

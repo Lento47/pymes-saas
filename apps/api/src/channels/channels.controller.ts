@@ -47,7 +47,7 @@ export class ChannelsController {
   @Get('whatsapp-config')
   getWhatsAppConfig() {
     return {
-      webhookUrl: 'https://PymesHub.lat/api/inbound/whatsapp/webhook',
+      webhookUrl: 'https://pymeshub.lat/api/inbound/whatsapp/webhook',
       verifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || '',
     };
   }

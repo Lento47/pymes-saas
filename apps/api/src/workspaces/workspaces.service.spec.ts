@@ -135,7 +135,7 @@ describe('WorkspacesService', () => {
       expect(mockPrisma.workspaceUser.create).toHaveBeenCalledTimes(1);
       expect(result.message).toContain('brand-new@test.com');
       expect(result.invite_links.desktop).toContain('PymesHub://accept-invite?token=');
-      expect(result.invite_links.browser).toContain('https://app.PymesHub.lat/#/accept-invite?token=');
+      expect(result.invite_links.browser).toContain('https://app.pymeshub.lat/#/accept-invite?token=');
     });
   });
 

@@ -125,7 +125,7 @@ Get detailed webhook status and debug info.
 {
   "ok": true,
   "data": {
-    "url": "https://api.PymesHub.lat/api/inbound/telegram/webhook/uuid",
+    "url": "https://api.pymeshub.lat/api/inbound/telegram/webhook/uuid",
     "has_custom_certificate": false,
     "pending_update_count": 0,
     "ip_address": "192.0.2.1",
@@ -317,7 +317,7 @@ const hash = crypto
 
 ```env
 # Base URL for webhook URLs
-APP_URL=https://api.PymesHub.lat
+APP_URL=https://api.pymeshub.lat
 
 # Bot token is configured per-channel (stored encrypted)
 # Not stored as env var for security
@@ -356,21 +356,21 @@ PymesHub will:
 ### Check Webhook Status
 ```bash
 curl -X GET \
-  https://api.PymesHub.lat/api/inbound/telegram/channel-uuid/webhook-status \
+  https://api.pymeshub.lat/api/inbound/telegram/channel-uuid/webhook-status \
   -H "Authorization: Bearer JWT_TOKEN"
 ```
 
 ### Get Bot Info
 ```bash
 curl -X GET \
-  https://api.PymesHub.lat/api/inbound/telegram/channel-uuid/bot-info \
+  https://api.pymeshub.lat/api/inbound/telegram/channel-uuid/bot-info \
   -H "Authorization: Bearer JWT_TOKEN"
 ```
 
 ### Send Test Message
 ```bash
 curl -X POST \
-  https://api.PymesHub.lat/api/inbound/telegram/channel-uuid/send-test-message \
+  https://api.pymeshub.lat/api/inbound/telegram/channel-uuid/send-test-message \
   -H "Authorization: Bearer JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

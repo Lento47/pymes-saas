@@ -605,7 +605,7 @@ export class WorkspacesService {
     );
 
     const desktopUrl = `PymesHub://accept-invite?token=${encodeURIComponent(inviteToken)}`;
-    const browserUrl = `https://PymesHub.lat/accept-invite?token=${encodeURIComponent(inviteToken)}`;
+    const browserUrl = `https://pymeshub.lat/accept-invite?token=${encodeURIComponent(inviteToken)}`;
 
     await this.sendInviteEmail({
       workspaceId,

@@ -179,7 +179,7 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: any, @Res() res: any) {
     const profile = req.user as { googleId: string; email: string; name: string; avatarUrl: string | null };
-    const frontendUrl = process.env.PUBLIC_URL ?? 'https://PymesHub.lat';
+    const frontendUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
     try {
       // Resolve / create the user via Google profile, then mint a 60s
       // exchange code instead of putting the access + refresh token in

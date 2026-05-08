@@ -95,7 +95,7 @@ export async function generateBillingInvoicePdf(invoice: BillingInvoicePdfData):
     doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(18).text('PymesHub', M + 58, 42);
     doc.fillColor(BRAND.primaryLight).font('Helvetica').fontSize(6.5)
       .text('Plataforma SaaS para PYMES · Costa Rica', M + 58, 63)
-      .text('support@PymesHub.com  ·  PymesHub.lat', M + 58, 74);
+      .text('support@pymeshub.lat  ·  PymesHub.lat', M + 58, 74);
 
     // Invoice title — right-aligned from left margin
     doc.fillColor(BRAND.white).font('Helvetica-Bold').fontSize(22)
@@ -216,7 +216,7 @@ export async function generateBillingInvoicePdf(invoice: BillingInvoicePdfData):
     drawLogo(doc, logo, M, footerY + 10, 18, 18);
     doc.fillColor(BRAND.grayLight).font('Helvetica').fontSize(6)
       .text('PymesHub — Automatización para PYMES en Costa Rica y LATAM', M + 26, footerY + 8, { width: W - 26, align: 'center' })
-      .text('support@PymesHub.com  ·  PymesHub.lat  ·  Factura electrónica', M + 26, footerY + 18, { width: W - 26, align: 'center' });
+      .text('support@pymeshub.lat  ·  PymesHub.lat  ·  Factura electrónica', M + 26, footerY + 18, { width: W - 26, align: 'center' });
 
     doc.end();
   });

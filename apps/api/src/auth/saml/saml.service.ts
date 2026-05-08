@@ -60,7 +60,7 @@ export class SamlService {
     workspaceSlug: string,
     idpConfig: SamlIdpConfig,
   ): Promise<string> {
-    const baseUrl = this.config.get<string>('APP_URL') || 'https://PymesHub.lat';
+    const baseUrl = this.config.get<string>('APP_URL') || 'https://pymeshub.lat';
     const sp = {
       entityId: `${baseUrl}/saml/${workspaceSlug}/metadata`,
       acsUrl: `${baseUrl}/api/auth/saml/${workspaceSlug}/callback`,
@@ -75,7 +75,7 @@ export class SamlService {
     idpConfig: SamlIdpConfig,
     samlResponse: string,
   ): Promise<{ email: string; nameId: string; attributes: Record<string, string> }> {
-    const baseUrl = this.config.get<string>('APP_URL') || 'https://PymesHub.lat';
+    const baseUrl = this.config.get<string>('APP_URL') || 'https://pymeshub.lat';
     const sp = {
       entityId: `${baseUrl}/saml/${workspaceSlug}/metadata`,
       acsUrl: `${baseUrl}/api/auth/saml/${workspaceSlug}/callback`,
@@ -121,7 +121,7 @@ export class SamlService {
   }
 
   generateMetadata(workspaceSlug: string): string {
-    const baseUrl = this.config.get<string>('APP_URL') || 'https://PymesHub.lat';
+    const baseUrl = this.config.get<string>('APP_URL') || 'https://pymeshub.lat';
     const entityId = `${baseUrl}/saml/${workspaceSlug}/metadata`;
     const acsUrl = `${baseUrl}/api/auth/saml/${workspaceSlug}/callback`;
 
