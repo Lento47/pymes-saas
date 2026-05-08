@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useConversationSocket } from "@/hooks/use-conversation-socket";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -56,6 +57,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { user } = useAuth();
+  useConversationSocket(conversationId);
   const [message, setMessage] = useState("");
   const [attachment, setAttachment] = useState<{ file: File; url: string; type: string } | null>(null);
   const [uploading, setUploading] = useState(false);

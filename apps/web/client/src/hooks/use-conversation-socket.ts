@@ -19,7 +19,7 @@ export function useConversationSocket(conversationId: string) {
     (message: any) => {
       // Agregar el nuevo mensaje al cache de React Query sin refetch
       qc.setQueryData(
-        ['/api/conversations', conversationId, 'messages'],
+        ['conversation-messages', conversationId],
         (old: any) => {
           if (!old) return old;
           const exists = old.data?.some((m: any) => m.id === message.id);
@@ -38,9 +38,9 @@ export function useConversationSocket(conversationId: string) {
   const handleConversationUpdated = useCallback(
     (update: any) => {
       // Actualizar el inbox list
-      qc.invalidateQueries({ queryKey: ['/api/conversations'] });
-      // Si aplica a esta conversación, actualizar su cache
+      qc.invalidateQueries({ queryKey: ['conversations'] });
       if (update.id === conversationId) {
+        qc.invalidateQueries({ queryKey: ['conversation', conversationId] });
         qc.invalidateQueries({ queryKey: ['/api/conversations', conversationId] });
       }
     },

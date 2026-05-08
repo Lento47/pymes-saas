@@ -10,7 +10,7 @@ export function useInboxSocket() {
   const qc = useQueryClient();
 
   const handleConversationUpdated = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ['/api/conversations'] });
+    qc.invalidateQueries({ queryKey: ['conversations'] });
   }, [qc]);
 
   useEffect(() => {
