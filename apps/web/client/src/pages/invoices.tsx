@@ -972,7 +972,7 @@ export default function InvoicesPage() {
       />
 
       <Dialog open={showDetail} onOpenChange={(open) => { setShowDetail(open); if (!open) setSelectedInvoice(null); }}>
-        <DialogContent className="bg-card border-border sm:max-w-[480px]">
+        <DialogContent className="bg-card border-border sm:max-w-[640px]">
           <DialogHeader>
             <DialogTitle className="text-sm">Detalle de factura</DialogTitle>
           </DialogHeader>
@@ -1009,6 +1009,40 @@ export default function InvoicesPage() {
               </div>
               {selectedInvoice.description && (
                 <div><span className="text-muted-foreground/60">Descripción</span><div className="text-foreground mt-0.5 whitespace-pre-wrap">{selectedInvoice.description}</div></div>
+              )}
+              {selectedInvoice.lines?.length > 0 && (
+                <div>
+                  <span className="text-muted-foreground/60">Líneas ({selectedInvoice.lines.length})</span>
+                  <div className="mt-1.5 rounded-lg border border-border overflow-hidden">
+                    <table className="w-full text-[10px]">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left px-2 py-1.5 text-muted-foreground font-medium">#</th>
+                          <th className="text-left px-2 py-1.5 text-muted-foreground font-medium">Descripción</th>
+                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Cant</th>
+                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Precio</th>
+                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">IVA</th>
+                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedInvoice.lines.map((line: any) => (
+                          <tr key={line.id} className="border-t border-border/50 hover:bg-muted/30 transition-colors">
+                            <td className="px-2 py-1.5 text-muted-foreground">{line.line_number}</td>
+                            <td className="px-2 py-1.5 text-foreground">
+                              <span>{line.description}</span>
+                              {line.product?.name && <span className="text-muted-foreground/60 ml-1">({line.product.name})</span>}
+                            </td>
+                            <td className="px-2 py-1.5 text-right text-foreground">{Number(line.quantity)}</td>
+                            <td className="px-2 py-1.5 text-right text-foreground">{formatMoney(line.unit_price, selectedInvoice.currency)}</td>
+                            <td className="px-2 py-1.5 text-right text-muted-foreground">{line.tax_rate != null ? `${line.tax_rate}%` : "—"}</td>
+                            <td className="px-2 py-1.5 text-right text-foreground font-medium">{formatMoney(line.total_line_amount, selectedInvoice.currency)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               )}
               {selectedInvoice.payments?.length > 0 && (
                 <div>

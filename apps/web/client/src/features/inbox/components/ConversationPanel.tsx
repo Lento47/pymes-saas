@@ -357,7 +357,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
       {/* Invoice dialog */}
       <Dialog open={showInvoice} onOpenChange={setShowInvoice}>
-        <DialogContent className="bg-card border-border sm:max-w-[460px]">
+        <DialogContent className="bg-card border-border sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle className="text-sm">Facturación</DialogTitle>
           </DialogHeader>
@@ -471,30 +471,46 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                       const lineSubtotal = line.quantity * line.unit_price;
                       const lineTax = lineSubtotal * (line.tax_rate / 100);
                       return (
-                        <div key={i} className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5">
-                          <span className="text-[10px] text-muted-foreground w-4 shrink-0">{i + 1}.</span>
-                          <span className="text-[11px] flex-1 truncate">{line.name}</span>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <input type="number" min="1" value={line.quantity} onChange={e => {
-                              const q = Math.max(1, parseInt(e.target.value) || 1);
-                              setLines(prev => prev.map((l, j) => j === i ? { ...l, quantity: q } : l));
-                            }} className="w-10 h-6 text-[10px] text-center bg-background border border-border rounded" />
-                            <span className="text-[9px] text-muted-foreground">×</span>
-                            <input type="number" min="0" step="any" value={line.unit_price} onChange={e => {
-                              setLines(prev => prev.map((l, j) => j === i ? { ...l, unit_price: Number(e.target.value) || 0 } : l));
-                            }} className="w-16 h-6 text-[10px] text-right bg-background border border-border rounded" />
-                            <span className="text-[10px] text-muted-foreground w-16 text-right truncate">
-                              = {new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC" }).format(lineSubtotal + lineTax)}
-                            </span>
-                            <button onClick={() => setLines(prev => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-red-400 shrink-0">
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
+                        <div key={i} className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1.5">
+                          <span className="text-[10px] text-muted-foreground shrink-0">{i + 1}.</span>
+                          <span className="text-[10px] flex-1 truncate">{line.name}</span>
+                          <input type="number" min="1" value={line.quantity} onChange={e => {
+                            const q = Math.max(1, parseInt(e.target.value) || 1);
+                            setLines(prev => prev.map((l, j) => j === i ? { ...l, quantity: q } : l));
+                          }} className="w-9 h-6 text-[10px] text-center bg-background border border-border rounded" />
+                          <span className="text-[9px] text-muted-foreground">×</span>
+                          <input type="number" min="0" step="any" value={line.unit_price} onChange={e => {
+                            setLines(prev => prev.map((l, j) => j === i ? { ...l, unit_price: Number(e.target.value) || 0 } : l));
+                          }} className="w-14 h-6 text-[10px] text-right bg-background border border-border rounded" />
+                          <input type="number" min="0" max="100" value={line.tax_rate} onChange={e => {
+                            setLines(prev => prev.map((l, j) => j === i ? { ...l, tax_rate: Number(e.target.value) || 0 } : l));
+                          }} className="w-9 h-6 text-[10px] text-center bg-background border border-border rounded" title="IVA %" />
+                          <span className="text-[10px] text-muted-foreground w-[4.5rem] text-right truncate">
+                            {new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC" }).format(lineSubtotal + lineTax)}
+                          </span>
+                          <button onClick={() => setLines(prev => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-red-400 shrink-0 ml-0.5">
+                            <X className="w-3 h-3" />
+                          </button>
                         </div>
                       );
                     })}
-                    <div className="text-[11px] font-semibold text-right px-1 pt-1">
-                      Total: {new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC" }).format(totalAmount)}
+                    <div className="text-[10px] text-right px-1 pt-1 space-y-0.5">
+                      {lineSubtotals.reduce((s, v) => s + v, 0) > 0 && (
+                        <div className="flex justify-end gap-2">
+                          <span className="text-muted-foreground">Subtotal:</span>
+                          <span>{new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC" }).format(lineSubtotals.reduce((s, v) => s + v, 0))}</span>
+                        </div>
+                      )}
+                      {lineTaxes.reduce((s, v) => s + v, 0) > 0 && (
+                        <div className="flex justify-end gap-2">
+                          <span className="text-muted-foreground">IVA:</span>
+                          <span>{new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC" }).format(lineTaxes.reduce((s, v) => s + v, 0))}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-end gap-2 font-semibold text-[11px] pt-0.5 border-t border-border">
+                        <span>Total:</span>
+                        <span>{new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC" }).format(totalAmount)}</span>
+                      </div>
                     </div>
                   </div>
                 )}
