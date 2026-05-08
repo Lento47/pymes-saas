@@ -223,9 +223,10 @@ export class TelegramService {
       }
 
       await this.messagesService.receiveInbound(
+        'telegram',
         channel.workspace_id,
-        channel.id,
         {
+          channel_id: channel.id,
           body_text: text,
           sender_name: senderName,
           sender_ref: senderRef,

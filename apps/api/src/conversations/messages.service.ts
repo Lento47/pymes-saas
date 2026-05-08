@@ -139,12 +139,21 @@ export class MessagesService {
 
     if (contact) {
       // Auto-update name for LEAD contacts created from incoming messages
+      const contactUpdates: any = {};
       if (contact.type === 'LEAD' && contact.full_name !== senderName) {
+        contactUpdates.full_name = senderName;
+      }
+      // Store Telegram chat_id if not already set
+      const tgChatId = (payload as any).telegram_chat_id;
+      if (tgChatId && !(contact as any).telegram_chat_id) {
+        contactUpdates.telegram_chat_id = tgChatId;
+      }
+      if (Object.keys(contactUpdates).length > 0) {
         await this.prisma.contact.update({
           where: { id: contact.id },
-          data: { full_name: senderName, updated_at: new Date() },
+          data: { ...contactUpdates, updated_at: new Date() },
         });
-        contact.full_name = senderName;
+        contact = { ...contact, ...contactUpdates };
       }
     }
 
@@ -156,6 +165,7 @@ export class MessagesService {
           full_name: senderName,
           email: isEmail ? senderRef : undefined,
           phone: !isEmail ? senderRef : undefined,
+          telegram_chat_id: (payload as any).telegram_chat_id || undefined,
         },
       });
     }

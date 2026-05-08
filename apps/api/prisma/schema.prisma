@@ -437,6 +437,7 @@ model Contact {
   foreign_identification   String?
   receptor_validation_json Json?       @db.JsonB
   external_ref             String?
+  telegram_chat_id         String?
   tags_json                Json?       @db.JsonB
   last_interaction_at      DateTime?
 
