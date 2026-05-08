@@ -80,7 +80,9 @@ export class WhatsAppService {
     const phoneNumberId = cfg.phone_number_id;
 
     // Step 1: Download file from our storage
-    const fileRes = await fetch(mediaUrl);
+    const base = process.env.PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 4000}`;
+    const fullUrl = mediaUrl.startsWith('http') ? mediaUrl : `${base}${mediaUrl}`;
+    const fileRes = await fetch(fullUrl);
     if (!fileRes.ok) throw new BadGatewayException('No se pudo descargar el archivo.');
     const fileBuffer = Buffer.from(await fileRes.arrayBuffer());
     const contentType = fileRes.headers.get('content-type') || 'application/octet-stream';
