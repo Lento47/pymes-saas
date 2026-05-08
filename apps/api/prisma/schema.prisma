@@ -282,6 +282,7 @@ model User {
   password_hash     String?
   google_id         String?   @unique
   facebook_id       String?   @unique
+  telegram_id       String?   @unique
   status            UserStatus @default(ACTIVE)
   is_platform_admin Boolean    @default(false)
 

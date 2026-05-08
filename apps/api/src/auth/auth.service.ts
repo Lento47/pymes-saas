@@ -506,6 +506,116 @@ export class AuthService {
     };
   }
 
+  // ── Telegram Login Widget verification ──────────────────────────────────
+
+  async verifyTelegramAuth(data: Record<string, any>): Promise<{ telegramId: string; firstName: string; lastName?: string; username?: string; photoUrl?: string }> {
+    const { id, first_name, last_name, username, photo_url, auth_date, hash } = data;
+    if (!id || !hash) throw new UnauthorizedException('Datos de Telegram incompletos.');
+
+    const botToken = this.config.get<string>('TELEGRAM_BOT_TOKEN');
+    if (!botToken) throw new InternalServerErrorException('Telegram bot token not configured.');
+
+    // Build data-check-string: sorted alphabetically, format "key=value\n"
+    const fields: Record<string, string> = {};
+    if (auth_date) fields.auth_date = String(auth_date);
+    if (first_name) fields.first_name = String(first_name);
+    if (id) fields.id = String(id);
+    if (last_name) fields.last_name = String(last_name);
+    if (photo_url) fields.photo_url = String(photo_url);
+    if (username) fields.username = String(username);
+
+    const checkString = Object.keys(fields).sort()
+      .map(k => `${k}=${fields[k]}`)
+      .join('\n');
+
+    // HMAC-SHA256 with bot token as secret key
+    const crypto = await import('crypto');
+    const secretKey = crypto.createHash('sha256').update(botToken).digest();
+    const hmac = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+
+    if (hmac !== hash) {
+      throw new UnauthorizedException('Firma de Telegram inválida.');
+    }
+
+    return {
+      telegramId: String(id),
+      firstName: first_name || 'Usuario de Telegram',
+      lastName: last_name || undefined,
+      username: username || undefined,
+      photoUrl: photo_url || undefined,
+    };
+  }
+
+  async telegramLogin(profile: { telegramId: string; firstName: string; lastName?: string; username?: string; photoUrl?: string }) {
+    let user = await this.prisma.user.findUnique({
+      where: { telegram_id: profile.telegramId },
+    });
+
+    if (user) {
+      if (user.status !== 'ACTIVE') throw new UnauthorizedException('Usuario inactivo o suspendido.');
+    }
+
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          name: [profile.firstName, profile.lastName].filter(Boolean).join(' ') || 'Usuario de Telegram',
+          email: `tg-${profile.telegramId}@pymeshub.lat`,
+          telegram_id: profile.telegramId,
+          avatar_url: profile.photoUrl || null,
+          status: 'ACTIVE',
+        },
+      });
+
+      const slug = await this.generateUniqueWorkspaceSlug();
+      const workspace = await this.prisma.workspace.create({
+        data: {
+          name: `${user.name}'s Workspace`,
+          slug,
+          status: 'ACTIVE',
+          plan: 'FREE',
+          workspace_users: { create: { user_id: user.id, role: 'OWNER', is_owner: true } },
+        },
+      });
+
+      this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch(() => {});
+
+      const access_token = this.signToken({
+        sub: user.id, email: user.email, workspace_id: workspace.id,
+        role: 'OWNER', is_platform_admin: false,
+      });
+      const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
+
+      return { access_token, refresh_token, user: { id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url, role: 'OWNER', is_owner: true, is_platform_admin: false, workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan } } };
+    }
+
+    const memberships = await this.prisma.workspaceUser.findMany({
+      where: { user_id: user.id },
+      include: { workspace: { select: { id: true, slug: true, name: true, plan: true } } },
+      orderBy: { created_at: 'asc' },
+    });
+
+    if (memberships.length === 0) {
+      const slug = await this.generateUniqueWorkspaceSlug();
+      const workspace = await this.prisma.workspace.create({
+        data: {
+          name: `${user.name}'s Workspace`, slug, status: 'ACTIVE', plan: 'FREE',
+          workspace_users: { create: { user_id: user.id, role: 'OWNER', is_owner: true } },
+        },
+      });
+
+      const access_token = this.signToken({ sub: user.id, email: user.email, workspace_id: workspace.id, role: 'OWNER', is_platform_admin: user.is_platform_admin });
+      const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
+
+      return { access_token, refresh_token, user: { id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url, role: 'OWNER', is_owner: true, is_platform_admin: user.is_platform_admin, workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan } } };
+    }
+
+    const m = memberships[0];
+    const access_token = this.signToken({ sub: user.id, email: user.email, workspace_id: m.workspace_id, role: m.role, is_platform_admin: user.is_platform_admin });
+    const refresh_token = await this.refreshTokenService.create(user.id, m.workspace_id);
+
+    return { access_token, refresh_token, user: { id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url, role: m.role, is_owner: m.is_owner, is_platform_admin: user.is_platform_admin, workspace: { id: m.workspace.id, name: m.workspace.name, slug: m.workspace.slug, plan: m.workspace.plan } } };
+  }
+
   async facebookLogin(profile: { facebookId: string; email: string; name: string; avatarUrl: string | null }) {
     let user = await this.prisma.user.findUnique({
       where: { facebook_id: profile.facebookId },
