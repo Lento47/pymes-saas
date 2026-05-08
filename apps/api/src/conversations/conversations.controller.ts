@@ -190,9 +190,6 @@ export class ConversationsController {
         const to = ((conv.contact as any).phone as string).replace(/\D/g, '');
         this.logger.log(`[DIAG] WhatsApp dispatch: conv=${conversationId}, channel=${conv.channel.id}, phone=${to}`);
         if (dto.media_url && dto.media_type) {
-          await this.planLimits.evaluatePlanLimit(user.workspace_id, 'media_messages_per_day', 1).then(r => {
-            if (!r.allowed) throw new BadRequestException(r.message ?? 'Límite de archivos multimedia diario alcanzado.');
-          });
           await this.whatsAppService.sendMedia(conv.channel, to, dto.media_url, dto.media_type as 'image' | 'document', dto.body_text || undefined);
         } else if (template?.external_template_id) {
           await this.whatsAppService.sendTemplateMessage(

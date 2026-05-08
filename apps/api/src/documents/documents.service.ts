@@ -121,8 +121,8 @@ export class DocumentsService {
     const ext = file.originalname.split('.').pop() || 'bin';
     const key = `attachments/${workspaceId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     await this.storage.upload(key, file.buffer, file.mimetype);
-    const url = this.storage.getUrl ? this.storage.getUrl(key) : `/api/storage/file/${encodeURIComponent(key)}`;
-    return { url: typeof url === 'string' ? url : `/api/storage/file/${encodeURIComponent(key)}` };
+    const url = `/api/storage/file/${encodeURIComponent(key)}`;
+    return { url };
   }
 
   // ── GET /documents ─────────────────────────────────────────────────────────
