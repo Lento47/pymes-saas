@@ -7,7 +7,7 @@ import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   ArrowLeft, Send, Loader2, MessageCircle, CheckCircle2, RefreshCw,
-  Trash2, UserPlus, Info, Receipt, Plus, X,
+  Trash2, UserPlus, Info, Receipt, Plus, X, Paperclip,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,6 +57,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const [message, setMessage] = useState("");
+  const [attachment, setAttachment] = useState<{ file: File; url: string; type: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -171,8 +173,14 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   });
 
   const handleSend = () => {
-    if (!message.trim()) return;
-    sendMut.mutate({ body_text: message, direction: "OUTBOUND" });
+    if (!message.trim() && !attachment) return;
+    if (attachment) {
+      sendMut.mutate({ body_text: message, direction: "OUTBOUND", media_url: attachment.url, media_type: attachment.type });
+    } else {
+      sendMut.mutate({ body_text: message, direction: "OUTBOUND" });
+    }
+    setAttachment(null);
+    setMessage("");
   };
 
   const msgList: any[] = Array.isArray(messages) ? messages : messages?.data || [];
@@ -323,7 +331,43 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
       {/* Message input */}
       <div className="border-t border-border p-3 shrink-0">
-        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex items-end gap-2">
+        {attachment && (
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="flex-1 text-[11px] text-muted-foreground truncate">
+              📎 {attachment.file.name}
+              {uploading && <Loader2 className="w-3 h-3 animate-spin inline ml-1" />}
+            </div>
+            <button onClick={() => setAttachment(null)} className="text-muted-foreground hover:text-foreground shrink-0">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          <label className="cursor-pointer text-muted-foreground hover:text-foreground p-1.5 shrink-0">
+            <Paperclip className="w-4 h-4" />
+            <input
+              type="file"
+              accept="image/*,.pdf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const form = new FormData();
+                form.append('file', file);
+                setUploading(true);
+                try {
+                  const { url } = await api.uploadAttachment(form);
+                  const type = file.type.startsWith('image/') ? 'image' : 'document';
+                  setAttachment({ file, url, type });
+                } catch (err: any) {
+                  toast({ title: "Error", description: err.message || "No se pudo subir el archivo", variant: "destructive" });
+                } finally {
+                  setUploading(false);
+                  e.target.value = '';
+                }
+              }}
+            />
+          </label>
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -337,10 +381,10 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
             className="min-h-[40px] max-h-[120px] text-sm bg-background border-border resize-none"
             rows={1}
           />
-          <Button type="submit" size="sm" className="h-9 shrink-0" disabled={!message.trim() || sendMut.isPending}>
+          <Button type="submit" size="sm" className="h-9 shrink-0" disabled={(!message.trim() && !attachment) || sendMut.isPending || uploading}>
             {sendMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
-        </form>
+        </div>
         <p className="text-[10px] text-muted-foreground/80 mt-1 ml-1">Enter para enviar · Shift+Enter para nueva línea</p>
       </div>
 

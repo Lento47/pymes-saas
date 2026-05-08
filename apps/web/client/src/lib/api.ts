@@ -364,6 +364,7 @@ export const api = {
     return request<any>("GET", `/api/documents${qs}`);
   },
   uploadDocument: (formData: FormData) => request<any>("POST", "/api/documents/upload", formData, { isFormData: true }),
+  uploadAttachment: (formData: FormData) => request<{ url: string }>("POST", "/api/documents/upload-attachment", formData, { isFormData: true }),
   deleteDocument: (id: string) => request<any>("DELETE", `/api/documents/${id}`),
   getAutomations: () => request<any>("GET", "/api/automations"),
   createAutomation: (data: any) => request<any>("POST", "/api/automations", data),
