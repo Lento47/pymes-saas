@@ -72,6 +72,7 @@ export class RemindersService {
         },
         payments: {
           take: 10,
+        },
         reminders: {
           orderBy: { created_at: 'desc' },
           take: 1,
