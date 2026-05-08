@@ -492,87 +492,6 @@ export class AuthService {
     };
   }
 
-  async telegramLogin(profile: { telegramId: string; firstName: string; lastName?: string; username?: string; photoUrl?: string }) {
-    const name = profile.lastName ? `${profile.firstName} ${profile.lastName}` : profile.firstName;
-    let user = await this.prisma.user.findFirst({
-      where: { telegram_id: profile.telegramId },
-    });
-
-    if (user) {
-      if (user.status !== 'ACTIVE') throw new UnauthorizedException('Usuario inactivo o suspendido.');
-    } else {
-      user = await this.prisma.user.create({
-        data: {
-          email: `tg-${profile.telegramId}@pymeshub.lat`,
-          name,
-          telegram_id: profile.telegramId,
-          avatar_url: profile.photoUrl || null,
-          status: 'ACTIVE',
-        },
-      });
-
-      const slug = await this.generateUniqueWorkspaceSlug();
-      const workspace = await this.prisma.workspace.create({
-        data: {
-          name: `${name}'s Workspace`, slug, status: 'ACTIVE', plan: 'FREE',
-          workspace_users: { create: { user_id: user.id, role: 'OWNER', is_owner: true } },
-        },
-      });
-
-      this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch(() => {});
-
-      const access_token = this.signToken({ sub: user.id, email: user.email, workspace_id: workspace.id, role: 'OWNER', is_platform_admin: false });
-      const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
-      return { access_token, refresh_token, user: { id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url, role: 'OWNER', is_owner: true, is_platform_admin: false, workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan } } };
-    }
-
-    const memberships = await this.prisma.workspaceUser.findMany({
-      where: { user_id: user.id },
-      include: { workspace: { select: { id: true, slug: true, name: true, plan: true } } },
-      orderBy: { created_at: 'asc' },
-    });
-
-    if (memberships.length === 0) {
-      const slug = await this.generateUniqueWorkspaceSlug();
-      const workspace = await this.prisma.workspace.create({
-        data: { name: `${user.name}'s Workspace`, slug, status: 'ACTIVE', plan: 'FREE',
-          workspace_users: { create: { user_id: user.id, role: 'OWNER', is_owner: true } } },
-      });
-      const access_token = this.signToken({ sub: user.id, email: user.email, workspace_id: workspace.id, role: 'OWNER', is_platform_admin: user.is_platform_admin });
-      const refresh_token = await this.refreshTokenService.create(user.id, workspace.id);
-      return { access_token, refresh_token, user: { id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url, role: 'OWNER', is_owner: true, is_platform_admin: user.is_platform_admin, workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan } } };
-    }
-
-    const m = memberships[0];
-    const access_token = this.signToken({ sub: user.id, email: user.email, workspace_id: m.workspace_id, role: m.role, is_platform_admin: user.is_platform_admin });
-    const refresh_token = await this.refreshTokenService.create(user.id, m.workspace_id);
-    return { access_token, refresh_token, user: { id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url, role: m.role, is_owner: m.is_owner, is_platform_admin: user.is_platform_admin, workspace: { id: m.workspace.id, name: m.workspace.name, slug: m.workspace.slug, plan: m.workspace.plan } } };
-  }
-
-  async verifyTelegramAuth(data: any): Promise<{ telegramId: string; firstName: string; lastName?: string; username?: string; photoUrl?: string }> {
-    const { id, first_name, last_name, username, photo_url, auth_date, hash } = data;
-    if (!id || !hash) throw new UnauthorizedException('Datos de Telegram incompletos.');
-
-    // Verify HMAC-SHA256 signature
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) throw new UnauthorizedException('TELEGRAM_BOT_TOKEN not configured.');
-
-    const secret = crypto.createHash('sha256').update(botToken).digest();
-    const checkArr: string[] = [];
-    if (auth_date) checkArr.push(`auth_date=${auth_date}`);
-    checkArr.push(`first_name=${first_name}`);
-    checkArr.push(`id=${id}`);
-    if (last_name) checkArr.push(`last_name=${last_name}`);
-    if (photo_url) checkArr.push(`photo_url=${photo_url}`);
-    if (username) checkArr.push(`username=${username}`);
-    checkArr.sort();
-    const dataCheckString = checkArr.join('\n');
-    const computedHash = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
-    if (computedHash !== hash) throw new UnauthorizedException('Hash de Telegram inválido.');
-
-    return { telegramId: String(id), firstName: first_name, lastName: last_name, username, photoUrl: photo_url };
-  }
-
   async exchangeFacebookToken(accessToken: string): Promise<{ facebookId: string; email: string; name: string; avatarUrl: string | null }> {
     const url = `https://graph.facebook.com/v25.0/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`;
     const res = await fetch(url);
@@ -593,7 +512,7 @@ export class AuthService {
     const { id, first_name, last_name, username, photo_url, auth_date, hash } = data;
     if (!id || !hash) throw new UnauthorizedException('Datos de Telegram incompletos.');
 
-    const botToken = this.config.get<string>('TELEGRAM_BOT_TOKEN');
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken) throw new InternalServerErrorException('Telegram bot token not configured.');
 
     // Build data-check-string: sorted alphabetically, format "key=value\n"

@@ -209,7 +209,7 @@ export class AuthController {
       user: result.user,
     };
   }
-}
+
   // Unified SSO exchange endpoint — used by both SAML and Google callbacks.
   @Post('sso-exchange')
   @Throttle({ auth: { limit: 10, ttl: 60_000 } })
