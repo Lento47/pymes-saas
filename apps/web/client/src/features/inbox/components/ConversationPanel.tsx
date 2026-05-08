@@ -7,7 +7,7 @@ import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   ArrowLeft, Send, Loader2, MessageCircle, CheckCircle2, RefreshCw,
-  Trash2, UserPlus, Info, Receipt, Plus, X, Package, Search,
+  Trash2, UserPlus, Info, Receipt, Plus, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PriorityDot } from "@/components/shared/priority-dot";
+import { ProductPicker } from "@/components/inventory/ProductPicker";
 
 function getInitials(name: string) {
   return name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
@@ -111,20 +112,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
   const [showInvoice, setShowInvoice] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
-  const [productSearch, setProductSearch] = useState("");
   const [invoiceForm, setInvoiceForm] = useState({ number: "", currency: "USD", due_date: "", description: "" });
   const [lines, setLines] = useState<Array<{ product_id?: string; name: string; description: string; quantity: number; unit_price: number; tax_rate: number }>>([]);
-
-  // ── Product picker query ──────────────────────────────────────────────────
-  const { data: productsData } = useQuery({
-    queryKey: ["product-picker"],
-    queryFn: () => api.getProducts("limit=100"),
-    enabled: showProductPicker,
-  });
-  const products: any[] = Array.isArray(productsData) ? productsData : productsData?.data ?? [];
-  const filteredProducts = productSearch
-    ? products.filter((p: any) => p.is_active !== false && (p.name?.toLowerCase().includes(productSearch.toLowerCase()) || p.sku?.toLowerCase().includes(productSearch.toLowerCase())))
-    : products.filter((p: any) => p.is_active !== false);
 
   const { data: invoicesData } = useQuery({
     queryKey: ["conversation-invoices", id],
@@ -421,47 +410,20 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
                 {/* Product picker panel */}
                 {showProductPicker && (
-                  <div className="rounded-lg border border-border bg-background p-2 max-h-40 overflow-y-auto space-y-1">
-                    <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background pb-1">
-                      <Search className="w-3 h-3 text-muted-foreground shrink-0" />
-                      <input
-                        className="flex-1 text-[10px] bg-transparent border-none outline-none placeholder:text-muted-foreground/50"
-                        placeholder="Buscar producto..."
-                        value={productSearch}
-                        onChange={e => setProductSearch(e.target.value)}
-                        autoFocus
-                      />
-                      <button onClick={() => setShowProductPicker(false)} className="text-muted-foreground hover:text-foreground"><X className="w-3 h-3" /></button>
-                    </div>
-                    {filteredProducts.slice(0, 20).map((p: any) => (
-                      <button
-                        key={p.id}
-                        className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-[11px] flex items-center justify-between transition-colors"
-                        onClick={() => {
-                          setLines(prev => [...prev, {
-                            product_id: p.id,
-                            name: p.name,
-                            description: p.name,
-                            quantity: 1,
-                            unit_price: Number(p.unit_price ?? 0),
-                            tax_rate: 13,
-                          }]);
-                          setShowProductPicker(false);
-                        }}
-                      >
-                        <span className="flex items-center gap-2">
-                          <Package className="w-3 h-3 text-muted-foreground shrink-0" />
-                          <span>{p.name}</span>
-                        </span>
-                        <span className="text-muted-foreground text-[10px]">
-                          {new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", maximumFractionDigits: 0 }).format(p.unit_price ?? 0)} · Stock: {p.current_stock}
-                        </span>
-                      </button>
-                    ))}
-                    {filteredProducts.length === 0 && (
-                      <p className="text-[10px] text-muted-foreground text-center py-2">Sin productos activos.</p>
-                    )}
-                  </div>
+                  <ProductPicker
+                    open={showProductPicker}
+                    onOpenChange={setShowProductPicker}
+                    onSelect={(product) => {
+                      setLines(prev => [...prev, {
+                        product_id: product.id,
+                        name: product.name,
+                        description: product.description,
+                        quantity: 1,
+                        unit_price: product.unit_price,
+                        tax_rate: 13,
+                      }]);
+                    }}
+                  />
                 )}
 
                 {/* Line items table */}
