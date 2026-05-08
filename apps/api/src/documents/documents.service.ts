@@ -121,7 +121,8 @@ export class DocumentsService {
     const ext = file.originalname.split('.').pop() || 'bin';
     const key = `attachments/${workspaceId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     await this.storage.upload(key, file.buffer, file.mimetype);
-    const url = `/api/storage/file/${encodeURIComponent(key)}`;
+    const base = process.env.PUBLIC_URL ?? '';
+    const url = base ? `${base}/api/storage/file/${key}` : `/api/storage/file/${key}`;
     return { url };
   }
 
