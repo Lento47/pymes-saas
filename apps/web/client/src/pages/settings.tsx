@@ -1587,6 +1587,12 @@ function ChannelsTab() {
     queryFn: () => api.getChannels(),
   });
 
+  const { data: inactiveData } = useQuery({
+    queryKey: ["/api/channels", "inactive"],
+    queryFn: () => api.getChannels("include_inactive=true"),
+  });
+  const inactiveChannels = Array.isArray(inactiveData) ? inactiveData.filter((c: any) => c.status === "INACTIVE") : [];
+
   const create = useMutation({
     mutationFn: () => api.createChannel({ name, type }),
     onSuccess: () => {
@@ -1775,6 +1781,46 @@ function ChannelsTab() {
             <p className="text-sm text-muted-foreground text-center py-8">
               Sin canales — creá uno con el botón de arriba
             </p>
+      )}
+
+      {inactiveChannels.length > 0 && (
+        <details className="mt-4 group">
+          <summary className="text-xs text-muted-foreground/60 cursor-pointer hover:text-muted-foreground transition-colors select-none">
+            Canales eliminados ({inactiveChannels.length})
+          </summary>
+          <div className="mt-2 space-y-2">
+            {inactiveChannels.map((ch: any) => {
+              const Icon = CHANNEL_ICONS[ch.type] ?? Radio;
+              return (
+                <div key={ch.id} className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-border/50 opacity-70">
+                  <div className="flex items-center gap-3">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">{ch.name}</p>
+                      <Badge variant="outline" className={`text-xs mt-0.5 ${CHANNEL_TYPE_COLORS[ch.type] ?? ""}`}>
+                        {ch.type}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-red-400 border-red-500/30 text-xs">
+                      Inactivo
+                    </Badge>
+                    <Button size="sm" variant="outline"
+                      className="h-7 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                      onClick={() => api.connectChannel(ch.id).then(() => {
+                        qc.invalidateQueries({ queryKey: ["/api/channels"] });
+                        qc.invalidateQueries({ queryKey: ["/api/channels", "inactive"] });
+                      })}
+                    >
+                      <Plug className="h-3 w-3 mr-1" />Reactivar
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </details>
       )}
 
     </div>
