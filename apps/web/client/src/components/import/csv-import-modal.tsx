@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 interface Props {
   open: boolean;
   onClose: () => void;
-  entityType: "contacts" | "invoices" | "pipeline";
+  entityType: "contacts" | "invoices" | "pipeline" | "products";
 }
 
 const CONTACT_FIELDS: { key: string; label: string }[] = [
@@ -22,6 +22,18 @@ const CONTACT_FIELDS: { key: string; label: string }[] = [
   { key: "phone", label: "Teléfono" },
   { key: "company_name", label: "Empresa" },
   { key: "tags", label: "Etiquetas" },
+];
+
+const PRODUCT_FIELDS: { key: string; label: string }[] = [
+  { key: "name", label: "Nombre" },
+  { key: "sku", label: "SKU" },
+  { key: "unit_price", label: "Precio Unitario" },
+  { key: "cost_price", label: "Costo" },
+  { key: "current_stock", label: "Stock Actual" },
+  { key: "min_stock", label: "Stock Mínimo" },
+  { key: "category", label: "Categoría" },
+  { key: "unit_of_measure", label: "Unidad de Medida" },
+  { key: "description", label: "Descripción" },
 ];
 
 export default function CsvImportModal({ open, onClose, entityType }: Props) {
@@ -36,13 +48,15 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
   const [allRows, setAllRows] = useState<Record<string, string>[]>([]);
   const [result, setResult] = useState<{ imported: number; skipped: number; errors: any[] } | null>(null);
   const workspaceId = user?.workspace?.id ?? "";
+  const entityLabel = entityType === "products" ? "Productos" : entityType === "invoices" ? "Facturas" : entityType === "pipeline" ? "Pipeline" : "Contactos";
+  const fields = entityType === "products" ? PRODUCT_FIELDS : CONTACT_FIELDS;
 
   const parseMutation = useMutation({
     mutationFn: async (f: File) => {
       const form = new FormData();
       form.append("file", f);
       const token = getAuthToken();
-      const res = await fetch(`/api/import/contacts/parse/${workspaceId}`, {
+      const res = await fetch(`/api/import/${entityType}/parse/${workspaceId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: form,
@@ -63,7 +77,7 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
   const confirmMutation = useMutation({
     mutationFn: async () => {
       const token = getAuthToken();
-      const res = await fetch(`/api/import/contacts/confirm/${workspaceId}`, {
+      const res = await fetch(`/api/import/${entityType}/confirm/${workspaceId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ mapping, rows: allRows }),
@@ -74,7 +88,7 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
     onSuccess: (data) => {
       setResult(data);
       setStep("done");
-      toast({ title: `${data.imported} contactos importados` });
+      toast({ title: `${data.imported} ${entityType === "products" ? "productos" : "contactos"} importados` });
     },
     onError: () => toast({ title: "Error", description: "Fallo la importación", variant: "destructive" }),
   });
@@ -94,12 +108,12 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
     setStep("upload"); setFile(null); setHeaders([]); setMapping({}); setPreviewRows([]); setAllRows([]); setResult(null);
   };
 
-  const availableFields = CONTACT_FIELDS.filter((f) => !Object.values(mapping).includes(headers.find((h) => h) ?? ""));
+  const availableFields = fields.filter((f) => !Object.values(mapping).includes(headers.find((h) => h) ?? ""));
 
   return (
     <Dialog open={open} onOpenChange={() => { onClose(); reset(); }}>
       <DialogContent className="bg-card border-border max-w-2xl">
-        <DialogHeader><DialogTitle className="text-foreground">Importar {entityType === "contacts" ? "Contactos" : entityType === "invoices" ? "Facturas" : "Pipeline"} desde CSV</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="text-foreground">Importar {entityLabel} desde CSV</DialogTitle></DialogHeader>
 
         {/* Step 1: Upload */}
         {step === "upload" && (
@@ -121,7 +135,7 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
           <div className="space-y-4">
             <p className="text-xs text-muted-foreground">Asigna las columnas del CSV a los campos de PymeHub:</p>
             <div className="grid gap-2">
-              {CONTACT_FIELDS.map((field) => (
+              {fields.map((field) => (
                 <div key={field.key} className="flex items-center gap-3">
                   <span className="text-xs text-muted-foreground w-32">{field.label}</span>
                   <span className="text-xs text-foreground">←</span>
@@ -158,14 +172,14 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
             <div className="rounded-lg border border-border overflow-hidden max-h-48 overflow-y-auto">
               <table className="w-full text-xs">
                 <thead className="bg-[hsl(var(--elevated))] sticky top-0">
-                  <tr>{CONTACT_FIELDS.filter((f) => mapping[f.key]).map((f) => (
+                  <tr>{fields.filter((f) => mapping[f.key]).map((f) => (
                     <th key={f.key} className="text-left px-3 py-2 text-muted-foreground">{f.label}</th>
                   ))}</tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
                   {previewRows.map((row, i) => (
                     <tr key={i}>
-                      {CONTACT_FIELDS.filter((f) => mapping[f.key]).map((f) => (
+                      {fields.filter((f) => mapping[f.key]).map((f) => (
                         <td key={f.key} className="px-3 py-1.5 text-foreground truncate max-w-[200px]">{row[mapping[f.key]] ?? "—"}</td>
                       ))}
                     </tr>
@@ -177,7 +191,7 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
               <Button variant="outline" size="sm" onClick={() => setStep("map")}>Volver</Button>
               <Button onClick={() => confirmMutation.mutate()} disabled={confirmMutation.isPending} size="sm" className="gap-1.5">
                 {confirmMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                Importar {allRows.length} contactos
+                Importar {allRows.length} {entityType === "products" ? "productos" : entityType === "invoices" ? "facturas" : "contactos"}
               </Button>
             </div>
           </div>

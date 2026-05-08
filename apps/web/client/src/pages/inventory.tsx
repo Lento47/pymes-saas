@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Grid3X3, List, ArrowUpDown, Package, ChevronDown, Loader2, Minus } from "lucide-react";
+import { Search, Plus, Grid3X3, List, ArrowUpDown, Package, ChevronDown, Loader2, Minus, Upload } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { ProductDrawer } from "@/components/inventory/ProductDrawer";
 import { CategoryChips } from "@/components/inventory/CategoryChips";
 import { StockBar } from "@/components/inventory/StockBar";
 import { cn } from "@/lib/utils";
+import CsvImportModal from "@/components/import/csv-import-modal";
 
 type SortKey = "name" | "price" | "stock" | "created";
 
@@ -33,6 +34,7 @@ export default function InventoryPage() {
   const [adjusting, setAdjusting] = useState<any>(null);
   const [adjustQty, setAdjustQty] = useState(0);
   const [adjustReason, setAdjustReason] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
 
   const limit = viewMode === "grid" ? 24 : 20;
 
@@ -124,6 +126,9 @@ export default function InventoryPage() {
             </Link>
             <Button size="sm" className="h-9" onClick={() => { setEditingProduct(null); setDrawerOpen(true); }}>
               <Plus className="h-4 w-4 mr-1" />Nuevo
+            </Button>
+            <Button variant="outline" size="sm" className="h-9" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-1" />Importar CSV
             </Button>
           </div>
         </div>
@@ -262,6 +267,8 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
+
+      <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} entityType="products" />
     </div>
   );
 }
