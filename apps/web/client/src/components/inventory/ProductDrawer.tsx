@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface Props {
   open: boolean;
@@ -14,12 +15,16 @@ interface Props {
   isSaving: boolean;
   product?: any;
   categories: any[];
+  onCategoryCreated?: (cat: any) => void;
 }
 
 const EMPTY = { name: "", sku: "", description: "", type: "PRODUCT", unit_price: 0, cost_price: 0, min_stock: 0, unit_of_measure: "", track_inventory: true, category_id: "" };
 
-export function ProductDrawer({ open, onClose, onSave, isSaving, product, categories }: Props) {
+export function ProductDrawer({ open, onClose, onSave, isSaving, product, categories, onCategoryCreated }: Props) {
   const [form, setForm] = useState({ ...EMPTY });
+  const [newCatName, setNewCatName] = useState("");
+  const [creatingCat, setCreatingCat] = useState(false);
+  const [showNewCat, setShowNewCat] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -67,13 +72,51 @@ export function ProductDrawer({ open, onClose, onSave, isSaving, product, catego
 
           <div className="space-y-1.5">
             <Label className="text-[11px]">Categoría</Label>
-            <Select value={form.category_id} onValueChange={v => setForm({ ...form, category_id: v })}>
+            <Select value={form.category_id} onValueChange={v => {
+              if (v === "__new__") { setShowNewCat(true); return; }
+              setForm({ ...form, category_id: v });
+            }}>
               <SelectTrigger className="h-9 text-xs bg-background border-border"><SelectValue placeholder="Sin categoría" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Sin categoría</SelectItem>
                 {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                <SelectItem value="__new__" className="text-primary font-medium">+ Nueva categoría</SelectItem>
               </SelectContent>
             </Select>
+            {showNewCat && (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <Input
+                  value={newCatName}
+                  onChange={e => setNewCatName(e.target.value)}
+                  placeholder="Nombre de la categoría"
+                  className="h-8 text-xs bg-background border-border flex-1"
+                  autoFocus
+                />
+                <Button
+                  size="sm"
+                  className="h-8 text-[10px] gap-1 shrink-0"
+                  disabled={!newCatName.trim() || creatingCat}
+                  onClick={async () => {
+                    if (!newCatName.trim()) return;
+                    setCreatingCat(true);
+                    try {
+                      const cat = await api.createCategory({ name: newCatName.trim() });
+                      setForm({ ...form, category_id: cat.id });
+                      setNewCatName("");
+                      setShowNewCat(false);
+                      if (onCategoryCreated) onCategoryCreated(cat);
+                    } catch {
+                      // silently fail, user retries
+                    } finally {
+                      setCreatingCat(false);
+                    }
+                  }}
+                >
+                  {creatingCat ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                  Crear
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">

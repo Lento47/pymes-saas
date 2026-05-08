@@ -238,6 +238,7 @@ export default function InventoryPage() {
         isSaving={createMut.isPending || updateMut.isPending}
         product={editingProduct}
         categories={catList}
+        onCategoryCreated={() => qc.invalidateQueries({ queryKey: ["inventory-categories"] })}
       />
 
       {/* Stock adjust dialog */}
