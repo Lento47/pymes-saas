@@ -248,4 +248,21 @@ export class AuthController {
       user: result.user,
     };
   }
+
+  // ── Telegram Login Widget ─────────────────────────────────────────────────
+
+  @Post('telegram/token')
+  @HttpCode(HttpStatus.OK)
+  async telegramTokenLogin(@Body() data: any) {
+    const profile = await this.authService.verifyTelegramAuth(data);
+    const result = await this.authService.telegramLogin(profile);
+    const code = this.authService.mintSsoExchangeCode(result.user.id, result.user.workspace.id);
+    return {
+      code,
+      slug: result.user.workspace.slug,
+      access_token: result.access_token,
+      refresh_token: result.refresh_token,
+      user: result.user,
+    };
+  }
 }
