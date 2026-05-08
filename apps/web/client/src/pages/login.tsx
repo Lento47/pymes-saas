@@ -151,6 +151,29 @@ export default function LoginPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Initialize Telegram widget — attach data-telegram-login to div for SPA rendering
+  useEffect(() => {
+    const el = document.getElementById('telegram-login-btn');
+    if (!el) return;
+    el.setAttribute('data-telegram-login', 'HubbyBotOficial');
+    el.setAttribute('data-size', 'large');
+    el.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    el.setAttribute('data-request-access', 'write');
+    // Telegram script is loaded in index.html. Force widget re-scan.
+    const tryInit = () => {
+      const tw: any = (window as any).Telegram;
+      if (tw?.Login?.init) tw.Login.init();
+      else if (tw?.Login?.widget?.render) tw.Login.widget.render();
+    };
+    // Retry a few times as the script loads asynchronously
+    let attempts = 0;
+    const timer = setInterval(() => {
+      tryInit();
+      if (++attempts > 10) clearInterval(timer);
+    }, 500);
+    return () => clearInterval(timer);
+  }, []);
+
   // Telegram Login Widget callback — fires when user completes auth
   useEffect(() => {
     (window as any).onTelegramAuth = (user: any) => {
@@ -363,16 +386,14 @@ export default function LoginPage() {
                 <span className="text-sm text-white/70">{copy.orContinueWith}</span>
                 <div className="h-px flex-1 bg-indigo-400/20" />
               </div>
-              {/* Facebook SDK widget — visible */}
-              <div
-                className="fb-login-button mt-3 w-full"
-                data-config-id="1375303354406780"
-                data-size="large"
-                data-button-type="continue_with"
-                data-layout="default"
-                data-scope="public_profile"
-                data-onlogin="window.handleFbLogin()"
-              />
+              {/* Facebook circular — uses FB.login() with config_id */}
+              <button type="button"
+                onClick={() => FB.login((resp: any) => { if (resp?.authResponse) window.handleFbLogin(); }, { config_id: '1375303354406780', scope: 'public_profile' })}
+                className="mt-3 bg-[#1877F2] font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full px-6 py-4 text-lg font-semibold text-white transition hover:translate-y-[-1px] hover:bg-[#166fe5] cursor-pointer border-none"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                {copy.facebookLogin}
+              </button>
 
               {/* Telegram Login Widget — visible */}
               <div className="mt-4 flex justify-center">
