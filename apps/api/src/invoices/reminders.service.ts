@@ -60,6 +60,7 @@ export class RemindersService {
         workspace_id: workspaceId,
         status: InvoiceStatus.OVERDUE,
       },
+      take: 100,
       include: {
         contact: {
           select: {
@@ -69,7 +70,8 @@ export class RemindersService {
             phone: true,
           },
         },
-        payments: true,
+        payments: {
+          take: 10,
         reminders: {
           orderBy: { created_at: 'desc' },
           take: 1,

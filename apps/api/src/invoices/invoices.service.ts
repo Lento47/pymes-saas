@@ -712,6 +712,7 @@ export class InvoicesService {
       },
       payments: {
         orderBy: { paid_at: 'desc' as const },
+        take: 5,
         include: {
           recorded_by_user: {
             select: {
@@ -724,6 +725,7 @@ export class InvoicesService {
       },
       lines: {
         orderBy: { line_number: 'asc' as const },
+        take: 50,
       },
     };
   }

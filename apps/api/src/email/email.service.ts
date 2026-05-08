@@ -233,19 +233,28 @@ export class EmailService {
       return { workspaceId: null, channel: null };
     }
 
-    // Find all channels with this email address
-    const allChannels = await this.prisma.channel.findMany({
+    // Match by inbound_email or from_email via JSON path query — lets DB do the filtering
+    // Fallback to fetch-all+loop if JSON path isn't supported
+    let channel = await this.prisma.channel.findFirst({
       where: {
         type: 'EMAIL',
         status: 'ACTIVE',
+        OR: [
+          { config_json: { path: ['inbound_email'], equals: toAddress } },
+          { config_json: { path: ['from_email'], equals: toAddress } },
+        ],
       },
     });
+    if (channel) return { workspaceId: channel.workspace_id, channel };
 
-    // Match by inbound_email or from_email
-    for (const channel of allChannels) {
-      const config = parseJsonValue<EmailChannelConfig>(channel.config_json, {} as EmailChannelConfig);
+    // Fallback: scan all email channels (legacy, for unmigrated config_json)
+    const allChannels = await this.prisma.channel.findMany({
+      where: { type: 'EMAIL', status: 'ACTIVE' },
+    });
+    for (const ch of allChannels) {
+      const config = parseJsonValue<EmailChannelConfig>(ch.config_json, {} as EmailChannelConfig);
       if (config.inbound_email === toAddress || config.from_email === toAddress) {
-        return { workspaceId: channel.workspace_id, channel };
+        return { workspaceId: ch.workspace_id, channel: ch };
       }
     }
 
