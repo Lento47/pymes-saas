@@ -266,7 +266,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
-                  onClick={() => { setInvoiceForm({ number: "", amount: "", currency: "USD", due_date: "", description: "", subtotal: "", tax_rate: "13", tax_amount: "" }); setShowInvoice(true); }}
+                  onClick={() => { setInvoiceForm({ number: "", currency: "USD", due_date: "", description: "" }); setLines([]); setShowInvoice(true); }}
                   title="Factura">
                   <Receipt className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
