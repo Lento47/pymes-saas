@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
@@ -40,8 +41,11 @@ export class ChannelsController {
 
   @Get()
   @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
-  findAll(@CurrentUser('workspace_id') workspaceId: string) {
-    return this.channelsService.findAll(workspaceId);
+  findAll(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Query('include_inactive') includeInactive?: string,
+  ) {
+    return this.channelsService.findAll(workspaceId, includeInactive === 'true');
   }
 
   @Get('whatsapp-config')

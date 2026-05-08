@@ -47,9 +47,11 @@ export class ChannelsService {
     });
   }
 
-  async findAll(workspaceId: string) {
+  async findAll(workspaceId: string, includeInactive = false) {
+    const where: any = { workspace_id: workspaceId };
+    if (!includeInactive) where.status = { not: 'INACTIVE' };
     const channels = await this.prisma.channel.findMany({
-      where:   { workspace_id: workspaceId },
+      where,
       orderBy: { created_at: 'asc' },
     });
     return channels.map(ch => this.sanitise(ch));
