@@ -7,7 +7,7 @@ import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   ArrowLeft, Send, Loader2, MessageCircle, CheckCircle2, RefreshCw,
-  Trash2, UserPlus, Info, Receipt,
+  Trash2, UserPlus, Info, Receipt, Plus, X, Package, Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -110,12 +110,21 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   });
 
   const [showInvoice, setShowInvoice] = useState(false);
-  const [invoiceForm, setInvoiceForm] = useState({ number: "", amount: "", currency: "USD", due_date: "", description: "", subtotal: "", tax_rate: "13", tax_amount: "" });
+  const [showProductPicker, setShowProductPicker] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [invoiceForm, setInvoiceForm] = useState({ number: "", currency: "USD", due_date: "", description: "" });
+  const [lines, setLines] = useState<Array<{ product_id?: string; name: string; description: string; quantity: number; unit_price: number; tax_rate: number }>>([]);
 
-  const taxRate = Number(invoiceForm.tax_rate) || 0;
-  const subtotalNum = Number(invoiceForm.subtotal) || Number(invoiceForm.amount) || 0;
-  const autoTax = taxRate > 0 ? (subtotalNum * taxRate / 100).toFixed(2) : "0.00";
-  const autoTotal = taxRate > 0 ? (subtotalNum + Number(autoTax)).toFixed(2) : subtotalNum.toFixed(2);
+  // ── Product picker query ──────────────────────────────────────────────────
+  const { data: productsData } = useQuery({
+    queryKey: ["product-picker"],
+    queryFn: () => api.getProducts("limit=100"),
+    enabled: showProductPicker,
+  });
+  const products: any[] = Array.isArray(productsData) ? productsData : productsData?.data ?? [];
+  const filteredProducts = productSearch
+    ? products.filter((p: any) => p.is_active !== false && (p.name?.toLowerCase().includes(productSearch.toLowerCase()) || p.sku?.toLowerCase().includes(productSearch.toLowerCase())))
+    : products.filter((p: any) => p.is_active !== false);
 
   const { data: invoicesData } = useQuery({
     queryKey: ["conversation-invoices", id],
@@ -124,24 +133,34 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   });
   const invoiceList: any[] = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
 
+  const lineSubtotals = lines.map(l => l.quantity * l.unit_price);
+  const lineTaxes = lines.map((l, i) => lineSubtotals[i] * (l.tax_rate / 100));
+  const totalAmount = lineSubtotals.reduce((s, v) => s + v, 0) + lineTaxes.reduce((s, v) => s + v, 0);
+
   const createInvMut = useMutation({
     mutationFn: () => api.createInvoice({
       contact_id: conversation?.contact?.id,
       conversation_id: id,
       number: invoiceForm.number,
-      amount: Number(taxRate > 0 ? autoTotal : (invoiceForm.amount || "0")),
+      amount: totalAmount,
       currency: invoiceForm.currency,
       due_date: invoiceForm.due_date,
       description: invoiceForm.description,
-      subtotal: taxRate > 0 ? subtotalNum : undefined,
-      tax_rate: taxRate > 0 ? taxRate : undefined,
-      tax_amount: taxRate > 0 ? Number(autoTax) : undefined,
+      lines: lines.length > 0 ? lines.map((l, i) => ({
+        line_number: i + 1,
+        description: l.description || l.name,
+        quantity: l.quantity,
+        unit_price: l.unit_price,
+        tax_rate: l.tax_rate > 0 ? l.tax_rate : undefined,
+        product_id: l.product_id || undefined,
+      })) : undefined,
       notes: [],
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["conversation-invoices", id] });
       setShowInvoice(false);
-      setInvoiceForm({ number: "", amount: "", currency: "USD", due_date: "", description: "", subtotal: "", tax_rate: "13", tax_amount: "" });
+      setLines([]);
+      setInvoiceForm({ number: "", currency: "USD", due_date: "", description: "" });
       toast({ title: "Factura creada" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -173,7 +192,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const contact = conversation?.contact;
   const contactName = contact?.full_name || "Desconocido";
   const channelType = conversation?.channel?.type || "";
-  const canSendInvoice = ["EMAIL", "WHATSAPP"].includes(channelType.toUpperCase());
+  const canSendInvoice = ["EMAIL", "WHATSAPP", "TELEGRAM"].includes(channelType.toUpperCase());
 
   useEffect(() => {
     if (bottomRef.current) bottomRef.current.scrollIntoView({ behavior: "auto" });
@@ -353,11 +372,16 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                       <div className="text-[11px] text-muted-foreground">
                         {new Intl.NumberFormat("es-CR", { style: "currency", currency: inv.currency, maximumFractionDigits: 0 }).format(inv.amount || 0)} · <StatusBadge status={inv.status} type="invoice" className="inline" />
                       </div>
+                      {inv.lines?.length > 0 && (
+                        <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                          {inv.lines.map((l: any) => l.product?.name || l.description).join(", ")}
+                        </div>
+                      )}
                     </div>
-                    {Number(inv.balance_due ?? 0) > 0 && canSendInvoice && (
+                    {canSendInvoice && (
                       <Button size="sm" className="h-7 text-[11px] gap-1" onClick={() => sendInvMut.mutate(inv)} disabled={sendInvMut.isPending}>
                         {sendInvMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                        Enviar
+                        {Number(inv.balance_due ?? 0) > 0 ? "Enviar" : "Reenviar"}
                       </Button>
                     )}
                   </div>
@@ -381,31 +405,99 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                   <Input value={invoiceForm.currency} onChange={e => setInvoiceForm(p => ({ ...p, currency: e.target.value.toUpperCase() }))} className="h-7 text-xs bg-background border-border" placeholder="USD" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[11px]">Subtotal</Label>
-                  <Input type="number" step="0.01" value={invoiceForm.subtotal} onChange={e => setInvoiceForm(p => ({ ...p, subtotal: e.target.value }))} className="h-7 text-xs bg-background border-border" placeholder={invoiceForm.amount || "0"} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px]">IVA %</Label>
-                  <Input type="number" step="0.01" value={invoiceForm.tax_rate} onChange={e => setInvoiceForm(p => ({ ...p, tax_rate: e.target.value }))} className="h-7 text-xs bg-background border-border" placeholder="0" />
-                </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">Vencimiento</Label>
+                <Input type="date" value={invoiceForm.due_date} onChange={e => setInvoiceForm(p => ({ ...p, due_date: e.target.value }))} className="h-7 text-xs bg-background border-border" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[11px]">Impuesto</Label>
-                  <Input value={autoTax} disabled className="h-7 text-xs bg-muted border-border" />
+
+              {/* Line items */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px]">Productos / Líneas</Label>
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={() => { setShowProductPicker(true); setProductSearch(""); }}>
+                    <Plus className="w-3 h-3" />Agregar
+                  </Button>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px]">Total</Label>
-                  <Input value={autoTotal} disabled className="h-7 text-xs bg-muted border-border font-medium" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[11px]">Vencimiento</Label>
-                  <Input type="date" value={invoiceForm.due_date} onChange={e => setInvoiceForm(p => ({ ...p, due_date: e.target.value }))} className="h-7 text-xs bg-background border-border" />
-                </div>
+
+                {/* Product picker panel */}
+                {showProductPicker && (
+                  <div className="rounded-lg border border-border bg-background p-2 max-h-40 overflow-y-auto space-y-1">
+                    <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background pb-1">
+                      <Search className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <input
+                        className="flex-1 text-[10px] bg-transparent border-none outline-none placeholder:text-muted-foreground/50"
+                        placeholder="Buscar producto..."
+                        value={productSearch}
+                        onChange={e => setProductSearch(e.target.value)}
+                        autoFocus
+                      />
+                      <button onClick={() => setShowProductPicker(false)} className="text-muted-foreground hover:text-foreground"><X className="w-3 h-3" /></button>
+                    </div>
+                    {filteredProducts.slice(0, 20).map((p: any) => (
+                      <button
+                        key={p.id}
+                        className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-[11px] flex items-center justify-between transition-colors"
+                        onClick={() => {
+                          setLines(prev => [...prev, {
+                            product_id: p.id,
+                            name: p.name,
+                            description: p.name,
+                            quantity: 1,
+                            unit_price: Number(p.unit_price ?? 0),
+                            tax_rate: 13,
+                          }]);
+                          setShowProductPicker(false);
+                        }}
+                      >
+                        <span className="flex items-center gap-2">
+                          <Package className="w-3 h-3 text-muted-foreground shrink-0" />
+                          <span>{p.name}</span>
+                        </span>
+                        <span className="text-muted-foreground text-[10px]">
+                          {new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", maximumFractionDigits: 0 }).format(p.unit_price ?? 0)} · Stock: {p.current_stock}
+                        </span>
+                      </button>
+                    ))}
+                    {filteredProducts.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground text-center py-2">Sin productos activos.</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Line items table */}
+                {lines.length > 0 && (
+                  <div className="space-y-1 mt-2">
+                    {lines.map((line, i) => {
+                      const lineSubtotal = line.quantity * line.unit_price;
+                      const lineTax = lineSubtotal * (line.tax_rate / 100);
+                      return (
+                        <div key={i} className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5">
+                          <span className="text-[10px] text-muted-foreground w-4 shrink-0">{i + 1}.</span>
+                          <span className="text-[11px] flex-1 truncate">{line.name}</span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <input type="number" min="1" value={line.quantity} onChange={e => {
+                              const q = Math.max(1, parseInt(e.target.value) || 1);
+                              setLines(prev => prev.map((l, j) => j === i ? { ...l, quantity: q } : l));
+                            }} className="w-10 h-6 text-[10px] text-center bg-background border border-border rounded" />
+                            <span className="text-[9px] text-muted-foreground">×</span>
+                            <input type="number" min="0" step="any" value={line.unit_price} onChange={e => {
+                              setLines(prev => prev.map((l, j) => j === i ? { ...l, unit_price: Number(e.target.value) || 0 } : l));
+                            }} className="w-16 h-6 text-[10px] text-right bg-background border border-border rounded" />
+                            <span className="text-[10px] text-muted-foreground w-16 text-right truncate">
+                              = {new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC" }).format(lineSubtotal + lineTax)}
+                            </span>
+                            <button onClick={() => setLines(prev => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-red-400 shrink-0">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="text-[11px] font-semibold text-right px-1 pt-1">
+                      Total: {new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC" }).format(totalAmount)}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-1">
                 <Label className="text-[11px]">Descripción</Label>
@@ -419,7 +511,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
             {conversation?.contact?.id && (
               <Button size="sm" className="h-8 text-xs"
                 onClick={() => createInvMut.mutate()}
-                disabled={!invoiceForm.number.trim() || (!Number(autoTotal) && !Number(invoiceForm.amount)) || !invoiceForm.due_date || createInvMut.isPending}>
+                disabled={!invoiceForm.number.trim() || totalAmount <= 0 || !invoiceForm.due_date || createInvMut.isPending}>
                 {createInvMut.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null}
                 Guardar factura
               </Button>
