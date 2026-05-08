@@ -82,6 +82,8 @@ export class MessagesService {
         body_text: dto.body_text,
         body_html: dto.body_html,
         sent_at: new Date(),
+        message_type: (dto as any).media_type || undefined,
+        media_url: dto.media_url || undefined,
       },
       include: {
         sender_user: { select: { id: true, name: true, avatar_url: true } },

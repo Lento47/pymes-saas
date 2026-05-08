@@ -1,5 +1,6 @@
 import { WorkspaceUserRole } from '@prisma/client';
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -66,6 +67,24 @@ export class DocumentsController {
           { contact_id, conversation_id, task_id },
         )
       );
+  }
+
+  // ── Attachments (inbox media) ─────────────────────────────────────────
+
+  @Post('upload-attachment')
+  @Roles(WorkspaceUserRole.AGENT)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB max for WhatsApp/Email attachments
+    }),
+  )
+  async uploadAttachment(
+    @CurrentUser() user: AuthUser,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('Archivo requerido');
+    return this.service.uploadAttachment(user.workspace_id, user.id, file);
   }
 
   @Get()

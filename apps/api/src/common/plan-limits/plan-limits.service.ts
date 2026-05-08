@@ -48,6 +48,7 @@ interface PlanLimits {
   products: number | 'custom';
   product_categories: number | 'custom';
   diagnostics_per_day: number | 'custom';
+  media_messages_per_day: number | 'custom';
 }
 
 export type { PlanLimits };
@@ -64,7 +65,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invite_codes: 3,
     products: 50,
     product_categories: 5,
-    diagnostics_per_day: 3,
+    diagnostics_per_day: 4,
+    media_messages_per_day: 0,
   },
   STARTER: {
     users: 1,
@@ -78,6 +80,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     products: 300,
     product_categories: 20,
     diagnostics_per_day: 10,
+    media_messages_per_day: 0,
   },
   GROWTH: {
     users: 5,
@@ -90,7 +93,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     invite_codes: 50,
     products: 1500,
     product_categories: 50,
-    diagnostics_per_day: 30,
+    diagnostics_per_day: 40,
+    media_messages_per_day: 10,
   },
   BUSINESS: {
     users: 15,
@@ -104,20 +108,21 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     products: 10000,
     product_categories: 200,
     diagnostics_per_day: 100,
+    media_messages_per_day: 50,
   },
   ENTERPRISE: {
     users: 15, automations: 100, contacts: 15_000, documents: 5_000,
     invoices_per_month: 2_000, storage_bytes: 50 * 1024 * 1024 * 1024,
     locations: 3, invite_codes: 200,
     products: 10000, product_categories: 200,
-    diagnostics_per_day: 100,
+    diagnostics_per_day: 100, media_messages_per_day: 200,
   },
   BUSINESS_PLUS: {
     users: 'custom', automations: 'custom', contacts: 'custom', documents: 'custom',
     invoices_per_month: 'custom', storage_bytes: 'custom',
     locations: 'custom', invite_codes: 'custom',
     products: 'custom', product_categories: 'custom',
-    diagnostics_per_day: 'custom',
+    diagnostics_per_day: 'custom', media_messages_per_day: 'custom',
   },
 };
 
@@ -354,6 +359,18 @@ export class PlanLimitsService {
       case 'locations':
         // Count unique location-like data points (canton/province combos on contacts)
         return 1; // Simplified — real implementation would count locations
+      case 'media_messages_per_day': {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return this.prisma.message.count({
+          where: {
+            workspace_id: workspaceId,
+            direction: 'OUTBOUND',
+            created_at: { gte: today },
+            message_type: { not: null },
+          },
+        });
+      }
       default:
         return 0;
     }
@@ -545,6 +562,7 @@ function resourceKeyToString(key: keyof PlanLimits): string {
     invoices_per_month: 'facturas por mes',
     storage_bytes: 'almacenamiento',
     locations: 'ubicaciones',
+    media_messages_per_day: 'archivos multimedia por día',
   };
   return map[key] || key;
 }

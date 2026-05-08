@@ -64,6 +64,87 @@ export class WhatsAppService {
     return { message_id: data.messages?.[0]?.id ?? 'unknown' };
   }
 
+  async sendMedia(
+    channel: any,
+    to: string,
+    mediaUrl: string,
+    mediaType: 'image' | 'document',
+    caption?: string,
+  ): Promise<{ message_id: string }> {
+    const raw = channel.config_json;
+    const cfg: any = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : (raw || {});
+    if (!cfg?.access_token_encrypted) {
+      throw new BadGatewayException('WhatsApp access token no configurado.');
+    }
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    // Step 1: Download file from our storage
+    const fileRes = await fetch(mediaUrl);
+    if (!fileRes.ok) throw new BadGatewayException('No se pudo descargar el archivo.');
+    const fileBuffer = Buffer.from(await fileRes.arrayBuffer());
+    const contentType = fileRes.headers.get('content-type') || 'application/octet-stream';
+
+    // Step 2: Upload to Meta Media API using multipart/form-data
+    const boundary = `----WhatsApp${Date.now()}${Math.random().toString(36).slice(2)}`;
+    const CRLF = '\r\n';
+    let body = '';
+    body += `--${boundary}${CRLF}`;
+    body += `Content-Disposition: form-data; name="messaging_product"${CRLF}${CRLF}whatsapp${CRLF}`;
+    body += `--${boundary}${CRLF}`;
+    body += `Content-Disposition: form-data; name="type"${CRLF}${CRLF}${contentType}${CRLF}`;
+    body += `--${boundary}${CRLF}`;
+    body += `Content-Disposition: form-data; name="file"; filename="${mediaType === 'image' ? 'image' : 'document'}"${CRLF}`;
+    body += `Content-Type: ${contentType}${CRLF}${CRLF}`;
+    const bodyEnd = `${CRLF}--${boundary}--${CRLF}`;
+    const bodyBuffer = Buffer.concat([
+      Buffer.from(body, 'utf-8'),
+      fileBuffer,
+      Buffer.from(bodyEnd, 'utf-8'),
+    ]);
+
+    const uploadRes = await fetch(`${META_API_BASE}/${phoneNumberId}/media`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      },
+      body: bodyBuffer,
+      signal: AbortSignal.timeout(30_000),
+    });
+    const uploadData: any = await uploadRes.json();
+    if (!uploadRes.ok || !uploadData.id) {
+      this.logger.error('Meta media upload failed:', JSON.stringify(uploadData));
+      throw new BadGatewayException(uploadData?.error?.message ?? 'Error subiendo archivo a WhatsApp.');
+    }
+    const mediaId = uploadData.id;
+
+    // Step 3: Send message with media_id
+    const msgPayload: any = {
+      messaging_product: 'whatsapp',
+      to,
+      type: mediaType,
+      [mediaType]: { id: mediaId },
+    };
+    if (caption) msgPayload[mediaType].caption = caption;
+
+    const sendRes = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(msgPayload),
+      signal: AbortSignal.timeout(10_000),
+    });
+    const sendData: any = await sendRes.json();
+    if (!sendRes.ok) {
+      this.logger.error('Meta media send failed:', JSON.stringify(sendData));
+      throw new BadGatewayException(sendData?.error?.message ?? 'Error enviando archivo por WhatsApp.');
+    }
+    return { message_id: sendData.messages?.[0]?.id ?? 'unknown' };
+  }
+
   async sendTemplateMessage(
     channel: any,
     to: string,

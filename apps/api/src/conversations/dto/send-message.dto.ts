@@ -21,4 +21,12 @@ export class SendMessageDto {
   @IsOptional()
   @IsObject()
   template_variables?: Record<string, string>;
+
+  @IsOptional()
+  @IsString()
+  media_url?: string;
+
+  @IsOptional()
+  @IsString()
+  media_type?: string;
 }
