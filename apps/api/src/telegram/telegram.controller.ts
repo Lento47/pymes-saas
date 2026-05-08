@@ -14,6 +14,14 @@ export class TelegramController {
   constructor(private readonly telegramService: TelegramService) {}
 
   /**
+   * Health check for webhook verification — Telegram calls GET before activating webhook
+   */
+  @Get('webhook/:channelId')
+  webhookHealthCheck(@Param('channelId') channelId: string) {
+    return { status: 'ok', channelId };
+  }
+
+  /**
    * Webhook endpoint for Telegram updates
    * This is called by Telegram servers when messages arrive
    * Should return 200 OK immediately to avoid timeouts
