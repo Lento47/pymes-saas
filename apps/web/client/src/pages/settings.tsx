@@ -1679,6 +1679,7 @@ function ChannelsTab() {
           {channels.map((ch: any) => {
             const Icon = CHANNEL_ICONS[ch.type] ?? Radio;
             const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
+            const isInactive = ch.status === "INACTIVE";
             const canConnect = ch.status !== "ACTIVE" && !needsConfig;
             const isActive = ch.status === "ACTIVE";
             const canEdit = isActive && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
@@ -1704,6 +1705,16 @@ function ChannelsTab() {
                   }>
                     {isActive ? "Activo" : ch.status === "INACTIVE" ? "Inactivo" : ch.status}
                   </Badge>
+
+                  {/* Reactivar canal INACTIVE */}
+                  {isInactive && (
+                    <Button size="sm" variant="outline"
+                      className="h-7 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                      onClick={() => api.connectChannel(ch.id).then(() => qc.invalidateQueries({ queryKey: ["/api/channels"] }))}
+                    >
+                      <Plug className="h-3 w-3 mr-1" />Reactivar
+                    </Button>
+                  )}
 
                   {/* Configurar (first time) */}
                   {needsConfig && (
