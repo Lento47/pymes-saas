@@ -176,6 +176,106 @@ export class CsvImportService {
     return { imported, skipped, errors };
   }
 
+  /** Import products (inventory) from CSV with column mapping */
+  async importProducts(
+    workspaceId: string,
+    mapping: ColumnMapping,
+    rows: Record<string, string>[],
+  ): Promise<{ imported: number; skipped: number; errors: { row: number; reason: string }[] }> {
+    const errors: { row: number; reason: string }[] = [];
+    let imported = 0;
+    let skipped = 0;
+
+    // Pre-fetch categories for name→id mapping
+    const categories = await this.prisma.productCategory.findMany({
+      where: { workspace_id: workspaceId },
+      select: { id: true, name: true },
+    });
+    const categoryMap = new Map(categories.map(c => [c.name.toLowerCase(), c.id]));
+
+    for (let i = 0; i < rows.length; i++) {
+      try {
+        const name = this.getMapped(mapping, rows[i], 'name', '');
+        if (!name) {
+          errors.push({ row: i + 1, reason: 'Nombre del producto requerido' });
+          skipped++;
+          continue;
+        }
+
+        const unitPrice = parseFloat(this.getMapped(mapping, rows[i], 'unit_price', '0'));
+        if (isNaN(unitPrice) || unitPrice < 0) {
+          errors.push({ row: i + 1, reason: 'Precio unitario inválido' });
+          skipped++;
+          continue;
+        }
+
+        const evalResult = await this.planLimits.evaluatePlanLimit(workspaceId, 'products', 1);
+        if (!evalResult.allowed) {
+          errors.push({ row: i + 1, reason: evalResult.message ?? 'Límite de productos alcanzado' });
+          skipped++;
+          continue;
+        }
+
+        let sku = this.getMapped(mapping, rows[i], 'sku', '');
+        if (!sku) sku = `SKU-${Date.now()}-${i}`;
+
+        // Check for duplicate SKU
+        const existingSku = await this.prisma.product.findFirst({
+          where: { workspace_id: workspaceId, sku },
+          select: { id: true },
+        });
+        if (existingSku) {
+          errors.push({ row: i + 1, reason: `SKU "${sku}" ya existe` });
+          skipped++;
+          continue;
+        }
+
+        const categoryName = this.getMapped(mapping, rows[i], 'category', '');
+        let categoryId: string | null = null;
+        if (categoryName) {
+          categoryId = categoryMap.get(categoryName.toLowerCase()) ?? null;
+          // Auto-create category if not found
+          if (!categoryId) {
+            const cat = await this.prisma.productCategory.create({
+              data: { workspace_id: workspaceId, name: categoryName },
+            });
+            categoryId = cat.id;
+            categoryMap.set(categoryName.toLowerCase(), cat.id);
+          }
+        }
+
+        const costPrice = this.getMapped(mapping, rows[i], 'cost_price', '');
+        const stock = parseInt(this.getMapped(mapping, rows[i], 'current_stock', '0')) || 0;
+        const minStock = parseInt(this.getMapped(mapping, rows[i], 'min_stock', '0')) || 0;
+        const unitMeasure = this.getMapped(mapping, rows[i], 'unit_of_measure', '');
+        const description = this.getMapped(mapping, rows[i], 'description', '');
+
+        await this.prisma.product.create({
+          data: {
+            workspace_id: workspaceId,
+            name,
+            sku,
+            unit_price: unitPrice,
+            cost_price: costPrice && !isNaN(parseFloat(costPrice)) ? parseFloat(costPrice) : undefined,
+            current_stock: stock,
+            min_stock: minStock,
+            unit_of_measure: unitMeasure || undefined,
+            description: description || undefined,
+            category_id: categoryId,
+            type: 'PRODUCT',
+          },
+        });
+        imported++;
+      } catch (err: any) {
+        errors.push({ row: i + 1, reason: err.message ?? 'Error desconocido' });
+        skipped++;
+      }
+    }
+
+    this.logger.log(`CSV product import: ${imported} imported, ${skipped} skipped`);
+    return { imported, skipped, errors };
+  }
+
   private getMapped(mapping: ColumnMapping, row: Record<string, string>, targetField: string, defaultValue: string): string {
     const csvCol = mapping[targetField];
     if (!csvCol) return defaultValue;

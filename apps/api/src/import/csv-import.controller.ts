@@ -81,4 +81,40 @@ export class CsvImportController {
     if (!data.mapping || !data.rows?.length) throw new BadRequestException('Mapping y rows requeridos');
     return this.csvImport.importInvoices(workspaceId, data.mapping, data.rows);
   }
+
+  // ─── Product CSV Import ──────────────────────────────────────────
+
+  @Post('products/parse/:workspaceId')
+  @Roles('ADMIN', 'OWNER')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  async parseProductsCsv(@UploadedFile() file: Express.Multer.File, @Param('workspaceId') workspaceId: string) {
+    if (!file) throw new BadRequestException('Archivo CSV requerido');
+    const { headers, rows } = this.csvImport.parseCsv(file.buffer);
+
+    const suggestedMapping: Record<string, string> = {};
+    for (const h of headers) {
+      const lower = h.toLowerCase().trim();
+      if (lower.includes('nombre') || lower.includes('name') || lower.includes('producto')) suggestedMapping.name = h;
+      else if (lower.includes('sku') || lower.includes('codigo') || lower.includes('código')) suggestedMapping.sku = h;
+      else if (lower.includes('precio') || lower.includes('price') || lower.includes('unitario')) suggestedMapping.unit_price = h;
+      else if (lower.includes('costo') || lower.includes('cost')) suggestedMapping.cost_price = h;
+      else if (lower.includes('stock') || lower.includes('existencia') || lower.includes('cantidad')) suggestedMapping.current_stock = h;
+      else if (lower.includes('minimo') || lower.includes('mínimo') || lower.includes('min')) suggestedMapping.min_stock = h;
+      else if (lower.includes('categoria') || lower.includes('categoría') || lower.includes('category')) suggestedMapping.category = h;
+      else if (lower.includes('unidad') || lower.includes('medida') || lower.includes('unit')) suggestedMapping.unit_of_measure = h;
+      else if (lower.includes('descrip') || lower.includes('detalle')) suggestedMapping.description = h;
+    }
+
+    return { headers, suggestedMapping, rows: rows.slice(0, 8), totalRows: rows.length };
+  }
+
+  @Post('products/confirm/:workspaceId')
+  @Roles('ADMIN', 'OWNER')
+  async confirmProductsImport(
+    @Param('workspaceId') workspaceId: string,
+    @Body() data: { mapping: Record<string, string>; rows: Record<string, string>[] },
+  ) {
+    if (!data.mapping || !data.rows?.length) throw new BadRequestException('Mapping y rows requeridos');
+    return this.csvImport.importProducts(workspaceId, data.mapping, data.rows);
+  }
 }
