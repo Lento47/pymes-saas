@@ -124,8 +124,8 @@ export function LegalCenterPage() {
                 <Mail className="mx-auto h-5 w-5 text-white/30" />
                 <p className="mt-3 text-sm text-white/50">
                   {copy.contactPrivacy}{" "}
-                  <a href="mailto:privacidad@PymesHub.lat" className="text-[#F59E0B]/80 underline underline-offset-4 transition hover:text-[#F59E0B]">
-                    privacidad@PymesHub.lat
+                  <a href="mailto:privacidad@pymeshub.lat" className="text-[#F59E0B]/80 underline underline-offset-4 transition hover:text-[#F59E0B]">
+                    privacidad@pymeshub.lat
                   </a>
                 </p>
               </div>
@@ -355,8 +355,8 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                 <div className="mt-8 rounded-xl border border-white/[0.06] bg-white/[0.01] p-5 text-center">
                   <p className="text-sm text-white/45">
                     {copy.contactPrivacy}{" "}
-                    <a href="mailto:privacidad@PymesHub.lat" className="text-[#F59E0B]/75 underline underline-offset-4 transition hover:text-[#F59E0B]">
-                      privacidad@PymesHub.lat
+                    <a href="mailto:privacidad@pymeshub.lat" className="text-[#F59E0B]/75 underline underline-offset-4 transition hover:text-[#F59E0B]">
+                      privacidad@pymeshub.lat
                     </a>
                   </p>
                 </div>

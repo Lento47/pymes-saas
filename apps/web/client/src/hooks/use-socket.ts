@@ -21,7 +21,7 @@ export function getSocket(): Socket | null {
 //      EL BACKEND EN OTRO PUERTO, ESTO ROMPE — AGREGAR `VITE_WS_URL` SI HACE
 //      FALTA SER FLEXIBLE.
 //
-// PROD: USA `VITE_API_URL` (ej. `https://api.PymesHub.lat`) PARA QUE EL WS
+// PROD: USA `VITE_API_URL` (ej. `https://api.pymeshub.lat`) PARA QUE EL WS
 //       VAYA A RAILWAY, NO A CLOUDFLARE PAGES (QUE ES SOLO ESTATICO).
 //       SI `VITE_API_URL` NO ESTA SETEADO EN CLOUDFLARE, CAE A
 //       `window.location.origin` QUE NO TIENE WS — LA UI EN VIVO NO FUNCIONA.

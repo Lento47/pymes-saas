@@ -46,8 +46,8 @@ export function SamlConfig() {
   });
 
   const slug = workspace?.slug || 'TU_SLUG';
-  const spMetadataUrl = `https://api.PymesHub.lat/api/auth/saml/${slug}/metadata`;
-  const spLoginUrl = `https://api.PymesHub.lat/api/auth/saml/${slug}/login`;
+  const spMetadataUrl = `https://api.pymeshub.lat/api/auth/saml/${slug}/metadata`;
+  const spLoginUrl = `https://api.pymeshub.lat/api/auth/saml/${slug}/login`;
 
   return (
     <div className="space-y-6">

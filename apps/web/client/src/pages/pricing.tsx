@@ -21,7 +21,7 @@ export default function PricingPage() {
   const paddle = usePaddle();
   const { user, isAuthenticated } = useAuth();
   const [addOnLoading, setAddOnLoading] = useState<string | null>(null);
-  const earlyAccessHref = 'mailto:legal@PymesHub.lat?subject=Quiero%20acceso%20anticipado';
+  const earlyAccessHref = 'mailto:legal@pymeshub.lat?subject=Quiero%20acceso%20anticipado';
 
   return (
     <div className="dark marketing-canvas relative min-h-screen text-white">

@@ -5,7 +5,7 @@ export interface SeoMetadata {
   title: string;
 }
 
-const DEFAULT_SITE_URL = "https://PymesHub.lat";
+const DEFAULT_SITE_URL = "https://pymeshub.lat";
 
 function resolveSiteUrl() {
   const configuredUrl = (import.meta as any).env?.VITE_PUBLIC_SITE_URL;
