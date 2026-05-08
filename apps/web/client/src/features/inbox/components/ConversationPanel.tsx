@@ -403,7 +403,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-[11px]">Productos / Líneas</Label>
-                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={() => { setShowProductPicker(true); setProductSearch(""); }}>
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={() => setShowProductPicker(true)}>
                     <Plus className="w-3 h-3" />Agregar
                   </Button>
                 </div>
