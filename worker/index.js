@@ -15,6 +15,13 @@ export default {
       const apiBase = env.API_URL || "https://api.pymeshub.lat";
       const target = new URL(url.pathname + url.search, apiBase);
 
+      // Webhook verifications + POST requests bypass KV cache
+      if (url.pathname.startsWith("/api/inbound/") || request.method !== "GET") {
+        const proxied = new Request(target.toString(), request);
+        proxied.headers.set("host", target.host);
+        return fetch(proxied);
+      }
+
       // Cache GET requests with KV
       if (request.method === "GET" && env.KVhub) {
         const cacheKey = url.pathname + url.search;
