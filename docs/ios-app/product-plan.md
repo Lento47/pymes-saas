@@ -94,7 +94,7 @@ Crear una app nativa iOS para que equipos de PymesHub puedan operar conversacion
 
 ## Decisiones abiertas
 
-- Nombre del bundle id: por ejemplo `com.pymeshub.ios`.
+- Nombre del bundle id: por ejemplo `com.PymesHub.ios`.
 - Version minima de iOS. Recomendacion inicial: iOS 17+ para usar Observation moderna.
 - Si la app se publica en App Store, TestFlight interno o distribucion empresarial.
 - Si el primer proyecto vive en este monorepo (`apps/ios`) o en un repo separado.

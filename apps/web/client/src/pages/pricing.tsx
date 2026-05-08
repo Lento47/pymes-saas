@@ -21,7 +21,7 @@ export default function PricingPage() {
   const paddle = usePaddle();
   const { user, isAuthenticated } = useAuth();
   const [addOnLoading, setAddOnLoading] = useState<string | null>(null);
-  const earlyAccessHref = 'mailto:legal@pymeshub.lat?subject=Quiero%20acceso%20anticipado';
+  const earlyAccessHref = 'mailto:legal@PymesHub.lat?subject=Quiero%20acceso%20anticipado';
 
   return (
     <div className="dark marketing-canvas relative min-h-screen text-white">
@@ -383,7 +383,7 @@ export default function PricingPage() {
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-3xl rounded-3xl relative overflow-hidden"
             style={{
-              backgroundImage: 'url(https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/readytolunch.png)',
+              backgroundImage: 'url(https://raw.githubusercontent.com/Lento47/PymesHub-invoice/refs/heads/master/readytolunch.png)',
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',

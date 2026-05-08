@@ -21,7 +21,7 @@ const OPTIMIZE = [
   { src: 'landing-icons/enterprise-workspace-control.png', w: 160, h: 107 },
   { src: 'landing-icons/readytolunch.png',        w: 160, h: 107 },
   { src: 'landing-icons/security.png',            w: 160, h: 107 },
-  { src: 'images/pymesHub.png',                   w: 240, h: 48 },
+  { src: 'images/PymesHub.png',                   w: 240, h: 48 },
   { src: 'images/appIcon.png',                    w: 96,  h: 96 },
   { src: 'images/hero-bg.png',                    w: 1920, h: 800, quality: 80, keepSuffix: true },
 ];

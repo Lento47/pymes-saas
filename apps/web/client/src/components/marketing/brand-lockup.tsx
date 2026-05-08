@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const ICON_CANDIDATES = [
-  "/images/pymesHub.png",
-  "/images/pymeshub-icon.svg",
-  "/images/pymeshub-icon.png",
+  "/images/PymesHub.png",
+  "/images/PymesHub-icon.svg",
+  "/images/PymesHub-icon.png",
 ];
 
 interface BrandLockupProps {

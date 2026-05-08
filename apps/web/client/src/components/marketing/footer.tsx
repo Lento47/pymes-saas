@@ -19,7 +19,7 @@ const RESOURCES_LINKS = [
 
 const COMPANY_LINKS = [
   { href: "/product", key: "about" },
-  { href: "mailto:soporte@pymeshub.lat", key: "contact" },
+  { href: "mailto:soporte@PymesHub.lat", key: "contact" },
 ] as const;
 
 const LEGAL_LINKS = [
@@ -123,7 +123,7 @@ export function Footer({ className }: { className?: string }) {
 
           <div className="flex items-center gap-2 text-xs text-white/36">
             <Mail className="h-3.5 w-3.5" />
-            <span>soporte@pymeshub.lat</span>
+            <span>soporte@PymesHub.lat</span>
           </div>
 
           <div className="flex items-center gap-2 text-xs text-white/30">

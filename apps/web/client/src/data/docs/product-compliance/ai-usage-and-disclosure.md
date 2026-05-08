@@ -1,8 +1,8 @@
-# Uso de IA y Disclosure en PymeHub
+# Uso de IA y Disclosure en PymesHub
 
 ## 1. Proposito
 
-Esta especificacion define como PymeHub debe usar IA, que debe comunicar al cliente y que controles minimos debe sostener para reducir uso excesivo de datos o interpretaciones incorrectas sobre los resultados.
+Esta especificacion define como PymesHub debe usar IA, que debe comunicar al cliente y que controles minimos debe sostener para reducir uso excesivo de datos o interpretaciones incorrectas sobre los resultados.
 
 ## 2. Alcance
 

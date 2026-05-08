@@ -1,8 +1,8 @@
-# Politica de Comunicacion de Releases de PymeHub
+# Politica de Comunicacion de Releases de PymesHub
 
 ## 1. Proposito
 
-Esta politica define que cambios de PymeHub deben comunicarse, por que medio y con que anticipacion razonable, para mantener una expectativa clara con clientes y evitar sorpresas en funcionalidades sensibles.
+Esta politica define que cambios de PymesHub deben comunicarse, por que medio y con que anticipacion razonable, para mantener una expectativa clara con clientes y evitar sorpresas en funcionalidades sensibles.
 
 ## 2. Cambios que normalmente se comunican
 

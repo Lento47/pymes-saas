@@ -30,4 +30,4 @@ Le informamos que `Otnel S.A` detecto un incidente que afecto o pudo afectar par
 
 Seguimos investigando y compartiremos actualizaciones relevantes por este mismo canal o mediante `[CANAL]`.
 
-Contacto: `[CORREO_LEGAL]`
+Contacto: `privacidad@pymeshub.lat`

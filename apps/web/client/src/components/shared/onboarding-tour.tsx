@@ -49,7 +49,7 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
-const STORAGE_KEY = "pymeshub_onboarding_tour_done_v2";
+const STORAGE_KEY = "PymesHub_onboarding_tour_done_v2";
 
 export default function OnboardingTour() {
   const { messages } = useI18n();

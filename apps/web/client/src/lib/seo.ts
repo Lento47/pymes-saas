@@ -5,7 +5,7 @@ export interface SeoMetadata {
   title: string;
 }
 
-const DEFAULT_SITE_URL = "https://pymeshub.lat";
+const DEFAULT_SITE_URL = "https://PymesHub.lat";
 
 function resolveSiteUrl() {
   const configuredUrl = (import.meta as any).env?.VITE_PUBLIC_SITE_URL;
@@ -40,7 +40,7 @@ function upsertLink(rel: string, href: string) {
 }
 
 function upsertJsonLd(jsonLd: Record<string, unknown>) {
-  const id = "pymeshub-page-schema";
+  const id = "PymesHub-page-schema";
   let element = document.head.querySelector<HTMLScriptElement>(
     `script#${id}`,
   );

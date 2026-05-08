@@ -70,7 +70,7 @@ PymesHub se reserva el derecho de tomar cualquiera de las siguientes medidas, de
 - Reportar actividades ilegales a las autoridades competentes.
 - Ejercer las acciones legales que correspondan para la protección de los derechos de PymesHub, de sus clientes y de terceros.
 ## 6. Reporte de infracciones
-Si un usuario o tercero detecta una posible infracción de esta Política, debe reportarla de inmediato al correo electrónico legal@pymeshub.lat, proporcionando la mayor cantidad de información posible sobre la presunta infracción.
+Si un usuario o tercero detecta una posible infracción de esta Política, debe reportarla de inmediato al correo electrónico legal@PymesHub.lat, proporcionando la mayor cantidad de información posible sobre la presunta infracción.
 PymesHub investigará los reportes recibidos y tomará las medidas que considere apropiadas según las circunstancias del caso, las obligaciones legales aplicables y los intereses legítimos de las partes involucradas.
 Thinking: Now WhatsApp + AI policy, Cookies, Billing & Refunds, DPA, and Subprocessors. Let me do the shorter ones.
 Now WhatsApp + AI Policy — 31 lines:

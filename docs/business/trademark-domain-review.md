@@ -14,7 +14,7 @@ Este documento deja trazabilidad sobre la revision basica del nombre comercial `
 
 ## 3. Dominios a revisar
 
-- `pymeshub.com`
+- `PymesHub.com`
 - `[DOMINIO_ALTERNATIVO_1]`
 - `[DOMINIO_ALTERNATIVO_2]`
 (No tengo alternativo ni respaldo)

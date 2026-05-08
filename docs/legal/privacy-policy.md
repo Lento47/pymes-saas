@@ -2,7 +2,7 @@
 
 ## 1. Proposito
 
-Esta Politica de Privacidad describe como `Otnel S.A` recopila, usa, comparte, conserva y protege datos personales en relacion con PymesHub. Su objetivo es informar de manera transparente el tratamiento de datos que se produce al navegar por `pymeshub.lat`, solicitar informacion comercial, contratar el servicio o utilizar sus funcionalidades.
+Esta Politica de Privacidad describe como `Otnel S.A` recopila, usa, comparte, conserva y protege datos personales en relacion con PymesHub. Su objetivo es informar de manera transparente el tratamiento de datos que se produce al navegar por `PymesHub.lat`, solicitar informacion comercial, contratar el servicio o utilizar sus funcionalidades.
 
 ## 2. Alcance
 
@@ -31,7 +31,7 @@ No regula los tratamientos que el cliente realice fuera de PymesHub ni las polit
 - como responsable, respecto de datos de navegacion, relacion comercial, soporte, seguridad, facturacion y administracion del servicio;
 - como encargado, respecto de datos que el cliente carga o gestiona dentro de PymesHub para sus propios fines.
 
-El canal de contacto para privacidad es `[CORREO_LEGAL]`.
+El canal de contacto para privacidad es `privacidad@pymeshub.lat`.
 
 ## 5. Categorias de datos tratados
 

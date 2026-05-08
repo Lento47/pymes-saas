@@ -3,7 +3,7 @@ import { X, Send, Loader2, Sparkles } from 'lucide-react';
 
 type Message = { id: string; role: 'user' | 'agent'; content: string };
 
-const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? '';
+const API_BASE = import.meta.env.VITE_PymesHub_API_URL ?? import.meta.env.VITE_API_URL ?? '';
 
 function PetSvg({ small }: { small?: boolean }) {
   const [blinking, setBlinking] = useState(false);
@@ -176,7 +176,7 @@ export function LandingHubby() {
             <PetSvg small />
             <div className="flex-1">
               <h3 className="text-sm font-bold text-white">Hubby 🐾</h3>
-              <p className="text-xs text-amber-100">Asistente de PyMesHub</p>
+              <p className="text-xs text-amber-100">Asistente de PymesHub</p>
             </div>
             <button onClick={() => setOpen(false)} className="p-1 rounded-full hover:bg-white/20 transition-colors">
               <X style={{ width: 16, height: 16, color: 'white' }} />
@@ -188,7 +188,7 @@ export function LandingHubby() {
             {messages.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-sm text-gray-500 mb-2">¡Hola! Soy Hubby 🐾</p>
-                <p className="text-xs text-gray-400">Preguntame sobre PyMesHub: funcionalidades, precios, cómo empezar...</p>
+                <p className="text-xs text-gray-400">Preguntame sobre PymesHub: funcionalidades, precios, cómo empezar...</p>
               </div>
             )}
             {messages.map(m => (

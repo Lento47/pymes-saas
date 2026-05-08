@@ -1,4 +1,4 @@
-# PymeHub Deployment to Cloudflare Pages
+# PymesHub Deployment to Cloudflare Pages
 
 ## Architecture Options
 
@@ -101,7 +101,7 @@ Backend: External NestJS server
 **Create build configuration:**
 ```toml
 # wrangler.toml
-name = "pymeshub-web"
+name = "PymesHub-web"
 type = "javascript"
 route = "example.com/*"
 zone_id = "YOUR_ZONE_ID"

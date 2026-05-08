@@ -4,7 +4,7 @@ type Theme = "dark" | "light";
 
 function getStoredTheme(): Theme {
   try {
-    const stored = localStorage.getItem("pymeshub-theme");
+    const stored = localStorage.getItem("PymesHub-theme");
     if (stored === "light" || stored === "dark") return stored;
   } catch {}
   return "dark";
@@ -17,7 +17,7 @@ function applyTheme(theme: Theme) {
     root.classList.add("light");
   }
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#070B14" : "#f2f3f5");
-  try { localStorage.setItem("pymeshub-theme", theme); } catch {}
+  try { localStorage.setItem("PymesHub-theme", theme); } catch {}
 }
 
 interface ThemeContextValue {

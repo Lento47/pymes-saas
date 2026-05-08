@@ -22,7 +22,7 @@ export class ApiError extends Error {
 // ───────────────────────────────────────────────────────────────────────────
 // IMPORTANTE — URL DEL BACKEND API
 //
-// PROD (CLOUDFLARE PAGES): SETEAR `VITE_API_URL=https://api.pymeshub.lat` EN
+// PROD (CLOUDFLARE PAGES): SETEAR `VITE_API_URL=https://api.PymesHub.lat` EN
 // LAS ENV VARS DEL BUILD DE CLOUDFLARE PAGES (no en runtime — VITE INYECTA
 // EN BUILD TIME). SIN ESTA VAR, EL FALLBACK QUEDA EN STRING VACIO Y LAS
 // LLAMADAS A `/api/...` SE HACEN AL MISMO ORIGIN (CLOUDFLARE), QUE NO TIENE
@@ -32,7 +32,7 @@ export class ApiError extends Error {
 // CLOUDFLARE — EFECTIVAMENTE QUEDA COMO STRING VACIO. NO BORRAR EL CHECK
 // PARA NO ROMPER ENTORNOS LEGACY, PERO LA FUENTE REAL DE VERDAD ES `VITE_API_URL`.
 // ───────────────────────────────────────────────────────────────────────────
-const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ??
+const API_BASE = import.meta.env.VITE_PymesHub_API_URL ?? import.meta.env.VITE_API_URL ??
   ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
 // ── Auth state ──

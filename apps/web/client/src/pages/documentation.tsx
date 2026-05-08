@@ -133,7 +133,7 @@ export default function DocumentationCenterPage() {
                   {
                     href: "/legal/privacy-policy",
                     title: "Política de Privacidad",
-                    desc: "Cómo protegemos los datos personales procesados en PymeHub.",
+                    desc: "Cómo protegemos los datos personales procesados en PymesHub.",
                   },
                   {
                     href: "/legal/cookies-policy",

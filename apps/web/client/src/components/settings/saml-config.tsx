@@ -46,8 +46,8 @@ export function SamlConfig() {
   });
 
   const slug = workspace?.slug || 'TU_SLUG';
-  const spMetadataUrl = `https://api.pymeshub.lat/api/auth/saml/${slug}/metadata`;
-  const spLoginUrl = `https://api.pymeshub.lat/api/auth/saml/${slug}/login`;
+  const spMetadataUrl = `https://api.PymesHub.lat/api/auth/saml/${slug}/metadata`;
+  const spLoginUrl = `https://api.PymesHub.lat/api/auth/saml/${slug}/login`;
 
   return (
     <div className="space-y-6">
@@ -58,7 +58,7 @@ export function SamlConfig() {
         <div>
           <h2 className="text-lg font-semibold text-foreground">SAML SSO</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Conectá PyMesHub con tu proveedor de identidad (Azure AD, Okta, PingOne, etc.)
+            Conectá PymesHub con tu proveedor de identidad (Azure AD, Okta, PingOne, etc.)
           </p>
         </div>
       </div>
@@ -75,7 +75,7 @@ export function SamlConfig() {
                 <Copy className="w-3 h-3" />
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Pegá esta URL en tu IdP para que reconozca a PyMesHub como SP.</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Pegá esta URL en tu IdP para que reconozca a PymesHub como SP.</p>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">Login URL</Label>

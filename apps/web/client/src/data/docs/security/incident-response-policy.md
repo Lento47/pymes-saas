@@ -1,8 +1,8 @@
-# Politica de Respuesta a Incidentes de Seguridad de PymeHub
+# Politica de Respuesta a Incidentes de Seguridad de PymesHub
 
 ## 1. Proposito
 
-Esta politica define como PymeHub detecta, clasifica, contiene, investiga, comunica y cierra incidentes de seguridad. Su objetivo es reducir dano, preservar evidencia y asegurar una respuesta consistente ante eventos que afecten la confidencialidad, integridad o disponibilidad del servicio.
+Esta politica define como PymesHub detecta, clasifica, contiene, investiga, comunica y cierra incidentes de seguridad. Su objetivo es reducir dano, preservar evidencia y asegurar una respuesta consistente ante eventos que afecten la confidencialidad, integridad o disponibilidad del servicio.
 
 ## 2. Alcance
 
@@ -15,7 +15,7 @@ Aplica a incidentes reales o sospechados que involucren:
 - indisponibilidad grave del servicio;
 - abuso o uso malicioso de integraciones;
 - alteracion no autorizada de configuraciones o datos;
-- incidentes en proveedores criticos con impacto en PymeHub.
+- incidentes en proveedores criticos con impacto en PymesHub.
 
 ## 3. Definicion de incidente
 
@@ -26,7 +26,7 @@ Se considera incidente cualquier evento que comprometa o pueda comprometer la se
 - `Coordinador del incidente`: `[RESPONSABLE_INCIDENTES]`
 - `Lider tecnico`: `[RESPONSABLE_TECNICO]`
 - `Responsable de comunicacion a clientes`: `[RESPONSABLE_CLIENTES]`
-- `Responsable legal/privacidad`: `[CORREO_LEGAL]`
+- `Responsable legal/privacidad`: `privacidad@pymeshub.lat`
 
 El Coordinador del incidente es responsable de abrir, mantener y cerrar el expediente operativo del caso.
 
@@ -107,7 +107,7 @@ Todo incidente relevante debe cerrar con:
 
 ## 8. Comunicacion
 
-La comunicacion interna y externa debe ser coordinada para evitar mensajes contradictorios. Cuando el incidente afecte datos personales, continuidad relevante o compromisos contractuales, `[NOMBRE_EMPRESA]` notificara segun la ley, el contrato y el nivel de riesgo observado.
+La comunicacion interna y externa debe ser coordinada para evitar mensajes contradictorios. Cuando el incidente afecte datos personales, continuidad relevante o compromisos contractuales, `Otnel S.A.` notificara segun la ley, el contrato y el nivel de riesgo observado.
 
 La comunicacion a clientes debe incluir, en la medida razonable:
 

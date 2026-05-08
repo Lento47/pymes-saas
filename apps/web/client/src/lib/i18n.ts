@@ -894,7 +894,7 @@ export const translations = {
       },
       intro: "Beta cerrada para los primeros 50 negocios",
       title: ["Tu equipo pierde dinero en WhatsApp, correos y PDFs.", "Estamos construyendo la solución."],
-      subtitle: "PyMesHub está en beta cerrada.",
+      subtitle: "PymesHub está en beta cerrada.",
       description:
         "Sé de los primeros 50 en probarla gratis y ayúdanos a moldearla para tu negocio.",
       primaryCta: "Quiero acceso anticipado",
@@ -935,7 +935,7 @@ export const translations = {
       },
       trustTitle: "Centralizá, automatizá, crecé.",
       trustDescription:
-        "PyMesHub está en beta cerrada. No tenemos 500 clientes todavía, pero tenemos un equipo obsesionado con ahorrarle horas y dólares a las pymes latinas.",
+        "PymesHub está en beta cerrada. No tenemos 500 clientes todavía, pero tenemos un equipo obsesionado con ahorrarle horas y dólares a las pymes latinas.",
       trustOffer: "Si te sumas ahora, ayudas a definir el producto y accedes con condiciones preferentes cuando lancemos.",
       trustFootnote: "Solo pedimos 15 minutos de tu tiempo para entender tu operación real.",
       trustSignals: ["Beta cerrada", "Primeros 50 negocios", "Acceso anticipado gratis", "Construido con operadores"],

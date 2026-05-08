@@ -8,7 +8,7 @@ Estos Terminos y Condiciones regulan el acceso, contratacion y uso de PymesHub c
 
 Estos terminos aplican a:
 
-- la navegacion por `pymeshub.lat`;
+- la navegacion por `PymesHub.lat`;
 - el registro y uso de PymesHub;
 - las cuentas de prueba, gratuitas, pagas o enterprise;
 - cualquier modulo de inbox, CRM, tareas, documentos, OCR, automatizaciones, insights, resúmenes IA, dashboards, APIs o funciones relacionadas;
@@ -29,7 +29,7 @@ Si existe un contrato principal, orden de servicio o MSA firmado, dichos documen
 
 ## 4. Identidad del proveedor y contacto
 
-PymesHub es operado por `Otnel S.A`, con domicilio en `Costa Rica`. El canal oficial para notificaciones legales, privacidad o cuestiones contractuales es `[CORREO_LEGAL]`.
+PymesHub es operado por `Otnel S.A`, con domicilio en `Costa Rica`. El canal oficial para notificaciones legales, privacidad o cuestiones contractuales es `privacidad@pymeshub.lat`.
 
 ## 5. Naturaleza del servicio
 

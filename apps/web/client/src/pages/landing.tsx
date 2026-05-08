@@ -454,9 +454,9 @@ export default function Landing() {
             {
               "@type": "Organization",
               "name": "PymesHub",
-              "url": "https://pymeshub.lat",
+              "url": "https://PymesHub.lat",
               "description": "CRM, facturación electrónica y automatización para PYMEs",
-              "sameAs": ["https://pymeshub.lat"]
+              "sameAs": ["https://PymesHub.lat"]
             },
             {
               "@type": "SoftwareApplication",
@@ -473,10 +473,10 @@ export default function Landing() {
             },
             {
               "@type": "WebSite",
-              "url": "https://pymeshub.lat",
+              "url": "https://PymesHub.lat",
               "potentialAction": {
                 "@type": "SearchAction",
-                "target": "https://pymeshub.lat/documentation?q={search_term_string}",
+                "target": "https://PymesHub.lat/documentation?q={search_term_string}",
                 "query-input": "required name=search_term_string"
               }
             }

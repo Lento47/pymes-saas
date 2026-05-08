@@ -214,7 +214,7 @@ En caso de conflicto:
 
 ## 12. Contacto
 
-legal@pymeshub.lat
+legal@PymesHub.lat
 
 ---
 

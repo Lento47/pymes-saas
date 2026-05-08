@@ -444,7 +444,7 @@ La solicitud debe incluir:
 
 Contacto:
 
-- **Correo:** legal@pymeshub.lat
+- **Correo:** legal@PymesHub.lat
 - **Portal de facturación:** disponible desde la cuenta del Cliente, si aplica.
 
 PymesHub evaluará la solicitud de buena fe y podrá solicitar información adicional razonable.
@@ -741,7 +741,7 @@ Salvo que se indique otra fecha, los cambios aplicarán desde su publicación o 
 
 Para consultas sobre facturación, pagos, planes, cancelaciones o reembolsos:
 
-- **Correo electrónico:** legal@pymeshub.lat
+- **Correo electrónico:** legal@PymesHub.lat
 - **Portal de facturación:** disponible desde la cuenta del Cliente
 - **Domicilio:** San José, Costa Rica
 

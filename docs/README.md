@@ -10,7 +10,7 @@ El objetivo del paquete no es convertirse en un tratado teorico ni en una certif
 
 Este paquete aplica a:
 
-- el sitio y dominio `pymeshub.lat`;
+- el sitio y dominio `PymesHub.lat`;
 - el producto PymesHub y sus modulos de inbox, CRM, tareas, documentos, OCR, automatizaciones, resúmenes IA, insights, notificaciones y administracion multi-tenant;
 - la operacion de `Otnel S.A` en `Costa Rica`;
 - los clientes B2B de PymesHub;
@@ -25,8 +25,8 @@ No sustituye asesoria legal, fiscal o regulatoria local. Cuando exista una zona 
 Los siguientes placeholders deben permanecer consistentes hasta su sustitucion definitiva:
 
 - `Otnel S.A`
-- `[CORREO_LEGAL]`
-- `pymeshub.lat`
+- `privacidad@pymeshub.lat`
+- `PymesHub.lat`
 - `Costa Rica`
 
 Otros placeholders adicionales podran usarse cuando un dato todavia no se haya definido formalmente, siempre que el documento deje claro si se trata de un dato operativo, legal, comercial o tecnico pendiente.

@@ -8,7 +8,7 @@ Versión 1.0 — Última actualización: Abril 2026
 PymesHub S.A., con domicilio en San José, Costa Rica, es el responsable del tratamiento de los datos personales recopilados a través de la Plataforma.
 
 Contacto:
-- Email: legal@pymeshub.lat
+- Email: legal@PymesHub.lat
 
 PymesHub actúa bajo dos roles:
 
@@ -171,7 +171,7 @@ El titular puede:
 - Revocar consentimiento
 
 Solicitud vía:
-legal@pymeshub.lat
+legal@PymesHub.lat
 
 Plazo: conforme a ley costarricense.
 
@@ -272,7 +272,7 @@ El uso continuo implica aceptación.
 
 ## 18. Contacto
 
-Email: legal@pymeshub.lat  
+Email: legal@PymesHub.lat  
 Ubicación: San José, Costa Rica  
 
 ---

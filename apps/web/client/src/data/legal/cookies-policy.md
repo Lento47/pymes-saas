@@ -1,10 +1,10 @@
-# Política de Cookies de PymeHub
+# Política de Cookies de PymesHub
 
 Última actualización: Abril 2026.
 
 ## 1. Propósito
 
-Esta Política de Cookies explica qué son las cookies, qué tipos de cookies utiliza PymeHub, con qué finalidad y cómo el usuario puede gestionar sus preferencias y retirar su consentimiento en cualquier momento. Esta Política complementa la Política de Privacidad de PymeHub.
+Esta Política de Cookies explica qué son las cookies, qué tipos de cookies utiliza PymesHub, con qué finalidad y cómo el usuario puede gestionar sus preferencias y retirar su consentimiento en cualquier momento. Esta Política complementa la Política de Privacidad de PymesHub.
 
 ## 2. ¿Qué son las cookies?
 
@@ -20,9 +20,9 @@ Estas cookies son esenciales para el funcionamiento de la Plataforma y no pueden
 
 | Cookie | Proveedor | Finalidad | Duración |
 |--------|-----------|-----------|----------|
-| `pymeshub_session` | PymeHub | Mantiene la sesión del usuario autenticado | Sesión |
-| `pymeshub_csrf` | PymeHub | Protección contra falsificación de solicitudes | Sesión |
-| `cookie_consent` | PymeHub | Registra las preferencias de consentimiento de cookies | 12 meses |
+| `PymesHub_session` | PymesHub | Mantiene la sesión del usuario autenticado | Sesión |
+| `PymesHub_csrf` | PymesHub | Protección contra falsificación de solicitudes | Sesión |
+| `cookie_consent` | PymesHub | Registra las preferencias de consentimiento de cookies | 12 meses |
 
 ### 3.2 Cookies de preferencias
 
@@ -30,8 +30,8 @@ Estas cookies permiten que la Plataforma recuerde elecciones que el usuario real
 
 | Cookie | Proveedor | Finalidad | Duración |
 |--------|-----------|-----------|----------|
-| `pymeshub_theme` | PymeHub | Almacena la preferencia de tema visual (oscuro/claro) | Persistente |
-| `pymeshub_locale` | PymeHub | Almacena el idioma preferido del usuario | Persistente |
+| `PymesHub_theme` | PymesHub | Almacena la preferencia de tema visual (oscuro/claro) | Persistente |
+| `PymesHub_locale` | PymesHub | Almacena el idioma preferido del usuario | Persistente |
 
 ### 3.3 Cookies de analítica
 
@@ -46,11 +46,11 @@ Estas cookies nos permiten contar las visitas y fuentes de tráfico para medir y
 
 Estas cookies pueden ser establecidas por nuestros socios publicitarios. Pueden ser utilizadas por esas empresas para crear un perfil de los intereses del usuario y mostrarle anuncios relevantes en otros sitios. No almacenan información personal directamente, sino que se basan en la identificación única del navegador y del dispositivo de internet.
 
-Actualmente, PymeHub no utiliza cookies de marketing propias. Si en el futuro se implementaran, se solicitará el consentimiento expreso del usuario antes de su activación y se actualizará esta Política para reflejar los proveedores, finalidades y duraciones específicas.
+Actualmente, PymesHub no utiliza cookies de marketing propias. Si en el futuro se implementaran, se solicitará el consentimiento expreso del usuario antes de su activación y se actualizará esta Política para reflejar los proveedores, finalidades y duraciones específicas.
 
 ## 4. Cookies de terceros
 
-Algunas páginas de la Plataforma pueden incluir contenido de terceros, como videos, mapas o funcionalidades de redes sociales. Estos terceros pueden establecer sus propias cookies cuando el usuario interactúa con dicho contenido. PymeHub no controla estas cookies y recomienda al usuario revisar las políticas de cookies de los terceros correspondientes.
+Algunas páginas de la Plataforma pueden incluir contenido de terceros, como videos, mapas o funcionalidades de redes sociales. Estos terceros pueden establecer sus propias cookies cuando el usuario interactúa con dicho contenido. PymesHub no controla estas cookies y recomienda al usuario revisar las políticas de cookies de los terceros correspondientes.
 
 ## 5. Gestión del consentimiento
 
@@ -84,14 +84,14 @@ A continuación se indican los enlaces a las páginas de soporte de los principa
 
 ## 6. Transferencias internacionales y cookies
 
-Algunas de las cookies de terceros mencionadas en esta Política pueden implicar la transferencia de datos a servidores ubicados fuera de Costa Rica. PymeHub se asegura de que dichos proveedores ofrezcan un nivel adecuado de protección de datos. Para más información, el usuario puede consultar la Política de Privacidad de PymeHub.
+Algunas de las cookies de terceros mencionadas en esta Política pueden implicar la transferencia de datos a servidores ubicados fuera de Costa Rica. PymesHub se asegura de que dichos proveedores ofrezcan un nivel adecuado de protección de datos. Para más información, el usuario puede consultar la Política de Privacidad de PymesHub.
 
 ## 7. Cambios en esta Política
 
-PymeHub se reserva el derecho de modificar esta Política de Cookies en cualquier momento. Las modificaciones serán publicadas en el sitio web y, cuando sean materiales, serán notificadas a los usuarios a través de los canales habituales.
+PymesHub se reserva el derecho de modificar esta Política de Cookies en cualquier momento. Las modificaciones serán publicadas en el sitio web y, cuando sean materiales, serán notificadas a los usuarios a través de los canales habituales.
 
 ## 8. Contacto
 
 Para cualquier consulta sobre esta Política de Cookies o sobre el tratamiento de datos personales:
 
-- **Correo electrónico:** legal@[dominio]
+- **Correo electrónico:** legal@pymeshub.lat

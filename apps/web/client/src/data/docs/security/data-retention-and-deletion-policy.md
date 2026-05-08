@@ -1,8 +1,8 @@
-# Politica de Retencion y Eliminacion de Datos de PymeHub
+# Politica de Retencion y Eliminacion de Datos de PymesHub
 
 ## 1. Proposito
 
-Esta politica define como PymeHub conserva, restringe, anonimiza o elimina las principales categorias de datos del servicio. Su objetivo es evitar retencion indefinida no justificada y sostener una regla coherente para servicio activo, cancelacion, privacidad, seguridad y backups.
+Esta politica define como PymesHub conserva, restringe, anonimiza o elimina las principales categorias de datos del servicio. Su objetivo es evitar retencion indefinida no justificada y sostener una regla coherente para servicio activo, cancelacion, privacidad, seguridad y backups.
 
 ## 2. Alcance
 

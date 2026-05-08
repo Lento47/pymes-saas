@@ -1,10 +1,10 @@
-# Política de Cookies de PymeHub
+# Política de Cookies de PymesHub
 
 Última actualización: 29 de abril de 2026
 
 ## 1. Propósito
 
-Esta Política de Cookies explica el uso de cookies y tecnologías similares en **pymeshub.lat** y sus subdominios, el sitio web y las interfaces de PymeHub. Debe leerse junto con la [Política de Privacidad](/legal/privacy-policy) y los [Términos y Condiciones](/legal/terms-and-conditions).
+Esta Política de Cookies explica el uso de cookies y tecnologías similares en **PymesHub.lat** y sus subdominios, el sitio web y las interfaces de PymesHub. Debe leerse junto con la [Política de Privacidad](/legal/privacy-policy) y los [Términos y Condiciones](/legal/terms-and-conditions).
 
 ## 2. ¿Qué son las cookies?
 
@@ -35,7 +35,7 @@ Podés aceptar o rechazar estas cookies en cualquier momento desde el banner de 
 
 ## 4. Cookies de terceros
 
-PymeHub no utiliza cookies de publicidad, remarketing ni redes sociales. Los únicos terceros con acceso limitado son:
+PymesHub no utiliza cookies de publicidad, remarketing ni redes sociales. Los únicos terceros con acceso limitado son:
 
 - **Cloudflare**: protección DDoS y CDN (cookies esenciales de seguridad)
 - **Google Analytics**: solo si aceptás cookies de analítica
@@ -46,24 +46,24 @@ Podés cambiar tus preferencias de cookies en cualquier momento:
 
 1. Haciendo clic en "Configurar preferencias" en el banner de cookies
 2. Borrando los datos del sitio en la configuración de tu navegador
-3. Escribiendo a **legal@pymeshub.lat**
+3. Escribiendo a **legal@PymesHub.lat**
 
 Al borrar `localStorage` y `sessionStorage`, se restablecerán tus preferencias de cookies y el banner aparecerá nuevamente.
 
 ## 6. Transferencia internacional
 
-Los datos recolectados por Google Analytics pueden ser transferidos y procesados en servidores ubicados fuera de Costa Rica. PymeHub se asegura de que dichos proveedores cumplan con estándares adecuados de protección de datos.
+Los datos recolectados por Google Analytics pueden ser transferidos y procesados en servidores ubicados fuera de Costa Rica. PymesHub se asegura de que dichos proveedores cumplan con estándares adecuados de protección de datos.
 
 ## 7. Cambios
 
-PymeHub podrá actualizar esta política cuando cambien las tecnologías utilizadas, proveedores, finalidades o requisitos legales aplicables. La versión vigente se publicará con la fecha de actualización correspondiente.
+PymesHub podrá actualizar esta política cuando cambien las tecnologías utilizadas, proveedores, finalidades o requisitos legales aplicables. La versión vigente se publicará con la fecha de actualización correspondiente.
 
 ## 8. Contacto
 
 Para cualquier consulta sobre esta política:
-- **Email**: legal@pymeshub.lat
-- **Sitio**: https://pymeshub.lat/legal
+- **Email**: legal@PymesHub.lat
+- **Sitio**: https://PymesHub.lat/legal
 
 ---
 
-**PymeHub** — Business Operating System para PYMEs.
+**PymesHub** — Business Operating System para PYMEs.

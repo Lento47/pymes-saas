@@ -28,7 +28,7 @@
 ## Reglas de modelado
 
 - nunca usar paths absolutos como verdad de negocio
-- guardar paths relativos desde `PYMESHUB_STORAGE_ROOT`
+- guardar paths relativos desde `PymesHub_STORAGE_ROOT`
 - usar checksum para integridad
 - bloquear path traversal
 - mantener `temp` y `derived` como contenido regenerable
@@ -36,7 +36,7 @@
 ## Backup minimo
 
 - dump de `PostgreSQL`
-- copia consistente de `C:\ProgramData\Pymeshub\data\`
+- copia consistente de `C:\ProgramData\PymesHub\data\`
 - `config\` solo segun politica de secretos
 
 ## Restore minimo

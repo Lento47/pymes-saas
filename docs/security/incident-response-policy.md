@@ -26,7 +26,7 @@ Se considera incidente cualquier evento que comprometa o pueda comprometer la se
 - `Coordinador del incidente`: `[RESPONSABLE_INCIDENTES]`
 - `Lider tecnico`: `[RESPONSABLE_TECNICO]`
 - `Responsable de comunicacion a clientes`: `[RESPONSABLE_CLIENTES]`
-- `Responsable legal/privacidad`: `[CORREO_LEGAL]`
+- `Responsable legal/privacidad`: `privacidad@pymeshub.lat`
 
 El Coordinador del incidente es responsable de abrir, mantener y cerrar el expediente operativo del caso.
 

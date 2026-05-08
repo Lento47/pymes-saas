@@ -110,7 +110,7 @@ export default function Agent() {
   useEffect(() => { scrollToBottom(); }, [messages]);
   useEffect(() => { if (!isStreaming && inputRef.current) inputRef.current.focus(); }, [isStreaming]);
   useEffect(() => {
-    const done = localStorage.getItem('pymeshub_onboarding_done');
+    const done = localStorage.getItem('PymesHub_onboarding_done');
     if (done && Date.now() - parseInt(done) < 60000) setShowWelcome(true);
   }, []);
 

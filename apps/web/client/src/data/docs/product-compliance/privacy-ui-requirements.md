@@ -1,8 +1,8 @@
-# Requisitos de UI de Privacidad para PymeHub
+# Requisitos de UI de Privacidad para PymesHub
 
 ## 1. Proposito
 
-Esta especificacion define los avisos, enlaces, disclosures y patrones minimos de interfaz que PymeHub debe mostrar para sostener transparencia de privacidad y coherencia con su documentacion legal.
+Esta especificacion define los avisos, enlaces, disclosures y patrones minimos de interfaz que PymesHub debe mostrar para sostener transparencia de privacidad y coherencia con su documentacion legal.
 
 ## 2. Flujos cubiertos
 

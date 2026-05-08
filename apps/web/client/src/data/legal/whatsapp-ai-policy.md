@@ -1,14 +1,14 @@
-# Política de Canales de Comunicación e IA de PymeHub
+# Política de Canales de Comunicación e IA de PymesHub
 
 Última actualización: Abril 2026.
 
 ## 1. Propósito
 
-Esta política establece las reglas y condiciones para el uso de los canales de comunicación integrados en la Plataforma PymeHub —WhatsApp, Telegram, correo electrónico y próximamente Signal— así como de las funcionalidades asistidas por inteligencia artificial. Su objetivo es proteger a los usuarios finales, reducir el riesgo de abuso operativo, asegurar el cumplimiento de las políticas de los proveedores externos y mantener una separación clara entre automatización, revisión humana y responsabilidad del Cliente.
+Esta política establece las reglas y condiciones para el uso de los canales de comunicación integrados en la Plataforma PymesHub —WhatsApp, Telegram, correo electrónico y próximamente Signal— así como de las funcionalidades asistidas por inteligencia artificial. Su objetivo es proteger a los usuarios finales, reducir el riesgo de abuso operativo, asegurar el cumplimiento de las políticas de los proveedores externos y mantener una separación clara entre automatización, revisión humana y responsabilidad del Cliente.
 
 ## 2. Canales de comunicación
 
-La Plataforma PymeHub integra los siguientes canales de comunicación para que el Cliente gestione conversaciones con sus clientes finales desde una bandeja unificada:
+La Plataforma PymesHub integra los siguientes canales de comunicación para que el Cliente gestione conversaciones con sus clientes finales desde una bandeja unificada:
 
 - **WhatsApp:** mensajería empresarial a través de la API de WhatsApp Business (Meta Platforms, Inc.).
 - **Telegram:** mensajería a través de la API de Telegram Bot.
@@ -21,7 +21,7 @@ Cada canal está sujeto a las políticas, términos y condiciones de su respecti
 
 ### 3.1 Consentimiento (opt-in)
 
-El Cliente es el único responsable de obtener y conservar evidencia verificable del consentimiento expreso, previo e informado de cada destinatario antes de enviar cualquier mensaje a través de cualquiera de los canales integrados. PymeHub no autoriza el envío de comunicaciones a destinatarios que no hayan proporcionado dicho consentimiento.
+El Cliente es el único responsable de obtener y conservar evidencia verificable del consentimiento expreso, previo e informado de cada destinatario antes de enviar cualquier mensaje a través de cualquiera de los canales integrados. PymesHub no autoriza el envío de comunicaciones a destinatarios que no hayan proporcionado dicho consentimiento.
 
 El Cliente debe mantener un registro de consentimientos que incluya como mínimo: identificador del destinatario (número de teléfono o correo electrónico según el canal), fecha y hora del consentimiento, fuente del consentimiento, canal autorizado y evidencia del mecanismo de opt-in utilizado.
 
@@ -122,11 +122,11 @@ Cuando el Cliente utilice salidas generadas por IA en comunicaciones con sus pro
 
 ### 6.5 No entrenamiento de modelos competidores
 
-El Cliente no puede utilizar las salidas, datos, APIs o funcionalidades de IA de la Plataforma para desarrollar, entrenar, afinar o mejorar modelos, sistemas o productos que compitan con PymeHub o con los proveedores de IA integrados, cuando ello contravenga los términos de dichos proveedores.
+El Cliente no puede utilizar las salidas, datos, APIs o funcionalidades de IA de la Plataforma para desarrollar, entrenar, afinar o mejorar modelos, sistemas o productos que compitan con PymesHub o con los proveedores de IA integrados, cuando ello contravenga los términos de dichos proveedores.
 
-## 7. Medidas de PymeHub
+## 7. Medidas de PymesHub
 
-PymeHub podrá aplicar medidas de prevención, monitoreo, filtrado o restricción cuando detecte usos de los canales de comunicación o de las funcionalidades de IA que:
+PymesHub podrá aplicar medidas de prevención, monitoreo, filtrado o restricción cuando detecte usos de los canales de comunicación o de las funcionalidades de IA que:
 
 - Sean incompatibles con esta Política o con los Términos de Servicio.
 - Presenten un riesgo para la seguridad, privacidad o integridad de la Plataforma o de terceros.
@@ -136,4 +136,4 @@ Dichas medidas podrán incluir la suspensión de canales específicos, la limita
 
 ## 8. Incumplimiento
 
-El incumplimiento de esta Política constituye una violación material de los Términos de Servicio y de la Política de Uso Aceptable. PymeHub se reserva el derecho de suspender o terminar el acceso a los canales de comunicación, a las funcionalidades de IA o a la totalidad de la Plataforma, sin perjuicio de las acciones legales que pudieran corresponder.
+El incumplimiento de esta Política constituye una violación material de los Términos de Servicio y de la Política de Uso Aceptable. PymesHub se reserva el derecho de suspender o terminar el acceso a los canales de comunicación, a las funcionalidades de IA o a la totalidad de la Plataforma, sin perjuicio de las acciones legales que pudieran corresponder.

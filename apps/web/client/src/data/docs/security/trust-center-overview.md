@@ -100,6 +100,6 @@ Actualmente, los siguientes materiales están disponibles públicamente:
 
 Para consultas de seguridad, cumplimiento o procurement:
 
-- Correo: [CORREO_LEGAL]
+- Correo: privacidad@pymeshub.lat
 - Tiempo de respuesta: dentro del horario laboral de Costa Rica, con priorización para temas de seguridad y cumplimiento.
 - Procesos formales de revisión: pueden solicitarse por correo y se atenderán según disponibilidad y alcance del requerimiento.

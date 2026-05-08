@@ -1,8 +1,8 @@
-# Guia Fiscal y de Facturacion para PymeHub en Costa Rica
+# Guia Fiscal y de Facturacion para PymesHub en Costa Rica
 
 ## 1. Proposito
 
-Esta guia documenta el marco operativo minimo que PymeHub debe seguir para facturar servicios SaaS en Costa Rica con orden fiscal, trazabilidad documental y coherencia entre producto, pricing, facturacion y soporte.
+Esta guia documenta el marco operativo minimo que PymesHub debe seguir para facturar servicios SaaS en Costa Rica con orden fiscal, trazabilidad documental y coherencia entre producto, pricing, facturacion y soporte.
 
 ## 2. Alcance
 
@@ -33,7 +33,7 @@ Antes de emitir comprobantes, `Otnel` debe:
 
 ## 5. Facturacion electronica
 
-PymeHub debe operar con el esquema vigente de facturacion electronica aplicable en Costa Rica y adaptar sus flujos a la version tecnica exigida en el momento del lanzamiento. La emision debe contemplar:
+PymesHub debe operar con el esquema vigente de facturacion electronica aplicable en Costa Rica y adaptar sus flujos a la version tecnica exigida en el momento del lanzamiento. La emision debe contemplar:
 
 - identificacion del emisor;
 - identificacion del receptor cuando corresponda;
@@ -108,7 +108,7 @@ Cuando exista error de cobro, devolucion, anulacion parcial, descuento posterior
 
 ## 9. Resguardo de comprobantes y evidencia
 
-PymeHub debe conservar evidencia suficiente de:
+PymesHub debe conservar evidencia suficiente de:
 
 - comprobante emitido;
 - XML generado y enviado;

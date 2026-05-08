@@ -1,8 +1,8 @@
-# Notas de Cumplimiento para Documentos y OCR en PymeHub
+# Notas de Cumplimiento para Documentos y OCR en PymesHub
 
 ## 1. Proposito
 
-Esta especificacion documenta los controles minimos de cumplimiento que PymeHub debe sostener cuando permite cargar documentos y extraer texto mediante OCR.
+Esta especificacion documenta los controles minimos de cumplimiento que PymesHub debe sostener cuando permite cargar documentos y extraer texto mediante OCR.
 
 ## 2. Alcance
 

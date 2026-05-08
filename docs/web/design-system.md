@@ -1,7 +1,7 @@
-# PymeHub Design System
+# PymesHub Design System
 
 ## Overview
-All pages in PymeHub follow a consistent design pattern using the `PageTemplate` component.
+All pages in PymesHub follow a consistent design pattern using the `PageTemplate` component.
 
 ## Components
 

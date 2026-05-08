@@ -70,7 +70,7 @@ Necesitás cuatro valores. Los primeros tres están en `developers.facebook.com 
 **Paso 3 — Configurar el webhook en Meta**
 
 1. En `developers.facebook.com → Tu App → WhatsApp → Configuration → Webhook`, dale **Edit** y completá:
-   - **Callback URL**: `https://api.pymeshub.lat/api/inbound/whatsapp/webhook`
+   - **Callback URL**: `https://api.PymesHub.lat/api/inbound/whatsapp/webhook`
    - **Verify Token**: una cadena aleatoria que te inventás; tiene que coincidir exactamente con el `WHATSAPP_WEBHOOK_VERIFY_TOKEN` que PymesHub espera. Si tu workspace está en cuenta managed, pediselo al admin de plataforma; si autoalojás PymesHub, lo definís vos en la variable de entorno.
    - **Verify and Save**: Meta hace un GET de prueba contra el endpoint. Si responde con el challenge correcto, queda verificado.
 2. **Suscribite** a los eventos. Como mínimo: `messages` (mensajes entrantes y estados de entrega). Los demás (`message_template_status_update`, `account_alerts`) son opcionales pero recomendados para que PymesHub te avise si una plantilla queda rechazada.
@@ -120,7 +120,7 @@ PymesHub envía correo a través de **Resend** (API moderna sobre HTTPS) y opcio
 
 **Paso 2 — Crear la API key**
 
-1. En `resend.com → API Keys → Create API Key`, dale un nombre descriptivo (`pymeshub-prod`).
+1. En `resend.com → API Keys → Create API Key`, dale un nombre descriptivo (`PymesHub-prod`).
 2. Permiso: `Sending access` (es el que usa PymesHub para enviar). Si vas a usar inbound, también necesitás `Full access`.
 3. Restringí la API key a tu dominio verificado (campo *Domain*) para limitar el blast radius si la key se filtra.
 4. Copiá la key (`re_...`) en el momento — Resend no la vuelve a mostrar. Guardala en un gestor de secretos.
@@ -141,7 +141,7 @@ PymesHub envía correo a través de **Resend** (API moderna sobre HTTPS) y opcio
 Para que las respuestas de tus clientes lleguen al inbox de PymesHub:
 
 1. En `resend.com → Webhooks → Add Webhook`:
-   - **Endpoint URL**: `https://api.pymeshub.lat/api/inbound/email/webhook`
+   - **Endpoint URL**: `https://api.PymesHub.lat/api/inbound/email/webhook`
    - **Events**: marcá `email.delivered`, `email.bounced`, `email.complained`, y los de inbound (`email.received` si tu plan lo incluye).
 2. Resend te muestra un **Webhook Signing Secret** (formato `whsec_...`). PymesHub lo verifica con la firma Svix (headers `svix-signature`, `svix-id`, `svix-timestamp`) — sin firma válida la llamada se rechaza con 401.
 3. Si tu workspace es managed, el admin de plataforma carga `RESEND_WEBHOOK_SECRET` en la config del workspace. Si autoalojás, definilo como variable de entorno del API.
@@ -193,7 +193,7 @@ Mientras seguís en el chat con BotFather:
 1. **Configuración → Canales → Telegram → Conectar**.
 2. Pegá el **token** del bot. PymesHub lo guarda cifrado.
 3. Al guardar, PymesHub **automáticamente**:
-   - Llama a `setWebhook` de Telegram apuntando a `https://api.pymeshub.lat/api/inbound/telegram/webhook/{channelId}`.
+   - Llama a `setWebhook` de Telegram apuntando a `https://api.PymesHub.lat/api/inbound/telegram/webhook/{channelId}`.
    - Genera un secret aleatorio por canal y lo registra como `secret_token` en Telegram. Cada update entrante debe traer ese mismo secret en el header `X-Telegram-Bot-Api-Secret-Token` o se rechaza con 401.
    - Suscribe a los tipos de update relevantes (`message`, `edited_message`, `callback_query`).
 4. PymesHub muestra el estado del webhook en **Configuración → Canales → Telegram → Estado del webhook** (URL registrada, últimos errores reportados por Telegram, conteo de updates pendientes).

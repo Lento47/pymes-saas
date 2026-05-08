@@ -1,8 +1,8 @@
-# Politica de Cancelacion y Reembolsos de PymeHub
+# Politica de Cancelacion y Reembolsos de PymesHub
 
 ## 1. Proposito
 
-Esta politica regula como se solicita, procesa y ejecuta la cancelacion de PymeHub, asi como las reglas aplicables a reembolsos, ajustes, exportacion de datos, cierre del workspace y tratamiento posterior de la informacion.
+Esta politica regula como se solicita, procesa y ejecuta la cancelacion de PymesHub, asi como las reglas aplicables a reembolsos, ajustes, exportacion de datos, cierre del workspace y tratamiento posterior de la informacion.
 
 ## 2. Alcance
 
@@ -31,7 +31,7 @@ El cliente podra solicitar la cancelacion por los canales formales de soporte o 
 - razon general de la baja;
 - necesidad o no de exportacion de datos.
 
-Cuando exista duda razonable sobre la autoridad del solicitante, `[NOMBRE_EMPRESA]` podra exigir verificaciones adicionales.
+Cuando exista duda razonable sobre la autoridad del solicitante, `Otnel S.A.` podra exigir verificaciones adicionales.
 
 ## 5. Fecha de efecto
 
@@ -66,11 +66,11 @@ Tras la cancelacion, el cliente podra solicitar una exportacion razonable dentro
 - documentos y metadatos;
 - configuraciones esenciales del workspace.
 
-`[NOMBRE_EMPRESA]` podra limitar el formato, la granularidad o el mecanismo de entrega cuando sea necesario para proteger seguridad, integridad del servicio o datos de terceros.
+`Otnel S.A.` podra limitar el formato, la granularidad o el mecanismo de entrega cuando sea necesario para proteger seguridad, integridad del servicio o datos de terceros.
 
 ## 9. Periodo de gracia y cierre del workspace
 
-`[NOMBRE_EMPRESA]` podra mantener el workspace en estado restringido durante un periodo de gracia razonable para permitir:
+`Otnel S.A.` podra mantener el workspace en estado restringido durante un periodo de gracia razonable para permitir:
 
 - validacion final de la solicitud;
 - exportacion;
@@ -81,7 +81,7 @@ Durante este periodo, el acceso podra estar limitado a administradores o a funci
 
 ## 10. Borrado, anonimización y retencion residual
 
-Una vez vencido el plazo de cierre, `[NOMBRE_EMPRESA]` podra:
+Una vez vencido el plazo de cierre, `Otnel S.A.` podra:
 
 - borrar datos activos;
 - anonimizar registros cuando el borrado inmediato no sea viable;
@@ -91,7 +91,7 @@ Los backups residuales seguiran su ciclo tecnico de expiracion ordinario y no de
 
 ## 11. Terminacion por incumplimiento o riesgo
 
-Si la baja obedece a impago, fraude, riesgo de seguridad, uso prohibido o requerimiento legal, `[NOMBRE_EMPRESA]` podra:
+Si la baja obedece a impago, fraude, riesgo de seguridad, uso prohibido o requerimiento legal, `Otnel S.A.` podra:
 
 - suspender inmediatamente el acceso;
 - condicionar la exportacion a verificaciones adicionales;

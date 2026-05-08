@@ -303,7 +303,7 @@ El uso continuo implica aceptación.
 
 ## 25. Contacto
 
-Email: legal@pymeshub.lat  
+Email: legal@PymesHub.lat  
 Ubicación: San José, Costa Rica  
 
 ---

@@ -1,4 +1,4 @@
-# Checklist de Cumplimiento Pre-Lanzamiento para PymeHub en Costa Rica
+# Checklist de Cumplimiento Pre-Lanzamiento para PymesHub en Costa Rica
 
 ## 1. Proposito
 

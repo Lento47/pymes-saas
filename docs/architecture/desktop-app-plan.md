@@ -1,4 +1,4 @@
-# Pymeshub Desktop App — Plan de Implementación
+# PymesHub Desktop App — Plan de Implementación
 
 **Estado:** Pendiente de ejecución
 **Stack elegido:** Tauri 2 + WebView2 (Windows)
@@ -35,7 +35,7 @@ La app Tauri envuelve un WebView2 que apunta directamente a la URL de producció
 1. Icono en escritorio / Start Menu
 2. Ventana nativa con menú en español
 3. Auto-updater vía GitHub Releases
-4. Deep-linking `pymeshub://` para flujo de invitaciones
+4. Deep-linking `PymesHub://` para flujo de invitaciones
 5. Notificaciones nativas del sistema (hook futuro)
 6. Pantalla offline si no hay conexión
 7. Almacenamiento seguro del refresh token en Windows Credential Manager (vía `tauri-plugin-stronghold`)
@@ -51,7 +51,7 @@ Todo. El frontend no sabe que está corriendo dentro de Tauri excepto cuando det
 
 ```
 apps/desktop/
-├── package.json                          # workspace member: @pymeshub/desktop
+├── package.json                          # workspace member: @PymesHub/desktop
 ├── src-tauri/
 │   ├── Cargo.toml                        # deps: tauri, tauri-plugin-updater, tauri-plugin-deep-link, tauri-plugin-stronghold
 │   ├── Cargo.lock
@@ -68,7 +68,7 @@ apps/desktop/
 │   │   └── icon.png
 │   └── src/
 │       ├── main.rs                       # entry point
-│       ├── deep_link.rs                  # handler para pymeshub://
+│       ├── deep_link.rs                  # handler para PymesHub://
 │       └── updater.rs                    # check on startup
 ├── README.md                             # cómo buildear localmente
 └── .gitignore                            # target/, *.msi, *.exe
@@ -88,23 +88,23 @@ apps/desktop/
 
 ```json
 {
-  "productName": "Pymeshub",
+  "productName": "PymesHub",
   "version": "0.1.0",
-  "identifier": "com.pymeshub.desktop",
+  "identifier": "com.PymesHub.desktop",
   "build": {
     "frontendDist": "../dist-remote",
-    "devUrl": "https://app.pymeshub.com"
+    "devUrl": "https://app.PymesHub.com"
   },
   "app": {
     "windows": [
       {
-        "title": "Pymeshub",
+        "title": "PymesHub",
         "width": 1280,
         "height": 800,
         "minWidth": 1024,
         "minHeight": 600,
         "resizable": true,
-        "url": "https://app.pymeshub.com"
+        "url": "https://app.PymesHub.com"
       }
     ],
     "security": {
@@ -136,7 +136,7 @@ apps/desktop/
     },
     "deep-link": {
       "desktop": {
-        "schemes": ["pymeshub"]
+        "schemes": ["PymesHub"]
       }
     }
   }
@@ -159,7 +159,7 @@ fn main() {
     .plugin(tauri_plugin_notification::init())
     .setup(|app| {
       #[cfg(desktop)]
-      app.deep_link().register("pymeshub")?;
+      app.deep_link().register("PymesHub")?;
 
       let handle = app.handle().clone();
       app.deep_link().on_open_url(move |event| {
@@ -167,7 +167,7 @@ fn main() {
         if let Some(url) = url {
           if let Some(window) = handle.get_webview_window("main") {
             let _ = window.eval(&format!(
-              "window.location.href = 'https://app.pymeshub.com/#/accept-invite?token=' + new URL('{}').searchParams.get('token')",
+              "window.location.href = 'https://app.PymesHub.com/#/accept-invite?token=' + new URL('{}').searchParams.get('token')",
               url
             ));
             let _ = window.set_focus();
@@ -194,17 +194,17 @@ Secrets necesarios:
 ## 6. Auto-updater
 
 - Al abrir la app, check silencioso contra `latest.json` en GitHub Releases
-- Si hay versión nueva: popup "Hay una nueva versión de Pymeshub. ¿Actualizar ahora?" con Sí/Más tarde
+- Si hay versión nueva: popup "Hay una nueva versión de PymesHub. ¿Actualizar ahora?" con Sí/Más tarde
 - Si el usuario acepta: descarga el `.msi`, verifica firma, lanza `msiexec` en modo silent, cierra app, relanza
 - Firma obligatoria (evita MITM)
 
 ## 7. Deep-linking para invitaciones
 
-**Problema a resolver:** el email de invitación abre `https://app.pymeshub.com/#/accept-invite?token=XXX` en el browser del sistema. Si el cliente ya instaló la desktop app, queremos que abra ahí.
+**Problema a resolver:** el email de invitación abre `https://app.PymesHub.com/#/accept-invite?token=XXX` en el browser del sistema. Si el cliente ya instaló la desktop app, queremos que abra ahí.
 
 **Solución:**
-1. El backend envía el link en dos formatos en el email: botón "Abrir en la app" (`pymeshub://accept-invite?token=XXX`) y fallback "Abrir en navegador" (`https://...`)
-2. Tauri registra el handler `pymeshub://` en Windows Registry al instalar
+1. El backend envía el link en dos formatos en el email: botón "Abrir en la app" (`PymesHub://accept-invite?token=XXX`) y fallback "Abrir en navegador" (`https://...`)
+2. Tauri registra el handler `PymesHub://` en Windows Registry al instalar
 3. Click → Windows lanza la app Tauri si está instalada, con el URL como argumento
 4. `main.rs` parsea el token y navega el WebView a `/#/accept-invite?token=XXX`
 
@@ -223,7 +223,7 @@ Sin firma EV, Windows SmartScreen muestra "Windows protected your PC" la primera
 
 ## 9. Decisiones pendientes antes de codear
 
-1. **URL de producción del SaaS** — ¿`app.pymeshub.com`? ¿otro dominio? Lo necesito para hardcodear en `tauri.conf.json`.
+1. **URL de producción del SaaS** — ¿`app.PymesHub.com`? ¿otro dominio? Lo necesito para hardcodear en `tauri.conf.json`.
 2. **Icono corporativo** — ¿existe logo en formato vectorial (SVG, AI)? Si no, se generan placeholders con las iniciales "PH" en el color del brand. Necesito sets de 32x32, 128x128, 128x128@2x, .ico, .icns, .png.
 3. **Code signing** — ¿configurar workflow asumiendo EV cert futura, o sin firma por ahora?
 4. **Idioma del instalador** — solo español, o español + inglés?
@@ -238,7 +238,7 @@ Sin firma EV, Windows SmartScreen muestra "Windows protected your PC" la primera
 | Implementar `main.rs` con deep-linking + updater | 1h |
 | GitHub Actions workflow | 45 min |
 | Generar keypair + configurar secrets | 15 min |
-| Modificar `invitations.service.ts` para incluir `pymeshub://` | 20 min |
+| Modificar `invitations.service.ts` para incluir `PymesHub://` | 20 min |
 | Integrar `platform.ts` en frontend | 30 min |
 | Primer build + ajustes de errores Rust/Tauri | 1-1.5h |
 | Probar instalador limpio en VM Windows | 30 min |

@@ -1520,7 +1520,7 @@ function TelegramConfigModal({ channel, onClose }: { channel: any; onClose: () =
       <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs text-muted-foreground space-y-1">
         <p className="font-medium text-foreground">Webhook automático:</p>
         <p>El webhook se registra automáticamente al guardar el token</p>
-        <p className="mt-2">Los mensajes que reciba tu bot aparecerán como conversaciones en PyMesHub</p>
+        <p className="mt-2">Los mensajes que reciba tu bot aparecerán como conversaciones en PymesHub</p>
       </div>
 
       <Button

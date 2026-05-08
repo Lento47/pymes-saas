@@ -55,8 +55,8 @@ Permiten:
 
 | Cookie | Proveedor | Finalidad | Duración |
 |--------|-----------|-----------|----------|
-| `pymeshub_session` | PymesHub | Mantiene sesión autenticada | Sesión |
-| `pymeshub_csrf` | PymesHub | Protección CSRF | Sesión |
+| `PymesHub_session` | PymesHub | Mantiene sesión autenticada | Sesión |
+| `PymesHub_csrf` | PymesHub | Protección CSRF | Sesión |
 | `cookie_consent` | PymesHub | Preferencias de cookies | 12 meses |
 
 ⚠️ Sin estas cookies la Plataforma no funciona correctamente.
@@ -73,8 +73,8 @@ Permiten personalización:
 
 | Cookie | Proveedor | Finalidad | Duración |
 |--------|-----------|-----------|----------|
-| `pymeshub_theme` | PymesHub | Preferencia visual | Persistente |
-| `pymeshub_locale` | PymesHub | Idioma | Persistente |
+| `PymesHub_theme` | PymesHub | Preferencia visual | Persistente |
+| `PymesHub_locale` | PymesHub | Idioma | Persistente |
 
 ---
 
@@ -230,7 +230,7 @@ Se notificará mediante:
 
 ## 11. Contacto
 
-Email: legal@pymeshub.lat  
+Email: legal@PymesHub.lat  
 Ubicación: San José, Costa Rica  
 
 ---

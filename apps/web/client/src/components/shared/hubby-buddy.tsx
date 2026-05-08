@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'wouter';
 
-const ONBOARDING_KEY = 'pymeshub_onboarding_done';
+const ONBOARDING_KEY = 'PymesHub_onboarding_done';
 
 export function HubbyBuddy() {
   const [visible, setVisible] = useState(false);

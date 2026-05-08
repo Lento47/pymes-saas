@@ -1,8 +1,8 @@
-# Lista de Subprocesadores y Servicios de Terceros de PymeHub
+# Lista de Subprocesadores y Servicios de Terceros de PymesHub
 
 ## 1. Proposito
 
-Este registro identifica los terceros que apoyan la prestacion de PymeHub y que pueden tratar datos del cliente o datos operativos del servicio. Su objetivo es mantener trazabilidad sobre el mapa real de tratamiento y apoyar la politica de privacidad, el DPA y la gestion de vendors.
+Este registro identifica los terceros que apoyan la prestacion de PymesHub y que pueden tratar datos del cliente o datos operativos del servicio. Su objetivo es mantener trazabilidad sobre el mapa real de tratamiento y apoyar la politica de privacidad, el DPA y la gestion de vendors.
 
 ## 2. Reglas de uso
 
@@ -20,7 +20,7 @@ Este registro identifica los terceros que apoyan la prestacion de PymeHub y que 
 | Hosting principal | Ejecucion de API/web | Datos de aplicacion y logs | Alta | `[POR_CONFIRMAR]` | Definir proveedor final | Activo o previsto | `[FECHA]` |
 | Redis | Colas y cache | IDs, jobs, metadatos operativos | Media | `[POR_CONFIRMAR]` | Confirmar persistencia y acceso | Activo o previsto | `[FECHA]` |
 | Monitoreo / observabilidad | Alertas y errores | Logs, errores, eventos | Media | `[POR_CONFIRMAR]` | Minimizar datos en payloads | Activo o previsto | `[FECHA]` |
-| Pasarela de pago | Cobro de suscripciones | Datos de cobro y cliente | Alta | `[POR_CONFIRMAR]` | No almacenar PAN en PymeHub | Activo o previsto | `[FECHA]` |
+| Pasarela de pago | Cobro de suscripciones | Datos de cobro y cliente | Alta | `[POR_CONFIRMAR]` | No almacenar PAN en PymesHub | Activo o previsto | `[FECHA]` |
 
 ## 4. Relacion con otros documentos
 

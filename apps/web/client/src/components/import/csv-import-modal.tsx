@@ -133,7 +133,7 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
         {/* Step 2: Column Mapping */}
         {step === "map" && (
           <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">Asigna las columnas del CSV a los campos de PymeHub:</p>
+            <p className="text-xs text-muted-foreground">Asigna las columnas del CSV a los campos de PymesHub:</p>
             <div className="grid gap-2">
               {fields.map((field) => (
                 <div key={field.key} className="flex items-center gap-3">

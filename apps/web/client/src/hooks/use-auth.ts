@@ -7,7 +7,7 @@ function resetAuthAndTheme() {
   clearAuthState();
   if (typeof document !== 'undefined') {
     document.documentElement.classList.remove('light');
-    try { localStorage.removeItem('pymeshub-theme'); } catch { /* ignore */ }
+    try { localStorage.removeItem('PymesHub-theme'); } catch { /* ignore */ }
   }
 }
 import { connectSocket, disconnectSocket, getSocket } from "./use-socket";

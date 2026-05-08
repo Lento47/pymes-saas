@@ -385,7 +385,7 @@ export default function BillingPage() {
   const handleExtraSeatCheckout = async () => {
     const priceId = import.meta.env.VITE_PADDLE_PRICE_EXTRA_SEAT || null;
     if (!priceId || !paddle) {
-      window.location.href = "mailto:legal@pymeshub.lat?subject=Extra%20seat%20for%20PyMesHub";
+      window.location.href = "mailto:legal@PymesHub.lat?subject=Extra%20seat%20for%20PymesHub";
       return;
     }
     setLoading("extra");
@@ -743,7 +743,7 @@ export default function BillingPage() {
                     <Button
                       size="sm"
                       className="w-full h-8 text-xs gap-1.5 bg-yellow-600 hover:bg-yellow-700 text-white"
-                      onClick={() => toast({ title: "Contactá a ventas", description: "Escribinos a ventas@pymeshub.lat para armar tu plan Business+ a medida." })}
+                      onClick={() => toast({ title: "Contactá a ventas", description: "Escribinos a ventas@PymesHub.lat para armar tu plan Business+ a medida." })}
                     >
                       Contactar a ventas
                     </Button>

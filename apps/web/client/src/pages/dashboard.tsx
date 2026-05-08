@@ -16,7 +16,7 @@ import { es } from "date-fns/locale";
 import OnboardingTour from "@/components/shared/onboarding-tour";
 import QuickStartChecklist from "@/components/shared/quick-start-checklist";
 
-const STATUS_BG = "https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/statusBackground.png";
+const STATUS_BG = "https://raw.githubusercontent.com/Lento47/PymesHub-invoice/refs/heads/master/statusBackground.png";
 
 // ── Types ──
 interface PipelineDealSummary { value: string | null; currency: string; }
