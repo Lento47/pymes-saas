@@ -539,6 +539,8 @@ export const api = {
       code: string;
       slug: string;
     }>("POST", "/api/auth/facebook/token", { accessToken }),
+  telegramTokenLogin: (data: any) =>
+    request<{ code: string; slug: string }>("POST", "/api/auth/telegram/token", data),
   // SAML
   checkSamlStatus: (workspaceSlug?: string) => {
     const qs = workspaceSlug ? `?slug=${encodeURIComponent(workspaceSlug)}` : "";
