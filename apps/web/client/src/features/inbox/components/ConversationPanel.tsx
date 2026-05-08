@@ -57,7 +57,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { user } = useAuth();
-  useConversationSocket(conversationId);
+  useConversationSocket(conversationId || '');
   const [message, setMessage] = useState("");
   const [attachment, setAttachment] = useState<{ file: File; url: string; type: string } | null>(null);
   const [uploading, setUploading] = useState(false);
