@@ -49,7 +49,7 @@ export class ChannelsService {
 
   async findAll(workspaceId: string) {
     const channels = await this.prisma.channel.findMany({
-      where:   { workspace_id: workspaceId, status: { not: 'INACTIVE' } },
+      where:   { workspace_id: workspaceId },
       orderBy: { created_at: 'asc' },
     });
     return channels.map(ch => this.sanitise(ch));
