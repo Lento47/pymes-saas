@@ -110,6 +110,14 @@ enum Priority {
   URGENT
 }
 
+enum WebhookEventStatus {
+  PENDING
+  PROCESSING
+  RETRYABLE
+  PROCESSED
+  FAILED
+}
+
 enum MessageDirection {
   INBOUND
   OUTBOUND
@@ -142,6 +150,7 @@ enum TaskSource {
 
 enum InvoiceStatus {
   DRAFT
+  PENDING_APPROVAL
   SENT
   PARTIALLY_PAID
   PAID
@@ -249,6 +258,9 @@ model Workspace {
   billing_events       BillingEvent[]
   stripe_events        StripeEvent[]
   routing_rules        RoutingRule[]
+  product_categories   ProductCategory[]
+  products             Product[]
+  stock_movements      StockMovement[]
 
   @@index([slug])
   @@index([status])
@@ -513,6 +525,10 @@ model Message {
   raw_payload_json      Json?             @db.JsonB
   ai_classification_json Json?            @db.JsonB
   sent_at               DateTime?
+  provider              String?
+  provider_message_id   String?
+  delivery_status       String?
+  delivery_error        String?            @db.Text
 
   created_at DateTime @default(now())
 
@@ -520,6 +536,7 @@ model Message {
   conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
   sender_user  User?        @relation("MessageSender", fields: [sender_user_id], references: [id])
 
+  @@unique([workspace_id, provider, provider_message_id])
   @@index([workspace_id])
   @@index([conversation_id])
   @@index([workspace_id, direction])
@@ -660,6 +677,7 @@ model InvoiceLine {
   id                String   @id @default(cuid())
   workspace_id      String
   invoice_id        String
+  product_id        String?
   line_number       Int
   description       String
   quantity          Decimal  @db.Decimal(12, 3)
@@ -680,10 +698,12 @@ model InvoiceLine {
 
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   invoice   Invoice   @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  product   Product?  @relation(fields: [product_id], references: [id], onDelete: SetNull)
 
+  @@unique([invoice_id, line_number])
   @@index([workspace_id])
   @@index([invoice_id])
-  @@unique([invoice_id, line_number])
+  @@index([product_id])
   @@map("invoice_lines")
 }
 
@@ -1060,6 +1080,39 @@ model StripeEvent {
 }
 
 // ============================================================
+// WEBHOOK EVENTS — Durable provider webhook ingestion
+// ============================================================
+
+model WebhookEvent {
+  id                  String             @id @default(cuid())
+  provider            String
+  event_type          String
+  workspace_id        String?
+  phone_number_id     String?
+  waba_id             String?
+  provider_message_id String?
+  event_fingerprint   String             @unique
+  payload_json        Json               @db.JsonB
+  status              WebhookEventStatus @default(PENDING)
+  attempts            Int                @default(0)
+  next_retry_at       DateTime?
+  locked_at           DateTime?
+  locked_by           String?
+  last_error          String?            @db.Text
+  received_at         DateTime           @default(now())
+  processed_at        DateTime?
+  created_at          DateTime           @default(now())
+  updated_at          DateTime           @updatedAt
+
+  @@index([provider, status])
+  @@index([status, next_retry_at])
+  @@index([workspace_id])
+  @@index([phone_number_id])
+  @@index([provider_message_id])
+  @@map("webhook_events")
+}
+
+// ============================================================
 // Billing Invoice — PDF generation for subscription payments
 // ============================================================
 
@@ -1104,4 +1157,88 @@ model BillingInvoice {
   @@index([status])
   @@index([issued_at(sort: Desc)])
   @@map("billing_invoices")
+}
+
+// ============================================================
+// INVENTORY — Products & Stock
+// ============================================================
+
+enum ProductType {
+  PRODUCT
+  SERVICE
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  REVERSAL
+}
+
+model ProductCategory {
+  id           String   @id @default(cuid())
+  workspace_id String
+  name         String
+  description  String?
+  color        String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  products  Product[]
+
+  @@unique([workspace_id, name])
+  @@map("product_categories")
+}
+
+model Product {
+  id              String      @id @default(cuid())
+  workspace_id    String
+  category_id     String?
+  name            String
+  sku             String
+  description     String?     @db.Text
+  type            ProductType @default(PRODUCT)
+  unit_price      Decimal     @db.Decimal(12, 5)
+  cost_price      Decimal?    @db.Decimal(12, 5)
+  current_stock   Int         @default(0)
+  min_stock       Int         @default(0)
+  unit_of_measure String?
+  track_inventory Boolean     @default(true)
+  is_active       Boolean     @default(true)
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+
+  category      ProductCategory? @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  workspace     Workspace        @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  movements     StockMovement[]
+  invoice_lines InvoiceLine[]
+
+  @@unique([workspace_id, sku])
+  @@index([workspace_id, is_active])
+  @@index([workspace_id, current_stock])
+  @@map("products")
+}
+
+model StockMovement {
+  id             String       @id @default(cuid())
+  workspace_id   String
+  product_id     String
+  type           MovementType
+  quantity       Int
+  previous_stock Int
+  new_stock      Int
+  reason         String?
+  reference_type String?
+  reference_id   String?
+  user_id        String?
+  created_at     DateTime     @default(now())
+
+  product   Product   @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([product_id])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@map("stock_movements")
 }
