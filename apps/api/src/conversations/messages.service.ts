@@ -319,6 +319,182 @@ export class MessagesService {
     return { ok: true, message_id: message.id, conversation_id: conversation.id };
   }
 
+  // ── Durable provider-backed inbound reception ──────────────────────────
+
+  async receiveProviderInbound(params: {
+    provider: string;
+    workspaceId: string;
+    channelPhoneNumberId: string;
+    from: string;
+    senderName: string;
+    bodyText: string;
+    providerMessageId: string;
+    timestamp?: string;
+    rawPayload?: any;
+  }): Promise<{
+    status: 'created' | 'duplicate';
+    messageId?: string;
+    conversationId?: string;
+    contactId?: string | null;
+  }> {
+    const { provider, workspaceId, from, senderName, bodyText, providerMessageId } = params;
+
+    const existingMessage = await this.prisma.message.findFirst({
+      where: {
+        workspace_id: workspaceId,
+        provider,
+        provider_message_id: providerMessageId,
+      },
+      select: { id: true, conversation_id: true },
+    });
+
+    if (existingMessage) {
+      return {
+        status: 'duplicate',
+        messageId: existingMessage.id,
+        conversationId: existingMessage.conversation_id,
+      };
+    }
+
+    const channel = await this.prisma.channel.findFirst({
+      where: {
+        type: 'WHATSAPP',
+        config_json: { path: ['phone_number_id'], equals: params.channelPhoneNumberId },
+        workspace_id: workspaceId,
+        status: 'ACTIVE',
+      },
+    });
+
+    if (!channel) {
+      throw new Error(`No active WhatsApp channel for phone_number_id: ${params.channelPhoneNumberId}`);
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      let contact = await tx.contact.findFirst({
+        where: {
+          workspace_id: workspaceId,
+          OR: [{ phone: from }, { email: from }],
+        },
+      });
+
+      if (!contact) {
+        contact = await tx.contact.create({
+          data: {
+            workspace_id: workspaceId,
+            type: 'LEAD',
+            full_name: senderName,
+            phone: from,
+          },
+        });
+      }
+
+      let conversation = await tx.conversation.findFirst({
+        where: {
+          workspace_id: workspaceId,
+          channel_id: channel.id,
+          contact_id: contact.id,
+          status: { in: ['NEW', 'OPEN', 'PENDING'] },
+        },
+        orderBy: { last_message_at: 'desc' },
+      });
+
+      if (!conversation) {
+        conversation = await tx.conversation.create({
+          data: {
+            workspace_id: workspaceId,
+            channel_id: channel.id,
+            contact_id: contact.id,
+            subject: `Mensaje de ${senderName}`,
+            status: 'NEW',
+            priority: 'MEDIUM',
+          },
+        });
+      }
+
+      const message = await tx.message.create({
+        data: {
+          workspace_id: workspaceId,
+          conversation_id: conversation.id,
+          direction: 'INBOUND',
+          sender_name: senderName,
+          sender_ref: from,
+          body_text: bodyText,
+          raw_payload_json: params.rawPayload ?? undefined,
+          sent_at: params.timestamp ? new Date(Number(params.timestamp) * 1000) : new Date(),
+          provider,
+          provider_message_id: providerMessageId,
+        },
+      });
+
+      await tx.conversation.update({
+        where: { id: conversation.id },
+        data: { last_message_at: new Date(), updated_at: new Date() },
+      });
+
+      return { messageId: message.id, conversationId: conversation.id, contactId: contact.id };
+    });
+
+    return { status: 'created', ...result };
+  }
+
+  async emitAndNotify(params: {
+    workspaceId: string;
+    conversationId: string;
+    contactId: string | null;
+    messageId: string;
+    senderName: string;
+    bodyText: string;
+  }): Promise<void> {
+    const { workspaceId, conversationId, contactId, messageId, senderName, bodyText } = params;
+
+    try {
+      const message = await this.prisma.message.findUnique({
+        where: { id: messageId },
+        include: {
+          sender_user: { select: { id: true, name: true, avatar_url: true } },
+        },
+      });
+      if (message) {
+        this.events.emitNewMessage(conversationId, workspaceId, message);
+      }
+    } catch (err) {
+      this.logger.error(`Realtime emit failed: ${err?.message}`);
+    }
+
+    let conversation: any = null;
+    try {
+      conversation = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { subject: true, assigned_user_id: true },
+      });
+    } catch (err) {
+      this.logger.error(`Failed to fetch conversation for notification: ${err?.message}`);
+    }
+
+    if (conversation?.assigned_user_id) {
+      this.notificationsService
+        .create(workspaceId, {
+          user_id: conversation.assigned_user_id,
+          type: 'new_message',
+          title: 'Nuevo mensaje recibido',
+          body: `Nuevo mensaje de ${senderName} en "${conversation.subject || 'Sin asunto'}": "${bodyText.slice(0, 100)}${bodyText.length > 100 ? '...' : ''}"`,
+          related_entity_type: 'conversation',
+          related_entity_id: conversationId,
+        })
+        .catch((err) =>
+          this.logger.error('Error al crear notificación de nuevo mensaje', err),
+        );
+    }
+
+    this.automationsService
+      .triggerRules(workspaceId, 'MESSAGE_RECEIVED', 'message', messageId)
+      .catch((err) => this.logger.error('Error triggering automation rules', err));
+
+    this.triggerAiAnalysis(workspaceId, conversationId, contactId).catch(
+      (err) => this.logger.error('Error en análisis de IA', err?.stack ?? err),
+    );
+  }
+
   // ── Private helpers ────────────────────────────────────────────────────────
 
   private async triggerAiAnalysis(

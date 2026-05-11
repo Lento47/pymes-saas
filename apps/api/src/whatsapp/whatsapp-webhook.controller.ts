@@ -64,14 +64,19 @@ export class WhatsAppWebhookController {
       throw new UnauthorizedException('Invalid webhook signature');
     }
 
-    try {
-      // SECURITY: Workspace is resolved from WhatsApp phone_number_id, not from client headers
-      await this.whatsappService.processInbound(payload);
-    } catch (err: any) {
-      this.logger.error(`Error processing WhatsApp webhook: ${err?.message}`);
+    // SECURITY: Workspace is resolved from WhatsApp phone_number_id, not from client headers
+    const result = await this.whatsappService.ingestWebhook(payload);
+
+    if (!result.persisted) {
+      // Database unavailable — tell Meta to retry
+      this.logger.error('Failed to persist webhook event — returning error to Meta');
+      throw new Error('Service unavailable');
     }
 
-    // Siempre retornar 200 a Meta
+    if (result.duplicate) {
+      this.logger.log('Duplicate webhook acknowledged — returning 200 to Meta');
+    }
+
     return { ok: true };
   }
 

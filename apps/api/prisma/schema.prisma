@@ -111,6 +111,14 @@ enum Priority {
   URGENT
 }
 
+enum WebhookEventStatus {
+  PENDING
+  PROCESSING
+  RETRYABLE
+  PROCESSED
+  FAILED
+}
+
 enum MessageDirection {
   INBOUND
   OUTBOUND
@@ -563,12 +571,18 @@ model Message {
   telegram_user_id    String?
   telegram_message_id String?
 
+  provider              String?
+  provider_message_id   String?
+  delivery_status       String?
+  delivery_error        String?            @db.Text
+
   created_at DateTime @default(now())
 
   workspace    Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
   sender_user  User?        @relation("MessageSender", fields: [sender_user_id], references: [id])
 
+  @@unique([workspace_id, provider, provider_message_id])
   @@index([workspace_id])
   @@index([conversation_id])
   @@index([workspace_id, direction])
@@ -1118,6 +1132,39 @@ model StripeEvent {
   @@index([processed])
   @@index([created_at(sort: Desc)])
   @@map("stripe_events")
+}
+
+// ============================================================
+// WEBHOOK EVENTS — Durable provider webhook ingestion
+// ============================================================
+
+model WebhookEvent {
+  id                  String             @id @default(cuid())
+  provider            String
+  event_type          String
+  workspace_id        String?
+  phone_number_id     String?
+  waba_id             String?
+  provider_message_id String?
+  event_fingerprint   String             @unique
+  payload_json        Json               @db.JsonB
+  status              WebhookEventStatus @default(PENDING)
+  attempts            Int                @default(0)
+  next_retry_at       DateTime?
+  locked_at           DateTime?
+  locked_by           String?
+  last_error          String?            @db.Text
+  received_at         DateTime           @default(now())
+  processed_at        DateTime?
+  created_at          DateTime           @default(now())
+  updated_at          DateTime           @updatedAt
+
+  @@index([provider, status])
+  @@index([status, next_retry_at])
+  @@index([workspace_id])
+  @@index([phone_number_id])
+  @@index([provider_message_id])
+  @@map("webhook_events")
 }
 
 // ============================================================

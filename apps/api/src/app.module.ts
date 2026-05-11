@@ -44,6 +44,7 @@ import { PlanThrottlerGuard } from './common/plan-limits/plan-throttler.guard';
 import { SamlModule } from './auth/saml/saml.module';
 import { I18nModule } from './common/i18n/i18n.module';
 import { TelegramModule } from './telegram/telegram.module';
+import { WebhookEventsModule } from './webhooks/webhook-events.module';
 
 // Demo data & templates
 import { DemoModule } from './demo/demo.module';
@@ -113,6 +114,7 @@ import { InventoryModule } from './inventory/inventory.module';
     EventsModule,
     EmailModule,
     WhatsAppModule,
+    WebhookEventsModule,
 
     // Business+ Enterprise
     EnterpriseModule,
