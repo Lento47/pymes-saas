@@ -16,16 +16,6 @@ export class WebhookEventsService {
     const { eventType, fingerprint, phoneNumberId, wabaId, providerMessageId } =
       this.extractEventMeta(provider, payload);
 
-    const existing = await this.prisma.webhookEvent.findUnique({
-      where: { event_fingerprint: fingerprint },
-    });
-    if (existing) {
-      this.logger.log(
-        `[${provider}] Duplicate webhook ignored — fingerprint=${fingerprint}`,
-      );
-      return { event: existing, duplicate: true };
-    }
-
     let workspaceId: string | null = null;
     if (phoneNumberId) {
       try {
@@ -47,26 +37,41 @@ export class WebhookEventsService {
       }
     }
 
-    const event = await this.prisma.webhookEvent.create({
-      data: {
-        provider,
-        event_type: eventType,
-        workspace_id: workspaceId,
-        phone_number_id: phoneNumberId,
-        waba_id: wabaId,
-        provider_message_id: providerMessageId,
-        event_fingerprint: fingerprint,
-        payload_json: payload as any,
-      },
-    });
+    try {
+      const event = await this.prisma.webhookEvent.create({
+        data: {
+          provider,
+          event_type: eventType,
+          workspace_id: workspaceId,
+          phone_number_id: phoneNumberId,
+          waba_id: wabaId,
+          provider_message_id: providerMessageId,
+          event_fingerprint: fingerprint,
+          payload_json: payload as any,
+        },
+      });
 
-    this.logger.log(
-      `[${provider}] Webhook persisted — id=${event.id} fingerprint=${fingerprint} type=${eventType}` +
-        (workspaceId ? ` workspace_id=${workspaceId}` : '') +
-        (phoneNumberId ? ` phone_number_id=${phoneNumberId}` : ''),
-    );
+      this.logger.log(
+        `[${provider}] Webhook persisted — id=${event.id} fingerprint=${fingerprint} type=${eventType}` +
+          (workspaceId ? ` workspace_id=${workspaceId}` : '') +
+          (phoneNumberId ? ` phone_number_id=${phoneNumberId}` : ''),
+      );
 
-    return { event, duplicate: false };
+      return { event, duplicate: false };
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        const existing = await this.prisma.webhookEvent.findUnique({
+          where: { event_fingerprint: fingerprint },
+        });
+        if (existing) {
+          this.logger.log(
+            `[${provider}] Duplicate webhook ignored (race-safe) — fingerprint=${fingerprint}`,
+          );
+          return { event: existing, duplicate: true };
+        }
+      }
+      throw err;
+    }
   }
 
   async claimNext(workerId: string): Promise<any | null> {
@@ -151,11 +156,11 @@ export class WebhookEventsService {
       UPDATE "webhook_events"
       SET
         status = CASE
-          WHEN attempts >= 3 THEN 'FAILED'::"WebhookEventStatus"
+          WHEN attempts >= 4 THEN 'FAILED'::"WebhookEventStatus"
           ELSE 'RETRYABLE'::"WebhookEventStatus"
         END,
         next_retry_at = CASE
-          WHEN attempts >= 3 THEN NULL
+          WHEN attempts >= 4 THEN NULL
           ELSE NOW()
         END,
         locked_at = NULL,
@@ -201,14 +206,16 @@ export class WebhookEventsService {
 
     if (messages?.length > 0) {
       const msg = messages[0];
-      const msgId = msg.id ?? crypto.randomUUID();
-      const fp = `${provider}:message:${msgId}`;
+      if (!msg.id) {
+        throw new Error(`[${provider}] Message event missing msg.id — cannot generate deterministic fingerprint`);
+      }
+      const fp = `${provider}:message:${msg.id}`;
       return {
         eventType: 'message',
         fingerprint: fp,
         phoneNumberId,
         wabaId,
-        providerMessageId: msgId,
+        providerMessageId: msg.id,
       };
     }
 
