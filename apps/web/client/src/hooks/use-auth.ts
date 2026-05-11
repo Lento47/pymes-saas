@@ -37,6 +37,8 @@ let _listeners: Array<() => void> = [];
 let _hydratePromise: Promise<AuthUser | null> | null = null;
 let _isRestoring = false;
 let _restorePromise: Promise<void> | null = null;
+let _logoutInProgress = false;
+let _inactivityInterval: ReturnType<typeof setInterval> | null = null;
 
 function notifyListeners() {
   _listeners.forEach(fn => fn());
@@ -108,6 +110,27 @@ if (_storedRefreshToken && !isLoggedIn()) {
   attachWorkspaceUpdateListener();
 }
 
+function _clearInactivityMonitor() {
+  if (_inactivityInterval) {
+    clearInterval(_inactivityInterval);
+    _inactivityInterval = null;
+  }
+}
+
+function _ensureInactivityMonitor() {
+  if (_inactivityInterval) return;
+  _inactivityInterval = setInterval(() => {
+    if (isLoggedIn() && isSessionTimedOut()) {
+      disconnectSocket();
+      _wsUpdatedAttached = false;
+      resetAuthAndTheme();
+      _user = null;
+      notifyListeners();
+      _clearInactivityMonitor();
+    }
+  }, 30000);
+}
+
 async function hydrateUser() {
   if (!isLoggedIn()) return null;
   if (_hydratePromise) return _hydratePromise;
@@ -151,15 +174,12 @@ export function useAuth() {
     }
   }, []);
 
-  // Auto-logout after 10 minutes of inactivity
+  // Auto-logout after 10 minutes of inactivity (module-level singleton interval)
   useEffect(() => {
-    if (!isLoggedIn()) return;
-    const interval = setInterval(() => {
-      if (isSessionTimedOut()) {
-        logout();
-      }
-    }, 30000); // check every 30s
-    return () => clearInterval(interval);
+    if (isLoggedIn()) {
+      _ensureInactivityMonitor();
+    }
+    return () => { /* keep interval alive — shared across all components */ };
   }, []);
 
   const login = async (email: string, password: string, workspaceSlug?: string) => {
@@ -190,14 +210,20 @@ export function useAuth() {
   };
 
   const logout = async () => {
-    try { await api.logout(); } catch { /* best-effort */ }
-    disconnectSocket(); // ← WebSocket se corta al hacer logout
-    _wsUpdatedAttached = false; // permitir re-attach en el próximo login
+    if (_logoutInProgress) return;
+    _logoutInProgress = true;
+    try {
+      await api.logout();
+    } catch { /* best-effort */ }
+    _clearInactivityMonitor();
+    disconnectSocket();
+    _wsUpdatedAttached = false;
     resetAuthAndTheme();
     _user = null;
     notifyListeners();
     history.pushState(null, "", "/login");
     window.dispatchEvent(new PopStateEvent("popstate"));
+    _logoutInProgress = false;
   };
 
   const switchWorkspace = async (workspaceSlug: string) => {
