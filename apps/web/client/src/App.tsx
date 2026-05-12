@@ -57,6 +57,7 @@ import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
 import AdminUsers from "@/pages/admin/users";
 import AdminPlanLimits from "@/pages/admin/plan-limits";
 import AdminLogin from "@/pages/admin/login";
+import BusinessProfilePage from "@/pages/business-profile";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, initialized, user } = useAuth();
@@ -217,6 +218,9 @@ function AppRouter() {
       </Route>
       <Route path="/onboarding">
         {() => <ProtectedLayout><OnboardingPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/business-profile">
+        {() => <BusinessProfilePage />}
       </Route>
       <Route component={NotFound} />
     </Switch>

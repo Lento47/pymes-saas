@@ -63,7 +63,6 @@ interface NavGroup {
   items: NavItem[];
 }
 
-// Plan minimum for each nav item (items not listed are available to all)
 const PLAN_MIN: Record<string, string> = {
   pipeline: 'STARTER',
   agent: 'ENTERPRISE',
@@ -158,7 +157,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const isActive = (p: string) => p === "/" ? location === "/" : location.startsWith(p);
   const badgeVal = (bk?: string) => bk === "unread" ? unreadCount : bk === "overdue" ? overdueCount : 0;
 
-  // Mobile detection
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 1024;
@@ -169,7 +167,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Close sidebar on route change (mobile)
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
     setSettingsMenuOpen(false);
@@ -204,7 +201,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* ── Sidebar Backdrop (Mobile) ── */}
       {isMobile && sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
@@ -212,7 +208,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      {/* ── Left Sidebar ── */}
       <aside
         className={cn(
           "flex flex-col shrink-0 border-r border-border/60 bg-sidebar transition-all duration-300 ease-out overflow-hidden",
@@ -221,7 +216,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           isMobile && sidebarOpen && "w-[260px] border-r",
         )}
       >
-        {/* ── Mobile Close Button ── */}
         {isMobile && (
           <div className="shrink-0 flex justify-end px-3 py-3 border-b border-border/40 pt-safe">
             <button
@@ -236,7 +230,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        {/* ── Workspace Selector ── */}
         <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border/40">
           <div ref={wsMenuRef} className="relative">
             <button
@@ -252,15 +245,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 boxShadow: wsMenuOpen ? "0 0 0 1px hsl(var(--primary) / 0.3)" : "0 4px 12px rgba(0, 0, 0, 0.15)"
               }}
             >
-              {/* Background glow effect */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300" style={{ background: "radial-gradient(circle at top-right, rgba(255,255,255,0.3))" }}></div>
 
-              {/* Workspace Name */}
               <div className="flex-1 min-w-0 relative z-10">
                 <p className="text-sm font-bold text-white truncate leading-tight drop-shadow-sm">{ws}</p>
               </div>
 
-              {/* Vertical Chevrons (^ ˅) */}
               <div className="flex flex-col items-center justify-center shrink-0 gap-0.5">
                 <ChevronDown
                   className={cn(
@@ -279,7 +269,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               </div>
             </button>
 
-            {/* ── Workspace Menu ── */}
             {wsMenuOpen && multipleWorkspaces && (
               <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-sidebar shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="p-2 max-h-[280px] overflow-y-auto">
@@ -320,7 +309,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* ── Navigation ── */}
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sidebar-accent/20 hover:scrollbar-thumb-sidebar-accent/30">
           {NAV_GROUPS.map((group) => (
             <div key={group.key} className="space-y-1.5">
@@ -350,12 +338,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                             : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
                         )}
                       >
-                        {/* Active indicator */}
                         {active && (
                           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-primary transition-all duration-300" />
                         )}
 
-                        {/* Icon */}
                         <Icon
                           className={cn(
                             "w-4 h-4 shrink-0 transition-all duration-200",
@@ -364,10 +350,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                           strokeWidth={active ? 2.5 : 1.8}
                         />
 
-                        {/* Label */}
                         <span className="flex-1 text-sm">{navLabel(copy, key, isBeta)}</span>
 
-                        {/* Badge */}
                         {b > 0 && (
                           <span
                             className={cn(
@@ -416,7 +400,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
-        {/* ── Settings Dropdown ── */}
         <div className="shrink-0 px-3 pb-2" ref={settingsMenuRef}>
           <button
             onClick={() => {
@@ -432,9 +415,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        {/* ── Bottom Actions ── */}
         <div className="shrink-0 border-t border-border/40 px-3 py-3 pb-safe space-y-3 bg-sidebar-accent/20">
-          {/* Controls */}
           <div className="flex items-center gap-1 px-2">
             <button
               onClick={toggle}
@@ -456,7 +437,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* User Profile */}
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sidebar-accent/30 hover:bg-sidebar-accent/50 transition-all duration-200">
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0 text-xs font-bold text-primary-foreground shadow-sm">
               {initials}
@@ -479,11 +459,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* ── Main Content ── */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* ── Top Bar ── */}
         <header className="shrink-0 flex items-center gap-3 px-4 lg:px-6 py-3 border-b border-border/40 bg-background/80 backdrop-blur-sm relative z-40 pt-safe">
-          {/* Menu toggle - Always visible */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
@@ -499,7 +476,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             )}
           </button>
 
-          {/* Search Bar */}
           <div className="relative flex-1 max-w-[420px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/75" />
             <input
@@ -513,18 +489,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             />
           </div>
 
-          {/* Spacer */}
           <div className="hidden md:flex-1" />
 
           <NotificationBell />
 
-          {/* Role Badge */}
           <span className="hidden sm:inline-block text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-3 py-1.5 rounded-lg bg-sidebar-accent/20">
             {user?.role}
           </span>
         </header>
 
-        {/* ── Page Content ── */}
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>
