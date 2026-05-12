@@ -25,6 +25,7 @@ import { SupportRouterService } from './support-router.service';
 import { DiagnosticService } from './diagnostic.service';
 import { EngineeringFixService } from './engineering-fix.service';
 import { CaseCommentsService } from './case-comments.service';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 
 @Controller('agent')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -55,7 +56,7 @@ export class AgentController {
   @Get('diagnostic-cases/:id')
   @Roles('ADMIN', 'AGENT', 'VIEWER')
   async getDiagnosticCase(
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @CurrentUser() user: { id: string; workspace_id: string; role: string; is_platform_admin: boolean },
   ) {
     const seesAll = user.role === 'ADMIN' || user.is_platform_admin;
@@ -76,7 +77,7 @@ export class AgentController {
   @Patch('diagnostic-cases/:id/status')
   @Roles('ADMIN')
   async updateDiagnosticCaseStatus(
-    @Param('id') id: string,
+    @Param('id', ValidateUUIDPipe) id: string,
     @Body('status') status: string,
     @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
   ) {
@@ -89,7 +90,7 @@ export class AgentController {
   @Patch('fix-cases/:id')
   @Roles('ADMIN')
   async updateFixCase(
-    @Param('id') fixCaseId: string,
+    @Param('id', ValidateUUIDPipe) fixCaseId: string,
     @Body() body: { status?: string; pr_url?: string; pr_number?: number; files_changed?: any; test_added?: any; fix_summary?: string; rollback_notes?: string; error_log?: string },
     @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
   ) {
@@ -114,7 +115,7 @@ export class AgentController {
   @Post('fix-cases/:id/approve')
   @Roles('ADMIN')
   async approveFixCase(
-    @Param('id') fixCaseId: string,
+    @Param('id', ValidateUUIDPipe) fixCaseId: string,
     @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
   ) {
     return this.fixService.approveFix(fixCaseId, {
@@ -126,7 +127,7 @@ export class AgentController {
   @Post('fix-cases/:id/reject')
   @Roles('ADMIN')
   async rejectFixCase(
-    @Param('id') fixCaseId: string,
+    @Param('id', ValidateUUIDPipe) fixCaseId: string,
     @Body('reason') reason: string,
     @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
   ) {
@@ -145,7 +146,7 @@ export class AgentController {
   @Get('fix-cases/:id')
   @Roles('ADMIN')
   async getFixCase(
-    @Param('id') fixCaseId: string,
+    @Param('id', ValidateUUIDPipe) fixCaseId: string,
     @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
   ) {
     return this.fixService.getFixCase(fixCaseId, {
@@ -157,7 +158,7 @@ export class AgentController {
   @Get('diagnostic-cases/:id/comments')
   @Roles('ADMIN', 'AGENT', 'VIEWER')
   async listComments(
-    @Param('id') caseId: string,
+    @Param('id', ValidateUUIDPipe) caseId: string,
     @CurrentUser('workspace_id') workspaceId: string,
   ) {
     return this.caseComments.findByCaseId(caseId);
@@ -166,7 +167,7 @@ export class AgentController {
   @Post('diagnostic-cases/:id/comments')
   @Roles('ADMIN')
   async createComment(
-    @Param('id') caseId: string,
+    @Param('id', ValidateUUIDPipe) caseId: string,
     @Body('body') body: string,
     @CurrentUser('workspace_id') workspaceId: string,
     @CurrentUser('id') userId: string,
