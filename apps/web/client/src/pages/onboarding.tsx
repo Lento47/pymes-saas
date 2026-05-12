@@ -1,359 +1,140 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { CheckCircle2, Circle, Loader2, ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
+import { PageHeader } from "@/components/shared/page-header";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-// ── Data definitions ───────────────────────────────────────────────────────
-
-const CATEGORIES = [
-  { value: "alimentacion_bebidas",     emoji: "🍽", label: "Alimentación y bebidas" },
-  { value: "servicios_profesionales",  emoji: "💼", label: "Servicios profesionales" },
-  { value: "comercio_ventas",          emoji: "🛒", label: "Comercio y ventas" },
-  { value: "salud_bienestar",          emoji: "🏥", label: "Salud y bienestar" },
-  { value: "educacion_formacion",      emoji: "📚", label: "Educación y formación" },
-  { value: "tecnologia_software",      emoji: "💻", label: "Tecnología y software" },
-  { value: "construccion_remodelacion",emoji: "🔨", label: "Construcción y remodelación" },
-  { value: "transporte_logistica",     emoji: "🚗", label: "Transporte y logística" },
-  { value: "turismo_hospitalidad",     emoji: "🏨", label: "Turismo y hospitalidad" },
-  { value: "belleza_estetica",         emoji: "✂️", label: "Belleza y estética" },
-  { value: "entretenimiento_eventos",  emoji: "🎉", label: "Entretenimiento y eventos" },
-  { value: "agropecuario",             emoji: "🌱", label: "Agropecuario" },
-  { value: "servicios_hogar",          emoji: "🏠", label: "Servicios del hogar" },
-  { value: "manufactura_artesania",    emoji: "⚙️", label: "Manufactura y artesanía" },
-  { value: "bienes_raices",            emoji: "🏢", label: "Bienes raíces" },
-  { value: "otro",                     emoji: "❓", label: "Otro" },
+const DEFAULT_CHECKLIST = [
+  {
+    category: "Workspace",
+    items: [
+      { label: "Configurar nombre del workspace", completed: false, notes: "", apiField: "workspace" },
+      { label: "Invitar a tu equipo", completed: false, notes: "", apiField: "members" },
+      { label: "Configurar idioma y zona horaria", completed: false, notes: "", apiField: "workspace" },
+    ],
+  },
+  {
+    category: "Canales",
+    items: [
+      { label: "Conectar WhatsApp", completed: false, notes: "", apiField: "channels" },
+      { label: "Configurar canal de Email", completed: false, notes: "", apiField: "channels" },
+      { label: "Conectar Telegram", completed: false, notes: "", apiField: "channels" },
+    ],
+  },
+  {
+    category: "Facturación",
+    items: [
+      { label: "Crear primera factura", completed: false, notes: "", apiField: "invoices" },
+      { label: "Configurar datos fiscales (Hacienda)", completed: false, notes: "", apiField: "settings" },
+      { label: "Agregar método de pago", completed: false, notes: "", apiField: "billing" },
+    ],
+  },
+  {
+    category: "CRM",
+    items: [
+      { label: "Importar o crear contactos", completed: false, notes: "", apiField: "contacts" },
+      { label: "Crear primer deal en Pipeline", completed: false, notes: "", apiField: "pipeline" },
+      { label: "Configurar primera automatización", completed: false, notes: "", apiField: "automations" },
+    ],
+  },
+  {
+    category: "Lanzamiento",
+    items: [
+      { label: "Revisar centro de ayuda", completed: false, notes: "", apiField: "help" },
+      { label: "Completar checklist de seguridad", completed: false, notes: "", apiField: "security" },
+      { label: "Invitar clientes al portal", completed: false, notes: "", apiField: "contacts" },
+    ],
+  },
 ];
-
-const TEAM_SIZES = [
-  { value: "solo",   label: "Solo yo", sub: "1 persona" },
-  { value: "2_5",    label: "2 a 5 personas", sub: "Pequeño equipo" },
-  { value: "6_20",   label: "6 a 20 personas", sub: "Equipo mediano" },
-  { value: "20_plus",label: "Más de 20 personas", sub: "Empresa grande" },
-];
-
-const CHANNELS = [
-  { value: "redes_sociales", emoji: "📱", label: "Redes sociales", sub: "Instagram, Facebook, TikTok" },
-  { value: "whatsapp",       emoji: "💬", label: "WhatsApp", sub: "Mensajería directa" },
-  { value: "referidos",      emoji: "🤝", label: "Referidos", sub: "Boca a boca" },
-  { value: "local",          emoji: "🏪", label: "Local físico", sub: "Tienda o negocio presencial" },
-  { value: "web",            emoji: "🌐", label: "Sitio web", sub: "Tienda en línea" },
-  { value: "otro",           emoji: "➕", label: "Otro canal", sub: "" },
-];
-
-const NEEDS = [
-  { value: "facturacion",      emoji: "🧾", label: "Facturación electrónica", sub: "Hacienda CR" },
-  { value: "atencion_cliente", emoji: "💬", label: "Atención al cliente", sub: "Chats y mensajes" },
-  { value: "ventas",           emoji: "📈", label: "Seguimiento de ventas", sub: "CRM y pipeline" },
-  { value: "pedidos",          emoji: "📦", label: "Pedidos y entregas", sub: "Órdenes y logística" },
-  { value: "inventario",       emoji: "📋", label: "Inventario", sub: "Stock y productos" },
-  { value: "citas",            emoji: "📅", label: "Citas y agenda", sub: "Reservaciones" },
-  { value: "cobros",           emoji: "💳", label: "Cobros y pagos", sub: "Recordatorios y seguimiento" },
-];
-
-// ── Shared UI components ───────────────────────────────────────────────────
-
-function MultiChip({ emoji, label, sub, selected, onClick }: {
-  emoji: string; label: string; sub?: string; selected: boolean; onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        padding: "10px 14px",
-        background: selected ? "hsl(var(--accent) / 0.1)" : "hsl(var(--bg-2, var(--bg)))",
-        border: `1.5px solid ${selected ? "hsl(var(--accent))" : "hsl(var(--border))"}`,
-        borderRadius: "8px",
-        cursor: "pointer",
-        textAlign: "left",
-        width: "100%",
-        transition: "border-color 0.1s, background 0.1s",
-      }}
-    >
-      <span style={{ fontSize: "20px", flexShrink: 0 }}>{emoji}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: "13px", fontWeight: 500, color: "hsl(var(--fg))" }}>{label}</div>
-        {sub && <div style={{ fontSize: "11px", color: "hsl(var(--fg-2))", marginTop: "1px" }}>{sub}</div>}
-      </div>
-      {selected && <CheckCircle2 style={{ width: 16, height: 16, color: "hsl(var(--accent))", flexShrink: 0 }} />}
-    </button>
-  );
-}
-
-function RadioChip({ label, sub, selected, onClick }: {
-  label: string; sub?: string; selected: boolean; onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "10px",
-        padding: "10px 14px",
-        background: selected ? "hsl(var(--accent) / 0.1)" : "hsl(var(--bg-2, var(--bg)))",
-        border: `1.5px solid ${selected ? "hsl(var(--accent))" : "hsl(var(--border))"}`,
-        borderRadius: "8px",
-        cursor: "pointer",
-        textAlign: "left",
-        width: "100%",
-        transition: "border-color 0.1s, background 0.1s",
-      }}
-    >
-      <div>
-        <div style={{ fontSize: "13px", fontWeight: 500, color: "hsl(var(--fg))" }}>{label}</div>
-        {sub && <div style={{ fontSize: "11px", color: "hsl(var(--fg-2))", marginTop: "1px" }}>{sub}</div>}
-      </div>
-      <div style={{
-        width: 16, height: 16, borderRadius: "50%",
-        border: `2px solid ${selected ? "hsl(var(--accent))" : "hsl(var(--border))"}`,
-        background: selected ? "hsl(var(--accent))" : "transparent",
-        flexShrink: 0,
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
-        {selected && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff" }} />}
-      </div>
-    </button>
-  );
-}
-
-// ── Main component ─────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [step, setStep]         = useState(0);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [teamSize, setTeamSize] = useState("");
-  const [channels, setChannels] = useState<string[]>([]);
-  const [needs, setNeeds]       = useState<string[]>([]);
-  const [saving, setSaving]     = useState(false);
+  const [checklist, setChecklist] = useState(DEFAULT_CHECKLIST);
+  const [status, setStatus] = useState("NOT_STARTED");
 
-  const totalSteps = 4;
+  const { data: project, isLoading } = useQuery({
+    queryKey: ["onboarding"],
+    queryFn: () => api.getOnboardingProject().catch(() => null),
+  });
 
-  const toggleMulti = (arr: string[], setArr: (v: string[]) => void, val: string) => {
-    setArr(arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]);
-  };
-
-  const canNext = [
-    categories.length > 0,
-    teamSize !== "",
-    channels.length > 0,
-    needs.length > 0,
-  ];
-
-  const finish = async () => {
-    setSaving(true);
-    try {
-      await api.saveBusinessProfile({ categories, team_size: teamSize, channels, needs });
-      window.location.hash = "#/";
-    } catch {
-      toast({ title: "No se pudo guardar el perfil", description: "Intente nuevamente.", variant: "destructive" });
-    } finally {
-      setSaving(false);
+  useEffect(() => {
+    if (project?.checklist) {
+      const merged = DEFAULT_CHECKLIST.map(cat => ({
+        category: cat.category,
+        items: cat.items.map(item => {
+          const existing = (project.checklist as any[])
+            ?.find((c: any) => c.category === cat.category)
+            ?.items?.find((i: any) => i.label === item.label);
+          return existing ? { ...item, completed: existing.completed ?? false, notes: existing.notes ?? "" } : item;
+        }),
+      }));
+      setChecklist(merged);
     }
+    if (project?.status) setStatus(project.status);
+  }, [project]);
+
+  const saveMut = useMutation({
+    mutationFn: (data: any) => api.saveOnboardingProject(data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["onboarding"] }); toast({ title: "Avance guardado" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const toggleItem = (catIdx: number, itemIdx: number) => {
+    const newChecklist = [...checklist];
+    newChecklist[catIdx].items[itemIdx].completed = !newChecklist[catIdx].items[itemIdx].completed;
+    setChecklist(newChecklist);
   };
 
-  const skip = () => { window.location.hash = "#/"; };
+  const allDone = checklist.every(cat => cat.items.every(i => i.completed));
+  const completedCount = checklist.reduce((s, cat) => s + cat.items.filter(i => i.completed).length, 0);
+  const totalCount = checklist.reduce((s, cat) => s + cat.items.length, 0);
 
-  const stepTitles = [
-    "¿En qué sector opera su negocio?",
-    "¿Cuántas personas trabajan en su negocio?",
-    "¿Cómo llegan sus clientes principalmente?",
-    "¿Qué necesita gestionar con PymesHub?",
-  ];
-  const stepSubs = [
-    "Seleccione todas las que apliquen",
-    "Seleccione una opción",
-    "Seleccione todos los canales que apliquen",
-    "Seleccione las herramientas que más necesita",
-  ];
+  if (isLoading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "hsl(var(--bg))",
-      display: "flex",
-      alignItems: "flex-start",
-      justifyContent: "center",
-      padding: "40px 24px",
-    }}>
-      <div style={{ width: "100%", maxWidth: "520px" }}>
-        {/* Logo + progress */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "32px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{
-              width: "28px", height: "28px",
-              background: "hsl(var(--accent))",
-              borderRadius: "4px",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <span style={{ color: "#fff", fontSize: "11px", fontWeight: 700 }}>P</span>
+    <div className="p-6 max-w-2xl mx-auto">
+      <PageHeader title="Onboarding" description="Completá estos pasos para poner tu workspace en marcha." />
+      <div className="mt-1 mb-6 text-sm text-muted-foreground">{completedCount} de {totalCount} tareas completadas</div>
+
+      <div className="space-y-6">
+        {checklist.map((category, catIdx) => (
+          <div key={category.category} className="rounded-xl border border-border/60 bg-card/40 p-4">
+            <h3 className="text-sm font-semibold mb-3">{category.category}</h3>
+            <div className="space-y-2">
+              {category.items.map((item, itemIdx) => (
+                <div
+                  key={item.label}
+                  className={cn(
+                    "flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors",
+                    item.completed ? "bg-green-500/5 border border-green-500/10" : "hover:bg-sidebar-accent/40 border border-transparent"
+                  )}
+                  onClick={() => toggleItem(catIdx, itemIdx)}
+                >
+                  {item.completed
+                    ? <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
+                    : <Circle className="w-5 h-5 text-muted-foreground/75 shrink-0" />
+                  }
+                  <span className={cn("text-sm", item.completed ? "text-muted-foreground line-through" : "text-foreground")}>{item.label}</span>
+                  {item.notes && <span className="text-xs text-muted-foreground ml-auto">{item.notes}</span>}
+                </div>
+              ))}
             </div>
-            <span style={{ fontSize: "15px", fontWeight: 600, color: "hsl(var(--fg))" }}>Pymeshub</span>
           </div>
-          <span style={{ fontSize: "12px", color: "hsl(var(--fg-2))" }}>
-            Paso {step + 1} de {totalSteps}
-          </span>
-        </div>
+        ))}
+      </div>
 
-        {/* Progress bar */}
-        <div style={{
-          height: "4px",
-          background: "hsl(var(--border))",
-          borderRadius: "2px",
-          marginBottom: "28px",
-          overflow: "hidden",
-        }}>
-          <div style={{
-            height: "100%",
-            width: `${((step + 1) / totalSteps) * 100}%`,
-            background: "hsl(var(--accent))",
-            borderRadius: "2px",
-            transition: "width 0.3s ease",
-          }} />
-        </div>
-
-        {/* Step heading */}
-        <h2 style={{ fontSize: "18px", fontWeight: 600, color: "hsl(var(--fg))", marginBottom: "4px", letterSpacing: "-0.01em" }}>
-          {stepTitles[step]}
-        </h2>
-        <p style={{ fontSize: "13px", color: "hsl(var(--fg-2))", marginBottom: "20px" }}>
-          {stepSubs[step]}
-        </p>
-
-        {/* Step content */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {step === 0 && CATEGORIES.map(c => (
-            <MultiChip
-              key={c.value}
-              emoji={c.emoji}
-              label={c.label}
-              selected={categories.includes(c.value)}
-              onClick={() => toggleMulti(categories, setCategories, c.value)}
-            />
-          ))}
-
-          {step === 1 && TEAM_SIZES.map(t => (
-            <RadioChip
-              key={t.value}
-              label={t.label}
-              sub={t.sub}
-              selected={teamSize === t.value}
-              onClick={() => setTeamSize(t.value)}
-            />
-          ))}
-
-          {step === 2 && CHANNELS.map(c => (
-            <MultiChip
-              key={c.value}
-              emoji={c.emoji}
-              label={c.label}
-              sub={c.sub}
-              selected={channels.includes(c.value)}
-              onClick={() => toggleMulti(channels, setChannels, c.value)}
-            />
-          ))}
-
-          {step === 3 && NEEDS.map(n => (
-            <MultiChip
-              key={n.value}
-              emoji={n.emoji}
-              label={n.label}
-              sub={n.sub}
-              selected={needs.includes(n.value)}
-              onClick={() => toggleMulti(needs, setNeeds, n.value)}
-            />
-          ))}
-        </div>
-
-        {/* Navigation */}
-        <div style={{ display: "flex", gap: "10px", marginTop: "24px", alignItems: "center" }}>
-          {step > 0 && (
-            <button
-              type="button"
-              onClick={() => setStep(s => s - 1)}
-              style={{
-                height: "32px",
-                padding: "0 16px",
-                background: "transparent",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: "4px",
-                fontSize: "13px",
-                color: "hsl(var(--fg))",
-                cursor: "pointer",
-              }}
-            >
-              Atrás
-            </button>
-          )}
-
-          {step < totalSteps - 1 ? (
-            <button
-              type="button"
-              onClick={() => setStep(s => s + 1)}
-              disabled={!canNext[step]}
-              style={{
-                height: "32px",
-                padding: "0 20px",
-                background: canNext[step] ? "hsl(var(--accent))" : "hsl(var(--border))",
-                color: canNext[step] ? "#fff" : "hsl(var(--fg-2))",
-                border: "none",
-                borderRadius: "4px",
-                fontSize: "13px",
-                fontWeight: 500,
-                cursor: canNext[step] ? "pointer" : "not-allowed",
-              }}
-            >
-              Continuar
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={finish}
-              disabled={!canNext[step] || saving}
-              style={{
-                height: "32px",
-                padding: "0 20px",
-                background: (!canNext[step] || saving) ? "hsl(var(--accent) / 0.7)" : "hsl(var(--accent))",
-                color: "#fff",
-                border: "none",
-                borderRadius: "4px",
-                fontSize: "13px",
-                fontWeight: 500,
-                cursor: (!canNext[step] || saving) ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              {saving && <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} />}
-              Finalizar
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={skip}
-            style={{
-              marginLeft: "auto",
-              height: "32px",
-              padding: "0 12px",
-              background: "transparent",
-              border: "none",
-              fontSize: "12px",
-              color: "hsl(var(--fg-2))",
-              cursor: "pointer",
-              textDecoration: "underline",
-            }}
-          >
-            Saltar por ahora
-          </button>
-        </div>
+      <div className="mt-8 flex gap-3">
+        <Button onClick={() => saveMut.mutate({ checklist, status: allDone ? "COMPLETED" : "IN_PROGRESS" })} disabled={saveMut.isPending} className="flex-1">
+          {saveMut.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          Guardar avance
+        </Button>
+        <Button variant="outline" onClick={() => window.open("/documentation", "_blank")}>Centro de ayuda</Button>
       </div>
     </div>
   );
