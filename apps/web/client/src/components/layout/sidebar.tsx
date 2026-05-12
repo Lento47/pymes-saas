@@ -8,7 +8,7 @@ import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
-import { api, getWorkspaceSlug } from "@/lib/api";
+import { api } from "@/lib/api";
 import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
   Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot,
@@ -570,7 +570,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     {group.label}
                   </div>
                   {group.items.map((item) => {
-                    const href = getWorkspaceSlug() ? `/${getWorkspaceSlug()}${item.href}` : item.href;
+                    const href = item.href;
                     return (
                       <a key={item.href} href={href}
                         className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground transition-all"
