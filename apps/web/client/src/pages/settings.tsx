@@ -2051,9 +2051,22 @@ function AiTab() {
 export default function Settings() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const params = new URLSearchParams(window.location.search);
-  const tab = params.get("tab") || "workspace";
+  const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get("tab") || "workspace");
   const isPlatformAdmin = user?.is_platform_admin === true;
+
+  useEffect(() => {
+    const handler = () => setTab(new URLSearchParams(window.location.search).get("tab") || "workspace");
+    window.addEventListener("popstate", handler);
+    const origPush = history.pushState.bind(history);
+    const origReplace = history.replaceState.bind(history);
+    (history as any).pushState = function () { origPush.apply(history, arguments as any); handler(); };
+    (history as any).replaceState = function () { origReplace.apply(history, arguments as any); handler(); };
+    return () => {
+      window.removeEventListener("popstate", handler);
+      history.pushState = origPush;
+      history.replaceState = origReplace;
+    };
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
