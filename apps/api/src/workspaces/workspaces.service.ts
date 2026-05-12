@@ -130,10 +130,16 @@ export class WorkspacesService {
 
   async updateCurrent(workspaceId: string, dto: UpdateWorkspaceDto) {
     const {
+      name,
+      country_code,
+      timezone,
+      locale,
+      status,
       ai_message_finance_opt_in,
       ai_provider,
       ai_api_key,
       ai_model,
+      settings_json,
       hacienda_environment,
       hacienda_username,
       hacienda_password,
@@ -165,6 +171,11 @@ export class WorkspacesService {
     if (ai_provider !== undefined) nextSettings.ai_provider = ai_provider;
     if (ai_model !== undefined) nextSettings.ai_model = ai_model;
     if (ai_api_key) nextSettings.ai_api_key_enc = this.crypto.encrypt(ai_api_key);
+
+    // Merge raw settings_json overrides (used by SAML config, etc.)
+    if (settings_json && typeof settings_json === 'object') {
+      Object.assign(nextSettings, settings_json);
+    }
 
     const setOrUnset = (key: string, value: string | undefined) => {
       if (value === undefined) return;
@@ -202,6 +213,7 @@ export class WorkspacesService {
     }
 
     const settingsChanged =
+      settings_json !== undefined ||
       ai_message_finance_opt_in !== undefined ||
       ai_provider !== undefined ||
       ai_model !== undefined ||

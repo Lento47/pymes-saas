@@ -6,6 +6,7 @@ import {
   IsLocale,
   IsOptional,
   IsString,
+  IsObject,
   ValidateNested,
   IsTimeZone,
   Length,
@@ -89,6 +90,10 @@ export class UpdateWorkspaceDto {
   @IsOptional()
   @IsString()
   hacienda_certificate_pin?: string;
+
+  @IsOptional()
+  @IsObject()
+  settings_json?: Record<string, any>;
 
   @IsOptional()
   @IsBooleanString()
