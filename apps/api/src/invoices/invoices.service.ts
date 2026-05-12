@@ -19,6 +19,7 @@ import { HaciendaRecepcionService } from '../hacienda/hacienda-recepcion.service
 import { HaciendaSigningService } from '../hacienda/hacienda-signing.service';
 import { HaciendaXmlBuilderService } from '../hacienda/hacienda-xml-builder.service';
 import { FiscalSequenceService } from '../hacienda/fiscal-sequence.service';
+import { QueueService } from '../workers/queue.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
@@ -39,6 +40,7 @@ export class InvoicesService {
     private readonly haciendaSigning: HaciendaSigningService,
     private readonly haciendaXmlBuilder: HaciendaXmlBuilderService,
     private readonly fiscalSequence: FiscalSequenceService,
+    private readonly queueService: QueueService,
     private readonly planLimits: PlanLimitsService,
     private readonly notificationsService: NotificationsService,
     private readonly ai: AiService,
@@ -460,13 +462,13 @@ export class InvoicesService {
     if (invoice.hacienda_status === HaciendaStatus.ACEPTADO) {
       throw new BadRequestException('La factura ya fue aceptada por Hacienda.');
     }
+    if (invoice.hacienda_status === HaciendaStatus.PENDING_SUBMISSION) {
+      throw new BadRequestException('La factura ya está en cola de envío a Hacienda.');
+    }
 
     const settings = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
-      select: {
-        settings_json: true,
-        workspace_tax_profile: true,
-      },
+      select: { settings_json: true, workspace_tax_profile: true },
     });
     const workspaceTaxProfile = settings?.workspace_tax_profile ?? null;
     const missingWorkspaceTaxProfileFields = this.getMissingWorkspaceTaxProfileFields(workspaceTaxProfile);
@@ -476,8 +478,7 @@ export class InvoicesService {
       );
     }
 
-    const workspaceSettings =
-      parseJsonValue<Record<string, any>>(settings?.settings_json, {});
+    const workspaceSettings = parseJsonValue<Record<string, any>>(settings?.settings_json, {});
     const missingWorkspaceSettings = this.getMissingWorkspaceHaciendaSettings(workspaceSettings);
     if (missingWorkspaceSettings.length) {
       throw new BadRequestException(
@@ -504,80 +505,23 @@ export class InvoicesService {
         consecutivo: preparedConsecutivo,
       });
 
-    const xml = this.haciendaXmlBuilder.buildInvoiceXml({
-      invoice: {
-        ...invoice,
-        clave: preparedClave,
-        consecutivo: preparedConsecutivo,
-        issue_date: issueDate,
-      },
-      workspaceTaxProfile,
-      contact: invoice.contact,
-      lines: invoice.lines.length ? invoice.lines : this.buildFallbackLines(invoice),
-    });
-    const signed = await this.haciendaSigning.signXml(workspaceId, xml);
-
-    // Block submission if signing was not completed. UNSIGNED_PLACEHOLDER is only
-    // acceptable in dev environments where signing is explicitly disabled.
-    const workspaceSettings2 = parseJsonValue<Record<string, any>>(settings?.settings_json, {});
-    const signingEnabled = workspaceSettings2.hacienda_signing_enabled === true;
-    if (signingEnabled && signed.signatureMode !== 'XADES_EPES') {
-      throw new BadRequestException(
-        'No se pudo firmar el XML fiscal. Verifica el certificado y el PIN en Configuración > Facturación electrónica CR.',
-      );
-    }
-    if (!signingEnabled && signed.signatureMode === 'UNSIGNED_PLACEHOLDER') {
-      const env = workspaceSettings2.hacienda_environment ?? 'staging';
-      if (env === 'production') {
-        throw new BadRequestException(
-          'La firma digital debe estar habilitada para enviar a Hacienda en modo producción.',
-        );
-      }
-    }
-
-    const signedXmlKey = `hacienda/${workspaceId}/invoices/${invoice.id}/signed.xml`;
-    await this.storage.upload(signedXmlKey, Buffer.from(signed.signedXml, 'utf8'), 'application/xml');
-
-    const recepcionResponse = await this.haciendaRecepcion.submitComprobante(workspaceId, {
-      clave: preparedClave,
-      fecha: this.formatRecepcionDate(issueDate),
-      emisor: {
-        tipoIdentificacion: workspaceTaxProfile.identification_type,
-        numeroIdentificacion: workspaceTaxProfile.identification_number,
-      },
-      receptor: invoice.contact.identification_type && invoice.contact.identification_number
-        ? {
-            tipoIdentificacion: invoice.contact.identification_type,
-            numeroIdentificacion: invoice.contact.identification_number,
-          }
-        : undefined,
-      callbackUrl: workspaceSettings.hacienda_callback_url,
-      consecutivoReceptor:
-        invoice.document_type === InvoiceDocumentType.MENSAJE_RECEPTOR ? preparedConsecutivo : undefined,
-      comprobanteXml: Buffer.from(signed.signedXml, 'utf8').toString('base64'),
-    });
-
+    // Persist clave/consecutivo and set PENDING_SUBMISSION before enqueuing.
+    // The worker picks up from here; idempotency is enforced by the jobId (invoice ID).
     const updated = await this.prisma.invoice.update({
       where: { id },
       data: {
         clave: preparedClave,
         consecutivo: preparedConsecutivo,
         issue_date: issueDate,
-        signed_xml_storage_key: signedXmlKey,
-        hacienda_location_url: recepcionResponse.location,
-        hacienda_submitted_at: new Date(),
-        hacienda_last_checked_at: new Date(),
+        hacienda_status: HaciendaStatus.PENDING_SUBMISSION,
         hacienda_last_error: null,
-        hacienda_status: HaciendaStatus.SUBMITTED,
-        status: InvoiceStatus.SENT,
         updated_at: new Date(),
       },
       include: this.invoiceInclude(),
     });
 
-    await this.deductStock(workspaceId, id).catch((err) =>
-      this.logger.error(`Stock deduction failed for invoice ${id}: ${err?.message}`),
-    );
+    await this.queueService.enqueueHaciendaSubmit(id, workspaceId);
+    this.logger.log(`[hacienda] invoice=${id} queued for async submission`);
 
     return this.serializeInvoice(updated);
   }
