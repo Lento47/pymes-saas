@@ -160,6 +160,18 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+enum FiscalEnvironment {
+  STAGING
+  PRODUCTION
+}
+
+enum FiscalCertificateStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  INVALID
+}
+
 enum InvoiceDocumentType {
   FACTURA_ELECTRONICA
   TIQUETE_ELECTRONICO
@@ -280,6 +292,9 @@ model Workspace {
   productCategories  ProductCategory[]
   products           Product[]
   stockMovements     StockMovement[]
+  fiscal_sequences   FiscalSequence[]
+  fiscal_certificates FiscalCertificate[]
+  hacienda_token_cache HaciendaTokenCache[]
 
   @@index([slug])
   @@index([status])
@@ -830,6 +845,74 @@ model WorkspaceTaxProfile {
 
   @@index([workspace_id])
   @@map("workspace_tax_profiles")
+}
+
+// ============================================================
+// FISCAL MODULE — sequences, certificates, token cache
+// ============================================================
+
+model FiscalSequence {
+  id            String              @id @default(cuid())
+  workspace_id  String
+  branch_code   String              @default("001")
+  terminal_code String              @default("00001")
+  document_type InvoiceDocumentType
+  current_number Int                @default(0)
+
+  created_at    DateTime            @default(now())
+  updated_at    DateTime            @updatedAt
+
+  workspace     Workspace           @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, branch_code, terminal_code, document_type])
+  @@index([workspace_id])
+  @@map("fiscal_sequences")
+}
+
+model FiscalCertificate {
+  id                 String                  @id @default(cuid())
+  workspace_id       String
+  provider           String                  @default("HACIENDA_CR")
+  environment        FiscalEnvironment
+
+  storage_key        String
+  encrypted_pin      String
+  fingerprint_sha256 String
+  subject            String?
+  issuer             String?
+  serial_number      String?
+  valid_from         DateTime?
+  valid_until        DateTime?
+
+  status             FiscalCertificateStatus @default(ACTIVE)
+
+  created_at         DateTime                @default(now())
+  updated_at         DateTime                @updatedAt
+
+  workspace          Workspace               @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, fingerprint_sha256])
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@map("fiscal_certificates")
+}
+
+model HaciendaTokenCache {
+  id                String            @id @default(cuid())
+  workspace_id      String
+  environment       FiscalEnvironment
+
+  access_token_enc  String
+  refresh_token_enc String?
+  expires_at        DateTime
+
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+
+  workspace         Workspace         @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, environment])
+  @@map("hacienda_token_cache")
 }
 
 // ============================================================
