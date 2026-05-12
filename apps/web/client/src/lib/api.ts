@@ -426,6 +426,10 @@ export const api = {
   listCertificates: () => request<any[]>("GET", "/api/hacienda/certificates"),
   uploadCertificate: (form: FormData) => request<any>("POST", "/api/hacienda/certificates", form, { isFormData: true }),
   revokeCertificate: (id: string) => request<any>("DELETE", `/api/hacienda/certificates/${id}`),
+  // Business profile (onboarding wizard)
+  getBusinessProfile: () => request<any>("GET", "/api/workspaces/business-profile"),
+  saveBusinessProfile: (data: { categories: string[]; team_size: string; channels: string[]; needs: string[] }) =>
+    request<any>("POST", "/api/workspaces/business-profile", data),
   getPipelineStages: () => request<any>("GET", "/api/pipeline/stages"),
   createPipelineStage: (data: any) => request<any>("POST", "/api/pipeline/stages", data),
   updatePipelineStage: (id: string, data: any) => request<any>("PATCH", `/api/pipeline/stages/${id}`, data),
@@ -466,9 +470,6 @@ export const api = {
     request<any>("PATCH", `/api/platform/users/${userId}/status`, { status }),
   platformDeleteUser: (userId: string) => request<any>("DELETE", `/api/platform/users/${userId}`),
   platformGetStats: () => request<any>("GET", "/api/platform/stats"),
-  getBusinessProfile: () => request<any>("GET", "/api/workspaces/business-profile"),
-  saveBusinessProfile: (data: { categories: string[]; team_size: string; channels: string[]; needs: string[] }) =>
-    request<any>("POST", "/api/workspaces/business-profile", data),
   platformToggleAdmin: (userId: string) => request<any>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
   platformGetWorkspaceBySlug: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}`),
   platformDeleteWorkspace: (slug: string) => request<any>("DELETE", `/api/platform/workspaces/${slug}`),
@@ -494,10 +495,7 @@ export const api = {
     request<{ code: string; slug: string }>("POST", "/api/auth/facebook/token", { accessToken }),
   telegramTokenLogin: (data: any) =>
     request<{ code: string; slug: string }>("POST", "/api/auth/telegram/token", data),
-  checkSamlStatus: (workspaceSlug?: string) => {
-    const qs = workspaceSlug ? `?slug=${encodeURIComponent(workspaceSlug)}` : "";
-    return request<any>("GET", `/api/auth/saml/status${qs}`);
-  },
+  checkSamlStatus: (workspaceSlug: string) => request<any>("GET", `/api/auth/saml/status/${workspaceSlug}`),
   getSamlConfig: (workspaceId: string) => request<any>("GET", `/api/auth/saml/config/${workspaceId}`),
   upsertSamlConfig: (workspaceId: string, data: any) => request<any>("PUT", `/api/auth/saml/config/${workspaceId}`, data),
   enableSaml: (workspaceId: string) => request<any>("POST", `/api/auth/saml/config/${workspaceId}/enable`),
@@ -553,22 +551,35 @@ export const api = {
 };
 
 // ── Session activity tracking ────────────────────────────────────────────
-let _lastActivity = Date.now();
-function updateLastActivity() {
-  _lastActivity = Date.now();
-  try { getStorage().setItem('pymes_last_activity', String(_lastActivity)); } catch { /* ignore */ }
-}
 
-export function isSessionExpiredByInactivity(): boolean {
+export function updateLastActivity() {
   try {
-    const stored = getStorage().getItem('pymes_last_activity');
-    if (!stored) return false;
-    return Date.now() - Number(stored) > INACTIVITY_TIMEOUT_MS;
-  } catch { return false; }
+    getStorage().setItem('pymes_last_activity', String(Date.now()));
+  } catch {}
 }
 
-export function startActivityTracking() {
-  const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+export function isSessionTimedOut(): boolean {
+  try {
+    const ts = getStorage().getItem('pymes_last_activity');
+    if (!ts) return true;
+    return (Date.now() - parseInt(ts, 10)) > INACTIVITY_TIMEOUT_MS;
+  } catch {
+    return true;
+  }
+}
+
+export function getInactivityMs(): number {
+  try {
+    const ts = getStorage().getItem('pymes_last_activity');
+    if (!ts) return INACTIVITY_TIMEOUT_MS;
+    return Date.now() - parseInt(ts, 10);
+  } catch {
+    return INACTIVITY_TIMEOUT_MS;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'mousemove'];
   let throttleTimer: ReturnType<typeof setTimeout> | null = null;
   const onActivity = () => {
     if (throttleTimer) return;
