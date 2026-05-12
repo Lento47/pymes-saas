@@ -37,7 +37,7 @@ export class HaciendaProcessor extends WorkerHost {
     super();
   }
 
-  // ── BullMQ: async invoice submission ─────────────────────────────────────────
+  // ── BullMQ: async invoice submission ─────────────────────────────────────
 
   async process(job: Job<HaciendaSubmitJobData>): Promise<void> {
     const { invoiceId, workspaceId } = job.data;
@@ -179,7 +179,7 @@ export class HaciendaProcessor extends WorkerHost {
     return date.toISOString().replace(/\.\d{3}Z$/, '') + '-06:00';
   }
 
-  // ── Cron: poll pending Hacienda statuses every 15 min ────────────────────────
+  // ── Cron: poll pending Hacienda statuses every 15 min ────────────────────
 
   @Cron('*/15 * * * *')
   async pollPendingHaciendaStatuses(): Promise<void> {
