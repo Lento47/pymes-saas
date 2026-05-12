@@ -426,6 +426,10 @@ export const api = {
   listCertificates: () => request<any[]>("GET", "/api/hacienda/certificates"),
   uploadCertificate: (form: FormData) => request<any>("POST", "/api/hacienda/certificates", form, { isFormData: true }),
   revokeCertificate: (id: string) => request<any>("DELETE", `/api/hacienda/certificates/${id}`),
+  // Business profile (onboarding wizard)
+  getBusinessProfile: () => request<any>("GET", "/api/workspaces/business-profile"),
+  saveBusinessProfile: (data: { categories: string[]; team_size: string; channels: string[]; needs: string[] }) =>
+    request<any>("POST", "/api/workspaces/business-profile", data),
   getPipelineStages: () => request<any>("GET", "/api/pipeline/stages"),
   createPipelineStage: (data: any) => request<any>("POST", "/api/pipeline/stages", data),
   updatePipelineStage: (id: string, data: any) => request<any>("PATCH", `/api/pipeline/stages/${id}`, data),
