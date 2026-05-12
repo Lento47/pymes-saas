@@ -172,6 +172,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     setSettingsMenuOpen(false);
   }, [location, isMobile]);
 
+  // Lock body scroll when mobile sidebar is open
   useEffect(() => {
     if (isMobile && sidebarOpen) {
       document.body.style.overflow = 'hidden';
@@ -185,6 +186,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     if (!sidebarOpen) setSettingsMenuOpen(false);
   }, [sidebarOpen]);
 
+<<<<<<< feat/business-onboarding-web
+=======
+  // Close workspace menu on outside click
+>>>>>>> main-web
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (wsMenuRef.current && !wsMenuRef.current.contains(e.target as Node)) {
@@ -501,6 +506,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
+      {/* ── Settings Flyout with organized sections ── */}
       {settingsMenuOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setSettingsMenuOpen(false)} />

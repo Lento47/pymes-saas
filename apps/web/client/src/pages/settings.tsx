@@ -3,9 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { openExternal } from "@/lib/platform";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import { PageHeader } from "@/components/shared/page-header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { SamlConfig } from "@/components/settings/saml-config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -2049,37 +2051,28 @@ function AiTab() {
 
 export default function Settings() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get("tab") || "workspace");
   const isPlatformAdmin = user?.is_platform_admin === true;
+
+  useEffect(() => {
+    const handler = () => setTab(new URLSearchParams(window.location.search).get("tab") || "workspace");
+    window.addEventListener("popstate", handler);
+    const origPush = history.pushState.bind(history);
+    const origReplace = history.replaceState.bind(history);
+    (history as any).pushState = function () { origPush.apply(history, arguments as any); handler(); };
+    (history as any).replaceState = function () { origReplace.apply(history, arguments as any); handler(); };
+    return () => {
+      window.removeEventListener("popstate", handler);
+      history.pushState = origPush;
+      history.replaceState = origReplace;
+    };
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
       <PageHeader title="Configuración" />
-      <Tabs defaultValue="workspace">
-        <TabsList className="bg-card border border-border">
-          <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">
-            <Building2 className="h-4 w-4 mr-2" />Workspace
-          </TabsTrigger>
-          <TabsTrigger value="members" className="data-[state=active]:bg-elevated">
-            <Users className="h-4 w-4 mr-2" />Miembros
-          </TabsTrigger>
-          <TabsTrigger value="channels" className="data-[state=active]:bg-elevated">
-            <PlugZap className="h-4 w-4 mr-2" />Canales
-          </TabsTrigger>
-          <TabsTrigger value="departments" className="data-[state=active]:bg-elevated">
-            <Layers className="h-4 w-4 mr-2" />Departamentos
-          </TabsTrigger>
-          <TabsTrigger value="integrations" className="data-[state=active]:bg-elevated">
-            <Plug className="h-4 w-4 mr-2" />Integraciones
-          </TabsTrigger>
-          <TabsTrigger value="ai" className="data-[state=active]:bg-elevated">
-            <BrainCircuit className="h-4 w-4 mr-2" />Inteligencia Artificial
-          </TabsTrigger>
-          {isPlatformAdmin && (
-            <TabsTrigger value="platform" className="data-[state=active]:bg-elevated">
-              <ShieldCheck className="h-4 w-4 mr-2" />Plataforma
-            </TabsTrigger>
-          )}
-        </TabsList>
+      <Tabs value={tab} onValueChange={(v) => navigate(`/settings?tab=${v}`, { replace: true })}>
         <Card className="mt-4 bg-card border-border">
           <CardContent className="pt-6">
             <TabsContent value="workspace"><WorkspaceTab /></TabsContent>
@@ -2088,6 +2081,7 @@ export default function Settings() {
             <TabsContent value="departments"><DepartmentsTab /></TabsContent>
             <TabsContent value="integrations"><IntegrationsTab /></TabsContent>
             <TabsContent value="ai"><AiTab /></TabsContent>
+            <TabsContent value="saml"><SamlConfig /></TabsContent>
             {isPlatformAdmin && (
               <TabsContent value="platform"><PlatformTab /></TabsContent>
             )}

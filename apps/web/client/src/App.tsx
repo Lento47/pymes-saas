@@ -57,7 +57,10 @@ import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
 import AdminUsers from "@/pages/admin/users";
 import AdminPlanLimits from "@/pages/admin/plan-limits";
 import AdminLogin from "@/pages/admin/login";
+<<<<<<< feat/business-onboarding-web
 import BusinessProfilePage from "@/pages/business-profile";
+=======
+>>>>>>> main-web
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, initialized, user } = useAuth();
