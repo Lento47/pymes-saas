@@ -7,6 +7,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AiModule } from '../ai/ai.module';
 import { HaciendaModule } from '../hacienda/hacienda.module';
 import { StorageService } from '../common/storage/storage.service';
+import { OcrService } from '../documents/ocr.service';
 import { QUEUE_NAMES } from './queues.constants';
 import { QueueService } from './queue.service';
 import { ClassifierProcessor } from './processors/classifier.processor';
@@ -80,6 +81,7 @@ function createRedisConnection(config: ConfigService) {
     FollowupProcessor,
     SummaryProcessor,
     HaciendaProcessor,
+    OcrService,
     StorageService,
   ],
   exports: [QueueService],
