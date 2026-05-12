@@ -56,6 +56,7 @@ import AdminWorkspaces from "@/pages/admin/workspaces";
 import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
 import AdminUsers from "@/pages/admin/users";
 import AdminPlanLimits from "@/pages/admin/plan-limits";
+import AdminLogin from "@/pages/admin/login";
 import BusinessProfilePage from "@/pages/business-profile";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -87,6 +88,7 @@ function AppRouter() {
       <Route path="/register" component={Register} />
       <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/admin/login" component={AdminLogin} />
       <Route path="/setup" component={SetupPage} />
       <Route path="/product">
         {() => <ProductPage />}

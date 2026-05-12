@@ -1,247 +1,561 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
+import { useTheme } from "@/components/providers/theme-provider";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
+import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api } from "@/lib/api";
 import {
-  LayoutDashboard,
-  Inbox,
-  Users,
-  CheckSquare,
-  FileText,
-  Receipt,
-  Zap,
-  KanbanSquare,
-  Settings,
-  CircleHelp,
-  LogOut,
-  ChevronDown,
-  Check,
-  ShieldCheck,
+  LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
+  Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot,
+  Sun, Moon, Search, Menu, X, ChevronRight, Building2,
+  CreditCard, Layers, Plug, PlugZap, Shuffle, BrainCircuit, ShieldCheck, UserCircle, LifeBuoy,
 } from "lucide-react";
 
-const NAV = [
-  { path: "/",            icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/inbox",       icon: Inbox,           label: "Bandeja",   badge: "unread" },
-  { path: "/contacts",    icon: Users,           label: "Contactos" },
-  { path: "/tasks",       icon: CheckSquare,     label: "Tareas",    badge: "overdue" },
-  { path: "/documents",   icon: FileText,        label: "Archivos" },
-  { path: "/invoices",    icon: Receipt,         label: "Facturas" },
-  { path: "/pipeline",   icon: KanbanSquare,    label: "Pipeline" },
-  { path: "/automations", icon: Zap,             label: "Automatizaciones" },
+type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "notifications" | "settings" | "help";
+type NavItem = { path: string; icon: any; key: NavKey; badge?: "unread" | "overdue" };
+
+const BETA_LABELS: Partial<Record<NavKey, string>> = {
+  contacts: "Clientes",
+  pipeline: "Estado del cliente",
+  tasks: "Pedidos",
+  automations: "Recordatorios",
+  inbox: "Bandeja WS",
+  invoices: "Facturación",
+  dashboard: "Resumen",
+  inventory: "Inventario",
+};
+
+function navLabel(copy: any, key: NavKey, isBeta?: boolean): string {
+  if (isBeta && BETA_LABELS[key]) return BETA_LABELS[key]!;
+  if (key === "settings") return copy.settings;
+  if (key === "help") return copy.help;
+  return copy.nav[key] ?? key;
+}
+
+function getWorkspaceGradient(name: string): { gradient: string; text: string } {
+  const gradients = [
+    { gradient: "linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #a855f7 0%, #6d28d9 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #ec4899 0%, #be185d 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #f43f5e 0%, #be123c 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #f97316 0%, #c2410c 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #eab308 0%, #854d0e 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #10b981 0%, #065f46 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #14b8a6 0%, #0d4f4a 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #06b6d4 0%, #084e62 100%)", text: "text-white" },
+    { gradient: "linear-gradient(135deg, #6366f1 0%, #3730a3 100%)", text: "text-white" },
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash) + name.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return gradients[Math.abs(hash) % gradients.length];
+}
+
+interface NavGroup {
+  key: "work" | "operations" | "assistants";
+  items: NavItem[];
+}
+
+const PLAN_MIN: Record<string, string> = {
+  pipeline: 'STARTER',
+  agent: 'ENTERPRISE',
+};
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: "work",
+    items: [
+      { path: "/",              icon: LayoutDashboard, key: "dashboard" },
+      { path: "/inbox",         icon: Inbox,           key: "inbox",       badge: "unread" },
+      { path: "/tasks",         icon: CheckSquare,      key: "tasks",       badge: "overdue" },
+      { path: "/pipeline",      icon: KanbanSquare,     key: "pipeline" },
+    ],
+  },
+  {
+    key: "operations",
+    items: [
+      { path: "/contacts",      icon: Users,           key: "contacts" },
+      { path: "/documents",     icon: FileText,        key: "documents" },
+      { path: "/invoices",      icon: Receipt,         key: "invoices" },
+      { path: "/automations",   icon: Zap,             key: "automations" },
+      { path: "/inventory",     icon: Package,         key: "inventory" },
+    ],
+  },
+  {
+    key: "assistants",
+    items: [
+      { path: "/agent",         icon: Bot,             key: "agent" },
+      { path: "/help",          icon: CircleHelp,       key: "help" },
+      { path: "/notifications", icon: BellRing,        key: "notifications", badge: "unread" },
+    ],
+  },
 ];
+
+const ADMIN_ITEMS = [
+  { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/admin/workspaces", icon: Shield, label: "Workspaces" },
+  { href: "/admin/plan-limits", icon: ShieldCheck, label: "Límites de Planes" },
+] as const;
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, switchWorkspace } = useAuth();
+  const { messages } = useI18n();
+  const { theme, toggle } = useTheme();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
+  );
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 1024,
+  );
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ left: 0, top: 0 });
+  const wsMenuRef = useRef<HTMLDivElement>(null);
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const copy = messages.sidebar;
+
+  useNotificationsSocket();
 
   const { data: myWorkspaces } = useQuery({
-    queryKey: ["/api/auth/my-workspaces"],
-    queryFn: api.getMyWorkspaces,
-    staleTime: 60_000,
+    queryKey: ["/api/auth/my-workspaces"], queryFn: api.getMyWorkspaces, staleTime: 60_000,
   });
-
   const { data: unreadData } = useQuery({
-    queryKey: ["/api/notifications/unread-count"],
-    queryFn: api.getUnreadCount,
-    refetchInterval: 30000,
+    queryKey: ["/api/notifications/unread-count"], queryFn: api.getUnreadCount, refetchInterval: 30000,
   });
+  const { data: features } = useQuery({
+    queryKey: ["/api/workspaces/current/features"], queryFn: api.getCurrentFeatures, staleTime: 120_000,
+  });
+  const isBeta = features?.plan === "BETA_INFORMAL";
+  const isFeatureEnabled = (key: string): boolean => {
+    const map: Record<string, string> = {
+      inbox: "whatsapp_inbox", tasks: "orders", pipeline: "contacts",
+      contacts: "contacts", documents: "contacts", invoices: "billing",
+      automations: "automations", inventory: "orders", agent: "ai_assistant",
+      notifications: "conversations",
+    };
+    const fk = map[key] || key;
+    return features?.features?.[fk] !== false;
+  };
   const { data: overdueData } = useQuery({
-    queryKey: ["/api/tasks/overdue"],
-    queryFn: api.getOverdueTasks,
-    refetchInterval: 60000,
+    queryKey: ["/api/tasks/overdue"], queryFn: api.getOverdueTasks, refetchInterval: 60000,
   });
 
-  const unreadCount  = unreadData?.count ?? 0;
+  const unreadCount = unreadData?.count ?? 0;
   const overdueCount = Array.isArray(overdueData) ? overdueData.length : 0;
-  const ws = user?.workspace?.name ?? "Workspace";
+  const ws = user?.workspace?.name ?? copy.workspaceFallback;
   const name = user?.name ?? user?.email ?? "—";
   const initials = name.slice(0, 2).toUpperCase();
   const multipleWorkspaces = Array.isArray(myWorkspaces) && myWorkspaces.length > 1;
-
   const isActive = (p: string) => p === "/" ? location === "/" : location.startsWith(p);
+  const badgeVal = (bk?: string) => bk === "unread" ? unreadCount : bk === "overdue" ? overdueCount : 0;
 
-  const badge = (key?: string) =>
-    key === "unread" ? unreadCount : key === "overdue" ? overdueCount : 0;
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (mobile) setSidebarOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+    setSettingsMenuOpen(false);
+  }, [location, isMobile]);
+
+  useEffect(() => {
+    if (isMobile && sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isMobile, sidebarOpen]);
+
+  useEffect(() => {
+    if (!sidebarOpen) setSettingsMenuOpen(false);
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wsMenuRef.current && !wsMenuRef.current.contains(e.target as Node)) {
+        setWsMenuOpen(false);
+      }
+    };
+    if (wsMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [wsMenuOpen]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* ── Sidebar ── */}
-      <aside
-        style={{ background: "hsl(var(--bg-sidebar))", borderRight: "1px solid hsl(var(--border))" }}
-        className="w-[200px] shrink-0 flex flex-col"
-      >
-        {/* Workspace header / switcher */}
-        <div className="relative shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-          <button
-            className="w-full px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
-            onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
-            style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
-          >
-            <div
-              style={{ background: "hsl(var(--accent))", borderRadius: "4px" }}
-              className="w-6 h-6 flex items-center justify-center shrink-0"
-            >
-              <span className="text-white font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
-            </div>
-            <div className="min-w-0 flex-1 text-left">
-              <div className="text-sm font-semibold text-white leading-none truncate">{ws}</div>
-            </div>
-            {multipleWorkspaces && (
-              <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
-            )}
-          </button>
+    <div className="flex h-screen overflow-hidden bg-background">
+      {isMobile && sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-          {wsMenuOpen && multipleWorkspaces && (
-            <div
-              className="absolute left-0 right-0 top-full z-50 py-1"
-              style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))", borderTop: "none" }}
+      <aside
+        className={cn(
+          "flex flex-col shrink-0 border-r border-border/60 bg-sidebar transition-all duration-300 ease-out overflow-hidden",
+          sidebarOpen ? "w-[260px]" : "w-0 border-r-0",
+          isMobile && "fixed left-0 top-0 z-50 shadow-lg h-[100dvh]",
+          isMobile && sidebarOpen && "w-[260px] border-r",
+        )}
+      >
+        {isMobile && (
+          <div className="shrink-0 flex justify-end px-3 py-3 border-b border-border/40 pt-safe">
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className={cn(
+                "p-2 rounded-lg transition-all duration-200",
+                "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+              )}
             >
-              {(myWorkspaces as any[]).map((m: any) => {
-                const isCurrent = m.workspace.id === user?.workspace?.id;
-                return (
-                  <button
-                    key={m.workspace.id}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-white/5 transition-colors"
-                    onClick={() => { setWsMenuOpen(false); if (!isCurrent) switchWorkspace(m.workspace.slug); }}
-                  >
-                    <span className="flex-1 text-left text-sm truncate" style={{ color: isCurrent ? "white" : "hsl(var(--fg-2))" }}>
-                      {m.workspace.name}
-                    </span>
-                    {isCurrent && <Check style={{ width: 12, height: 12, color: "hsl(var(--accent))" }} />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border/40">
+          <div ref={wsMenuRef} className="relative">
+            <button
+              className={cn(
+                "group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+                "active:scale-95 relative overflow-hidden",
+                !wsMenuOpen && "hover:shadow-lg hover:shadow-black/20"
+              )}
+              onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
+              style={{
+                background: wsMenuOpen ? "hsl(var(--sidebar-accent) / 0.4)" : getWorkspaceGradient(ws).gradient,
+                cursor: multipleWorkspaces ? "pointer" : "default",
+                boxShadow: wsMenuOpen ? "0 0 0 1px hsl(var(--primary) / 0.3)" : "0 4px 12px rgba(0, 0, 0, 0.15)"
+              }}
+            >
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300" style={{ background: "radial-gradient(circle at top-right, rgba(255,255,255,0.3))" }}></div>
+
+              <div className="flex-1 min-w-0 relative z-10">
+                <p className="text-sm font-bold text-white truncate leading-tight drop-shadow-sm">{ws}</p>
+              </div>
+
+              <div className="flex flex-col items-center justify-center shrink-0 gap-0.5">
+                <ChevronDown
+                  className={cn(
+                    "w-3.5 h-3.5 text-muted-foreground/80 transition-transform duration-300 rotate-180",
+                    multipleWorkspaces && wsMenuOpen && "text-primary/70",
+                    !multipleWorkspaces && "opacity-30 cursor-default"
+                  )}
+                />
+                <ChevronDown
+                  className={cn(
+                    "w-3.5 h-3.5 text-muted-foreground/80 transition-transform duration-300",
+                    multipleWorkspaces && wsMenuOpen && "text-primary/70",
+                    !multipleWorkspaces && "opacity-30 cursor-default"
+                  )}
+                />
+              </div>
+            </button>
+
+            {wsMenuOpen && multipleWorkspaces && (
+              <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-sidebar shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="p-2 max-h-[280px] overflow-y-auto">
+                  {(myWorkspaces as any[]).map((m: any) => {
+                    const isCurrent = m.workspace.id === user?.workspace?.id;
+                    return (
+                      <button
+                        key={m.workspace.id}
+                        className={cn(
+                          "group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-left",
+                          isCurrent
+                            ? "bg-primary/10 text-foreground"
+                            : "text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground"
+                        )}
+                        onClick={() => {
+                          setWsMenuOpen(false);
+                          if (!isCurrent) switchWorkspace(m.workspace.slug);
+                        }}
+                      >
+                        <div className="w-6 h-6 rounded-md bg-sidebar-accent/60 flex items-center justify-center shrink-0 text-xs font-semibold">
+                          {m.workspace.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="flex-1 text-sm truncate font-medium">{m.workspace.name}</span>
+                        {isCurrent && (
+                          <Check className="w-4 h-4 text-primary shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {multipleWorkspaces && (
+                  <div className="border-t border-border/40 px-3 py-2 bg-sidebar-accent/20">
+                    <p className="text-xs text-muted-foreground/80">{myWorkspaces?.length} workspace{(myWorkspaces?.length ?? 0) > 1 ? "s" : ""} available</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 py-2 overflow-y-auto">
-          {NAV.map(({ path, icon: Icon, label, badge: bk }) => {
-            const active = isActive(path);
-            const b = badge(bk);
-            return (
-              <Link key={path} href={path}>
-                <div
-                  className={cn(
-                    "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                    active
-                      ? "text-white"
-                      : "text-[hsl(var(--fg-2))] hover:text-white"
-                  )}
-                  style={active ? { background: "hsl(var(--bg-active))" } : undefined}
-                >
-                  <Icon
-                    className="shrink-0"
-                    style={{ width: 14, height: 14 }}
-                    strokeWidth={active ? 2.2 : 1.8}
-                  />
-                  <span className="flex-1 truncate" style={{ fontSize: "13px" }}>{label}</span>
-                  {b > 0 && (
-                    <span
-                      style={{
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        lineHeight: 1,
-                        padding: "2px 5px",
-                        borderRadius: "10px",
-                        background: bk === "overdue" ? "hsl(var(--danger) / 0.15)" : "hsl(var(--accent) / 0.15)",
-                        color: bk === "overdue" ? "hsl(var(--danger))" : "hsl(var(--accent))",
-                      }}
-                    >
-                      {b}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sidebar-accent/20 hover:scrollbar-thumb-sidebar-accent/30">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.key} className="space-y-1.5">
+              <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-2">
+                <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                <span>{(copy.groups as any)[group.key]}</span>
+              </div>
+              <div className="space-y-1">
+                {group.items.filter(({ key }) => {
+                  const minPlan = PLAN_MIN[key];
+                  if (minPlan) {
+                    const plan = user?.workspace?.plan ?? 'FREE';
+                    const order = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
+                    if (order.indexOf(plan) < order.indexOf(minPlan)) return false;
+                  }
+                  return isFeatureEnabled(key);
+                }).map(({ path, icon: Icon, key, badge: bk }) => {
+                  const active = isActive(path);
+                  const b = badgeVal(bk);
+                  return (
+                    <Link key={path} href={path}>
+                      <div
+                        className={cn(
+                          "group relative flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
+                          active
+                            ? "bg-primary/10 text-primary font-medium shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+                        )}
+                      >
+                        {active && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-primary transition-all duration-300" />
+                        )}
 
-          {/* Divider */}
-          <div className="my-2 mx-3" style={{ height: 1, background: "hsl(var(--border))" }} />
+                        <Icon
+                          className={cn(
+                            "w-4 h-4 shrink-0 transition-all duration-200",
+                            active && "scale-110"
+                          )}
+                          strokeWidth={active ? 2.5 : 1.8}
+                        />
 
-          <Link href="/settings">
-            <div
-              className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/settings") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
-              )}
-              style={isActive("/settings") ? { background: "hsl(var(--bg-active))" } : undefined}
-            >
-              <Settings style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>Configuración</span>
+                        <span className="flex-1 text-sm">{navLabel(copy, key, isBeta)}</span>
+
+                        {b > 0 && (
+                          <span
+                            className={cn(
+                              "text-xs font-bold px-2 py-0.5 rounded-full leading-none transition-all duration-200",
+                              bk === "overdue"
+                                ? "bg-destructive/20 text-destructive"
+                                : "bg-primary/20 text-primary"
+                            )}
+                          >
+                            {b}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </Link>
-
-          <Link href="/help">
-            <div
-              className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/help") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
-              )}
-              style={isActive("/help") ? { background: "hsl(var(--bg-active))" } : undefined}
-            >
-              <CircleHelp style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>Ayuda</span>
-            </div>
-          </Link>
+          ))}
 
           {user?.is_platform_admin && (
-            <Link href="/admin">
-              <div
-                className={cn(
-                  "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                  isActive("/admin") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
-                )}
-                style={isActive("/admin") ? { background: "hsl(var(--bg-active))" } : undefined}
-              >
-                <ShieldCheck style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-                <span style={{ fontSize: "13px" }}>Panel Admin</span>
+            <div className="space-y-1.5 pt-2 border-t border-border/40">
+              <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-amber-400/80 flex items-center gap-2">
+                <div className="w-1 h-1 rounded-full bg-amber-400/30" />
+                <span>Admin</span>
               </div>
-            </Link>
+              <div className="space-y-1">
+                {ADMIN_ITEMS.map(({ href, icon: Icon, label }) => {
+                  const active = isActive(href);
+                  return (
+                    <Link key={href} to={href}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
+                        active
+                          ? "bg-amber-500/10 text-amber-400 font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+                      )}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" strokeWidth={active ? 2.5 : 1.8} />
+                      <span className="flex-1 text-sm">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </nav>
 
-        {/* User row */}
-        <div
-          className="px-3 py-3 flex items-center gap-2"
-          style={{ borderTop: "1px solid hsl(var(--border))" }}
-        >
-          <div
-            style={{
-              width: 24, height: 24,
-              borderRadius: "50%",
-              background: "hsl(var(--bg-active))",
-              border: "1px solid hsl(var(--border))",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "10px", fontWeight: 600, color: "hsl(var(--fg-2))",
-              flexShrink: 0,
-            }}
-          >
-            {initials}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="truncate font-medium text-white" style={{ fontSize: "12px", lineHeight: "1.3" }}>{name}</div>
-            <div className="truncate" style={{ fontSize: "11px", color: "hsl(var(--fg-3))" }}>{user?.role ?? ""}</div>
-          </div>
+        <div className="shrink-0 px-3 pb-2" ref={settingsMenuRef}>
           <button
-            onClick={logout}
-            style={{ color: "hsl(var(--fg-3))", padding: "4px" }}
-            className="hover:text-white transition-colors shrink-0 rounded"
-            title="Cerrar sesión"
+            onClick={() => {
+              const rect = settingsMenuRef.current?.getBoundingClientRect();
+              if (rect) setDropdownPos({ left: rect.right + 8, top: Math.min(rect.top + 4, window.innerHeight - 460) });
+              setSettingsMenuOpen(o => !o);
+            }}
+            className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
           >
-            <LogOut style={{ width: 13, height: 13 }} />
+            <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
+            <span className="flex-1 text-sm text-left">Configuración</span>
+            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", settingsMenuOpen && "rotate-180")} />
           </button>
+        </div>
+
+        <div className="shrink-0 border-t border-border/40 px-3 py-3 pb-safe space-y-3 bg-sidebar-accent/20">
+          <div className="flex items-center gap-1 px-2">
+            <button
+              onClick={toggle}
+              className={cn(
+                "p-2 rounded-lg transition-all duration-200 flex-1 flex items-center justify-center",
+                "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+              )}
+              aria-label={theme === "dark" ? copy.lightMode : copy.darkMode}
+              title={theme === "dark" ? copy.lightMode : copy.darkMode}
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </button>
+            <div className="flex-1">
+              <LanguageSwitcher />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sidebar-accent/30 hover:bg-sidebar-accent/50 transition-all duration-200">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0 text-xs font-bold text-primary-foreground shadow-sm">
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-foreground truncate">{name}</p>
+              <p className="text-[10px] text-muted-foreground/60 truncate capitalize">{user?.role?.toLowerCase()}</p>
+            </div>
+            <button
+              onClick={logout}
+              className={cn(
+                "p-1.5 rounded-md transition-all duration-200 shrink-0",
+                "text-muted-foreground/80 hover:text-destructive hover:bg-destructive/10"
+              )}
+              title={copy.logout}
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* ── Main ── */}
-      <main className="flex-1 overflow-y-auto" style={{ background: "hsl(var(--bg))" }}>
-        {children}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <header className="shrink-0 flex items-center gap-3 px-4 lg:px-6 py-3 border-b border-border/40 bg-background/80 backdrop-blur-sm relative z-40 pt-safe">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={cn(
+              "p-2 rounded-lg transition-all duration-200 shrink-0",
+              "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+            )}
+            title={sidebarOpen ? "Cerrar menú" : "Abrir menú"}
+          >
+            {sidebarOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
+          </button>
+
+          <div className="relative flex-1 max-w-[420px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/75" />
+            <input
+              className={cn(
+                "w-full h-9 pl-9 pr-3 rounded-lg border border-border/40 bg-sidebar-accent/20",
+                "text-sm text-foreground placeholder:text-muted-foreground/75",
+                "focus:outline-none focus:border-primary/40 focus:bg-sidebar-accent/30",
+                "transition-all duration-200"
+              )}
+              placeholder={copy.searchPlaceholder}
+            />
+          </div>
+
+          <div className="hidden md:flex-1" />
+
+          <NotificationBell />
+
+          <span className="hidden sm:inline-block text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-3 py-1.5 rounded-lg bg-sidebar-accent/20">
+            {user?.role}
+          </span>
+        </header>
+
+        <div className="flex-1 overflow-y-auto">
+          {children}
+        </div>
       </main>
+
+      {settingsMenuOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setSettingsMenuOpen(false)} />
+          <div
+            className="fixed z-50 rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden animate-in fade-in slide-in-from-left-2 duration-150"
+            style={{ left: dropdownPos.left, top: dropdownPos.top, width: 240, maxHeight: 460 }}
+          >
+            <div className="p-2 max-h-[440px] overflow-y-auto space-y-3">
+              {[
+                { label: "General", items: [
+                  { icon: UserCircle, label: "Perfil", href: "/settings?tab=profile" },
+                  { icon: Building2, label: "Workspace", href: "/settings?tab=workspace" },
+                  { icon: UserCircle, label: "Onboarding", href: "/onboarding" },
+                  { icon: LifeBuoy, label: "Soporte", href: "/support" },
+                ]},
+                { label: "Personas y equipo", items: [
+                  { icon: Users, label: "Miembros", href: "/settings?tab=members" },
+                  { icon: Layers, label: "Departamentos", href: "/settings?tab=departments" },
+                ]},
+                { label: "Canales y flujos", items: [
+                  { icon: PlugZap, label: "Canales", href: "/settings?tab=channels" },
+                  { icon: Shuffle, label: "Enrutamiento", href: "/settings?tab=routing" },
+                ]},
+                { label: "Autenticación", items: [
+                  { icon: Shield, label: "SAML SSO", href: "/settings?tab=saml" },
+                ]},
+                { label: "IA", items: [
+                  { icon: BrainCircuit, label: "Inteligencia Artificial", href: "/settings?tab=ai" },
+                ]},
+                { label: "Finanzas y plataforma", items: [
+                  { icon: CreditCard, label: "Facturación", href: "/settings?tab=billing" },
+                  { icon: ShieldCheck, label: "Plataforma", href: "/settings?tab=platform" },
+                ]},
+              ].map((group) => (
+                <div key={group.label} className="space-y-1">
+                  <div className="px-3 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    {group.label}
+                  </div>
+                  {group.items.map((item) => {
+                    return (
+                      <Link key={item.href} to={item.href}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground transition-all"
+                        onClick={() => setSettingsMenuOpen(false)}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
