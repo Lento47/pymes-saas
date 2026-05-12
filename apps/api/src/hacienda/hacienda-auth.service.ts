@@ -1,13 +1,20 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
+import { FiscalEnvironment } from '@prisma/client';
+
+// Refresh the token this many seconds before actual expiry to avoid last-second failures
+const TOKEN_EXPIRY_BUFFER_SECS = 60;
 
 @Injectable()
 export class HaciendaAuthService {
+  private readonly logger = new Logger(HaciendaAuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
@@ -32,11 +39,24 @@ export class HaciendaAuthService {
 
     const settings = this.readSettings(workspace.settings_json);
 
-    const accessToken = this.decryptSetting(settings, 'hacienda_access_token_enc', 'hacienda_access_token');
-    if (accessToken) {
-      return accessToken;
+    // Determine environment from workspace settings
+    const envStr = (settings.hacienda_environment ?? 'staging').toUpperCase();
+    const environment = envStr === 'PRODUCTION' ? FiscalEnvironment.PRODUCTION : FiscalEnvironment.STAGING;
+
+    // Check the token cache before hitting Hacienda OIDC
+    const cached = await this.prisma.haciendaTokenCache.findUnique({
+      where: { workspace_id_environment: { workspace_id: workspaceId, environment } },
+    });
+
+    if (cached && cached.expires_at > new Date(Date.now() + TOKEN_EXPIRY_BUFFER_SECS * 1000)) {
+      try {
+        return this.crypto.decrypt(cached.access_token_enc);
+      } catch {
+        this.logger.warn(`[${workspaceId}] Token cache decrypt failed — fetching fresh token`);
+      }
     }
 
+    // Fetch a new token from Hacienda OIDC
     const password = this.decryptSetting(settings, 'hacienda_password_enc', 'hacienda_password');
     if (!settings.hacienda_token_url || !settings.hacienda_username || !password) {
       throw new ServiceUnavailableException(
@@ -74,10 +94,39 @@ export class HaciendaAuthService {
       );
     }
 
-    const data = await response.json() as { access_token?: string };
+    const data = await response.json() as {
+      access_token?: string;
+      expires_in?: number;
+      refresh_token?: string;
+    };
     if (!data.access_token) {
       throw new ServiceUnavailableException('Respuesta de token Hacienda sin access_token.');
     }
+
+    // Persist to cache (best-effort; don't fail the request if cache write fails)
+    const expiresIn = data.expires_in ?? 300;
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+    try {
+      await this.prisma.haciendaTokenCache.upsert({
+        where: { workspace_id_environment: { workspace_id: workspaceId, environment } },
+        create: {
+          workspace_id: workspaceId,
+          environment,
+          access_token_enc: this.crypto.encrypt(data.access_token),
+          refresh_token_enc: data.refresh_token ? this.crypto.encrypt(data.refresh_token) : null,
+          expires_at: expiresAt,
+        },
+        update: {
+          access_token_enc: this.crypto.encrypt(data.access_token),
+          refresh_token_enc: data.refresh_token ? this.crypto.encrypt(data.refresh_token) : null,
+          expires_at: expiresAt,
+        },
+      });
+      this.logger.log(`[${workspaceId}] Hacienda token cached, expires ${expiresAt.toISOString()}`);
+    } catch (err) {
+      this.logger.warn(`[${workspaceId}] Token cache write failed: ${(err as Error).message}`);
+    }
+
     return data.access_token;
   }
 
