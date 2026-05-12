@@ -1,10 +1,6 @@
 import { reportClientError } from "@/lib/error-reporting";
 
 // Errors thrown from `request()` carry the support-case the backend opened
-// (api-exception.filter returns `case_id` and `error_code` on 4xx/5xx that
-// match the auto-ticket rules). The message is suffixed with the ticket so
-// existing `toast({ description: err.message })` call sites surface it
-// without each one having to special-case ApiError.
 export class ApiError extends Error {
   readonly status?: number;
   readonly case_id?: string;
@@ -19,19 +15,6 @@ export class ApiError extends Error {
   }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// IMPORTANTE — URL DEL BACKEND API
-//
-// PROD (CLOUDFLARE PAGES): SETEAR `VITE_API_URL=https://api.pymeshub.lat` EN
-// LAS ENV VARS DEL BUILD DE CLOUDFLARE PAGES (no en runtime — VITE INYECTA
-// EN BUILD TIME). SIN ESTA VAR, EL FALLBACK QUEDA EN STRING VACIO Y LAS
-// LLAMADAS A `/api/...` SE HACEN AL MISMO ORIGIN (CLOUDFLARE), QUE NO TIENE
-// EL BACKEND — RESULTA EN 404 PARA TODA LA APP.
-//
-// `__PORT_5000__` ES UN MARKER LEGACY DE REPLIT QUE NUNCA SE REEMPLAZA EN
-// CLOUDFLARE — EFECTIVAMENTE QUEDA COMO STRING VACIO. NO BORRAR EL CHECK
-// PARA NO ROMPER ENTORNOS LEGACY, PERO LA FUENTE REAL DE VERDAD ES `VITE_API_URL`.
-// ───────────────────────────────────────────────────────────────────────────
 const API_BASE = import.meta.env.VITE_PymesHub_API_URL ?? import.meta.env.VITE_API_URL ??
   ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
@@ -40,11 +23,9 @@ let _token: string | null = null;
 let _workspaceSlug: string | null = null;
 let _refreshToken: string | null = null;
 
-// Session timeout: 30 minutes of inactivity
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
 
 function getStorage(): Storage {
-  // Use localStorage for cross-session persistence
   try { return localStorage; } catch { return sessionStorage; }
 }
 
@@ -97,9 +78,6 @@ export function isLoggedIn() {
   try { return !!getStorage().getItem('pymes_token'); } catch { return false; }
 }
 
-/**
- * Extracts a human-readable message from API errors.
- */
 export function parsePlanError(err: any): { isPlanLimit: boolean; message: string } {
   const raw: string = err?.message ?? "";
   const isPlanLimit = raw.startsWith("403:");
@@ -107,7 +85,6 @@ export function parsePlanError(err: any): { isPlanLimit: boolean; message: strin
   return { isPlanLimit, message };
 }
 
-// Prevent concurrent refresh attempts
 let _refreshPromise: Promise<boolean> | null = null;
 
 async function _tryRefresh(): Promise<boolean> {
@@ -132,7 +109,6 @@ async function _tryRefresh(): Promise<boolean> {
         _refreshToken = data.refresh_token;
         try { getStorage().setItem('pymes_refresh', data.refresh_token); } catch { /* ignore */ }
       }
-      // Reconnect WebSocket with new token after refresh
       try {
         const { getSocket, connectSocket } = await import('../hooks/use-socket');
         const sock = getSocket();
@@ -208,7 +184,6 @@ async function request<T>(
   }
   clearTimeout(timeout);
 
-  // On 401, attempt token refresh and retry once
   if (res.status === 401 && !path.includes("/auth/login") && !path.includes("/auth/refresh")) {
     const refreshed = await _tryRefresh();
     if (refreshed) {
@@ -374,22 +349,10 @@ export const api = {
   getWorkspace: () => request<any>("GET", "/api/workspaces/current"),
   updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
   testAiConnection: (data: any) => request<any>("POST", "/api/workspaces/current/ai/test", data),
-  // ────────────────────────────────────────────────────────────────────────
-  // BILLING — IMPORTANTE: TODOS LOS HELPERS DE BILLING DEBEN USAR `request<>()`
-  // QUE INCLUYE EL HEADER `Authorization: Bearer ...`. NO USAR `fetch()` CRUDO
-  // CONTRA RUTAS PROTEGIDAS — DEVOLVERA 401.
-  // PADDLE ESTA EN SANDBOX. CAMBIAR A PROD EXIGE: (1) ROTAR PADDLE_API_KEY EN
-  // RAILWAY, (2) ROTAR PADDLE_WEBHOOK_SECRET, (3) ACTUALIZAR
-  // PADDLE_PRICE_*_MONTHLY/ANNUAL CON LOS NUEVOS IDs DE PROD,
-  // (4) PADDLE_ENVIRONMENT=production.
-  // ────────────────────────────────────────────────────────────────────────
   createCheckout: (priceId: string) => request<any>("POST", "/api/billing/checkout", { priceId }),
-  getBillingPrices: () =>
-    request<any>("GET", "/api/billing/prices"),
-  getAddonPrices: () =>
-    request<any>("GET", "/api/billing/addon-prices"),
-  createAddonCheckout: (addonKey: string) =>
-    request<any>("POST", "/api/billing/checkout-addon", { addonKey }),
+  getBillingPrices: () => request<any>("GET", "/api/billing/prices"),
+  getAddonPrices: () => request<any>("GET", "/api/billing/addon-prices"),
+  createAddonCheckout: (addonKey: string) => request<any>("POST", "/api/billing/checkout-addon", { addonKey }),
   getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
   getBillingInvoices: (params?: { page?: number; limit?: number; search?: string }) => {
     const qs = params ? "?" + new URLSearchParams(
@@ -399,11 +362,8 @@ export const api = {
     ).toString() : "";
     return request<any>("GET", `/api/billing/invoices${qs}`);
   },
-  // SUBSCRIPCION ACTUAL DEL WORKSPACE — USAR ESTE HELPER, NO `fetch()` CRUDO.
   getSubscription: () => request<any>("GET", "/api/workspaces/current/subscription"),
   cancelPlan: () => request<any>("POST", "/api/billing/cancel"),
-  // CAMBIO DE PLAN CON PRORRATEO PARA SUBSCRIPCION YA EXISTENTE.
-  // SI NO HAY SUBSCRIPCION ACTIVA → USAR createCheckout (PADDLE OVERLAY).
   changePlan: (priceId: string) => request<any>("POST", "/api/billing/change-plan", { priceId }),
   getApiKeys: () => request<any>("GET", "/api/workspaces/current/api-keys"),
   updateApiKeys: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
@@ -445,7 +405,6 @@ export const api = {
     request<any>('POST', `/api/channels/${id}/configure-whatsapp`, data),
   configureTelegram: (id: string, data: { bot_token: string }) =>
     request<any>('POST', `/api/channels/${id}/configure-telegram`, data),
-  // Departments
   getDepartments: () => request<any>("GET", "/api/departments"),
   createDepartment: (data: any) => request<any>("POST", "/api/departments", data),
   updateDepartment: (id: string, data: any) => request<any>("PATCH", `/api/departments/${id}`, data),
@@ -464,7 +423,9 @@ export const api = {
   },
   getExoneration: (authorization: string) => request<any>("GET", `/api/hacienda/exonerations/${authorization}`),
   getExchangeRate: () => request<any>("GET", "/api/hacienda/exchange-rate"),
-  // Pipeline
+  listCertificates: () => request<any[]>("GET", "/api/hacienda/certificates"),
+  uploadCertificate: (form: FormData) => request<any>("POST", "/api/hacienda/certificates", form, { isFormData: true }),
+  revokeCertificate: (id: string) => request<any>("DELETE", `/api/hacienda/certificates/${id}`),
   getPipelineStages: () => request<any>("GET", "/api/pipeline/stages"),
   createPipelineStage: (data: any) => request<any>("POST", "/api/pipeline/stages", data),
   updatePipelineStage: (id: string, data: any) => request<any>("PATCH", `/api/pipeline/stages/${id}`, data),
@@ -474,14 +435,12 @@ export const api = {
   moveDeal: (id: string, stageId: string) => request<any>("PATCH", `/api/pipeline/deals/${id}/move`, { stage_id: stageId }),
   winDeal: (id: string) => request<any>("POST", `/api/pipeline/deals/${id}/win`),
   deleteDeal: (id: string) => request<any>("DELETE", `/api/pipeline/deals/${id}`),
-  // Auth extras
   refresh: (token: string) => request<any>("POST", "/api/auth/refresh", { refresh_token: token }),
   getMyWorkspaces: () => request<any>("GET", "/api/auth/my-workspaces"),
   switchWorkspace: (workspace_slug: string) =>
     request<any>("POST", "/api/auth/switch-workspace", { workspace_slug }),
   register: (data: { email: string; name: string; password: string }) =>
     request<any>("POST", "/api/auth/register", data),
-  // Platform admin
   platformListWorkspaces: () => request<any>("GET", "/api/platform/workspaces"),
   platformGetWorkspaceBilling: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}/billing`),
   platformUpdateWorkspaceBilling: (slug: string, data: any) =>
@@ -515,7 +474,6 @@ export const api = {
   platformGetPlanLimits: () => request<any>("GET", "/api/platform/plan-limits"),
   platformUpdatePlanLimits: (overrides: { plan: string; resource: string; value: number }[]) => request<any>("PATCH", "/api/platform/plan-limits", { overrides }),
   getCurrentFeatures: () => request<any>("GET", "/api/workspaces/current/features"),
-  // AI / Agent
   askAssistant: (prompt: string) => request<any>("POST", "/api/workspaces/current/ai/assist", { prompt }),
   createAgentStream: (message: string, conversationId?: string) => request<any>("POST", "/api/agent/stream", { message, conversationId }),
   executeAgentTool: (tool: string, args?: any) => request<any>("POST", "/api/agent/tool", { tool, args }),
@@ -523,30 +481,16 @@ export const api = {
     request<any>("POST", "/api/agent/escalate", { summary, severity, evidence }),
   runDiagnostic: (module: string, error_code?: string, trace_id?: string, user_description?: string) =>
     request<any>("POST", "/api/agent/diagnose", { module, error_code, trace_id, user_description }),
-  // Routing rules
   getRoutingRules: () => request<any>("GET", "/api/routing/rules"),
   createRoutingRule: (data: any) => request<any>("POST", "/api/routing/rules", data),
   updateRoutingRule: (id: string, data: any) => request<any>("PATCH", `/api/routing/rules/${id}`, data),
   deleteRoutingRule: (id: string) => request<any>("DELETE", `/api/routing/rules/${id}`),
-  // SSO exchange — redeems the short-lived ?code= code from a SAML or
-  // Google OAuth redirect for real access + refresh tokens. Used by the
-  // login page when it lands at /login?code=...&slug=...
   ssoExchange: (code: string) =>
-    request<{
-      access_token: string;
-      refresh_token?: string;
-      user: any;
-    }>("POST", "/api/auth/sso-exchange", { code }),
-  // Facebook token exchange — the SDK gives us an access token,
-  // we validate it server-side and get back SSO credentials.
+    request<{ access_token: string; refresh_token?: string; user: any }>("POST", "/api/auth/sso-exchange", { code }),
   facebookTokenLogin: (accessToken: string) =>
-    request<{
-      code: string;
-      slug: string;
-    }>("POST", "/api/auth/facebook/token", { accessToken }),
+    request<{ code: string; slug: string }>("POST", "/api/auth/facebook/token", { accessToken }),
   telegramTokenLogin: (data: any) =>
     request<{ code: string; slug: string }>("POST", "/api/auth/telegram/token", data),
-  // SAML
   checkSamlStatus: (workspaceSlug?: string) => {
     const qs = workspaceSlug ? `?slug=${encodeURIComponent(workspaceSlug)}` : "";
     return request<any>("GET", `/api/auth/saml/status${qs}`);
@@ -555,21 +499,16 @@ export const api = {
   upsertSamlConfig: (workspaceId: string, data: any) => request<any>("PUT", `/api/auth/saml/config/${workspaceId}`, data),
   enableSaml: (workspaceId: string) => request<any>("POST", `/api/auth/saml/config/${workspaceId}/enable`),
   disableSaml: (workspaceId: string) => request<any>("POST", `/api/auth/saml/config/${workspaceId}/disable`),
-  // API Tokens
   getApiTokens: () => request<any>("GET", "/api/workspaces/current/api-tokens"),
   createApiToken: (name: string) => request<any>("POST", "/api/workspaces/current/api-tokens", { name }),
   revokeApiToken: (id: string) => request<any>("DELETE", `/api/workspaces/current/api-tokens/${id}`),
-  // Enterprise
   getEnterpriseConfig: (workspaceId: string) => request<any>("GET", `/api/enterprise/config/${workspaceId}`),
   upsertEnterpriseConfig: (workspaceId: string, data: any) => request<any>("PUT", `/api/enterprise/config/${workspaceId}`, data),
   getEnterpriseCapabilities: () => request<any>("GET", "/api/enterprise/capabilities"),
-  // Contact Sales
   submitContactSales: (data: any) => request<any>("POST", "/api/contact-sales", data),
-  // Onboarding
   getOnboardingProject: () => request<any>("GET", "/api/onboarding"),
   getOnboardingStatus: () => request<any>("GET", "/api/onboarding/status"),
   saveOnboardingProject: (data: any) => request<any>("POST", "/api/onboarding", data),
-  // Support
   getDiagnosticCases: () => request<any>("GET", "/api/agent/diagnostic-cases"),
   updateDiagnosticCaseStatus: (id: string, status: string) =>
     request<any>("PATCH", `/api/agent/diagnostic-cases/${id}/status`, { status }),
@@ -578,38 +517,31 @@ export const api = {
   getCaseComments: (caseId: string) => request<any>("GET", `/api/agent/diagnostic-cases/${caseId}/comments`),
   createCaseComment: (caseId: string, body: string) =>
     request<any>("POST", `/api/agent/diagnostic-cases/${caseId}/comments`, { body }),
-  // Inventory
-  getProducts: (params?: string) => request<any>("GET", `/api/inventory/products${params ? `?${params}` : ''}`),
+  getProducts: (params?: string) => request<any>("GET", `/api/inventory/products${params ? `?${params}` : ''}`) ,
   getProduct: (id: string) => request<any>("GET", `/api/inventory/products/${id}`),
   createProduct: (data: any) => request<any>("POST", "/api/inventory/products", data),
   updateProduct: (id: string, data: any) => request<any>("PATCH", `/api/inventory/products/${id}`, data),
   archiveProduct: (id: string) => request<any>("DELETE", `/api/inventory/products/${id}`),
   adjustStock: (id: string, data: any) => request<any>("POST", `/api/inventory/products/${id}/adjust-stock`, data),
   getLowStock: () => request<any>("GET", "/api/inventory/products/low-stock"),
-  getStockMovements: (params?: string) => request<any>("GET", `/api/inventory/movements${params ? `?${params}` : ''}`),
+  getStockMovements: (params?: string) => request<any>("GET", `/api/inventory/movements${params ? `?${params}` : ''}`) ,
   getCategories: () => request<any>("GET", "/api/inventory/categories"),
   createCategory: (data: any) => request<any>("POST", "/api/inventory/categories", data),
   updateCategory: (id: string, data: any) => request<any>("PATCH", `/api/inventory/categories/${id}`, data),
   deleteCategory: (id: string) => request<any>("DELETE", `/api/inventory/categories/${id}`),
-  // Feature Flags
   getFeatureFlags: (workspaceId: string) => request<any>("GET", `/api/feature-flags/check/${workspaceId}`),
-  // Usage
   getUsage: (workspaceId: string) => request<any>("GET", `/api/usage/${workspaceId}`),
-  // Message Templates
   getMessageTemplates: (workspaceId: string, channel?: string) => {
     const qs = channel ? `?channel=${encodeURIComponent(channel)}` : "";
     return request<any>("GET", `/api/message-templates/${workspaceId}${qs}`);
   },
   getApprovedTemplates: (workspaceId: string, channel?: string) =>
     request<any>("GET", `/api/message-templates/${workspaceId}/approved?channel=${channel ?? 'WHATSAPP'}`),
-  // SLA
   getSlaPolicies: () => request<any>("GET", "/api/sla/policies"),
   getSlaAssignment: (workspaceId: string) => request<any>("GET", `/api/sla/assignment/${workspaceId}`),
   assignSlaPolicy: (workspaceId: string, data: any) => request<any>("POST", `/api/sla/assignment/${workspaceId}`, data),
-  // Metrics
   trackEvent: (event: string, category?: string, value?: number, metadata?: Record<string, string>) =>
     request<any>("POST", "/api/metrics/event", { event, category, value, metadata }),
-  // Templates
   listSystemTemplates: (type: string, category?: string) => {
     const qs = new URLSearchParams({ type });
     if (category) qs.set("category", category);
@@ -645,7 +577,6 @@ export function getInactivityMs(): number {
   }
 }
 
-// Track user activity to keep session alive
 if (typeof window !== 'undefined') {
   const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'mousemove'];
   let throttleTimer: ReturnType<typeof setTimeout> | null = null;
