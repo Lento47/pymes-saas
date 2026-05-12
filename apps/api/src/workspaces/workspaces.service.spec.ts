@@ -39,6 +39,12 @@ const mockPrisma = {
   invoice: { aggregate: jest.fn() },
   automationRule: { count: jest.fn() },
   message: { count: jest.fn() },
+  $queryRawUnsafe: jest.fn().mockResolvedValue([{
+    contacts: 10, conversations: 5, tasks: 8, documents: 4,
+    automations: 2, members: 3, active_conversations: 2,
+    pending_tasks: 3, total_document_bytes: 1024,
+    monthly_revenue: 1000, prev_month_revenue: 0,
+  }]),
 };
 
 const mockCrypto = { encrypt: jest.fn((v: string) => `enc:${v}`), decrypt: jest.fn() };
@@ -135,7 +141,7 @@ describe('WorkspacesService', () => {
       expect(mockPrisma.workspaceUser.create).toHaveBeenCalledTimes(1);
       expect(result.message).toContain('brand-new@test.com');
       expect(result.invite_links.desktop).toContain('PymesHub://accept-invite?token=');
-      expect(result.invite_links.browser).toContain('https://app.pymeshub.lat/#/accept-invite?token=');
+      expect(result.invite_links.browser).toContain('https://pymeshub.lat/accept-invite?token=');
     });
   });
 

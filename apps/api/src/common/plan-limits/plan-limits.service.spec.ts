@@ -56,6 +56,7 @@ describe('PlanLimitsService', () => {
         products: 300,
         product_categories: 20,
         diagnostics_per_day: 10,
+        media_messages_per_day: 0,
       });
     });
 
@@ -71,7 +72,8 @@ describe('PlanLimitsService', () => {
         invite_codes: 50,
         products: 1500,
         product_categories: 50,
-        diagnostics_per_day: 30,
+        diagnostics_per_day: 40,
+        media_messages_per_day: 10,
       });
     });
 
@@ -88,6 +90,7 @@ describe('PlanLimitsService', () => {
         products: 10000,
         product_categories: 200,
         diagnostics_per_day: 100,
+        media_messages_per_day: 50,
       });
     });
 
