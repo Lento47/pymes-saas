@@ -23,6 +23,7 @@ import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 import { FeaturesService } from '../features/features.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
+import { BusinessProfileDto } from './dto/business-profile.dto';
 
 @Controller('workspaces')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -130,5 +131,18 @@ export class WorkspacesController {
     @Param('userId') targetUserId: string,
   ) {
     return this.service.removeMember(user.workspace_id, user, targetUserId);
+  }
+
+  @Get('business-profile')
+  getBusinessProfile(@CurrentUser() user: AuthUser) {
+    return this.service.getBusinessProfile(user.workspace_id);
+  }
+
+  @Post('business-profile')
+  saveBusinessProfile(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: BusinessProfileDto,
+  ) {
+    return this.service.saveBusinessProfile(user.workspace_id, dto);
   }
 }

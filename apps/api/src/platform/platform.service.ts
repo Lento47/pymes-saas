@@ -94,6 +94,7 @@ export class PlatformService {
         status: true,
         created_at: true,
         _count: { select: { workspace_users: true } },
+        business_profile: { select: { categories: true, team_size: true } },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -650,14 +651,111 @@ export class PlatformService {
 
   async getStats() {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const [totalWorkspaces, totalUsers, activeUsers, totalConversations, totalInvoices] = await Promise.all([
+
+    const [
+      totalWorkspaces,
+      totalUsers,
+      activeUsers,
+      totalConversations,
+      totalInvoices,
+      profiledWorkspaces,
+      allProfiles,
+      workspacesLast12Months,
+    ] = await Promise.all([
       this.prisma.workspace.count({ where: { status: 'ACTIVE' } }),
       this.prisma.user.count({ where: { status: 'ACTIVE' } }),
       this.prisma.user.count({ where: { status: 'ACTIVE', updated_at: { gte: thirtyDaysAgo } } }),
       this.prisma.conversation.count(),
       this.prisma.invoice.count(),
+      this.prisma.workspaceBusinessProfile.count(),
+      this.prisma.workspaceBusinessProfile.findMany({ select: { categories: true, team_size: true } }),
+      this.prisma.workspace.findMany({
+        where: { status: 'ACTIVE', created_at: { gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) } },
+        select: { created_at: true },
+        orderBy: { created_at: 'asc' },
+      }),
     ]);
-    return { totalWorkspaces, totalUsers, activeUsers, totalConversations, totalInvoices };
+
+    // Category distribution
+    const categoryMap: Record<string, number> = {};
+    for (const p of allProfiles) {
+      for (const cat of p.categories) {
+        categoryMap[cat] = (categoryMap[cat] ?? 0) + 1;
+      }
+    }
+    const categoriesDistribution = Object.entries(categoryMap)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Team size distribution
+    const teamSizeMap: Record<string, number> = {};
+    for (const p of allProfiles) {
+      teamSizeMap[p.team_size] = (teamSizeMap[p.team_size] ?? 0) + 1;
+    }
+    const teamSizeDistribution = Object.entries(teamSizeMap)
+      .map(([team_size, count]) => ({ team_size, count }));
+
+    // Registrations by month (last 12 months)
+    const monthMap: Record<string, number> = {};
+    for (const ws of workspacesLast12Months) {
+      const key = ws.created_at.toISOString().slice(0, 7); // "YYYY-MM"
+      monthMap[key] = (monthMap[key] ?? 0) + 1;
+    }
+    const registrationsByMonth = Object.entries(monthMap)
+      .map(([month, count]) => ({ month, count }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    // Usage averages by category — join profiles with usage snapshots
+    const profilesWithSnapshots = await this.prisma.workspaceBusinessProfile.findMany({
+      select: {
+        categories: true,
+        workspace: {
+          select: {
+            usage_snapshots: {
+              orderBy: { period_start: 'desc' },
+              take: 1,
+              select: { contacts_count: true, invoices_count: true },
+            },
+            _count: { select: { conversations: true } },
+          },
+        },
+      },
+    });
+
+    const categoryUsage: Record<string, { contacts: number[]; conversations: number[]; invoices: number[] }> = {};
+    for (const p of profilesWithSnapshots) {
+      const snap = p.workspace.usage_snapshots[0];
+      const contacts = snap?.contacts_count ?? 0;
+      const conversations = p.workspace._count.conversations;
+      const invoices = snap?.invoices_count ?? 0;
+      for (const cat of p.categories) {
+        if (!categoryUsage[cat]) categoryUsage[cat] = { contacts: [], conversations: [], invoices: [] };
+        categoryUsage[cat].contacts.push(contacts);
+        categoryUsage[cat].conversations.push(conversations);
+        categoryUsage[cat].invoices.push(invoices);
+      }
+    }
+
+    const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((s, n) => s + n, 0) / arr.length) : 0;
+    const usageByCategory = Object.entries(categoryUsage).map(([category, data]) => ({
+      category,
+      avg_contacts: avg(data.contacts),
+      avg_conversations: avg(data.conversations),
+      avg_invoices: avg(data.invoices),
+    }));
+
+    return {
+      totalWorkspaces,
+      totalUsers,
+      activeUsers,
+      totalConversations,
+      totalInvoices,
+      profiledWorkspaces,
+      categoriesDistribution,
+      teamSizeDistribution,
+      registrationsByMonth,
+      usageByCategory,
+    };
   }
 
   // ── GET /platform/workspaces/:slug ─────────────────────────────────────────
