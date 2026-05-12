@@ -1084,8 +1084,11 @@ export class AuthService {
    */
   async resetPassword(token: string, newPassword: string) {
     if (!token) throw new BadRequestException('Token requerido.');
-    if (!newPassword || newPassword.length < 8) {
-      throw new BadRequestException('La contraseña debe tener al menos 8 caracteres.');
+    const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s])\S{12,}$/;
+    if (!newPassword || !strongPassword.test(newPassword)) {
+      throw new BadRequestException(
+        'La contraseña debe tener al menos 12 caracteres e incluir mayúscula, minúscula, número y carácter especial.',
+      );
     }
 
     let payload: { sub: string; type?: string; pwh?: string };

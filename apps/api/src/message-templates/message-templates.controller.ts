@@ -3,6 +3,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { FeatureFlagGuard, RequireFeature } from '../feature-flags/feature-flags.guard';
 import { MessageTemplatesService } from './message-templates.service';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 
 @Controller('message-templates')
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
@@ -20,7 +21,7 @@ export class MessageTemplatesController {
   }
 
   @Get(':workspaceId/:id')
-  async getById(@Param('workspaceId') workspaceId: string, @Param('id') id: string) {
+  async getById(@Param('workspaceId') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string) {
     return this.templates.getById(workspaceId, id);
   }
 
@@ -32,13 +33,13 @@ export class MessageTemplatesController {
 
   @Put(':workspaceId/:id')
   @RequireFeature('message_templates')
-  async update(@Param('workspaceId') workspaceId: string, @Param('id') id: string, @Body() data: any) {
+  async update(@Param('workspaceId') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string, @Body() data: any) {
     return this.templates.update(workspaceId, id, data);
   }
 
   @Delete(':workspaceId/:id')
   @RequireFeature('message_templates')
-  async delete(@Param('workspaceId') workspaceId: string, @Param('id') id: string) {
+  async delete(@Param('workspaceId') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string) {
     return this.templates.delete(workspaceId, id);
   }
 }

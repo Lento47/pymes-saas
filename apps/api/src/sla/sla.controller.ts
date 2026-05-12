@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Param, Body, UseGuards } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -23,7 +24,7 @@ export class SlaController {
 
   @Put('policies/:id')
   @Roles('OWNER', 'ADMIN')
-  async updatePolicy(@Param('id') id: string, @Body() data: any) {
+  async updatePolicy(@Param('id', ValidateUUIDPipe) id: string, @Body() data: any) {
     return this.sla.upsertPolicy(id, data);
   }
 

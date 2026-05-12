@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, MinLength, Matches } from 'class-validator';
 
 export class AcceptInviteDto {
   @IsString()
@@ -11,6 +11,9 @@ export class AcceptInviteDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(8)
+  @MinLength(12, { message: 'La contraseña debe tener al menos 12 caracteres' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s])\S{12,}$/, {
+    message: 'La contraseña debe contener mayúscula, minúscula, número y carácter especial',
+  })
   password?: string;
 }
