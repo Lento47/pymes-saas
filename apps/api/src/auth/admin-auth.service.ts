@@ -126,7 +126,7 @@ export class AdminAuthService {
     if (!membership) {
       const workspace = await this.prisma.workspace.create({
         data: {
-          name: name || email.split('@')[0],
+          name: `Admin Hub — ${name || email.split('@')[0]}`,
           slug: `admin-${crypto.randomBytes(4).toString('hex')}`,
           plan: 'BUSINESS_PLUS',
         },
