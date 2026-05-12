@@ -20,32 +20,21 @@ export class AdminAuthController {
     @Res() res: any,
   ) {
     if (!code) {
-      res.redirect(`/admin/login?error=no_code`);
-      return;
+      // NOTE: /admin/login is NOT behind the workspace-slug router; it's a public route.
+      return res.redirect(`/admin/login?error=no_code`);
     }
     try {
       const result = await this.service.handleCallback(code, state);
-      res.cookie('pymes_token', result.access_token, {
-        httpOnly: false,
-        secure: true,
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/',
+      const params = new URLSearchParams({
+        admin_token: result.access_token,
+        admin_slug: result.user.workspace.slug,
+        ...(result.refresh_token ? { admin_refresh: result.refresh_token } : {}),
       });
-      if (result.refresh_token) {
-        res.cookie('pymes_refresh', result.refresh_token, {
-          httpOnly: false,
-          secure: true,
-          sameSite: 'lax',
-          maxAge: 30 * 24 * 60 * 60 * 1000,
-          path: '/',
-        });
-      }
-      res.redirect('/admin');
+      return res.redirect(`/admin/login?${params.toString()}`);
     } catch (err: any) {
       this.logger.error(`Admin login error: ${err?.message}`);
       const error = err?.status === 401 ? 'not_admin' : 'auth_failed';
-      res.redirect(`/admin/login?error=${error}`);
+      return res.redirect(`/admin/login?error=${error}`);
     }
   }
 }
