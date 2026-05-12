@@ -2050,8 +2050,8 @@ function AiTab() {
 
 export default function Settings() {
   const { user } = useAuth();
-  const [location, navigate] = useLocation();
-  const params = new URLSearchParams(location.split("?")[1] || "");
+  const [, navigate] = useLocation();
+  const params = new URLSearchParams(window.location.search);
   const tab = params.get("tab") || "workspace";
   const isPlatformAdmin = user?.is_platform_admin === true;
 
