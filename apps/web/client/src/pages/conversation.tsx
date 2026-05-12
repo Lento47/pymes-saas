@@ -20,7 +20,7 @@ import { useRoute, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
 import { ArrowLeft, Coins, ExternalLink, CheckCircle2, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, Info } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, formatMoney } from "@/lib/utils";
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -33,16 +33,6 @@ function getChannelIcon(type?: string) {
     case "FORM": return <Globe className="w-3.5 h-3.5" />;
     default: return <Phone className="w-3.5 h-3.5" />;
   }
-}
-
-function formatMoney(amount: unknown, currency = "USD") {
-  const value = Number(amount ?? 0);
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 }
 
 function DateSeparator({ date }: { date: Date }) {

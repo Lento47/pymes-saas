@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { es } from "date-fns/locale";
+import { RevenueChart } from "@/components/dashboard/RevenueChart";
+import { MetricCard } from "@/components/dashboard/MetricCard";
 
 const STATUS_BG = "https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/statusBackground.png";
 
@@ -30,123 +32,6 @@ function fmtMoney(n: number, cur: string) {
 function timeAgo(date: string) {
   try { return formatDistanceToNowStrict(new Date(date), { addSuffix: true }); }
   catch { return ""; }
-}
-
-// ── Revenue area chart ────────────────────────────────────────────────────────
-function RevenueChart({ monthlyRevenue, changePct }: { monthlyRevenue: number; changePct: number }) {
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  const W = 500, H = 110;
-
-  // Use current month dates
-  const now = new Date();
-  const monthName = now.toLocaleString("es-CR", { month: "short" });
-  const year = now.getFullYear();
-  const daysInMonth = new Date(year, now.getMonth() + 1, 0).getDate();
-  const today = now.getDate();
-  const points = Math.min(daysInMonth, 31);
-
-  // Generate proportional data points based on actual revenue
-  const ys = Array.from({ length: points }, (_, i) => {
-    // Revenue grows proportionally through the month
-    const dayProgress = (i + 1) / daysInMonth;
-    const expectedRevenue = monthlyRevenue * dayProgress;
-    const noise = monthlyRevenue > 0 ? Math.sin(i * 0.3) * (monthlyRevenue * 0.05) : 0;
-    const value = Math.max(0, expectedRevenue + noise);
-    // Scale to chart height (log scale for better visualization)
-    const maxVal = monthlyRevenue || 1;
-    const scaled = (value / maxVal) * (H * 0.8) + H * 0.1;
-    return H - Math.min(H - 5, Math.max(5, scaled));
-  });
-  const xs = ys.map((_, i) => (i / (ys.length - 1)) * W);
-  const activeIdx = hoverIdx ?? Math.min(today - 1, points - 1);
-
-  // Generate week labels from actual dates
-  const weekLabels = Array.from({ length: Math.min(5, Math.ceil(points / 7)) }, (_, w) => {
-    const d = Math.min(w * 7 + 1, daysInMonth);
-    return `${monthName} ${d}`;
-  });
-
-  let d = `M ${xs[0]} ${ys[0]}`;
-  for (let i = 1; i < xs.length; i++) {
-    const cx = (xs[i - 1] + xs[i]) / 2;
-    d += ` C ${cx} ${ys[i - 1]}, ${cx} ${ys[i]}, ${xs[i]} ${ys[i]}`;
-  }
-  const area = `${d} L ${W} ${H} L 0 ${H} Z`;
-
-  // Tooltip date
-  const tooltipDay = Math.min(Math.round((activeIdx / (points - 1)) * daysInMonth), daysInMonth) || 1;
-  const tooltipRevenue = monthlyRevenue > 0
-    ? Math.round(monthlyRevenue * (activeIdx + 1) / points)
-    : 0;
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full cursor-pointer" style={{ height: 140 }}
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * W;
-        const idx = Math.round((x / W) * (points - 1));
-        setHoverIdx(Math.max(0, Math.min(points - 1, idx)));
-      }}
-      onMouseLeave={() => setHoverIdx(null)}
-      onTouchMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = ((e.touches[0].clientX - rect.left) / rect.width) * W;
-        const idx = Math.round((x / W) * (points - 1));
-        setHoverIdx(Math.max(0, Math.min(points - 1, idx)));
-      }}
-    >
-      <defs>
-        <linearGradient id="rev-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#8b7cf6" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#8b7cf6" stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-      {[25, 50, 75, 100].map(y => (
-        <line key={y} x1="0" y1={y} x2={W} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-      ))}
-      <path d={area} fill="url(#rev-fill)" />
-      <path d={d} fill="none" stroke="#8b7cf6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {/* Today indicator line */}
-      <line x1={xs[Math.min(today - 1, points - 1)]} y1="0" x2={xs[Math.min(today - 1, points - 1)]} y2={H} stroke="#8b7cf6" strokeWidth="1" strokeDasharray="4 2" opacity="0.5" />
-      {/* Active dot */}
-      <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="5" fill="#8b7cf6" />
-      <circle cx={xs[activeIdx]} cy={ys[activeIdx]} r="9" fill="#8b7cf6" fillOpacity="0.15" />
-      {/* Tooltip */}
-      <rect x={Math.max(0, Math.min(W - 90, xs[activeIdx] - 45))} y={Math.max(0, ys[activeIdx] - 38)} width="90" height="24" rx="6" fill="#1e1b4b" />
-      <text x={Math.max(45, Math.min(W - 45, xs[activeIdx]))} y={Math.max(16, ys[activeIdx] - 22)} textAnchor="middle" fill="white" fontSize="10" fontWeight="600">
-        {monthName} {tooltipDay} · ₡{tooltipRevenue.toLocaleString()}
-      </text>
-    </svg>
-  );
-}
-
-// ── Metric card ───────────────────────────────────────────────────────────────
-function MetricCard({ label, value, currency, subLabel, icon: Icon, iconBg, loading }: {
-  label: string; value: any; currency?: string; subLabel?: string;
-  icon: any; iconBg: string; loading?: boolean;
-}) {
-  return (
-    <div className="relative rounded-2xl overflow-hidden bg-white/[0.02] border border-white/[0.04] p-5 hover:shadow-md transition-shadow"
-      style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center" }}>
-      <div className="absolute inset-0 bg-[#0c0c0e]/[0.88] rounded-2xl" />
-      <div className="relative">
-        <div className="flex items-start justify-between mb-3">
-          <p className="text-sm font-medium text-white/70">{label}</p>
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
-            <Icon className="w-4 h-4" />
-          </div>
-        </div>
-        {loading ? <Skeleton className="h-7 w-20" /> : (
-          <>
-            <p className="text-2xl font-bold text-white/90">
-              {currency}{typeof value === "number" ? value.toLocaleString("es-ES") : value}
-            </p>
-            {subLabel && <p className="text-xs text-white/50 mt-1">{subLabel}</p>}
-          </>
-        )}
-      </div>
-    </div>
-  );
 }
 
 // ── Priority badge ────────────────────────────────────────────────────────────
