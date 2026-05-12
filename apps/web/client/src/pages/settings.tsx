@@ -1,13 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { apiErrorDescription } from "@/lib/api-error";
 import { openExternal } from "@/lib/platform";
-import { useI18n } from "@/components/providers/i18n-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/shared/page-header";
-import { DiagnosticButton } from "@/components/shared/diagnostic-button";
-import { HelpButton } from "@/components/shared/help-button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,281 +16,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { SUPPORTED_LOCALES, normalizeLocale, type SupportedLocale } from "@/lib/i18n";
 import {
   Building2, Users, PlugZap, UserPlus, Plus, Plug,
   Mail, MessageCircle, Radio, Eye, EyeOff, ExternalLink,
-  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen, CreditCard, Shuffle, Loader2, Key, Copy, Shield, Send, Crown, UserCircle, Pencil,
+  PowerOff, Trash2, Layers, UserMinus, ShieldCheck, Search, BrainCircuit, CheckCircle2, AlertTriangle, BookOpen,
 } from "lucide-react";
-import BillingPage from "@/pages/billing";
-import { SamlConfig } from "@/components/settings/saml-config";
-import EnterpriseSettingsTab from "@/components/settings/enterprise-settings";
-import { ProfileTab } from "@/components/settings/profile-tab";
-import { ModuleHero } from "@/components/shared/module-hero";
-
-function RoutingRulesTab() {
-  const { toast } = useToast();
-  const { data: rules = [], isLoading, refetch } = useQuery({
-    queryKey: ['routing-rules'],
-    queryFn: api.getRoutingRules,
-  });
-
-  const createRule = useMutation({
-    mutationFn: api.createRoutingRule,
-    onSuccess: () => { refetch(); toast({ title: 'Regla creada' }); },
-    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
-  });
-
-  const deleteRule = useMutation({
-    mutationFn: (id: string) => api.deleteRoutingRule(id),
-    onSuccess: () => { refetch(); toast({ title: 'Regla eliminada' }); },
-    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
-  });
-
-  const toggleRule = useMutation({
-    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
-      api.updateRoutingRule(id, { is_active: active }),
-    onSuccess: () => refetch(),
-  });
-
-  const updateRule = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      api.updateRoutingRule(id, data),
-    onSuccess: () => { refetch(); toast({ title: 'Regla actualizada' }); },
-    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
-  });
-
-  const [newRule, setNewRule] = useState({ name: '', pattern: '', match_type: 'KEYWORD', department_id: '', channel_id: '', priority: 0, is_active: true, set_priority: '' });
-  const [editingRule, setEditingRule] = useState<any>(null);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Reglas de Enrutamiento</h2>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4 mr-1" />Nueva Regla</Button>
-          </DialogTrigger>
-          <DialogContent className="bg-card border-border max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-foreground">Nueva Regla de Enrutamiento</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-foreground">Nombre</Label>
-                <Input value={newRule.name} onChange={e => setNewRule({ ...newRule, name: e.target.value })} placeholder="Ej: Ventas" className="bg-[hsl(var(--elevated))] border-border" />
-              </div>
-              <div>
-                <Label className="text-foreground">Tipo de coincidencia</Label>
-                <Select value={newRule.match_type} onValueChange={v => setNewRule({ ...newRule, match_type: v })}>
-                  <SelectTrigger className="bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-card border-border">
-                    <SelectItem value="KEYWORD">Palabra clave</SelectItem>
-                    <SelectItem value="MENU_REPLY">Menú (texto exacto)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-foreground">Patrón / Palabra clave</Label>
-                <Input value={newRule.pattern} onChange={e => setNewRule({ ...newRule, pattern: e.target.value })} placeholder="Ej: factura, precio, ayuda, 1, 2..." className="bg-[hsl(var(--elevated))] border-border" />
-              </div>
-              <div>
-                <Label className="text-foreground">ID del Depto</Label>
-                <Input value={newRule.department_id} onChange={e => setNewRule({ ...newRule, department_id: e.target.value })} placeholder="ID del departamento destino" className="bg-[hsl(var(--elevated))] border-border" />
-              </div>
-              <div>
-                <Label className="text-foreground">ID del Canal (opcional)</Label>
-                <Input value={newRule.channel_id} onChange={e => setNewRule({ ...newRule, channel_id: e.target.value })} placeholder="Dejar vacío para todos" className="bg-[hsl(var(--elevated))] border-border" />
-              </div>
-              <div>
-                <Label className="text-foreground">Prioridad de conversación</Label>
-                <Select value={newRule.set_priority} onValueChange={v => setNewRule({ ...newRule, set_priority: v })}>
-                  <SelectTrigger className="bg-[hsl(var(--elevated))] border-border"><SelectValue placeholder="Sin cambio" /></SelectTrigger>
-                  <SelectContent className="bg-card border-border">
-                    <SelectItem value="NONE">Sin cambio</SelectItem>
-                    <SelectItem value="LOW">Baja</SelectItem>
-                    <SelectItem value="MEDIUM">Media</SelectItem>
-                    <SelectItem value="HIGH">Alta</SelectItem>
-                    <SelectItem value="URGENT">Urgente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                className="w-full"
-                disabled={createRule.isPending || !newRule.name || !newRule.pattern || !newRule.department_id}
-                onClick={() => {
-                  createRule.mutate({
-                    name: newRule.name,
-                    pattern: newRule.pattern,
-                    match_type: newRule.match_type,
-                    department_id: newRule.department_id,
-                    channel_id: newRule.channel_id || undefined,
-                    priority: newRule.priority,
-                    is_active: newRule.is_active,
-                    ...(newRule.set_priority && newRule.set_priority !== 'NONE' ? { set_priority: newRule.set_priority } : {}),
-                  });
-                  setNewRule({ name: '', pattern: '', match_type: 'KEYWORD', department_id: '', channel_id: '', priority: 0, is_active: true, set_priority: '' });
-                }}
-              >
-                {createRule.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                Crear
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-muted-foreground py-4">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Cargando...</span>
-        </div>
-      ) : rules.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sin reglas de enrutamiento. Creá la primera regla para distribuir mensajes automáticamente.</p>
-      ) : (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-[hsl(var(--elevated))]">
-              <tr>
-                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Nombre</th>
-                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Patrón</th>
-                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Tipo</th>
-                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Depto</th>
-                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Prioridad</th>
-                <th className="text-left px-4 py-2 text-muted-foreground font-medium">Activo</th>
-                <th className="text-right px-4 py-2 text-muted-foreground font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rules.map((r: any) => (
-                <tr key={r.id} className="border-t border-border hover:bg-[hsl(var(--elevated))] transition-colors">
-                  <td className="px-4 py-2.5 text-foreground">{r.name}</td>
-                  <td className="px-4 py-2.5 text-foreground font-mono text-xs">{r.pattern}</td>
-                  <td className="px-4 py-2.5">
-                    <Badge variant={r.match_type === 'MENU_REPLY' ? 'secondary' : 'default'}>
-                      {r.match_type === 'MENU_REPLY' ? 'Menú' : 'Keyword'}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground text-xs">{r.department?.name || r.department_id}</td>
-                  <td className="px-4 py-2.5">
-                    {r.set_priority ? (
-                      <Badge variant={r.set_priority === 'URGENT' ? 'destructive' : r.set_priority === 'HIGH' ? 'default' : r.set_priority === 'MEDIUM' ? 'secondary' : 'outline'}>
-                        {r.set_priority === 'LOW' ? 'Baja' : r.set_priority === 'MEDIUM' ? 'Media' : r.set_priority === 'HIGH' ? 'Alta' : r.set_priority === 'URGENT' ? 'Urgente' : r.set_priority}
-                      </Badge>
-                    ) : <span className="text-muted-foreground/40 text-xs">—</span>}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <Switch
-                      checked={r.is_active}
-                      onCheckedChange={(checked) => toggleRule.mutate({ id: r.id, active: checked })}
-                    />
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditingRule({ ...r, department_id: r.department?.name || r.department_id })}
-                    >
-                      <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { if (confirm('Eliminar regla?')) deleteRule.mutate(r.id); }}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-400" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editingRule} onOpenChange={(open) => { if (!open) setEditingRule(null); }}>
-        <DialogContent className="bg-card border-border max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Editar Regla</DialogTitle>
-          </DialogHeader>
-          {editingRule && (
-            <div className="space-y-3">
-              <div>
-                <Label className="text-foreground">Nombre</Label>
-                <Input value={editingRule.name} onChange={e => setEditingRule({ ...editingRule, name: e.target.value })} className="bg-[hsl(var(--elevated))] border-border" />
-              </div>
-              <div>
-                <Label className="text-foreground">Tipo de coincidencia</Label>
-                <Select value={editingRule.match_type} onValueChange={v => setEditingRule({ ...editingRule, match_type: v })}>
-                  <SelectTrigger className="bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-card border-border">
-                    <SelectItem value="KEYWORD">Palabra clave</SelectItem>
-                    <SelectItem value="MENU_REPLY">Menú (texto exacto)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-foreground">Patrón / Palabra clave</Label>
-                <Input value={editingRule.pattern} onChange={e => setEditingRule({ ...editingRule, pattern: e.target.value })} className="bg-[hsl(var(--elevated))] border-border" />
-              </div>
-              <div>
-                <Label className="text-foreground">Departamento</Label>
-                <Input value={editingRule.department_id} onChange={e => setEditingRule({ ...editingRule, department_id: e.target.value })} placeholder="Nombre o ID del departamento" className="bg-[hsl(var(--elevated))] border-border" />
-              </div>
-              <div>
-                <Label className="text-foreground">ID del Canal (opcional)</Label>
-                <Input value={editingRule.channel_id || ''} onChange={e => setEditingRule({ ...editingRule, channel_id: e.target.value })} placeholder="Dejar vacío para todos" className="bg-[hsl(var(--elevated))] border-border" />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-foreground">Prioridad</Label>
-                <Input type="number" min={0} value={editingRule.priority ?? 0} onChange={e => setEditingRule({ ...editingRule, priority: parseInt(e.target.value) || 0 })} className="bg-[hsl(var(--elevated))] border-border w-20" />
-              </div>
-              <div>
-                <Label className="text-foreground">Prioridad de conversación</Label>
-                <Select value={editingRule.set_priority || 'NONE'} onValueChange={v => setEditingRule({ ...editingRule, set_priority: v === 'NONE' ? null : v })}>
-                  <SelectTrigger className="bg-[hsl(var(--elevated))] border-border"><SelectValue placeholder="Sin cambio" /></SelectTrigger>
-                  <SelectContent className="bg-card border-border">
-                    <SelectItem value="NONE">Sin cambio</SelectItem>
-                    <SelectItem value="LOW">Baja</SelectItem>
-                    <SelectItem value="MEDIUM">Media</SelectItem>
-                    <SelectItem value="HIGH">Alta</SelectItem>
-                    <SelectItem value="URGENT">Urgente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button
-                  className="flex-1"
-                  disabled={updateRule.isPending}
-                  onClick={() => {
-                    updateRule.mutate({
-                      id: editingRule.id,
-                      data: {
-                        name: editingRule.name,
-                        pattern: editingRule.pattern,
-                        match_type: editingRule.match_type,
-                        department_id: editingRule.department_id,
-                        channel_id: editingRule.channel_id || undefined,
-                        priority: editingRule.priority,
-                        set_priority: editingRule.set_priority || null,
-                      },
-                    });
-                    setEditingRule(null);
-                  }}
-                >
-                  {updateRule.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                  Guardar
-                </Button>
-                <Button variant="outline" onClick={() => setEditingRule(null)}>Cancelar</Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
 
 // ─── Paletas ──────────────────────────────────────────────────────────────────
 
@@ -307,7 +34,6 @@ const ROLE_COLORS: Record<string, string> = {
 const CHANNEL_TYPE_COLORS: Record<string, string> = {
   EMAIL: "bg-blue-500/10 text-blue-400",
   WHATSAPP: "bg-green-500/10 text-green-400",
-  TELEGRAM: "bg-sky-500/10 text-sky-400",
   FORM: "bg-purple-500/10 text-purple-400",
   API: "bg-orange-500/10 text-orange-400",
   MANUAL: "bg-gray-500/10 text-gray-400",
@@ -316,7 +42,6 @@ const CHANNEL_TYPE_COLORS: Record<string, string> = {
 const CHANNEL_ICONS: Record<string, any> = {
   EMAIL: Mail,
   WHATSAPP: MessageCircle,
-  TELEGRAM: Send,
   FORM: PlugZap,
   API: Plug,
   MANUAL: Radio,
@@ -352,16 +77,11 @@ function SecretInput({ value, onChange, placeholder }: { value: string; onChange
 function WorkspaceTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { setLocale, messages } = useI18n();
-  const { refreshUser } = useAuth();
-  const localeCopy = messages.settings.locale;
   const { data, isLoading } = useQuery({
     queryKey: ["/api/workspaces/current"],
     queryFn: () => api.getWorkspace(),
   });
   const [financeOptIn, setFinanceOptIn] = useState(false);
-  const [workspaceLocale, setWorkspaceLocale] = useState<SupportedLocale>(() => normalizeLocale());
-  const [workspaceName, setWorkspaceName] = useState("");
   const [taxStep, setTaxStep] = useState(0);
   const [taxConfig, setTaxConfig] = useState({
     legal_name: "",
@@ -375,20 +95,17 @@ function WorkspaceTab() {
     canton: "",
     district: "",
     address_detail: "",
-    // IMPORTANTE — DEFAULT `staging` ES PARA DEV/PRUEBAS DE FACTURACION.
-    // CUANDO EL CLIENTE QUIERA EMITIR FACTURAS REALES A HACIENDA, DEBE
-    // CAMBIAR ESTE CAMPO A `production` EN SUS SETTINGS. SI SE QUEDA EN
-    // STAGING, LAS FACTURAS NO TIENEN VALIDEZ FISCAL.
     hacienda_environment: "staging",
     hacienda_callback_url: "",
     hacienda_client_id: "",
     hacienda_token_url: "",
     hacienda_username: "",
     hacienda_password: "",
-    hacienda_certificate_path: "",
-    hacienda_certificate_pin: "",
     hacienda_signing_enabled: false,
   });
+  const [certFile, setCertFile] = useState<File | null>(null);
+  const [certPin, setCertPin] = useState("");
+  const certInputRef = useRef<HTMLInputElement>(null);
 
   const saveWorkspace = useMutation({
     mutationFn: (payload: Record<string, any>) =>
@@ -402,30 +119,28 @@ function WorkspaceTab() {
       toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const saveWorkspaceLocale = useMutation({
-    mutationFn: (locale: SupportedLocale) => api.updateWorkspace({ locale }),
-    onSuccess: async (workspace) => {
-      const nextLocale = normalizeLocale(workspace?.locale);
-      qc.setQueryData(["/api/workspaces/current"], workspace);
-      setWorkspaceLocale(nextLocale);
-      setLocale(nextLocale);
-      toast({ title: localeCopy.saved });
-      await refreshUser();
-    },
-    onError: (e: any) =>
-      toast({ title: localeCopy.error, description: e.message, variant: "destructive" }),
+  const { data: certificates, refetch: refetchCerts } = useQuery({
+    queryKey: ["/api/hacienda/certificates"],
+    queryFn: () => api.listCertificates(),
   });
+  const activeCert = (certificates ?? []).find((c: any) => c.status === "ACTIVE");
 
-  const saveWorkspaceName = useMutation({
-    mutationFn: (name: string) => api.updateWorkspace({ name: name.trim() }),
-    onSuccess: async (workspace) => {
-      qc.setQueryData(["/api/workspaces/current"], workspace);
-      setWorkspaceName(workspace?.name ?? "");
-      toast({ title: "Nombre actualizado" });
-      await refreshUser();
+  const uploadCert = useMutation({
+    mutationFn: () => {
+      const form = new FormData();
+      form.append("certificate", certFile!);
+      form.append("pin", certPin);
+      form.append("environment", taxConfig.hacienda_environment.toUpperCase() === "PRODUCTION" ? "PRODUCTION" : "STAGING");
+      return api.uploadCertificate(form);
+    },
+    onSuccess: () => {
+      toast({ title: "Certificado cargado", description: "El certificado fiscal fue cargado exitosamente." });
+      setCertFile(null);
+      setCertPin("");
+      refetchCerts();
     },
     onError: (e: any) =>
-      toast({ title: "Error", description: e.message, variant: "destructive" }),
+      toast({ title: "Error al cargar certificado", description: e.message, variant: "destructive" }),
   });
 
   const workspace = data;
@@ -460,12 +175,8 @@ function WorkspaceTab() {
     },
     {
       label: "Certificado y firma",
-      ready: Boolean(
-        taxConfig.hacienda_certificate_path &&
-        taxConfig.hacienda_certificate_pin &&
-        taxConfig.hacienda_signing_enabled,
-      ),
-      detail: "Ruta del certificado, PIN y firma real activada.",
+      ready: Boolean(activeCert && taxConfig.hacienda_signing_enabled),
+      detail: "Certificado .p12 cargado y firma activada.",
     },
   ];
   const readyChecklistCount = taxChecklist.filter((item) => item.ready).length;
@@ -485,7 +196,6 @@ function WorkspaceTab() {
 
   useEffect(() => {
     setFinanceOptIn(workspace?.ai_message_finance_opt_in === true);
-    setWorkspaceName(workspace?.name ?? "");
     setTaxConfig({
       legal_name: workspace?.workspace_tax_profile?.legal_name ?? "",
       trade_name: workspace?.workspace_tax_profile?.trade_name ?? "",
@@ -504,20 +214,13 @@ function WorkspaceTab() {
       hacienda_token_url: "",
       hacienda_username: "",
       hacienda_password: "",
-      hacienda_certificate_path: "",
-      hacienda_certificate_pin: "",
       hacienda_signing_enabled: workspace?.hacienda_signing_enabled === true,
     });
   }, [workspace?.ai_message_finance_opt_in, workspace?.workspace_tax_profile, workspace?.hacienda_environment, workspace?.hacienda_callback_url, workspace?.hacienda_signing_enabled]);
 
-  useEffect(() => {
-    setWorkspaceLocale(normalizeLocale(workspace?.locale));
-  }, [workspace?.locale]);
-
   if (isLoading) return <div className="text-muted-foreground text-sm">Cargando...</div>;
   const ws = workspace;
   const hasFinanceOptInChanges = financeOptIn !== (ws?.ai_message_finance_opt_in === true);
-  const hasLocaleChanges = workspaceLocale !== normalizeLocale(ws?.locale);
   const saveTaxConfig = () => saveWorkspace.mutate({
     hacienda_environment: taxConfig.hacienda_environment,
     hacienda_callback_url: taxConfig.hacienda_callback_url,
@@ -525,8 +228,6 @@ function WorkspaceTab() {
     hacienda_token_url: taxConfig.hacienda_token_url,
     hacienda_username: taxConfig.hacienda_username,
     hacienda_password: taxConfig.hacienda_password,
-    hacienda_certificate_path: taxConfig.hacienda_certificate_path,
-    hacienda_certificate_pin: taxConfig.hacienda_certificate_pin,
     hacienda_signing_enabled: String(taxConfig.hacienda_signing_enabled),
     tax_profile: {
       legal_name: taxConfig.legal_name,
@@ -558,36 +259,6 @@ function WorkspaceTab() {
               Configuración general del espacio, permisos rápidos de operación y preparación para facturación electrónica en Costa Rica.
             </p>
 
-            <div className="max-w-xl space-y-2">
-              <Label htmlFor="workspace-name" className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                Nombre del workspace
-              </Label>
-
-      <div className="flex gap-2">
-                <Input
-                  id="workspace-name"
-                  value={workspaceName}
-                  onChange={(e) => setWorkspaceName(e.target.value)}
-                  placeholder="Mi empresa S.A."
-                  maxLength={80}
-                  className="bg-[hsl(var(--elevated))] border-border"
-                />
-                <Button
-                  onClick={() => saveWorkspaceName.mutate(workspaceName)}
-                  disabled={
-                    saveWorkspaceName.isPending ||
-                    workspaceName.trim().length < 2 ||
-                    workspaceName.trim() === (ws?.name ?? "")
-                  }
-                >
-                  {saveWorkspaceName.isPending ? "Guardando…" : "Guardar"}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Los miembros verán este nombre en tiempo real cuando lo cambies.
-              </p>
-            </div>
-
             <div className="grid gap-x-10 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
               {[
                 { label: "Slug", value: ws?.slug },
@@ -603,74 +274,29 @@ function WorkspaceTab() {
             </div>
           </div>
 
-          <div className="space-y-4 lg:border-l lg:border-border lg:pl-4">
-            <div className="rounded-lg border border-border bg-[hsl(var(--elevated))] p-4">
-              <div>
-                <div className="text-sm font-medium text-foreground">{localeCopy.title}</div>
-                <div className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {localeCopy.description}
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                <Label htmlFor="workspace-language" className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                  {localeCopy.label}
-                </Label>
-                <Select
-                  value={workspaceLocale}
-                  onValueChange={(value) => setWorkspaceLocale(value as SupportedLocale)}
-                >
-                  <SelectTrigger
-                    id="workspace-language"
-                    className="bg-[hsl(var(--elevated))] border-border"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card border-border">
-                    {SUPPORTED_LOCALES.map((locale) => (
-                      <SelectItem key={locale} value={locale}>
-                        {locale === "en" ? messages.language.english : messages.language.spanish}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="mt-4 flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={() => saveWorkspaceLocale.mutate(workspaceLocale)}
-                  disabled={!hasLocaleChanges || saveWorkspaceLocale.isPending}
-                >
-                  {saveWorkspaceLocale.isPending ? localeCopy.saving : localeCopy.save}
-                </Button>
+          <div className="space-y-3 lg:pl-4 lg:border-l lg:border-border">
+            <div>
+              <div className="text-sm font-medium text-foreground">Cobros con IA</div>
+              <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                Permite leer mensajes para detectar promesas o pendientes de pago. La detección por facturas vencidas sigue funcionando aunque esto esté apagado.
               </div>
             </div>
-
-            <div className="space-y-3">
-              <div>
-                <div className="text-sm font-medium text-foreground">Cobros con IA</div>
-                <div className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Permite leer mensajes para detectar promesas o pendientes de pago. La detección por facturas vencidas sigue funcionando aunque esto esté apagado.
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-[hsl(var(--elevated))] px-3 py-3">
-                <div className="text-sm text-foreground">{financeOptIn ? "Activo" : "Inactivo"}</div>
-                <Switch
-                  checked={financeOptIn}
-                  onCheckedChange={setFinanceOptIn}
-                  aria-label="Permitir lectura de mensajes para cobros"
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={() => saveWorkspace.mutate({ ai_message_finance_opt_in: financeOptIn })}
-                  disabled={!hasFinanceOptInChanges || saveWorkspace.isPending}
-                >
-                  {saveWorkspace.isPending ? "Guardando..." : "Guardar cambio"}
-                </Button>
-              </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-[hsl(var(--elevated))] px-3 py-3">
+              <div className="text-sm text-foreground">{financeOptIn ? "Activo" : "Inactivo"}</div>
+              <Switch
+                checked={financeOptIn}
+                onCheckedChange={setFinanceOptIn}
+                aria-label="Permitir lectura de mensajes para cobros"
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => saveWorkspace.mutate({ ai_message_finance_opt_in: financeOptIn })}
+                disabled={!hasFinanceOptInChanges || saveWorkspace.isPending}
+              >
+                {saveWorkspace.isPending ? "Guardando..." : "Guardar cambio"}
+              </Button>
             </div>
           </div>
         </div>
@@ -696,7 +322,7 @@ function WorkspaceTab() {
 
         <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
           <aside className="space-y-3 xl:pr-2">
-            <div className="rounded-md border border-sky-500/20 bg-sky-500/10 p-4">
+            <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <BookOpen className="h-4 w-4 text-sky-400" />
                 Estado de preparación
@@ -712,7 +338,7 @@ function WorkspaceTab() {
                   key={step.key}
                   type="button"
                   onClick={() => setTaxStep(index)}
-                  className={`w-full rounded-md border px-4 py-3 text-left transition-colors ${
+                  className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
                     taxStep === index
                       ? "border-sky-500/40 bg-sky-500/10"
                       : "border-border bg-[hsl(var(--elevated))] hover:bg-[hsl(var(--elevated))]/80"
@@ -741,7 +367,7 @@ function WorkspaceTab() {
             </div>
           </aside>
 
-          <div className="rounded-md border border-border bg-[hsl(var(--elevated))] p-5">
+          <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-5">
             <div className="mb-5 flex items-start justify-between gap-4 border-b border-border pb-4">
               <div>
                 <div className="text-base font-semibold text-foreground">{currentTaxStep.title}</div>
@@ -862,16 +488,51 @@ function WorkspaceTab() {
 
             {currentTaxStep.key === "certificate" && (
               <div className="space-y-4">
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <Label>Ruta certificado</Label>
-                    <Input value={taxConfig.hacienda_certificate_path} onChange={(e) => setTaxConfig((prev) => ({ ...prev, hacienda_certificate_path: e.target.value }))} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                {activeCert && (
+                  <div className="rounded-lg border border-border bg-[hsl(var(--elevated))] p-3 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">Certificado activo</span>
+                      <Badge variant="outline" className="text-xs">{activeCert.environment}</Badge>
+                    </div>
+                    {activeCert.subject && <p className="text-xs text-muted-foreground">{activeCert.subject}</p>}
+                    {activeCert.valid_until && (
+                      <p className="text-xs text-muted-foreground">
+                        Válido hasta: {new Date(activeCert.valid_until).toLocaleDateString("es-CR")}
+                      </p>
+                    )}
                   </div>
-                  <div>
-                    <Label>PIN certificado</Label>
-                    <SecretInput value={taxConfig.hacienda_certificate_pin} onChange={(value) => setTaxConfig((prev) => ({ ...prev, hacienda_certificate_pin: value }))} placeholder="••••" />
+                )}
+                <div>
+                  <Label>Certificado fiscal (.p12 / .pfx)</Label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => certInputRef.current?.click()}
+                    >
+                      {certFile ? certFile.name : "Seleccionar archivo"}
+                    </Button>
+                    <input
+                      ref={certInputRef}
+                      type="file"
+                      accept=".p12,.pfx"
+                      className="hidden"
+                      onChange={(e) => setCertFile(e.target.files?.[0] ?? null)}
+                    />
                   </div>
                 </div>
+                <div>
+                  <Label>PIN del certificado</Label>
+                  <SecretInput value={certPin} onChange={setCertPin} placeholder="••••" />
+                </div>
+                <Button
+                  size="sm"
+                  disabled={!certFile || !certPin || uploadCert.isPending}
+                  onClick={() => uploadCert.mutate()}
+                >
+                  {uploadCert.isPending ? "Cargando..." : activeCert ? "Reemplazar certificado" : "Cargar certificado"}
+                </Button>
                 <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-[hsl(var(--elevated))] p-3">
                   <div>
                     <Label className="text-sm font-medium text-foreground">Activar firma</Label>
@@ -922,19 +583,10 @@ function MembersTab() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("AGENT");
-  const [codeOpen, setCodeOpen] = useState(false);
-  const [codeRole, setCodeRole] = useState("AGENT");
-  const [codeMax, setCodeMax] = useState("5");
-  const [codeExpiry, setCodeExpiry] = useState("7");
 
   const { data, isLoading } = useQuery({
     queryKey: ["/api/workspaces/current/members"],
     queryFn: () => api.getMembers(),
-  });
-
-  const { data: codes, isLoading: codesLoading } = useQuery({
-    queryKey: ["/api/workspaces/current/invite-codes"],
-    queryFn: () => api.getInviteCodes().catch(() => []),
   });
 
   const invite = useMutation({
@@ -942,174 +594,66 @@ function MembersTab() {
     onSuccess: () => {
       toast({ title: "Invitación enviada" });
       qc.invalidateQueries({ queryKey: ["/api/workspaces/current/members"] });
-      setOpen(false); setEmail("");
+      setOpen(false);
+      setEmail("");
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const changeRoleMut = useMutation({
-    mutationFn: ({ userId, newRole }: { userId: string; newRole: string }) => api.changeMemberRole(userId, newRole),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/workspaces/current/members"] }); toast({ title: "Rol actualizado" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const removeMut = useMutation({
-    mutationFn: (userId: string) => api.removeMember(userId),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/workspaces/current/members"] }); toast({ title: "Miembro removido" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const genCode = useMutation({
-    mutationFn: () => api.createInviteCode({ role: codeRole, max_uses: Number(codeMax) || 5, expires_in_days: Number(codeExpiry) || 7 }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/workspaces/current/invite-codes"] }); setCodeOpen(false); toast({ title: "Código generado" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const revokeCode = useMutation({
-    mutationFn: (id: string) => api.revokeInviteCode(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/workspaces/current/invite-codes"] }); toast({ title: "Código revocado" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
   const members = Array.isArray(data) ? data : [];
-  const codesList = Array.isArray(codes) ? codes : [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <p className="text-sm text-muted-foreground">{members.length} miembro(s)</p>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="bg-primary hover:bg-primary/90">
-                <UserPlus className="h-4 w-4 mr-2" />Invitar
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-muted-foreground">{members.length} miembro(s)</p>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="bg-primary hover:bg-primary/90">
+              <UserPlus className="h-4 w-4 mr-2" />Invitar
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-card border-border">
+            <DialogHeader><DialogTitle>Invitar usuario</DialogTitle></DialogHeader>
+            <div className="space-y-3 pt-2">
+              <div>
+                <Label>Email</Label>
+                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+              </div>
+              <div>
+                <Label>Rol</Label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {["ADMIN", "AGENT", "VIEWER"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={() => invite.mutate()} disabled={!email || invite.isPending} className="w-full bg-primary hover:bg-primary/90">
+                {invite.isPending ? "Enviando..." : "Enviar invitación"}
               </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-card border-border">
-              <DialogHeader><DialogTitle>Invitar usuario</DialogTitle></DialogHeader>
-              <div className="space-y-3 pt-2">
-                <div>
-                  <Label>Email</Label>
-                  <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-                </div>
-                <div>
-                  <Label>Rol</Label>
-                  <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      {["ADMIN", "AGENT", "VIEWER"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={() => invite.mutate()} disabled={!email || invite.isPending} className="w-full bg-primary hover:bg-primary/90">
-                  {invite.isPending ? "Enviando..." : "Enviar invitación"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {isLoading ? <div className="text-muted-foreground text-sm">Cargando...</div> : (
-          <div className="space-y-2">
-            {members.map((m: any) => (
-              <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-elevated text-xs">{m.name?.[0]?.toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-medium">{m.name}</p>
-                    <p className="text-xs text-muted-foreground">{m.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Select value={m.role} onValueChange={newRole => changeRoleMut.mutate({ userId: m.user_id, newRole })} disabled={m.role === 'OWNER'}>
-                    <SelectTrigger className="h-7 text-[11px] w-24 bg-elevated border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      {["ADMIN", "AGENT", "VIEWER"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {m.role !== 'OWNER' && (
-                    <Button variant="ghost" size="sm" className="h-7 text-[11px] text-destructive hover:text-destructive" onClick={() => { if (window.confirm(`¿Remover a ${m.name || m.email} del workspace?`)) removeMut.mutate(m.user_id); }}>
-                      <UserMinus className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="border-t border-border my-4" />
-
-      <div>
-        <div className="flex justify-between items-center mb-3">
-          <div>
-            <h3 className="text-sm font-semibold">Códigos de invitación</h3>
-            <p className="text-xs text-muted-foreground">Generá códigos para compartir en WhatsApp, SMS o verbalmente.</p>
-          </div>
-          <Dialog open={codeOpen} onOpenChange={setCodeOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline"><Key className="h-4 w-4 mr-2" />Generar código</Button>
-            </DialogTrigger>
-            <DialogContent className="bg-card border-border">
-              <DialogHeader><DialogTitle>Generar código de invitación</DialogTitle></DialogHeader>
-              <div className="space-y-3 pt-2">
+      {isLoading ? <div className="text-muted-foreground text-sm">Cargando...</div> : (
+        <div className="space-y-2">
+          {members.map((m: any) => (
+            <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-elevated text-xs">{m.name?.[0]?.toUpperCase()}</AvatarFallback>
+                </Avatar>
                 <div>
-                  <Label>Rol asignado</Label>
-                  <Select value={codeRole} onValueChange={setCodeRole}>
-                    <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      {["ADMIN", "AGENT", "VIEWER"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <p className="text-sm font-medium">{m.name}</p>
+                  <p className="text-xs text-muted-foreground">{m.email}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Usos máximos</Label>
-                    <Input type="number" value={codeMax} onChange={e => setCodeMax(e.target.value)} placeholder="5" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-                  </div>
-                  <div>
-                    <Label>Expira en días</Label>
-                    <Input type="number" value={codeExpiry} onChange={e => setCodeExpiry(e.target.value)} placeholder="7" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-                  </div>
-                </div>
-                <Button onClick={() => genCode.mutate()} disabled={genCode.isPending} className="w-full bg-primary hover:bg-primary/90">
-                  {genCode.isPending ? "Generando..." : "Generar código"}
-                </Button>
               </div>
-            </DialogContent>
-          </Dialog>
+              <Badge variant="outline" className={ROLE_COLORS[m.role] ?? ""}>{m.role}</Badge>
+            </div>
+          ))}
         </div>
-
-        {codesList.length > 0 && (
-          <div className="space-y-2">
-            {codesList.map((c: any) => (
-              <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-sm font-bold tracking-wider text-primary">{c.code}</span>
-                  <span className="text-xs text-muted-foreground">{c.used_count}/{c.max_uses} usos</span>
-                  <Badge variant="outline" className={c.is_active && new Date(c.expires_at) > new Date() ? "border-green-500/30 text-green-400 bg-green-500/10" : "border-red-500/30 text-red-400 bg-red-500/10"}>
-                    {!c.is_active ? "Revocado" : new Date(c.expires_at) > new Date() ? "Activo" : "Expirado"}
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground">{new Date(c.expires_at).toLocaleDateString("es-CR")}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => { navigator.clipboard.writeText(c.code); toast({ title: "Copiado", description: "Compartí el código con quien quieras invitar." }); }}>
-                    <Copy className="h-3.5 w-3.5 mr-1" />Copiar
-                  </Button>
-                  {c.is_active && (
-                    <Button variant="ghost" size="sm" className="h-7 text-[11px] text-destructive" onClick={() => { if (window.confirm("¿Revocar este código?")) revokeCode.mutate(c.id); }}>
-                      Revocar
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
@@ -1118,38 +662,23 @@ function MembersTab() {
 // CHANNELS TAB
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// channel.config viene del backend (sanitised — sin keys encrypted)
 function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  // Pre-populate with existing values; api_key is secret so can't be pre-filled
   const [apiKey, setApiKey] = useState("");
   const [fromEmail, setFromEmail] = useState(channel?.config?.from_email ?? "");
   const [inboundEmail, setInboundEmail] = useState(channel?.config?.inbound_email ?? "");
   const [fromName, setFromName] = useState(channel?.config?.from_name ?? "");
-  const [smtpHost, setSmtpHost] = useState(channel?.config?.smtp_host ?? "");
-  const [smtpPort, setSmtpPort] = useState(channel?.config?.smtp_port ?? 587);
-  const [smtpUser, setSmtpUser] = useState(channel?.config?.smtp_user ?? "");
-  const [smtpPassword, setSmtpPassword] = useState("");
-  const [smtpTls, setSmtpTls] = useState(channel?.config?.smtp_tls ?? true);
-  const [useSmtp, setUseSmtp] = useState(!!channel?.config?.smtp_host);
   const webhookUrl = `${window.location.origin}/api/inbound/email/webhook`;
   const resolvedInboundEmail = inboundEmail.trim() || fromEmail.trim();
   const workspaceHeader = channel?.workspace_id ?? "WORKSPACE_ID";
 
   const save = useMutation({
     mutationFn: () => api.configureEmail(channel.id, {
-      api_key: useSmtp ? undefined : (apiKey || undefined),
+      api_key: apiKey || undefined,
       from_email: fromEmail,
       inbound_email: inboundEmail.trim() ? inboundEmail : undefined,
       from_name: fromName,
-      ...(useSmtp ? {
-        smtp_host: smtpHost || undefined,
-        smtp_port: smtpPort,
-        smtp_user: smtpUser || undefined,
-        smtp_password: smtpPassword || undefined,
-        smtp_tls: smtpTls,
-      } : {}),
     }),
     onSuccess: () => {
       toast({ title: "Canal EMAIL guardado y activado" });
@@ -1161,35 +690,8 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
 
   const isEdit = channel?.status === "ACTIVE";
 
-  const [testingSmtp, setTestingSmtp] = useState(false);
-  const testSmtp = async () => {
-    if (!smtpHost || !smtpUser || !smtpPassword) {
-      toast({ title: "Faltan datos", description: "Completá servidor, usuario y contraseña SMTP.", variant: "destructive" });
-      return;
-    }
-    setTestingSmtp(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/email/test-smtp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ host: smtpHost, port: smtpPort, user: smtpUser, password: smtpPassword, tls: smtpTls, from_email: fromEmail, from_name: fromName }),
-      });
-      if (res.ok) {
-        toast({ title: "Conexión SMTP exitosa", description: "El servidor SMTP respondió correctamente." });
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast({ title: "Error SMTP", description: apiErrorDescription(err, "No se pudo conectar al servidor SMTP."), variant: "destructive" });
-      }
-    } catch (e: any) {
-      toast({ title: "Error SMTP", description: e.message || "No se pudo conectar.", variant: "destructive" });
-    } finally {
-      setTestingSmtp(false);
-    }
-  };
-
   return (
     <div className="space-y-4 pt-2">
-      {!useSmtp && (
       <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
         Obtené tu API key en{" "}
         <a
@@ -1205,63 +707,13 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           resend.com/api-keys <ExternalLink className="h-3 w-3" />
         </a>
       </div>
-      )}
 
-      {!useSmtp && (
-        <div>
-          <Label>API Key de Resend {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener la actual)</span>}</Label>
-          <div className="mt-1">
-            <SecretInput value={apiKey} onChange={setApiKey} placeholder={isEdit ? "••••••••••••••••••••" : "re_xxxxxxxxxxxxxxxxxxxx"} />
-          </div>
+      <div>
+        <Label>API Key de Resend {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener la actual)</span>}</Label>
+        <div className="mt-1">
+          <SecretInput value={apiKey} onChange={setApiKey} placeholder={isEdit ? "••••••••••••••••••••" : "re_xxxxxxxxxxxxxxxxxxxx"} />
         </div>
-      )}
-
-      <div className="flex items-center justify-between rounded-lg border border-border p-3">
-        <div>
-          <Label className="text-xs">Usar SMTP personalizado</Label>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Gmail, Outlook, hosting propio — configurá tu servidor SMTP.</p>
-        </div>
-        <Switch checked={useSmtp} onCheckedChange={setUseSmtp} />
       </div>
-
-      {useSmtp && (
-        <div className="space-y-3 rounded-lg border border-border p-3">
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => { setSmtpHost("smtp.gmail.com"); setSmtpPort(587); setSmtpTls(true); }}>Gmail</Button>
-            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => { setSmtpHost("smtp.office365.com"); setSmtpPort(587); setSmtpTls(true); }}>Outlook</Button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-[11px]">Servidor SMTP</Label>
-              <Input value={smtpHost} onChange={e => setSmtpHost(e.target.value)}
-                placeholder="smtp.gmail.com" className="mt-1 h-8 text-xs bg-[hsl(var(--elevated))] border-border" />
-            </div>
-            <div>
-              <Label className="text-[11px]">Puerto</Label>
-              <Input type="number" value={smtpPort} onChange={e => setSmtpPort(Number(e.target.value))}
-                placeholder="587" className="mt-1 h-8 text-xs bg-[hsl(var(--elevated))] border-border" />
-            </div>
-          </div>
-          <div>
-            <Label className="text-[11px]">Usuario SMTP</Label>
-            <Input value={smtpUser} onChange={e => setSmtpUser(e.target.value)}
-              placeholder="tu-email@gmail.com" className="mt-1 h-8 text-xs bg-[hsl(var(--elevated))] border-border" />
-          </div>
-          <div>
-            <Label className="text-[11px]">Contraseña SMTP {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener la actual)</span>}</Label>
-            <div className="mt-1">
-              <SecretInput value={smtpPassword} onChange={setSmtpPassword} placeholder={isEdit ? "••••••••••••••" : "contraseña o app password"} />
-            </div>
-            <p className="text-[10px] text-amber-400/80 mt-1">
-              Gmail: usá una <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="underline" onClick={e => { e.preventDefault(); void openExternal("https://myaccount.google.com/apppasswords"); }}>app password</a>, no tu contraseña normal.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch checked={smtpTls} onCheckedChange={setSmtpTls} id="smtp-tls" />
-            <Label htmlFor="smtp-tls" className="text-[11px] text-muted-foreground">Usar TLS/STARTTLS</Label>
-          </div>
-        </div>
-      )}
 
       <div>
         <Label>Email remitente</Label>
@@ -1282,7 +734,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           className="mt-1 bg-[hsl(var(--elevated))] border-border"
         />
         <p className="text-xs text-muted-foreground mt-1">
-                        Si lo dejás vacío, PymesHub enruta por <span className="font-mono">{fromEmail || "from_email"}</span>. Si usás un buzón distinto para recibir, ponelo aquí.
+          Si lo dejás vacío, PymeHub enruta por <span className="font-mono">{fromEmail || "from_email"}</span>. Si usás un buzón distinto para recibir, ponelo aquí.
         </p>
       </div>
 
@@ -1292,10 +744,9 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           placeholder="PYMES CRM" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
       </div>
 
-      {!useSmtp && (
       <div className="space-y-3 rounded-lg border border-border bg-[hsl(var(--elevated))] p-3 text-xs">
         <div>
-                      <p className="font-medium text-foreground">Recepción de correos en PymesHub</p>
+          <p className="font-medium text-foreground">Recepción de correos en PymeHub</p>
           <p className="mt-1 text-muted-foreground">
             Resend debe mandar los correos entrantes a este webhook para que aparezcan en el inbox del workspace.
           </p>
@@ -1323,37 +774,23 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           </div>
         </div>
 
-        <div className="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-blue-400">
+        <div className="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-blue-200">
           <p>
             Dirección inbound activa: <span className="font-mono">{resolvedInboundEmail || "sin definir"}</span>
           </p>
-          <p className="mt-1 text-blue-300/80">
+          <p className="mt-1 text-blue-100/80">
             Recomendado si tienes varios buzones: configurar esta dirección en Resend y además enviar <span className="font-mono">X-Channel-Id</span>.
           </p>
         </div>
       </div>
-      )}
 
-      <div className="flex gap-2">
-        <Button
-          onClick={() => save.mutate()}
-          disabled={(!isEdit && ((!useSmtp && !apiKey) || (useSmtp && (!smtpHost || !smtpUser)))) || !fromEmail || !fromName || save.isPending}
-          className="flex-1 bg-primary hover:bg-primary/90"
-        >
-          {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
-        </Button>
-        {useSmtp && (
-          <Button
-            variant="outline"
-            onClick={testSmtp}
-            disabled={!smtpHost || !smtpUser || !smtpPassword || testingSmtp}
-            className="flex-1"
-          >
-            {testingSmtp && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
-            Probar conexión
-          </Button>
-        )}
-      </div>
+      <Button
+        onClick={() => save.mutate()}
+        disabled={(!isEdit && !apiKey) || !fromEmail || !fromName || save.isPending}
+        className="w-full bg-primary hover:bg-primary/90"
+      >
+        {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
+      </Button>
     </div>
   );
 }
@@ -1364,18 +801,6 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
   const [accessToken, setAccessToken] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState(channel?.config?.phone_number_id ?? "");
   const [wabaId, setWabaId] = useState(channel?.config?.waba_id ?? "");
-  const [copied, setCopied] = useState<string | null>(null);
-
-  const { data: waConfig } = useQuery({
-    queryKey: ["whatsapp-config"],
-    queryFn: api.getWhatsAppConfig,
-    staleTime: Infinity,
-  });
-
-  const copyToClipboard = async (text: string, label: string) => {
-    try { await navigator.clipboard.writeText(text); setCopied(label); setTimeout(() => setCopied(null), 2000); }
-    catch { /* ignore */ }
-  };
 
   const save = useMutation({
     mutationFn: () => api.configureWhatsApp(channel.id, {
@@ -1429,38 +854,10 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
           placeholder="987654321098765" className="mt-1 bg-[hsl(var(--elevated))] border-border font-mono text-xs" />
       </div>
 
-      <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs space-y-2">
-        <p className="font-medium text-foreground">Configuración del webhook en Meta</p>
-
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Webhook URL</Label>
-          <div className="flex items-center gap-1.5 mt-1">
-            <code className="text-[11px] bg-background px-2 py-1.5 rounded border border-border flex-1 truncate font-mono">
-              {waConfig?.webhookUrl || "Cargando..."}
-            </code>
-            <Button variant="ghost" size="sm" className="h-7 text-[10px]"
-              onClick={() => copyToClipboard(waConfig?.webhookUrl || "", "url")}>
-              {copied === "url" ? "¡Copiado!" : "Copiar"}
-            </Button>
-          </div>
-        </div>
-
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Verify Token</Label>
-          <div className="flex items-center gap-1.5 mt-1">
-            <code className="text-[11px] bg-background px-2 py-1.5 rounded border border-border flex-1 truncate font-mono">
-              {waConfig?.verifyToken || "••••"}
-            </code>
-            <Button variant="ghost" size="sm" className="h-7 text-[10px]"
-              onClick={() => copyToClipboard(waConfig?.verifyToken || "", "token")}>
-              {copied === "token" ? "¡Copiado!" : "Copiar"}
-            </Button>
-          </div>
-        </div>
-
-        <p className="text-[10px] text-muted-foreground/60">
-          Copiá URL y token en Meta Developers → WhatsApp → Configuration → Webhook.
-        </p>
+      <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs text-muted-foreground space-y-1">
+        <p className="font-medium text-foreground">Webhook para Meta Developers:</p>
+        <p className="font-mono break-all">https://tu-dominio.com/api/inbound/whatsapp/webhook</p>
+        <p>Token de verificación: el valor de <span className="font-mono">WHATSAPP_WEBHOOK_VERIFY_TOKEN</span> en tu .env</p>
       </div>
 
       <Button
@@ -1474,67 +871,6 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
   );
 }
 
-function TelegramConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-  const [botToken, setBotToken] = useState("");
-
-  const save = useMutation({
-    mutationFn: () => api.configureTelegram(channel.id, { bot_token: botToken }),
-    onSuccess: () => {
-      toast({ title: "Bot de Telegram guardado y activado" });
-      qc.invalidateQueries({ queryKey: ["/api/channels"] });
-      onClose();
-    },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const isEdit = channel?.status === "ACTIVE";
-
-  return (
-    <div className="space-y-4 pt-2">
-      <div className="p-3 rounded-lg bg-sky-500/10 border border-sky-500/20 text-xs text-sky-300">
-        Obtené el token del bot en{" "}
-        <a
-          href="https://t.me/BotFather"
-          target="_blank"
-          rel="noreferrer"
-          className="underline inline-flex items-center gap-1"
-          onClick={(event) => {
-            event.preventDefault();
-            void openExternal("https://t.me/BotFather");
-          }}
-        >
-          @BotFather <ExternalLink className="h-3 w-3" />
-        </a>
-        {" "} con los comandos /newbot
-      </div>
-
-      <div>
-        <Label>Bot Token {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener el actual)</span>}</Label>
-        <div className="mt-1">
-          <SecretInput value={botToken} onChange={setBotToken} placeholder={isEdit ? "••••••••••••••••••••" : "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh"} />
-        </div>
-      </div>
-
-      <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs text-muted-foreground space-y-1">
-        <p className="font-medium text-foreground">Webhook automático:</p>
-        <p>El webhook se registra automáticamente al guardar el token</p>
-        <p className="mt-2">Los mensajes que reciba tu bot aparecerán como conversaciones en PymesHub</p>
-      </div>
-
-      <Button
-        onClick={() => save.mutate()}
-        disabled={(!isEdit && !botToken) || save.isPending}
-        className="w-full bg-sky-600 hover:bg-sky-700"
-      >
-        {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
-      </Button>
-    </div>
-  );
-}
-
-// ─── Confirm delete ───────────────────────────────────────────────────────────
 function DeleteChannelDialog({ channel, onClose }: { channel: any; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -1587,12 +923,6 @@ function ChannelsTab() {
     queryFn: () => api.getChannels(),
   });
 
-  const { data: inactiveData } = useQuery({
-    queryKey: ["/api/channels", "inactive"],
-    queryFn: () => api.getAllChannels(),
-  });
-  const inactiveChannels = Array.isArray(inactiveData) ? inactiveData.filter((c: any) => c.status === "INACTIVE") : [];
-
   const create = useMutation({
     mutationFn: () => api.createChannel({ name, type }),
     onSuccess: () => {
@@ -1616,14 +946,12 @@ function ChannelsTab() {
   const channels = Array.isArray(data) ? data : [];
   const isEmail = configChannel?.type === "EMAIL";
   const isWA = configChannel?.type === "WHATSAPP";
-  const isTelegram = configChannel?.type === "TELEGRAM";
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-muted-foreground">{channels.length} canal(es)</p>
 
-        {/* Modal crear canal */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="bg-primary hover:bg-primary/90">
@@ -1642,7 +970,7 @@ function ChannelsTab() {
                 <Select value={type} onValueChange={setType}>
                   <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-card border-border">
-                    {["EMAIL", "WHATSAPP", "TELEGRAM", "FORM", "API", "MANUAL"].map(t => (
+                    {["EMAIL", "WHATSAPP", "FORM", "API", "MANUAL"].map(t => (
                       <SelectItem key={t} value={t}>{t}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1656,7 +984,6 @@ function ChannelsTab() {
         </Dialog>
       </div>
 
-      {/* Modal configuración EMAIL / WhatsApp */}
       <Dialog open={!!configChannel} onOpenChange={open => { if (!open) setConfigChannel(null); }}>
         <DialogContent className="bg-card border-border max-w-md">
           <DialogHeader>
@@ -1668,27 +995,23 @@ function ChannelsTab() {
           </DialogHeader>
           {isEmail && <EmailConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
           {isWA && <WhatsAppConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
-          {isTelegram && <TelegramConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
         </DialogContent>
       </Dialog>
 
-      {/* Confirm delete */}
       {deleteChannel && (
         <DeleteChannelDialog channel={deleteChannel} onClose={() => setDeleteChannel(null)} />
       )}
 
-      {/* Lista */}
       {isLoading ? (
         <div className="text-muted-foreground text-sm">Cargando...</div>
       ) : (
         <div className="space-y-2">
           {channels.map((ch: any) => {
             const Icon = CHANNEL_ICONS[ch.type] ?? Radio;
-            const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
-            const isInactive = ch.status === "INACTIVE";
+            const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP");
             const canConnect = ch.status !== "ACTIVE" && !needsConfig;
             const isActive = ch.status === "ACTIVE";
-            const canEdit = isActive && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
+            const canEdit = isActive && (ch.type === "EMAIL" || ch.type === "WHATSAPP");
 
             return (
               <div key={ch.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
@@ -1712,17 +1035,6 @@ function ChannelsTab() {
                     {isActive ? "Activo" : ch.status === "INACTIVE" ? "Inactivo" : ch.status}
                   </Badge>
 
-                  {/* Reactivar canal INACTIVE */}
-                  {isInactive && (
-                    <Button size="sm" variant="outline"
-                      className="h-7 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                      onClick={() => api.connectChannel(ch.id).then(() => qc.invalidateQueries({ queryKey: ["/api/channels"] }))}
-                    >
-                      <Plug className="h-3 w-3 mr-1" />Reactivar
-                    </Button>
-                  )}
-
-                  {/* Configurar (first time) */}
                   {needsConfig && (
                     <Button size="sm" variant="outline"
                       className={`h-7 text-xs ${ch.type === "EMAIL" ? "border-blue-500/30 text-blue-400" : "border-green-500/30 text-green-400"}`}
@@ -1732,7 +1044,6 @@ function ChannelsTab() {
                     </Button>
                   )}
 
-                  {/* Editar configuración */}
                   {canEdit && (
                     <Button size="sm" variant="outline"
                       className="h-7 text-xs border-border text-muted-foreground hover:text-foreground"
@@ -1742,7 +1053,6 @@ function ChannelsTab() {
                     </Button>
                   )}
 
-                  {/* Conectar (FORM, API, MANUAL) */}
                   {canConnect && (
                     <Button size="sm" variant="outline" className="h-7 text-xs border-border"
                       onClick={() => api.connectChannel(ch.id).then(() => qc.invalidateQueries({ queryKey: ["/api/channels"] }))}
@@ -1751,7 +1061,6 @@ function ChannelsTab() {
                     </Button>
                   )}
 
-                  {/* Desactivar */}
                   {isActive && (
                     <Button
                       size="sm" variant="outline"
@@ -1764,7 +1073,6 @@ function ChannelsTab() {
                     </Button>
                   )}
 
-                  {/* Eliminar */}
                   <Button
                     size="sm" variant="outline"
                     className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
@@ -1781,49 +1089,8 @@ function ChannelsTab() {
             <p className="text-sm text-muted-foreground text-center py-8">
               Sin canales — creá uno con el botón de arriba
             </p>
-      )}
-
-      {inactiveChannels.length > 0 && (
-        <details className="mt-4 group">
-          <summary className="text-xs text-muted-foreground/60 cursor-pointer hover:text-muted-foreground transition-colors select-none">
-            Canales eliminados ({inactiveChannels.length})
-          </summary>
-          <div className="mt-2 space-y-2">
-            {inactiveChannels.map((ch: any) => {
-              const Icon = CHANNEL_ICONS[ch.type] ?? Radio;
-              return (
-                <div key={ch.id} className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-border/50 opacity-70">
-                  <div className="flex items-center gap-3">
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{ch.name}</p>
-                      <Badge variant="outline" className={`text-xs mt-0.5 ${CHANNEL_TYPE_COLORS[ch.type] ?? ""}`}>
-                        {ch.type}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-red-400 border-red-500/30 text-xs">
-                      Inactivo
-                    </Badge>
-                    <Button size="sm" variant="outline"
-                      className="h-7 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                      onClick={() => api.connectChannel(ch.id).then(() => {
-                        qc.invalidateQueries({ queryKey: ["/api/channels"] });
-                        qc.invalidateQueries({ queryKey: ["/api/channels", "inactive"] });
-                      })}
-                    >
-                      <Plug className="h-3 w-3 mr-1" />Reactivar
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </details>
-      )}
-
-    </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -1984,7 +1251,6 @@ function DepartmentsTab() {
         </div>
       )}
 
-      {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Nuevo departamento</DialogTitle></DialogHeader>
@@ -2015,7 +1281,6 @@ function DepartmentsTab() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit dialog */}
       <Dialog open={!!editDept} onOpenChange={v => { if (!v) setEditDept(null); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Editar departamento</DialogTitle></DialogHeader>
@@ -2056,7 +1321,6 @@ function DepartmentsTab() {
         </DialogContent>
       </Dialog>
 
-      {/* Add member dialog */}
       <Dialog open={!!addMemberDept} onOpenChange={v => { if (!v) { setAddMemberDept(null); setMemberUserId(""); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Agregar miembro — {addMemberDept?.name}</DialogTitle></DialogHeader>
@@ -2067,7 +1331,7 @@ function DepartmentsTab() {
                 <SelectTrigger><SelectValue placeholder="Seleccionar usuario" /></SelectTrigger>
                 <SelectContent>
                   {allMembers.map((m: any) => (
-                    <SelectItem key={m.user?.id || m.id} value={m.user?.id || m.id}>
+                    <SelectItem key={m.user?.id ?? m.id} value={m.user?.id ?? m.id}>
                       {m.user?.name ?? m.name} ({m.user?.email ?? m.email})
                     </SelectItem>
                   ))}
@@ -2085,7 +1349,6 @@ function DepartmentsTab() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirm */}
       <AlertDialog open={!!deleteDept} onOpenChange={v => { if (!v) setDeleteDept(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -2110,7 +1373,7 @@ function DepartmentsTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PLATFORM TAB (platform admins only)
+// PLATFORM TAB
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function PlatformTab() {
@@ -2221,7 +1484,6 @@ function PlatformTab() {
 
   return (
     <div className="space-y-6">
-      {/* Users search */}
       <div>
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
           <Search className="h-4 w-4" />Buscar usuarios
@@ -2259,187 +1521,184 @@ function PlatformTab() {
         )}
       </div>
 
-        <div className="h-px bg-border" />
+      <div className="h-px bg-border" />
 
-        {/* Workspace member management */}
-        <div>
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+      <div>
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
           <Building2 className="h-4 w-4" />Gestión de accesos por workspace
         </h3>
         <div className="grid grid-cols-2 gap-4">
-          {/* Workspace list */}
           <div>
             <p className="text-xs text-muted-foreground mb-2">Seleccionar workspace</p>
             {wsLoading ? (
               <p className="text-sm text-muted-foreground">Cargando...</p>
             ) : (
-                <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {wsList.map((w: any) => (
-                    <button
-                      key={w.id}
-                      className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${selectedSlug === w.slug ? "bg-elevated text-white" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
-                      onClick={() => setSelectedSlug(w.slug)}
-                    >
-                      <span className="font-medium">{w.name}</span>
-                      <span className="ml-2 text-xs opacity-60">{w.member_count} miembros</span>
-                      <span className="ml-2 text-[10px] rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-blue-300">
-                        {w.plan}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {wsList.map((w: any) => (
+                  <button
+                    key={w.id}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${selectedSlug === w.slug ? "bg-elevated text-white" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
+                    onClick={() => setSelectedSlug(w.slug)}
+                  >
+                    <span className="font-medium">{w.name}</span>
+                    <span className="ml-2 text-xs opacity-60">{w.member_count} miembros</span>
+                    <span className="ml-2 text-[10px] rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-blue-300">
+                      {w.plan}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-            {/* Members of selected workspace */}
-            <div>
-              {selectedSlug ? (
-                <div className="space-y-4">
-                  <div className="rounded-md border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Billing y desbloqueo</p>
-                        <p className="text-xs text-muted-foreground">
-                          Cuando el customer paga, aquí se actualiza la suscripción y el plan efectivo del workspace.
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-300">
-                        Plan actual: {billingData?.workspace?.plan ?? "—"}
-                      </Badge>
+          <div>
+            {selectedSlug ? (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Billing y desbloqueo</p>
+                      <p className="text-xs text-muted-foreground">
+                        Cuando el customer paga, aquí se actualiza la suscripción y el plan efectivo del workspace.
+                      </p>
                     </div>
-
-                    {billingLoading ? (
-                      <p className="text-sm text-muted-foreground">Cargando billing...</p>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label>Plan efectivo</Label>
-                            <Select value={billingPlan} onValueChange={setBillingPlan}>
-                              <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
-                              <SelectContent className="bg-card border-border">
-                                {["FREE", "STARTER", "GROWTH", "ENTERPRISE"].map((value) => (
-                                  <SelectItem key={value} value={value}>{value}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Estado suscripción</Label>
-                            <Select value={billingStatus} onValueChange={setBillingStatus}>
-                              <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
-                              <SelectContent className="bg-card border-border">
-                                {["TRIALING", "ACTIVE", "PAST_DUE", "UNPAID", "CANCELLED", "EXPIRED", "MANUAL"].map((value) => (
-                                  <SelectItem key={value} value={value}>{value}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label>Proveedor</Label>
-                            <Select value={billingProvider} onValueChange={setBillingProvider}>
-                              <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
-                              <SelectContent className="bg-card border-border">
-                                {["MANUAL", "STRIPE", "PAYPAL", "BAC", "CUSTOM"].map((value) => (
-                                  <SelectItem key={value} value={value}>{value}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Intervalo</Label>
-                            <Select value={billingInterval} onValueChange={setBillingInterval}>
-                              <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
-                              <SelectContent className="bg-card border-border">
-                                {["MONTHLY", "YEARLY", "ONE_TIME", "CUSTOM"].map((value) => (
-                                  <SelectItem key={value} value={value}>{value}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label>Provider Customer ID</Label>
-                            <Input value={providerCustomerId} onChange={(e) => setProviderCustomerId(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-                          </div>
-                          <div>
-                            <Label>Provider Subscription ID</Label>
-                            <Input value={providerSubscriptionId} onChange={(e) => setProviderSubscriptionId(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label>Periodo inicio</Label>
-                            <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-                          </div>
-                          <div>
-                            <Label>Periodo fin</Label>
-                            <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
-                          <div>
-                            <p className="text-sm text-foreground">Cancelar al final del periodo</p>
-                            <p className="text-xs text-muted-foreground">Útil para bajas programadas sin cortar acceso hoy.</p>
-                          </div>
-                          <Switch checked={cancelAtPeriodEnd} onCheckedChange={setCancelAtPeriodEnd} />
-                        </div>
-
-                        <div>
-                          <Label>Notas internas</Label>
-                          <Input value={billingNotes} onChange={(e) => setBillingNotes(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" placeholder="Ej: pago manual confirmado por transferencia" />
-                        </div>
-
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-xs text-muted-foreground">
-                            Guardar aquí sincroniza la suscripción y actualiza el `workspace.plan`, que es lo que desbloquea el producto hoy.
-                          </p>
-                          <Button size="sm" onClick={() => updateBilling.mutate()} disabled={updateBilling.isPending}>
-                            {updateBilling.isPending ? "Guardando..." : "Guardar billing"}
-                          </Button>
-                        </div>
-
-                        {billingEvents.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-xs text-muted-foreground uppercase tracking-wider">Eventos recientes</p>
-                            <div className="space-y-1 max-h-40 overflow-y-auto">
-                              {billingEvents.map((event: any) => (
-                                <div key={event.id} className="rounded border border-border bg-card px-3 py-2">
-                                  <div className="flex items-center justify-between gap-3">
-                                    <p className="text-xs font-medium text-foreground">{event.event_type}</p>
-                                    <Badge variant="outline" className="text-[10px] border-border text-muted-foreground">
-                                      {event.applied_plan ?? "sin plan"}
-                                    </Badge>
-                                  </div>
-                                  <p className="mt-1 text-[11px] text-muted-foreground">
-                                    {event.provider} · {event.source} · {event.created_at ? new Date(event.created_at).toLocaleString() : "sin fecha"}
-                                  </p>
-                                  {event.notes && (
-                                    <p className="mt-1 text-[11px] text-muted-foreground">{event.notes}</p>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )}
+                    <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-300">
+                      Plan actual: {billingData?.workspace?.plan ?? "—"}
+                    </Badge>
                   </div>
 
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-muted-foreground">{membersList.length} miembro(s)</p>
-                    <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="h-7 text-xs">
-                          <UserPlus className="h-3 w-3 mr-1" />Asignar usuario
+                  {billingLoading ? (
+                    <p className="text-sm text-muted-foreground">Cargando billing...</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>Plan efectivo</Label>
+                          <Select value={billingPlan} onValueChange={setBillingPlan}>
+                            <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              {["FREE", "STARTER", "GROWTH", "ENTERPRISE"].map((value) => (
+                                <SelectItem key={value} value={value}>{value}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Estado suscripción</Label>
+                          <Select value={billingStatus} onValueChange={setBillingStatus}>
+                            <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              {["TRIALING", "ACTIVE", "PAST_DUE", "UNPAID", "CANCELLED", "EXPIRED", "MANUAL"].map((value) => (
+                                <SelectItem key={value} value={value}>{value}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>Proveedor</Label>
+                          <Select value={billingProvider} onValueChange={setBillingProvider}>
+                            <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              {["MANUAL", "STRIPE", "PAYPAL", "BAC", "CUSTOM"].map((value) => (
+                                <SelectItem key={value} value={value}>{value}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Intervalo</Label>
+                          <Select value={billingInterval} onValueChange={setBillingInterval}>
+                            <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              {["MONTHLY", "YEARLY", "ONE_TIME", "CUSTOM"].map((value) => (
+                                <SelectItem key={value} value={value}>{value}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>Provider Customer ID</Label>
+                          <Input value={providerCustomerId} onChange={(e) => setProviderCustomerId(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                        </div>
+                        <div>
+                          <Label>Provider Subscription ID</Label>
+                          <Input value={providerSubscriptionId} onChange={(e) => setProviderSubscriptionId(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>Periodo inicio</Label>
+                          <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                        </div>
+                        <div>
+                          <Label>Periodo fin</Label>
+                          <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
+                        <div>
+                          <p className="text-sm text-foreground">Cancelar al final del periodo</p>
+                          <p className="text-xs text-muted-foreground">Útil para bajas programadas sin cortar acceso hoy.</p>
+                        </div>
+                        <Switch checked={cancelAtPeriodEnd} onCheckedChange={setCancelAtPeriodEnd} />
+                      </div>
+
+                      <div>
+                        <Label>Notas internas</Label>
+                        <Input value={billingNotes} onChange={(e) => setBillingNotes(e.target.value)} className="mt-1 bg-[hsl(var(--elevated))] border-border" placeholder="Ej: pago manual confirmado por transferencia" />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs text-muted-foreground">
+                          Guardar aquí sincroniza la suscripción y actualiza el `workspace.plan`, que es lo que desbloquea el producto hoy.
+                        </p>
+                        <Button size="sm" onClick={() => updateBilling.mutate()} disabled={updateBilling.isPending}>
+                          {updateBilling.isPending ? "Guardando..." : "Guardar billing"}
                         </Button>
+                      </div>
+
+                      {billingEvents.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Eventos recientes</p>
+                          <div className="space-y-1 max-h-40 overflow-y-auto">
+                            {billingEvents.map((event: any) => (
+                              <div key={event.id} className="rounded border border-border bg-card px-3 py-2">
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="text-xs font-medium text-foreground">{event.event_type}</p>
+                                  <Badge variant="outline" className="text-[10px] border-border text-muted-foreground">
+                                    {event.applied_plan ?? "sin plan"}
+                                  </Badge>
+                                </div>
+                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                  {event.provider} · {event.source} · {event.created_at ? new Date(event.created_at).toLocaleString() : "sin fecha"}
+                                </p>
+                                {event.notes && (
+                                  <p className="mt-1 text-[11px] text-muted-foreground">{event.notes}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-muted-foreground">{membersList.length} miembro(s)</p>
+                  <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline" className="h-7 text-xs">
+                        <UserPlus className="h-3 w-3 mr-1" />Asignar usuario
+                      </Button>
                     </DialogTrigger>
                     <DialogContent className="bg-card border-border">
                       <DialogHeader><DialogTitle>Asignar usuario al workspace</DialogTitle></DialogHeader>
@@ -2498,17 +1757,17 @@ function PlatformTab() {
                         </div>
                       </div>
                     ))}
-                      {membersList.length === 0 && (
-                        <p className="text-xs text-muted-foreground text-center py-4">Sin miembros</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground pt-6 text-center">Seleccioná un workspace</p>
-              )}
-            </div>
+                    {membersList.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-4">Sin miembros</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground pt-6 text-center">Seleccioná un workspace</p>
+            )}
           </div>
+        </div>
       </div>
     </div>
   );
@@ -2529,7 +1788,7 @@ function ApiKeyCard({
   onSave: () => void; onClear: () => void; isPending: boolean;
 }) {
   return (
-    <div className="rounded-md border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
+    <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${iconBg}`}>
@@ -2612,10 +1871,6 @@ function IntegrationsTab() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN
-// ═══════════════════════════════════════════════════════════════════════════════
-
 // ─── AI Tab ───────────────────────────────────────────────────────────────────
 
 const AI_PROVIDERS = [
@@ -2635,18 +1890,13 @@ function AiTab() {
   const [apiKey, setApiKey]     = useState("");
   const [showKey, setShowKey]   = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
-  const [agentReadEnabled, setAgentReadEnabled] = useState(false);
-  const [agentActionsEnabled, setAgentActionsEnabled] = useState(false);
 
   useEffect(() => {
     if (workspace) {
       setProvider(workspace.ai_provider ?? "");
       setModel(workspace.ai_model ?? "");
-      const s = workspace.settings_json || {};
-      setAgentReadEnabled(s.ai_agent_enabled === true);
-      setAgentActionsEnabled(s.ai_agent_actions_enabled === true);
     }
-  }, [workspace?.ai_provider, workspace?.ai_model, workspace?.settings_json]);
+  }, [workspace?.ai_provider, workspace?.ai_model]);
 
   useEffect(() => {
     setTestResult(null);
@@ -2657,10 +1907,6 @@ function AiTab() {
       ai_provider: provider || undefined,
       ai_model:    model    || undefined,
       ai_api_key:  apiKey   || undefined,
-      settings_json: {
-        ai_agent_enabled: agentReadEnabled,
-        ai_agent_actions_enabled: agentActionsEnabled,
-      },
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/workspaces/current"] });
@@ -2681,10 +1927,7 @@ function AiTab() {
       toast({ title: "Conexion validada" });
     },
     onError: (e: any) => {
-      setTestResult({
-        ok: false,
-        message: e.message,
-      });
+      setTestResult({ ok: false, message: e.message });
       toast({ title: "Fallo la conexion", description: e.message, variant: "destructive" });
     },
   });
@@ -2698,7 +1941,7 @@ function AiTab() {
     <div className="space-y-6 max-w-lg">
       <div>
         <p style={{ fontSize: "13px", color: "hsl(var(--fg-2))", lineHeight: 1.6 }}>
-                          PymesHub usa tu propia API key — tú controlas el costo. La clave se guarda encriptada y nunca se expone.
+          PymeHub usa tu propia API key — tú controlas el costo. La clave se guarda encriptada y nunca se expone.
         </p>
       </div>
 
@@ -2804,147 +2047,53 @@ function AiTab() {
   );
 }
 
-function ApiTokensTab() {
-  const { toast } = useToast();
-  const { data: tokens = [], isLoading, refetch } = useQuery({
-    queryKey: ['api-tokens'],
-    queryFn: api.getApiTokens,
-  });
-
-  const createToken = useMutation({
-    mutationFn: (name: string) => api.createApiToken(name),
-    onSuccess: (data: any) => {
-      refetch();
-      setNewToken(data?.token || null);
-      toast({ title: 'Token creado' });
-    },
-    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
-  });
-
-  const revokeToken = useMutation({
-    mutationFn: (id: string) => api.revokeApiToken(id),
-    onSuccess: () => { refetch(); toast({ title: 'Token revocado' }); },
-    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
-  });
-
-  const [name, setName] = useState('');
-  const [newToken, setNewToken] = useState<string | null>(null);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">API Keys</h2>
-          <p className="text-sm text-muted-foreground mt-1">Tokens de acceso para aplicaciones externas.</p>
-        </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4 mr-1" />Nuevo Token</Button>
-          </DialogTrigger>
-          <DialogContent className="bg-card border-border max-w-md">
-            <DialogHeader><DialogTitle className="text-foreground">Generar API Key</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-foreground">Nombre</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: App de facturación" className="bg-[hsl(var(--elevated))] border-border" />
-              </div>
-              <Button className="w-full" disabled={createToken.isPending || !name.trim()} onClick={() => { createToken.mutate(name.trim()); setName(''); }}>
-                {createToken.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null} Generar
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {newToken && (
-        <div className="rounded-lg p-4 border border-yellow-500/30 bg-yellow-500/5 space-y-2">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-            <span className="text-sm font-semibold text-yellow-400">¡Guardá este token! No se mostrará de nuevo.</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 bg-foreground/[0.04] rounded px-3 py-2 text-xs text-yellow-400 break-all font-mono">{newToken}</code>
-            <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(newToken); toast({ title: 'Copiado' }); }}><Copy className="h-4 w-4" /></Button>
-          </div>
-        </div>
-      )}
-
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-muted-foreground py-4"><Loader2 className="h-4 w-4 animate-spin" /><span className="text-sm">Cargando...</span></div>
-      ) : tokens.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sin API keys creadas aún. Requiere plan Enterprise.</p>
-      ) : (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-[hsl(var(--elevated))]"><tr><th className="text-left px-4 py-2 text-muted-foreground font-medium">Nombre</th><th className="text-left px-4 py-2 text-muted-foreground font-medium">Creado</th><th className="text-left px-4 py-2 text-muted-foreground font-medium">Último uso</th><th className="text-right px-4 py-2 text-muted-foreground font-medium"></th></tr></thead>
-            <tbody>
-              {tokens.map((t: any) => (
-                <tr key={t.id} className="border-t border-border hover:bg-[hsl(var(--elevated))] transition-colors">
-                  <td className="px-4 py-2.5 text-foreground font-medium">{t.name}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground text-xs">{t.created_at ? new Date(t.created_at).toLocaleDateString() : '-'}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground text-xs">{t.last_used_at ? new Date(t.last_used_at).toLocaleString() : 'Nunca'}</td>
-                  <td className="px-4 py-2.5 text-right"><Button variant="ghost" size="sm" onClick={() => { if (confirm('¿Revocar?')) revokeToken.mutate(t.id); }}><Trash2 className="h-4 w-4 text-red-400" /></Button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// PROFILE TAB
-// ═══════════════════════════════════════════════════════════════════════════════
-
-
-
-
 export default function Settings() {
   const { user } = useAuth();
-  const { messages } = useI18n();
-  const copy = messages.settings;
   const isPlatformAdmin = user?.is_platform_admin === true;
-  const plan = user?.workspace?.plan ?? 'FREE';
-  const tabParam = new URLSearchParams(window.location.search).get('tab');
-  const defaultTab = tabParam || 'workspace';
-  const isPlanAtLeast = (min: string) => {
-    const order = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
-    return order.indexOf(plan) >= order.indexOf(min);
-  };
 
   return (
     <div className="p-6 space-y-6">
-      <ModuleHero module="settings">
-        <div className="px-6 py-5 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{copy.pageTitle}</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Gestiona tu workspace y equipo</p>
-          </div>
-        </div>
-      </ModuleHero>
-      <div className="px-6 pb-2">
-        <DiagnosticButton module="settings" />
-      </div>
-      <Card className="bg-card border-border">
-        <CardContent className="pt-6">
-          {defaultTab === "profile" && <ProfileTab />}
-          {defaultTab === "workspace" && <WorkspaceTab />}
-          {defaultTab === "billing" && <BillingPage />}
-          {defaultTab === "members" && <MembersTab />}
-          {defaultTab === "departments" && <DepartmentsTab />}
-          {defaultTab === "channels" && <ChannelsTab />}
-          {defaultTab === "routing" && <RoutingRulesTab />}
-          {defaultTab === "ai" && <AiTab />}
-          {defaultTab === "apitokens" && isPlanAtLeast('BUSINESS') && <ApiTokensTab />}
-          {defaultTab === "saml" && isPlanAtLeast('BUSINESS') && <SamlConfig />}
-          {defaultTab === "enterprise" && isPlanAtLeast('BUSINESS_PLUS') && <EnterpriseSettingsTab />}
-          {defaultTab === "platform" && isPlatformAdmin && <PlatformTab />}
-          {!["profile","workspace","billing","members","departments","channels","routing","ai","apitokens","saml","enterprise","platform"].includes(defaultTab) && <WorkspaceTab />}
-        </CardContent>
-      </Card>
-      <HelpButton page="Configuración" />
+      <PageHeader title="Configuración" />
+      <Tabs defaultValue="workspace">
+        <TabsList className="bg-card border border-border">
+          <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">
+            <Building2 className="h-4 w-4 mr-2" />Workspace
+          </TabsTrigger>
+          <TabsTrigger value="members" className="data-[state=active]:bg-elevated">
+            <Users className="h-4 w-4 mr-2" />Miembros
+          </TabsTrigger>
+          <TabsTrigger value="channels" className="data-[state=active]:bg-elevated">
+            <PlugZap className="h-4 w-4 mr-2" />Canales
+          </TabsTrigger>
+          <TabsTrigger value="departments" className="data-[state=active]:bg-elevated">
+            <Layers className="h-4 w-4 mr-2" />Departamentos
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="data-[state=active]:bg-elevated">
+            <Plug className="h-4 w-4 mr-2" />Integraciones
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="data-[state=active]:bg-elevated">
+            <BrainCircuit className="h-4 w-4 mr-2" />Inteligencia Artificial
+          </TabsTrigger>
+          {isPlatformAdmin && (
+            <TabsTrigger value="platform" className="data-[state=active]:bg-elevated">
+              <ShieldCheck className="h-4 w-4 mr-2" />Plataforma
+            </TabsTrigger>
+          )}
+        </TabsList>
+        <Card className="mt-4 bg-card border-border">
+          <CardContent className="pt-6">
+            <TabsContent value="workspace"><WorkspaceTab /></TabsContent>
+            <TabsContent value="members"><MembersTab /></TabsContent>
+            <TabsContent value="channels"><ChannelsTab /></TabsContent>
+            <TabsContent value="departments"><DepartmentsTab /></TabsContent>
+            <TabsContent value="integrations"><IntegrationsTab /></TabsContent>
+            <TabsContent value="ai"><AiTab /></TabsContent>
+            {isPlatformAdmin && (
+              <TabsContent value="platform"><PlatformTab /></TabsContent>
+            )}
+          </CardContent>
+        </Card>
+      </Tabs>
     </div>
   );
 }
