@@ -10,18 +10,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, Calendar, CreditCard, Trash2, AlertTriangle, Loader2, Save, ToggleLeft, ToggleRight } from "lucide-react";
+import { Crown, Calendar, CreditCard, Trash2, AlertTriangle, Loader2, Save, ToggleLeft, ToggleRight, Shield } from "lucide-react";
 
 export default function AdminWorkspaceDetail() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [location, navigate] = useLocation();
   const slug = location.split("/").pop() ?? "";
+  const isAdminKeyword = ["workspaces", "users", "plan-limits"].includes(slug);
+  const validSlug = !!slug && !isAdminKeyword;
 
   const { data, isLoading } = useQuery({
     queryKey: ["/api/platform/workspace", slug],
     queryFn: () => api.platformGetWorkspaceBySlug(slug),
-    enabled: !!user?.is_platform_admin && !!slug,
+    enabled: !!user?.is_platform_admin && validSlug,
     retry: false,
   });
 
@@ -32,7 +34,8 @@ export default function AdminWorkspaceDetail() {
   const featuresQ = useQuery({
     queryKey: ["/api/platform/workspaces", slug, "features"],
     queryFn: () => api.platformGetWorkspaceFeatures(slug),
-    enabled: !!user?.is_platform_admin && !!slug,
+    enabled: !!user?.is_platform_admin && validSlug,
+    retry: false,
   });
 
   const [editFeatures, setEditFeatures] = useState<any>(null);
@@ -52,6 +55,13 @@ export default function AdminWorkspaceDetail() {
 
   const featureList = ["contacts","orders","reminders","conversations","whatsapp_inbox","billing","automations","dashboard","roles","reports","api_access","multi_location","audit_logs"];
   const limitList = ["contacts.max","users.max","channels.max","orders.monthly_max","invoices.monthly_max","automations.max","storage.gb"];
+
+  const samlQ = useQuery({
+    queryKey: ["/api/auth/saml/status", slug],
+    queryFn: () => api.checkSamlStatus(slug),
+    enabled: validSlug,
+    retry: false,
+  });
 
   const openFeatures = () => {
     if (!featuresQ.data) return;
@@ -215,6 +225,29 @@ export default function AdminWorkspaceDetail() {
                   {featuresMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Guardar"}
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* SSO / SAML Status */}
+        {samlQ.data && (
+          <div className="rounded-xl border border-border/60 bg-card/40 p-5">
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-violet-400" /> SAML SSO
+            </h3>
+            <div className="grid gap-2 text-xs">
+              <div>
+                <span className="text-muted-foreground">Estado: </span>
+                <span className={samlQ.data.configured ? "text-green-400" : "text-zinc-400"}>
+                  {samlQ.data.configured ? "Configurado" : "No configurado"}
+                </span>
+              </div>
+              {samlQ.data.configured && (
+                <>
+                  <div><span className="text-muted-foreground">Login URL: </span><span className="text-foreground">{samlQ.data.loginUrl}</span></div>
+                  <div><span className="text-muted-foreground">Metadata: </span><span className="text-foreground">/api/auth/saml/{slug}/metadata</span></div>
+                </>
+              )}
             </div>
           </div>
         )}
