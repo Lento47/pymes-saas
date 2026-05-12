@@ -316,10 +316,6 @@ export const api = {
   },
   getExoneration: (authorization: string) => request<any>("GET", `/api/hacienda/exonerations/${authorization}`),
   getExchangeRate: () => request<any>("GET", "/api/hacienda/exchange-rate"),
-  listCertificates: () => request<any[]>("GET", "/api/hacienda/certificates"),
-  uploadCertificate: (form: FormData) =>
-    request<any>("POST", "/api/hacienda/certificates", form, { isFormData: true }),
-  revokeCertificate: (id: string) => request<any>("DELETE", `/api/hacienda/certificates/${id}`),
   // Pipeline
   getPipelineStages: () => request<any>("GET", "/api/pipeline/stages"),
   createPipelineStage: (data: any) => request<any>("POST", "/api/pipeline/stages", data),
