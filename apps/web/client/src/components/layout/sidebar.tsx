@@ -186,10 +186,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     if (!sidebarOpen) setSettingsMenuOpen(false);
   }, [sidebarOpen]);
 
-<<<<<<< feat/business-onboarding-web
-=======
   // Close workspace menu on outside click
->>>>>>> main-web
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (wsMenuRef.current && !wsMenuRef.current.contains(e.target as Node)) {
