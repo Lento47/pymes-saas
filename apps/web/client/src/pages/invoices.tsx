@@ -9,14 +9,12 @@ import {
   Coins,
   Eye,
   FileUp,
-  HelpCircle,
   Loader2,
   Pencil,
   Plus,
   RefreshCw,
   Receipt,
   Search,
-  Send,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -29,110 +27,17 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { cn, formatMoney, getErrorMessage } from "@/lib/utils";
 import { InvoiceSheet } from "@/components/invoices/InvoiceSheet";
-
-const STATUS_OPTIONS = ["ALL", "DRAFT", "SENT", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"];
-const HACIENDA_STATUS_OPTIONS = ["ALL", "DRAFT", "PENDING_SUBMISSION", "SUBMITTED", "RECIBIDO", "PROCESANDO", "ACEPTADO", "RECHAZADO", "ERROR"];
-const DOCUMENT_TYPES = ["FACTURA_ELECTRONICA", "TIQUETE_ELECTRONICO", "NOTA_CREDITO", "NOTA_DEBITO", "MENSAJE_RECEPTOR"];
-const ISSUANCE_MODES = ["MANUAL_ONLY", "HACIENDA"];
-
-const HACIENDA_GUIDE = [
-  {
-    title: "Modo",
-    meaning: "Define si la factura será solo comercial o si también debe convertirse en comprobante electrónico oficial ante Hacienda.",
-    example: "`MANUAL_ONLY`: cobro interno sin envío oficial. `HACIENDA`: genera XML, firma, envío y seguimiento.",
-  },
-  {
-    title: "Documento",
-    meaning: "Es el tipo de comprobante fiscal que vas a emitir.",
-    example: "`FACTURA_ELECTRONICA` para ventas normales, `TIQUETE_ELECTRONICO` para venta simplificada, `NOTA_CREDITO` para rebajos o anulaciones parciales.",
-  },
-  {
-    title: "Condición de venta",
-    meaning: "Describe cómo se pactó el pago de la operación.",
-    example: "`01` contado, `02` crédito. Si la venta se paga después, normalmente corresponde crédito.",
-  },
-  {
-    title: "Medio de pago",
-    meaning: "Indica cómo el cliente pagó o pagará la operación.",
-    example: "`01` efectivo, `02` tarjeta, `03` transferencia, según el catálogo tributario aplicable.",
-  },
-  {
-    title: "Actividad",
-    meaning: "Código de actividad económica del emisor que respalda esa venta.",
-    example: "Si la empresa tiene varias actividades registradas, aquí se indica cuál aplica para esta factura.",
-  },
-  {
-    title: "CABYS",
-    meaning: "Código del catálogo CABYS para el producto o servicio facturado. Hacienda lo usa para clasificar lo vendido.",
-    example: "Un servicio profesional y un producto físico usan códigos distintos; no conviene inventarlo, hay que buscar el correcto.",
-  },
-  {
-    title: "Impuesto %",
-    meaning: "Porcentaje del impuesto aplicado a la línea.",
-    example: "`13` para IVA general, `0` si el concepto no lleva impuesto o está exento según corresponda.",
-  },
-  {
-    title: "Clave y consecutivo",
-    meaning: "Identificadores oficiales del comprobante. El sistema los genera y luego se usan para consultar estado, notas y mensajes del receptor.",
-    example: "Después del envío a Hacienda, la clave identifica de forma única el comprobante aceptado o rechazado.",
-  },
-];
-
-function FieldHelp({
-  title,
-  meaning,
-  example,
-}: {
-  title: string;
-  meaning: string;
-  example: string;
-}) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white/40 transition-colors hover:text-foreground"
-          aria-label={`Ayuda sobre ${title}`}
-        >
-          <HelpCircle className="h-3.5 w-3.5" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 border-border bg-card p-3">
-        <div className="space-y-2">
-          <div className="text-sm font-medium text-foreground">{title}</div>
-          <p className="text-xs leading-5 text-white/40">{meaning}</p>
-          <div className="rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-5 text-foreground">
-            {example}
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function formatMoney(amount: unknown, currency = "USD") {
-  const value = Number(amount ?? 0);
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function getErrorMessage(err: any) {
-  return err?.message ?? "Ocurrió un error inesperado";
-}
+import { STATUS_OPTIONS, HACIENDA_STATUS_OPTIONS } from "@/data/invoices.data";
+import { InvoiceDetailDialog } from "@/components/invoices/InvoiceDetailDialog";
+import { InvoiceEditDialog } from "@/components/invoices/InvoiceEditDialog";
+import { InvoiceGuideDialog } from "@/components/invoices/InvoiceGuideDialog";
+import { InvoicePaymentDialog } from "@/components/invoices/InvoicePaymentDialog";
+import { InvoiceReminderDialog } from "@/components/invoices/InvoiceReminderDialog";
 
 export default function InvoicesPage() {
   useRequireAuth();
@@ -296,13 +201,13 @@ export default function InvoicesPage() {
 
       return api.createInvoice({
         ...invoiceFields,
-        amount: Number(createForm.amount),
+        amount: Math.round(Number(createForm.amount) * 100) / 100,
         issue_date: createForm.issue_date,
         lines: createForm.issuance_mode === "HACIENDA"
           ? [{
               description: line_description || createForm.description || `Factura ${createForm.number}`,
               quantity: 1,
-              unit_price: Number(createForm.amount),
+              unit_price: Math.round(Number(createForm.amount) * 100) / 100,
               cabys_code: cabys_code || undefined,
               unit_of_measure: "Unid",
               tax_code: "01",
@@ -364,7 +269,7 @@ export default function InvoicesPage() {
   const registerPaymentMutation = useMutation({
     mutationFn: () =>
       api.registerInvoicePayment(selectedInvoice.id, {
-        amount: Number(paymentForm.amount),
+        amount: Math.round(Number(paymentForm.amount) * 100) / 100,
         paid_at: paymentForm.paid_at || undefined,
         method: paymentForm.method || undefined,
         reference: paymentForm.reference || undefined,
@@ -407,7 +312,7 @@ export default function InvoicesPage() {
   const creditNoteMutation = useMutation({
     mutationFn: (invoice: any) => api.createCreditNote(invoice.id, {
       number: `NC-${invoice.number}`,
-      amount: Number(invoice.amount),
+      amount: Math.round(Number(invoice.amount) * 100) / 100,
       currency: invoice.currency,
       due_date: new Date().toISOString().slice(0, 10),
     }),
@@ -470,7 +375,7 @@ export default function InvoicesPage() {
     mutationFn: () =>
       api.updateInvoice(selectedInvoice.id, {
         number: editForm.number,
-        amount: Number(editForm.amount),
+        amount: Math.round(Number(editForm.amount) * 100) / 100,
         currency: editForm.currency,
         due_date: editForm.due_date,
         issue_date: editForm.issue_date,
@@ -870,385 +775,53 @@ export default function InvoicesPage() {
         isSaving={createMutation.isPending}
       />
 
-      <Dialog open={showDetail} onOpenChange={(open) => { setShowDetail(open); if (!open) setSelectedInvoice(null); }}>
-        <DialogContent className="bg-card border-border sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Detalle de factura</DialogTitle>
-          </DialogHeader>
-          {selectedInvoice && (
-            <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-white/40">Número</span><div className="text-foreground font-medium mt-0.5">{selectedInvoice.number}</div></div>
-                <div><span className="text-white/40">Estado</span><div className="mt-0.5"><StatusBadge status={selectedInvoice.status} type="invoice" /></div></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-white/40">Contacto</span><div className="text-foreground mt-0.5">{selectedInvoice.contact?.full_name ?? "—"}</div></div>
-                <div><span className="text-white/40">Empresa</span><div className="text-foreground mt-0.5">{selectedInvoice.contact?.company_name ?? "—"}</div></div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div><span className="text-white/40">Total</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.amount, selectedInvoice.currency)}</div></div>
-                <div><span className="text-white/40">Pagado</span><div className="text-green-400 font-medium mt-0.5">{formatMoney(selectedInvoice.amount_paid, selectedInvoice.currency)}</div></div>
-                <div><span className="text-white/40">Saldo</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)}</div></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-white/40">Emisión</span><div className="text-foreground mt-0.5">{selectedInvoice.issue_date ? format(new Date(selectedInvoice.issue_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
-                <div><span className="text-white/40">Vencimiento</span><div className="text-foreground mt-0.5">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-white/40">Modo</span><div className="text-foreground mt-0.5">{selectedInvoice.issuance_mode}</div></div>
-                <div><span className="text-white/40">Hacienda</span><div className="mt-0.5"><StatusBadge status={selectedInvoice.hacienda_status} type="invoice" /></div></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-white/40">Moneda</span><div className="text-foreground mt-0.5">{selectedInvoice.currency}</div></div>
-                <div><span className="text-white/40">Tipo documento</span><div className="text-foreground mt-0.5">{selectedInvoice.document_type}</div></div>
-              </div>
-              {selectedInvoice.description && (
-                <div><span className="text-white/40">Descripción</span><div className="text-foreground mt-0.5 whitespace-pre-wrap">{selectedInvoice.description}</div></div>
-              )}
-              {selectedInvoice.payments?.length > 0 && (
-                <div>
-                  <span className="text-white/40">Pagos registrados</span>
-                  <div className="mt-1 space-y-1">
-                    {selectedInvoice.payments.map((p: any) => (
-                      <div key={p.id} className="flex justify-between rounded border border-border bg-background px-2 py-1">
-                        <span className="text-foreground">{formatMoney(p.amount, selectedInvoice.currency)}</span>
-                        <span className="text-white/40">{p.paid_at ? format(new Date(p.paid_at), "d MMM yyyy", { locale: es }) : "—"}</span>
-                        <span className="text-white/40">{p.method ?? "—"}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowDetail(false)}>Cerrar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <InvoiceDetailDialog
+        open={showDetail}
+        onOpenChange={(open) => { setShowDetail(open); if (!open) setSelectedInvoice(null); }}
+        invoice={selectedInvoice}
+      />
 
-      <Dialog open={showEdit} onOpenChange={(open) => { setShowEdit(open); if (!open) setSelectedInvoice(null); }}>
-        <DialogContent className="bg-card border-border sm:max-w-[460px]">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Editar factura</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Modo</Label>
-                <Select value={editForm.issuance_mode} onValueChange={(v) => setEditForm(f => ({ ...f, issuance_mode: v }))}>
-                  <SelectTrigger className="h-8 text-xs bg-background border-border"><SelectValue /></SelectTrigger>
-                  <SelectContent>{ISSUANCE_MODES.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Documento</Label>
-                <Select value={editForm.document_type} onValueChange={(v) => setEditForm(f => ({ ...f, document_type: v }))}>
-                  <SelectTrigger className="h-8 text-xs bg-background border-border"><SelectValue /></SelectTrigger>
-                  <SelectContent>{DOCUMENT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-white/40">Contacto</Label>
-              <select
-                value={editForm.contact_id}
-                onChange={(e) => setEditForm(f => ({ ...f, contact_id: e.target.value }))}
-                className="flex h-8 w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                <option value="">Sin contacto</option>
-                {contacts.map((c: any) => (
-                  <option key={c.id} value={c.id}>{c.full_name}{c.company_name ? ` · ${c.company_name}` : ""}</option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Número</Label>
-                <Input value={editForm.number} onChange={(e) => setEditForm(f => ({ ...f, number: e.target.value }))} className="h-8 text-xs bg-background border-border" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Moneda</Label>
-                <Input value={editForm.currency} onChange={(e) => setEditForm(f => ({ ...f, currency: e.target.value.toUpperCase() }))} className="h-8 text-xs bg-background border-border" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Monto total</Label>
-                <Input type="number" step="0.01" value={editForm.amount} onChange={(e) => setEditForm(f => ({ ...f, amount: e.target.value }))} className="h-8 text-xs bg-background border-border" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Vencimiento</Label>
-                <Input type="date" value={editForm.due_date} onChange={(e) => setEditForm(f => ({ ...f, due_date: e.target.value }))} className="h-8 text-xs bg-background border-border" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Fecha emisión</Label>
-                <Input type="date" value={editForm.issue_date} onChange={(e) => setEditForm(f => ({ ...f, issue_date: e.target.value }))} className="h-8 text-xs bg-background border-border" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Actividad</Label>
-                <Input value={editForm.activity_code} onChange={(e) => setEditForm(f => ({ ...f, activity_code: e.target.value }))} className="h-8 text-xs bg-background border-border" placeholder="Código" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Condición venta</Label>
-                <Input value={editForm.sale_condition} onChange={(e) => setEditForm(f => ({ ...f, sale_condition: e.target.value }))} className="h-8 text-xs bg-background border-border" placeholder="01" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Medio pago</Label>
-                <Input value={editForm.payment_method} onChange={(e) => setEditForm(f => ({ ...f, payment_method: e.target.value }))} className="h-8 text-xs bg-background border-border" placeholder="01" />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-white/40">Descripción</Label>
-              <Textarea value={editForm.description} onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))} className="min-h-[80px] text-xs bg-background border-border" placeholder="Detalles opcionales" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowEdit(false)}>Cancelar</Button>
-            <Button
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => updateMutation.mutate()}
-              disabled={updateMutation.isPending || !editForm.number.trim() || !editForm.amount || !editForm.due_date}
-            >
-              {updateMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-              Guardar cambios
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <InvoiceEditDialog
+        open={showEdit}
+        onOpenChange={(open) => { setShowEdit(open); if (!open) setSelectedInvoice(null); }}
+        editForm={editForm}
+        setEditForm={setEditForm}
+        contacts={contacts}
+        updateMutation={updateMutation}
+      />
 
-      <Dialog open={showGuide} onOpenChange={setShowGuide}>
-        <DialogContent className="bg-card border-border sm:max-w-[720px]">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Guía de conceptos de facturación y Hacienda</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="rounded-lg border border-border bg-background px-4 py-3">
-              <div className="text-sm font-medium text-foreground">Qué necesita una factura rigurosa para Hacienda</div>
-              <p className="mt-1 text-xs leading-5 text-white/40">
-                No basta con monto y cliente. Para que el sistema sea sólido se necesitan datos correctos del emisor,
-                datos fiscales del receptor, líneas con CABYS e impuesto, catálogos tributarios, XML, firma, token,
-                envío, callback o consulta de estado, y trazabilidad de aceptación o rechazo.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {HACIENDA_GUIDE.map((item) => (
-                <div key={item.title} className="rounded-lg border border-border bg-background px-4 py-3">
-                  <div className="text-sm font-medium text-foreground">{item.title}</div>
-                  <p className="mt-1 text-xs leading-5 text-white/40">{item.meaning}</p>
-                  <div className="mt-2 rounded-md border border-border bg-card px-2.5 py-2 text-xs leading-5 text-foreground">
-                    {item.example}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
-              <div className="text-sm font-medium text-foreground">Pendiente importante</div>
-              <p className="mt-1 text-xs leading-5 text-white/40">
-                El flujo ya contempla la estructura de Hacienda, pero para operar en serio aún debes tener configurados
-                el certificado real, la firma real, credenciales válidas, callback accesible y catálogos tributarios correctos.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowGuide(false)}>
-              Cerrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <InvoiceGuideDialog open={showGuide} onOpenChange={setShowGuide} />
 
-      <Dialog
+      <InvoicePaymentDialog
         open={showPayment}
         onOpenChange={(open) => {
           setShowPayment(open);
           if (!open) {
             setSelectedInvoice(null);
-            setPaymentForm({
-              amount: "",
-              paid_at: "",
-              method: "",
-              reference: "",
-              notes: "",
-            });
+            setPaymentForm({ amount: "", paid_at: "", method: "", reference: "", notes: "" });
           }
         }}
-      >
-        <DialogContent className="bg-card border-border sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Registrar pago</DialogTitle>
-          </DialogHeader>
-          {!selectedInvoice ? null : (
-            <div className="space-y-3">
-              <div className="rounded-md border border-border bg-background px-3 py-2 space-y-1">
-                <div className="text-xs text-white/40">
-                  {selectedInvoice.number} · {selectedInvoice.contact?.full_name}
-                </div>
-                <div className="grid grid-cols-3 gap-3 text-xs">
-                  <div>
-                    <div className="text-white/40">Total</div>
-                    <div className="text-foreground">{formatMoney(selectedInvoice.amount, selectedInvoice.currency)}</div>
-                  </div>
-                  <div>
-                    <div className="text-white/40">Pagado</div>
-                    <div className="text-foreground">{formatMoney(selectedInvoice.amount_paid, selectedInvoice.currency)}</div>
-                  </div>
-                  <div>
-                    <div className="text-white/40">Saldo</div>
-                    <div className="text-foreground">{formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)}</div>
-                  </div>
-                </div>
-              </div>
+        invoice={selectedInvoice}
+        paymentForm={paymentForm}
+        setPaymentForm={setPaymentForm}
+        saveMutation={registerPaymentMutation}
+      />
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-white/40">Monto abonado</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={paymentForm.amount}
-                    onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))}
-                    className="h-8 text-xs bg-background border-border"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-white/40">Fecha de pago</Label>
-                  <Input
-                    type="date"
-                    value={paymentForm.paid_at}
-                    onChange={(e) => setPaymentForm((prev) => ({ ...prev, paid_at: e.target.value }))}
-                    className="h-8 text-xs bg-background border-border"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-white/40">Método</Label>
-                  <Input
-                    value={paymentForm.method}
-                    onChange={(e) => setPaymentForm((prev) => ({ ...prev, method: e.target.value }))}
-                    className="h-8 text-xs bg-background border-border"
-                    placeholder="Pago móvil, transferencia..."
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-white/40">Referencia</Label>
-                  <Input
-                    value={paymentForm.reference}
-                    onChange={(e) => setPaymentForm((prev) => ({ ...prev, reference: e.target.value }))}
-                    className="h-8 text-xs bg-background border-border"
-                    placeholder="Comprobante"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Notas</Label>
-                <Textarea
-                  value={paymentForm.notes}
-                  onChange={(e) => setPaymentForm((prev) => ({ ...prev, notes: e.target.value }))}
-                  className="min-h-[90px] text-xs bg-background border-border"
-                  placeholder="Detalle opcional del pago"
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowPayment(false)}>
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => registerPaymentMutation.mutate()}
-              disabled={!selectedInvoice || !paymentForm.amount || registerPaymentMutation.isPending}
-            >
-              {registerPaymentMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Coins className="w-3.5 h-3.5 mr-1.5" />}
-              Guardar pago
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
+      <InvoiceReminderDialog
         open={showReminder}
         onOpenChange={(open) => {
           setShowReminder(open);
-          if (!open) {
-            setSelectedInvoice(null);
-            setReminderDraft("");
-          }
+          if (!open) { setSelectedInvoice(null); setReminderDraft(""); }
         }}
-      >
-        <DialogContent className="bg-card border-border sm:max-w-[560px]">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Recordatorio de pago</DialogTitle>
-          </DialogHeader>
-          {!selectedInvoice || (generateReminderMutation.isPending && !reminderDraft.trim()) ? (
-            <div className="py-6 flex items-center justify-center text-sm text-white/40">
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Cargando borrador...
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="rounded-md border border-border bg-background px-3 py-2">
-                <div className="text-xs text-white/40">
-                  {selectedInvoice.number} · {selectedInvoice.contact?.full_name}
-                </div>
-                <div className="text-sm text-foreground mt-1">
-                  {formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)} pendientes
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Borrador</Label>
-                <Textarea
-                  value={reminderDraft}
-                  onChange={(e) => setReminderDraft(e.target.value)}
-                  className="min-h-[160px] text-sm bg-background border-border"
-                  placeholder="El borrador generado aparecerá aquí"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs text-white/40">Canal</Label>
-                <Select value={selectedChannelId} onValueChange={setSelectedChannelId}>
-                  <SelectTrigger className="h-8 text-xs bg-background border-border">
-                    <SelectValue placeholder="Selecciona un canal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableChannels.map((channel: any) => (
-                      <SelectItem key={channel.id} value={channel.id}>
-                        {channel.name} · {channel.type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowReminder(false)}>
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => sendReminderMutation.mutate()}
-              disabled={!selectedInvoice || !reminderDraft.trim() || !selectedChannelId || sendReminderMutation.isPending}
-            >
-              {sendReminderMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
-              Enviar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        invoice={selectedInvoice}
+        reminderDraft={reminderDraft}
+        setReminderDraft={setReminderDraft}
+        selectedChannelId={selectedChannelId}
+        onChannelChange={setSelectedChannelId}
+        availableChannels={availableChannels}
+        isLoadingDraft={generateReminderMutation.isPending}
+        sendMutation={sendReminderMutation}
+      />
     </div>
   );
 }
