@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { api } from "@/lib/api";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, Calendar, CreditCard, Trash2, AlertTriangle, Loader2 } from "lucide-react";
+import { Crown, Calendar, CreditCard, Trash2, AlertTriangle, Loader2, Save, ToggleLeft, ToggleRight } from "lucide-react";
 
 export default function AdminWorkspaceDetail() {
   const { user } = useAuth();
@@ -27,6 +27,40 @@ export default function AdminWorkspaceDetail() {
 
   const [showDelete, setShowDelete] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const qc = useQueryClient();
+
+  const featuresQ = useQuery({
+    queryKey: ["/api/platform/workspaces", slug, "features"],
+    queryFn: () => api.platformGetWorkspaceFeatures(slug),
+    enabled: !!user?.is_platform_admin && !!slug,
+  });
+
+  const [editFeatures, setEditFeatures] = useState<any>(null);
+  const [editLimits, setEditLimits] = useState<any>(null);
+  const [editPlan, setEditPlan] = useState("");
+  const [editBeta, setEditBeta] = useState("");
+  const [editReason, setEditReason] = useState("");
+
+  const featuresMut = useMutation({
+    mutationFn: (data: any) => api.platformUpdateWorkspaceFeatures(slug, data),
+    onSuccess: () => {
+      toast({ title: "Configuración guardada" });
+      featuresQ.refetch();
+    },
+    onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
+  });
+
+  const featureList = ["contacts","orders","reminders","conversations","whatsapp_inbox","billing","automations","dashboard","roles","reports","api_access","multi_location","audit_logs"];
+  const limitList = ["contacts.max","users.max","channels.max","orders.monthly_max","invoices.monthly_max","automations.max","storage.gb"];
+
+  const openFeatures = () => {
+    if (!featuresQ.data) return;
+    setEditFeatures({ ...featuresQ.data.features });
+    setEditLimits({ ...featuresQ.data.limits });
+    setEditPlan(featuresQ.data.plan);
+    setEditBeta(featuresQ.data.beta_profile ?? "");
+    setEditReason("");
+  };
 
   const deleteMut = useMutation({
     mutationFn: () => api.platformDeleteWorkspace(slug),
@@ -88,6 +122,100 @@ export default function AdminWorkspaceDetail() {
             <pre className="text-[10px] text-muted-foreground whitespace-pre-wrap">
               {JSON.stringify(ws.enterpriseConfig, null, 2)}
             </pre>
+          </div>
+        )}
+
+        {/* Workspace Features */}
+        <div className="rounded-xl border border-border/60 bg-card/40 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <ToggleLeft className="w-4 h-4 text-blue-400" /> Features
+            </h3>
+            <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={openFeatures}>
+              <Save className="w-3 h-3 mr-1" /> Configurar
+            </Button>
+          </div>
+          {featuresQ.data && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1.5 text-xs">
+              {featureList.map((f) => (
+                <div key={f} className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${featuresQ.data.features[f] ? "bg-green-400" : "bg-zinc-600"}`} />
+                  <span className={featuresQ.data.features[f] ? "text-foreground" : "text-muted-foreground"}>{f}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {featuresQ.data && (
+            <div className="mt-2 text-[10px] text-muted-foreground">
+              Plan: {featuresQ.data.plan}{featuresQ.data.beta_profile ? ` · Beta: ${featuresQ.data.beta_profile}` : ""}
+            </div>
+          )}
+        </div>
+
+        {/* Feature editor modal */}
+        {editFeatures && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditFeatures(null)}>
+            <div className="bg-card border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold">Configurar Features</h3>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[10px]">Plan</Label>
+                  <select className="w-full h-8 text-xs bg-background border border-border rounded-md px-2" value={editPlan} onChange={(e) => setEditPlan(e.target.value)}>
+                    {["FREE","STARTER","GROWTH","BUSINESS","ENTERPRISE","BUSINESS_PLUS","BETA_INFORMAL"].map((p) => <option key={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-[10px]">Beta Profile</Label>
+                  <select className="w-full h-8 text-xs bg-background border border-border rounded-md px-2" value={editBeta} onChange={(e) => setEditBeta(e.target.value)}>
+                    <option value="">(ninguno)</option>
+                    {["BETA_LIGHT","BETA_CONVERSATIONS","BETA_OPERATIONS"].map((p) => <option key={p}>{p}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {featureList.map((f) => (
+                  <label key={f} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="checkbox" checked={!!editFeatures[f]} onChange={(e) => setEditFeatures({...editFeatures, [f]: e.target.checked})} />
+                    {f}
+                  </label>
+                ))}
+              </div>
+
+              <div className="border-t border-border pt-3">
+                <h4 className="text-[10px] font-medium text-muted-foreground mb-2">Límites</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {limitList.map((l) => (
+                    <div key={l}>
+                      <Label className="text-[9px]">{l}</Label>
+                      <Input type="number" className="h-7 text-xs" value={(editLimits as any)[l] ?? 0} onChange={(e) => setEditLimits({...editLimits, [l]: Number(e.target.value)})} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-[10px]">Motivo (audit log)</Label>
+                <Input className="h-8 text-xs" value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="Ej: Beta informal: repostería casera" />
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setEditFeatures(null)}>Cancelar</Button>
+                <Button size="sm" className="h-8 text-xs" onClick={() => {
+                  featuresMut.mutate({
+                    plan: editPlan,
+                    beta_profile: editBeta || null,
+                    features: editFeatures,
+                    limits: editLimits,
+                    reason: editReason || undefined,
+                  });
+                  setEditFeatures(null);
+                }} disabled={featuresMut.isPending}>
+                  {featuresMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Guardar"}
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 

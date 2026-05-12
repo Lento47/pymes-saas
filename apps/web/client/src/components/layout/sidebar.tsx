@@ -19,7 +19,19 @@ import {
 type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "notifications" | "settings" | "help";
 type NavItem = { path: string; icon: any; key: NavKey; badge?: "unread" | "overdue" };
 
-function navLabel(copy: any, key: NavKey): string {
+const BETA_LABELS: Partial<Record<NavKey, string>> = {
+  contacts: "Clientes",
+  pipeline: "Estado del cliente",
+  tasks: "Pedidos",
+  automations: "Recordatorios",
+  inbox: "Bandeja WS",
+  invoices: "Facturación",
+  dashboard: "Resumen",
+  inventory: "Inventario",
+};
+
+function navLabel(copy: any, key: NavKey, isBeta?: boolean): string {
+  if (isBeta && BETA_LABELS[key]) return BETA_LABELS[key]!;
   if (key === "settings") return copy.settings;
   if (key === "help") return copy.help;
   return copy.nav[key] ?? key;
@@ -127,6 +139,20 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const { data: unreadData } = useQuery({
     queryKey: ["/api/notifications/unread-count"], queryFn: api.getUnreadCount, refetchInterval: 30000,
   });
+  const { data: features } = useQuery({
+    queryKey: ["/api/workspaces/current/features"], queryFn: api.getCurrentFeatures, staleTime: 120_000,
+  });
+  const isBeta = features?.plan === "BETA_INFORMAL";
+  const isFeatureEnabled = (key: string): boolean => {
+    const map: Record<string, string> = {
+      inbox: "whatsapp_inbox", tasks: "orders", pipeline: "contacts",
+      contacts: "contacts", documents: "contacts", invoices: "billing",
+      automations: "automations", inventory: "orders", agent: "ai_assistant",
+      notifications: "conversations",
+    };
+    const fk = map[key] || key;
+    return features?.features?.[fk] !== false;
+  };
   const { data: overdueData } = useQuery({
     queryKey: ["/api/tasks/overdue"], queryFn: api.getOverdueTasks, refetchInterval: 60000,
   });
@@ -318,10 +344,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               <div className="space-y-1">
                 {group.items.filter(({ key }) => {
                   const minPlan = PLAN_MIN[key];
-                  if (!minPlan) return true;
-                  const plan = user?.workspace?.plan ?? 'FREE';
-                  const order = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
-                  return order.indexOf(plan) >= order.indexOf(minPlan);
+                  if (minPlan) {
+                    const plan = user?.workspace?.plan ?? 'FREE';
+                    const order = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
+                    if (order.indexOf(plan) < order.indexOf(minPlan)) return false;
+                  }
+                  return isFeatureEnabled(key);
                 }).map(({ path, icon: Icon, key, badge: bk }) => {
                   const active = isActive(path);
                   const b = badgeVal(bk);
@@ -350,7 +378,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                         />
 
                         {/* Label */}
-                        <span className="flex-1 text-sm">{navLabel(copy, key)}</span>
+                        <span className="flex-1 text-sm">{navLabel(copy, key, isBeta)}</span>
 
                         {/* Badge */}
                         {b > 0 && (

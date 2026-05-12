@@ -510,6 +510,11 @@ export const api = {
   platformToggleAdmin: (userId: string) => request<any>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
   platformGetWorkspaceBySlug: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}`),
   platformDeleteWorkspace: (slug: string) => request<any>("DELETE", `/api/platform/workspaces/${slug}`),
+  platformGetWorkspaceFeatures: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}/features`),
+  platformUpdateWorkspaceFeatures: (slug: string, data: any) => request<any>("PATCH", `/api/platform/workspaces/${slug}/features`, data),
+  platformGetPlanLimits: () => request<any>("GET", "/api/platform/plan-limits"),
+  platformUpdatePlanLimits: (overrides: { plan: string; resource: string; value: number }[]) => request<any>("PATCH", "/api/platform/plan-limits", { overrides }),
+  getCurrentFeatures: () => request<any>("GET", "/api/workspaces/current/features"),
   // AI / Agent
   askAssistant: (prompt: string) => request<any>("POST", "/api/workspaces/current/ai/assist", { prompt }),
   createAgentStream: (message: string, conversationId?: string) => request<any>("POST", "/api/agent/stream", { message, conversationId }),
