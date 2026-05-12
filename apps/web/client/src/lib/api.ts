@@ -495,10 +495,7 @@ export const api = {
     request<{ code: string; slug: string }>("POST", "/api/auth/facebook/token", { accessToken }),
   telegramTokenLogin: (data: any) =>
     request<{ code: string; slug: string }>("POST", "/api/auth/telegram/token", data),
-  checkSamlStatus: (workspaceSlug?: string) => {
-    const qs = workspaceSlug ? `?slug=${encodeURIComponent(workspaceSlug)}` : "";
-    return request<any>("GET", `/api/auth/saml/status${qs}`);
-  },
+  checkSamlStatus: (workspaceSlug: string) => request<any>("GET", `/api/auth/saml/status/${workspaceSlug}`),
   getSamlConfig: (workspaceId: string) => request<any>("GET", `/api/auth/saml/config/${workspaceId}`),
   upsertSamlConfig: (workspaceId: string, data: any) => request<any>("PUT", `/api/auth/saml/config/${workspaceId}`, data),
   enableSaml: (workspaceId: string) => request<any>("POST", `/api/auth/saml/config/${workspaceId}/enable`),
