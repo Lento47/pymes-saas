@@ -27,6 +27,9 @@ import HelpPage from "@/pages/help";
 import HelpDocumentPage from "@/pages/help-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
 import NotFound from "@/pages/not-found";
+import Register from "@/pages/register";
+import Onboarding from "@/pages/onboarding";
+import Admin from "@/pages/admin";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -47,6 +50,13 @@ function AppRouter() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
+      <Route path="/onboarding">
+        {() => <Onboarding />}
+      </Route>
+      <Route path="/admin">
+        {() => <Admin />}
+      </Route>
       <Route path="/accept-invite" component={AcceptInvite} />
       <Route path="/legal">
         {() => <LegalCenterPage />}

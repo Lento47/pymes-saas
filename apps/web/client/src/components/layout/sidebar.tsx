@@ -18,6 +18,7 @@ import {
   LogOut,
   ChevronDown,
   Check,
+  ShieldCheck,
 } from "lucide-react";
 
 const NAV = [
@@ -187,6 +188,21 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               <span style={{ fontSize: "13px" }}>Ayuda</span>
             </div>
           </Link>
+
+          {user?.is_platform_admin && (
+            <Link href="/admin">
+              <div
+                className={cn(
+                  "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
+                  isActive("/admin") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
+                )}
+                style={isActive("/admin") ? { background: "hsl(var(--bg-active))" } : undefined}
+              >
+                <ShieldCheck style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
+                <span style={{ fontSize: "13px" }}>Panel Admin</span>
+              </div>
+            </Link>
+          )}
         </nav>
 
         {/* User row */}

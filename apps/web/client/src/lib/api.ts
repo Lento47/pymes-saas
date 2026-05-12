@@ -196,6 +196,10 @@ export const api = {
     }
     return r.json() as Promise<{ access_token: string; refresh_token: string; user: any }>;
   },
+  register: (data: { email: string; name: string; password: string }) =>
+    request<{ access_token: string; refresh_token: string; user: any; workspace: any }>(
+      "POST", "/api/auth/register", data,
+    ),
   logout: () => request<any>("POST", "/api/auth/logout"),
   getMe: () => request<any>("GET", "/api/auth/me"),
   generateSummary: () => request<any>("POST", "/api/summaries/generate"),
@@ -350,4 +354,17 @@ export const api = {
     const qs = email ? `?email=${encodeURIComponent(email)}` : "";
     return request<any>("GET", `/api/platform/users${qs}`);
   },
+  platformGetStats: () => request<any>("GET", "/api/platform/stats"),
+  // Business profile (onboarding)
+  getBusinessProfile: () => request<any>("GET", "/api/workspaces/business-profile"),
+  saveBusinessProfile: (data: {
+    categories: string[];
+    team_size: string;
+    channels: string[];
+    needs: string[];
+  }) => request<any>("POST", "/api/workspaces/business-profile", data),
+  // Hacienda certificates
+  listCertificates: () => request<any[]>("GET", "/api/hacienda/certificates"),
+  uploadCertificate: (form: FormData) => request<any>("POST", "/api/hacienda/certificates", form, { isFormData: true }),
+  revokeCertificate: (id: string) => request<any>("DELETE", `/api/hacienda/certificates/${id}`),
 };

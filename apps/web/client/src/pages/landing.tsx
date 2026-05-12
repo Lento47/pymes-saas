@@ -142,9 +142,9 @@ export default function Landing() {
         <p className="text-slate-400 mb-8 max-w-2xl mx-auto">
           Join hundreds of businesses already using PymeHub to streamline their operations.
         </p>
-        <Link href="/login">
+        <Link href="/register">
           <a className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-400 to-lime-400 text-slate-950 rounded-full font-semibold hover:shadow-xl hover:shadow-cyan-400/50 transition group">
-            Get Started Free
+            Comenzar gratis
             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition" />
           </a>
         </Link>

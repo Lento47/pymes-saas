@@ -295,6 +295,7 @@ model Workspace {
   fiscal_sequences   FiscalSequence[]
   fiscal_certificates FiscalCertificate[]
   hacienda_token_cache HaciendaTokenCache[]
+  business_profile   WorkspaceBusinessProfile?
 
   @@index([slug])
   @@index([status])
@@ -2038,4 +2039,21 @@ model StockMovement {
   @@index([product_id])
   @@index([workspace_id, created_at(sort: Desc)])
   @@map("stock_movements")
+}
+
+model WorkspaceBusinessProfile {
+  id           String   @id @default(cuid())
+  workspace_id String   @unique
+  categories   String[]
+  team_size    String
+  channels     String[]
+  needs        String[]
+  completed_at DateTime @default(now())
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@map("workspace_business_profiles")
 }

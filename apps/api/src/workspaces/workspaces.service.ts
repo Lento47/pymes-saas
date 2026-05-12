@@ -771,4 +771,34 @@ export class WorkspacesService {
       data: { settings_json: settings },
     });
   }
+
+  async getBusinessProfile(workspaceId: string) {
+    return this.prisma.workspaceBusinessProfile.findUnique({
+      where: { workspace_id: workspaceId },
+    });
+  }
+
+  async saveBusinessProfile(
+    workspaceId: string,
+    dto: { categories: string[]; team_size: string; channels: string[]; needs: string[] },
+  ) {
+    return this.prisma.workspaceBusinessProfile.upsert({
+      where: { workspace_id: workspaceId },
+      create: {
+        workspace_id: workspaceId,
+        categories: dto.categories,
+        team_size: dto.team_size,
+        channels: dto.channels,
+        needs: dto.needs,
+        completed_at: new Date(),
+      },
+      update: {
+        categories: dto.categories,
+        team_size: dto.team_size,
+        channels: dto.channels,
+        needs: dto.needs,
+        completed_at: new Date(),
+      },
+    });
+  }
 }
