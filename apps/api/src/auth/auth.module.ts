@@ -7,6 +7,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { RefreshTokenService } from './refresh-token.service';
+import { AdminAuthController } from './admin-auth.controller';
+import { AdminAuthService } from './admin-auth.service';
 import { DemoModule } from '../demo/demo.module';
 
 @Module({
@@ -26,8 +28,8 @@ import { DemoModule } from '../demo/demo.module';
     }),
     DemoModule,
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, RolesGuard, RefreshTokenService],
+  controllers: [AuthController, AdminAuthController],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, RolesGuard, RefreshTokenService, AdminAuthService],
   exports: [JwtModule, PassportModule, RolesGuard, RefreshTokenService, AuthService],
 })
 export class AuthModule {}
