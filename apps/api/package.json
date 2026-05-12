@@ -14,7 +14,7 @@
     "db:reset": "prisma migrate reset --force && npm run db:seed",
     "db:generate": "prisma generate",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
+    "test": "node --no-deprecation node_modules/jest/bin/jest.js",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "postinstall": "prisma generate --schema ./prisma/schema.prisma || true"
