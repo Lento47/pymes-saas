@@ -85,6 +85,19 @@ export class PlatformController {
     return this.service.updateWorkspaceFeatures(slug, user.id, dto);
   }
 
+  @Get('plan-limits')
+  getPlanLimits() {
+    return this.service.getAllPlanLimits();
+  }
+
+  @Patch('plan-limits')
+  updatePlanLimits(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { overrides: { plan: string; resource: string; value: number }[] },
+  ) {
+    return this.service.updatePlanLimits(body.overrides, user.id);
+  }
+
   @Get('users')
   searchUsers(@Query('email') email?: string) {
     return this.service.searchUsers(email);

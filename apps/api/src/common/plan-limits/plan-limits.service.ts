@@ -209,6 +209,48 @@ export class PlanLimitsService {
     return base;
   }
 
+  // ── Global plan limit management (admin) ────────────────────────────────
+
+  async getAllPlanLimits(): Promise<Record<string, PlanLimits>> {
+    const overrides = await this.prisma.planLimitOverride.findMany();
+    const overrideMap = new Map<string, number>();
+    for (const o of overrides) {
+      overrideMap.set(`${o.plan}:${o.resource}`, o.value);
+    }
+
+    const result: Record<string, PlanLimits> = {};
+    const plans = Object.keys(PLAN_LIMITS);
+    for (const plan of plans) {
+      const base = { ...PLAN_LIMITS[plan] };
+      for (const key of Object.keys(base) as (keyof PlanLimits)[]) {
+        const overrideVal = overrideMap.get(`${plan}:${key}`);
+        if (overrideVal !== undefined) {
+          (base as any)[key] = overrideVal;
+        }
+      }
+      result[plan] = base;
+    }
+    return result;
+  }
+
+  async setPlanLimitOverride(plan: string, resource: string, value: number): Promise<void> {
+    await this.prisma.planLimitOverride.upsert({
+      where: { plan_resource: { plan, resource } },
+      create: { plan, resource, value },
+      update: { value },
+    });
+  }
+
+  async clearPlanLimitOverride(plan: string, resource: string): Promise<void> {
+    try {
+      await this.prisma.planLimitOverride.delete({
+        where: { plan_resource: { plan, resource } },
+      });
+    } catch {
+      // Ignore if no override exists
+    }
+  }
+
   async isPlanAtLeast(workspaceId: string, minimumPlan: string): Promise<boolean> {
     const plan = await this.getWorkspacePlan(workspaceId);
     const normalized = normalizePlan(plan);

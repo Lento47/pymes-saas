@@ -1487,6 +1487,21 @@ model MessageTemplate {
 }
 
 // ============================================================
+// PLAN LIMIT OVERRIDES — Admin-configured plan limits
+// ============================================================
+
+model PlanLimitOverride {
+  id        String   @id @default(cuid())
+  plan      String
+  resource  String
+  value     Int
+  updated_at DateTime @updatedAt
+
+  @@unique([plan, resource])
+  @@map("plan_limit_overrides")
+}
+
+// ============================================================
 // USAGE METERING — Workspace Usage Snapshots
 // ============================================================
 

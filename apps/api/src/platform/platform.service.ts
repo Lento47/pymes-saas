@@ -20,6 +20,7 @@ import {
   WorkspaceSubscriptionStatus,
 } from '@prisma/client';
 import { FeaturesService } from '../features/features.service';
+import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
 import { AuditService } from '../audit/audit.service';
 import { stringifyJson } from '../common/prisma/json';
 import * as bcrypt from 'bcrypt';
@@ -30,6 +31,7 @@ export class PlatformService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly features: FeaturesService,
+    private readonly planLimits: PlanLimitsService,
     private readonly audit: AuditService,
   ) {}
 
@@ -624,6 +626,24 @@ export class PlatformService {
         limits_json: updated.limits_json,
       },
     };
+  }
+
+  // ── GET /platform/plan-limits ────────────────────────────────────────────
+
+  async getAllPlanLimits() {
+    return this.planLimits.getAllPlanLimits();
+  }
+
+  // ── PUT /platform/plan-limits ─────────────────────────────────────────────
+
+  async updatePlanLimits(
+    dto: { plan: string; resource: string; value: number }[],
+    actorUserId: string,
+  ) {
+    for (const item of dto) {
+      await this.planLimits.setPlanLimitOverride(item.plan, item.resource, item.value);
+    }
+    return this.planLimits.getAllPlanLimits();
   }
 
   // ── GET /platform/stats ────────────────────────────────────────────────────
