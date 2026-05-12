@@ -27,6 +27,33 @@ const ALLOWED_MIME_TYPES = [
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 
+/** Magic byte signatures for allowed MIME types */
+const MAGIC_BYTES: Array<{ mime: string; bytes: number[]; offset?: number }> = [
+  { mime: 'application/pdf', bytes: [0x25, 0x50, 0x44, 0x46] },           // %PDF
+  { mime: 'image/jpeg', bytes: [0xFF, 0xD8, 0xFF] },
+  { mime: 'image/png', bytes: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] },
+  { mime: 'image/webp', bytes: [0x52, 0x49, 0x46, 0x46], offset: 0 },      // RIFF
+  { mime: 'application/msword', bytes: [0xD0, 0xCF, 0x11, 0xE0] },        // OLE
+  { mime: 'application/zip', bytes: [0x50, 0x4B, 0x03, 0x04] },            // ZIP (DOCX/XLSX)
+];
+
+function detectMimeFromBuffer(buf: Buffer): string | null {
+  for (const sig of MAGIC_BYTES) {
+    const offset = sig.offset ?? 0;
+    if (buf.length < offset + sig.bytes.length) continue;
+    const match = sig.bytes.every((b, i) => buf[offset + i] === b);
+    if (match) return sig.mime;
+  }
+  return null;
+}
+
+function isAllowedMime(detectedMime: string | null): boolean {
+  if (!detectedMime) return false;
+  // ZIP-based formats (DOCX, XLSX) share the same magic bytes
+  if (detectedMime === 'application/zip') return true;
+  return ALLOWED_MIME_TYPES.includes(detectedMime);
+}
+
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -37,7 +64,7 @@ export class DocumentsService {
     private readonly planLimits: PlanLimitsService,
   ) {}
 
-  // ── POST /documents/upload ─────────────────────────────────────────────────
+  // ── POST /documents/upload ──────────────────────────────────────────────────────
 
   async upload(
     workspaceId: string,
@@ -50,6 +77,11 @@ export class DocumentsService {
       throw new BadRequestException(
         `Tipo de archivo no permitido: ${file.mimetype}`,
       );
+    }
+    // Validate actual file content via magic bytes (prevents MIME spoofing)
+    const detectedMime = detectMimeFromBuffer(file.buffer);
+    if (!isAllowedMime(detectedMime)) {
+      throw new BadRequestException('El contenido del archivo no coincide con un tipo de archivo permitido.');
     }
     if (file.size > MAX_FILE_SIZE) {
       throw new BadRequestException('El archivo supera el límite de 25 MB.');
@@ -126,7 +158,7 @@ export class DocumentsService {
     return { url };
   }
 
-  // ── GET /documents ─────────────────────────────────────────────────────────
+  // ── GET /documents ───────────────────────────────────────────────────────────────
 
   async findAll(workspaceId: string, filters: FilterDocumentsDto) {
     const { status, contact_id, conversation_id, mime_type, q, page = 1, limit = 20 } = filters;
@@ -162,7 +194,7 @@ export class DocumentsService {
     };
   }
 
-  // ── GET /documents/:id ─────────────────────────────────────────────────────
+  // ── GET /documents/:id ────────────────────────────────────────────────────────────
 
   async findOne(workspaceId: string, id: string) {
     const doc = await this.prisma.document.findFirst({
@@ -182,7 +214,7 @@ export class DocumentsService {
     return { ...doc, download_url };
   }
 
-  // ── PATCH /documents/:id ───────────────────────────────────────────────────
+  // ── PATCH /documents/:id ───────────────────────────────────────────────────────────
 
   async update(workspaceId: string, id: string, dto: UpdateDocumentDto) {
     await this.findOne(workspaceId, id);
@@ -197,7 +229,7 @@ export class DocumentsService {
     });
   }
 
-  // ── POST /documents/:id/reprocess ─────────────────────────────────────────
+  // ── POST /documents/:id/reprocess ─────────────────────────────────────────────────────
 
   async reprocess(workspaceId: string, id: string) {
     const doc = await this.findOne(workspaceId, id);
@@ -213,7 +245,7 @@ export class DocumentsService {
     return { message: 'Documento encolado para reprocesamiento.', id };
   }
 
-  // ── DELETE /documents/:id ─────────────────────────────────────────────────
+  // ── DELETE /documents/:id ────────────────────────────────────────────────────────────
 
   async remove(workspaceId: string, id: string) {
     const doc = await this.findOne(workspaceId, id);
