@@ -25,6 +25,10 @@ import {
 } from "lucide-react";
 import BillingPage from "@/pages/billing";
 import { SamlConfig } from "@/components/settings/saml-config";
+import { SecretInput } from "@/components/settings/secret-input";
+import { DeleteChannelDialog } from "@/components/settings/delete-channel-dialog";
+import { ApiKeyCard } from "@/components/settings/api-key-card";
+import { ROLE_COLORS, CHANNEL_TYPE_COLORS, CHANNEL_ICONS } from "@/components/settings/settings-constants";
 import { ModuleHero } from "@/components/shared/module-hero";
 
 function RoutingRulesTab() {
@@ -172,58 +176,6 @@ function RoutingRulesTab() {
     </div>
   );
 }
-
-// ─── Paletas ──────────────────────────────────────────────────────────────────
-
-const ROLE_COLORS: Record<string, string> = {
-  OWNER: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
-  ADMIN: "bg-blue-500/10 text-blue-400 border-blue-500/30",
-  AGENT: "bg-green-500/10 text-green-400 border-green-500/30",
-  VIEWER: "bg-gray-500/10 text-gray-400 border-gray-500/30",
-};
-
-const CHANNEL_TYPE_COLORS: Record<string, string> = {
-  EMAIL: "bg-blue-500/10 text-blue-400",
-  WHATSAPP: "bg-green-500/10 text-green-400",
-  FORM: "bg-purple-500/10 text-purple-400",
-  API: "bg-orange-500/10 text-orange-400",
-  MANUAL: "bg-gray-500/10 text-gray-400",
-};
-
-const CHANNEL_ICONS: Record<string, any> = {
-  EMAIL: Mail,
-  WHATSAPP: MessageCircle,
-  FORM: PlugZap,
-  API: Plug,
-  MANUAL: Radio,
-};
-
-// ─── Campo password con toggle ────────────────────────────────────────────────
-function SecretInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  const [show, setShow] = useState(false);
-  return (
-    <div className="relative">
-      <Input
-        type={show ? "text" : "password"}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="bg-[hsl(var(--elevated))] border-border pr-10 font-mono text-xs"
-      />
-      <button
-        type="button"
-        onClick={() => setShow(s => !s)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-      >
-        {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-      </button>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// WORKSPACE TAB
-// ═══════════════════════════════════════════════════════════════════════════════
 
 function WorkspaceTab() {
   const { toast } = useToast();
@@ -1083,45 +1035,6 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
         {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
       </Button>
     </div>
-  );
-}
-
-// ─── Confirm delete ───────────────────────────────────────────────────────────
-function DeleteChannelDialog({ channel, onClose }: { channel: any; onClose: () => void }) {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-
-  const del = useMutation({
-    mutationFn: () => api.deleteChannel(channel.id),
-    onSuccess: () => {
-      toast({ title: "Canal eliminado" });
-      qc.invalidateQueries({ queryKey: ["/api/channels"] });
-      onClose();
-    },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  return (
-    <AlertDialog open onOpenChange={open => { if (!open) onClose(); }}>
-      <AlertDialogContent className="bg-card border-border">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="text-sm">¿Eliminar canal "{channel?.name}"?</AlertDialogTitle>
-          <AlertDialogDescription className="text-xs text-muted-foreground">
-            Esta acción es irreversible. Se perderán la configuración y el historial de conversaciones asociadas.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel className="h-8 text-xs">Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => del.mutate()}
-            disabled={del.isPending}
-            className="h-8 text-xs bg-destructive hover:bg-destructive/90"
-          >
-            {del.isPending ? "Eliminando..." : "Eliminar"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 }
 
@@ -2008,52 +1921,6 @@ function PlatformTab() {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // INTEGRATIONS TAB
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function ApiKeyCard({
-  label, description, icon, iconBg, iconColor,
-  isSet, keyValue, onKeyChange, placeholder,
-  onSave, onClear, isPending,
-}: {
-  label: string; description: string;
-  icon: React.ReactNode; iconBg: string; iconColor: string;
-  isSet: boolean; keyValue: string; onKeyChange: (v: string) => void; placeholder: string;
-  onSave: () => void; onClear: () => void; isPending: boolean;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${iconBg}`}>
-            {icon}
-          </div>
-          <div>
-            <p className="text-sm font-medium">{label}</p>
-            <p className="text-xs text-muted-foreground">{description}</p>
-          </div>
-        </div>
-        <Badge variant="outline" className={isSet ? "text-green-400 border-green-500/30 bg-green-500/10" : "text-gray-400 border-gray-500/30 bg-gray-500/10"}>
-          {isSet ? "Configurado" : "Sin configurar"}
-        </Badge>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground uppercase tracking-wider">API Key</Label>
-        <SecretInput value={keyValue} onChange={onKeyChange} placeholder={isSet ? "••••••••••••••••" : placeholder} />
-      </div>
-      <div className="flex items-center gap-2 justify-end">
-        {isSet && (
-          <Button size="sm" variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10" onClick={onClear} disabled={isPending}>
-            {isPending ? "Eliminando..." : "Eliminar key"}
-          </Button>
-        )}
-        <Button size="sm" onClick={onSave} disabled={!keyValue.trim() || isPending}>
-          {isPending ? "Guardando..." : "Guardar"}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function IntegrationsTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
