@@ -8,10 +8,10 @@ import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
-import { api } from "@/lib/api";
+import { api, getWorkspaceSlug } from "@/lib/api";
 import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
-  CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot,
+  Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot,
   Sun, Moon, Search, Menu, X, ChevronRight, Building2,
   CreditCard, Layers, Plug, PlugZap, Shuffle, BrainCircuit, ShieldCheck, UserCircle, LifeBuoy,
 } from "lucide-react";
@@ -59,7 +59,7 @@ function getWorkspaceGradient(name: string): { gradient: string; text: string } 
 }
 
 interface NavGroup {
-  key: "work" | "operations" | "assistants" | "settings";
+  key: "work" | "operations" | "assistants";
   items: NavItem[];
 }
 
@@ -97,21 +97,6 @@ const NAV_GROUPS: NavGroup[] = [
       { path: "/notifications", icon: BellRing,        key: "notifications", badge: "unread" },
     ],
   },
-  {
-    key: "settings",
-    items: [
-      { path: "/settings?tab=profile",     icon: UserCircle,    key: "settings" },
-      { path: "/settings?tab=workspace",   icon: Building2,     key: "settings" },
-      { path: "/settings?tab=members",     icon: Users,         key: "settings" },
-      { path: "/settings?tab=departments", icon: Layers,        key: "settings" },
-      { path: "/settings?tab=channels",    icon: PlugZap,       key: "settings" },
-      { path: "/settings?tab=routing",     icon: Shuffle,       key: "settings" },
-      { path: "/settings?tab=ai",          icon: BrainCircuit,  key: "settings" },
-      { path: "/settings?tab=saml",        icon: Shield,        key: "settings" },
-      { path: "/settings?tab=billing",     icon: CreditCard,    key: "settings" },
-      { path: "/settings?tab=platform",    icon: ShieldCheck,   key: "settings" },
-    ],
-  },
 ];
 
 const ADMIN_ITEMS = [
@@ -132,7 +117,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 1024,
   );
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ left: 0, top: 0 });
   const wsMenuRef = useRef<HTMLDivElement>(null);
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
   const copy = messages.sidebar;
 
   useNotificationsSocket();
@@ -184,6 +172,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   // Close sidebar on route change (mobile)
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
+    setSettingsMenuOpen(false);
   }, [location, isMobile]);
 
   // Lock body scroll when mobile sidebar is open
@@ -195,6 +184,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     }
     return () => { document.body.style.overflow = ''; };
   }, [isMobile, sidebarOpen]);
+
+  useEffect(() => {
+    if (!sidebarOpen) setSettingsMenuOpen(false);
+  }, [sidebarOpen]);
 
   // Close workspace menu on outside click
   useEffect(() => {
@@ -423,6 +416,22 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
+        {/* ── Settings Dropdown ── */}
+        <div className="shrink-0 px-3 pb-2" ref={settingsMenuRef}>
+          <button
+            onClick={() => {
+              const rect = settingsMenuRef.current?.getBoundingClientRect();
+              if (rect) setDropdownPos({ left: rect.right + 8, top: Math.min(rect.top + 4, window.innerHeight - 460) });
+              setSettingsMenuOpen(o => !o);
+            }}
+            className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+          >
+            <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
+            <span className="flex-1 text-sm text-left">Configuración</span>
+            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", settingsMenuOpen && "rotate-180")} />
+          </button>
+        </div>
+
         {/* ── Bottom Actions ── */}
         <div className="shrink-0 border-t border-border/40 px-3 py-3 pb-safe space-y-3 bg-sidebar-accent/20">
           {/* Controls */}
@@ -445,22 +454,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             <div className="flex-1">
               <LanguageSwitcher />
             </div>
-          </div>
-
-          {/* Quick links */}
-          <div className="flex items-center gap-1 px-2">
-            <a href="/onboarding"
-              className="flex-1 flex items-center justify-center gap-1.5 p-1.5 rounded-lg text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40 transition-all"
-            >
-              <UserCircle className="w-3.5 h-3.5" />
-              Onboarding
-            </a>
-            <a href="/support"
-              className="flex-1 flex items-center justify-center gap-1.5 p-1.5 rounded-lg text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40 transition-all"
-            >
-              <LifeBuoy className="w-3.5 h-3.5" />
-              Soporte
-            </a>
           </div>
 
           {/* User Profile */}
@@ -536,6 +529,64 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+
+      {/* ── Settings Flyout with organized sections ── */}
+      {settingsMenuOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setSettingsMenuOpen(false)} />
+          <div
+            className="fixed z-50 rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden animate-in fade-in slide-in-from-left-2 duration-150"
+            style={{ left: dropdownPos.left, top: dropdownPos.top, width: 240, maxHeight: 460 }}
+          >
+            <div className="p-2 max-h-[440px] overflow-y-auto space-y-3">
+              {[
+                { label: "General", items: [
+                  { icon: UserCircle, label: "Perfil", href: "/settings?tab=profile" },
+                  { icon: Building2, label: "Workspace", href: "/settings?tab=workspace" },
+                  { icon: UserCircle, label: "Onboarding", href: "/onboarding" },
+                  { icon: LifeBuoy, label: "Soporte", href: "/support" },
+                ]},
+                { label: "Personas y equipo", items: [
+                  { icon: Users, label: "Miembros", href: "/settings?tab=members" },
+                  { icon: Layers, label: "Departamentos", href: "/settings?tab=departments" },
+                ]},
+                { label: "Canales y flujos", items: [
+                  { icon: PlugZap, label: "Canales", href: "/settings?tab=channels" },
+                  { icon: Shuffle, label: "Enrutamiento", href: "/settings?tab=routing" },
+                ]},
+                { label: "Autenticación", items: [
+                  { icon: Shield, label: "SAML SSO", href: "/settings?tab=saml" },
+                ]},
+                { label: "IA", items: [
+                  { icon: BrainCircuit, label: "Inteligencia Artificial", href: "/settings?tab=ai" },
+                ]},
+                { label: "Finanzas y plataforma", items: [
+                  { icon: CreditCard, label: "Facturación", href: "/settings?tab=billing" },
+                  { icon: ShieldCheck, label: "Plataforma", href: "/settings?tab=platform" },
+                ]},
+              ].map((group) => (
+                <div key={group.label} className="space-y-1">
+                  <div className="px-3 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    {group.label}
+                  </div>
+                  {group.items.map((item) => {
+                    const href = getWorkspaceSlug() ? `/${getWorkspaceSlug()}${item.href}` : item.href;
+                    return (
+                      <a key={item.href} href={href}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground transition-all"
+                        onClick={() => setSettingsMenuOpen(false)}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span>{item.label}</span>
+                      </a>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
