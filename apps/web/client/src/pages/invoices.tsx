@@ -306,13 +306,13 @@ export default function InvoicesPage() {
 
       return api.createInvoice({
         ...invoiceFields,
-        amount: Number(createForm.amount),
+        amount: Math.round(Number(createForm.amount) * 100) / 100,
         issue_date: createForm.issue_date,
         lines: createForm.issuance_mode === "HACIENDA"
           ? [{
               description: line_description || createForm.description || `Factura ${createForm.number}`,
               quantity: 1,
-              unit_price: Number(createForm.amount),
+              unit_price: Math.round(Number(createForm.amount) * 100) / 100,
               cabys_code: cabys_code || undefined,
               unit_of_measure: "Unid",
               tax_code: "01",
@@ -376,7 +376,7 @@ export default function InvoicesPage() {
   const registerPaymentMutation = useMutation({
     mutationFn: () =>
       api.registerInvoicePayment(selectedInvoice.id, {
-        amount: Number(paymentForm.amount),
+        amount: Math.round(Number(paymentForm.amount) * 100) / 100,
         paid_at: paymentForm.paid_at || undefined,
         method: paymentForm.method || undefined,
         reference: paymentForm.reference || undefined,
@@ -419,7 +419,7 @@ export default function InvoicesPage() {
   const creditNoteMutation = useMutation({
     mutationFn: (invoice: any) => api.createCreditNote(invoice.id, {
       number: `NC-${invoice.number}`,
-      amount: Number(invoice.amount),
+      amount: Math.round(Number(invoice.amount) * 100) / 100,
       currency: invoice.currency,
       due_date: new Date().toISOString().slice(0, 10),
     }),
@@ -515,7 +515,7 @@ export default function InvoicesPage() {
     mutationFn: () =>
       api.updateInvoice(selectedInvoice.id, {
         number: editForm.number,
-        amount: Number(editForm.amount),
+        amount: Math.round(Number(editForm.amount) * 100) / 100,
         currency: editForm.currency,
         due_date: editForm.due_date,
         issue_date: editForm.issue_date,
