@@ -55,6 +55,7 @@ import { NoindexMeta } from "@/components/shared/noindex-meta";
 import AdminWorkspaces from "@/pages/admin/workspaces";
 import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
 import AdminUsers from "@/pages/admin/users";
+import AdminPlanLimits from "@/pages/admin/plan-limits";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, initialized, user } = useAuth();
@@ -202,6 +203,9 @@ function AppRouter() {
       </Route>
       <Route path="/admin/users">
         {() => <PlatformAdminLayout><AdminUsers /></PlatformAdminLayout>}
+      </Route>
+      <Route path="/admin/plan-limits">
+        {() => <PlatformAdminLayout><AdminPlanLimits /></PlatformAdminLayout>}
       </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}

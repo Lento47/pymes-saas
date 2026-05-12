@@ -99,6 +99,12 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+const ADMIN_ITEMS = [
+  { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/admin/workspaces", icon: Shield, label: "Workspaces" },
+  { href: "/admin/plan-limits", icon: ShieldCheck, label: "Límites de Planes" },
+] as const;
+
 const SETTINGS_ITEMS = [
   { href: "/onboarding", icon: UserCircle, label: "Onboarding" },
   { href: "/support", icon: LifeBuoy, label: "Soporte" },
@@ -400,6 +406,33 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           ))}
+
+          {user?.is_platform_admin && (
+            <div className="space-y-1.5 pt-2 border-t border-border/40">
+              <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-amber-400/80 flex items-center gap-2">
+                <div className="w-1 h-1 rounded-full bg-amber-400/30" />
+                <span>Admin</span>
+              </div>
+              <div className="space-y-1">
+                {ADMIN_ITEMS.map(({ href, icon: Icon, label }) => {
+                  const active = isActive(href);
+                  return (
+                    <a key={href} href={href}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
+                        active
+                          ? "bg-amber-500/10 text-amber-400 font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+                      )}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" strokeWidth={active ? 2.5 : 1.8} />
+                      <span className="flex-1 text-sm">{label}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </nav>
 
         {/* ── Settings Dropdown ── */}
