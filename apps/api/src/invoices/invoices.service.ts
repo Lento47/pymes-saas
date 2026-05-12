@@ -18,6 +18,7 @@ import { StorageService } from '../common/storage/storage.service';
 import { HaciendaRecepcionService } from '../hacienda/hacienda-recepcion.service';
 import { HaciendaSigningService } from '../hacienda/hacienda-signing.service';
 import { HaciendaXmlBuilderService } from '../hacienda/hacienda-xml-builder.service';
+import { FiscalSequenceService } from '../hacienda/fiscal-sequence.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
@@ -37,6 +38,7 @@ export class InvoicesService {
     private readonly haciendaRecepcion: HaciendaRecepcionService,
     private readonly haciendaSigning: HaciendaSigningService,
     private readonly haciendaXmlBuilder: HaciendaXmlBuilderService,
+    private readonly fiscalSequence: FiscalSequenceService,
     private readonly planLimits: PlanLimitsService,
     private readonly notificationsService: NotificationsService,
     private readonly ai: AiService,
@@ -483,12 +485,24 @@ export class InvoicesService {
       );
     }
 
+    // Generate consecutivo transactionally first (guarantees uniqueness under concurrency),
+    // then derive the clave from it (clave embeds the consecutivo per Hacienda spec).
+    const preparedConsecutivo =
+      invoice.consecutivo ??
+      (await this.fiscalSequence.nextConsecutivo({
+        workspaceId,
+        documentType: invoice.document_type,
+      }));
+
+    const issueDate = invoice.issue_date ?? new Date();
+
     const preparedClave =
       invoice.clave ??
-      this.buildClave(workspaceTaxProfile.identification_number, invoice.document_type as InvoiceDocumentType);
-    const preparedConsecutivo =
-      invoice.consecutivo ?? this.buildConsecutivo(invoice.document_type as InvoiceDocumentType);
-    const issueDate = invoice.issue_date ?? new Date();
+      this.fiscalSequence.generateClave({
+        issueDate,
+        issuerIdentification: workspaceTaxProfile.identification_number,
+        consecutivo: preparedConsecutivo,
+      });
 
     const xml = this.haciendaXmlBuilder.buildInvoiceXml({
       invoice: {
@@ -502,6 +516,25 @@ export class InvoicesService {
       lines: invoice.lines.length ? invoice.lines : this.buildFallbackLines(invoice),
     });
     const signed = await this.haciendaSigning.signXml(workspaceId, xml);
+
+    // Block submission if signing was not completed. UNSIGNED_PLACEHOLDER is only
+    // acceptable in dev environments where signing is explicitly disabled.
+    const workspaceSettings2 = parseJsonValue<Record<string, any>>(settings?.settings_json, {});
+    const signingEnabled = workspaceSettings2.hacienda_signing_enabled === true;
+    if (signingEnabled && signed.signatureMode !== 'XADES_EPES') {
+      throw new BadRequestException(
+        'No se pudo firmar el XML fiscal. Verifica el certificado y el PIN en Configuración > Facturación electrónica CR.',
+      );
+    }
+    if (!signingEnabled && signed.signatureMode === 'UNSIGNED_PLACEHOLDER') {
+      const env = workspaceSettings2.hacienda_environment ?? 'staging';
+      if (env === 'production') {
+        throw new BadRequestException(
+          'La firma digital debe estar habilitada para enviar a Hacienda en modo producción.',
+        );
+      }
+    }
+
     const signedXmlKey = `hacienda/${workspaceId}/invoices/${invoice.id}/signed.xml`;
     await this.storage.upload(signedXmlKey, Buffer.from(signed.signedXml, 'utf8'), 'application/xml');
 

@@ -1,4 +1,13 @@
-import { Body, Controller, Headers, Logger, Post, Query, UnauthorizedException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Headers,
+  Logger,
+  Param,
+  Post,
+  Query,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -20,20 +29,24 @@ export class HaciendaWebhookController {
     private readonly configService: ConfigService,
   ) {}
 
-  @Post()
+  /**
+   * POST /hacienda/webhook/:workspaceId
+   *
+   * Workspace-scoped callback endpoint. The callbackUrl registered with Hacienda
+   * must include the workspaceId: `https://api.pymeshub.lat/hacienda/webhook/{workspaceId}`.
+   * This scoping ensures cross-tenant isolation when looking up invoices by clave.
+   */
+  @Post(':workspaceId')
   async receiveCallback(
+    @Param('workspaceId') workspaceId: string,
     @Headers('x-PymesHub-webhook-token') headerToken: string | undefined,
     @Query('token') queryToken: string | undefined,
     @Body() payload: any,
     @Headers('user-agent') userAgent?: string,
   ) {
-    // Shared-secret authentication. The secret MUST be configured; otherwise
-    // we refuse the call. Prefer the header (not logged in access logs) over
-    // the legacy querystring token; the querystring path remains for
-    // backwards compatibility with already-registered Hacienda callbacks.
     const expectedSecret = this.configService.get<string>('HACIENDA_WEBHOOK_SECRET');
     if (!expectedSecret) {
-      this.logger.error('HACIENDA_WEBHOOK_SECRET not configured — refusing webhook');
+      this.logger.error('HACIENDA_WEBHOOK_SECRET no configurado — rechazando webhook');
       throw new UnauthorizedException('Webhook secret not configured');
     }
     const supplied = headerToken || queryToken;
@@ -46,12 +59,14 @@ export class HaciendaWebhookController {
       return { received: false, reason: 'missing-clave' };
     }
 
+    // Filter by workspace_id to prevent cross-tenant data access
     const invoice = await this.prisma.invoice.findFirst({
-      where: { clave },
+      where: { clave, workspace_id: workspaceId },
       select: { id: true, notes_json: true },
     });
 
     if (!invoice) {
+      this.logger.warn(`Webhook: clave ${clave} no encontrada en workspace ${workspaceId}`);
       return { received: false, reason: 'invoice-not-found' };
     }
 
@@ -71,7 +86,10 @@ export class HaciendaWebhookController {
         notes_json: {
           ...notePayload,
           hacienda_callback: payload,
-          hacienda_callback_meta: { userAgent: userAgent ?? null, receivedAt: new Date().toISOString() },
+          hacienda_callback_meta: {
+            userAgent: userAgent ?? null,
+            receivedAt: new Date().toISOString(),
+          },
         } as any,
       },
     });
@@ -81,16 +99,11 @@ export class HaciendaWebhookController {
 
   private mapStatus(value?: string) {
     switch ((value ?? '').toLowerCase()) {
-      case 'recibido':
-        return 'RECIBIDO';
-      case 'procesando':
-        return 'PROCESANDO';
-      case 'aceptado':
-        return 'ACEPTADO';
-      case 'rechazado':
-        return 'RECHAZADO';
-      default:
-        return 'ERROR';
+      case 'recibido':   return 'RECIBIDO';
+      case 'procesando': return 'PROCESANDO';
+      case 'aceptado':   return 'ACEPTADO';
+      case 'rechazado':  return 'RECHAZADO';
+      default:           return 'ERROR';
     }
   }
 }
