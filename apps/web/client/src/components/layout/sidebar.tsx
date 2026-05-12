@@ -398,7 +398,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 {ADMIN_ITEMS.map(({ href, icon: Icon, label }) => {
                   const active = isActive(href);
                   return (
-                    <a key={href} href={href}
+                    <Link key={href} to={href}
                       className={cn(
                         "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
                         active
@@ -408,7 +408,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     >
                       <Icon className="w-4 h-4 shrink-0" strokeWidth={active ? 2.5 : 1.8} />
                       <span className="flex-1 text-sm">{label}</span>
-                    </a>
+                    </Link>
                   );
                 })}
               </div>
@@ -570,15 +570,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     {group.label}
                   </div>
                   {group.items.map((item) => {
-                    const href = item.href;
                     return (
-                      <a key={item.href} href={href}
+                      <Link key={item.href} to={item.href}
                         className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground transition-all"
                         onClick={() => setSettingsMenuOpen(false)}
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
                         <span>{item.label}</span>
-                      </a>
+                      </Link>
                     );
                   })}
                 </div>
