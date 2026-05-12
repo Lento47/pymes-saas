@@ -116,8 +116,8 @@ export class FiscalCertificateService {
         subject: x509.subject || null,
         issuer: x509.issuer || null,
         serial_number: x509.serialNumber || null,
-        valid_from: x509.validFromDate ?? null,
-        valid_until: x509.validToDate ?? null,
+        valid_from: x509.validFrom ? new Date(x509.validFrom) : null,
+        valid_until: x509.validTo ? new Date(x509.validTo) : null,
         status: 'ACTIVE',
       },
     });
