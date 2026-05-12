@@ -53,4 +53,23 @@ export class QueueService {
       { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
     );
   }
+
+  /**
+   * Enqueue a Hacienda invoice submission job.
+   * Uses invoiceId as the BullMQ jobId for idempotency — duplicate enqueues
+   * for the same invoice are silently ignored by BullMQ.
+   */
+  async enqueueHaciendaSubmit(invoiceId: string, workspaceId: string): Promise<void> {
+    await this.haciendaQueue.add(
+      'submit-invoice',
+      { invoiceId, workspaceId },
+      {
+        jobId: invoiceId,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5_000 },
+        removeOnComplete: 100,
+        removeOnFail: 200,
+      },
+    );
+  }
 }

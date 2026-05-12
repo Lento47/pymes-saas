@@ -6,6 +6,7 @@ import { HaciendaPublicApiService } from './hacienda-public-api.service';
 import { HaciendaRecepcionService } from './hacienda-recepcion.service';
 import { HaciendaSigningService } from './hacienda-signing.service';
 import { HaciendaXmlBuilderService } from './hacienda-xml-builder.service';
+import { HaciendaXmlValidatorService } from './hacienda-xml-validator.service';
 import { FiscalSequenceService } from './fiscal-sequence.service';
 import { FiscalCertificateService } from './fiscal-certificate.service';
 import { CryptoModule } from '../common/crypto/crypto.module';
@@ -19,6 +20,7 @@ import { CryptoModule } from '../common/crypto/crypto.module';
     HaciendaRecepcionService,
     HaciendaSigningService,
     HaciendaXmlBuilderService,
+    HaciendaXmlValidatorService,
     FiscalSequenceService,
     FiscalCertificateService,
   ],
@@ -28,6 +30,7 @@ import { CryptoModule } from '../common/crypto/crypto.module';
     HaciendaRecepcionService,
     HaciendaSigningService,
     HaciendaXmlBuilderService,
+    HaciendaXmlValidatorService,
     FiscalSequenceService,
     FiscalCertificateService,
   ],
