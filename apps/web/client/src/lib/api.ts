@@ -553,35 +553,22 @@ export const api = {
 };
 
 // ── Session activity tracking ────────────────────────────────────────────
-
-export function updateLastActivity() {
-  try {
-    getStorage().setItem('pymes_last_activity', String(Date.now()));
-  } catch {}
+let _lastActivity = Date.now();
+function updateLastActivity() {
+  _lastActivity = Date.now();
+  try { getStorage().setItem('pymes_last_activity', String(_lastActivity)); } catch { /* ignore */ }
 }
 
-export function isSessionTimedOut(): boolean {
+export function isSessionExpiredByInactivity(): boolean {
   try {
-    const ts = getStorage().getItem('pymes_last_activity');
-    if (!ts) return true;
-    return (Date.now() - parseInt(ts, 10)) > INACTIVITY_TIMEOUT_MS;
-  } catch {
-    return true;
-  }
+    const stored = getStorage().getItem('pymes_last_activity');
+    if (!stored) return false;
+    return Date.now() - Number(stored) > INACTIVITY_TIMEOUT_MS;
+  } catch { return false; }
 }
 
-export function getInactivityMs(): number {
-  try {
-    const ts = getStorage().getItem('pymes_last_activity');
-    if (!ts) return INACTIVITY_TIMEOUT_MS;
-    return Date.now() - parseInt(ts, 10);
-  } catch {
-    return INACTIVITY_TIMEOUT_MS;
-  }
-}
-
-if (typeof window !== 'undefined') {
-  const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'mousemove'];
+export function startActivityTracking() {
+  const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
   let throttleTimer: ReturnType<typeof setTimeout> | null = null;
   const onActivity = () => {
     if (throttleTimer) return;
