@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { openExternal } from "@/lib/platform";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -2049,12 +2050,15 @@ function AiTab() {
 
 export default function Settings() {
   const { user } = useAuth();
+  const [location, navigate] = useLocation();
+  const params = new URLSearchParams(location.split("?")[1] || "");
+  const tab = params.get("tab") || "workspace";
   const isPlatformAdmin = user?.is_platform_admin === true;
 
   return (
     <div className="p-6 space-y-6">
       <PageHeader title="Configuración" />
-      <Tabs defaultValue="workspace">
+      <Tabs value={tab} onValueChange={(v) => navigate(`/settings?tab=${v}`, { replace: true })}>
         <TabsList className="bg-card border border-border">
           <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">
             <Building2 className="h-4 w-4 mr-2" />Workspace
