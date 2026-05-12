@@ -103,6 +103,7 @@ jobs:
             apps/web/pnpm-lock.yaml
 
       - name: Install dependencies (API / shared)
+        if: steps.target.outputs.type == 'api'
         run: pnpm install --frozen-lockfile
 
       - name: Install dependencies (web)
