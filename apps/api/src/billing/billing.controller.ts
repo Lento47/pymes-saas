@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Logger, Param, Post, Query, RawBodyRequest, Req, Res, UseGuards, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { PaddleSdkService } from './paddle-sdk.service';
@@ -167,7 +168,7 @@ export class BillingController {
   @UseGuards(JwtAuthGuard)
   async getInvoicePdf(
     @CurrentUser() user: AuthUser,
-    @Param('id') invoiceId: string,
+    @Param('id', ValidateUUIDPipe) invoiceId: string,
     @Res() res: Response,
   ) {
     const { buffer, filename } = await this.billingInvoice.getPdfBuffer(invoiceId);
