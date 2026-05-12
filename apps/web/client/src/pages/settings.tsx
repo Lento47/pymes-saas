@@ -5,8 +5,9 @@ import { openExternal } from "@/lib/platform";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { PageHeader } from "@/components/shared/page-header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { SamlConfig } from "@/components/settings/saml-config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -2072,31 +2073,6 @@ export default function Settings() {
     <div className="p-6 space-y-6">
       <PageHeader title="Configuración" />
       <Tabs value={tab} onValueChange={(v) => navigate(`/settings?tab=${v}`, { replace: true })}>
-        <TabsList className="bg-card border border-border">
-          <TabsTrigger value="workspace" className="data-[state=active]:bg-elevated">
-            <Building2 className="h-4 w-4 mr-2" />Workspace
-          </TabsTrigger>
-          <TabsTrigger value="members" className="data-[state=active]:bg-elevated">
-            <Users className="h-4 w-4 mr-2" />Miembros
-          </TabsTrigger>
-          <TabsTrigger value="channels" className="data-[state=active]:bg-elevated">
-            <PlugZap className="h-4 w-4 mr-2" />Canales
-          </TabsTrigger>
-          <TabsTrigger value="departments" className="data-[state=active]:bg-elevated">
-            <Layers className="h-4 w-4 mr-2" />Departamentos
-          </TabsTrigger>
-          <TabsTrigger value="integrations" className="data-[state=active]:bg-elevated">
-            <Plug className="h-4 w-4 mr-2" />Integraciones
-          </TabsTrigger>
-          <TabsTrigger value="ai" className="data-[state=active]:bg-elevated">
-            <BrainCircuit className="h-4 w-4 mr-2" />Inteligencia Artificial
-          </TabsTrigger>
-          {isPlatformAdmin && (
-            <TabsTrigger value="platform" className="data-[state=active]:bg-elevated">
-              <ShieldCheck className="h-4 w-4 mr-2" />Plataforma
-            </TabsTrigger>
-          )}
-        </TabsList>
         <Card className="mt-4 bg-card border-border">
           <CardContent className="pt-6">
             <TabsContent value="workspace"><WorkspaceTab /></TabsContent>
@@ -2105,6 +2081,7 @@ export default function Settings() {
             <TabsContent value="departments"><DepartmentsTab /></TabsContent>
             <TabsContent value="integrations"><IntegrationsTab /></TabsContent>
             <TabsContent value="ai"><AiTab /></TabsContent>
+            <TabsContent value="saml"><SamlConfig /></TabsContent>
             {isPlatformAdmin && (
               <TabsContent value="platform"><PlatformTab /></TabsContent>
             )}
