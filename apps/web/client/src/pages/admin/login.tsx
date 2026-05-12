@@ -1,10 +1,30 @@
 import { useEffect, useState } from "react";
 import { ShieldCheck, Loader2 } from "lucide-react";
+import { setAuthState } from "@/lib/api";
 
 export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
+  const adminToken = params.get("admin_token");
+  const adminRefresh = params.get("admin_refresh");
+  const adminSlug = params.get("admin_slug");
+
+  useEffect(() => {
+    if (adminToken && adminSlug) {
+      setAuthState(adminToken, adminSlug, adminRefresh ?? undefined);
+      window.location.replace("/admin");
+    }
+  }, [adminToken, adminSlug, adminRefresh]);
+
+  if (adminToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-sidebar">
+        <Loader2 className="w-6 h-6 text-amber-400 animate-spin" />
+      </div>
+    );
+  }
+
   const error = params.get("error");
   const errorMsg =
     error === "not_admin" ? "Este correo no tiene acceso de administrador."
