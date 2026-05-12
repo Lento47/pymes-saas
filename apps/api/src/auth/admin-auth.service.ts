@@ -5,11 +5,11 @@ import { RefreshTokenService } from './refresh-token.service';
 import { JwtPayload } from './strategies/jwt.strategy';
 import * as crypto from 'crypto';
 
-const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN ?? '';
-const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID ?? '';
-const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET ?? '';
+const AUTH0_DOMAIN = (process.env.AUTH0_DOMAIN ?? '').trim();
+const AUTH0_CLIENT_ID = (process.env.AUTH0_CLIENT_ID ?? '').trim();
+const AUTH0_CLIENT_SECRET = (process.env.AUTH0_CLIENT_SECRET ?? '').trim();
 const ADMIN_DOMAINS = (process.env.AUTH0_ADMIN_DOMAINS ?? '').split(',').map(d => d.trim()).filter(Boolean);
-const PUBLIC_URL = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
+const PUBLIC_URL = (process.env.PUBLIC_URL ?? 'https://pymeshub.lat').trim();
 
 @Injectable()
 export class AdminAuthService {
