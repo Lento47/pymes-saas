@@ -7,9 +7,10 @@ import { AiModule } from '../ai/ai.module';
 import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
 import { EventsModule } from '../gateways/events.module';
+import { FeaturesModule } from '../features/features.module';
 
 @Module({
-  imports: [CryptoModule, BillingModule, AiModule, AuthModule, EmailModule, EventsModule],
+  imports: [CryptoModule, BillingModule, AiModule, AuthModule, EmailModule, EventsModule, FeaturesModule],
   controllers: [WorkspacesController],
   providers: [WorkspacesService],
   exports: [WorkspacesService],

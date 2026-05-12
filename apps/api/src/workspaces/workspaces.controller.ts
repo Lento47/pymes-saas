@@ -21,6 +21,7 @@ import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { FeaturesService } from '../features/features.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 
 @Controller('workspaces')
@@ -29,6 +30,7 @@ export class WorkspacesController {
   constructor(
     private readonly service: WorkspacesService,
     private readonly planLimits: PlanLimitsService,
+    private readonly features: FeaturesService,
   ) {}
 
   // ── Workspace ──────────────────────────────────────────────────────────────
@@ -46,6 +48,11 @@ export class WorkspacesController {
   @Get('current/subscription')
   getSubscription(@CurrentUser('workspace_id') workspaceId: string) {
     return this.service.getSubscription(workspaceId);
+  }
+
+  @Get('current/features')
+  getFeatures(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.features.getEffectiveFeatures(workspaceId);
   }
 
   @Get('current/stats')

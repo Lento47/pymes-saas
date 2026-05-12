@@ -22,6 +22,7 @@ import { FeatureFlagGuard, RequireFeature } from '../feature-flags/feature-flags
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { FeaturesService } from '../features/features.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
 @Controller('automations')
@@ -29,6 +30,7 @@ export class AutomationsController {
   constructor(
     private readonly automationsService: AutomationsService,
     private readonly planLimits: PlanLimitsService,
+    private readonly features: FeaturesService,
   ) {}
 
   @Get()
@@ -47,6 +49,7 @@ export class AutomationsController {
     @CurrentUser() user: any,
     @Body() dto: CreateAutomationDto,
   ) {
+    await this.features.assertEnabled(user.workspace_id, 'automations');
     await this.planLimits.enforceAutomations(user.workspace_id);
     // Advanced condition builder requires GROWTH+
     if (dto.condition_config_json && Object.keys(dto.condition_config_json).length > 0) {

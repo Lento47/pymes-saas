@@ -20,6 +20,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { FeaturesService } from '../features/features.service';
 
 @Controller('contacts')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -27,6 +28,7 @@ export class ContactsController {
   constructor(
     private readonly service: ContactsService,
     private readonly planLimits: PlanLimitsService,
+    private readonly features: FeaturesService,
   ) {}
 
   @Get()
@@ -38,11 +40,12 @@ export class ContactsController {
   }
 
   @Post()
-  @Roles(WorkspaceUserRole.AGENT)
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.AGENT)
   async create(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateContactDto,
   ) {
+    await this.features.assertEnabled(workspaceId, 'contacts');
     await this.planLimits.enforceContacts(workspaceId);
     return this.service.create(workspaceId, dto);
   }

@@ -4,12 +4,13 @@ import { ConversationsModule } from '../conversations/conversations.module';
 import { HaciendaModule } from '../hacienda/hacienda.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
+import { FeaturesModule } from '../features/features.module';
 import { InvoicesController } from './invoices.controller';
 import { InvoicesService } from './invoices.service';
 import { RemindersService } from './reminders.service';
 
 @Module({
-  imports: [AiModule, ConversationsModule, HaciendaModule, NotificationsModule, FeatureFlagsModule],
+  imports: [AiModule, ConversationsModule, HaciendaModule, NotificationsModule, FeatureFlagsModule, FeaturesModule],
   controllers: [InvoicesController],
   providers: [InvoicesService, RemindersService],
 })

@@ -25,6 +25,7 @@ import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { CreateInvoicePaymentDto } from './dto/create-invoice-payment.dto';
 import { InvoicesService } from './invoices.service';
 import { RemindersService } from './reminders.service';
+import { FeaturesService } from '../features/features.service';
 
 @Controller('invoices')
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureFlagGuard)
@@ -34,6 +35,7 @@ export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
     private readonly remindersService: RemindersService,
+    private readonly features: FeaturesService,
   ) {}
 
   @Get()
@@ -47,10 +49,11 @@ export class InvoicesController {
 
   @Post()
   @Roles(WorkspaceUserRole.AGENT)
-  create(
+  async create(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: CreateInvoiceDto,
   ) {
+    await this.features.assertEnabled(workspaceId, 'billing');
     return this.invoicesService.create(workspaceId, dto);
   }
 

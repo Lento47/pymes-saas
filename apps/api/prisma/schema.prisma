@@ -31,6 +31,7 @@ enum WorkspacePlan {
   BUSINESS
   ENTERPRISE
   BUSINESS_PLUS
+  BETA_INFORMAL
 }
 
 enum BillingProvider {
@@ -228,6 +229,9 @@ model Workspace {
   status        WorkspaceStatus @default(ACTIVE)
   plan          WorkspacePlan   @default(FREE)
   settings_json Json?           @db.JsonB
+  beta_profile  String?
+  features_json Json?           @db.JsonB
+  limits_json   Json?           @db.JsonB
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

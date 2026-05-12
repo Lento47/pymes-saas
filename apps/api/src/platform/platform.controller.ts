@@ -19,6 +19,7 @@ import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdatePlatformUserPasswordDto } from './dto/update-platform-user-password.dto';
 import { UpdatePlatformUserStatusDto } from './dto/update-platform-user-status.dto';
 import { UpdateWorkspaceBillingDto } from './dto/update-workspace-billing.dto';
+import { UpdateWorkspaceFeaturesDto } from './dto/update-workspace-features.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 
@@ -68,6 +69,20 @@ export class PlatformController {
     @Body() dto: UpdateWorkspaceBillingDto,
   ) {
     return this.service.updateWorkspaceBilling(slug, user.id, dto);
+  }
+
+  @Get('workspaces/:slug/features')
+  getWorkspaceFeatures(@Param('slug') slug: string) {
+    return this.service.getWorkspaceFeatures(slug);
+  }
+
+  @Patch('workspaces/:slug/features')
+  updateWorkspaceFeatures(
+    @Param('slug') slug: string,
+    @CurrentUser() user: AuthUser,
+    @Body() dto: UpdateWorkspaceFeaturesDto,
+  ) {
+    return this.service.updateWorkspaceFeatures(slug, user.id, dto);
   }
 
   @Get('users')

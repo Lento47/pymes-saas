@@ -4,9 +4,10 @@ import { AutomationsController } from './automations.controller';
 import { WorkersModule } from '../workers/workers.module';
 import { BillingModule } from '../billing/billing.module';
 import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
+import { FeaturesModule } from '../features/features.module';
 
 @Module({
-  imports: [WorkersModule, BillingModule, FeatureFlagsModule],
+  imports: [WorkersModule, BillingModule, FeatureFlagsModule, FeaturesModule],
   controllers: [AutomationsController],
   providers: [AutomationsService],
   exports: [AutomationsService],

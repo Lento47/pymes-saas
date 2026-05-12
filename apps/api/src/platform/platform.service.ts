@@ -9,6 +9,7 @@ import { AssignMemberDto } from './dto/assign-member.dto';
 import { CreatePlatformUserDto } from './dto/create-platform-user.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateWorkspaceBillingDto } from './dto/update-workspace-billing.dto';
+import { UpdateWorkspaceFeaturesDto } from './dto/update-workspace-features.dto';
 import {
   BillingEvent,
   BillingInterval,
@@ -18,13 +19,19 @@ import {
   WorkspaceSubscription,
   WorkspaceSubscriptionStatus,
 } from '@prisma/client';
+import { FeaturesService } from '../features/features.service';
+import { AuditService } from '../audit/audit.service';
 import { stringifyJson } from '../common/prisma/json';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 
 @Injectable()
 export class PlatformService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly features: FeaturesService,
+    private readonly audit: AuditService,
+  ) {}
 
   private serializeBilling(
     workspace: { id: string; name: string; slug: string; plan: WorkspacePlan; status: string },
@@ -537,6 +544,86 @@ export class PlatformService {
     });
 
     return { message: `Workspace "${workspace.name}" marcado como eliminado.` };
+  }
+
+  // ── GET /platform/workspaces/:slug/features ─────────────────────────────
+
+  async getWorkspaceFeatures(slug: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { slug },
+      select: { id: true, plan: true, beta_profile: true, features_json: true, limits_json: true },
+    });
+    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+
+    const effective = await this.features.getEffectiveFeatures(workspace.id);
+    return {
+      workspace_id: workspace.id,
+      plan: effective.plan,
+      beta_profile: effective.beta_profile,
+      features: effective.features,
+      limits: effective.limits,
+      raw_overrides: {
+        features_json: workspace.features_json,
+        limits_json: workspace.limits_json,
+      },
+    };
+  }
+
+  // ── PATCH /platform/workspaces/:slug/features ────────────────────────────
+
+  async updateWorkspaceFeatures(slug: string, actorUserId: string, dto: UpdateWorkspaceFeaturesDto) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { slug },
+      select: { id: true, plan: true, beta_profile: true, features_json: true, limits_json: true },
+    });
+    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+
+    const before = {
+      plan: workspace.plan,
+      beta_profile: workspace.beta_profile,
+      features: workspace.features_json,
+      limits: workspace.limits_json,
+    };
+
+    const updateData: any = {};
+    if (dto.plan !== undefined) updateData.plan = dto.plan;
+    if (dto.beta_profile !== undefined) updateData.beta_profile = dto.beta_profile;
+    if (dto.features !== undefined) updateData.features_json = dto.features;
+    if (dto.limits !== undefined) updateData.limits_json = dto.limits;
+
+    const updated = await this.prisma.workspace.update({
+      where: { id: workspace.id },
+      data: updateData,
+      select: { id: true, plan: true, beta_profile: true, features_json: true, limits_json: true },
+    });
+
+    await this.audit.log(workspace.id, {
+      user_id: actorUserId,
+      action: 'workspace.features.updated',
+      entity_type: 'workspace',
+      entity_id: workspace.id,
+      before,
+      after: {
+        plan: updated.plan,
+        beta_profile: updated.beta_profile,
+        features: updated.features_json,
+        limits: updated.limits_json,
+        reason: dto.reason ?? null,
+      },
+    });
+
+    const effective = await this.features.getEffectiveFeatures(workspace.id);
+    return {
+      workspace_id: workspace.id,
+      plan: effective.plan,
+      beta_profile: effective.beta_profile,
+      features: effective.features,
+      limits: effective.limits,
+      raw_overrides: {
+        features_json: updated.features_json,
+        limits_json: updated.limits_json,
+      },
+    };
   }
 
   // ── GET /platform/stats ────────────────────────────────────────────────────
