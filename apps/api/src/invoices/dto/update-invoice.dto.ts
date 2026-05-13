@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Min,
   ValidateNested,
   Length,
 } from 'class-validator';
@@ -43,8 +44,8 @@ export class UpdateInvoiceDto {
   hacienda_status?: HaciendaStatus;
 
   @IsOptional()
-  @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
   amount?: number;
 
   @IsOptional()

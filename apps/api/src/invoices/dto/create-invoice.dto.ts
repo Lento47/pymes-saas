@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Min,
   ValidateNested,
   Length,
 } from 'class-validator';
@@ -39,8 +40,8 @@ export class CreateInvoiceDto {
   @IsEnum(HaciendaStatus)
   hacienda_status?: HaciendaStatus;
 
-  @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
   amount: number;
 
   @IsOptional()
