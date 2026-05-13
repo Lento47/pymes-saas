@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { apiErrorDescription } from '@/lib/api-error';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Copy, ExternalLink, Save, Shield } from 'lucide-react';
+import { Loader2, Copy, ExternalLink, Save, Shield, ToggleLeft, ToggleRight } from 'lucide-react';
 
 export function SamlConfig() {
   const { toast } = useToast();
@@ -18,29 +18,48 @@ export function SamlConfig() {
     queryFn: api.getWorkspace,
   });
 
-  const s = workspace?.settings_json || {};
-  const existing = s.saml_idp_config || {};
+  const workspaceId = workspace?.id;
 
-  const [entityId, setEntityId] = useState(existing.entityId || '');
-  const [ssoUrl, setSsoUrl] = useState(existing.ssoUrl || '');
-  const [certificate, setCertificate] = useState(existing.certificate || '');
+  const { data: ssoConfig, isLoading } = useQuery({
+    queryKey: ['/api/auth/saml/config', workspaceId],
+    queryFn: () => api.getSamlConfig(workspaceId!),
+    enabled: !!workspaceId,
+  });
 
-  useEffect(() => {
-    setEntityId(existing.entityId || '');
-    setSsoUrl(existing.ssoUrl || '');
-    setCertificate(existing.certificate || '');
-  }, [workspace]);
+  const [entityId, setEntityId] = useState('');
+  const [ssoUrl, setSsoUrl] = useState('');
+  const [certificate, setCertificate] = useState('');
+  const [initialized, setInitialized] = useState(false);
+
+  if (ssoConfig && !initialized) {
+    setEntityId(ssoConfig.idp_entity_id || '');
+    setSsoUrl(ssoConfig.idp_sso_url || '');
+    setCertificate('');
+    setInitialized(true);
+  }
 
   const saveMutation = useMutation({
-    mutationFn: () => api.updateWorkspace({
-      settings_json: {
-        ...s,
-        saml_idp_config: { entityId, ssoUrl, certificate },
-      },
+    mutationFn: () => api.upsertSamlConfig(workspaceId!, {
+      idp_entity_id: entityId,
+      idp_sso_url: ssoUrl,
+      ...(certificate ? { idp_certificate: certificate } : {}),
     }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['/api/workspaces/current'] });
+      qc.invalidateQueries({ queryKey: ['/api/auth/saml/config', workspaceId] });
+      setCertificate('');
       toast({ title: 'Configuración SAML guardada' });
+    },
+    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: () =>
+      ssoConfig?.enabled
+        ? api.disableSaml(workspaceId!)
+        : api.enableSaml(workspaceId!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/auth/saml/config', workspaceId] });
+      toast({ title: ssoConfig?.enabled ? 'SAML desactivado' : 'SAML activado' });
     },
     onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
   });
@@ -48,19 +67,46 @@ export function SamlConfig() {
   const slug = workspace?.slug || 'TU_SLUG';
   const spMetadataUrl = `${window.location.origin}/api/auth/saml/${slug}/metadata`;
   const spLoginUrl = `${window.location.origin}/api/auth/saml/${slug}/login`;
+  const isEnabled = ssoConfig?.enabled || false;
+  const hasCert = ssoConfig?.has_certificate || false;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
-          <Shield className="w-4 h-4 text-violet-400" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
+            <Shield className="w-4 h-4 text-violet-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">SAML SSO</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Conectá PymesHub con tu proveedor de identidad (Azure AD, Okta, PingOne, etc.)
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">SAML SSO</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Conectá PymesHub con tu proveedor de identidad (Azure AD, Okta, PingOne, etc.)
-          </p>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => toggleMutation.mutate()}
+          disabled={toggleMutation.isPending || (!hasCert && !isEnabled)}
+        >
+          {toggleMutation.isPending ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+          ) : isEnabled ? (
+            <ToggleRight className="w-3.5 h-3.5 text-green-400 mr-1" />
+          ) : (
+            <ToggleLeft className="w-3.5 h-3.5 text-muted-foreground mr-1" />
+          )}
+          {isEnabled ? 'Activado' : 'Desactivado'}
+        </Button>
       </div>
 
       {/* SP Configuration */}
@@ -113,11 +159,11 @@ export function SamlConfig() {
           />
         </div>
         <div>
-          <Label className="text-foreground">X.509 Certificate</Label>
+          <Label className="text-foreground">X.509 Certificate {hasCert && <span className="text-xs text-green-400 ml-1">(ya configurado)</span>}</Label>
           <Textarea
             value={certificate}
             onChange={e => setCertificate(e.target.value)}
-            placeholder="MIIC8DCCAdigAwIBAgI..."
+            placeholder={hasCert ? 'Dejar vacío para mantener el actual' : 'MIIC8DCCAdigAwIBAgI...'}
             rows={4}
             className="mt-1 bg-[hsl(var(--elevated))] border-border text-xs font-mono"
           />
@@ -125,7 +171,7 @@ export function SamlConfig() {
 
         <Button
           onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending || !entityId || !ssoUrl || !certificate}
+          disabled={saveMutation.isPending || !entityId || !ssoUrl}
           className="w-full"
         >
           {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
