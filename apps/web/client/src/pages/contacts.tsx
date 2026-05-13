@@ -85,7 +85,7 @@ export default function ContactsPage() {
       setShowCreate(false);
       setEditingId(null);
       setForm({ firstName: "", lastName: "", email: "", phone: "", company: "", type: "CUSTOMER" });
-      toast({ title: editingId ? "Contact updated" : "Contact created" });
+      toast({ title: editingId ? "Contacto actualizado" : "Contacto creado" });
     },
     onError: (err: any) => {
       const apiMsg = Array.isArray(err?.message) ? err.message.join(", ") : err?.message ?? "";
@@ -102,10 +102,10 @@ export default function ContactsPage() {
     mutationFn: (id: string) => api.deleteContact(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-      toast({ title: "Contact deleted" });
+      toast({ title: "Contacto eliminado" });
     },
     onError: (err: any) => {
-      toast({ title: "Failed to delete contact", description: apiErrorDescription(err), variant: "destructive" });
+      toast({ title: "Error al eliminar contacto", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -113,16 +113,16 @@ export default function ContactsPage() {
 
   return (
     <div>
-      <PageHeader title={c.title} description="Manage your contacts and leads">
+      <PageHeader title={c.title} description="Gestioná tus contactos y leads">
         <Button size="sm" className="h-8 text-xs" onClick={() => {
           setEditingId(null);
           setForm({ firstName: "", lastName: "", email: "", phone: "", company: "", type: "CUSTOMER" });
           setShowCreate(true);
         }} data-testid="button-create-contact">
-          <Plus className="w-3.5 h-3.5 mr-1.5" /> New Contact
+          <Plus className="w-3.5 h-3.5 mr-1.5" /> Nuevo contacto
         </Button>
         <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setImportOpen(true)}>
-          <Upload className="w-3.5 h-3.5 mr-1.5" /> Import CSV
+          <Upload className="w-3.5 h-3.5 mr-1.5" /> Importar CSV
         </Button>
       </PageHeader>
 
@@ -135,7 +135,7 @@ export default function ContactsPage() {
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
           <Input
-            placeholder="Search contacts..."
+            placeholder="Buscar contactos..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-8 h-8 text-xs bg-card border-border"
@@ -148,7 +148,7 @@ export default function ContactsPage() {
           </SelectTrigger>
           <SelectContent>
             {TYPE_OPTIONS.map((t) => (
-              <SelectItem key={t} value={t}>{t === "ALL" ? "All Types" : t}</SelectItem>
+              <SelectItem key={t} value={t}>{t === "ALL" ? "Todos" : t}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -157,18 +157,18 @@ export default function ContactsPage() {
       {isLoading ? (
         <PageLoader />
       ) : contactList.length === 0 ? (
-        <EmptyState icon={Users} title={c.noContacts} description="Create your first contact to get started." />
+        <EmptyState icon={Users} title={c.noContacts} description="Creá tu primer contacto para empezar." />
       ) : (
         <div className="rounded-lg border border-border overflow-x-auto bg-card">
           <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Name</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Company</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Nombre</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Empresa</TableHead>
                 <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Email</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Phone</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Type</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Last Activity</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Teléfono</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Tipo</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Última actividad</TableHead>
                 <TableHead className="text-[11px] text-muted-foreground/60 font-medium w-12"></TableHead>
               </TableRow>
             </TableHeader>
@@ -217,11 +217,11 @@ export default function ContactsPage() {
                           setShowCreate(true);
                         }}>
                           <Pencil className="w-4 h-4 mr-2" />
-                          Edit Contact
+                          Editar contacto
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteMutation.mutate(c.id)}>
                           <Trash className="w-4 h-4 mr-2" />
-                          Delete Contact
+                          Eliminar contacto
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -245,16 +245,16 @@ export default function ContactsPage() {
       }}>
         <DialogContent className="bg-card border-border sm:max-w-[420px]" data-testid="dialog-create-contact">
           <DialogHeader>
-            <DialogTitle className="text-sm">{editingId ? "Edit Contact" : "New Contact"}</DialogTitle>
+            <DialogTitle className="text-sm">{editingId ? "Editar contacto" : "Nuevo contacto"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground/60">First Name</Label>
+                <Label className="text-xs text-muted-foreground/60">Nombre</Label>
                 <Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="h-8 text-xs bg-background border-border" data-testid="input-first-name" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground/60">Last Name</Label>
+                <Label className="text-xs text-muted-foreground/60">Apellido</Label>
                 <Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="h-8 text-xs bg-background border-border" data-testid="input-last-name" />
               </div>
             </div>
@@ -294,11 +294,11 @@ export default function ContactsPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground/60">Company</Label>
+              <Label className="text-xs text-muted-foreground/60">Empresa</Label>
               <Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} className="h-8 text-xs bg-background border-border" data-testid="input-contact-company" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground/60">Type</Label>
+              <Label className="text-xs text-muted-foreground/60">Tipo</Label>
               <Select value={form.type} onValueChange={(val) => setForm({ ...form, type: val })}>
                 <SelectTrigger className="h-8 text-xs bg-background border-border" data-testid="select-contact-type">
                   <SelectValue />
@@ -312,10 +312,10 @@ export default function ContactsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setShowCreate(false)} className="h-8 text-xs" data-testid="button-cancel">Cancel</Button>
+            <Button variant="outline" size="sm" onClick={() => setShowCreate(false)} className="h-8 text-xs" data-testid="button-cancel">Cancelar</Button>
             <Button size="sm" className="h-8 text-xs" onClick={() => createMutation.mutate()} disabled={createMutation.isPending} data-testid="button-save-contact">
               {createMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-              {editingId ? "Save Changes" : "Create"}
+              {editingId ? "Guardar cambios" : "Crear"}
             </Button>
           </DialogFooter>
         </DialogContent>
