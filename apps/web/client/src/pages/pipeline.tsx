@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { Plus, User, Calendar, DollarSign, Trash2, Trophy, GripVertical, KanbanSquare, Upload } from "lucide-react";
 import { useLocation } from "wouter";
 import { DealSheet } from "@/components/pipeline/DealSheet";
+import { PageLoader } from "@/components/shared/loading-spinner";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import CsvImportModal from "@/components/import/csv-import-modal";
@@ -95,7 +97,7 @@ function KanbanColumn({ stage, onDragStart, onDrop, onAddDeal, onClickDeal }: { 
 
 export default function PipelinePage() {
   const qc = useQueryClient(); const { toast } = useToast();
-  const { data: stages = [], isLoading } = useQuery({ queryKey: ["/api/pipeline/stages"], queryFn: () => api.getPipelineStages() as Promise<Stage[]>, staleTime: 15000 });
+  const { data: stages = [], isLoading, isError } = useQuery({ queryKey: ["/api/pipeline/stages"], queryFn: () => api.getPipelineStages() as Promise<Stage[]>, staleTime: 15000 });
   const [modalOpen, setModalOpen] = useState(false); const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [defaultStage, setDefaultStage] = useState<string>();
@@ -126,7 +128,15 @@ export default function PipelinePage() {
       </header>
 
       {isLoading ? (
-        <div className="flex-1 flex items-center justify-center text-muted-foreground/75 text-sm">Cargando pipeline...</div>
+        <div className="flex-1"><PageLoader /></div>
+      ) : isError ? (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <EmptyState icon={KanbanSquare} title="Error al cargar" description="No se pudo cargar el pipeline. Reintentá." />
+        </div>
+      ) : stages.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <EmptyState icon={KanbanSquare} title="Sin etapas" description="Creá tu primera etapa para empezar a gestionar deals." />
+        </div>
       ) : (
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
           <div className="flex gap-3 p-4 h-full items-start" style={{ minWidth: stages.length * 280 }}>
