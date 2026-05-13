@@ -103,7 +103,7 @@ export default function DashboardPage() {
   const dash = messages.dashboard;
   const [activeTab, setActiveTab] = useState<"tasks" | "messages">("tasks");
 
-  const { data: todayStats, isLoading: statsLoading } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
+  const { data: todayStats, isLoading: statsLoading, isError: statsError } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
   const { data: dashboard } = useQuery({ queryKey: ["/api/workspaces/current/dashboard"], queryFn: api.getDashboard, staleTime: 0, refetchOnMount: true, refetchInterval: 60000 });
   const workspaceStats = dashboard?.stats;
   const workspace = dashboard?.workspace;
@@ -115,6 +115,9 @@ export default function DashboardPage() {
   const { data: onboardStatus } = useQuery({ queryKey: ["onboarding-status"], queryFn: api.getOnboardingStatus, staleTime: 5 * 60 * 1000, retry: false });
   const { data: lowStock } = useQuery({ queryKey: ["low-stock-dash"], queryFn: api.getLowStock, refetchInterval: 120000, retry: false });
   const { data: pendingApprovals } = useQuery({ queryKey: ["pending-approvals"], queryFn: api.getPendingApprovals, refetchInterval: 30000, retry: false });
+
+  const isLoading = statsLoading && convsLoading && tasksLoading;
+  const hasError = statsError;
 
   const approveMut = useMutation({
     mutationFn: (id: string) => api.approveInvoice(id),
@@ -160,6 +163,19 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-full bg-background">
+      {hasError && (
+        <div className="px-4 sm:px-6 pt-3">
+          <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2.5 text-xs text-red-400">
+            No se pudieron cargar algunos datos del dashboard. <button className="underline hover:text-red-300" onClick={() => window.location.reload()}>Reintentar</button>
+          </div>
+        </div>
+      )}
+      {isLoading ? (
+        <div className="px-4 sm:px-6 pt-6 space-y-4">
+          {[1,2,3].map(i => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
+        </div>
+      ) : (
+      <>
       {/* Quick Start Checklist */}
       <div className="px-4 sm:px-6 pt-3 sm:pt-4">
         <QuickStartChecklist
@@ -458,6 +474,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
       <OnboardingTour />
     </div>
   );
