@@ -468,6 +468,7 @@ model Contact {
   external_ref             String?
   telegram_chat_id         String?
   tags_json                Json?       @db.JsonB
+  extracted_data_json     Json?       @db.JsonB
   last_interaction_at      DateTime?
 
   created_at DateTime @default(now())

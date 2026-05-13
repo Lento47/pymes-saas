@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { ContactsService } from './contacts.service';
+import { ContactMetricsService, ContactMetrics, ExtractedData } from './contact-metrics.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { FilterContactsDto } from './dto/filter-contacts.dto';
@@ -27,6 +28,7 @@ import { FeaturesService } from '../features/features.service';
 export class ContactsController {
   constructor(
     private readonly service: ContactsService,
+    private readonly metricsService: ContactMetricsService,
     private readonly planLimits: PlanLimitsService,
     private readonly features: FeaturesService,
   ) {}
@@ -75,5 +77,22 @@ export class ContactsController {
     @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.service.remove(workspaceId, id);
+  }
+
+  @Get(':id/metrics')
+  getMetrics(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id', ValidateUUIDPipe) id: string,
+  ): Promise<ContactMetrics> {
+    return this.metricsService.getMetrics(workspaceId, id);
+  }
+
+  @Post(':id/extract')
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.AGENT)
+  extractData(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id', ValidateUUIDPipe) id: string,
+  ): Promise<ExtractedData> {
+    return this.metricsService.extractData(workspaceId, id);
   }
 }
