@@ -16,8 +16,6 @@ import { es } from "date-fns/locale";
 import OnboardingTour from "@/components/shared/onboarding-tour";
 import QuickStartChecklist from "@/components/shared/quick-start-checklist";
 
-const STATUS_BG = "https://raw.githubusercontent.com/Lento47/PymesHub-invoice/refs/heads/master/statusBackground.png";
-
 // ── Types ──
 interface PipelineDealSummary { value: string | null; currency: string; }
 interface PipelineStageSummary { id: string; name: string; color: string; deals: PipelineDealSummary[]; }
@@ -241,7 +239,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Status banner with image */}
-        <div className="relative rounded-md overflow-hidden border border-border/60 mb-4 min-h-[72px] sm:min-h-[88px]" style={{ backgroundImage: `url('${STATUS_BG}')`, backgroundSize: "cover", backgroundPosition: "center" }}>
+        <div className="relative rounded-md overflow-hidden border border-border/60 mb-4 min-h-[72px] sm:min-h-[88px] bg-gradient-to-r from-primary/5 via-background to-transparent">
           <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5 relative h-full">
             <div className="flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary/80" />
@@ -316,7 +314,7 @@ export default function DashboardPage() {
         {/* ── Left: Revenue + Today (8 col) ── */}
         <div className="lg:col-span-8 space-y-5">
           {/* Revenue Overview */}
-          <div className="rounded-md border border-border/60 bg-card/40 p-5">
+          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-sm font-medium text-foreground">{dash.revenueOverview}</h2>
@@ -335,7 +333,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Today: Tasks + Messages */}
-          <div className="rounded-md border border-border/60 bg-card/40 overflow-hidden">
+          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm overflow-hidden">
             <div className="flex items-center border-b border-border/60">
               {(["tasks", "messages"] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
@@ -390,7 +388,7 @@ export default function DashboardPage() {
         {/* ── Right: Pipeline + Activity + Insights + Quick Actions (4 col) ── */}
         <div className="lg:col-span-4 space-y-5">
           {/* Pipeline */}
-          <div className="rounded-md border border-border/60 bg-card/40 p-5">
+          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-medium text-foreground">{dash.pipelineOverview}</h2>
               <Link href="/pipeline" className="text-[11px] text-primary hover:text-primary/80">{dash.viewPipeline} →</Link>
@@ -423,7 +421,7 @@ export default function DashboardPage() {
           </div>
 
           {/* AI Insights */}
-          <div className="rounded-md border border-border/60 bg-card/40 p-5">
+          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-[15px] h-[15px] text-primary" />
               <h2 className="text-sm font-medium text-foreground">{dash.aiInsights}</h2>
@@ -452,7 +450,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="rounded-md border border-border/60 bg-card/40 p-5">
+          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <h2 className="text-sm font-medium text-foreground mb-4">{dash.quickActions}</h2>
             <div className="grid grid-cols-3 gap-2">
               {[

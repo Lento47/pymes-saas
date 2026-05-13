@@ -2,19 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Dark theme (default) ── */
+/* ── Dark theme (default) — deep navy palette ── */
 :root {
-  --bg:           224 7% 10%;    /* #181818 — app shell */
-  --bg-sidebar:   220 8% 9%;     /* #151517 — sidebar */
-  --bg-card:      220 7% 13%;    /* #1f2024 — card / panel */
-  --bg-elevated:  220 7% 16%;    /* #262729 — dialog, dropdown */
-  --bg-hover:     220 6% 18%;    /* #2b2c2f — row hover */
-  --bg-active:    220 7% 20%;    /* #303236 — active nav item bg */
-  --border:       220 6% 22%;    /* single border color ~#333438 */
+  --bg:           228 74% 7%;    /* #05091d — app shell */
+  --bg-sidebar:   228 84% 5%;    /* #020616 — sidebar */
+  --bg-card:      228 38% 12%;   /* #11184a — card / panel */
+  --bg-elevated:  228 32% 16%;   /* #1b2350 — dialog, dropdown */
+  --bg-hover:     228 25% 18%;   /* #222958 — row hover */
+  --bg-active:    228 22% 22%;   /* #2b326b — active nav item bg */
+  --border:       228 45% 22%;   /* #1e2861 — indigo-tinted border */
   --fg:           0 0% 93%;      /* #ededed — primary */
-  --fg-2:         0 0% 62%;      /* #9e9e9e — secondary */
-  --fg-3:         0 0% 42%;      /* #6b6b6b — disabled / placeholder */
-  --accent:       214 89% 52%;   /* #1a73e8 — CF-style blue */
+  --fg-2:         228 25% 65%;   /* blue-tinted secondary */
+  --fg-3:         228 18% 48%;   /* blue-tinted disabled */
+  --accent:       38 95% 54%;    /* #F59E0B — amber */
   --accent-fg:    0 0% 100%;
   --danger:       0 72% 51%;
   --danger-fg:    0 0% 100%;
@@ -50,11 +50,11 @@
   --sidebar-accent:    var(--bg-active);
   --sidebar-accent-foreground: var(--fg);
   --sidebar-ring:      var(--accent);
-  --chart-1:           240 65% 52%;
-  --chart-2:           145 63% 42%;
-  --chart-3:           38 95% 54%;
-  --chart-4:           270 60% 62%;
-  --chart-5:           0 72% 51%;
+  --chart-1:           38 95% 54%;   /* amber */
+  --chart-2:           228 65% 55%;  /* indigo */
+  --chart-3:           145 63% 42%;  /* green */
+  --chart-4:           270 60% 62%;  /* purple */
+  --chart-5:           0 72% 51%;    /* red */
   --radius: 0.25rem;
 }
 

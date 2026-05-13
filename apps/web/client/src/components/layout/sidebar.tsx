@@ -210,11 +210,17 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
       <aside
         className={cn(
-          "flex flex-col shrink-0 border-r border-border/60 bg-sidebar transition-all duration-300 ease-out overflow-hidden",
+          "flex flex-col shrink-0 transition-all duration-300 ease-out overflow-hidden",
           sidebarOpen ? "w-[260px]" : "w-0 border-r-0",
           isMobile && "fixed left-0 top-0 z-50 shadow-lg h-[100dvh]",
-          isMobile && sidebarOpen && "w-[260px] border-r",
+          isMobile && sidebarOpen && "w-[260px]",
         )}
+        style={{
+          background: "linear-gradient(180deg, hsl(228 84% 5% / 0.97) 0%, hsl(228 74% 7% / 0.97) 100%)",
+          backdropFilter: "blur(24px)",
+          borderRight: sidebarOpen && !isMobile ? "1px solid hsl(228 45% 22% / 0.6)" : undefined,
+          boxShadow: sidebarOpen ? "inset 0 1px 0 hsl(228 45% 35% / 0.08)" : undefined,
+        }}
       >
         {isMobile && (
           <div className="shrink-0 flex justify-end px-3 py-3 border-b border-border/40 pt-safe">
@@ -318,7 +324,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           {NAV_GROUPS.map((group) => (
             <div key={group.key} className="space-y-1.5">
               <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-2">
-                <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                <div className="w-1 h-1 rounded-full bg-primary/40" />
                 <span>{(copy.groups as any)[group.key]}</span>
               </div>
               <div className="space-y-1">
