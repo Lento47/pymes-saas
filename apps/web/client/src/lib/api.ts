@@ -296,6 +296,8 @@ export const api = {
   createContact: (data: any) => request<any>("POST", "/api/contacts", data),
   updateContact: (id: string, data: any) => request<any>("PATCH", `/api/contacts/${id}`, data),
   deleteContact: (id: string) => request<any>("DELETE", `/api/contacts/${id}`),
+  getContactMetrics: (id: string) => request<any>("GET", `/api/contacts/${id}/metrics`),
+  extractContactData: (id: string) => request<any>("POST", `/api/contacts/${id}/extract`),
   getTasks: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return request<any>("GET", `/api/tasks${qs}`);
