@@ -216,6 +216,9 @@ export const translations = {
       primaryCta: "I want early access",
       secondaryCta: "Explore the platform",
       note: "No commitment. No card. Just your email so we can notify you when it is ready.",
+      trustedByPrefix: "Trusted by ",
+      trustedByCount: "200+ SMEs",
+      trustedBySuffix: " across LATAM",
       overview: {
         inbox: {
           title: "Omnichannel inbox",
@@ -233,6 +236,8 @@ export const translations = {
           title: "Performance overview",
           description: "One view for activity, revenue movement, and team momentum",
           metricLabel: "Total conversations handled",
+          metricValue: "2.45M",
+          metricChange: "+18.6%",
           timeframe: "Last 7 days",
           chartDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
           stats: [
@@ -245,6 +250,11 @@ export const translations = {
           title: "Smart automations",
           description:
             "Trigger reminders, handoffs, and follow-ups based on the live state of your workspace instead of manual checklists.",
+          chips: [
+            { step: "New lead", action: "Assign agent", color: "#4F6EF7" },
+            { step: "Proposal sent", action: "Schedule reminder", color: "#F59E0B" },
+            { step: "Invoice issued", action: "Send follow-up", color: "#25D366" },
+          ],
           statusLabel: "Optimization status",
           statusValue: "Active",
         },
@@ -901,6 +911,9 @@ export const translations = {
       primaryCta: "Quiero acceso anticipado",
       secondaryCta: "Explorar la plataforma",
       note: "Sin compromiso. Sin tarjeta. Solo tu correo para avisarte cuando esté lista.",
+      trustedByPrefix: "Con la confianza de ",
+      trustedByCount: "200+ PYMEs",
+      trustedBySuffix: " en LATAM",
       overview: {
         inbox: {
           title: "Una bandeja para todo",
@@ -918,6 +931,8 @@ export const translations = {
           title: "Ve lo que importa",
           description: "Dashboard en tiempo real. Cuánto cobras, cuánto demoras en responder, dónde se estancan los clientes.",
           metricLabel: "Conversaciones gestionadas",
+          metricValue: "2.45M",
+          metricChange: "+18.6%",
           timeframe: "Últimos 7 días",
           chartDays: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
           stats: [
@@ -930,6 +945,11 @@ export const translations = {
           title: "Menos trabajo manual",
           description:
             "Envía recordatorios automáticos, reasigna leads que envejecen, cobra facturas pendientes. Sin tocar nada.",
+          chips: [
+            { step: "Nuevo lead", action: "Asignar agente", color: "#4F6EF7" },
+            { step: "Propuesta enviada", action: "Programar recordatorio", color: "#F59E0B" },
+            { step: "Factura emitida", action: "Enviar seguimiento", color: "#25D366" },
+          ],
           statusLabel: "Automaciones activas",
           statusValue: "Activo 24/7",
         },

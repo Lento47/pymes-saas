@@ -169,7 +169,7 @@ export function LandingHubby() {
       {open && (
         <div
           className="absolute bottom-20 right-0 w-80 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300"
-          style={{ background: '#fff', border: '1px solid #e5e7eb' }}
+          style={{ background: '#0a1022', border: '1px solid rgba(255,255,255,0.07)' }}
         >
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-3" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
@@ -184,11 +184,11 @@ export function LandingHubby() {
           </div>
 
           {/* Messages */}
-          <div ref={chatRef} className="h-72 overflow-y-auto px-4 py-3 space-y-3" style={{ background: '#f9fafb' }}>
+          <div ref={chatRef} className="h-72 overflow-y-auto px-4 py-3 space-y-3" style={{ background: '#05091d' }}>
             {messages.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-sm text-gray-500 mb-2">¡Hola! Soy Hubby 🐾</p>
-                <p className="text-xs text-gray-400">Preguntame sobre PymesHub: funcionalidades, precios, cómo empezar...</p>
+                <p className="text-sm text-white/50 mb-2">¡Hola! Soy Hubby 🐾</p>
+                <p className="text-xs text-white/40">Preguntame sobre PymesHub: funcionalidades, precios, cómo empezar...</p>
               </div>
             )}
             {messages.map(m => (
@@ -197,7 +197,7 @@ export function LandingHubby() {
                   className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
                     m.role === 'user'
                       ? 'bg-amber-500 text-white rounded-tr-sm'
-                      : 'bg-white border border-gray-200 text-gray-800 rounded-tl-sm'
+                      : 'bg-white/[0.06] border border-white/[0.08] text-white/85 rounded-tl-sm'
                   }`}
                 >
                   {m.content || (loading && m.role === 'agent' ? (
@@ -213,7 +213,7 @@ export function LandingHubby() {
           </div>
 
           {/* Input */}
-          <div className="px-4 py-3 border-t border-gray-200 flex items-center gap-2" style={{ background: '#fff' }}>
+          <div className="px-4 py-3 border-t border-white/[0.07] flex items-center gap-2" style={{ background: '#0a1022' }}>
             <input
               ref={inputRef}
               value={input}
@@ -221,8 +221,8 @@ export function LandingHubby() {
               onKeyDown={e => { if (e.key === 'Enter') send(); }}
               placeholder="Preguntame algo..."
               disabled={loading}
-              className="flex-1 text-sm px-3 py-2 rounded-xl border border-gray-200 outline-none focus:border-amber-400 disabled:opacity-50 text-gray-900"
-              style={{ background: '#f9fafb' }}
+              className="flex-1 text-sm px-3 py-2 rounded-xl border border-white/[0.08] outline-none focus:border-amber-500 disabled:opacity-50 text-white placeholder:text-white/30"
+              style={{ background: '#05091d' }}
             />
             <button
               onClick={send}
@@ -246,10 +246,10 @@ export function LandingHubby() {
         <div className="relative transition-transform duration-300 group-hover:scale-110">
           <PetSvg />
           <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full animate-pulse"
-            style={{ background: '#ef4444', border: '2px solid white' }} />
+            style={{ background: '#ef4444', border: '2px solid #0a1022' }} />
         </div>
         <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <span className="text-xs font-medium bg-white text-gray-700 px-2.5 py-1.5 rounded-xl shadow whitespace-nowrap border border-gray-100">¡Hola! Preguntame 🐾</span>
+          <span className="text-xs font-medium bg-[#0a1022] text-white/85 px-2.5 py-1.5 rounded-xl shadow whitespace-nowrap border border-white/[0.07]">¡Hola! Preguntame 🐾</span>
         </div>
       </button>
     </div>
