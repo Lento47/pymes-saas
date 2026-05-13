@@ -310,6 +310,11 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sidebar-accent/20 hover:scrollbar-thumb-sidebar-accent/30">
+          {ws.startsWith("Admin Hub —") && (myWorkspaces as any[])?.length > 1 && (
+            <div className="mx-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300/90 leading-relaxed">
+              Estás en tu espacio personal de administración. Para gestionar una pyme, seleccionala en el menú de arriba.
+            </div>
+          )}
           {NAV_GROUPS.map((group) => (
             <div key={group.key} className="space-y-1.5">
               <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-2">
