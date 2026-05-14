@@ -168,6 +168,7 @@ export class InboundController {
                 phone_number_id: phoneNumberId,
                 waba_id: wabaId,
                 meta_message_id: msg.id,
+                raw_payload: body,
               },
             );
             this.logger.log(

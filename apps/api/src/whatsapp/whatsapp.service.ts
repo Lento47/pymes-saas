@@ -373,7 +373,9 @@ export class WhatsAppService {
     const payload = msg.raw_payload_json as any;
     if (!payload) throw new BadGatewayException('Media no disponible');
 
-    const msgPayload = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0] ?? payload;
+    const wrappedBody = payload?.raw_payload ?? payload;
+    const inner = wrappedBody?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+    const msgPayload = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0] ?? inner ?? payload;
     const mediaObj = msgPayload?.image ?? msgPayload?.document ?? msgPayload?.audio ?? msgPayload?.video;
     if (!mediaObj?.id) throw new BadGatewayException('No se encontró media en el mensaje');
 
