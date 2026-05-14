@@ -318,7 +318,31 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                   )}
                   <div className={cn("max-w-[68%] rounded-2xl px-3.5 py-2", isOutbound ? "bg-primary/20 rounded-tr-sm" : "bg-muted rounded-tl-sm")}>
                     {isFirst && !isOutbound && <div className="text-[10px] font-medium text-muted-foreground mb-1">{contactName}</div>}
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{msg.body_text || msg.body_html || msg.content || ""}</p>
+                    {(() => {
+                      const text = msg.body_text || msg.body_html || msg.content || "";
+                      if (text.startsWith("📍 ")) {
+                        const lines = text.split("\n");
+                        const label = lines[0].replace("📍 ", "");
+                        const coordsLine = lines.find((l: string) => l.includes(","));
+                        const [lat, lng] = coordsLine ? coordsLine.split(",").map((s: string) => s.trim()) : [];
+                        const mapsUrl = lat && lng ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}` : null;
+                        return (
+                          <div>
+                            <p className="text-sm font-medium text-foreground">📍 {label}</p>
+                            {lines.slice(1).filter((l: string) => !l.includes(",")).map((l: string, i: number) => (
+                              <p key={i} className="text-[11px] text-muted-foreground/80 mt-0.5">{l}</p>
+                            ))}
+                            {mapsUrl && (
+                              <a href={mapsUrl} target="_blank" rel="noreferrer"
+                                className="inline-flex items-center gap-1 mt-2 text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
+                                Ver en Google Maps →
+                              </a>
+                            )}
+                          </div>
+                        );
+                      }
+                      return <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{text}</p>;
+                    })()}
                     <div className={cn("text-[10px] text-muted-foreground mt-1", isOutbound ? "text-right" : "text-left")}>
                       {msgDate ? format(msgDate, "h:mm a") : ""}
                     </div>
