@@ -24,7 +24,7 @@ export class StorageController {
     this.basePath = this.config.get<string>('STORAGE_LOCAL_PATH') ?? path.join(process.cwd(), 'uploads');
   }
 
-  @Get(':key(.*)')
+  @Get('{*key}')
   serveFile(@Param('key') key: string, @Res() res: Response) {
     const resolved = path.resolve(this.basePath, key);
     if (!resolved.startsWith(path.resolve(this.basePath) + path.sep) && resolved !== path.resolve(this.basePath)) {
