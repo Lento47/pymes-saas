@@ -373,7 +373,8 @@ export class WhatsAppService {
     const payload = msg.raw_payload_json as any;
     if (!payload) throw new BadGatewayException('Media no disponible');
 
-    const mediaObj = payload.image ?? payload.document ?? payload.audio ?? payload.video;
+    const msgPayload = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0] ?? payload;
+    const mediaObj = msgPayload?.image ?? msgPayload?.document ?? msgPayload?.audio ?? msgPayload?.video;
     if (!mediaObj?.id) throw new BadGatewayException('No se encontró media en el mensaje');
 
     const channel = await this.prisma.channel.findFirst({
