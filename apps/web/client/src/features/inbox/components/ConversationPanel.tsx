@@ -47,6 +47,78 @@ function DateSeparator({ date }: { date: Date }) {
   );
 }
 
+function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; mediaType: "image" | "document"; caption?: string }) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const token = localStorage.getItem("pymes_token");
+    const apiBase = import.meta.env.VITE_PymesHub_API_URL ?? "";
+    const controller = new AbortController();
+
+    fetch(`${apiBase}/api/conversations/messages/${messageId}/media`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("No se pudo cargar");
+        return res.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        setBlobUrl(url);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [messageId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground py-3">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span className="text-[11px]">Cargando {mediaType === "image" ? "imagen" : "documento"}...</span>
+      </div>
+    );
+  }
+
+  if (!blobUrl) {
+    return (
+      <p className="text-[12px] text-muted-foreground italic">
+        {mediaType === "image" ? "🖼️ Imagen no disponible" : "📄 Documento no disponible"}
+      </p>
+    );
+  }
+
+  if (mediaType === "image") {
+    return (
+      <div>
+        <img src={blobUrl} alt={caption || "Imagen"} className="rounded-lg max-w-full max-h-64 object-contain" />
+        {caption && <p className="text-[11px] text-muted-foreground/80 mt-1.5">{caption}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-lg">📄</span>
+      <div className="min-w-0">
+        <p className="text-[12px] font-medium text-foreground truncate">{caption || "Documento"}</p>
+        <a href={blobUrl} download={caption || "documento"} className="text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
+          Descargar
+        </a>
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   conversationId: string | null;
   onBack?: () => void;
@@ -194,8 +266,10 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const canSendInvoice = ["EMAIL", "WHATSAPP", "TELEGRAM"].includes(channelType.toUpperCase());
 
   useEffect(() => {
-    if (bottomRef.current) bottomRef.current.scrollIntoView({ behavior: "auto" });
-  }, [msgList.length]);
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ block: "end", behavior: "instant" });
+    }
+  }, [msgList.length, msgsLoading]);
 
   if (!id) return null;
 
@@ -346,27 +420,12 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
                       if (text.startsWith("🖼️") && msg.id) {
                         const caption = text.replace("🖼️ ", "").replace("🖼️", "").trim();
-                        const src = `${API_BASE}/api/conversations/messages/${msg.id}/media`;
-                        return (
-                          <div>
-                            <img src={src} alt={caption || "Imagen"} className="rounded-lg max-w-full max-h-64 object-contain" loading="lazy" />
-                            {caption && <p className="text-[11px] text-muted-foreground/80 mt-1.5">{caption}</p>}
-                          </div>
-                        );
+                        return <MediaRenderer messageId={msg.id} mediaType="image" caption={caption || undefined} />;
                       }
 
                       if (text.startsWith("📄") && msg.id) {
-                        const label = text.replace("📄 ", "").replace("📄", "").trim() || "Documento";
-                        const src = `${API_BASE}/api/conversations/messages/${msg.id}/media`;
-                        return (
-                          <div>
-                            <p className="text-sm text-foreground mb-1.5">📄 {label}</p>
-                            <a href={src} target="_blank" rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
-                              Descargar documento →
-                            </a>
-                          </div>
-                        );
+                        const caption = text.replace("📄 ", "").replace("📄", "").trim() || "Documento";
+                        return <MediaRenderer messageId={msg.id} mediaType="document" caption={caption || undefined} />;
                       }
 
                       const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
