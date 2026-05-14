@@ -114,14 +114,37 @@ export class InboundController {
         const contacts: any[] = value?.contacts ?? [];
 
         for (const msg of messages) {
-          // Solo procesar mensajes de texto por ahora
-          if (msg.type !== 'text') {
-            this.logger.log(`Skipping WhatsApp message type: ${msg.type}`);
-            continue;
-          }
-
           const from: string = msg.from ?? '';
-          const bodyText: string = msg.text?.body ?? '';
+
+          let bodyText = '';
+          if (msg.type === 'text') {
+            bodyText = msg.text?.body ?? '';
+          } else if (msg.type === 'location') {
+            const loc = msg.location ?? {};
+            bodyText = [
+              loc.name ? `📍 ${loc.name}` : '📍 Ubicación compartida',
+              loc.address,
+              `${loc.latitude}, ${loc.longitude}`,
+            ].filter(Boolean).join('\n');
+          } else if (msg.type === 'image') {
+            bodyText = msg.image?.caption ? `🖼️ ${msg.image.caption}` : '🖼️ Imagen';
+          } else if (msg.type === 'document') {
+            const fn = msg.document?.filename ? ` (${msg.document.filename})` : '';
+            bodyText = msg.document?.caption ? `📄 ${msg.document.caption}` : `📄 Documento${fn}`;
+          } else if (msg.type === 'audio') {
+            bodyText = '🎵 Mensaje de audio';
+          } else if (msg.type === 'video') {
+            bodyText = msg.video?.caption ? `🎬 ${msg.video.caption}` : '🎬 Video';
+          } else if (msg.type === 'sticker') {
+            bodyText = '🏷️ Sticker';
+          } else if (msg.type === 'contacts') {
+            const contactNames = (msg.contacts || [])
+              .map((c: any) => c.name?.formatted_name ?? 'Contacto')
+              .join(', ');
+            bodyText = `👤 Contacto compartido: ${contactNames}`;
+          } else {
+            bodyText = `📩 Mensaje de tipo ${msg.type}`;
+          }
           const senderName =
             contacts.find((c: any) => c.wa_id === from)?.profile?.name ?? from;
 
