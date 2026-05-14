@@ -99,9 +99,9 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 const ADMIN_ITEMS = [
-  { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/admin/workspaces", icon: Shield, label: "Workspaces" },
-  { href: "/admin/plan-limits", icon: ShieldCheck, label: "Límites de Planes" },
+  { href: "/admin", icon: LayoutDashboard, key: "adminDashboard" as const },
+  { href: "/admin/workspaces", icon: Shield, key: "adminWorkspaces" as const },
+  { href: "/admin/plan-limits", icon: ShieldCheck, key: "adminPlanLimits" as const },
 ] as const;
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
@@ -210,17 +210,11 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
       <aside
         className={cn(
-          "flex flex-col shrink-0 transition-all duration-300 ease-out overflow-hidden",
+          "flex flex-col shrink-0 transition-all duration-300 ease-out overflow-hidden bg-sidebar/95 backdrop-blur-xl border-r border-border/60",
           sidebarOpen ? "w-[260px]" : "w-0 border-r-0",
           isMobile && "fixed left-0 top-0 z-50 shadow-lg h-[100dvh]",
-          isMobile && sidebarOpen && "w-[260px]",
+          isMobile && sidebarOpen && "w-[260px] border-r",
         )}
-        style={{
-          background: "linear-gradient(180deg, hsl(228 84% 5% / 0.97) 0%, hsl(228 74% 7% / 0.97) 100%)",
-          backdropFilter: "blur(24px)",
-          borderRight: sidebarOpen && !isMobile ? "1px solid hsl(228 45% 22% / 0.6)" : undefined,
-          boxShadow: sidebarOpen ? "inset 0 1px 0 hsl(228 45% 35% / 0.08)" : undefined,
-        }}
       >
         {isMobile && (
           <div className="shrink-0 flex justify-end px-3 py-3 border-b border-border/40 pt-safe">
@@ -307,7 +301,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 </div>
                 {multipleWorkspaces && (
                   <div className="border-t border-border/40 px-3 py-2 bg-sidebar-accent/20">
-                    <p className="text-xs text-muted-foreground/80">{myWorkspaces?.length} workspace{(myWorkspaces?.length ?? 0) > 1 ? "s" : ""} available</p>
+                    <p className="text-xs text-muted-foreground/80">{copy.wsAvailable(myWorkspaces?.length ?? 0)}</p>
                   </div>
                 )}
               </div>
@@ -318,7 +312,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sidebar-accent/20 hover:scrollbar-thumb-sidebar-accent/30">
           {ws.startsWith("Admin Hub —") && (myWorkspaces as any[])?.length > 1 && (
             <div className="mx-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300/90 leading-relaxed">
-              Estás en tu espacio personal de administración. Para gestionar una pyme, seleccionala en el menú de arriba.
+              {copy.adminHint}
             </div>
           )}
           {NAV_GROUPS.map((group) => (
@@ -387,11 +381,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             <div className="space-y-1.5 pt-2 border-t border-border/40">
               <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-amber-400/80 flex items-center gap-2">
                 <div className="w-1 h-1 rounded-full bg-amber-400/30" />
-                <span>Admin</span>
+                <span>{copy.admin}</span>
               </div>
               <div className="space-y-1">
-                {ADMIN_ITEMS.map(({ href, icon: Icon, label }) => {
+                {ADMIN_ITEMS.map(({ href, icon: Icon, key }) => {
                   const active = isActive(href);
+                  const label = key === "adminDashboard" ? copy.adminDashboard : key === "adminWorkspaces" ? copy.adminWorkspaces : copy.adminPlanLimits;
                   return (
                     <Link key={href} to={href}
                       className={cn(
@@ -421,7 +416,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
           >
             <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
-            <span className="flex-1 text-sm text-left">Configuración</span>
+            <span className="flex-1 text-sm text-left">{copy.settingsButton}</span>
             <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", settingsMenuOpen && "rotate-180")} />
           </button>
         </div>
@@ -478,7 +473,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               "p-2 rounded-lg transition-all duration-200 shrink-0",
               "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
             )}
-            title={sidebarOpen ? "Cerrar menú" : "Abrir menú"}
+            title={sidebarOpen ? copy.closeMenu : copy.openMenu}
           >
             {sidebarOpen ? (
               <X className="w-5 h-5" />
@@ -524,29 +519,29 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           >
             <div className="p-2 max-h-[440px] overflow-y-auto space-y-3">
               {[
-                { label: "General", items: [
-                  { icon: UserCircle, label: "Perfil", href: "/settings?tab=profile" },
-                  { icon: Building2, label: "Workspace", href: "/settings?tab=workspace" },
-                  { icon: UserCircle, label: "Onboarding", href: "/onboarding" },
-                  { icon: LifeBuoy, label: "Soporte", href: "/support" },
+                { label: copy.settingsFlyout.general, items: [
+                  { icon: UserCircle, label: copy.settingsFlyout.profile, href: "/settings?tab=profile" },
+                  { icon: Building2, label: copy.settingsFlyout.workspace, href: "/settings?tab=workspace" },
+                  { icon: UserCircle, label: copy.settingsFlyout.onboarding, href: "/onboarding" },
+                  { icon: LifeBuoy, label: copy.settingsFlyout.support, href: "/support" },
                 ]},
-                { label: "Personas y equipo", items: [
-                  { icon: Users, label: "Miembros", href: "/settings?tab=members" },
-                  { icon: Layers, label: "Departamentos", href: "/settings?tab=departments" },
+                { label: copy.settingsFlyout.peopleAndTeam, items: [
+                  { icon: Users, label: copy.settingsFlyout.members, href: "/settings?tab=members" },
+                  { icon: Layers, label: copy.settingsFlyout.departments, href: "/settings?tab=departments" },
                 ]},
-                { label: "Canales y flujos", items: [
-                  { icon: PlugZap, label: "Canales", href: "/settings?tab=channels" },
-                  { icon: Shuffle, label: "Enrutamiento", href: "/settings?tab=routing" },
+                { label: copy.settingsFlyout.channelsAndFlows, items: [
+                  { icon: PlugZap, label: copy.settingsFlyout.channels, href: "/settings?tab=channels" },
+                  { icon: Shuffle, label: copy.settingsFlyout.routing, href: "/settings?tab=routing" },
                 ]},
-                { label: "Autenticación", items: [
-                  { icon: Shield, label: "SAML SSO", href: "/settings?tab=saml" },
+                { label: copy.settingsFlyout.authentication, items: [
+                  { icon: Shield, label: copy.settingsFlyout.samlSso, href: "/settings?tab=saml" },
                 ]},
-                { label: "IA", items: [
-                  { icon: BrainCircuit, label: "Inteligencia Artificial", href: "/settings?tab=ai" },
+                { label: copy.settingsFlyout.ai, items: [
+                  { icon: BrainCircuit, label: copy.settingsFlyout.artificialIntelligence, href: "/settings?tab=ai" },
                 ]},
-                { label: "Finanzas y plataforma", items: [
-                  { icon: CreditCard, label: "Facturación", href: "/settings?tab=billing" },
-                  { icon: ShieldCheck, label: "Plataforma", href: "/settings?tab=platform" },
+                { label: copy.settingsFlyout.financeAndPlatform, items: [
+                  { icon: CreditCard, label: copy.settingsFlyout.billing, href: "/settings?tab=billing" },
+                  { icon: ShieldCheck, label: copy.settingsFlyout.platform, href: "/settings?tab=platform" },
                 ]},
               ].map((group) => (
                 <div key={group.label} className="space-y-1">
