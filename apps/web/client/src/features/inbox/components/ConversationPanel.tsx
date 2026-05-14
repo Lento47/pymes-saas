@@ -265,16 +265,24 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const channelType = conversation?.channel?.type || "";
   const canSendInvoice = ["EMAIL", "WHATSAPP", "TELEGRAM"].includes(channelType.toUpperCase());
 
+  const [nearBottom, setNearBottom] = useState(true);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    setNearBottom(scrollHeight - scrollTop - clientHeight < 150);
+  };
+
   useEffect(() => {
-    if (bottomRef.current) {
+    if (nearBottom && bottomRef.current) {
       bottomRef.current.scrollIntoView({ block: "end", behavior: "instant" });
     }
-  }, [msgList.length, msgsLoading]);
+  }, [msgList.length, msgsLoading, nearBottom]);
 
   if (!id) return null;
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col min-h-0 h-full bg-background">
       {/* Header toolbar */}
       <div className="flex items-center gap-2 border-b border-border px-4 py-2.5 shrink-0">
         {onBack && (
@@ -363,7 +371,20 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-2 min-h-0">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-2 min-h-0" onScroll={handleScroll}>
+        {!nearBottom && msgList.length > 0 && (
+          <div className="sticky bottom-2 flex justify-center z-10 mb-2">
+            <button
+              onClick={() => {
+                setNearBottom(true);
+                if (bottomRef.current) bottomRef.current.scrollIntoView({ block: "end", behavior: "smooth" });
+              }}
+              className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-medium shadow-lg hover:opacity-90 transition-opacity"
+            >
+              ↓ Nuevos mensajes
+            </button>
+          </div>
+        )}
         {msgsLoading ? (
           <div className="flex items-center justify-center h-full"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : msgList.length === 0 ? (
