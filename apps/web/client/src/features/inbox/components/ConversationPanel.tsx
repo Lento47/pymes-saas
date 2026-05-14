@@ -320,6 +320,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                     {isFirst && !isOutbound && <div className="text-[10px] font-medium text-muted-foreground mb-1">{contactName}</div>}
                     {(() => {
                       const text = msg.body_text || msg.body_html || msg.content || "";
+                      const API_BASE = import.meta.env.VITE_PymesHub_API_URL ?? "";
+
                       if (text.startsWith("📍 ")) {
                         const lines = text.split("\n");
                         const label = lines[0].replace("📍 ", "");
@@ -341,6 +343,51 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                           </div>
                         );
                       }
+
+                      if (text.startsWith("🖼️") && msg.id) {
+                        const caption = text.replace("🖼️ ", "").replace("🖼️", "").trim();
+                        const src = `${API_BASE}/api/conversations/messages/${msg.id}/media`;
+                        return (
+                          <div>
+                            <img src={src} alt={caption || "Imagen"} className="rounded-lg max-w-full max-h-64 object-contain" loading="lazy" />
+                            {caption && <p className="text-[11px] text-muted-foreground/80 mt-1.5">{caption}</p>}
+                          </div>
+                        );
+                      }
+
+                      if (text.startsWith("📄") && msg.id) {
+                        const label = text.replace("📄 ", "").replace("📄", "").trim() || "Documento";
+                        const src = `${API_BASE}/api/conversations/messages/${msg.id}/media`;
+                        return (
+                          <div>
+                            <p className="text-sm text-foreground mb-1.5">📄 {label}</p>
+                            <a href={src} target="_blank" rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
+                              Descargar documento →
+                            </a>
+                          </div>
+                        );
+                      }
+
+                      const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
+                      const parts = text.split(urlRegex);
+                      if (parts.length > 1) {
+                        return (
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                            {parts.map((part: string, i: number) =>
+                              urlRegex.test(part) ? (
+                                <a key={i} href={part} target="_blank" rel="noreferrer"
+                                  className="text-blue-400 hover:text-blue-300 underline underline-offset-2">
+                                  {part}
+                                </a>
+                              ) : (
+                                <span key={i}>{part}</span>
+                              )
+                            )}
+                          </p>
+                        );
+                      }
+
                       return <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{text}</p>;
                     })()}
                     <div className={cn("text-[10px] text-muted-foreground mt-1", isOutbound ? "text-right" : "text-left")}>
