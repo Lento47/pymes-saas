@@ -1,6 +1,7 @@
-import { Controller, Get, Logger, Param, Res } from '@nestjs/common';
+import { Controller, Get, Inject, Logger, Param, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { StorageService } from './storage.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -20,12 +21,25 @@ export class StorageController {
   private readonly logger = new Logger(StorageController.name);
   private readonly basePath: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    @Inject(StorageService) private readonly storage: any,
+  ) {
     this.basePath = this.config.get<string>('STORAGE_LOCAL_PATH') ?? path.join(process.cwd(), 'uploads');
   }
 
   @Get('{*key}')
-  serveFile(@Param('key') key: string, @Res() res: Response) {
+  async serveFile(@Param('key') key: string, @Res() res: Response) {
+    const driver = process.env.STORAGE_DRIVER ?? 'local';
+    if (driver === 's3' || driver === 'minio') {
+      try {
+        const url = await this.storage.getPresignedUrl(key);
+        return res.redirect(url);
+      } catch (err: any) {
+        this.logger.error(`Error generating presigned URL for ${key}:`, err);
+        return res.status(500).json({ statusCode: 500, message: 'Error al servir el archivo' });
+      }
+    }
     const resolved = path.resolve(this.basePath, key);
     if (!resolved.startsWith(path.resolve(this.basePath) + path.sep) && resolved !== path.resolve(this.basePath)) {
       return res.status(403).json({ statusCode: 403, message: 'Acceso denegado' });

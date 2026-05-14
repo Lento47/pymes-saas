@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
+import { StorageService } from '../common/storage/storage.service';
 import { MessagesService } from '../conversations/messages.service';
 import { WebhookEventsService } from '../webhooks/webhook-events.service';
 
@@ -19,6 +20,7 @@ export class WhatsAppService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
+    private readonly storage: StorageService,
     private readonly messages: MessagesService,
     @Inject(forwardRef(() => WebhookEventsService))
     private readonly webhookEvents: WebhookEventsService,
@@ -84,13 +86,15 @@ export class WhatsAppService {
     const phoneNumberId = cfg.phone_number_id;
 
     // Step 1: Download file from our storage
-    const base = (process.env.PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 4000}`).trim();
     const trimmedUrl = mediaUrl.trim();
-    const fullUrl = trimmedUrl.startsWith('http') ? trimmedUrl : `${base}${trimmedUrl}`;
-    const fileRes = await fetch(fullUrl);
-    if (!fileRes.ok) throw new BadGatewayException('No se pudo descargar el archivo.');
-    const fileBuffer = Buffer.from(await fileRes.arrayBuffer());
-    const contentType = fileRes.headers.get('content-type') || 'application/octet-stream';
+    const key = trimmedUrl.includes('/api/storage/file/')
+      ? trimmedUrl.split('/api/storage/file/').pop()!
+      : trimmedUrl.replace(/^https?:\/\/[^/]+\/?/, '');
+    const fileBuffer = await this.storage.download(key);
+    const contentType = key.endsWith('.png') ? 'image/png'
+      : key.endsWith('.jpg') || key.endsWith('.jpeg') ? 'image/jpeg'
+      : key.endsWith('.pdf') ? 'application/pdf'
+      : 'application/octet-stream';
 
     // Step 2: Upload to Meta Media API using multipart/form-data
     const boundary = `----WhatsApp${Date.now()}${Math.random().toString(36).slice(2)}`;
