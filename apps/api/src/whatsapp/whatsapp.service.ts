@@ -362,4 +362,50 @@ export class WhatsAppService {
     this.logger.warn(`Webhook verification failed — token mismatch`);
     return null;
   }
+
+  async downloadMedia(messageId: string, workspaceId: string): Promise<{ buffer: Buffer; contentType: string }> {
+    const msg = await this.prisma.message.findFirst({
+      where: { id: messageId, workspace_id: workspaceId },
+      select: { raw_payload_json: true, conversation: { select: { channel_id: true } } },
+    });
+    if (!msg) throw new BadGatewayException('Mensaje no encontrado');
+
+    const payload = msg.raw_payload_json as any;
+    if (!payload) throw new BadGatewayException('Media no disponible');
+
+    const mediaObj = payload.image ?? payload.document ?? payload.audio ?? payload.video;
+    if (!mediaObj?.id) throw new BadGatewayException('No se encontró media en el mensaje');
+
+    const channel = await this.prisma.channel.findFirst({
+      where: { id: msg.conversation.channel_id, workspace_id: workspaceId },
+      select: { config_json: true },
+    });
+    if (!channel) throw new BadGatewayException('Canal no encontrado');
+
+    const raw = channel.config_json as any;
+    const cfg = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : (raw || {});
+    if (!cfg?.access_token_encrypted) throw new BadGatewayException('WhatsApp access token no configurado');
+
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+
+    const mediaRes = await fetch(`${META_API_BASE}/${mediaObj.id}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!mediaRes.ok) throw new BadGatewayException('Error al obtener metadata del media');
+
+    const mediaData: any = await mediaRes.json();
+    const downloadUrl = mediaData.url;
+
+    const fileRes = await fetch(downloadUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!fileRes.ok) throw new BadGatewayException('Error al descargar media');
+
+    const buffer = Buffer.from(await fileRes.arrayBuffer());
+    const contentType = mediaData.mime_type || fileRes.headers.get('content-type') || 'application/octet-stream';
+
+    return { buffer, contentType };
+  }
 }

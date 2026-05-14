@@ -9,8 +9,11 @@ import {
   Patch,
   Post,
   Query,
+  Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { ConversationsService } from './conversations.service';
@@ -228,5 +231,22 @@ export class ConversationsController {
       resolved = resolved.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
     }
     return resolved;
+  }
+
+  @Get('messages/:messageId/media')
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  async getMessageMedia(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('messageId', ValidateUUIDPipe) messageId: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const { buffer, contentType } = await this.whatsAppService.downloadMedia(messageId, workspaceId);
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+      res.send(buffer);
+    } catch (err: any) {
+      res.status(404).json({ statusCode: 404, message: err.message || 'Media no disponible' });
+    }
   }
 }
