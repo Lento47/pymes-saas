@@ -520,7 +520,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             <div className="p-2 max-h-[440px] overflow-y-auto space-y-3">
               {[
                 { label: copy.settingsFlyout.general, items: [
-                  { icon: UserCircle, label: copy.settingsFlyout.profile, href: "/settings?tab=profile" },
+                  { icon: UserCircle, label: copy.settingsFlyout.profile, href: "/settings?tab=workspace" },
                   { icon: Building2, label: copy.settingsFlyout.workspace, href: "/settings?tab=workspace" },
                   { icon: UserCircle, label: copy.settingsFlyout.onboarding, href: "/onboarding" },
                   { icon: LifeBuoy, label: copy.settingsFlyout.support, href: "/support" },
@@ -531,7 +531,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 ]},
                 { label: copy.settingsFlyout.channelsAndFlows, items: [
                   { icon: PlugZap, label: copy.settingsFlyout.channels, href: "/settings?tab=channels" },
-                  { icon: Shuffle, label: copy.settingsFlyout.routing, href: "/settings?tab=routing" },
+                  { icon: Shuffle, label: copy.settingsFlyout.routing, href: "/settings?tab=channels" },
                 ]},
                 { label: copy.settingsFlyout.authentication, items: [
                   { icon: Shield, label: copy.settingsFlyout.samlSso, href: "/settings?tab=saml" },
@@ -540,7 +540,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   { icon: BrainCircuit, label: copy.settingsFlyout.artificialIntelligence, href: "/settings?tab=ai" },
                 ]},
                 { label: copy.settingsFlyout.financeAndPlatform, items: [
-                  { icon: CreditCard, label: copy.settingsFlyout.billing, href: "/settings?tab=billing" },
+                  { icon: CreditCard, label: copy.settingsFlyout.billing, href: "/settings?tab=integrations" },
                   { icon: ShieldCheck, label: copy.settingsFlyout.platform, href: "/settings?tab=platform" },
                 ]},
               ].map((group) => (
