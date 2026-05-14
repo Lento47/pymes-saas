@@ -13,6 +13,9 @@ import { ChannelsTab } from "@/components/settings/channels-tab";
 import { DepartmentsTab } from "@/components/settings/departments-tab";
 import { IntegrationsTab } from "@/components/settings/integrations-tab";
 import { AiTab } from "@/components/settings/ai-tab";
+import { ProfileTab } from "@/components/settings/profile-tab";
+import { RoutingRulesTab } from "@/components/settings/routing-rules-tab";
+import BillingPage from "@/pages/billing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -336,11 +339,14 @@ export default function Settings() {
         <Card className="mt-4 bg-card border-border">
           <CardContent className="pt-6">
             <TabsContent value="workspace"><WorkspaceTab /></TabsContent>
+            <TabsContent value="profile"><ProfileTab /></TabsContent>
             <TabsContent value="members"><MembersTab /></TabsContent>
             <TabsContent value="channels"><ChannelsTab /></TabsContent>
             <TabsContent value="departments"><DepartmentsTab /></TabsContent>
             <TabsContent value="integrations"><IntegrationsTab /></TabsContent>
+            <TabsContent value="routing"><RoutingRulesTab /></TabsContent>
             <TabsContent value="ai"><AiTab /></TabsContent>
+            <TabsContent value="billing"><BillingPage /></TabsContent>
             <TabsContent value="saml"><SamlConfig /></TabsContent>
             {isPlatformAdmin && (
               <TabsContent value="platform"><PlatformTab /></TabsContent>
