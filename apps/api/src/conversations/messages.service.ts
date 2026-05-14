@@ -349,6 +349,12 @@ export class MessagesService {
     });
 
     if (existingMessage) {
+      if (params.rawPayload) {
+        await this.prisma.message.update({
+          where: { id: existingMessage.id },
+          data: { raw_payload_json: params.rawPayload },
+        });
+      }
       return {
         status: 'duplicate',
         messageId: existingMessage.id,
