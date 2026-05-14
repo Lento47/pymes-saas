@@ -24,8 +24,8 @@ export class StorageController {
     this.basePath = this.config.get<string>('STORAGE_LOCAL_PATH') ?? path.join(process.cwd(), 'uploads');
   }
 
-  @Get('*')
-  serveFile(@Param('0') key: string, @Res() res: Response) {
+  @Get(':key(.*)')
+  serveFile(@Param('key') key: string, @Res() res: Response) {
     const resolved = path.resolve(this.basePath, key);
     if (!resolved.startsWith(path.resolve(this.basePath) + path.sep) && resolved !== path.resolve(this.basePath)) {
       return res.status(403).json({ statusCode: 403, message: 'Acceso denegado' });
