@@ -375,13 +375,24 @@ export class WhatsAppService {
     if (!msg) throw new BadGatewayException('Mensaje no encontrado');
 
     const payload = msg.raw_payload_json as any;
-    if (!payload) throw new BadGatewayException('Media no disponible');
+    if (!payload) {
+      this.logger.warn(`downloadMedia: raw_payload_json is null for message ${messageId}`);
+      throw new BadGatewayException('Media no disponible');
+    }
 
+    this.logger.log(`downloadMedia: payload has keys: ${Object.keys(payload).join(', ')}`);
     const wrappedBody = payload?.raw_payload ?? payload;
     const inner = wrappedBody?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     const msgPayload = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0] ?? inner ?? payload;
     const mediaObj = msgPayload?.image ?? msgPayload?.document ?? msgPayload?.audio ?? msgPayload?.video;
-    if (!mediaObj?.id) throw new BadGatewayException('No se encontró media en el mensaje');
+    if (!mediaObj?.id) {
+      this.logger.warn(
+        `downloadMedia: no media found — hasRawPayload=${!!payload?.raw_payload}, ` +
+        `msgType=${msgPayload?.type ?? 'N/A'}, ` +
+        `keys=${Object.keys(msgPayload ?? {}).join(',')}`,
+      );
+      throw new BadGatewayException('No se encontró media en el mensaje');
+    }
 
     const channel = await this.prisma.channel.findFirst({
       where: { id: msg.conversation.channel_id, workspace_id: workspaceId },
