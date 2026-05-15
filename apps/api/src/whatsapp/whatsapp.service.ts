@@ -340,12 +340,12 @@ export class WhatsAppService {
       const { messageId, conversationId, contactId } = result;
 
       // ── Download incoming media to MinIO ──
-      if (params.whatsappMedia?.whatsappMediaId && messageId) {
+      if (whatsappMedia?.whatsappMediaId && messageId) {
         this.downloadInboundMediaToStorage(
           phoneNumberId,
           workspaceId,
           messageId,
-          params.whatsappMedia,
+          whatsappMedia,
         ).catch((err) =>
           this.logger.error(
             `Failed to download inbound media — msg=${messageId}: ${err.message}`,
