@@ -47,12 +47,14 @@ function DateSeparator({ date }: { date: Date }) {
   );
 }
 
-function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; mediaType: "image" | "document"; caption?: string }) {
+function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; mediaType: "image" | "video" | "audio" | "document"; caption?: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     setLoading(true);
+    setError(false);
     const token = localStorage.getItem("pymes_token");
     const apiBase = import.meta.env.VITE_PymesHub_API_URL ?? "";
     const controller = new AbortController();
@@ -72,6 +74,7 @@ function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; m
       })
       .catch(() => {
         setLoading(false);
+        setError(true);
       });
 
     return () => {
@@ -81,27 +84,47 @@ function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; m
   }, [messageId]);
 
   if (loading) {
+    const label = mediaType === "image" ? "imagen"
+      : mediaType === "video" ? "video"
+      : mediaType === "audio" ? "audio"
+      : "documento";
     return (
       <div className="flex items-center gap-2 text-muted-foreground py-3">
         <Loader2 className="w-4 h-4 animate-spin" />
-        <span className="text-[11px]">Cargando {mediaType === "image" ? "imagen" : "documento"}...</span>
+        <span className="text-[11px]">Cargando {label}...</span>
       </div>
     );
   }
 
-  if (!blobUrl) {
+  if (!blobUrl || error) {
     return (
-      <p className="text-[12px] text-muted-foreground italic">
-        {mediaType === "image" ? "🖼️ Imagen no disponible" : "📄 Documento no disponible"}
+      <p className="text-[12px] text-muted-foreground italic px-1">
+        No se pudo cargar el archivo
       </p>
     );
   }
 
-  if (mediaType === "image") {
+  if (mediaType === "image" || mediaType === "video") {
     return (
       <div>
-        <img src={blobUrl} alt={caption || "Imagen"} className="rounded-lg max-w-full max-h-64 object-contain" />
+        {mediaType === "video" ? (
+          <video controls src={blobUrl} className="rounded-lg max-w-full max-h-64" />
+        ) : (
+          <img src={blobUrl} alt={caption || "Imagen"} className="rounded-lg max-w-full max-h-64 object-contain" />
+        )}
         {caption && <p className="text-[11px] text-muted-foreground/80 mt-1.5">{caption}</p>}
+        <a href={blobUrl} download={caption || mediaType} className="inline-block mt-1 text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
+          Descargar
+        </a>
+      </div>
+    );
+  }
+
+  if (mediaType === "audio") {
+    return (
+      <div className="space-y-1">
+        {caption && <p className="text-[12px] font-medium text-foreground">{caption}</p>}
+        <audio controls src={blobUrl} className="h-8 w-full max-w-[240px]" />
       </div>
     );
   }
@@ -417,6 +440,28 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                       const text = msg.body_text || msg.body_html || msg.content || "";
                       const API_BASE = import.meta.env.VITE_PymesHub_API_URL ?? "";
 
+                      // Media messages: use DTO fields, not emoji parsing
+                      if (msg.has_media && msg.media_type && msg.id) {
+                        const caption = msg.media_caption || (
+                          !text.startsWith("🖼️") && !text.startsWith("📄") &&
+                          !text.startsWith("🎬") && !text.startsWith("🎧") &&
+                          !text.startsWith("💬") && text !== "🖼️ Imagen" &&
+                          text !== "📄 Documento" && text !== "🎬 Video" &&
+                          text !== "🎧 Audio" && text !== "💬 Sticker"
+                        ) ? text : undefined;
+
+                        if (msg.media_type === 'image' || msg.media_type === 'sticker') {
+                          return <MediaRenderer messageId={msg.id} mediaType="image" caption={caption} />;
+                        }
+                        if (msg.media_type === 'video') {
+                          return <MediaRenderer messageId={msg.id} mediaType="video" caption={caption} />;
+                        }
+                        if (msg.media_type === 'audio') {
+                          return <MediaRenderer messageId={msg.id} mediaType="audio" caption={caption} />;
+                        }
+                        return <MediaRenderer messageId={msg.id} mediaType="document" caption={caption} />;
+                      }
+
                       if (text.startsWith("📍 ")) {
                         const lines = text.split("\n");
                         const label = lines[0].replace("📍 ", "");
@@ -437,16 +482,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                             )}
                           </div>
                         );
-                      }
-
-                      if (text.startsWith("🖼️") && msg.id) {
-                        const caption = text.replace("🖼️ ", "").replace("🖼️", "").trim();
-                        return <MediaRenderer messageId={msg.id} mediaType="image" caption={caption || undefined} />;
-                      }
-
-                      if (text.startsWith("📄") && msg.id) {
-                        const caption = text.replace("📄 ", "").replace("📄", "").trim() || "Documento";
-                        return <MediaRenderer messageId={msg.id} mediaType="document" caption={caption || undefined} />;
                       }
 
                       const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
