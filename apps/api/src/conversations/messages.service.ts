@@ -78,6 +78,10 @@ export class MessagesService {
       const mediaType = wm?.mediaType ?? wm?.kind ?? null;
       const mediaId = wm?.whatsappMediaId ?? wm?.id ?? null;
       const hasMedia = !!mediaId;
+      const attachmentEntry = (msg as any).attachments_json?.[0] ?? null;
+      const storageUrl = attachmentEntry?.storageKey
+        ? `/api/storage/file/${attachmentEntry.storageKey}`
+        : null;
       return {
         ...msg,
         has_media: hasMedia,
@@ -85,7 +89,7 @@ export class MessagesService {
         media_mime_type: wm?.mimeType ?? wm?.mime_type ?? null,
         media_filename: wm?.filename ?? null,
         media_caption: wm?.caption ?? null,
-        media_download_url: hasMedia ? `/api/conversations/messages/${msg.id}/media` : null,
+        media_download_url: storageUrl || (hasMedia ? `/api/conversations/messages/${msg.id}/media` : null),
         media_status: hasMedia ? 'available' : 'missing',
       };
     });
