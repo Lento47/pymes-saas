@@ -9,6 +9,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { StorageService } from '../common/storage/storage.service';
 import { extractWhatsAppMediaFromMessage } from '../common/whatsapp-media.helper';
+import { parseJsonValue } from '../common/prisma/json';
 import { MessagesService } from '../conversations/messages.service';
 import { WebhookEventsService } from '../webhooks/webhook-events.service';
 import * as path from 'path';
@@ -235,18 +236,19 @@ export class WhatsAppService {
    */
   private async resolveWorkspaceFromPhoneNumberId(phoneNumberId: string): Promise<string | null> {
     try {
-      const channel = await this.prisma.channel.findFirst({
-        where: {
-          type: 'WHATSAPP',
-          config_json: {
-            path: ['phone_number_id'],
-            equals: phoneNumberId,
-          },
-        },
-        select: { workspace_id: true },
+      // Fetch all active WhatsApp channels and filter in-memory
+      // to handle both object and string config_json values
+      const channels = await this.prisma.channel.findMany({
+        where: { type: 'WHATSAPP', status: 'ACTIVE' },
+        select: { workspace_id: true, config_json: true },
       });
 
-      return channel?.workspace_id ?? null;
+      const matched = channels.find((ch) => {
+        const cfg = parseJsonValue<Record<string, any>>(ch.config_json, {});
+        return cfg.phone_number_id === phoneNumberId || cfg.waba_id === phoneNumberId;
+      });
+
+      return matched?.workspace_id ?? null;
     } catch (err) {
       this.logger.error(`Error resolving workspace from phone_number_id: ${err}`);
       return null;

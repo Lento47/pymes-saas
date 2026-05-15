@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { parseJsonValue } from '../common/prisma/json';
 import { WebhookEventStatus, Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 
@@ -19,17 +20,19 @@ export class WebhookEventsService {
     let workspaceId: string | null = null;
     if (phoneNumberId) {
       try {
-        const channel = await this.prisma.channel.findFirst({
-          where: {
-            type: 'WHATSAPP',
-            config_json: {
-              path: ['phone_number_id'],
-              equals: phoneNumberId,
-            },
-          },
-          select: { workspace_id: true },
+        // Fetch all active WhatsApp channels and filter in-memory
+        // to handle both object and string config_json values
+        const channels = await this.prisma.channel.findMany({
+          where: { type: 'WHATSAPP', status: 'ACTIVE' },
+          select: { workspace_id: true, config_json: true },
         });
-        workspaceId = channel?.workspace_id ?? null;
+
+        const matched = channels.find((ch) => {
+          const cfg = parseJsonValue<Record<string, any>>(ch.config_json, {});
+          return cfg.phone_number_id === phoneNumberId || cfg.waba_id === phoneNumberId;
+        });
+
+        workspaceId = matched?.workspace_id ?? null;
       } catch (err) {
         this.logger.warn(
           `[${provider}] Failed to resolve workspace for phone_number_id=${phoneNumberId}: ${err}`,
