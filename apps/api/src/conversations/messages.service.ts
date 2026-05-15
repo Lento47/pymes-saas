@@ -53,7 +53,28 @@ export class MessagesService {
 
     const enriched = data.map((msg) => {
       const payload = (msg as any).raw_payload_json;
-      const wm = payload?.whatsapp_media;
+      let wm = payload?.whatsapp_media;
+
+      // Legacy fallback: search in raw webhook payload for messages stored
+      // before the whatsapp_media extraction was implemented
+      if (!wm && payload) {
+        const rawPayload = payload?.raw_payload ?? payload;
+        const innerMsg = rawPayload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
+          ?? (Array.isArray(rawPayload?.messages) ? rawPayload.messages[0] : null);
+        if (innerMsg) {
+          const mediaObj = innerMsg?.image ?? innerMsg?.document ?? innerMsg?.audio ?? innerMsg?.video ?? innerMsg?.sticker;
+          if (mediaObj?.id) {
+            wm = {
+              whatsappMediaId: mediaObj.id,
+              mediaType: innerMsg.type,
+              mimeType: mediaObj.mime_type ?? null,
+              filename: mediaObj.filename ?? null,
+              caption: mediaObj.caption ?? null,
+            };
+          }
+        }
+      }
+
       const mediaType = wm?.mediaType ?? wm?.kind ?? null;
       const mediaId = wm?.whatsappMediaId ?? wm?.id ?? null;
       const hasMedia = !!mediaId;
