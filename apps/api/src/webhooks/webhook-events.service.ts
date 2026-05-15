@@ -101,6 +101,38 @@ export class WebhookEventsService {
     return result?.length > 0 ? result[0] : null;
   }
 
+  /**
+   * Claim up to `batchSize` pending webhook events in a single DB round-trip.
+   * Uses FOR UPDATE SKIP LOCKED for safe concurrent access across workers.
+   */
+  async claimBatch(workerId: string, batchSize: number = 25): Promise<any[]> {
+    if (batchSize < 1) return [];
+
+    const result = await this.prisma.$queryRawUnsafe<any[]>(
+      `UPDATE "webhook_events"
+       SET
+         status = 'PROCESSING'::"WebhookEventStatus",
+         attempts = attempts + 1,
+         locked_at = NOW(),
+         locked_by = $1,
+         updated_at = NOW()
+       WHERE id IN (
+         SELECT id
+         FROM "webhook_events"
+         WHERE status = 'PENDING'::"WebhookEventStatus"
+            OR (status = 'RETRYABLE'::"WebhookEventStatus" AND next_retry_at <= NOW())
+         ORDER BY received_at ASC
+         LIMIT $2
+         FOR UPDATE SKIP LOCKED
+       )
+       RETURNING *;`,
+      workerId,
+      batchSize,
+    );
+
+    return result ?? [];
+  }
+
   async markProcessed(eventId: string): Promise<void> {
     await this.prisma.webhookEvent.update({
       where: { id: eventId },

@@ -256,6 +256,51 @@ export class WhatsAppService {
   }
 
   /**
+   * Find an active WhatsApp channel by phone_number_id with legacy config_json support.
+   *
+   * This helper handles two cases:
+   * 1. Fast path: config_json stored as JSONB object (query via Prisma JSON path).
+   * 2. Fallback path: config_json stored as string (legacy stringifyJson bug).
+   *
+   * When workspaceId is provided, it scopes the search. Both paths are tried.
+   */
+  async findActiveWhatsappChannelByPhoneNumberId(
+    phoneNumberId: string,
+    workspaceId?: string,
+  ): Promise<{ id: string; workspace_id: string; config_json: any } | null> {
+    // Fast path: works when config_json is real JSONB object
+    const fastWhere: any = {
+      type: 'WHATSAPP',
+      status: 'ACTIVE',
+      config_json: { path: ['phone_number_id'], equals: phoneNumberId },
+    };
+    if (workspaceId) fastWhere.workspace_id = workspaceId;
+
+    const direct = await this.prisma.channel.findFirst({
+      where: fastWhere,
+      select: { id: true, workspace_id: true, config_json: true },
+    });
+
+    if (direct) return direct;
+
+    // Legacy fallback: handles config_json stored as string JSON
+    const fallbackWhere: any = { type: 'WHATSAPP', status: 'ACTIVE' };
+    if (workspaceId) fallbackWhere.workspace_id = workspaceId;
+
+    const channels = await this.prisma.channel.findMany({
+      where: fallbackWhere,
+      select: { id: true, workspace_id: true, config_json: true },
+    });
+
+    const matched = channels.find((ch) => {
+      const cfg = parseJsonValue<Record<string, any>>(ch.config_json, {});
+      return cfg.phone_number_id === phoneNumberId;
+    });
+
+    return matched ?? null;
+  }
+
+  /**
    * Process a stored WhatsApp webhook event asynchronously.
    * Called by WebhookEventsProcessor after claiming the event.
    */
@@ -341,6 +386,10 @@ export class WhatsAppService {
 
       const { messageId, conversationId, contactId } = result;
 
+      this.logger.log(
+        `Message created — workspace=${workspaceId} conversation=${conversationId} message=${messageId} provider_message_id=${providerMessageId} from=${from} type=${msg.type}`,
+      );
+
       // ── Download incoming media to MinIO ──
       if (whatsappMedia?.whatsappMediaId && messageId) {
         this.downloadInboundMediaToStorage(
@@ -388,22 +437,16 @@ export class WhatsAppService {
     messageId: string,
     media: { whatsappMediaId: string; mediaType: string; mimeType: string | null; caption: string | null; filename: string | null },
   ): Promise<void> {
-    const channel = await this.prisma.channel.findFirst({
-      where: {
-        type: 'WHATSAPP',
-        config_json: { path: ['phone_number_id'], equals: phoneNumberId },
-        workspace_id: workspaceId,
-        status: 'ACTIVE',
-      },
-      select: { config_json: true, id: true },
-    });
+    const channel = await this.findActiveWhatsappChannelByPhoneNumberId(
+      phoneNumberId,
+      workspaceId,
+    );
     if (!channel) {
       this.logger.warn(`downloadInboundMediaToStorage: no channel for phoneNumberId=${phoneNumberId}`);
       return;
     }
 
-    const raw = channel.config_json as any;
-    const cfg = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : (raw || {});
+    const cfg = parseJsonValue<Record<string, any>>(channel.config_json, {});
     if (!cfg?.access_token_encrypted) {
       this.logger.warn(`downloadInboundMediaToStorage: no access_token for channel ${channel.id}`);
       return;

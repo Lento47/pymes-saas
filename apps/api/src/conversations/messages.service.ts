@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
@@ -10,6 +10,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { Priority } from '@prisma/client';
 import { AutomationsService } from '../automations/automations.service';
 import { RoutingService } from '../routing/routing.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 
 @Injectable()
 export class MessagesService {
@@ -24,6 +25,8 @@ export class MessagesService {
     private readonly notificationsService: NotificationsService,
     private readonly automationsService: AutomationsService,
     private readonly routingService: RoutingService,
+    @Inject(forwardRef(() => WhatsAppService))
+    private readonly whatsappService: WhatsAppService,
   ) { }
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 100) {
@@ -427,14 +430,10 @@ export class MessagesService {
       };
     }
 
-    const channel = await this.prisma.channel.findFirst({
-      where: {
-        type: 'WHATSAPP',
-        config_json: { path: ['phone_number_id'], equals: params.channelPhoneNumberId },
-        workspace_id: workspaceId,
-        status: 'ACTIVE',
-      },
-    });
+    const channel = await this.whatsappService.findActiveWhatsappChannelByPhoneNumberId(
+      params.channelPhoneNumberId,
+      workspaceId,
+    );
 
     if (!channel) {
       throw new Error(`No active WhatsApp channel for phone_number_id: ${params.channelPhoneNumberId}`);
