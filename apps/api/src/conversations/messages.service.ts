@@ -331,6 +331,7 @@ export class MessagesService {
     providerMessageId: string;
     timestamp?: string;
     rawPayload?: any;
+    whatsappMedia?: any | null;
   }): Promise<{
     status: 'created' | 'duplicate';
     messageId?: string;
@@ -349,11 +350,23 @@ export class MessagesService {
     });
 
     if (existingMessage) {
-      if (params.rawPayload) {
-        await this.prisma.message.update({
+      if (params.whatsappMedia?.id) {
+        const existing = await this.prisma.message.findFirst({
           where: { id: existingMessage.id },
-          data: { raw_payload_json: params.rawPayload },
+          select: { raw_payload_json: true },
         });
+        const existingPayload = (existing?.raw_payload_json as any) ?? {};
+        if (!existingPayload.whatsapp_media?.id || existingPayload.whatsapp_media.id !== params.whatsappMedia.id) {
+          await this.prisma.message.update({
+            where: { id: existingMessage.id },
+            data: {
+              raw_payload_json: {
+                ...existingPayload,
+                whatsapp_media: params.whatsappMedia,
+              },
+            },
+          });
+        }
       }
       return {
         status: 'duplicate',
@@ -425,7 +438,10 @@ export class MessagesService {
           sender_name: senderName,
           sender_ref: from,
           body_text: bodyText,
-          raw_payload_json: params.rawPayload ?? undefined,
+          raw_payload_json: {
+            ...(typeof params.rawPayload === 'object' ? params.rawPayload : {}),
+            ...(params.whatsappMedia ? { whatsapp_media: params.whatsappMedia } : {}),
+          },
           sent_at: params.timestamp ? new Date(Number(params.timestamp) * 1000) : new Date(),
           provider,
           provider_message_id: providerMessageId,

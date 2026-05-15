@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { StorageService } from '../common/storage/storage.service';
+import { extractWhatsAppMediaFromMessage } from '../common/whatsapp-media.helper';
 import { MessagesService } from '../conversations/messages.service';
 import { WebhookEventsService } from '../webhooks/webhook-events.service';
 
@@ -313,6 +314,7 @@ export class WhatsAppService {
     }
     const senderName = value.contacts?.[0]?.profile?.name ?? from;
     const providerMessageId = msg.id;
+    const whatsappMedia = extractWhatsAppMediaFromMessage(msg);
 
     const result = await this.messages.receiveProviderInbound({
       provider: 'whatsapp',
@@ -324,6 +326,7 @@ export class WhatsAppService {
       providerMessageId,
       timestamp: msg.timestamp,
       rawPayload: payload,
+      whatsappMedia,
     });
 
     if (result.status === 'duplicate') {
@@ -380,16 +383,30 @@ export class WhatsAppService {
       throw new BadGatewayException('Media no disponible');
     }
 
-    this.logger.log(`downloadMedia: payload has keys: ${Object.keys(payload).join(', ')}`);
-    const wrappedBody = payload?.raw_payload ?? payload;
-    const inner = wrappedBody?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-    const msgPayload = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0] ?? inner ?? payload;
-    const mediaObj = msgPayload?.image ?? msgPayload?.document ?? msgPayload?.audio ?? msgPayload?.video;
-    if (!mediaObj?.id) {
+    let mediaId: string | null = null;
+
+    // Canonical: whatsapp_media field stored during inbound processing
+    if (payload.whatsapp_media?.id) {
+      mediaId = payload.whatsapp_media.id;
+      this.logger.log(`downloadMedia: found media via whatsapp_media — id=${mediaId}`);
+    }
+
+    // Fallback: navigate full webhook payload structure
+    if (!mediaId) {
+      const wrappedBody = payload?.raw_payload ?? payload;
+      const inner = wrappedBody?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+      const msgPayload = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0] ?? inner ?? payload;
+      const mediaObj = msgPayload?.image ?? msgPayload?.document ?? msgPayload?.audio ?? msgPayload?.video;
+      if (mediaObj?.id) {
+        mediaId = mediaObj.id;
+        this.logger.log(`downloadMedia: found media via webhook fallback — id=${mediaId}`);
+      }
+    }
+
+    if (!mediaId) {
       this.logger.warn(
-        `downloadMedia: no media found — hasRawPayload=${!!payload?.raw_payload}, ` +
-        `msgType=${msgPayload?.type ?? 'N/A'}, ` +
-        `keys=${Object.keys(msgPayload ?? {}).join(',')}`,
+        `downloadMedia: no media found — hasWhatsappMedia=${!!payload?.whatsapp_media}, ` +
+        `hasRawPayload=${!!payload?.raw_payload}`,
       );
       throw new BadGatewayException('No se encontró media en el mensaje');
     }
@@ -406,7 +423,7 @@ export class WhatsAppService {
 
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
 
-    const mediaRes = await fetch(`${META_API_BASE}/${mediaObj.id}`, {
+    const mediaRes = await fetch(`${META_API_BASE}/${mediaId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       signal: AbortSignal.timeout(15_000),
     });

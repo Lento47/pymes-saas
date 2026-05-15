@@ -16,6 +16,7 @@ import { timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MessagesService } from './messages.service';
 import { parseJsonValue } from '../common/prisma/json';
+import { extractWhatsAppMediaFromMessage } from '../common/whatsapp-media.helper';
 
 function safeEqual(a: string, b: string): boolean {
   if (!a || !b) return false;
@@ -147,6 +148,7 @@ export class InboundController {
           }
           const senderName =
             contacts.find((c: any) => c.wa_id === from)?.profile?.name ?? from;
+          const whatsappMedia = extractWhatsAppMediaFromMessage(msg);
 
           // Encontrar el workspace que tiene este phone_number_id configurado
           const workspaceId = await this.resolveWorkspaceByPhoneNumberId(phoneNumberId, wabaId);
@@ -169,6 +171,7 @@ export class InboundController {
                 waba_id: wabaId,
                 meta_message_id: msg.id,
                 raw_payload: body,
+                whatsapp_media: whatsappMedia,
               },
             );
             this.logger.log(
