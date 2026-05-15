@@ -11,6 +11,7 @@ import { Priority } from '@prisma/client';
 import { AutomationsService } from '../automations/automations.service';
 import { RoutingService } from '../routing/routing.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { StorageService } from '../common/storage/storage.service';
 
 @Injectable()
 export class MessagesService {
@@ -27,6 +28,7 @@ export class MessagesService {
     private readonly routingService: RoutingService,
     @Inject(forwardRef(() => WhatsAppService))
     private readonly whatsappService: WhatsAppService,
+    private readonly storage: StorageService,
   ) { }
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 100) {
@@ -566,6 +568,29 @@ export class MessagesService {
     this.triggerAiAnalysis(workspaceId, conversationId, contactId).catch(
       (err) => this.logger.error('Error en análisis de IA', err?.stack ?? err),
     );
+  }
+
+  // ── Signed URL para media ────────────────────────────────────────────────
+
+  /**
+   * Generate a signed URL for a message's stored media (MinIO/S3).
+   * Returns null if the message has no storage-backed attachments (fallback to Meta proxy).
+   *
+   * Security: validates workspace ownership before signing.
+   */
+  async getMediaSignedUrl(messageId: string, workspaceId: string): Promise<string | null> {
+    const msg = await this.prisma.message.findFirst({
+      where: { id: messageId, workspace_id: workspaceId },
+      select: { attachments_json: true },
+    });
+    if (!msg) return null;
+
+    const attachments = msg.attachments_json as any[] | null | undefined;
+    const entry = attachments?.[0] ?? null;
+    if (!entry?.storageKey) return null;
+
+    const ttl = Number(process.env.MEDIA_SIGNED_URL_TTL_SECONDS ?? 300);
+    return this.storage.getPresignedUrl(entry.storageKey, ttl);
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────

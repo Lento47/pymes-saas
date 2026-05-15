@@ -241,6 +241,15 @@ export class ConversationsController {
     @Res() res: Response,
   ) {
     try {
+      // 1) Try signed URL redirect (MinIO storage — no proxy)
+      const signedUrl = await this.messagesService.getMediaSignedUrl(messageId, workspaceId);
+      if (signedUrl) {
+        const ttlSeconds = Number(process.env.MEDIA_SIGNED_URL_TTL_SECONDS ?? 300);
+        res.setHeader('Cache-Control', `private, max-age=${ttlSeconds}`);
+        return res.redirect(302, signedUrl);
+      }
+
+      // 2) Fallback: buffer proxy (Meta API — no storage yet)
       const { buffer, contentType } = await this.whatsAppService.downloadMedia(messageId, workspaceId);
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
