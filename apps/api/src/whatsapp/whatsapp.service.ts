@@ -24,6 +24,7 @@ export class WhatsAppService {
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
     private readonly storage: StorageService,
+    @Inject(forwardRef(() => MessagesService))
     private readonly messages: MessagesService,
     @Inject(forwardRef(() => WebhookEventsService))
     private readonly webhookEvents: WebhookEventsService,
