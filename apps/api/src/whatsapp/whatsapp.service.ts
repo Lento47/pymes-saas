@@ -503,22 +503,48 @@ export class WhatsAppService {
   async downloadMedia(messageId: string, workspaceId: string): Promise<{ buffer: Buffer; contentType: string }> {
     const msg = await this.prisma.message.findFirst({
       where: { id: messageId, workspace_id: workspaceId },
-      select: { raw_payload_json: true, conversation: { select: { channel_id: true } } },
+      select: {
+        raw_payload_json: true,
+        attachments_json: true,
+        conversation: { select: { channel_id: true } },
+      },
     });
     if (!msg) throw new BadGatewayException('Mensaje no encontrado');
 
+    // ── Prioritize MinIO storage ──────────────────────────────────────────
+    const attachments = msg.attachments_json as any[] | null | undefined;
+    const attachmentEntry = attachments?.[0] ?? null;
+    if (attachmentEntry?.storageKey) {
+      try {
+        const presignedUrl = await this.storage.getPresignedUrl(attachmentEntry.storageKey, 3600);
+        const fileRes = await fetch(presignedUrl, { signal: AbortSignal.timeout(30_000) });
+        if (fileRes.ok) {
+          const buffer = Buffer.from(await fileRes.arrayBuffer());
+          const contentType = attachmentEntry.mimeType || fileRes.headers.get('content-type') || 'application/octet-stream';
+          this.logger.log(`downloadMedia: served from MinIO — msg=${messageId} key=${attachmentEntry.storageKey}`);
+          return { buffer, contentType };
+        }
+        this.logger.warn(`downloadMedia: MinIO fetch failed — msg=${messageId} status=${fileRes.status}, falling back to Meta`);
+      } catch (err) {
+        this.logger.warn(`downloadMedia: MinIO error — msg=${messageId}: ${err.message}, falling back to Meta`);
+      }
+    }
+
+    // ── Fallback: fetch from Meta API ─────────────────────────────────────
     const payload = msg.raw_payload_json as any;
     if (!payload) {
       this.logger.warn(`downloadMedia: raw_payload_json is null for message ${messageId}`);
       throw new BadGatewayException('Media no disponible');
     }
 
+    // Handle string payloads (legacy stringifyJson)
+    const parsed = typeof payload === 'string' ? (() => { try { return JSON.parse(payload); } catch { return {}; } })() : payload;
+
     let mediaId: string | null = null;
 
     // Canonical: whatsapp_media field stored during inbound processing
-    const wm = payload.whatsapp_media;
+    const wm = parsed.whatsapp_media;
     if (wm) {
-      // Support both new format (whatsappMediaId) and old format (id)
       if (wm.whatsappMediaId) {
         mediaId = wm.whatsappMediaId;
         this.logger.log(`downloadMedia: found media via whatsapp_media.whatsappMediaId — id=${mediaId}`);
@@ -530,9 +556,9 @@ export class WhatsAppService {
 
     // Fallback: navigate full webhook payload structure
     if (!mediaId) {
-      const wrappedBody = payload?.raw_payload ?? payload;
+      const wrappedBody = parsed?.raw_payload ?? parsed;
       const inner = wrappedBody?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-      const msgPayload = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0] ?? inner ?? payload;
+      const msgPayload = parsed?.entry?.[0]?.changes?.[0]?.value?.messages?.[0] ?? inner ?? parsed;
       const mediaObj = msgPayload?.image ?? msgPayload?.document ?? msgPayload?.audio ?? msgPayload?.video;
       if (mediaObj?.id) {
         mediaId = mediaObj.id;
@@ -542,8 +568,8 @@ export class WhatsAppService {
 
     if (!mediaId) {
       this.logger.warn(
-        `downloadMedia: no media found — hasWhatsappMedia=${!!payload?.whatsapp_media}, ` +
-        `hasRawPayload=${!!payload?.raw_payload}`,
+        `downloadMedia: no media found — hasWhatsappMedia=${!!parsed?.whatsapp_media}, ` +
+        `hasRawPayload=${!!parsed?.raw_payload}`,
       );
       throw new BadGatewayException('No se encontró media en el mensaje');
     }

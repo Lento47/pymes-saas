@@ -10,7 +10,6 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { Priority } from '@prisma/client';
 import { AutomationsService } from '../automations/automations.service';
 import { RoutingService } from '../routing/routing.service';
-import { stringifyJson } from '../common/prisma/json';
 
 @Injectable()
 export class MessagesService {
@@ -52,15 +51,18 @@ export class MessagesService {
     ]);
 
     const enriched = data.map((msg) => {
-      const payload = (msg as any).raw_payload_json;
+      const rawPayload = (msg as any).raw_payload_json;
+      // Handle both object and string payloads (legacy stringifyJson bug)
+      const payload = typeof rawPayload === 'string' ? (() => { try { return JSON.parse(rawPayload); } catch { return {}; } })() : (rawPayload || {});
+
+      // 1) Check whatsapp_media stored during inbound processing
       let wm = payload?.whatsapp_media;
 
-      // Legacy fallback: search in raw webhook payload for messages stored
-      // before the whatsapp_media extraction was implemented
+      // 2) Legacy fallback: search in raw webhook payload
       if (!wm && payload) {
-        const rawPayload = payload?.raw_payload ?? payload;
-        const innerMsg = rawPayload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
-          ?? (Array.isArray(rawPayload?.messages) ? rawPayload.messages[0] : null);
+        const rawPayloadBody = payload?.raw_payload ?? payload;
+        const innerMsg = rawPayloadBody?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
+          ?? (Array.isArray(rawPayloadBody?.messages) ? rawPayloadBody.messages[0] : null);
         if (innerMsg) {
           const mediaObj = innerMsg?.image ?? innerMsg?.document ?? innerMsg?.audio ?? innerMsg?.video ?? innerMsg?.sticker;
           if (mediaObj?.id) {
@@ -75,22 +77,29 @@ export class MessagesService {
         }
       }
 
-      const mediaType = wm?.mediaType ?? wm?.kind ?? null;
-      const mediaId = wm?.whatsappMediaId ?? wm?.id ?? null;
+      // 3) Check attachments_json (MinIO-stored media from downloadInboundMediaToStorage)
+      const attachments = (msg as any).attachments_json as any[] | null | undefined;
+      const attachmentEntry = attachments?.[0] ?? null;
+
+      const mediaType = wm?.mediaType ?? wm?.kind ?? attachmentEntry?.type ?? null;
+      const mediaId = wm?.whatsappMediaId ?? wm?.id ?? attachmentEntry?.mediaId ?? null;
       const hasMedia = !!mediaId;
-      const attachmentEntry = (msg as any).attachments_json?.[0] ?? null;
+
+      // Prefer MinIO storage URL over Meta proxy
       const storageUrl = attachmentEntry?.storageKey
-        ? `/api/storage/file/${attachmentEntry.storageKey}`
+        ? `/api/conversations/messages/${msg.id}/media`
         : null;
+      const downloadUrl = hasMedia ? `/api/conversations/messages/${msg.id}/media` : null;
+
       return {
         ...msg,
-        has_media: hasMedia,
+        has_media: hasMedia || !!attachmentEntry,
         media_type: mediaType,
-        media_mime_type: wm?.mimeType ?? wm?.mime_type ?? null,
-        media_filename: wm?.filename ?? null,
-        media_caption: wm?.caption ?? null,
-        media_download_url: storageUrl || (hasMedia ? `/api/conversations/messages/${msg.id}/media` : null),
-        media_status: hasMedia ? 'available' : 'missing',
+        media_mime_type: wm?.mimeType ?? wm?.mime_type ?? attachmentEntry?.mimeType ?? null,
+        media_filename: wm?.filename ?? attachmentEntry?.filename ?? null,
+        media_caption: wm?.caption ?? attachmentEntry?.caption ?? null,
+        media_download_url: downloadUrl,
+        media_status: hasMedia || !!attachmentEntry ? 'available' : 'missing',
       };
     });
 
@@ -291,7 +300,7 @@ export class MessagesService {
         sender_ref: senderRef,
         body_text: bodyText,
         body_html: payload.body_html ?? payload.html ?? null,
-        raw_payload_json: stringifyJson(payload),
+        raw_payload_json: payload as any,
         sent_at: new Date(),
       },
     });
