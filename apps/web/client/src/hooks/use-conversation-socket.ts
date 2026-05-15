@@ -20,37 +20,48 @@ import { connectSocket, getSocket } from './use-socket';
 export function useConversationSocket(conversationId: string) {
   const qc = useQueryClient();
 
-  const MESSAGES_KEY = ['/api/conversations', conversationId, 'messages'];
-  const CONVERSATION_KEY = ['/api/conversations', conversationId];
-  const CONVERSATIONS_KEY = ['/api/conversations'];
+  // Keep these aligned with ConversationPanel.tsx and InboxPage.tsx query keys.
+  const MESSAGES_KEY = ['conversation-messages', conversationId];
+  const CONVERSATION_KEY = ['conversation', conversationId];
+  const CONVERSATIONS_KEY = ['conversations'];
 
   function looksLikeMedia(message: any): boolean {
     if (message.has_media || message.media_type) return true;
     const type = message.message_type;
-    if (type === 'image' || type === 'document' || type === 'audio' || type === 'video') return true;
-    const text = message.body_text || '';
-    return text.startsWith('🖼') || text.startsWith('📄') || text.startsWith('🎬') || text.startsWith('🎧');
+    if (type === 'image' || type === 'document' || type === 'audio' || type === 'video' || type === 'sticker') return true;
+    const text = message.body_text || message.body_html || message.content || '';
+    return text.startsWith('🖼') || text.startsWith('📄') || text.startsWith('🎬') || text.startsWith('🎧') || text.startsWith('💬');
   }
 
   const handleNewMessage = useCallback(
     (message: any) => {
-      // 1. Insert optimista — muestra el mensaje al instante
+      // 1. Insert optimista — muestra el mensaje al instante.
       qc.setQueryData(MESSAGES_KEY, (old: any) => {
         if (!old) return old;
-        const exists = old.data?.some((m: any) => m.id === message.id);
-        if (exists) return old;
+        const existingData = Array.isArray(old.data) ? old.data : [];
+        const exists = existingData.some((m: any) => m.id === message.id);
+
+        if (exists) {
+          return {
+            ...old,
+            data: existingData.map((m: any) =>
+              m.id === message.id ? { ...m, ...message } : m,
+            ),
+          };
+        }
+
         return {
           ...old,
-          data: [...(old.data ?? []), message],
+          data: [...existingData, message],
           meta: { ...old.meta, total: (old.meta?.total ?? 0) + 1 },
         };
       });
 
-      // 2. Refetch inmediato — trae DTO enriquecido del backend
+      // 2. Refetch inmediato — trae DTO enriquecido del backend.
       qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
       qc.invalidateQueries({ queryKey: MESSAGES_KEY });
 
-      // 3. Si parece media, refetch diferido — captura media async (MinIO)
+      // 3. Si parece media, refetch diferido — captura media async (MinIO).
       if (looksLikeMedia(message)) {
         window.setTimeout(() => {
           qc.invalidateQueries({ queryKey: MESSAGES_KEY });
@@ -71,7 +82,9 @@ export function useConversationSocket(conversationId: string) {
       media_filename: string | null;
       media_caption: string | null;
     }) => {
-      // Update solo ese mensaje en cache — sin refetch completo
+      if (payload.conversation_id !== conversationId) return;
+
+      // Update solo ese mensaje en cache — sin refetch completo.
       qc.setQueryData(MESSAGES_KEY, (old: any) => {
         if (!old?.data) return old;
         return {
