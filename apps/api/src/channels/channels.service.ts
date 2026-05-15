@@ -220,6 +220,13 @@ export class ChannelsService {
     if (channel.type !== 'TELEGRAM') throw new BadRequestException('El canal no es de tipo TELEGRAM.');
 
     const existingConfig = parseJsonValue<Record<string, any>>(channel.config_json, {});
+
+    // If a new token was passed, validate it BEFORE saving
+    if (dto.bot_token) {
+      const isValid = await this.telegramService.validateToken(dto.bot_token);
+      if (!isValid) throw new BadRequestException('Token de bot inválido o expirado. Verificá el token en @BotFather.');
+    }
+
     const bot_token_encrypted = dto.bot_token
       ? this.crypto.encrypt(dto.bot_token)
       : existingConfig.bot_token_encrypted;
@@ -232,12 +239,20 @@ export class ChannelsService {
       },
     });
 
-    // Register webhook asynchronously (fire and forget)
-    this.telegramService.registerWebhook(workspaceId, id).catch((err) => {
+    // Register webhook synchronously so we surface errors immediately
+    try {
+      await this.telegramService.registerWebhook(workspaceId, id);
+      this.logger.log(`TELEGRAM canal ${id} configurado y webhook registrado para workspace ${workspaceId}`);
+    } catch (err) {
+      // Webhook registration failed — keep the token saved but revert status
+      await this.prisma.channel.update({
+        where: { id },
+        data: { status: 'ERROR' },
+      });
       this.logger.error(`Failed to register Telegram webhook for channel ${id}: ${(err as Error).message}`);
-    });
+      throw new BadRequestException(`Token válido pero no se pudo registrar el webhook: ${(err as Error).message}`);
+    }
 
-    this.logger.log(`TELEGRAM canal ${id} configurado para workspace ${workspaceId}`);
     return this.sanitise(updated);
   }
 

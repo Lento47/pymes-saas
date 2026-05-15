@@ -52,7 +52,7 @@ export class TelegramService {
   /**
    * Validate token with Telegram API
    */
-  private async validateToken(token: string): Promise<boolean> {
+  async validateToken(token: string): Promise<boolean> {
     try {
       const bot = new Telegraf(token);
       const me = await bot.telegram.getMe();
