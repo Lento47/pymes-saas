@@ -289,6 +289,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const canSendInvoice = ["EMAIL", "WHATSAPP", "TELEGRAM"].includes(channelType.toUpperCase());
 
   const [nearBottom, setNearBottom] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
@@ -296,11 +297,24 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     setNearBottom(scrollHeight - scrollTop - clientHeight < 150);
   };
 
+  // Scroll to bottom on initial load (after DOM renders)
   useEffect(() => {
+    if (msgsLoading || initialLoaded || !bottomRef.current) return;
+    const timer = setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ block: "end", behavior: "instant" });
+      setNearBottom(true);
+      setInitialLoaded(true);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [msgsLoading, msgList.length]);
+
+  // Keep scrolled to bottom on new messages
+  useEffect(() => {
+    if (!initialLoaded) return;
     if (nearBottom && bottomRef.current) {
       bottomRef.current.scrollIntoView({ block: "end", behavior: "instant" });
     }
-  }, [msgList.length, msgsLoading, nearBottom]);
+  }, [msgList.length, nearBottom, initialLoaded]);
 
   if (!id) return null;
 
