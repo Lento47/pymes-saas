@@ -93,12 +93,14 @@ export class TelegramService {
     await this.removeWebhook(channelId).catch(() => {});
 
     const bot = new Telegraf(token);
-    const baseUrl = this.config.get<string>('TELEGRAM_WEBHOOK_BASE_URL')
+    const rawBaseUrl = this.config.get<string>('TELEGRAM_WEBHOOK_BASE_URL')
       ?? this.config.get<string>('APP_URL')
       ?? process.env.PUBLIC_URL
       ?? 'https://api.pymeshub.lat';
-
+    const baseUrl = rawBaseUrl.replace(/\/+$/, ''); // strip trailing slash
     const webhookUrl = `${baseUrl}/api/inbound/telegram/webhook/${channelId}`;
+
+    this.logger.log(`Registering webhook for channel ${channelId}: ${webhookUrl}`);
 
     // Generate a per-channel webhook secret so we can verify inbound updates
     // via the X-Telegram-Bot-Api-Secret-Token header. Telegram requires the
@@ -124,8 +126,8 @@ export class TelegramService {
 
       this.logger.log(`Telegram webhook registered: channel=${channelId}, url=${webhookUrl}`);
     } catch (err) {
-      this.logger.error(`Failed to register webhook: ${(err as Error).message}`);
-      throw new BadRequestException(`Failed to register webhook: ${(err as Error).message}`);
+      this.logger.error(`Failed to register webhook for channel ${channelId}: url=${webhookUrl} error=${(err as Error).message}`);
+      throw new BadRequestException(`Token válido pero no se pudo registrar el webhook en ${baseUrl}: ${(err as Error).message}`);
     }
   }
 
