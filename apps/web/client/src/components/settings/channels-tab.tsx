@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Plug, PlugZap, PowerOff, Trash2, Mail, MessageCircle, ExternalLink, Radio } from "lucide-react";
+import { Plus, Plug, PlugZap, PowerOff, Trash2, Mail, MessageCircle, ExternalLink, Radio, Send, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { openExternal } from "@/lib/platform";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 const CHANNEL_TYPE_COLORS: Record<string, string> = {
   EMAIL: "bg-blue-500/10 text-blue-400",
   WHATSAPP: "bg-green-500/10 text-green-400",
+  TELEGRAM: "bg-sky-500/10 text-sky-400",
   FORM: "bg-purple-500/10 text-purple-400",
   API: "bg-orange-500/10 text-orange-400",
   MANUAL: "bg-gray-500/10 text-gray-400",
@@ -24,6 +25,7 @@ const CHANNEL_TYPE_COLORS: Record<string, string> = {
 const CHANNEL_ICONS: Record<string, any> = {
   EMAIL: Mail,
   WHATSAPP: MessageCircle,
+  TELEGRAM: Send,
   FORM: PlugZap,
   API: Plug,
   MANUAL: Radio,
@@ -238,6 +240,143 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
   );
 }
 
+function TelegramConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [botToken, setBotToken] = useState("");
+  const [webhookStatus, setWebhookStatus] = useState<any>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+
+  const save = useMutation({
+    mutationFn: () => api.configureTelegram(channel.id, { bot_token: botToken || undefined }),
+    onSuccess: () => {
+      toast({ title: "Canal Telegram guardado y activado" });
+      qc.invalidateQueries({ queryKey: ["/api/channels"] });
+      onClose();
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const isEdit = channel?.status === "ACTIVE";
+
+  const checkWebhookStatus = async () => {
+    setCheckingStatus(true);
+    try {
+      const res = await api.getTelegramWebhookStatus(channel.id);
+      setWebhookStatus(res?.data ?? res);
+    } catch {
+      setWebhookStatus(null);
+      toast({ title: "Error al verificar webhook", variant: "destructive" });
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 pt-2">
+      <div className="p-3 rounded-lg bg-sky-500/10 border border-sky-500/20 text-xs text-sky-300">
+        Creá un bot en{" "}
+        <a
+          href="https://t.me/BotFather"
+          target="_blank"
+          rel="noreferrer"
+          className="underline inline-flex items-center gap-1"
+          onClick={(event) => {
+            event.preventDefault();
+            void openExternal("https://t.me/BotFather");
+          }}
+        >
+          @BotFather <ExternalLink className="h-3 w-3" />
+        </a>
+        {" "}con <span className="font-mono">/newbot</span>, copiá el token y pegalo acá.
+      </div>
+
+      <div>
+        <Label>Token del Bot {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener el actual)</span>}</Label>
+        <div className="mt-1">
+          <SecretInput
+            value={botToken}
+            onChange={setBotToken}
+            placeholder={isEdit ? "••••••••••••••••••••" : "1234567890:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          El token se encripta al guardarse. Nunca lo compartas.
+        </p>
+      </div>
+
+      {isEdit && (
+        <div className="space-y-3 rounded-lg border border-border bg-[hsl(var(--elevated))] p-3 text-xs">
+          <div className="flex items-center justify-between">
+            <p className="font-medium text-foreground">Estado del webhook</p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[11px] border-border"
+              onClick={checkWebhookStatus}
+              disabled={checkingStatus}
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${checkingStatus ? "animate-spin" : ""}`} />
+              Verificar
+            </Button>
+          </div>
+          {webhookStatus && (
+            <div className="space-y-1 text-muted-foreground">
+              <p>
+                URL:{" "}
+                <span className="font-mono text-[10px] break-all text-foreground">
+                  {webhookStatus.url || "—"}
+                </span>
+              </p>
+              <p>
+                Pendientes:{" "}
+                <span className={webhookStatus.pending_update_count > 0 ? "text-yellow-400" : "text-green-400"}>
+                  {webhookStatus.pending_update_count ?? "—"}
+                </span>
+              </p>
+              {webhookStatus.last_error_message && (
+                <p className="text-red-400">
+                  Error: {webhookStatus.last_error_message}
+                </p>
+              )}
+              {webhookStatus.last_error_date && (
+                <p className="text-red-400">
+                  Último error: {new Date(webhookStatus.last_error_date * 1000).toLocaleString("es-CR")}
+                </p>
+              )}
+              {!webhookStatus.last_error_message && webhookStatus.url && (
+                <p className="text-green-400">✅ Webhook funcionando correctamente</p>
+              )}
+            </div>
+          )}
+          {!webhookStatus && !checkingStatus && (
+            <p className="text-muted-foreground">Presioná "Verificar" para chequear el estado del webhook.</p>
+          )}
+        </div>
+      )}
+
+      <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs text-muted-foreground space-y-1">
+        <p className="font-medium text-foreground">¿Cómo funciona?</p>
+        <p>
+          Cuando alguien le escribe al bot en Telegram, PymesHub recibe el mensaje vía webhook
+          y crea una conversación automáticamente en tu bandeja de entrada.
+        </p>
+        <p className="mt-1">
+          Tipos soportados: texto, fotos, documentos, videos, audios y mensajes de voz.
+        </p>
+      </div>
+
+      <Button
+        onClick={() => save.mutate()}
+        disabled={(!isEdit && !botToken) || save.isPending}
+        className="w-full bg-sky-600 hover:bg-sky-700"
+      >
+        {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
+      </Button>
+    </div>
+  );
+}
+
 function DeleteChannelDialog({ channel, onClose }: { channel: any; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -313,6 +452,7 @@ export function ChannelsTab() {
   const channels = Array.isArray(data) ? data : [];
   const isEmail = configChannel?.type === "EMAIL";
   const isWA = configChannel?.type === "WHATSAPP";
+  const isTG = configChannel?.type === "TELEGRAM";
 
   return (
     <div>
@@ -330,14 +470,14 @@ export function ChannelsTab() {
             <div className="space-y-3 pt-2">
               <div>
                 <Label>Nombre</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder="ej. Correo Principal" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
+                <Input value={name} onChange={e => setName(e.target.value)} placeholder="ej. Bot Atención al Cliente" className="mt-1 bg-[hsl(var(--elevated))] border-border" />
               </div>
               <div>
                 <Label>Tipo</Label>
                 <Select value={type} onValueChange={setType}>
                   <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-card border-border">
-                    {["EMAIL", "WHATSAPP", "FORM", "API", "MANUAL"].map(t => (
+                    {["EMAIL", "WHATSAPP", "TELEGRAM", "FORM", "API", "MANUAL"].map(t => (
                       <SelectItem key={t} value={t}>{t}</SelectItem>
                     ))}
                   </SelectContent>
@@ -355,13 +495,14 @@ export function ChannelsTab() {
         <DialogContent className="bg-card border-border max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {isEmail ? <Mail className="h-4 w-4 text-blue-400" /> : <MessageCircle className="h-4 w-4 text-green-400" />}
+              {isEmail ? <Mail className="h-4 w-4 text-blue-400" /> : isWA ? <MessageCircle className="h-4 w-4 text-green-400" /> : isTG ? <Send className="h-4 w-4 text-sky-400" /> : null}
               {configChannel?.status === "ACTIVE" ? "Editar" : "Configurar"} {configChannel?.type}
               <span className="text-muted-foreground font-normal text-sm ml-1">— {configChannel?.name}</span>
             </DialogTitle>
           </DialogHeader>
           {isEmail && <EmailConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
           {isWA && <WhatsAppConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
+          {isTG && <TelegramConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
         </DialogContent>
       </Dialog>
 
@@ -375,10 +516,10 @@ export function ChannelsTab() {
         <div className="space-y-2">
           {channels.map((ch: any) => {
             const Icon = CHANNEL_ICONS[ch.type] ?? Radio;
-            const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP");
+            const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
             const canConnect = ch.status !== "ACTIVE" && !needsConfig;
             const isActive = ch.status === "ACTIVE";
-            const canEdit = isActive && (ch.type === "EMAIL" || ch.type === "WHATSAPP");
+            const canEdit = isActive && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
 
             return (
               <div key={ch.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
@@ -404,7 +545,7 @@ export function ChannelsTab() {
 
                   {needsConfig && (
                     <Button size="sm" variant="outline"
-                      className={`h-7 text-xs ${ch.type === "EMAIL" ? "border-blue-500/30 text-blue-400" : "border-green-500/30 text-green-400"}`}
+                      className={`h-7 text-xs ${ch.type === "EMAIL" ? "border-blue-500/30 text-blue-400" : ch.type === "WHATSAPP" ? "border-green-500/30 text-green-400" : "border-sky-500/30 text-sky-400"}`}
                       onClick={() => setConfigChannel(ch)}
                     >
                       <PlugZap className="h-3 w-3 mr-1" />Configurar
