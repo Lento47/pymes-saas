@@ -53,58 +53,7 @@ export class MessagesService {
       }),
     ]);
 
-    const enriched = data.map((msg) => {
-      const rawPayload = (msg as any).raw_payload_json;
-      // Handle both object and string payloads (legacy stringifyJson bug)
-      const payload = typeof rawPayload === 'string' ? (() => { try { return JSON.parse(rawPayload); } catch { return {}; } })() : (rawPayload || {});
-
-      // 1) Check whatsapp_media stored during inbound processing
-      let wm = payload?.whatsapp_media;
-
-      // 2) Legacy fallback: search in raw webhook payload
-      if (!wm && payload) {
-        const rawPayloadBody = payload?.raw_payload ?? payload;
-        const innerMsg = rawPayloadBody?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
-          ?? (Array.isArray(rawPayloadBody?.messages) ? rawPayloadBody.messages[0] : null);
-        if (innerMsg) {
-          const mediaObj = innerMsg?.image ?? innerMsg?.document ?? innerMsg?.audio ?? innerMsg?.video ?? innerMsg?.sticker;
-          if (mediaObj?.id) {
-            wm = {
-              whatsappMediaId: mediaObj.id,
-              mediaType: innerMsg.type,
-              mimeType: mediaObj.mime_type ?? null,
-              filename: mediaObj.filename ?? null,
-              caption: mediaObj.caption ?? null,
-            };
-          }
-        }
-      }
-
-      // 3) Check attachments_json (MinIO-stored media from downloadInboundMediaToStorage)
-      const attachments = (msg as any).attachments_json as any[] | null | undefined;
-      const attachmentEntry = attachments?.[0] ?? null;
-
-      const mediaType = wm?.mediaType ?? wm?.kind ?? attachmentEntry?.type ?? null;
-      const mediaId = wm?.whatsappMediaId ?? wm?.id ?? attachmentEntry?.mediaId ?? null;
-      const hasMedia = !!mediaId;
-
-      // Prefer MinIO storage URL over Meta proxy
-      const storageUrl = attachmentEntry?.storageKey
-        ? `/api/conversations/messages/${msg.id}/media`
-        : null;
-      const downloadUrl = hasMedia ? `/api/conversations/messages/${msg.id}/media` : null;
-
-      return {
-        ...msg,
-        has_media: hasMedia || !!attachmentEntry,
-        media_type: mediaType,
-        media_mime_type: wm?.mimeType ?? wm?.mime_type ?? attachmentEntry?.mimeType ?? null,
-        media_filename: wm?.filename ?? attachmentEntry?.filename ?? null,
-        media_caption: wm?.caption ?? attachmentEntry?.caption ?? null,
-        media_download_url: downloadUrl,
-        media_status: hasMedia || !!attachmentEntry ? 'available' : 'missing',
-      };
-    });
+    const enriched = data.map((msg) => this.serializeMessageForClient(msg));
 
     this.logger.log(`findAll messages: conv=${conversationId}, count=${total}, returned=${enriched.length}`);
 
@@ -147,7 +96,7 @@ export class MessagesService {
     await this.conversationsService.touchLastMessage(conversationId);
 
     // Emitir en tiempo real
-    this.events.emitNewMessage(conversationId, workspaceId, message);
+    this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessageForClient(message));
 
     return message;
   }
@@ -528,7 +477,7 @@ export class MessagesService {
         },
       });
       if (message) {
-        this.events.emitNewMessage(conversationId, workspaceId, message);
+        this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessageForClient(message));
       }
     } catch (err) {
       this.logger.error(`Realtime emit failed: ${err?.message}`);
@@ -568,7 +517,78 @@ export class MessagesService {
     );
   }
 
-  // ── Private helpers ────────────────────────────────────────────────────────
+  // ── Serializer único para clientes ────────────────────────────────────────
+
+  /**
+   * Serialize a raw Prisma message into the client-facing DTO.
+   *
+   * Used by:
+   * - GET /conversations/:id/messages (findAll)
+   * - Socket message:new (via emitAndNotify / send)
+   * - Socket message:media-ready
+   *
+   * Enriches raw payload with:
+   * - has_media / media_type / media_status / media_download_url
+   * - media_mime_type / media_filename / media_caption
+   */
+  serializeMessageForClient(msg: Record<string, any>): Record<string, any> {
+    const rawPayload = msg.raw_payload_json;
+    // Handle both object and string payloads (legacy stringifyJson bug)
+    const payload = typeof rawPayload === 'string' ? (() => { try { return JSON.parse(rawPayload); } catch { return {}; } })() : (rawPayload || {});
+
+    // 1) Check whatsapp_media stored during inbound processing
+    let wm = payload?.whatsapp_media;
+
+    // 2) Legacy fallback: search in raw webhook payload
+    if (!wm && payload) {
+      const rawPayloadBody = payload?.raw_payload ?? payload;
+      const innerMsg = rawPayloadBody?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
+        ?? (Array.isArray(rawPayloadBody?.messages) ? rawPayloadBody.messages[0] : null);
+      if (innerMsg) {
+        const mediaObj = innerMsg?.image ?? innerMsg?.document ?? innerMsg?.audio ?? innerMsg?.video ?? innerMsg?.sticker;
+        if (mediaObj?.id) {
+          wm = {
+            whatsappMediaId: mediaObj.id,
+            mediaType: innerMsg.type,
+            mimeType: mediaObj.mime_type ?? null,
+            filename: mediaObj.filename ?? null,
+            caption: mediaObj.caption ?? null,
+          };
+        }
+      }
+    }
+
+    // 3) Check attachments_json (MinIO-stored media from downloadInboundMediaToStorage)
+    const attachments = msg.attachments_json as any[] | null | undefined;
+    const attachmentEntry = attachments?.[0] ?? null;
+
+    const mediaType = wm?.mediaType ?? wm?.kind ?? attachmentEntry?.type ?? msg.message_type ?? null;
+    const mediaId = wm?.whatsappMediaId ?? wm?.id ?? attachmentEntry?.mediaId ?? null;
+    const hasMedia = !!mediaId;
+
+    // Prefer MinIO storage URL over Meta proxy
+    const storageUrl = attachmentEntry?.storageKey
+      ? `/api/conversations/messages/${msg.id}/media`
+      : null;
+    const downloadUrl = hasMedia ? `/api/conversations/messages/${msg.id}/media` : null;
+
+    return {
+      ...msg,
+      has_media: hasMedia || !!attachmentEntry,
+      media_type: mediaType,
+      media_mime_type: wm?.mimeType ?? wm?.mime_type ?? attachmentEntry?.mimeType ?? null,
+      media_filename: wm?.filename ?? attachmentEntry?.filename ?? null,
+      media_caption: wm?.caption ?? attachmentEntry?.caption ?? null,
+      media_download_url: downloadUrl,
+      media_status: attachmentEntry?.storageKey
+        ? 'available'
+        : hasMedia
+          ? 'processing'
+          : 'none',
+    };
+  }
+
+  // ── Endpoints ───────────────────────────────────────────────────────────────
 
   private async triggerAiAnalysis(
     workspaceId: string,

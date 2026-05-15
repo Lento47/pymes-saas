@@ -12,7 +12,8 @@ import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 
 // ─── Eventos emitidos al cliente ─────────────────────────────────────────────
-// message:new          → nuevo mensaje en una conversación
+// message:new          → nuevo mensaje en una conversación (DTO enriquecido)
+// message:media-ready  → media descargada y almacenada, actualizar UI
 // conversation:updated → cambio de estado/prioridad/asignación
 // notification:new     → nueva notificación para el usuario
 // task:updated         → tarea actualizada
@@ -123,6 +124,25 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         id: conversationId,
         last_message_at: new Date().toISOString(),
       });
+  }
+
+  /**
+   * Emitir actualización de media (descarga completada) a la conversación.
+   * El frontend puede actualizar solo ese mensaje sin refetch completo.
+   */
+  emitMediaReady(payload: {
+    message_id: string;
+    conversation_id: string;
+    media_type: string;
+    media_status: string;
+    media_download_url: string;
+    media_mime_type: string | null;
+    media_filename: string | null;
+    media_caption: string | null;
+  }) {
+    this.server
+      .to(`conversation:${payload.conversation_id}`)
+      .emit('message:media-ready', payload);
   }
 
   /**

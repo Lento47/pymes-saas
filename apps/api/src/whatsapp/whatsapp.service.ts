@@ -12,6 +12,7 @@ import { extractWhatsAppMediaFromMessage } from '../common/whatsapp-media.helper
 import { parseJsonValue } from '../common/prisma/json';
 import { MessagesService } from '../conversations/messages.service';
 import { WebhookEventsService } from '../webhooks/webhook-events.service';
+import { EventsGateway } from '../gateways/events.gateway';
 import * as path from 'path';
 
 const META_API_BASE = 'https://graph.facebook.com/v19.0';
@@ -28,6 +29,7 @@ export class WhatsAppService {
     private readonly messages: MessagesService,
     @Inject(forwardRef(() => WebhookEventsService))
     private readonly webhookEvents: WebhookEventsService,
+    private readonly events: EventsGateway,
   ) {}
 
   // ── Enviar mensaje outbound ────────────────────────────────────────────────
@@ -396,6 +398,7 @@ export class WhatsAppService {
         this.downloadInboundMediaToStorage(
           phoneNumberId,
           workspaceId,
+          conversationId,
           messageId,
           whatsappMedia,
         ).catch((err) =>
@@ -435,6 +438,7 @@ export class WhatsAppService {
   private async downloadInboundMediaToStorage(
     phoneNumberId: string,
     workspaceId: string,
+    conversationId: string,
     messageId: string,
     media: { whatsappMediaId: string; mediaType: string; mimeType: string | null; caption: string | null; filename: string | null },
   ): Promise<void> {
@@ -508,6 +512,22 @@ export class WhatsAppService {
 
     this.logger.log(
       `Inbound media saved to MinIO — msg=${messageId} key=${storageKey} type=${media.mediaType} size=${buffer.length}`,
+    );
+
+    // Emit media-ready so frontend can update this message without full refetch
+    this.events.emitMediaReady({
+      message_id: messageId,
+      conversation_id: conversationId,
+      media_type: media.mediaType,
+      media_status: 'available',
+      media_download_url: `/api/conversations/messages/${messageId}/media`,
+      media_mime_type: mimeType,
+      media_filename: media.filename ?? null,
+      media_caption: media.caption ?? null,
+    });
+
+    this.logger.log(
+      `Media-ready emitted — msg=${messageId} conv=${conversationId} type=${media.mediaType}`,
     );
   }
 
