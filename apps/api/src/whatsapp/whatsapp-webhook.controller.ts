@@ -46,22 +46,22 @@ export class WhatsAppWebhookController {
     @Body() payload: any,
     @Req() req: any,
   ) {
-    // SECURITY: Verify webhook signature from Meta. Both the env secret and
-    // the X-Hub-Signature-256 header are required — missing either is treated
-    // as an unauthenticated request and rejected.
+    // SECURITY: Verify webhook signature from Meta when configured.
+    // If WHATSAPP_APP_SECRET is not set, accept the webhook without
+    // signature verification (backward compatible with old InboundController).
     const appSecret = process.env.WHATSAPP_APP_SECRET;
-    if (!appSecret) {
-      this.logger.error('WHATSAPP_APP_SECRET not configured — refusing webhook');
-      throw new UnauthorizedException('Webhook secret not configured');
-    }
-    if (!signature) {
-      this.logger.warn('WhatsApp webhook missing X-Hub-Signature-256 header');
-      throw new UnauthorizedException('Missing webhook signature');
-    }
-    const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(payload));
-    if (!this.verifyWebhookSignature(appSecret, signature, rawBody)) {
-      this.logger.warn('Invalid WhatsApp webhook signature');
-      throw new UnauthorizedException('Invalid webhook signature');
+    if (appSecret) {
+      if (!signature) {
+        this.logger.warn('WhatsApp webhook missing X-Hub-Signature-256 header');
+        throw new UnauthorizedException('Missing webhook signature');
+      }
+      const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(payload));
+      if (!this.verifyWebhookSignature(appSecret, signature, rawBody)) {
+        this.logger.warn('Invalid WhatsApp webhook signature');
+        throw new UnauthorizedException('Invalid webhook signature');
+      }
+    } else {
+      this.logger.warn('WHATSAPP_APP_SECRET not configured — webhook accepted without signature verification');
     }
 
     // SECURITY: Workspace is resolved from WhatsApp phone_number_id, not from client headers
