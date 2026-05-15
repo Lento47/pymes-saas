@@ -20,11 +20,11 @@ export function InboxToolbar({
   onStatusFilterChange: (v: ConversationStatusFilter) => void;
 }) {
   return (
-    <div className="shrink-0 border-b border-border px-4 py-2.5">
+    <div className="shrink-0 border-b border-border px-3 sm:px-4 py-2.5">
       <div className="flex items-center justify-between gap-3">
         {/* Left: search + filters */}
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="relative w-[260px]">
+          <div className="relative w-full max-w-[260px]">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-[14px] w-[14px] -translate-y-1/2 text-muted-foreground/75" />
             <input
               value={search}

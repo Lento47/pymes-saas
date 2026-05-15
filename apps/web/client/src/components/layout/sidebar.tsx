@@ -466,7 +466,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="shrink-0 flex items-center gap-3 px-4 lg:px-6 py-3 border-b border-border/40 bg-background/80 backdrop-blur-sm relative z-40 pt-safe">
+        <header className="shrink-0 flex items-center gap-3 px-3 lg:px-6 py-2.5 border-b border-border/40 bg-background/80 backdrop-blur-sm relative z-40 pt-safe">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
