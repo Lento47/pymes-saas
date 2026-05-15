@@ -51,10 +51,28 @@ export class MessagesService {
       }),
     ]);
 
-    this.logger.log(`findAll messages: conv=${conversationId}, count=${total}, returned=${data.length}`);
+    const enriched = data.map((msg) => {
+      const payload = (msg as any).raw_payload_json;
+      const wm = payload?.whatsapp_media;
+      const mediaType = wm?.mediaType ?? wm?.kind ?? null;
+      const mediaId = wm?.whatsappMediaId ?? wm?.id ?? null;
+      const hasMedia = !!mediaId;
+      return {
+        ...msg,
+        has_media: hasMedia,
+        media_type: mediaType,
+        media_mime_type: wm?.mimeType ?? wm?.mime_type ?? null,
+        media_filename: wm?.filename ?? null,
+        media_caption: wm?.caption ?? null,
+        media_download_url: hasMedia ? `/api/conversations/messages/${msg.id}/media` : null,
+        media_status: hasMedia ? 'available' : 'missing',
+      };
+    });
+
+    this.logger.log(`findAll messages: conv=${conversationId}, count=${total}, returned=${enriched.length}`);
 
     return {
-      data,
+      data: enriched,
       meta: { total, page, limit, pages: Math.ceil(total / limit) },
     };
   }

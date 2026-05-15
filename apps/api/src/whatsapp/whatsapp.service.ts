@@ -280,81 +280,82 @@ export class WhatsAppService {
       return;
     }
 
-    const msg = value.messages[0];
-    const from = msg.from;
+    for (const msg of value.messages) {
+      const from = msg.from;
 
-    let bodyText = '';
-    if (msg.type === 'text') {
-      bodyText = msg.text?.body ?? '';
-    } else if (msg.type === 'location') {
-      const loc = msg.location ?? {};
-      bodyText = [
-        loc.name ? `📍 ${loc.name}` : '📍 Ubicación compartida',
-        loc.address,
-        `${loc.latitude}, ${loc.longitude}`,
-      ].filter(Boolean).join('\n');
-    } else if (msg.type === 'image') {
-      bodyText = msg.image?.caption ? `🖼️ ${msg.image.caption}` : '🖼️ Imagen';
-    } else if (msg.type === 'document') {
-      const fn = msg.document?.filename ? ` (${msg.document.filename})` : '';
-      bodyText = msg.document?.caption ? `📄 ${msg.document.caption}` : `📄 Documento${fn}`;
-    } else if (msg.type === 'audio') {
-      bodyText = '🎵 Mensaje de audio';
-    } else if (msg.type === 'video') {
-      bodyText = msg.video?.caption ? `🎬 ${msg.video.caption}` : '🎬 Video';
-    } else if (msg.type === 'sticker') {
-      bodyText = '🏷️ Sticker';
-    } else if (msg.type === 'contacts') {
-      const contactNames = (msg.contacts || [])
-        .map((c: any) => c.name?.formatted_name ?? 'Contacto')
-        .join(', ');
-      bodyText = `👤 Contacto compartido: ${contactNames}`;
-    } else {
-      bodyText = `📩 Mensaje de tipo ${msg.type}`;
-    }
-    const senderName = value.contacts?.[0]?.profile?.name ?? from;
-    const providerMessageId = msg.id;
-    const whatsappMedia = extractWhatsAppMediaFromMessage(msg);
+      let bodyText = '';
+      if (msg.type === 'text') {
+        bodyText = msg.text?.body ?? '';
+      } else if (msg.type === 'location') {
+        const loc = msg.location ?? {};
+        bodyText = [
+          loc.name ? `📍 ${loc.name}` : '📍 Ubicación compartida',
+          loc.address,
+          `${loc.latitude}, ${loc.longitude}`,
+        ].filter(Boolean).join('\n');
+      } else if (msg.type === 'image') {
+        bodyText = msg.image?.caption ? `🖼️ ${msg.image.caption}` : '🖼️ Imagen';
+      } else if (msg.type === 'document') {
+        const fn = msg.document?.filename ? ` (${msg.document.filename})` : '';
+        bodyText = msg.document?.caption ? `📄 ${msg.document.caption}` : `📄 Documento${fn}`;
+      } else if (msg.type === 'audio') {
+        bodyText = msg.audio?.caption ? `🎧 ${msg.audio.caption}` : '🎧 Audio';
+      } else if (msg.type === 'video') {
+        bodyText = msg.video?.caption ? `🎬 ${msg.video.caption}` : '🎬 Video';
+      } else if (msg.type === 'sticker') {
+        bodyText = '💬 Sticker';
+      } else if (msg.type === 'contacts') {
+        const contactNames = (msg.contacts || [])
+          .map((c: any) => c.name?.formatted_name ?? 'Contacto')
+          .join(', ');
+        bodyText = `👤 Contacto compartido: ${contactNames}`;
+      } else {
+        bodyText = `📩 Mensaje de tipo ${msg.type}`;
+      }
+      const senderName = value.contacts?.[0]?.profile?.name ?? from;
+      const providerMessageId = msg.id;
+      const whatsappMedia = extractWhatsAppMediaFromMessage(msg);
 
-    const result = await this.messages.receiveProviderInbound({
-      provider: 'whatsapp',
-      workspaceId,
-      channelPhoneNumberId: phoneNumberId,
-      from,
-      senderName,
-      bodyText,
-      providerMessageId,
-      timestamp: msg.timestamp,
-      rawPayload: payload,
-      whatsappMedia,
-    });
+      const result = await this.messages.receiveProviderInbound({
+        provider: 'whatsapp',
+        workspaceId,
+        channelPhoneNumberId: phoneNumberId,
+        from,
+        senderName,
+        bodyText,
+        providerMessageId,
+        timestamp: msg.timestamp,
+        rawPayload: payload,
+        whatsappMedia,
+      });
 
-    if (result.status === 'duplicate') {
-      this.logger.log(
-        `Duplicate message skipped — event=${eventId} provider_message_id=${providerMessageId}`,
-      );
-      return;
-    }
-
-    const { messageId, conversationId, contactId } = result;
-
-    // ── Secondary tasks (fire-and-forget — must not block) ──
-
-    if (conversationId && messageId) {
-      this.messages
-        .emitAndNotify({
-          workspaceId,
-          conversationId,
-          contactId,
-          messageId,
-          senderName,
-          bodyText,
-        })
-        .catch((err) =>
-          this.logger.error(
-            `Error in emit/notify — event=${eventId} conversation_id=${conversationId}: ${err?.message}`,
-          ),
+      if (result.status === 'duplicate') {
+        this.logger.log(
+          `Duplicate message skipped — event=${eventId} provider_message_id=${providerMessageId}`,
         );
+        continue;
+      }
+
+      const { messageId, conversationId, contactId } = result;
+
+      // ── Secondary tasks (fire-and-forget — must not block) ──
+
+      if (conversationId && messageId) {
+        this.messages
+          .emitAndNotify({
+            workspaceId,
+            conversationId,
+            contactId,
+            messageId,
+            senderName,
+            bodyText,
+          })
+          .catch((err) =>
+            this.logger.error(
+              `Error in emit/notify — event=${eventId} conversation_id=${conversationId}: ${err?.message}`,
+            ),
+          );
+      }
     }
   }
 
@@ -386,9 +387,16 @@ export class WhatsAppService {
     let mediaId: string | null = null;
 
     // Canonical: whatsapp_media field stored during inbound processing
-    if (payload.whatsapp_media?.id) {
-      mediaId = payload.whatsapp_media.id;
-      this.logger.log(`downloadMedia: found media via whatsapp_media — id=${mediaId}`);
+    const wm = payload.whatsapp_media;
+    if (wm) {
+      // Support both new format (whatsappMediaId) and old format (id)
+      if (wm.whatsappMediaId) {
+        mediaId = wm.whatsappMediaId;
+        this.logger.log(`downloadMedia: found media via whatsapp_media.whatsappMediaId — id=${mediaId}`);
+      } else if (wm.id) {
+        mediaId = wm.id;
+        this.logger.log(`downloadMedia: found media via whatsapp_media.id (legacy) — id=${mediaId}`);
+      }
     }
 
     // Fallback: navigate full webhook payload structure
