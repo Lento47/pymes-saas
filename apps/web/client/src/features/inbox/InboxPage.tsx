@@ -38,7 +38,7 @@ export default function InboxPage() {
     <div className="flex flex-col h-full bg-background">
       <InboxHeader />
 
-      <div className="px-6 pb-2">
+      <div className="px-4 sm:px-6 pb-2">
         <DiagnosticButton module="inbox" />
       </div>
 

@@ -305,9 +305,9 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   if (!id) return null;
 
   return (
-    <div className="flex flex-col min-h-0 h-full bg-background">
+    <div className="flex flex-col min-h-0 h-full max-h-dvh bg-background">
       {/* Header toolbar */}
-      <div className="flex items-center gap-2 border-b border-border px-4 py-2.5 shrink-0">
+      <div className="flex items-center gap-2 border-b border-border px-3 sm:px-4 py-2 shrink-0">
         {onBack && (
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onBack}>
             <ArrowLeft className="w-4 h-4" />
@@ -357,7 +357,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hidden sm:inline-flex"
                   onClick={() => qc.invalidateQueries({ queryKey: ["conversation-messages", id] })}>
                   <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
@@ -369,7 +369,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hidden sm:inline-flex"
                   onClick={() => { setInvoiceForm({ number: "", currency: "USD", due_date: "", description: "" }); setLines([]); setShowInvoice(true); }}
                   title="Factura">
                   <Receipt className="w-3.5 h-3.5 text-muted-foreground" />
@@ -434,7 +434,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                       {getInitials(contactName)}
                     </div>
                   )}
-                  <div className={cn("max-w-[68%] rounded-2xl px-3.5 py-2", isOutbound ? "bg-primary/20 rounded-tr-sm" : "bg-muted rounded-tl-sm")}>
+                  <div className={cn("max-w-[85%] sm:max-w-[68%] rounded-2xl px-3.5 py-2", isOutbound ? "bg-primary/20 rounded-tr-sm" : "bg-muted rounded-tl-sm")}>
                     {isFirst && !isOutbound && <div className="text-[10px] font-medium text-muted-foreground mb-1">{contactName}</div>}
                     {(() => {
                       const text = msg.body_text || msg.body_html || msg.content || "";
