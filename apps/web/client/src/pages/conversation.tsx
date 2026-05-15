@@ -587,9 +587,62 @@ export default function ConversationPage() {
                             {contactName}
                           </div>
                         )}
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                          {msg.body_text || msg.body_html || msg.content || msg.body}
-                        </p>
+                        {(msg.has_media && msg.media_type === 'image') ? (
+                          <div className="mb-1.5">
+                            <img
+                              src={msg.media_download_url}
+                              alt={msg.media_caption || 'Imagen'}
+                              className="max-w-full rounded-lg object-cover max-h-64 cursor-pointer"
+                              onClick={() => window.open(msg.media_download_url, '_blank')}
+                              loading="lazy"
+                            />
+                            {msg.media_caption && (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5">
+                                {msg.media_caption}
+                              </p>
+                            )}
+                          </div>
+                        ) : msg.has_media && msg.media_type === 'document' ? (
+                          <div className="mb-1.5">
+                            <a
+                              href={msg.media_download_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm hover:bg-white/10 transition-colors"
+                            >
+                              <svg className="w-5 h-5 shrink-0 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                              </svg>
+                              <span className="truncate">{msg.media_filename || 'Documento'}</span>
+                              <svg className="w-4 h-4 shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                            </a>
+                            {msg.body_text && (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5">
+                                {msg.body_text}
+                              </p>
+                            )}
+                          </div>
+                        ) : msg.has_media && (msg.media_type === 'audio' || msg.media_type === 'video') ? (
+                          <div className="mb-1.5">
+                            <audio
+                              controls
+                              className="max-w-full rounded-lg"
+                              preload="none"
+                              src={msg.media_download_url}
+                            />
+                            {msg.body_text && (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5">
+                                {msg.body_text}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {msg.body_text || msg.body_html || msg.content || msg.body}
+                          </p>
+                        )}
                         <div className={cn("text-[10px] text-muted-foreground mt-1", isOutbound ? "text-right" : "text-left")}>
                           {msgDate ? format(msgDate, "h:mm a") : ""}
                         </div>
