@@ -11,6 +11,7 @@ import { StorageService } from '../common/storage/storage.service';
 import { extractWhatsAppMediaFromMessage } from '../common/whatsapp-media.helper';
 import { MessagesService } from '../conversations/messages.service';
 import { WebhookEventsService } from '../webhooks/webhook-events.service';
+import * as path from 'path';
 
 const META_API_BASE = 'https://graph.facebook.com/v19.0';
 
@@ -338,6 +339,20 @@ export class WhatsAppService {
 
       const { messageId, conversationId, contactId } = result;
 
+      // ── Download incoming media to MinIO ──
+      if (params.whatsappMedia?.whatsappMediaId && messageId) {
+        this.downloadInboundMediaToStorage(
+          phoneNumberId,
+          workspaceId,
+          messageId,
+          params.whatsappMedia,
+        ).catch((err) =>
+          this.logger.error(
+            `Failed to download inbound media — msg=${messageId}: ${err.message}`,
+          ),
+        );
+      }
+
       // ── Secondary tasks (fire-and-forget — must not block) ──
 
       if (conversationId && messageId) {
@@ -357,6 +372,120 @@ export class WhatsAppService {
           );
       }
     }
+  }
+
+  // ── Descargar media entrante a MinIO ────────────────────────────────────────
+
+  /**
+   * Download incoming WhatsApp media from Meta's API and save to MinIO.
+   * Fire-and-forget — errors are logged but never thrown.
+   */
+  private async downloadInboundMediaToStorage(
+    phoneNumberId: string,
+    workspaceId: string,
+    messageId: string,
+    media: { whatsappMediaId: string; mediaType: string; mimeType: string | null; caption: string | null; filename: string | null },
+  ): Promise<void> {
+    const channel = await this.prisma.channel.findFirst({
+      where: {
+        type: 'WHATSAPP',
+        config_json: { path: ['phone_number_id'], equals: phoneNumberId },
+        workspace_id: workspaceId,
+        status: 'ACTIVE',
+      },
+      select: { config_json: true, id: true },
+    });
+    if (!channel) {
+      this.logger.warn(`downloadInboundMediaToStorage: no channel for phoneNumberId=${phoneNumberId}`);
+      return;
+    }
+
+    const raw = channel.config_json as any;
+    const cfg = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : (raw || {});
+    if (!cfg?.access_token_encrypted) {
+      this.logger.warn(`downloadInboundMediaToStorage: no access_token for channel ${channel.id}`);
+      return;
+    }
+
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const mediaId = media.whatsappMediaId;
+
+    // Get media metadata (URL + mime type)
+    const metaRes = await fetch(`${META_API_BASE}/${mediaId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!metaRes.ok) {
+      this.logger.warn(`downloadInboundMediaToStorage: Meta metadata fetch failed — id=${mediaId} status=${metaRes.status}`);
+      return;
+    }
+    const metaData: any = await metaRes.json();
+    const downloadUrl = metaData.url;
+    const mimeType = metaData.mime_type || media.mimeType || 'application/octet-stream';
+
+    // Download file
+    const fileRes = await fetch(downloadUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!fileRes.ok) {
+      this.logger.warn(`downloadInboundMediaToStorage: file download failed — id=${mediaId} status=${fileRes.status}`);
+      return;
+    }
+    const buffer = Buffer.from(await fileRes.arrayBuffer());
+
+    // Generate storage key
+    const ext = this.guessExtension(mimeType, media.mediaType);
+    const storageKey = `whatsapp-media/${workspaceId}/${messageId}${ext}`;
+
+    // Upload to MinIO
+    await this.storage.upload(storageKey, buffer, mimeType);
+
+    // Store attachment info in the message
+    const attachmentEntry = {
+      provider: 'whatsapp',
+      mediaId: mediaId,
+      storageKey,
+      mimeType,
+      size: buffer.length,
+      type: media.mediaType,
+      caption: media.caption ?? null,
+      filename: media.filename ?? null,
+    };
+
+    await this.prisma.message.update({
+      where: { id: messageId },
+      data: {
+        attachments_json: [attachmentEntry],
+      },
+    });
+
+    this.logger.log(
+      `Inbound media saved to MinIO — msg=${messageId} key=${storageKey} type=${media.mediaType} size=${buffer.length}`,
+    );
+  }
+
+  private guessExtension(mimeType: string, mediaType: string): string {
+    const map: Record<string, string> = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/webp': '.webp',
+      'image/gif': '.gif',
+      'video/mp4': '.mp4',
+      'video/3gp': '.3gp',
+      'audio/ogg': '.ogg',
+      'audio/mpeg': '.mp3',
+      'audio/mp4': '.m4a',
+      'audio/amr': '.amr',
+      'application/pdf': '.pdf',
+    };
+    if (map[mimeType]) return map[mimeType];
+    if (mediaType === 'image') return '.jpg';
+    if (mediaType === 'video') return '.mp4';
+    if (mediaType === 'audio') return '.ogg';
+    if (mediaType === 'document') return '.bin';
+    if (mediaType === 'sticker') return '.webp';
+    return '.bin';
   }
 
   // ── Verificar webhook de Meta ──────────────────────────────────────────────
