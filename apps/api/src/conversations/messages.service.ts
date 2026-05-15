@@ -120,9 +120,9 @@ export class MessagesService {
       return { ok: false, reason: 'No active channel for provider' };
     }
 
-    const senderRef = payload.from ?? payload.sender ?? 'unknown';
-    const senderName = payload.name ?? payload.sender_name ?? senderRef;
-    const bodyText = payload.text ?? payload.body ?? payload.content ?? '';
+    const senderRef = payload.sender_ref ?? payload.from ?? payload.sender ?? 'unknown';
+    const senderName = payload.sender_name ?? payload.name ?? senderRef;
+    const bodyText = payload.body_text ?? payload.text ?? payload.body ?? payload.content ?? '';
     const subject = payload.subject ?? null;
     const isEmail = senderRef.includes('@');
     const normalizedPhone = !isEmail ? senderRef.replace(/\D/g, '') : null;
@@ -292,19 +292,27 @@ export class MessagesService {
       throw err;
     });
 
-    // Emitir en tiempo real
-    this.events.emitNewMessage(conversation.id, workspaceId, message);
+    // Emitir en tiempo real (serializado para que el frontend tenga has_media, media_type, etc.)
+    this.events.emitNewMessage(conversation.id, workspaceId, this.serializeMessageForClient(message));
 
-    // Notificar al agente asignado sobre nuevo mensaje
-    if (conversation.assigned_user_id) {
+    // Notificar a miembros del workspace sobre nuevo mensaje entrante
+    const members = await this.prisma.workspaceMember.findMany({
+      where: {
+        workspace_id: workspaceId,
+        role: { in: ['OWNER', 'ADMIN', 'AGENT'] },
+        user: { is_active: true },
+      },
+      select: { user_id: true },
+    });
+    for (const member of members) {
       this.notificationsService.create(workspaceId, {
-        user_id: conversation.assigned_user_id,
+        user_id: member.user_id,
         type: 'new_message',
-        title: 'Nuevo mensaje recibido',
-        body: `Nuevo mensaje de ${senderName} en "${conversation.subject || 'Sin asunto'}": "${bodyText.slice(0, 100)}${bodyText.length > 100 ? '...' : ''}"`,
+        title: '📩 Nuevo mensaje recibido',
+        body: `Nuevo mensaje de ${senderName}${conversation.subject ? ' en "' + conversation.subject + '"' : ''}: "${bodyText.slice(0, 100)}${bodyText.length > 100 ? '...' : ''}"`,
         related_entity_type: 'conversation',
         related_entity_id: conversation.id,
-      }).catch((err) => this.logger.error('Error al crear notificación de nuevo mensaje', err));
+      }).catch((err) => this.logger.error('Error al crear notificación', err));
     }
 
     await this.automationsService.triggerRules(
