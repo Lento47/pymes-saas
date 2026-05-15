@@ -4,6 +4,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
+import { MetricCard, SectionCard } from "@/components/layout/page-template";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PriorityDot } from "@/components/shared/priority-dot";
 import { Button } from "@/components/ui/button";
@@ -17,112 +18,6 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-// ── Metric Card with trend ────────────────────────────────────────────────────
-function MetricCard({
-  label,
-  value,
-  currency,
-  trend,
-  trendLabel,
-  icon: Icon,
-  loading,
-  color = "blue"
-}: {
-  label: string;
-  value: any;
-  currency?: string;
-  trend?: number;
-  trendLabel?: string;
-  icon?: any;
-  loading?: boolean;
-  color?: "blue" | "orange" | "red" | "purple" | "green";
-}) {
-  const colorMap = {
-    blue: "text-blue-500",
-    orange: "text-orange-500",
-    red: "text-red-500",
-    purple: "text-purple-500",
-    green: "text-green-500"
-  };
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{label}</p>
-        </div>
-        {Icon && <Icon className={`w-5 h-5 ${colorMap[color]}`} />}
-      </div>
-
-      {loading ? (
-        <Skeleton className="h-8 w-24" />
-      ) : (
-        <>
-          <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold text-gray-900">
-              {currency}{typeof value === "number" ? value.toLocaleString("es-ES") : value}
-            </p>
-          </div>
-          {trend !== undefined && (
-            <p className={`text-sm mt-2 flex items-center gap-1 ${trend >= 0 ? "text-green-600" : "text-red-600"}`}>
-              <span className={trend >= 0 ? "text-green-500" : "text-red-500"}>
-                {trend >= 0 ? "↑" : "↓"}
-              </span>
-              {Math.abs(trend)}% {trendLabel || "vs. mes anterior"}
-            </p>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Section Card ──────────────────────────────────────────────────────────────
-function SectionCard({
-  title,
-  linkTo,
-  linkLabel,
-  loading,
-  empty,
-  children,
-}: {
-  title: string;
-  linkTo?: string;
-  linkLabel?: string;
-  loading?: boolean;
-  empty?: boolean;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      {(title || linkTo) && (
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="font-semibold text-gray-900">{title}</h3>
-          {linkTo && (
-            <Link href={linkTo}>
-              <a className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
-                {linkLabel} <ArrowRight className="w-4 h-4" />
-              </a>
-            </Link>
-          )}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="px-6 py-4 space-y-3">
-          {[0, 1, 2].map(i => <Skeleton key={i} className="h-4 w-full" />)}
-        </div>
-      ) : empty ? (
-        <div className="px-6 py-8 text-center text-sm text-gray-500">
-          Sin datos aún
-        </div>
-      ) : (
-        <div>{children}</div>
-      )}
-    </div>
-  );
-}
-
 // ── Quick Action Button ───────────────────────────────────────────────────────
 function QuickAction({
   icon: Icon,
@@ -135,9 +30,9 @@ function QuickAction({
 }) {
   return (
     <Link href={href}>
-      <a className="flex flex-col items-center gap-2 p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-        <Icon className="w-6 h-6 text-gray-600" />
-        <span className="text-xs font-medium text-gray-700 text-center">{label}</span>
+      <a className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border bg-card hover:border-primary/40 hover:bg-accent transition">
+        <Icon className="w-6 h-6 text-muted-foreground" />
+        <span className="text-xs font-medium text-foreground text-center">{label}</span>
       </a>
     </Link>
   );
@@ -195,26 +90,26 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-full bg-gray-50">
+    <div className="min-h-full bg-background">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-card border-b border-border">
         <div className="px-6 py-4 max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-foreground">
               {greeting()}, {user?.name?.split(" ")[0] || "Usuario"}.
             </h1>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 placeholder="Buscar en PymeHub..."
-                className="px-4 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 rounded-lg border border-border bg-elevated text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <Button variant="outline" size="sm">
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
           </div>
-          <p className="text-sm text-gray-600">Aquí está lo más importante de tu negocio hoy.</p>
+          <p className="text-sm text-muted-foreground">Aquí está lo más importante de tu negocio hoy.</p>
         </div>
       </div>
 
@@ -268,22 +163,22 @@ export default function DashboardPage() {
           {/* Left Column - Messages by Responder */}
           <div className="lg:col-span-1">
             <SectionCard title="Mensajes por responder" linkTo="/inbox" linkLabel="Ver todos">
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-border">
                 {convList.slice(0, 5).map((conv: any, i: number) => (
                   <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                    <a className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-700">
+                    <a className="flex items-center gap-3 px-6 py-3 hover:bg-muted transition">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
                         {conv.contact?.full_name?.charAt(0) || "?"}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {conv.contact?.full_name || "Contacto desconocido"}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           {conv.subject || "Sin asunto"}
                         </p>
                       </div>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
                         {conv.updated_at && format(new Date(conv.updated_at), "HH:mm", { locale: es })}
                       </span>
                     </a>
@@ -296,19 +191,19 @@ export default function DashboardPage() {
           {/* Middle Column - Tasks & Invoices */}
           <div className="lg:col-span-1 space-y-6">
             <SectionCard title="Tareas de hoy" linkTo="/tasks" linkLabel="Ver todas">
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-border">
                 {taskList.slice(0, 5).map((task: any, i: number) => (
                   <div key={task.id} className="flex items-center gap-3 px-6 py-3">
                     <input
                       type="checkbox"
-                      className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+                      className="w-4 h-4 rounded border-border cursor-pointer"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{task.title}</p>
-                      <p className="text-xs text-gray-500">{task.department_name}</p>
+                      <p className="text-sm font-medium text-foreground">{task.title}</p>
+                      <p className="text-xs text-muted-foreground">{task.department_name}</p>
                     </div>
                     {task.due_date && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         {format(new Date(task.due_date), "HH:mm a", { locale: es })}
                       </span>
                     )}
@@ -318,19 +213,19 @@ export default function DashboardPage() {
             </SectionCard>
 
             <SectionCard title="Facturas próximas a vencer" linkTo="/invoices" linkLabel="Ver todas">
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-border">
                 {overdueInvoiceList.slice(0, 4).map((inv: any) => (
                   <div key={inv.id} className="flex items-center gap-3 px-6 py-3 text-sm">
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">#{inv.id?.slice(0, 4)}</p>
-                      <p className="text-xs text-gray-500">{inv.client_name}</p>
+                      <p className="font-medium text-foreground">#{inv.id?.slice(0, 4)}</p>
+                      <p className="text-xs text-muted-foreground">{inv.client_name}</p>
                     </div>
                     {inv.due_date && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         {format(new Date(inv.due_date), "dd MMM", { locale: es })}
                       </span>
                     )}
-                    <span className="font-semibold text-gray-900">€{inv.amount?.toLocaleString("es-ES")}</span>
+                    <span className="font-semibold text-foreground">€{inv.amount?.toLocaleString("es-ES")}</span>
                   </div>
                 ))}
               </div>
@@ -343,33 +238,33 @@ export default function DashboardPage() {
               <div className="px-6 py-4 space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Lead</span>
-                    <span className="text-xs font-semibold text-gray-900">4 negocios</span>
+                    <span className="text-sm font-medium text-foreground">Lead</span>
+                    <span className="text-xs font-semibold text-foreground">4 negocios</span>
                   </div>
-                  <div className="w-full h-2 bg-blue-200 rounded-full overflow-hidden">
-                    <div className="h-full w-2/3 bg-blue-500"></div>
+                  <div className="w-full h-2 bg-blue-500/20 rounded-full overflow-hidden">
+                    <div className="h-full w-2/3 bg-blue-500 rounded-full"></div>
                   </div>
-                  <span className="text-xs text-gray-500">€850,000</span>
+                  <span className="text-xs text-muted-foreground">€850,000</span>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Calificado</span>
-                    <span className="text-xs font-semibold text-gray-900">3 negocios</span>
+                    <span className="text-sm font-medium text-foreground">Calificado</span>
+                    <span className="text-xs font-semibold text-foreground">3 negocios</span>
                   </div>
-                  <div className="w-full h-2 bg-purple-200 rounded-full overflow-hidden">
-                    <div className="h-full w-1/2 bg-purple-500"></div>
+                  <div className="w-full h-2 bg-purple-500/20 rounded-full overflow-hidden">
+                    <div className="h-full w-1/2 bg-purple-500 rounded-full"></div>
                   </div>
-                  <span className="text-xs text-gray-500">€1,250,000</span>
+                  <span className="text-xs text-muted-foreground">€1,250,000</span>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Propuesta</span>
-                    <span className="text-xs font-semibold text-gray-900">2 negocios</span>
+                    <span className="text-sm font-medium text-foreground">Propuesta</span>
+                    <span className="text-xs font-semibold text-foreground">2 negocios</span>
                   </div>
-                  <div className="w-full h-2 bg-yellow-200 rounded-full overflow-hidden">
-                    <div className="h-full w-3/5 bg-yellow-500"></div>
+                  <div className="w-full h-2 bg-yellow-500/20 rounded-full overflow-hidden">
+                    <div className="h-full w-3/5 bg-yellow-500 rounded-full"></div>
                   </div>
-                  <span className="text-xs text-gray-500">€1,800,000</span>
+                  <span className="text-xs text-muted-foreground">€1,800,000</span>
                 </div>
               </div>
             </SectionCard>
@@ -381,8 +276,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Acciones rápidas</h3>
+        <div className="bg-card rounded-xl border border-border p-6">
+          <h3 className="font-semibold text-foreground mb-4">Acciones rápidas</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
             <QuickAction icon={FileText} label="Nueva factura" href="/invoices" />
             <QuickAction icon={Users} label="Nuevo contacto" href="/contacts" />
