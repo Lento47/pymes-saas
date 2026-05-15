@@ -577,8 +577,9 @@ model Message {
   sender_user_id         String? // populated for outbound/internal
   body_text              String?          @db.Text
   body_html              String?          @db.Text
-  raw_payload_json       Json?            @db.JsonB
+  raw_payload_json      Json?             @db.JsonB
   ai_classification_json Json?            @db.JsonB
+  attachments_json       Json?             @db.JsonB
   sent_at                DateTime?
 
   // WhatsApp / Telegram cost tracking
