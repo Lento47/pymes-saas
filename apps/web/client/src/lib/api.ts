@@ -405,8 +405,10 @@ export const api = {
     request<any>('POST', `/api/channels/${id}/configure-email`, data),
   configureWhatsApp: (id: string, data: { access_token: string; phone_number_id: string; waba_id: string }) =>
     request<any>('POST', `/api/channels/${id}/configure-whatsapp`, data),
-  configureTelegram: (id: string, data: { bot_token: string }) =>
+  configureTelegram: (id: string, data: { bot_token?: string }) =>
     request<any>('POST', `/api/channels/${id}/configure-telegram`, data),
+  getTelegramWebhookStatus: (channelId: string) =>
+    request<any>('GET', `/api/inbound/telegram/${channelId}/webhook-status`),
   getDepartments: () => request<any>("GET", "/api/departments"),
   createDepartment: (data: any) => request<any>("POST", "/api/departments", data),
   updateDepartment: (id: string, data: any) => request<any>("PATCH", `/api/departments/${id}`, data),
