@@ -3,6 +3,8 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { AiService } from './ai.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
+const HERMES_WEBHOOK_URL = process.env.HERMES_WEBHOOK_URL || 'http://localhost:8644/webhooks/pymes-bugs';
+
 export type TriageVerdict = 'USER_ERROR' | 'MISCONFIGURATION' | 'BUG' | 'PLATFORM_INCIDENT' | 'UNKNOWN';
 
 export interface TriageResult {
@@ -266,6 +268,7 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
 
   private async notifyBugEscalation(dCase: any, verdict: TriageResult): Promise<void> {
     try {
+      // Notify platform admins via internal notification
       const admins = await (this.prisma as any).user.findMany({
         where: { is_platform_admin: true },
         select: { id: true },
@@ -281,8 +284,36 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
           related_entity_id: dCase.id,
         }).catch(() => {});
       }
+
+      // Notify Hermes agent via webhook (deliver-only = 0 tokens hasta que el humano investigue)
+      this.notifyHermesWebhook(dCase, verdict).catch((err: any) => {
+        this.logger.warn(`Hermes webhook notification failed: ${err.message}`);
+      });
     } catch (err: any) {
       this.logger.warn(`Escalation notification failed: ${err.message}`);
+    }
+  }
+
+  private async notifyHermesWebhook(dCase: any, verdict: TriageResult): Promise<void> {
+    const payload = {
+      event_type: 'bug_escalated',
+      verdict: verdict.verdict === 'PLATFORM_INCIDENT' ? '🚨 Incidente de plataforma' : '🐛 Bug',
+      workspace_id: dCase.workspace_id,
+      confidence: verdict.confidence,
+      explanation: verdict.explanation,
+      case_id: dCase.id,
+      similar_count: verdict.similar_cases_count,
+    };
+
+    const response = await fetch(HERMES_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!response.ok) {
+      this.logger.warn(`Hermes webhook responded ${response.status}`);
     }
   }
 }
