@@ -382,7 +382,7 @@ function DealModal({
             <Button
               type="button"
               className="w-full"
-              style={{ background: "#22c55e", color: "white" }}
+              style={{ background: "hsl(var(--success))", color: "white" }}
               disabled={winMut.isPending}
               onClick={() => winMut.mutate()}
             >
