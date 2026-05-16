@@ -7,6 +7,7 @@ import { ApiExceptionFilter } from './common/telemetry/api-exception.filter';
 import { PrismaExceptionFilter } from './common/prisma/prisma-exception.filter';
 import { ErrorReportsService } from './error-reports/error-reports.service';
 import { PrismaService } from './common/prisma/prisma.service';
+import { AiTriageService } from './ai/ai-triage.service';
 
 process.on('uncaughtException', (err) => {
   console.error('🔥 UNCAUGHT EXCEPTION — process will exit', err);
@@ -76,7 +77,13 @@ async function bootstrap() {
     maxAge: 3600,
   });
 
-  app.useGlobalFilters(new ApiExceptionFilter(app.get(ErrorReportsService), app.get(PrismaService)));
+  let aiTriage: AiTriageService | null = null;
+  try {
+    aiTriage = app.get(AiTriageService);
+  } catch {
+    // AiTriageService is optional — may not be registered
+  }
+  app.useGlobalFilters(new ApiExceptionFilter(app.get(ErrorReportsService), app.get(PrismaService), aiTriage as any));
   app.useGlobalFilters(new PrismaExceptionFilter());
   const port = process.env.PORT ?? 4000;
   const host = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
