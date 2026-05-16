@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { useTheme } from "@/components/providers/theme-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { NotificationBell } from "@/components/notifications/notification-bell";
+import { NotificationBell } from "@/components/shared/notification-bell";
+import { SearchDialog } from "@/components/shared/search-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
@@ -113,6 +114,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(
     () => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
   );
+  const [searchOpen, setSearchOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 1024,
   );
@@ -198,6 +200,21 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [wsMenuOpen]);
+
+  // Ctrl+K / Cmd+K to open search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+      if (e.key === "Escape") {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -482,20 +499,18 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             )}
           </button>
 
-          <div className="relative flex-1 max-w-[420px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/75" />
-            <input
-              className={cn(
-                "w-full h-9 pl-9 pr-3 rounded-lg border border-border/40 bg-sidebar-accent/20",
-                "text-sm text-foreground placeholder:text-muted-foreground/75",
-                "focus:outline-none focus:border-primary/40 focus:bg-sidebar-accent/30",
-                "transition-all duration-200"
-              )}
-              placeholder={copy.searchPlaceholder}
-            />
-          </div>
+          <div className="flex-1" />
 
-          <div className="hidden md:flex-1" />
+          <button
+            onClick={() => setSearchOpen(true)}
+            className={cn(
+              "p-2 rounded-lg transition-all duration-200",
+              "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+            )}
+            title="Buscar (Ctrl+K)"
+          >
+            <Search className="w-4 h-4" />
+          </button>
 
           <NotificationBell />
 
@@ -503,6 +518,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             {user?.role}
           </span>
         </header>
+
+        <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
 
         <div className="flex-1 overflow-y-auto">
           {children}
