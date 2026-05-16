@@ -136,8 +136,8 @@ export default function BillingPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Billing & Subscription</h1>
-        <p className="text-gray-600 mt-2">Manage your plan and payment method</p>
+        <h1 className="text-3xl font-bold text-foreground">Facturación y suscripción</h1>
+        <p className="text-muted-foreground mt-2">Gestioná tu plan y método de pago</p>
       </div>
 
       {success && (
@@ -178,11 +178,11 @@ export default function BillingPage() {
             <>
               <div className="flex justify-between items-center">
                 <span className="font-semibold capitalize">{subscription.plan || 'Starter'}</span>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   ${subscription.monthly_price || 0}/month
                 </span>
               </div>
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 Billing period: {new Date(subscription.current_period_start).toLocaleDateString()} -{' '}
                 {new Date(subscription.current_period_end).toLocaleDateString()}
               </div>
@@ -215,7 +215,7 @@ export default function BillingPage() {
               </div>
             </>
           ) : (
-            <div className="text-gray-600">No active subscription. Choose a plan to get started.</div>
+            <div className="text-muted-foreground">No hay suscripción activa. Elegí un plan para empezar.</div>
           )}
         </CardContent>
       </Card>
@@ -236,11 +236,11 @@ export default function BillingPage() {
                 <CardHeader>
                   <CardTitle>{tier.name}</CardTitle>
                   <CardDescription>
-                    <div className="text-2xl font-bold text-gray-900 mt-2">
+                    <div className="text-2xl font-bold text-foreground mt-2">
                       ${tier.monthlyUSD}
-                      <span className="text-sm text-gray-600 font-normal">/month</span>
+                      <span className="text-sm text-muted-foreground font-normal">/month</span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-muted-foreground mt-1">
                       ₡{tier.monthlyCRC.toLocaleString()}/month
                     </div>
                   </CardDescription>
@@ -248,7 +248,7 @@ export default function BillingPage() {
                 <CardContent className="space-y-4">
                   <ul className="space-y-2">
                     {tier.features.map((feature) => (
-                      <li key={feature} className="text-sm text-gray-600 flex items-start">
+                      <li key={feature} className="text-sm text-muted-foreground flex items-start">
                         <span className="text-green-600 mr-2">✓</span>
                         {feature}
                       </li>
@@ -286,7 +286,7 @@ export default function BillingPage() {
           <CardDescription>Your recent invoices and payments</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-600">No invoices yet. Your first invoice will appear after your first payment.</p>
+          <p className="text-muted-foreground">No hay facturas aún. La primera aparecerá después del primer pago.</p>
         </CardContent>
       </Card>
     </div>
