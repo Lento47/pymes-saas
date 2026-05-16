@@ -174,17 +174,26 @@ export class DiagnosticService {
       });
     }
 
-    // Fallback: search by module + severity if no exact match
-    if (!matchedIssue && input.module) {
+    // Fallback: search by module + severity if no exact match.
+    // IMPORTANT: ONLY use this for real diagnostic cases (not USER_GUIDANCE).
+    // A module-based fallback known issue without a matching error_code
+    // is MISLEADING — it shows the user a "known problem" that may have
+    // nothing to do with their actual situation (e.g. showing WhatsApp
+    // webhook issue when they clicked "Diagnosticar" on Inbox).
+    let moduleFallbackIssue: any = null;
+    if (!matchedIssue && input.module && classification.category !== 'USER_GUIDANCE') {
       const candidates = await (this.prisma as any).supportKnownIssue.findMany({
         where: { module: input.module, is_active: true },
         orderBy: { severity: 'asc' },
         take: 3,
       });
       if (candidates.length > 0) {
-        matchedIssue = candidates[0];
+        moduleFallbackIssue = candidates[0];
       }
     }
+    // Only show matched known issue when it's an exact error_code match,
+    // OR when it's a real case (not USER_GUIDANCE) with a module match.
+    const effectiveMatchedIssue = matchedIssue || moduleFallbackIssue;
 
     // Don't persist USER_GUIDANCE cases — they're just noise, not real issues.
     // EXCEPT billing: always create a case for billing events (mission critical).
@@ -196,12 +205,8 @@ export class DiagnosticService {
         risk_level: classification.risk_level,
         title: classification.title,
         recommendation: classification.recommendation,
-        matched_known_issue: matchedIssue ? {
-          error_code: matchedIssue.error_code,
-          title: matchedIssue.title,
-          workaround: matchedIssue.workaround,
-          fix_status: matchedIssue.fix_status,
-        } : undefined,
+        // NEVER include a known issue on USER_GUIDANCE — it's misleading
+        matched_known_issue: undefined,
       };
     }
 
@@ -215,7 +220,7 @@ export class DiagnosticService {
         trace_id: input.trace_id,
         category: classification.category,
         risk_level: classification.risk_level,
-        status: matchedIssue ? 'INVESTIGATING' : 'OPEN',
+        status: effectiveMatchedIssue ? 'INVESTIGATING' : 'OPEN',
         title: classification.title,
         user_description: input.user_description,
         safe_summary: classification.recommendation,
@@ -233,7 +238,7 @@ export class DiagnosticService {
     // Internal/system-triggered call: actor is the case's own workspace
     // (the diagnostic case lives there), and we mark isPlatformAdmin=true
     // so the assert passes regardless — this isn't user-initiated.
-    if (matchedIssue) {
+    if (effectiveMatchedIssue) {
       this.fixService
         .createFixCase(caseRecord.id, {
           workspaceId: input.workspaceId,
@@ -250,11 +255,11 @@ export class DiagnosticService {
       risk_level: classification.risk_level,
       title: classification.title,
       recommendation: classification.recommendation,
-      matched_known_issue: matchedIssue ? {
-        error_code: matchedIssue.error_code,
-        title: matchedIssue.title,
-        workaround: matchedIssue.workaround,
-        fix_status: matchedIssue.fix_status,
+      matched_known_issue: effectiveMatchedIssue ? {
+        error_code: effectiveMatchedIssue.error_code,
+        title: effectiveMatchedIssue.title,
+        workaround: effectiveMatchedIssue.workaround,
+        fix_status: effectiveMatchedIssue.fix_status,
       } : undefined,
     };
   }
