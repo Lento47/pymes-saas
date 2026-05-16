@@ -241,12 +241,12 @@ export class ConversationsController {
     @Res() res: Response,
   ) {
     try {
-      // 1) Try signed URL redirect (MinIO storage — no proxy)
-      const signedUrl = await this.messagesService.getMediaSignedUrl(messageId, workspaceId);
-      if (signedUrl) {
-        const ttlSeconds = Number(process.env.MEDIA_SIGNED_URL_TTL_SECONDS ?? 300);
-        res.setHeader('Cache-Control', `private, max-age=${ttlSeconds}`);
-        return res.redirect(302, signedUrl);
+      // 1) Proxy from MinIO storage (HTTPS — no redirect, avoids mixed-content)
+      const media = await this.messagesService.getMediaContent(messageId, workspaceId);
+      if (media) {
+        res.setHeader('Content-Type', media.contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+        return res.send(media.buffer);
       }
 
       // 2) Fallback: buffer proxy (Meta API — no storage yet)
