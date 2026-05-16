@@ -87,7 +87,8 @@ export function DiagnosticButton({ module, className }: DiagnosticButtonProps) {
   const categoryInfo = result ? CATEGORY_BADGE[result.category] || CATEGORY_BADGE.USER_GUIDANCE : null;
   const isSkipped = result?.case_id === "skipped" || result?.case_id === "no";
   const isRealCase = result?.case_id && !isSkipped;
-  const isGuidanceOnly = isSkipped && result?.category === "USER_GUIDANCE" && !result?.matched_known_issue;
+  const isAiAnalyzed = result?.case_id === "ai_analyzed";
+  const isGuidanceOnly = (isSkipped || isAiAnalyzed) && result?.category === "USER_GUIDANCE" && !result?.matched_known_issue;
 
   return (
     <div className={cn("relative", className)}>
@@ -193,7 +194,7 @@ export function DiagnosticButton({ module, className }: DiagnosticButtonProps) {
               <div className="flex items-center gap-1.5">
                 <LifeBuoy className="h-3 w-3 text-blue-400" />
                 <span className="text-[10px] text-muted-foreground">
-                  {isGuidanceOnly ? "Sin incidencias — solo tips informativos" : "Sugerencia — no se creó caso"}
+                  {isAiAnalyzed ? "Analizado con IA" : isGuidanceOnly ? "Sin incidencias — solo tips informativos" : "Sugerencia — no se creó caso"}
                 </span>
               </div>
             )}
