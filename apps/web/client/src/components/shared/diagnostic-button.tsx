@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { AlertTriangle, CheckCircle2, LifeBuoy, Loader2, Search, ShieldCheck, Wrench, XCircle, X, ArrowRight } from "lucide-react";
+import { useState, useMemo } from "react";
+import { AlertTriangle, CheckCircle2, LifeBuoy, Loader2, Search, ShieldCheck, Wrench, XCircle, X, ArrowRight, MessageCircle, Mail, Settings } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
@@ -8,6 +8,42 @@ interface DiagnosticButtonProps {
   module: string;
   className?: string;
 }
+
+const MODULE_LABELS: Record<string, string> = {
+  inbox: "Bandeja de entrada",
+  conversations: "Conversaciones",
+  dashboard: "Panel principal",
+  invoices: "Facturación",
+  contacts: "Contactos",
+  billing: "Facturación y plan",
+  automations: "Automatizaciones",
+  documents: "Documentos",
+};
+
+const MODULE_GUIDANCE: Record<string, { icon: React.ReactNode; tips: string[] }> = {
+  inbox: {
+    icon: <MessageCircle className="h-3.5 w-3.5" />,
+    tips: [
+      "Verificá que tengas al menos un canal activo (WhatsApp, Email o Telegram) en Configuración → Canales",
+      "Si los mensajes no llegan, revisá que el webhook esté configurado correctamente en el proveedor",
+      "Los mensajes nuevos aparecen automáticamente en la bandeja — no es necesario recargar",
+    ],
+  },
+  conversations: {
+    icon: <MessageCircle className="h-3.5 w-3.5" />,
+    tips: [
+      "Revisá que los canales estén ACTIVOS en Configuración → Canales",
+      "Verificá la conexión del webhook en el panel del proveedor",
+    ],
+  },
+  channels: {
+    icon: <Settings className="h-3.5 w-3.5" />,
+    tips: [
+      "Asegurate que los tokens y secretos estén correctamente configurados",
+      "Verificá que el webhook URL sea accesible desde Internet",
+    ],
+  },
+};
 
 const CATEGORY_BADGE: Record<string, { bg: string; text: string; icon: React.ReactNode; label: string }> = {
   USER_GUIDANCE: { bg: "bg-blue-500/10", text: "text-blue-300", icon: <LifeBuoy className="h-3 w-3" />, label: "Guía de uso" },
@@ -31,6 +67,9 @@ export function DiagnosticButton({ module, className }: DiagnosticButtonProps) {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const moduleGuide = MODULE_GUIDANCE[module] || MODULE_GUIDANCE.conversations;
+  const moduleLabel = MODULE_LABELS[module] || module;
+
   const handleDiagnose = async () => {
     setLoading(true);
     setError(null);
@@ -46,8 +85,10 @@ export function DiagnosticButton({ module, className }: DiagnosticButtonProps) {
   };
 
   const categoryInfo = result ? CATEGORY_BADGE[result.category] || CATEGORY_BADGE.USER_GUIDANCE : null;
-  const isSkipped = result?.case_id === "skipped";
+  const isSkipped = result?.case_id === "skipped" || result?.case_id === "no";
   const isRealCase = result?.case_id && !isSkipped;
+  const isAiAnalyzed = result?.case_id === "ai_analyzed";
+  const isGuidanceOnly = (isSkipped || isAiAnalyzed) && result?.category === "USER_GUIDANCE" && !result?.matched_known_issue;
 
   return (
     <div className={cn("relative", className)}>
@@ -109,7 +150,30 @@ export function DiagnosticButton({ module, className }: DiagnosticButtonProps) {
             </div>
           )}
 
-          <p className="text-xs text-muted-foreground/90 leading-relaxed">{result.recommendation}</p>
+          {isGuidanceOnly ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground/80 leading-relaxed">
+                No se detectaron problemas específicos en <strong>{moduleLabel}</strong>.
+                {result.recommendation && !result.recommendation.includes('configuration or usage question') && (
+                  <span className="block mt-1">{result.recommendation}</span>
+                )}
+              </p>
+              <div
+                className="rounded-md px-3 py-2 text-[11px] space-y-1.5"
+                style={{ background: "hsl(var(--primary) / 0.05)", border: "1px solid hsl(var(--primary) / 0.1)" }}
+              >
+                <p className="flex items-center gap-1.5 font-medium" style={{ color: "hsl(var(--fg))" }}>
+                  {moduleGuide.icon}
+                  Tips para {moduleLabel}
+                </p>
+                {moduleGuide.tips.map((tip, i) => (
+                  <p key={i} className="pl-5 text-muted-foreground/80">• {tip}</p>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground/90 leading-relaxed">{result.recommendation}</p>
+          )}
 
           <div className="mt-3 pt-2 border-t border-border/60 flex items-center justify-between">
             {isRealCase ? (
@@ -129,7 +193,9 @@ export function DiagnosticButton({ module, className }: DiagnosticButtonProps) {
             ) : (
               <div className="flex items-center gap-1.5">
                 <LifeBuoy className="h-3 w-3 text-blue-400" />
-                <span className="text-[10px] text-muted-foreground">Sugerencia — no se creó caso</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {isAiAnalyzed ? "Analizado con IA" : isGuidanceOnly ? "Sin incidencias — solo tips informativos" : "Sugerencia — no se creó caso"}
+                </span>
               </div>
             )}
           </div>
