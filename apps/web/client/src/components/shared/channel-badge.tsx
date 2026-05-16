@@ -1,5 +1,6 @@
 const CHANNEL_STYLES: Record<string, string> = {
   WHATSAPP: "bg-[#25D366]/15 text-[#25D366]",
+  TELEGRAM: "bg-[#0088cc]/15 text-[#0088cc]",
   EMAIL: "bg-[#60A5FA]/15 text-[#60A5FA]",
   FORM: "bg-[#A78BFA]/15 text-[#A78BFA]",
 };
