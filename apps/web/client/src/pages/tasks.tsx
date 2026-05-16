@@ -18,9 +18,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TaskSheet } from "@/components/tasks/TaskSheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CheckSquare, Plus, AlertTriangle, Check, MoreHorizontal, Pencil, Trash, Search, Calendar, Clock } from "lucide-react";
+import { CheckSquare, Plus, AlertTriangle, Check, MoreHorizontal, Pencil, Trash, Search, Calendar, Clock, ListChecks, Timer, AlertCircle } from "lucide-react";
 import { format, isPast, isToday, isTomorrow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { MarkdownRenderer } from "@/components/shared/markdown-renderer";
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -60,7 +61,11 @@ function TaskDescription({ text }: { text: string }) {
   const long = text.length > 80;
   return (
     <div className="text-[11px] text-muted-foreground max-w-[280px]">
-      <span className={!expanded && long ? "line-clamp-2" : ""}>{text}</span>
+      {expanded || !long ? (
+        <MarkdownRenderer content={text} />
+      ) : (
+        <MarkdownRenderer content={text.slice(0, 80) + "..."} />
+      )}
       {long && (
         <button onClick={() => setExpanded(!expanded)}
           className="text-[10px] text-primary/70 hover:text-primary ml-1 whitespace-nowrap">
@@ -190,6 +195,28 @@ export default function TasksPage() {
             <span className="text-xs">
               Tienes <strong>{overdueList.length}</strong> tarea{overdueList.length > 1 ? "s" : ""} vencida{overdueList.length > 1 ? "s" : ""} que requieren atención.
             </span>
+          </div>
+        )}
+
+        {/* Stats */}
+        {taskList.length > 0 && (
+          <div className="flex items-center gap-4 flex-wrap text-xs">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <ListChecks className="w-3.5 h-3.5" />
+              <span><strong className="text-foreground">{taskList.length}</strong> totales</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-emerald-400">
+              <Check className="w-3.5 h-3.5" />
+              <span><strong>{taskList.filter((t: any) => t.status === "DONE").length}</strong> completadas</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-amber-400">
+              <Timer className="w-3.5 h-3.5" />
+              <span><strong>{taskList.filter((t: any) => t.status === "IN_PROGRESS").length}</strong> en progreso</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-red-400">
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span><strong>{overdueList.length}</strong> vencidas</span>
+            </div>
           </div>
         )}
 

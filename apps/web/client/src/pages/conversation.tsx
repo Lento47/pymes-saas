@@ -1,12 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { ConversationNotes } from "@/components/conversation/conversation-notes";
 import { PriorityDot } from "@/components/shared/priority-dot";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
@@ -19,9 +17,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRoute, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
-import { ArrowLeft, Coins, ExternalLink, CheckCircle2, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, Info } from "lucide-react";
+import { ArrowLeft, Coins, ExternalLink, CheckCircle2, CheckCheck, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, FileText, Paperclip, Image, X, Smile, Pencil } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ImageLightbox } from "@/components/shared/image-lightbox";
+import { MarkdownRenderer } from "@/components/shared/markdown-renderer";
+import { EmojiPicker } from "@/components/shared/emoji-picker";
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -30,6 +31,7 @@ function getInitials(name: string) {
 function getChannelIcon(type?: string) {
   switch (type?.toUpperCase()) {
     case "WHATSAPP": return <MessageCircle className="w-3.5 h-3.5" />;
+    case "TELEGRAM": return <Send className="w-3.5 h-3.5" />;
     case "EMAIL": return <Mail className="w-3.5 h-3.5" />;
     case "FORM": return <Globe className="w-3.5 h-3.5" />;
     default: return <Phone className="w-3.5 h-3.5" />;
@@ -62,15 +64,15 @@ export default function ConversationPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/inbox/:id");
-  const pathId = params?.id || "";
-  const locationId = typeof window !== "undefined" ? window.location.pathname.split("/inbox/")[1]?.split("/")[0] || "" : "";
-  const id = pathId || locationId || "";
-  const idRef = useRef(id);
-  idRef.current = id;
+  const id = params?.id || "";
   const [message, setMessage] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [showDelete, setShowDelete] = useState(false);
   const [showContactDialog, setShowContactDialog] = useState(false);
-  const [showMobilePanel, setShowMobilePanel] = useState(false);
   const [showCreateInvoiceDialog, setShowCreateInvoiceDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState("");
@@ -89,14 +91,7 @@ export default function ConversationPage() {
     currency: "USD",
     due_date: "",
     description: "",
-    subtotal: "",
-    tax_rate: "13",
-    tax_amount: "",
   });
-  const taxRateNum = Number(invoiceForm.tax_rate) || 0;
-  const invSubtotal = Number(invoiceForm.subtotal) || Number(invoiceForm.amount) || 0;
-  const invTax = taxRateNum > 0 ? (invSubtotal * taxRateNum / 100).toFixed(2) : "0.00";
-  const invTotal = taxRateNum > 0 ? (invSubtotal + Number(invTax)).toFixed(2) : invSubtotal.toFixed(2);
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
     paid_at: "",
@@ -109,6 +104,31 @@ export default function ConversationPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // ── Typing indicator ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!id) return;
+    const socket = (window as any).__socket;
+    if (!socket) return;
+
+    const handler = (payload: { userId: string; name: string }) => {
+      if (payload.userId) {
+        setTypingUsers((prev) => prev.includes(payload.name) ? prev : [...prev, payload.name]);
+        // Auto-clear after 4 seconds
+        setTimeout(() => {
+          setTypingUsers((prev) => prev.filter((n) => n !== payload.name));
+        }, 4000);
+      }
+    };
+    const stopHandler = () => setTypingUsers([]);
+
+    socket.on("conversation:typing", handler);
+    socket.on("conversation:typing-stop", stopHandler);
+    return () => {
+      socket.off("conversation:typing", handler);
+      socket.off("conversation:typing-stop", stopHandler);
+    };
+  }, [id]);
+
   const { data: conversation, isLoading: convLoading } = useQuery({
     queryKey: ["/api/conversations", id],
     queryFn: () => api.getConversation(id),
@@ -116,10 +136,10 @@ export default function ConversationPage() {
   });
 
   const { data: messages, isLoading: msgsLoading, refetch: refetchMessages } = useQuery({
-    queryKey: ["conversation-messages", id],
+    queryKey: ["/api/conversations", id, "messages"],
     queryFn: () => api.getMessages(id),
     enabled: !!id,
-    staleTime: 0,
+    refetchInterval: 3000,
   });
 
   const { data: members } = useQuery({
@@ -140,14 +160,14 @@ export default function ConversationPage() {
   });
 
   const sendMutation = useMutation({
-    mutationFn: (data: any) => api.sendMessage(idRef.current, data),
+    mutationFn: (data: any) => api.sendMessage(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["conversation-messages", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setMessage("");
     },
     onError: (err: any) => {
-      toast({ title: "Error al enviar", description: apiErrorDescription(err), variant: "destructive" });
+      toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     },
   });
 
@@ -176,7 +196,7 @@ export default function ConversationPage() {
       setLocation("/inbox");
     },
     onError: (err: any) => {
-      toast({ title: "Error al eliminar", description: apiErrorDescription(err), variant: "destructive" });
+      toast({ title: "Error al eliminar", description: err.message, variant: "destructive" });
     },
   });
 
@@ -190,7 +210,7 @@ export default function ConversationPage() {
       toast({ title: "Contacto vinculado" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al vincular contacto", description: apiErrorDescription(err), variant: "destructive" });
+      toast({ title: "Error al vincular contacto", description: err.message, variant: "destructive" });
     },
   });
 
@@ -224,7 +244,7 @@ export default function ConversationPage() {
       toast({ title: "Contacto creado y vinculado" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al crear contacto", description: apiErrorDescription(err), variant: "destructive" });
+      toast({ title: "Error al crear contacto", description: err.message, variant: "destructive" });
     },
   });
 
@@ -248,7 +268,7 @@ export default function ConversationPage() {
       toast({ title: "Contacto actualizado" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al actualizar contacto", description: apiErrorDescription(err), variant: "destructive" });
+      toast({ title: "Error al actualizar contacto", description: err.message, variant: "destructive" });
     },
   });
 
@@ -258,13 +278,10 @@ export default function ConversationPage() {
         contact_id: conversation.contact.id,
         conversation_id: id,
         number: invoiceForm.number,
-        amount: Number(taxRateNum > 0 ? invTotal : (invoiceForm.amount || "0")),
+        amount: Number(invoiceForm.amount),
         currency: invoiceForm.currency,
         due_date: invoiceForm.due_date,
         description: invoiceForm.description,
-        subtotal: taxRateNum > 0 ? invSubtotal : undefined,
-        tax_rate: taxRateNum > 0 ? taxRateNum : undefined,
-        tax_amount: taxRateNum > 0 ? Number(invTax) : undefined,
         notes: [],
       }),
     onSuccess: () => {
@@ -277,14 +294,11 @@ export default function ConversationPage() {
         currency: "USD",
         due_date: "",
         description: "",
-        subtotal: "",
-        tax_rate: "13",
-        tax_amount: "",
       });
       toast({ title: "Factura creada y guardada" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al crear factura", description: apiErrorDescription(err), variant: "destructive" });
+      toast({ title: "Error al crear factura", description: err.message, variant: "destructive" });
     },
   });
 
@@ -312,7 +326,7 @@ export default function ConversationPage() {
       toast({ title: "Pago registrado" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al registrar pago", description: apiErrorDescription(err), variant: "destructive" });
+      toast({ title: "Error al registrar pago", description: err.message, variant: "destructive" });
     },
   });
 
@@ -332,11 +346,11 @@ export default function ConversationPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices", "conversation", id] });
-      queryClient.invalidateQueries({ queryKey: ["conversation-messages", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
       toast({ title: "Factura enviada desde este chat" });
     },
     onError: (err: any) => {
-      toast({ title: "Error al enviar factura", description: apiErrorDescription(err), variant: "destructive" });
+      toast({ title: "Error al enviar factura", description: err.message, variant: "destructive" });
     },
   });
 
@@ -344,7 +358,7 @@ export default function ConversationPage() {
   const memberList = Array.isArray(members) ? members : members?.data || [];
   const contactList = Array.isArray(contactsData) ? contactsData : contactsData?.data || [];
   const invoiceList = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
-  const canSendInvoiceFromConversation = ["EMAIL", "WHATSAPP"].includes(String(conversation?.channel?.type ?? "").toUpperCase());
+  const canSendInvoiceFromConversation = ["EMAIL", "WHATSAPP", "TELEGRAM"].includes(String(conversation?.channel?.type ?? "").toUpperCase());
   const contact = conversation?.contact;
   const assignedMember = memberList.find(
     (m: any) => (m.user?.id || m.userId || m.id) === (conversation?.assigned_user?.id || conversation?.assigned_to_id || conversation?.assigned_user_id)
@@ -406,8 +420,8 @@ export default function ConversationPage() {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col md:flex-row gap-4 h-[calc(100dvh-80px)] md:h-[calc(100dvh-80px)]">
-        <div className="flex-1 flex flex-col min-w-0 min-h-0">
+      <div className="flex gap-4 h-[calc(100vh-80px)]">
+        <div className="flex-1 flex flex-col min-w-0">
           <div className="flex items-center gap-3 pb-3 border-b border-border mb-3">
             <Link href="/inbox">
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid="button-back">
@@ -428,16 +442,6 @@ export default function ConversationPage() {
                 </h2>
                 <StatusBadge status={conversation.status} type="conversation" />
                 <PriorityDot priority={conversation.priority} showLabel />
-                {conversation.sla_breached && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-                    SLA
-                  </span>
-                )}
-                {conversation.first_response_at && !conversation.sla_breached && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-green-500/10 text-green-400 border border-green-500/20">
-                    ✓ {Math.round((new Date(conversation.first_response_at).getTime() - new Date(conversation.created_at).getTime()) / 60000)}m
-                  </span>
-                )}
               </div>
               {assignedMember && (
                 <div className="text-[11px] text-muted-foreground mt-0.5">
@@ -448,21 +452,6 @@ export default function ConversationPage() {
             </div>
 
             <div className="flex items-center gap-1">
-              {/* Mobile: toggle contact/invoice panel */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn("md:hidden h-8 w-8 p-0", showMobilePanel && "bg-muted")}
-                    onClick={() => setShowMobilePanel(v => !v)}
-                  >
-                    <Info className="w-4 h-4 text-muted-foreground" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Contacto e información</TooltipContent>
-              </Tooltip>
-
               <Tooltip>
                 <Select onValueChange={(val) => assignMutation.mutate(val)}>
                   <TooltipTrigger asChild>
@@ -471,7 +460,7 @@ export default function ConversationPage() {
                     </SelectTrigger>
                   </TooltipTrigger>
                   <SelectContent>
-                    {memberList.filter((m: any) => m.user?.id || m.userId || m.id).map((m: any) => (
+                    {memberList.map((m: any) => (
                       <SelectItem key={m.user?.id || m.userId || m.id} value={m.user?.id || m.userId || m.id}>
                         {m.user?.name || m.name || m.email}
                       </SelectItem>
@@ -587,64 +576,80 @@ export default function ConversationPage() {
                             {contactName}
                           </div>
                         )}
-                        {(msg.has_media && msg.media_type === 'image') ? (
-                          <div className="mb-1.5">
-                            <img
-                              src={msg.media_download_url}
-                              alt={msg.media_caption || 'Imagen'}
-                              className="max-w-full rounded-lg object-cover max-h-64 cursor-pointer"
-                              onClick={() => window.open(msg.media_download_url, '_blank')}
-                              loading="lazy"
-                            />
+                        {msg.body_text || msg.body_html || msg.content || msg.body ? (
+                          <MarkdownRenderer
+                            content={msg.body_text || msg.body_html || msg.content || msg.body}
+                          />
+                        ) : null}
+
+                        {/* ── Media rendering ── */}
+                        {msg.has_media && msg.media_download_url && (
+                          <div className="mt-1.5 max-w-full">
+                            {msg.media_type === "image" || msg.media_mime_type?.startsWith("image/") ? (
+                              <img
+                                src={msg.media_download_url}
+                                alt={msg.media_filename || "Imagen"}
+                                className="rounded-lg max-h-64 w-full object-cover cursor-pointer"
+                                loading="lazy"
+                                onClick={() => setLightboxUrl(msg.media_download_url)}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            ) : msg.media_type === "video" || msg.media_mime_type?.startsWith("video/") ? (
+                              <video
+                                src={msg.media_download_url}
+                                controls
+                                className="rounded-lg max-h-64 w-full"
+                                preload="metadata"
+                              >
+                                Tu navegador no soporta video.
+                              </video>
+                            ) : msg.media_type === "audio" || msg.media_mime_type?.startsWith("audio/") ? (
+                              <audio
+                                src={msg.media_download_url}
+                                controls
+                                className="w-full h-10"
+                                preload="none"
+                              >
+                                Tu navegador no soporta audio.
+                              </audio>
+                            ) : (
+                              <a
+                                href={msg.media_download_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-sm text-primary hover:underline bg-muted/50 rounded-lg px-3 py-2"
+                              >
+                                <FileText className="w-4 h-4" />
+                                {msg.media_filename || "Archivo adjunto"}
+                              </a>
+                            )}
                             {msg.media_caption && (
                               <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5">
                                 {msg.media_caption}
                               </p>
                             )}
                           </div>
-                        ) : msg.has_media && msg.media_type === 'document' ? (
-                          <div className="mb-1.5">
-                            <a
-                              href={msg.media_download_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm hover:bg-white/10 transition-colors"
-                            >
-                              <svg className="w-5 h-5 shrink-0 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                              </svg>
-                              <span className="truncate">{msg.media_filename || 'Documento'}</span>
-                              <svg className="w-4 h-4 shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                              </svg>
-                            </a>
-                            {msg.body_text && (
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5">
-                                {msg.body_text}
-                              </p>
-                            )}
-                          </div>
-                        ) : msg.has_media && (msg.media_type === 'audio' || msg.media_type === 'video') ? (
-                          <div className="mb-1.5">
-                            <audio
-                              controls
-                              className="max-w-full rounded-lg"
-                              preload="none"
-                              src={msg.media_download_url}
-                            />
-                            {msg.body_text && (
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5">
-                                {msg.body_text}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                            {msg.body_text || msg.body_html || msg.content || msg.body}
-                          </p>
                         )}
-                        <div className={cn("text-[10px] text-muted-foreground mt-1", isOutbound ? "text-right" : "text-left")}>
-                          {msgDate ? format(msgDate, "h:mm a") : ""}
+                        <div className={cn("flex items-center gap-1 mt-1", isOutbound ? "justify-end" : "justify-left")}>
+                          <span className="text-[10px] text-muted-foreground">
+                            {msgDate ? format(msgDate, "h:mm a") : ""}
+                          </span>
+                          {isOutbound && (
+                            <span title={msg.read_at ? "Leído" : msg.delivered_at ? "Entregado" : "Enviado"}>
+                              <CheckCheck
+                                className={cn(
+                                  "w-3 h-3",
+                                  msg.read_at
+                                    ? "text-primary"
+                                    : msg.delivered_at
+                                      ? "text-muted-foreground"
+                                      : "text-muted-foreground/50"
+                                )}
+                              />
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -655,10 +660,41 @@ export default function ConversationPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          <form
-            className="border border-border rounded-xl bg-card overflow-hidden"
-            onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-          >
+          {/* ── Typing indicator ── */}
+          {typingUsers.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] text-muted-foreground">
+              <div className="flex gap-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+              <span>{typingUsers.join(", ")} escribiendo...</span>
+            </div>
+          )}
+
+          <div className="border border-border rounded-xl bg-card overflow-hidden">
+            {selectedFile && (
+              <div className="flex items-center gap-2 px-4 pt-2.5 pb-1 border-b border-border bg-muted/30">
+                {selectedFile.type.startsWith("image/") ? (
+                  <img
+                    src={URL.createObjectURL(selectedFile)}
+                    alt="preview"
+                    className="w-10 h-10 rounded object-cover"
+                  />
+                ) : (
+                  <FileText className="w-5 h-5 text-muted-foreground" />
+                )}
+                <span className="text-xs text-muted-foreground flex-1 truncate">
+                  {selectedFile.name}
+                </span>
+                <button
+                  onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                  className="p-0.5 hover:bg-muted rounded"
+                >
+                  <X className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            )}
             <Textarea
               placeholder="Escribe un mensaje..."
               value={message}
@@ -673,12 +709,56 @@ export default function ConversationPage() {
               data-testid="input-message"
             />
             <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
-              <span className="text-[10px] text-muted-foreground/80">Shift+Enter para nueva línea</span>
+              <div className="flex items-center gap-1">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Paperclip className="w-3.5 h-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Adjuntar archivo</TooltipContent>
+                </Tooltip>
+                <div className="relative">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                        onClick={() => setEmojiPickerOpen(o => !o)}
+                      >
+                        <Smile className="w-3.5 h-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Emojis</TooltipContent>
+                  </Tooltip>
+                  <EmojiPicker
+                    open={emojiPickerOpen}
+                    onOpenChange={setEmojiPickerOpen}
+                    onSelect={(emoji) => {
+                      setMessage((prev) => prev + emoji);
+                    }}
+                  />
+                </div>
+                <span className="text-[10px] text-muted-foreground/50 ml-1">Shift+Enter para nueva línea</span>
+              </div>
               <Button
                 size="sm"
                 className="h-7 px-3 gap-1.5 text-xs"
                 onClick={handleSend}
-                disabled={!message.trim() || sendMutation.isPending}
+                disabled={(!message.trim() && !selectedFile) || sendMutation.isPending}
                 data-testid="button-send"
               >
                 {sendMutation.isPending
@@ -687,17 +767,10 @@ export default function ConversationPage() {
                 Enviar
               </Button>
             </div>
-          </form>
+          </div>
         </div>
 
-        <div
-          className={cn(
-            "flex flex-col gap-3 overflow-y-auto pb-14 md:pb-0",
-            "md:w-[280px] md:shrink-0 md:flex",
-            showMobilePanel ? "flex" : "hidden md:flex"
-          )}
-          data-testid="contact-info-panel"
-        >
+        <div className="w-[280px] shrink-0 flex flex-col gap-3 overflow-y-auto" data-testid="contact-info-panel">
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Contacto</h3>
@@ -890,11 +963,6 @@ export default function ConversationPage() {
               )}
             </div>
           </div>
-
-          <ConversationNotes
-            conversationId={id}
-            initialNotes={conversation?.notes}
-          />
 
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
@@ -1112,39 +1180,15 @@ export default function ConversationPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Subtotal</Label>
+                    <Label className="text-xs text-muted-foreground">Monto total</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      value={invoiceForm.subtotal}
-                      onChange={(e) => setInvoiceForm((prev) => ({ ...prev, subtotal: e.target.value }))}
+                      value={invoiceForm.amount}
+                      onChange={(e) => setInvoiceForm((prev) => ({ ...prev, amount: e.target.value }))}
                       className="h-8 text-xs bg-background border-border"
-                      placeholder={invoiceForm.amount || "0"}
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">IVA %</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={invoiceForm.tax_rate}
-                      onChange={(e) => setInvoiceForm((prev) => ({ ...prev, tax_rate: e.target.value }))}
-                      className="h-8 text-xs bg-background border-border"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Impuesto</Label>
-                    <Input value={invTax} disabled className="h-8 text-xs bg-muted border-border" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Total</Label>
-                    <Input value={invTotal} disabled className="h-8 text-xs bg-muted border-border font-medium" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Vencimiento</Label>
                     <Input
@@ -1178,8 +1222,8 @@ export default function ConversationPage() {
                   !contact ||
                   createInvoiceMutation.isPending ||
                   !invoiceForm.number.trim() ||
-                  !invoiceForm.due_date ||
-                  (!Number(invTotal) && !Number(invoiceForm.amount))
+                  !invoiceForm.amount ||
+                  !invoiceForm.due_date
                 }
               >
                 {createInvoiceMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
@@ -1287,6 +1331,15 @@ export default function ConversationPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* ── Image Lightbox ── */}
+      {lightboxUrl && (
+        <ImageLightbox
+          src={lightboxUrl}
+          alt="Imagen"
+          onClose={() => setLightboxUrl(null)}
+        />
+      )}
     </TooltipProvider>
   );
 }

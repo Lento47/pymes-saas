@@ -22,6 +22,7 @@ export type ConversationPriority =
 
 export type ConversationChannelType =
   | "WHATSAPP"
+  | "TELEGRAM"
   | "EMAIL"
   | "FORM"
   | string;
