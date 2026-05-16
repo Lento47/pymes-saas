@@ -598,15 +598,22 @@ export class MessagesService {
     };
   }
 
-  // ── Signed URL para media ────────────────────────────────────────────────
+  // ── Proxy de media (HTTPS) ───────────────────────────────────────────────
 
   /**
-   * Generate a signed URL for a message's stored media (MinIO/S3).
-   * Returns null if the message has no storage-backed attachments (fallback to Meta proxy).
+   * Download a message's stored media from MinIO/S3 and return it as a buffer
+   * with content type. Used by the controller to proxy through HTTPS instead of
+   * redirecting to an HTTP presigned URL (mixed-content fix).
    *
-   * Security: validates workspace ownership before signing.
+   * Returns null if the message has no storage-backed attachments (fallback to
+   * Meta proxy in the controller).
+   *
+   * Security: validates workspace ownership before downloading.
    */
-  async getMediaSignedUrl(messageId: string, workspaceId: string): Promise<string | null> {
+  async getMediaContent(
+    messageId: string,
+    workspaceId: string,
+  ): Promise<{ buffer: Buffer; contentType: string } | null> {
     const msg = await this.prisma.message.findFirst({
       where: { id: messageId, workspace_id: workspaceId },
       select: { attachments_json: true },
@@ -617,8 +624,21 @@ export class MessagesService {
     const entry = attachments?.[0] ?? null;
     if (!entry?.storageKey) return null;
 
-    const ttl = Number(process.env.MEDIA_SIGNED_URL_TTL_SECONDS ?? 300);
-    return this.storage.getPresignedUrl(entry.storageKey, ttl);
+    const buffer = await this.storage.download(entry.storageKey);
+
+    const ext = (() => {
+      const last = entry.storageKey.split('.').pop()?.toLowerCase() ?? '';
+      return `.${last}`;
+    })();
+    const MIME: Record<string, string> = {
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+      '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg',
+      '.ogg': 'audio/ogg', '.wav': 'audio/wav',
+    };
+    const contentType = MIME[ext] ?? 'application/octet-stream';
+
+    return { buffer, contentType };
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
