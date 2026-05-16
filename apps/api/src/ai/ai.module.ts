@@ -18,6 +18,7 @@ import { EngineeringFixService } from './engineering-fix.service';
 import { SupportNotificationService } from './support-notification.service';
 import { KnowledgeBaseService } from './knowledge-base.service';
 import { CaseCommentsService } from './case-comments.service';
+import { CloudflareAiService } from './cloudflare-ai.service';
 
 import { AiTriageService } from './ai-triage.service';
 

@@ -77,7 +77,13 @@ async function bootstrap() {
     maxAge: 3600,
   });
 
-  app.useGlobalFilters(new ApiExceptionFilter(app.get(ErrorReportsService), app.get(PrismaService), app.get(AiTriageService, { optional: true })));
+  let aiTriage: AiTriageService | null = null;
+  try {
+    aiTriage = app.get(AiTriageService);
+  } catch {
+    // AiTriageService is optional — may not be registered
+  }
+  app.useGlobalFilters(new ApiExceptionFilter(app.get(ErrorReportsService), app.get(PrismaService), aiTriage as any));
   app.useGlobalFilters(new PrismaExceptionFilter());
   const port = process.env.PORT ?? 4000;
   const host = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
