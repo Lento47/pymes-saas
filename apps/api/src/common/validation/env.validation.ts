@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+
 export function validateJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
 
@@ -10,8 +12,9 @@ export function validateJwtSecret(): string {
   }
 
   if (!/[A-Z]/.test(secret) || !/[0-9]/.test(secret) || !/[!@#$%^&*]/.test(secret)) {
-    console.warn(
-      '⚠️  JWT_SECRET should contain uppercase letters, numbers, and special characters for better security'
+    Logger.warn(
+      'JWT_SECRET should contain uppercase letters, numbers, and special characters for better security',
+      'EnvValidation',
     );
   }
 

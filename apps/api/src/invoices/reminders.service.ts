@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ChannelType, ConversationStatus, InvoiceStatus, WorkspaceUserRole } from '@prisma/client';
@@ -14,6 +15,7 @@ import { SendReminderDto } from './dto/send-reminder.dto';
 
 @Injectable()
 export class RemindersService {
+  private readonly logger = new Logger(RemindersService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiService: AiService,
@@ -51,7 +53,9 @@ export class RemindersService {
           body: `${updated.count} factura(s) fueron marcadas como vencidas. Revisa el módulo de facturación.`,
           related_entity_type: 'invoice',
           related_entity_id: null as any,
-        }).catch(() => {});
+        }).catch((err) =>
+          this.logger.warn(`Failed to notify admin about overdue invoices in workspace ${workspaceId}`, err),
+        );
       }
     }
 

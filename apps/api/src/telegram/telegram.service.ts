@@ -90,7 +90,9 @@ export class TelegramService {
     }
 
     // Remove existing webhook if any
-    await this.removeWebhook(channelId).catch(() => {});
+    await this.removeWebhook(channelId).catch((err) =>
+      this.logger.warn(`Failed to remove existing Telegram webhook for channel=${channelId}`, err),
+    );
 
     const bot = new Telegraf(token);
     const rawBaseUrl = this.config.get<string>('TELEGRAM_WEBHOOK_BASE_URL')

@@ -425,7 +425,9 @@ export class InvoicesService {
           : `Se recibió un pago de ₡${amount.toFixed(2)} para la factura ${invoice.number}.`,
         related_entity_type: 'invoice',
         related_entity_id: invoiceId,
-      }).catch(() => {});
+      }).catch((err) =>
+        this.logger.warn(`Failed to notify workspace ${workspaceId} about invoice ${invoiceNumber || invoiceId}`, err),
+      );
     }
 
     return {
@@ -1296,7 +1298,9 @@ export class InvoicesService {
         body: `La factura ${invoice.number} fue aprobada.`,
         related_entity_type: 'invoice',
         related_entity_id: id,
-      }).catch(() => {});
+      }).catch((err) =>
+        this.logger.warn(`Failed to notify workspace ${updated.workspace_id} about invoice approval ${invoice.number}`, err),
+      );
     }
 
     return updated;

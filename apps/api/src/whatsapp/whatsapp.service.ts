@@ -40,7 +40,7 @@ export class WhatsAppService {
     bodyText: string,
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
-    const cfg: any = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : (raw || {});
+    const cfg: any = parseJsonValue<Record<string, any>>(raw, {});
     this.logger.log(`[DIAG] sendMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(',')}`);
     if (!cfg?.access_token_encrypted) {
       this.logger.error(`WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`);
@@ -84,7 +84,7 @@ export class WhatsAppService {
     caption?: string,
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
-    const cfg: any = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : (raw || {});
+    const cfg: any = parseJsonValue<Record<string, any>>(raw, {});
     if (!cfg?.access_token_encrypted) {
       throw new BadGatewayException('WhatsApp access token no configurado.');
     }
@@ -170,7 +170,7 @@ export class WhatsAppService {
     variables: Record<string, string>,
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
-    const cfg: any = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : (raw || {});
+    const cfg: any = parseJsonValue<Record<string, any>>(raw, {});
     this.logger.log(`[DIAG] sendTemplateMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(',')}`);
     if (!cfg?.access_token_encrypted) {
       this.logger.error(`WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`);
@@ -604,7 +604,7 @@ export class WhatsAppService {
     }
 
     // Handle string payloads (legacy stringifyJson)
-    const parsed = typeof payload === 'string' ? (() => { try { return JSON.parse(payload); } catch { return {}; } })() : payload;
+    const parsed = parseJsonValue<Record<string, any>>(payload, {});
 
     let mediaId: string | null = null;
 
@@ -647,7 +647,7 @@ export class WhatsAppService {
     if (!channel) throw new BadGatewayException('Canal no encontrado');
 
     const raw = channel.config_json as any;
-    const cfg = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : (raw || {});
+    const cfg = parseJsonValue<Record<string, any>>(raw, {});
     if (!cfg?.access_token_encrypted) throw new BadGatewayException('WhatsApp access token no configurado');
 
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);

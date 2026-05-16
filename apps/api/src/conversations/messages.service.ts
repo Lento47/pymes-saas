@@ -12,6 +12,7 @@ import { AutomationsService } from '../automations/automations.service';
 import { RoutingService } from '../routing/routing.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { StorageService } from '../common/storage/storage.service';
+import { parseJsonValue } from '../common/prisma/json';
 
 @Injectable()
 export class MessagesService {
@@ -544,7 +545,7 @@ export class MessagesService {
   serializeMessageForClient(msg: Record<string, any>): Record<string, any> {
     const rawPayload = msg.raw_payload_json;
     // Handle both object and string payloads (legacy stringifyJson bug)
-    const payload = typeof rawPayload === 'string' ? (() => { try { return JSON.parse(rawPayload); } catch { return {}; } })() : (rawPayload || {});
+    const payload = parseJsonValue<Record<string, any>>(rawPayload, {});
 
     // 1) Check whatsapp_media stored during inbound processing
     let wm = payload?.whatsapp_media;

@@ -40,7 +40,7 @@ export class PrismaService
     if (process.env.NODE_ENV === 'production') {
       throw new Error('cleanDatabase no está permitido en producción.');
     }
-    const tablenames = await this.$queryRawUnsafe<{ tablename: string }[]>(
+    const tablenames = await this.rawQuery<{ tablename: string }[]>(
       `SELECT tablename FROM pg_tables WHERE schemaname='public'`
     );
     for (const { tablename } of tablenames) {
@@ -50,5 +50,14 @@ export class PrismaService
         );
       }
     }
+  }
+
+  /**
+   * Wrapper tipado para $queryRawUnsafe.
+   * El index signature [key: string]: any en la clase interfiere con los
+   * type params de $queryRawUnsafe. Este wrapper preserva el genérico.
+   */
+  async rawQuery<T = any>(query: string, ...params: any[]): Promise<T> {
+    return this.$queryRawUnsafe(query, ...params) as unknown as T;
   }
 }
