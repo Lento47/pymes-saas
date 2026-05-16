@@ -17,9 +17,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRoute, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
-import { ArrowLeft, Coins, ExternalLink, CheckCircle2, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, FileText, Paperclip, Image, X } from "lucide-react";
+import { ArrowLeft, Coins, ExternalLink, CheckCircle2, CheckCheck, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, FileText, Paperclip, Image, X, Smile, Pencil } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ImageLightbox } from "@/components/shared/image-lightbox";
+import { MarkdownRenderer } from "@/components/shared/markdown-renderer";
+import { EmojiPicker } from "@/components/shared/emoji-picker";
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -65,6 +68,9 @@ export default function ConversationPage() {
   const [message, setMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [showDelete, setShowDelete] = useState(false);
   const [showContactDialog, setShowContactDialog] = useState(false);
   const [showCreateInvoiceDialog, setShowCreateInvoiceDialog] = useState(false);
@@ -97,6 +103,31 @@ export default function ConversationPage() {
   useConversationSocket(id);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // ── Typing indicator ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!id) return;
+    const socket = (window as any).__socket;
+    if (!socket) return;
+
+    const handler = (payload: { userId: string; name: string }) => {
+      if (payload.userId) {
+        setTypingUsers((prev) => prev.includes(payload.name) ? prev : [...prev, payload.name]);
+        // Auto-clear after 4 seconds
+        setTimeout(() => {
+          setTypingUsers((prev) => prev.filter((n) => n !== payload.name));
+        }, 4000);
+      }
+    };
+    const stopHandler = () => setTypingUsers([]);
+
+    socket.on("conversation:typing", handler);
+    socket.on("conversation:typing-stop", stopHandler);
+    return () => {
+      socket.off("conversation:typing", handler);
+      socket.off("conversation:typing-stop", stopHandler);
+    };
+  }, [id]);
 
   const { data: conversation, isLoading: convLoading } = useQuery({
     queryKey: ["/api/conversations", id],
@@ -546,9 +577,9 @@ export default function ConversationPage() {
                           </div>
                         )}
                         {msg.body_text || msg.body_html || msg.content || msg.body ? (
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                            {msg.body_text || msg.body_html || msg.content || msg.body}
-                          </p>
+                          <MarkdownRenderer
+                            content={msg.body_text || msg.body_html || msg.content || msg.body}
+                          />
                         ) : null}
 
                         {/* ── Media rendering ── */}
@@ -560,7 +591,7 @@ export default function ConversationPage() {
                                 alt={msg.media_filename || "Imagen"}
                                 className="rounded-lg max-h-64 w-full object-cover cursor-pointer"
                                 loading="lazy"
-                                onClick={() => window.open(msg.media_download_url, "_blank")}
+                                onClick={() => setLightboxUrl(msg.media_download_url)}
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).style.display = "none";
                                 }}
@@ -601,8 +632,24 @@ export default function ConversationPage() {
                             )}
                           </div>
                         )}
-                        <div className={cn("text-[10px] text-muted-foreground mt-1", isOutbound ? "text-right" : "text-left")}>
-                          {msgDate ? format(msgDate, "h:mm a") : ""}
+                        <div className={cn("flex items-center gap-1 mt-1", isOutbound ? "justify-end" : "justify-left")}>
+                          <span className="text-[10px] text-muted-foreground">
+                            {msgDate ? format(msgDate, "h:mm a") : ""}
+                          </span>
+                          {isOutbound && (
+                            <span title={msg.read_at ? "Leído" : msg.delivered_at ? "Entregado" : "Enviado"}>
+                              <CheckCheck
+                                className={cn(
+                                  "w-3 h-3",
+                                  msg.read_at
+                                    ? "text-primary"
+                                    : msg.delivered_at
+                                      ? "text-muted-foreground"
+                                      : "text-muted-foreground/50"
+                                )}
+                              />
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -612,6 +659,18 @@ export default function ConversationPage() {
             )}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* ── Typing indicator ── */}
+          {typingUsers.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] text-muted-foreground">
+              <div className="flex gap-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+              <span>{typingUsers.join(", ")} escribiendo...</span>
+            </div>
+          )}
 
           <div className="border border-border rounded-xl bg-card overflow-hidden">
             {selectedFile && (
@@ -671,6 +730,28 @@ export default function ConversationPage() {
                   </TooltipTrigger>
                   <TooltipContent>Adjuntar archivo</TooltipContent>
                 </Tooltip>
+                <div className="relative">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                        onClick={() => setEmojiPickerOpen(o => !o)}
+                      >
+                        <Smile className="w-3.5 h-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Emojis</TooltipContent>
+                  </Tooltip>
+                  <EmojiPicker
+                    open={emojiPickerOpen}
+                    onOpenChange={setEmojiPickerOpen}
+                    onSelect={(emoji) => {
+                      setMessage((prev) => prev + emoji);
+                    }}
+                  />
+                </div>
                 <span className="text-[10px] text-muted-foreground/50 ml-1">Shift+Enter para nueva línea</span>
               </div>
               <Button
@@ -1250,6 +1331,15 @@ export default function ConversationPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* ── Image Lightbox ── */}
+      {lightboxUrl && (
+        <ImageLightbox
+          src={lightboxUrl}
+          alt="Imagen"
+          onClose={() => setLightboxUrl(null)}
+        />
+      )}
     </TooltipProvider>
   );
 }
