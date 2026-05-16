@@ -74,6 +74,23 @@ export class AiService {
     return await this.getWorkspaceConfig(workspaceId);
   }
 
+  /**
+   * Generic AI query — workspace-scoped, uses the configured AI provider.
+   * Returns null if no AI provider is configured for the workspace.
+   */
+  async ask(
+    workspaceId: string,
+    systemPrompt: string,
+    userMessage: string,
+    maxTokens = 500,
+    temperature = 0.3,
+  ): Promise<string | null> {
+    const config = await this.getConfig(workspaceId);
+    if (!config) return null;
+    const result = await this.chat(config, systemPrompt, userMessage, maxTokens, temperature);
+    return result.text;
+  }
+
   // ── Unified chat call — all providers ─────────────────────────────────────
 
   private async chat(

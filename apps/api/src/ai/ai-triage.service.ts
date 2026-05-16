@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { CloudflareAiService } from './cloudflare-ai.service';
+import { AiService } from './ai.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 export type TriageVerdict = 'USER_ERROR' | 'MISCONFIGURATION' | 'BUG' | 'PLATFORM_INCIDENT' | 'UNKNOWN';
@@ -15,33 +15,32 @@ export interface TriageResult {
 }
 
 /**
- * AI Triage Service — cuando un caso de diagnóstico se abre, este servicio
- * usa Cloudflare AI para analizar el error y determinar:
- * - USER_ERROR: el usuario hizo algo mal → auto-responder con guía
- * - MISCONFIGURATION: la configuración del workspace está mal → guía específica
- * - BUG: error real del producto → escalar a plataforma
- * - PLATFORM_INCIDENT: error crítico → escalar urgente
+ * AI Triage Service — when a diagnostic case is created, this service
+ * uses the workspace's configured AI provider (OpenAI, Anthropic, etc.)
+ * to analyze the error and determine:
+ * - USER_ERROR: user did something wrong → auto-respond with guide
+ * - MISCONFIGURATION: workspace config is wrong → specific guidance
+ * - BUG: real product bug → escalate to platform
+ * - PLATFORM_INCIDENT: critical error → urgent escalation
  *
- * Previene falsos positivos deduplicando y requiriendo múltiples ocurrencias
- * antes de escalar bugs no críticos.
+ * Prevents false positives by deduplicating across workspaces.
+ * Falls back to heuristics when no AI provider is configured.
  */
 @Injectable()
 export class AiTriageService {
   private readonly logger = new Logger(AiTriageService.name);
 
-  // Counter for similar errors across workspaces — if 3+ workspaces hit
-  // the same error_code within 24h, it's likely a bug, not user error.
   private readonly dedupWindowMs = 24 * 60 * 60 * 1000;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cloudflareAi?: CloudflareAiService,
+    private readonly ai: AiService,
     private readonly notifications?: NotificationsService,
   ) {}
 
   /**
    * Run AI triage on a diagnostic case. Called after creation.
-   * This is non-blocking — never throw, log and swallow errors.
+   * Non-blocking — never throws, logs and swallows errors.
    */
   async triage(diagnosticCaseId: string): Promise<void> {
     try {
@@ -62,13 +61,12 @@ export class AiTriageService {
       });
       if (!dCase) return;
 
-      // 1. Deduplication: count similar cases across all workspaces (last 24h)
       const similarCount = await this.countSimilar(dCase.error_code, dCase.created_at);
 
-      // 2. Run AI classification if Cloudflare AI is configured
-      if (this.cloudflareAi?.isConfigured) {
-        const verdict = await this.classifyWithAI(dCase, similarCount);
-        await this.applyVerdict(dCase, verdict);
+      // Try AI classification first (workspace must have AI configured)
+      const aiResult = await this.classifyWithAI(dCase, similarCount);
+      if (aiResult) {
+        await this.applyVerdict(dCase, aiResult);
       } else {
         // Fallback: heuristic-based triage
         const verdict = this.heuristicTriage(dCase, similarCount);
@@ -76,6 +74,41 @@ export class AiTriageService {
       }
     } catch (err: any) {
       this.logger.error(`AI triage failed for case ${diagnosticCaseId}: ${err.message}`);
+    }
+  }
+
+  /**
+   * Analyze freeform health data for a workspace module.
+   * Used when user clicks "Diagnosticar" on a page (no specific error).
+   * Returns null if AI is not configured (caller should show tips instead).
+   */
+  async analyzeModuleHealth(
+    workspaceId: string,
+    module: string,
+    contextData: Record<string, any>,
+  ): Promise<{
+    verdict: TriageVerdict;
+    confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+    explanation: string;
+    guidance: string;
+  } | null> {
+    const systemPrompt = `Eres un agente de soporte técnico de PymesHub. Analizás el estado del módulo "${module}" de un workspace y determinás si hay algún problema. Respondé SOLO con JSON: {"verdict":"OK|WARNING|ISSUE","confidence":"HIGH|MEDIUM|LOW","explanation":"...","guidance":"..."}`;
+
+    const dataPreview = JSON.stringify(contextData).slice(0, 800);
+    const userMessage = `Datos del módulo ${module}:\n${dataPreview}\n\n¿Hay algún problema evidente?`;
+
+    try {
+      const response = await this.ai.ask(workspaceId, systemPrompt, userMessage, 400, 0.2);
+      if (!response) return null;
+      const parsed = JSON.parse(response);
+      return {
+        verdict: parsed.verdict === 'OK' ? 'USER_ERROR' : parsed.verdict === 'WARNING' ? 'MISCONFIGURATION' : 'BUG',
+        confidence: parsed.confidence || 'LOW',
+        explanation: parsed.explanation || '',
+        guidance: parsed.guidance || '',
+      };
+    } catch {
+      return null;
     }
   }
 
@@ -94,15 +127,10 @@ export class AiTriageService {
     }
   }
 
-  /**
-   * Use Cloudflare AI to classify the error. The RAG search gives us
-   * context from the PymesHub knowledge base to determine if this
-   * is a known user mistake or a real product bug.
-   */
   private async classifyWithAI(
     dCase: any,
     similarCount: number,
-  ): Promise<TriageResult> {
+  ): Promise<TriageResult | null> {
     const evidence = typeof dCase.evidence_json === 'object'
       ? dCase.evidence_json
       : {};
@@ -127,8 +155,9 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
 {"verdict":"USER_ERROR|MISCONFIGURATION|BUG|PLATFORM_INCIDENT","confidence":"HIGH|MEDIUM|LOW","explanation":"...","guidance_for_user":"...","should_escalate":true|false}`;
 
     try {
-      const result = await this.cloudflareAi!.ask(prompt, [], 'Eres el agente de triage de PymesHub. Respondé solo con JSON válido.');
-      const parsed = JSON.parse(result.answer);
+      const response = await this.ai.ask(dCase.workspace_id, prompt, 'Analizá este caso.', 500, 0.2);
+      if (!response) return null;
+      const parsed = JSON.parse(response);
       return {
         verdict: parsed.verdict || 'UNKNOWN',
         confidence: parsed.confidence || 'LOW',
@@ -138,20 +167,16 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
         similar_cases_count: similarCount,
       };
     } catch {
-      return this.heuristicTriage(dCase, similarCount);
+      return null;
     }
   }
 
-  /**
-   * Fallback heuristics when Cloudflare AI is unavailable.
-   */
   private heuristicTriage(dCase: any, similarCount: number): TriageResult {
     const is5xx = dCase.risk_level === 'high' || dCase.category === 'PLATFORM_INCIDENT';
     const isConfig = dCase.category === 'WORKSPACE_CONFIGURATION';
     const isAuth = dCase.error_code?.includes('AUTH') || dCase.error_code === 'MISSING_CONFIG';
     const isConnectivity = dCase.error_code === 'CONNECTIVITY_ISSUE' || dCase.error_code === 'SOCKET_ERROR';
 
-    // High confidence conditions
     if (is5xx && similarCount >= 3) {
       return { verdict: 'PLATFORM_INCIDENT', confidence: 'HIGH', explanation: `${similarCount} workspaces afectados en 24hs con error 500`, guidance_for_user: 'Estamos revisando este incidente.', should_escalate: true, similar_cases_count: similarCount };
     }
@@ -178,12 +203,6 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
     };
   }
 
-  /**
-   * Apply the triage verdict to the diagnostic case:
-   * - Update category, risk level, add triage notes
-   * - If user error + confident → auto-close with guidance
-   * - If bug → escalate (change status, notify platform admin)
-   */
   private async applyVerdict(dCase: any, verdict: TriageResult): Promise<void> {
     const triageJson = {
       triage: {
@@ -197,7 +216,6 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
       },
     };
 
-    // Merge triage info into existing evidence
     const existingEvidence = typeof dCase.evidence_json === 'object' ? dCase.evidence_json : {};
     const mergedEvidence = { ...existingEvidence, ...triageJson };
 
@@ -205,12 +223,10 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
       evidence_json: mergedEvidence,
     };
 
-    // Update category based on verdict
     if (verdict.verdict === 'USER_ERROR') {
       update.category = 'USER_GUIDANCE';
       update.risk_level = 'low';
       update.resolution_json = { summary: verdict.guidance_for_user, resolution: 'Auto-resuelto — error de usuario' };
-      // Auto-close user errors with guidance
       if (verdict.confidence === 'HIGH' || verdict.confidence === 'MEDIUM') {
         update.status = 'RESOLVED';
         update.safe_summary = verdict.guidance_for_user;
@@ -240,7 +256,6 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
         data: update,
       });
 
-      // Send notification if escalated
       if (update.status === 'ESCALATED' || update.category === 'PLATFORM_INCIDENT' || update.category === 'PRODUCT_BUG') {
         await this.notifyBugEscalation(dCase, verdict);
       }
@@ -249,24 +264,18 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
     }
   }
 
-  /**
-   * Notify platform admins when a real bug is found.
-   * Creates notification and optionally triggers external webhook.
-   */
   private async notifyBugEscalation(dCase: any, verdict: TriageResult): Promise<void> {
     try {
-      // Find platform admins
       const admins = await (this.prisma as any).user.findMany({
         where: { is_platform_admin: true },
         select: { id: true },
       });
 
-      // Create notification for each platform admin
       for (const admin of admins) {
         await this.notifications!.create(dCase.workspace_id, {
           user_id: admin.id,
           type: 'bug_escalated',
-          title: `🐛 Bug detectado: ${verdict.verdict === 'PLATFORM_INCIDENT' ? '🔥 Incidente' : '🐞 Bug'} en ${dCase.error_code || 'desconocido'}`,
+          title: `Bug detectado: ${verdict.verdict === 'PLATFORM_INCIDENT' ? 'Incidente' : 'Bug'} en ${dCase.error_code || 'desconocido'}`,
           body: `${verdict.explanation}\n\nWorkspace: ${dCase.workspace_id}\nSimilar en ${verdict.similar_cases_count} workspace(s)\n\nVeredicto: ${verdict.verdict} (confianza: ${verdict.confidence})`,
           related_entity_type: 'support_diagnostic_case',
           related_entity_id: dCase.id,
