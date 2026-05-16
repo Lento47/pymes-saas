@@ -17,7 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRoute, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
-import { ArrowLeft, Coins, ExternalLink, CheckCircle2, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2 } from "lucide-react";
+import { ArrowLeft, Coins, ExternalLink, CheckCircle2, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, FileText, Paperclip, Image, X } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +28,7 @@ function getInitials(name: string) {
 function getChannelIcon(type?: string) {
   switch (type?.toUpperCase()) {
     case "WHATSAPP": return <MessageCircle className="w-3.5 h-3.5" />;
+    case "TELEGRAM": return <Send className="w-3.5 h-3.5" />;
     case "EMAIL": return <Mail className="w-3.5 h-3.5" />;
     case "FORM": return <Globe className="w-3.5 h-3.5" />;
     default: return <Phone className="w-3.5 h-3.5" />;
@@ -62,6 +63,8 @@ export default function ConversationPage() {
   const [, params] = useRoute("/inbox/:id");
   const id = params?.id || "";
   const [message, setMessage] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showDelete, setShowDelete] = useState(false);
   const [showContactDialog, setShowContactDialog] = useState(false);
   const [showCreateInvoiceDialog, setShowCreateInvoiceDialog] = useState(false);
@@ -324,7 +327,7 @@ export default function ConversationPage() {
   const memberList = Array.isArray(members) ? members : members?.data || [];
   const contactList = Array.isArray(contactsData) ? contactsData : contactsData?.data || [];
   const invoiceList = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
-  const canSendInvoiceFromConversation = ["EMAIL", "WHATSAPP"].includes(String(conversation?.channel?.type ?? "").toUpperCase());
+  const canSendInvoiceFromConversation = ["EMAIL", "WHATSAPP", "TELEGRAM"].includes(String(conversation?.channel?.type ?? "").toUpperCase());
   const contact = conversation?.contact;
   const assignedMember = memberList.find(
     (m: any) => (m.user?.id || m.userId || m.id) === (conversation?.assigned_user?.id || conversation?.assigned_to_id || conversation?.assigned_user_id)
@@ -542,9 +545,62 @@ export default function ConversationPage() {
                             {contactName}
                           </div>
                         )}
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                          {msg.body_text || msg.body_html || msg.content || msg.body}
-                        </p>
+                        {msg.body_text || msg.body_html || msg.content || msg.body ? (
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {msg.body_text || msg.body_html || msg.content || msg.body}
+                          </p>
+                        ) : null}
+
+                        {/* ── Media rendering ── */}
+                        {msg.has_media && msg.media_download_url && (
+                          <div className="mt-1.5 max-w-full">
+                            {msg.media_type === "image" || msg.media_mime_type?.startsWith("image/") ? (
+                              <img
+                                src={msg.media_download_url}
+                                alt={msg.media_filename || "Imagen"}
+                                className="rounded-lg max-h-64 w-full object-cover cursor-pointer"
+                                loading="lazy"
+                                onClick={() => window.open(msg.media_download_url, "_blank")}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            ) : msg.media_type === "video" || msg.media_mime_type?.startsWith("video/") ? (
+                              <video
+                                src={msg.media_download_url}
+                                controls
+                                className="rounded-lg max-h-64 w-full"
+                                preload="metadata"
+                              >
+                                Tu navegador no soporta video.
+                              </video>
+                            ) : msg.media_type === "audio" || msg.media_mime_type?.startsWith("audio/") ? (
+                              <audio
+                                src={msg.media_download_url}
+                                controls
+                                className="w-full h-10"
+                                preload="none"
+                              >
+                                Tu navegador no soporta audio.
+                              </audio>
+                            ) : (
+                              <a
+                                href={msg.media_download_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-sm text-primary hover:underline bg-muted/50 rounded-lg px-3 py-2"
+                              >
+                                <FileText className="w-4 h-4" />
+                                {msg.media_filename || "Archivo adjunto"}
+                              </a>
+                            )}
+                            {msg.media_caption && (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5">
+                                {msg.media_caption}
+                              </p>
+                            )}
+                          </div>
+                        )}
                         <div className={cn("text-[10px] text-muted-foreground mt-1", isOutbound ? "text-right" : "text-left")}>
                           {msgDate ? format(msgDate, "h:mm a") : ""}
                         </div>
@@ -558,6 +614,28 @@ export default function ConversationPage() {
           </div>
 
           <div className="border border-border rounded-xl bg-card overflow-hidden">
+            {selectedFile && (
+              <div className="flex items-center gap-2 px-4 pt-2.5 pb-1 border-b border-border bg-muted/30">
+                {selectedFile.type.startsWith("image/") ? (
+                  <img
+                    src={URL.createObjectURL(selectedFile)}
+                    alt="preview"
+                    className="w-10 h-10 rounded object-cover"
+                  />
+                ) : (
+                  <FileText className="w-5 h-5 text-muted-foreground" />
+                )}
+                <span className="text-xs text-muted-foreground flex-1 truncate">
+                  {selectedFile.name}
+                </span>
+                <button
+                  onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                  className="p-0.5 hover:bg-muted rounded"
+                >
+                  <X className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            )}
             <Textarea
               placeholder="Escribe un mensaje..."
               value={message}
@@ -572,12 +650,34 @@ export default function ConversationPage() {
               data-testid="input-message"
             />
             <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
-              <span className="text-[10px] text-muted-foreground/50">Shift+Enter para nueva línea</span>
+              <div className="flex items-center gap-1">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Paperclip className="w-3.5 h-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Adjuntar archivo</TooltipContent>
+                </Tooltip>
+                <span className="text-[10px] text-muted-foreground/50 ml-1">Shift+Enter para nueva línea</span>
+              </div>
               <Button
                 size="sm"
                 className="h-7 px-3 gap-1.5 text-xs"
                 onClick={handleSend}
-                disabled={!message.trim() || sendMutation.isPending}
+                disabled={(!message.trim() && !selectedFile) || sendMutation.isPending}
                 data-testid="button-send"
               >
                 {sendMutation.isPending
