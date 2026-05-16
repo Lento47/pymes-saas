@@ -263,7 +263,7 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
 
       // Create notification for each platform admin
       for (const admin of admins) {
-        await this.notifications!.create('PLATFORM', {
+        await this.notifications!.create(dCase.workspace_id, {
           user_id: admin.id,
           type: 'bug_escalated',
           title: `🐛 Bug detectado: ${verdict.verdict === 'PLATFORM_INCIDENT' ? '🔥 Incidente' : '🐞 Bug'} en ${dCase.error_code || 'desconocido'}`,
