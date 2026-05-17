@@ -11,11 +11,14 @@ import {
   Query,
   Res,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MessagesService } from './messages.service';
 import { parseJsonValue } from '../common/prisma/json';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 /**
  * Webhook público — sin JWT, accesible por proveedores externos.
@@ -134,6 +137,83 @@ export class InboundController {
     }
 
     return { ok: true };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TELEGRAM — Telegram Bot API
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * POST /inbound/telegram/:channelId
+   * Telegram sends updates to this endpoint when a webhook is configured.
+   */
+  @Post('telegram/:channelId')
+  @HttpCode(HttpStatus.OK)
+  async receiveTelegram(
+    @Param('channelId') channelId: string,
+    @Body() body: Record<string, any>,
+  ) {
+    const message = body?.message ?? body?.edited_message;
+    if (!message) return { ok: true };
+
+    const channel = await this.prisma.channel.findFirst({
+      where: { id: channelId, type: 'TELEGRAM', status: 'ACTIVE' },
+      select: { workspace_id: true },
+    });
+
+    if (!channel) {
+      this.logger.warn(`Telegram update for unknown/inactive channelId=${channelId}`);
+      return { ok: false };
+    }
+
+    const from = String(message?.from?.id ?? '');
+    const senderName = [message?.from?.first_name, message?.from?.last_name].filter(Boolean).join(' ') || from;
+    const text: string = message?.text ?? '';
+
+    if (!text) return { ok: true };
+
+    try {
+      const result = await this.messagesService.receiveInbound('telegram', channel.workspace_id, {
+        from,
+        name: senderName,
+        text,
+        channel_id: channelId,
+        telegram_chat_id: message?.chat?.id,
+        telegram_message_id: message?.message_id,
+      });
+      this.logger.log(`Telegram inbound processed: conv=${result.conversation_id} msg=${result.message_id}`);
+    } catch (err: any) {
+      this.logger.error(`Error processing Telegram message: ${err?.message}`);
+    }
+
+    return { ok: true };
+  }
+
+  /**
+   * GET /inbound/telegram/:channelId/webhook-status
+   * Returns whether this channel has a Telegram webhook configured (JWT protected).
+   */
+  @Get('telegram/:channelId/webhook-status')
+  @UseGuards(JwtAuthGuard)
+  async getTelegramWebhookStatus(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('channelId') channelId: string,
+  ) {
+    const channel = await this.prisma.channel.findFirst({
+      where: { id: channelId, workspace_id: workspaceId, type: 'TELEGRAM' },
+      select: { status: true, config_json: true },
+    });
+
+    if (!channel) return { configured: false, webhook_url: null };
+
+    const config = parseJsonValue<Record<string, any>>(channel.config_json, {});
+    const appUrl = process.env.API_URL ?? process.env.APP_URL ?? '';
+    const webhookUrl = appUrl ? `${appUrl}/inbound/telegram/${channelId}` : null;
+
+    return {
+      configured: channel.status === 'ACTIVE' && !!config.bot_token_encrypted,
+      webhook_url: webhookUrl,
+    };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

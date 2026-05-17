@@ -124,7 +124,7 @@ export class PaddleService {
       provider_subscription_id: subscriptionId,
       period_start: data?.current_billing_period?.starts_at,
       period_end: data?.current_billing_period?.ends_at,
-      cancel_at_period_end: !!data?.scheduled_change?.action === 'cancel',
+      cancel_at_period_end: data?.scheduled_change?.action === 'cancel',
       event_type: 'subscription.upsert',
       paddle_event_id: subscriptionId,
       payload: data,

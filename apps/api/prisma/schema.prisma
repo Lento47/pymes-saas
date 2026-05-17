@@ -301,11 +301,12 @@ model User {
 }
 
 model WorkspaceUser {
-  id           String            @id @default(cuid())
-  workspace_id String
-  user_id      String
-  role         WorkspaceUserRole @default(AGENT)
-  is_owner     Boolean           @default(false)
+  id               String            @id @default(cuid())
+  workspace_id     String
+  user_id          String
+  role             WorkspaceUserRole @default(AGENT)
+  is_owner         Boolean           @default(false)
+  permissions_json Json?             @db.JsonB
 
   created_at DateTime @default(now())
 
@@ -1157,6 +1158,36 @@ model BillingInvoice {
   @@index([status])
   @@index([issued_at(sort: Desc)])
   @@map("billing_invoices")
+}
+
+// ============================================================
+// INVITATIONS
+// ============================================================
+
+model Invitation {
+  id             String            @id @default(cuid())
+  workspace_id   String
+  email          String
+  role           WorkspaceUserRole @default(AGENT)
+  department_ids Json              @default("[]") @db.JsonB
+  token_hash     String            @unique
+  invited_by_id  String?
+  expires_at     DateTime
+  accepted_at    DateTime?
+  revoked_at     DateTime?
+  last_sent_at   DateTime?
+  send_count     Int               @default(1)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace   Workspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  invited_by  User?      @relation("InvitedBy", fields: [invited_by_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([workspace_id, email])
+  @@index([token_hash])
+  @@map("invitations")
 }
 
 // ============================================================
