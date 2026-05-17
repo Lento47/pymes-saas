@@ -57,7 +57,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
 }
 
 function StatCard({ icon: Icon, label, value, sub }: {
-  icon: any; label: string; value: string | number; sub?: string;
+  icon: React.ReactNode; label: string; value: string | number; sub?: string;
 }) {
   return (
     <Card>

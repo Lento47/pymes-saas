@@ -136,7 +136,7 @@ export default function DashboardPage() {
           />
           <MetricCard
             label="Tareas urgentes"
-            value={taskList.filter((t: any) => t.priority === "HIGH").length}
+            value={taskList.filter((t) => t.priority === "HIGH").length}
             trendLabel="vencen hoy"
             loading={tasksLoading}
             color="red"
@@ -214,7 +214,7 @@ export default function DashboardPage() {
 
             <SectionCard title="Facturas próximas a vencer" linkTo="/invoices" linkLabel="Ver todas">
               <div className="divide-y divide-border">
-                {overdueInvoiceList.slice(0, 4).map((inv: any) => (
+                {overdueInvoiceList.slice(0, 4).map((inv) => (
                   <div key={inv.id} className="flex items-center gap-3 px-6 py-3 text-sm">
                     <div className="flex-1">
                       <p className="font-medium text-foreground">#{inv.id?.slice(0, 4)}</p>

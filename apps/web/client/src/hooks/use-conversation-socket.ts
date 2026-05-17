@@ -24,11 +24,11 @@ export function useConversationSocket(conversationId: string) {
   const MESSAGES_KEY = ['/api/conversations', conversationId, 'messages'];
 
   const handleNewMessage = useCallback(
-    (message: any) => {
+    (message: Record<string, any>) => {
       // Insert optimista — muestra el mensaje al instante
-      qc.setQueryData(MESSAGES_KEY, (old: any) => {
+      qc.setQueryData(MESSAGES_KEY, (old: Record<string, any>) => {
         if (!old) return old;
-        const exists = old.data?.some((m: any) => m.id === message.id);
+        const exists = old.data?.some((m) => m.id === message.id);
         if (exists) return old;
         return {
           ...old,
@@ -55,11 +55,11 @@ export function useConversationSocket(conversationId: string) {
       media_caption: string | null;
     }) => {
       // Update solo ese mensaje en cache — sin refetch
-      qc.setQueryData(MESSAGES_KEY, (old: any) => {
+      qc.setQueryData(MESSAGES_KEY, (old: Record<string, any>) => {
         if (!old?.data) return old;
         return {
           ...old,
-          data: old.data.map((m: any) =>
+          data: old.data.map((m) =>
             m.id === payload.message_id
               ? {
                   ...m,
@@ -80,7 +80,7 @@ export function useConversationSocket(conversationId: string) {
   );
 
   const handleConversationUpdated = useCallback(
-    (update: any) => {
+    (update: Record<string, any>) => {
       // Actualizar el inbox list
       qc.invalidateQueries({ queryKey: ['/api/conversations'] });
       // Si aplica a esta conversación, actualizar su cache

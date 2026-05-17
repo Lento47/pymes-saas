@@ -114,7 +114,7 @@ function WorkspaceTab() {
       setFinanceOptIn(workspace?.ai_message_finance_opt_in === true);
       toast({ title: "Permiso actualizado" });
     },
-    onError: (e: any) =>
+    onError: (e) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -545,7 +545,7 @@ function MembersTab() {
       setOpen(false);
       setEmail("");
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const members = Array.isArray(data) ? data : [];
@@ -586,7 +586,7 @@ function MembersTab() {
 
       {isLoading ? <div className="text-muted-foreground text-sm">Cargando...</div> : (
         <div className="space-y-2">
-          {members.map((m: any) => (
+          {members.map((m) => (
             <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
               <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8">
@@ -611,7 +611,7 @@ function MembersTab() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // channel.config viene del backend (sanitised — sin keys encrypted)
-function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
+function EmailConfigModal({ channel: Record<string, any>; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   // Pre-populate with existing values; api_key is secret so can't be pre-filled
@@ -635,7 +635,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
       onClose();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const isEdit = channel?.status === "ACTIVE";
@@ -746,7 +746,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
   );
 }
 
-function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
+function WhatsAppConfigModal({ channel: Record<string, any>; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   // Pre-populate non-secret fields
@@ -763,7 +763,7 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
       onClose();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const isEdit = channel?.status === "ACTIVE";
@@ -824,7 +824,7 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
 }
 
 // ─── Confirm delete ───────────────────────────────────────────────────────────
-function DeleteChannelDialog({ channel, onClose }: { channel: any; onClose: () => void }) {
+function DeleteChannelDialog({ channel: Record<string, any>; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -835,7 +835,7 @@ function DeleteChannelDialog({ channel, onClose }: { channel: any; onClose: () =
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
       onClose();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -884,7 +884,7 @@ function ChannelsTab() {
       setCreateOpen(false);
       setName("");
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const disconnect = useMutation({
@@ -893,7 +893,7 @@ function ChannelsTab() {
       toast({ title: "Canal desactivado" });
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const channels = Array.isArray(data) ? data : [];
@@ -963,7 +963,7 @@ function ChannelsTab() {
         <div className="text-muted-foreground text-sm">Cargando...</div>
       ) : (
         <div className="space-y-2">
-          {channels.map((ch: any) => {
+          {channels.map((ch) => {
             const Icon = CHANNEL_ICONS[ch.type] ?? Radio;
             const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP");
             const canConnect = ch.status !== "ACTIVE" && !needsConfig;
@@ -1084,28 +1084,28 @@ function DepartmentsTab() {
     queryFn: () => api.getMembers(),
   });
 
-  const departments: any[] = Array.isArray(depts) ? depts : [];
-  const allMembers: any[] = Array.isArray(membersData) ? membersData : [];
+  const departments: Record<string, any>[] = Array.isArray(depts) ? depts : [];
+  const allMembers: Record<string, any>[] = Array.isArray(membersData) ? membersData : [];
 
   const createMut = useMutation({
-    mutationFn: (d: any) => api.createDepartment(d),
+    mutationFn: (d: Record<string, any>) => api.createDepartment(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       setCreateOpen(false);
       setName(""); setDescription(""); setColor("#4f8ef7");
       toast({ title: "Departamento creado" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, ...d }: any) => api.updateDepartment(id, d),
+    mutationFn: ({ id, ...d }: Record<string, any>) => api.updateDepartment(id, d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       setEditDept(null);
       toast({ title: "Departamento actualizado" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const deleteMut = useMutation({
@@ -1115,27 +1115,27 @@ function DepartmentsTab() {
       setDeleteDept(null);
       toast({ title: "Departamento eliminado" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const addMemberMut = useMutation({
-    mutationFn: ({ deptId, userId }: any) => api.addDepartmentMember(deptId, { user_id: userId }),
+    mutationFn: ({ deptId, userId }: Record<string, any>) => api.addDepartmentMember(deptId, { user_id: userId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       setAddMemberDept(null);
       setMemberUserId("");
       toast({ title: "Miembro agregado" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const removeMemberMut = useMutation({
-    mutationFn: ({ deptId, userId }: any) => api.removeDepartmentMember(deptId, userId),
+    mutationFn: ({ deptId, userId }: Record<string, any>) => api.removeDepartmentMember(deptId, userId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["departments"] }),
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const openEdit = (dept: any) => {
+  const openEdit = (dept: Record<string, any>) => {
     setEditDept(dept);
     setName(dept.name);
     setDescription(dept.description ?? "");
@@ -1157,7 +1157,7 @@ function DepartmentsTab() {
         <p className="text-sm text-muted-foreground text-center py-8">No hay departamentos aún.</p>
       ) : (
         <div className="space-y-3">
-          {departments.map((dept: any) => (
+          {departments.map((dept) => (
             <div key={dept.id} className="border border-border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -1194,7 +1194,7 @@ function DepartmentsTab() {
               )}
               {dept.members?.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {dept.members.map((m: any) => (
+                  {dept.members.map((m) => (
                     <div key={m.id} className="flex items-center gap-1 bg-elevated rounded px-2 py-0.5 text-xs">
                       <span>{m.user?.name ?? m.user?.email}</span>
                       {m.is_lead && <Badge variant="outline" className="text-xs h-4 px-1">Lead</Badge>}
@@ -1295,7 +1295,7 @@ function DepartmentsTab() {
               <Select value={memberUserId} onValueChange={setMemberUserId}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar usuario" /></SelectTrigger>
                 <SelectContent>
-                  {allMembers.map((m: any) => (
+                  {allMembers.map((m) => (
                     <SelectItem key={m.user?.id ?? m.id} value={m.user?.id ?? m.id}>
                       {m.user?.name ?? m.name} ({m.user?.email ?? m.email})
                     </SelectItem>
@@ -1393,7 +1393,7 @@ function PlatformTab() {
       setAssignOpen(false);
       setAssignEmail("");
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const revoke = useMutation({
@@ -1402,7 +1402,7 @@ function PlatformTab() {
       toast({ title: "Acceso revocado" });
       qc.invalidateQueries({ queryKey: ["/api/platform/workspaces", selectedSlug, "members"] });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const updateBilling = useMutation({
@@ -1424,7 +1424,7 @@ function PlatformTab() {
       qc.invalidateQueries({ queryKey: ["/api/platform/workspaces"] });
       qc.invalidateQueries({ queryKey: ["/api/platform/workspaces", selectedSlug, "billing"] });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   useEffect(() => {
@@ -1466,7 +1466,7 @@ function PlatformTab() {
         </div>
         {usersList.length > 0 && (
           <div className="space-y-2">
-            {usersList.map((u: any) => (
+            {usersList.map((u) => (
               <div key={u.id} className="p-3 rounded-lg border border-border bg-card flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium">{u.name}</p>
@@ -1476,7 +1476,7 @@ function PlatformTab() {
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {u.workspace_users?.map((wu: any) => (
+                  {u.workspace_users?.map((wu) => (
                     <Badge key={wu.workspace?.id} variant="outline" className="text-xs text-muted-foreground">
                       {wu.workspace?.name} · {wu.role}
                     </Badge>
@@ -1503,7 +1503,7 @@ function PlatformTab() {
               <p className="text-sm text-muted-foreground">Cargando...</p>
             ) : (
                 <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {wsList.map((w: any) => (
+                  {wsList.map((w) => (
                     <button
                       key={w.id}
                       className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${selectedSlug === w.slug ? "bg-elevated text-white" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
@@ -1639,7 +1639,7 @@ function PlatformTab() {
                           <div className="space-y-2">
                             <p className="text-xs text-muted-foreground uppercase tracking-wider">Eventos recientes</p>
                             <div className="space-y-1 max-h-40 overflow-y-auto">
-                              {billingEvents.map((event: any) => (
+                              {billingEvents.map((event) => (
                                 <div key={event.id} className="rounded border border-border bg-card px-3 py-2">
                                   <div className="flex items-center justify-between gap-3">
                                     <p className="text-xs font-medium text-foreground">{event.event_type}</p>
@@ -1707,7 +1707,7 @@ function PlatformTab() {
                   <p className="text-sm text-muted-foreground">Cargando...</p>
                 ) : (
                   <div className="space-y-1 max-h-64 overflow-y-auto">
-                    {membersList.map((m: any) => (
+                    {membersList.map((m) => (
                       <div key={m.id} className="flex items-center justify-between px-2 py-1.5 rounded border border-border bg-card">
                         <div>
                           <p className="text-xs font-medium">{m.user?.name}</p>
@@ -1811,7 +1811,7 @@ function IntegrationsTab() {
       toast({ title: isDelete ? "API key eliminada" : "API key guardada" });
       if (payload.resend_api_key !== undefined) setResendKey("");
     },
-    onError: (e: any) =>
+    onError: (e) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -1887,7 +1887,7 @@ function AiTab() {
       setApiKey("");
       toast({ title: "Configuración de IA guardada" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const testConnection = useMutation({
@@ -1900,7 +1900,7 @@ function AiTab() {
       setTestResult(result);
       toast({ title: "Conexion validada" });
     },
-    onError: (e: any) => {
+    onError: (e) => {
       setTestResult({
         ok: false,
         message: e.message,

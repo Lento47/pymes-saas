@@ -252,13 +252,13 @@ function DealModal({
   });
 
   const createMut = useMutation({
-    mutationFn: (data: any) => api.createDeal(data),
+    mutationFn: (data: Record<string, any>) => api.createDeal(data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }); onClose(); },
     onError: () => toast({ title: "Error al crear deal", variant: "destructive" }),
   });
 
   const updateMut = useMutation({
-    mutationFn: (data: any) => api.updateDeal(deal!.id, data),
+    mutationFn: (data: Record<string, any>) => api.updateDeal(deal!.id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }); onClose(); },
     onError: () => toast({ title: "Error al actualizar deal", variant: "destructive" }),
   });
@@ -277,7 +277,7 @@ function DealModal({
       toast({ title: `Deal ganado. Factura borrador ${data.invoice_number} creada.` });
       navigate("/invoices");
     },
-    onError: (err: any) => {
+    onError: (err) => {
       const msg = err?.message?.includes("contact") ? "Asigna un contacto al deal primero" : "Error al cerrar deal";
       toast({ title: msg, variant: "destructive" });
     },
@@ -360,7 +360,7 @@ function DealModal({
               <SelectContent>
                 <SelectItem value="__none__">Sin contacto</SelectItem>
                 {Array.isArray(contacts?.data ?? contacts)
-                  ? (contacts?.data ?? contacts as any[]).map((c: any) => (
+                  ? (contacts?.data ?? contacts as any[]).map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
                     ))
                   : null}

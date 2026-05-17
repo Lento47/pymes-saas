@@ -177,7 +177,7 @@ export default function ContactDetailPage() {
                 <EmptyState icon={MessageSquare} title="Sin conversaciones" description="No hay conversaciones con este contacto aún." />
               ) : (
                 <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
-                  {conversations.map((conv: any) => {
+                  {conversations.map((conv) => {
                     const updatedStr = conv.updatedAt || conv.updated_at;
                     return (
                       <Link key={conv.id} href={`/inbox/${conv.id}`}>
@@ -214,7 +214,7 @@ export default function ContactDetailPage() {
                 <EmptyState icon={CheckSquare} title="Sin tareas" description="No hay tareas vinculadas a este contacto." />
               ) : (
                 <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
-                  {tasks.map((task: any) => {
+                  {tasks.map((task) => {
                     const dueStr = task.dueDate || task.due_date || task.due_at;
                     const isOverdue = dueStr && isPast(new Date(dueStr)) && !isToday(new Date(dueStr)) && task.status !== "DONE";
                     return (
@@ -251,7 +251,7 @@ export default function ContactDetailPage() {
                 <EmptyState icon={FileText} title="Sin archivos" description="No hay archivos vinculados a este contacto." />
               ) : (
                 <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
-                  {documents.map((doc: any) => {
+                  {documents.map((doc) => {
                     const mime = doc.mimeType || doc.mime_type;
                     const dateStr = doc.createdAt || doc.created_at;
                     return (

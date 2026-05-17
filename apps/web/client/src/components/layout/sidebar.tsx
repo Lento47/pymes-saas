@@ -99,7 +99,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               className="absolute left-0 right-0 top-full z-50 py-1"
               style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))", borderTop: "none" }}
             >
-              {(myWorkspaces as any[]).map((m: any) => {
+              {(myWorkspaces as any[]).map((m) => {
                 const isCurrent = m.workspace.id === user?.workspace?.id;
                 return (
                   <button

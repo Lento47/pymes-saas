@@ -87,7 +87,7 @@ export default function TasksPage() {
       setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "" });
       toast({ title: editingId ? "Tarea actualizada" : "Tarea creada" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -99,7 +99,7 @@ export default function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
       toast({ title: "Tarea eliminada" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al eliminar", description: err.message, variant: "destructive" });
     },
   });
@@ -111,7 +111,7 @@ export default function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
       toast({ title: "Tarea completada" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -120,10 +120,10 @@ export default function TasksPage() {
   const overdueList = Array.isArray(overdueTasks) ? overdueTasks : overdueTasks?.data || [];
 
   const taskList = search.trim()
-    ? allTasks.filter((t: any) => t.title?.toLowerCase().includes(search.toLowerCase()))
+    ? allTasks.filter((t) => t.title?.toLowerCase().includes(search.toLowerCase()))
     : allTasks;
 
-  const openEdit = (task: any) => {
+  const openEdit = (task: Record<string, any>) => {
     setEditingId(task.id);
     setForm({
       title: task.title || "",
@@ -230,7 +230,7 @@ export default function TasksPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {taskList.map((task: any) => {
+                {taskList.map((task) => {
                   const dueStr = task.dueDate || task.due_date || task.due_at;
                   const isOverdue = dueStr && isPast(new Date(dueStr)) && !isToday(new Date(dueStr)) && task.status !== "DONE";
                   const assigneeName = task.assignedTo?.firstName

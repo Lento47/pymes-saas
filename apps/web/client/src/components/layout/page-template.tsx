@@ -12,7 +12,7 @@ interface PageTemplateProps {
     href?: string;
     onClick?: () => void;
     variant?: "primary" | "secondary";
-    icon?: any;
+    icon?: React.ReactNode;
   }>;
   showSearch?: boolean;
 }
@@ -145,7 +145,7 @@ interface MetricCardProps {
   currency?: string;
   trend?: number;
   trendLabel?: string;
-  icon?: any;
+  icon?: React.ReactNode;
   loading?: boolean;
   color?: "blue" | "orange" | "red" | "purple" | "green";
 }
