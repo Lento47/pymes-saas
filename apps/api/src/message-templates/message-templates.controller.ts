@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { FeatureFlagGuard, RequireFeature } from '../feature-flags/feature-flags.guard';
@@ -27,7 +28,7 @@ export class MessageTemplatesController {
 
   @Post(':workspaceId')
   @RequireFeature('message_templates')
-  async create(@Param('workspaceId') workspaceId: string, @Body() data: any, @Req() req: any) {
+  async create(@Param('workspaceId') workspaceId: string, @Body() data: any, @Req() req: Request) {
     return this.templates.create(workspaceId, req.user?.sub, data);
   }
 

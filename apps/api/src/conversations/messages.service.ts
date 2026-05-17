@@ -280,7 +280,7 @@ export class MessagesService {
           : {}),
       },
       select: { id: true },
-    }).catch((err: any) => {
+    }).catch((err) => {
       // Silently skip if columns don't exist yet (migration pending)
       if (err?.code === 'P2025' || err?.message?.includes('column')) {
         // Fallback: update only existing columns

@@ -107,7 +107,7 @@ export class ContactSalesService {
         bodyHtml,
         details,
       );
-    } catch (err: any) {
+    } catch (err) {
       this.logger.warn(`Sales notification email failed: ${err?.message}`);
     }
 
@@ -128,7 +128,7 @@ export class ContactSalesService {
           confirmHtml,
           `Gracias ${data.contact_name}. Recibimos tu solicitud. Te contactaremos pronto.`,
         );
-      } catch (err: any) {
+      } catch (err) {
         this.logger.warn(`Confirmation email failed: ${err?.message}`);
       }
     }

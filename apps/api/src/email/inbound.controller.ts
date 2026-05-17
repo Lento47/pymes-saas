@@ -11,6 +11,7 @@ import {
   BadRequestException,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import * as crypto from 'crypto';
 import { EmailService } from './email.service';
@@ -58,7 +59,7 @@ export class InboundController {
     @Headers('svix-id') svixId: string | undefined,
     @Headers('svix-timestamp') svixTimestamp: string | undefined,
     @Body() body: any,
-    @Req() req: any,
+    @Req() req: Request,
   ) {
     const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
     if (!webhookSecret) {

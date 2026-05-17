@@ -178,7 +178,7 @@ ${transcript}`;
 
       this.logger.log(`Extracted data for contact ${contactId}: ${Object.keys(extracted).join(', ')}`);
       return extracted;
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Extraction failed for contact ${contactId}: ${err.message}`);
       throw err;
     }

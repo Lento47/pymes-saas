@@ -81,7 +81,7 @@ export class CsvImportService {
 
         await this.prisma.contact.create({ data: contactData });
         imported++;
-      } catch (err: any) {
+      } catch (err) {
         errors.push({ row: i + 1, reason: err.message ?? 'Error desconocido' });
         skipped++;
       }
@@ -166,7 +166,7 @@ export class CsvImportService {
           },
         });
         imported++;
-      } catch (err: any) {
+      } catch (err) {
         errors.push({ row: i + 1, reason: err.message ?? 'Error desconocido' });
         skipped++;
       }
@@ -266,7 +266,7 @@ export class CsvImportService {
           },
         });
         imported++;
-      } catch (err: any) {
+      } catch (err) {
         errors.push({ row: i + 1, reason: err.message ?? 'Error desconocido' });
         skipped++;
       }

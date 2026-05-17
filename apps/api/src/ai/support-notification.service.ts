@@ -63,7 +63,7 @@ export class SupportNotificationService {
         related_entity_type: 'support_diagnostic_case',
         related_entity_id: dCase.id,
       })
-      .catch((err: any) => {
+      .catch((err) => {
         this.logger.warn(
           `In-app notification failed for case ${dCase.id}: ${err?.message}`,
         );

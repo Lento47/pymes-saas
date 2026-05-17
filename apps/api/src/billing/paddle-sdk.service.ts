@@ -82,7 +82,7 @@ export class PaddleSdkService {
         const customer = await paddle.customers.create({ email, name });
         customerId = customer.id;
       }
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Error creating/getting customer: ${err?.message}`);
       throw err;
     }
@@ -1147,7 +1147,7 @@ export class PaddleSdkService {
         },
       });
       this.logger.log(`Billing diagnostic case created: ${title}`);
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Failed to create billing diagnostic case: ${err?.message}`);
     }
   }
@@ -1161,7 +1161,7 @@ export class PaddleSdkService {
       if (updated.count > 0) {
         this.logger.log(`Auto-resolved ${updated.count} billing case(s) for ${errorCode}`);
       }
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Failed to auto-resolve billing cases: ${err?.message}`);
     }
   }

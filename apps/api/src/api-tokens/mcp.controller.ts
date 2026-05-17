@@ -74,7 +74,7 @@ export class McpController {
 
   @Get('sse')
   @UseGuards(ApiTokenGuard)
-  async sseGet(@Req() req: any, @Res() res: Response) {
+  async sseGet(@Req() req: Request, @Res() res: Response) {
     const sessionId = this.newSessionId();
     this.mcpSessions.set(sessionId, Date.now());
     res.setHeader('Mcp-Session-Id', sessionId);
@@ -102,7 +102,7 @@ export class McpController {
 
   @Post('sse')
   @UseGuards(ApiTokenGuard)
-  async ssePost(@Req() req: any, @Res() res: Response, @Body() body: any) {
+  async ssePost(@Req() req: Request, @Res() res: Response, @Body() body: any) {
     const sessionId = this.newSessionId();
     this.mcpSessions.set(sessionId, Date.now());
     res.setHeader('Mcp-Session-Id', sessionId);
@@ -137,7 +137,7 @@ export class McpController {
   @Post()
   @UseGuards(ApiTokenGuard)
   async handle(
-    @Req() req: any,
+    @Req() req: Request,
     @Res() res: Response,
     @Body() body: any,
     @Headers('accept') accept?: string,
@@ -208,13 +208,13 @@ export class McpController {
     }
   }
 
-  private async executeToolCall(workspaceId: string, params: { name: string; arguments: any }, id: string | number, req: any) {
+  private async executeToolCall(workspaceId: string, params: { name: string; arguments: any }, id: string | number, req: Request) {
     const auth = req.headers?.authorization || '';
     const sessionKey = auth.replace(/^Bearer /, '').slice(0, 32);
     try {
       const result = await this.executeTool(workspaceId, params.name, params.arguments || {}, sessionKey);
       return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } };
-    } catch (err: any) {
+    } catch (err) {
       return { jsonrpc: '2.0', id, error: { code: -32000, message: err.message } };
     }
   }

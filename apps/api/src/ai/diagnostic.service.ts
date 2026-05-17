@@ -322,7 +322,7 @@ export class DiagnosticService {
           related_entity_type: 'support_diagnostic_case',
           related_entity_id: caseId,
         });
-      } catch (err: any) {
+      } catch (err) {
         this.logger.error(`Notification to ${admin.user_id} failed: ${err?.message}`);
       }
     }

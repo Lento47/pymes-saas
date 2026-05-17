@@ -115,7 +115,7 @@ export class RunbooksService {
             } as any,
           },
         })
-        .catch((err: any) => {
+        .catch((err) => {
           this.logger.warn(`AuditLog write failed for runbook ${input.runbookName}: ${err?.message}`);
         });
 
@@ -130,7 +130,7 @@ export class RunbooksService {
         details: result.details ?? {},
         duration_ms: durationMs,
       };
-    } catch (err: any) {
+    } catch (err) {
       const durationMs = Date.now() - startedAt;
       const errorLog = err?.message ?? String(err);
 

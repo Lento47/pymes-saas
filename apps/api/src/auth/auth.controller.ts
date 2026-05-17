@@ -15,6 +15,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -177,7 +178,7 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthCallback(@Req() req: any, @Res() res: any) {
+  async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
     const profile = req.user as { googleId: string; email: string; name: string; avatarUrl: string | null };
     const frontendUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
     try {
@@ -189,7 +190,7 @@ export class AuthController {
       res.redirect(
         `${frontendUrl}/login?code=${encodeURIComponent(code)}&slug=${encodeURIComponent(result.user.workspace.slug)}`,
       );
-    } catch (err: any) {
+    } catch (err) {
       // Don't interpolate err.message — it leaks into Referer / proxy logs.
       res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
     }

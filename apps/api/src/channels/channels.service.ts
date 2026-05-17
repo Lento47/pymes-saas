@@ -186,7 +186,7 @@ export class ChannelsService {
       try {
         access_token_encrypted = this.crypto.encrypt(dto.access_token);
         this.logger.log(`[DIAG] configureWhatsApp: encrypt OK, encryptedLen=${access_token_encrypted.length}`);
-      } catch (err: any) {
+      } catch (err) {
         this.logger.error(`[DIAG] configureWhatsApp: encrypt FAILED — ${err?.message}`);
         throw new BadRequestException('Error al guardar el token. Verificá que ENCRYPTION_KEY esté configurada en el servidor.');
       }

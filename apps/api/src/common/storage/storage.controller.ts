@@ -35,7 +35,7 @@ export class StorageController {
       try {
         const url = await this.storage.getPresignedUrl(key);
         return res.redirect(url);
-      } catch (err: any) {
+      } catch (err) {
         this.logger.error(`Error generating presigned URL for ${key}:`, err);
         return res.status(500).json({ statusCode: 500, message: 'Error al servir el archivo' });
       }

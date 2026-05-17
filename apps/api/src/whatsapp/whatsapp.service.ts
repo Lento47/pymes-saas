@@ -227,7 +227,7 @@ export class WhatsAppService {
    * Write webhook payload to webhook_events and return 200 to Meta quickly.
    * Processing happens asynchronously via WebhookEventsProcessor.
    */
-  async ingestWebhook(payload: any): Promise<{ persisted: boolean; duplicate: boolean }> {
+  async ingestWebhook(payload: Record<string, any>): Promise<{ persisted: boolean; duplicate: boolean }> {
     const result = await this.webhookEvents.ingest('whatsapp', payload);
     return { persisted: true, duplicate: result.duplicate };
   }

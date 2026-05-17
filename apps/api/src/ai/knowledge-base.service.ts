@@ -86,7 +86,7 @@ export class KnowledgeBaseService {
 
       await (this.prisma as any).supportKnownIssue
         .update({ where: { error_code: dCase.error_code }, data })
-        .catch((err: any) => {
+        .catch((err) => {
           this.logger.warn(
             `Failed to refresh known-issue ${dCase.error_code}: ${err?.message}`,
           );
@@ -117,7 +117,7 @@ export class KnowledgeBaseService {
           last_seen_at: new Date(),
         },
       })
-      .catch((err: any) => {
+      .catch((err) => {
         this.logger.warn(
           `Failed to create auto-learned known-issue ${dCase.error_code}: ${err?.message}`,
         );

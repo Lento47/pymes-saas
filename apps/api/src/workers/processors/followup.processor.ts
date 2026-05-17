@@ -119,7 +119,7 @@ export class FollowupProcessor {
           },
         });
         this.logger.log(`Auto-deleted inactive workspace: ${ws.name} (${ws.slug})`);
-      } catch (err: any) {
+      } catch (err) {
         this.logger.error(`Failed to delete workspace ${ws.id}: ${err?.message}`);
       }
     }

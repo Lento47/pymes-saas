@@ -110,7 +110,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
             diagnosticCaseId = created.id;
             this.logger.log(`Auto-created diagnostic case ${diagnosticCaseId}: ${errorCode} for workspace ${request.user.workspace_id}`);
           }
-        } catch (err: any) {
+        } catch (err) {
           this.logger.error(`Failed to create/lookup diagnostic case: ${err?.message}`);
         }
       }

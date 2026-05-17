@@ -46,7 +46,7 @@ export class WebhookEventsProcessor {
         }
 
         await this.webhookEvents.markProcessed(event.id);
-      } catch (err: any) {
+      } catch (err) {
         const errorMsg = err?.message ?? 'Unknown error';
         this.logger.error(
           `Event processing failed — id=${event.id} error=${errorMsg}`,

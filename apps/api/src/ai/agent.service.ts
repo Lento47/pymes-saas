@@ -351,7 +351,7 @@ REGLAS:
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: output })}\n\n`));
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: output } })}\n\n`));
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          } catch (err: any) {
+          } catch (err) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err.message } })}\n\n`));
           } finally {
             controller.close();
@@ -360,7 +360,7 @@ REGLAS:
       });
 
       return { stream, model, agent_type: agentType };
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Agent SDK error: ${err.message}`);
       return { error: `Error del agente: ${err.message}` };
     }
@@ -423,7 +423,7 @@ REGLAS:
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: text })}\n\n`));
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: text } })}\n\n`));
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          } catch (err: any) {
+          } catch (err) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err.message } })}\n\n`));
           } finally {
             controller.close();
@@ -432,7 +432,7 @@ REGLAS:
       });
 
       return { stream, model: 'gpt-4.1-mini', agent_type: 'hubby' };
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Public agent error: ${err.message}`);
       return { error: `Error: ${err.message}` };
     }

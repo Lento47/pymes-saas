@@ -39,7 +39,7 @@ export class LocalStorageService {
     const filePath = path.join(this.basePath, key);
     try {
       return await fs.promises.readFile(filePath);
-    } catch (err: any) {
+    } catch (err) {
       if (err?.code === 'ENOENT') {
         throw new InternalServerErrorException('Archivo no encontrado en storage local.');
       }
