@@ -337,7 +337,7 @@ export default function InvoicesPage() {
   });
 
   const creditNoteMutation = useMutation({
-    mutationFn: (invoice => api.createCreditNote(invoice.id, {
+    mutationFn: (invoice: Record<string, any>) => api.createCreditNote(invoice.id, {
       number: `NC-${invoice.number}`,
       amount: Math.round(Number(invoice.amount) * 100) / 100,
       currency: invoice.currency,
@@ -402,7 +402,7 @@ export default function InvoicesPage() {
   });
 
   const generateReminderMutation = useMutation({
-    mutationFn: (invoice => api.generateInvoiceReminder(invoice.id),
+    mutationFn: (invoice: Record<string, any>) => api.generateInvoiceReminder(invoice.id),
     onSuccess: (reminder: Record<string, any>, invoice: any) => {
       setSelectedInvoice(invoice);
       setReminderDraft(reminder?.draft_text ?? "");

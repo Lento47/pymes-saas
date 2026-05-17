@@ -62,7 +62,7 @@ export default function InventoryPage() {
   const totalPages = prodData?.meta?.pages ?? 1;
 
   const createMut = useMutation({
-    mutationFn: (d => api.createProduct(d),
+    mutationFn: (d: Record<string, any>) => api.createProduct(d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setDrawerOpen(false); toast({ title: "Producto creado" }); },
     onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });

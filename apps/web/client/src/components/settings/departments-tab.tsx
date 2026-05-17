@@ -37,7 +37,7 @@ export function DepartmentsTab() {
   const allMembers: Record<string, any>[] = Array.isArray(membersData) ? membersData : [];
 
   const createMut = useMutation({
-    mutationFn: (d => api.createDepartment(d),
+    mutationFn: (d: Record<string, any>) => api.createDepartment(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       setCreateOpen(false);
