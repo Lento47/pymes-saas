@@ -57,10 +57,9 @@ export default function InventoryPage() {
     queryFn: api.getCategories,
   });
 
-  const \1: Record<string, any>[] = prodData?.data ?? [];
-  const total = prodData?.meta?.total ?? 0;
+  const products: Record<string, any>[] = prodData?.data ?? [];
+  const catList: Record<string, any>[] = Array.isArray(categories) ? categories : [];
   const totalPages = prodData?.meta?.pages ?? 1;
-  const \1: Record<string, any>[] = Array.isArray(categories) ? categories : [];
 
   const createMut = useMutation({
     mutationFn: (d => api.createProduct(d),

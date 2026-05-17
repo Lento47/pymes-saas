@@ -67,7 +67,7 @@ interface InvoiceFormData {
 interface InvoiceSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  \1: Record<string, any>[];
+  contacts: Record<string, any>[];
   isContactsLoading: boolean;
   hasContactsError: boolean;
   initialData: InvoiceFormData;

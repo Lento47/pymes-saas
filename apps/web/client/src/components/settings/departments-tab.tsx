@@ -33,8 +33,8 @@ export function DepartmentsTab() {
     queryFn: () => api.getMembers(),
   });
 
-  const \1: Record<string, any>[] = Array.isArray(depts) ? depts : [];
-  const \1: Record<string, any>[] = Array.isArray(membersData) ? membersData : [];
+  const departments: Record<string, any>[] = Array.isArray(depts) ? depts : [];
+  const allMembers: Record<string, any>[] = Array.isArray(membersData) ? membersData : [];
 
   const createMut = useMutation({
     mutationFn: (d => api.createDepartment(d),

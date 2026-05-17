@@ -43,7 +43,7 @@ const AGENT_COLORS: Record<string, string> = {
   a1: "#f59e0b", a2: "#ef4444", a3: "#3b82f6", a4: "#8b5cf6", a5: "#22c55e",
 };
 
-function getAgentCallout(agent: AgentState, \1: Record<string, any>[]): string {
+function getAgentCallout(agent: AgentState,  cases: Record<string, any>[]): string{
   if (agent.busy) {
     const c = cases[0];
     if (c?.matched_known_issue) return "Tengo la solución";
@@ -54,7 +54,7 @@ function getAgentCallout(agent: AgentState, \1: Record<string, any>[]): string {
   return "Disponible";
 }
 
-function AgentMascot({ agent, deptCases }: { agent: AgentState; \1: Record<string, any>[] }) {
+function AgentMascot({ agent, deptCases }: { agent: AgentState; deptCases: Record<string, any>[] }) {
   const c = AGENT_COLORS[agent.id] || "#6b7280";
   const callout = getAgentCallout(agent, deptCases);
   return (
@@ -179,7 +179,7 @@ export function PlaygroundBoard() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["diagnostic-cases"] }),
   });
 
-  const \1: Record<string, any>[] = Array.isArray(cases) ? cases : [];
+  const caseList: Record<string, any>[] = Array.isArray(cases) ? cases : [];
 
   const urgentCases = useMemo(() =>
     caseList.filter((c) => c.risk_level === "critical" || c.risk_level === "high").slice(0, 3),

@@ -126,13 +126,13 @@ export default function DashboardPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pending-approvals"] }),
   });
 
-  const \1: Record<string, any>[] = Array.isArray(pendingApprovals) ? pendingApprovals : [];
+  const approvalList: Record<string, any>[] = Array.isArray(pendingApprovals) ? pendingApprovals : [];
 
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
   const invoiceList = Array.isArray(overdueInvoices) ? overdueInvoices : overdueInvoices?.data ?? [];
   const stageList: PipelineStageSummary[] = Array.isArray(pipelineStagesData) ? pipelineStagesData : pipelineStagesData?.data ?? [];
-  const \1: Record<string, any>[] = Array.isArray(insights) ? insights : [];
+  const insightList: Record<string, any>[] = Array.isArray(insights) ? insights : [];
 
   const revenueChange = workspaceStats?.revenue_change_pct ?? 0;
   const hasPrevRevenue = (workspaceStats?.prev_month_revenue ?? 0) > 0;

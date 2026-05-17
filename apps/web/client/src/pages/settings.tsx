@@ -79,7 +79,7 @@ function PlatformTab() {
     enabled: !!selectedSlug,
   });
 
-  const \1: Record<string, any>[] = searchResults?.data ?? searchResults ?? [];
+  const userSearchResults: Record<string, any>[] = searchResults?.data ?? searchResults ?? [];
 
   useEffect(() => {
     if (selectedSlug) {
@@ -136,8 +136,8 @@ function PlatformTab() {
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const \1: Record<string, any>[] = Array.isArray(workspaces) ? workspaces : workspaces?.data ?? [];
-  const \1: Record<string, any>[] = Array.isArray(members) ? members : members?.data ?? [];
+  const wsList: Record<string, any>[] = Array.isArray(workspaces) ? workspaces : workspaces?.data ?? [];
+  const memberList: Record<string, any>[] = Array.isArray(members) ? members : members?.data ?? [];
 
   return (
     <div className="space-y-6">

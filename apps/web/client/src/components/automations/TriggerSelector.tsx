@@ -19,7 +19,7 @@ const TRIGGERS = [
 interface TriggerSelectorProps {
   value: string;
   onChange: (v: string) => void;
-  \1: Record<string, any>[];
+  channels: Record<string, any>[];
   channelId: string;
   onChannelChange: (v: string) => void;
 }

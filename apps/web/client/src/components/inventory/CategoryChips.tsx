@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { Layers } from "lucide-react";
 
 interface CategoryChipsProps {
-  \1: Record<string, any>[];
+  categories: Record<string, any>[];
   selected: string;
   onSelect: (id: string) => void;
 }

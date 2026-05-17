@@ -101,7 +101,7 @@ export default function SupportPage() {
     },
   });
 
-  const \1: Record<string, any>[] = Array.isArray(cases) ? cases : [];
+  const caseList: Record<string, any>[] = Array.isArray(cases) ? cases : [];
   const filtered = filter === "all" ? caseList : caseList.filter((c) => c.status === filter);
 
   const openCount = caseList.filter((c) => c.status === "OPEN" || c.status === "INVESTIGATING").length;

@@ -32,7 +32,7 @@ interface TaskSheetProps {
   initialData: TaskFormData;
   onSave: (data: TaskFormData) => void;
   isSaving: boolean;
-  \1: Record<string, any>[];
+  members: Record<string, any>[];
 }
 
 export function TaskSheet({ open, onOpenChange, editingId, initialData, onSave, isSaving, members }: TaskSheetProps) {

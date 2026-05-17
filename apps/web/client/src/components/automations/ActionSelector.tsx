@@ -33,7 +33,7 @@ interface ActionSelectorProps {
   onChange: (v: string) => void;
   actionValue: string;
   onActionValueChange: (v: string) => void;
-  \1: Record<string, any>[];
+  members: Record<string, any>[];
 }
 
 export function ActionSelector({ value, onChange, actionValue, onActionValueChange, members }: ActionSelectorProps) {

@@ -14,7 +14,7 @@ interface Props {
   onSave: (data: Record<string, any>) => void;
   isSaving: boolean;
   product?: Record<string, any>;
-  \1: Record<string, any>[];
+  categories: Record<string, any>[];
   onCategoryCreated?: (cat: Record<string, any>) => void;
 }
 

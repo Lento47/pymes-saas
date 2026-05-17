@@ -219,7 +219,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     queryFn: () => api.getInvoices({ conversation_id: id, limit: "10" }),
     enabled: !!id,
   });
-  const \1: Record<string, any>[] = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
+  const invoiceList: Record<string, any>[] = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
 
   const lineSubtotals = lines.map(l => l.quantity * l.unit_price);
   const lineTaxes = lines.map((l, i) => lineSubtotals[i] * (l.tax_rate / 100));
@@ -280,8 +280,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     setMessage("");
   };
 
-  const \1: Record<string, any>[] = Array.isArray(messages) ? messages : messages?.data || [];
-  const \1: Record<string, any>[] = Array.isArray(members) ? members : members?.data || [];
+  const msgList: Record<string, any>[] = Array.isArray(messages) ? messages : messages?.data || [];
+  const memberList: Record<string, any>[] = Array.isArray(members) ? members : members?.data || [];
   const conversation = conv;
   const contact = conversation?.contact;
   const contactName = contact?.full_name || "Desconocido";

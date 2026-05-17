@@ -29,7 +29,7 @@ export default function InventoryDetailPage() {
     enabled: !!productId,
   });
 
-  const \1: Record<string, any>[] = movesData?.data ?? [];
+  const movements: Record<string, any>[] = movesData?.data ?? [];
 
   if (isLoading) {
     return (

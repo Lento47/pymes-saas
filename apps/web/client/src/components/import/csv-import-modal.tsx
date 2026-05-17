@@ -46,7 +46,7 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [previewRows, setPreviewRows] = useState<Record<string, string>[]>([]);
   const [allRows, setAllRows] = useState<Record<string, string>[]>([]);
-  const [result, setResult] = useState<{ imported: number; skipped: number; \1: Record<string, any>[] } | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number; errors: Record<string, any>[] } | null>(null);
   const workspaceId = user?.workspace?.id ?? "";
   const entityLabel = entityType === "products" ? "Productos" : entityType === "invoices" ? "Facturas" : entityType === "pipeline" ? "Pipeline" : "Contactos";
   const fields = entityType === "products" ? PRODUCT_FIELDS : CONTACT_FIELDS;

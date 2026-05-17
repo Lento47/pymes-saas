@@ -18,7 +18,7 @@ export default function InventoryMovementsPage() {
     refetchInterval: 30000,
   });
 
-  const \1: Record<string, any>[] = movesData?.data ?? [];
+  const movements: Record<string, any>[] = movesData?.data ?? [];
 
   return (
     <div className="min-h-full bg-background">

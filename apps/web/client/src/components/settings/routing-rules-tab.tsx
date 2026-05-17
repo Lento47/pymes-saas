@@ -36,9 +36,9 @@ export function RoutingRulesTab() {
     queryFn: () => api.getChannels(),
   });
 
-  const \1: Record<string, any>[] = Array.isArray(data) ? data : data?.data ?? [];
-  const \1: Record<string, any>[] = Array.isArray(depts) ? depts : depts?.data ?? [];
-  const \1: Record<string, any>[] = Array.isArray(channels) ? channels : channels?.data ?? [];
+  const rules: Record<string, any>[] = Array.isArray(data) ? data : data?.data ?? [];
+  const deptList: Record<string, any>[] = Array.isArray(depts) ? depts : depts?.data ?? [];
+  const channelList: Record<string, any>[] = Array.isArray(channels) ? channels : channels?.data ?? [];
 
   const createMut = useMutation({
     mutationFn: () => api.createRoutingRule({ name, match_type: matchType, pattern: pattern || undefined, department_id: departmentId || undefined, channel_id: channelId || undefined }),

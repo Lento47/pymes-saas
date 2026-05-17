@@ -32,8 +32,8 @@ const AUTOMATION_LIMITS: Record<string, number> = {
 interface AutomationSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  \1: Record<string, any>[];
-  \1: Record<string, any>[];
+  members: Record<string, any>[];
+  channels: Record<string, any>[];
   currentPlan: string;
   currentCount: number;
   editingAuto: Record<string, any> | null;

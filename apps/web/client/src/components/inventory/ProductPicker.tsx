@@ -18,7 +18,7 @@ export function ProductPicker({ open, onOpenChange, onSelect }: ProductPickerPro
     enabled: open,
   });
 
-  const \1: Record<string, any>[] = Array.isArray(productsData) ? productsData : productsData?.data ?? [];
+  const products: Record<string, any>[] = Array.isArray(productsData) ? productsData : productsData?.data ?? [];
 
   const filtered = search
     ? products.filter((p) =>
