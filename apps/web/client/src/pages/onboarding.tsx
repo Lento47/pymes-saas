@@ -69,8 +69,8 @@ export default function OnboardingPage() {
         category: cat.category,
         items: cat.items.map(item => {
           const existing = (project.checklist as any[])
-            ?.find((c) => c.category === cat.category)
-            ?.items?.find((i) => i.label === item.label);
+            ?.find((c: any) => c.category === cat.category)
+            ?.items?.find((i: any) => i.label === item.label);
           return existing ? { ...item, completed: existing.completed ?? false, notes: existing.notes ?? "" } : item;
         }),
       }));

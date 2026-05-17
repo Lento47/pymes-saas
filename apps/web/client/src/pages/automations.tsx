@@ -39,7 +39,7 @@ export default function AutomationsPage() {
   const filteredAutomations = useMemo(() => {
     if (!searchQuery.trim()) return automations;
     const q = searchQuery.toLowerCase().trim();
-    return automations.filter((a) =>
+    return automations.filter((a: any) =>
       a.name?.toLowerCase().includes(q) ||
       a.description?.toLowerCase().includes(q) ||
       a.trigger_type?.toLowerCase().includes(q) ||
@@ -142,7 +142,7 @@ export default function AutomationsPage() {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-4 pb-16 lg:pb-4 space-y-3">
-          {filteredAutomations.map((auto) => (
+          {filteredAutomations.map((auto: any) => (
             <div key={auto.id}
               className="rounded-2xl p-4 transition-all duration-200 bg-card/40 border border-border hover:bg-card/60 hover:border-border/80"
             >
@@ -183,7 +183,7 @@ export default function AutomationsPage() {
                     <span className="text-[11px] text-muted-foreground">{auto.trigger_type.replace(/_/g,' ')}</span>
                     {auto.trigger_config_json?.channel_id && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full text-muted-foreground bg-muted/30">
-                        {channels?.find((c)=>c.id===auto.trigger_config_json.channel_id)?.name || 'Canal específico'}
+                        {channels?.find((c: any)=>c.id===auto.trigger_config_json.channel_id)?.name || 'Canal específico'}
                       </span>
                     )}
                   </div>

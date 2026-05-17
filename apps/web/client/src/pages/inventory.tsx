@@ -60,15 +60,16 @@ export default function InventoryPage() {
   const products: Record<string, any>[] = prodData?.data ?? [];
   const catList: Record<string, any>[] = Array.isArray(categories) ? categories : [];
   const totalPages = prodData?.meta?.pages ?? 1;
+  const total = prodData?.meta?.total ?? products.length;
 
   const createMut = useMutation({
-    mutationFn: (d => api.createProduct(d),
+    mutationFn: (d: Record<string, any>) => api.createProduct(d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setDrawerOpen(false); toast({ title: "Producto creado" }); },
     onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, ...d }) => api.updateProduct(id, d),
+    mutationFn: ({ id, ...d }: { id: any; [key: string]: any }) => api.updateProduct(id, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setDrawerOpen(false); setEditingProduct(null); toast({ title: "Producto actualizado" }); },
     onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
@@ -80,7 +81,7 @@ export default function InventoryPage() {
   });
 
   const adjustMut = useMutation({
-    mutationFn: ({ id, ...d }) => api.adjustStock(id, d),
+    mutationFn: ({ id, ...d }: { id: any; [key: string]: any }) => api.adjustStock(id, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setAdjusting(null); setAdjustQty(0); setAdjustReason(""); toast({ title: "Stock ajustado" }); },
     onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });

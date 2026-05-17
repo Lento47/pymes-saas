@@ -268,7 +268,7 @@ export default function DocumentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {docList.map((doc) => {
+              {docList.map((doc: any) => {
                 const mime = doc.mimeType || doc.mime_type;
                 const dateStr = doc.createdAt || doc.created_at;
                 const uploaderName = doc.uploadedBy?.firstName || doc.uploaded_by?.firstName;

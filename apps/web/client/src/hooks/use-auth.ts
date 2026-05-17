@@ -137,7 +137,7 @@ async function hydrateUser() {
 
   _hydratePromise = (async () => {
     try {
-      const me = await api.getMe();
+      const me = await api.getMe() as AuthUser;
       _user = me;
       notifyListeners();
       return me;
@@ -184,19 +184,19 @@ export function useAuth() {
 
   const login = async (email: string, password: string, workspaceSlug?: string) => {
     const res = await api.login(email, password, workspaceSlug || "");
-    applyAuthResult(res);
+    applyAuthResult(res as any);
     return res;
   };
 
   const register = async (data: { name: string; email: string; password: string }) => {
     const res = await api.register(data);
-    applyAuthResult(res);
+    applyAuthResult(res as any);
     return res;
   };
 
   const acceptInvite = async (token: string, name?: string, password?: string) => {
     const res = await api.acceptInvite({ token, name, password });
-    applyAuthResult(res);
+    applyAuthResult(res as any);
     return res;
   };
 

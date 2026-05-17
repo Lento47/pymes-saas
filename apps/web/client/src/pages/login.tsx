@@ -145,7 +145,7 @@ export default function LoginPage() {
         window.location.reload();
       })
       .catch((err: unknown) => {
-        toast({ title: "Error", description: err?.message || "Código SSO inválido o expirado.", variant: "destructive" });
+        toast({ title: "Error", description: (err as any)?.message || "Código SSO inválido o expirado.", variant: "destructive" });
         history.replaceState(null, "", "/login");
       })
       .finally(() => setLoading(false));
@@ -234,7 +234,7 @@ export default function LoginPage() {
       history.replaceState(null, "", target);
       window.dispatchEvent(new PopStateEvent("popstate"));
     } catch (err: unknown) {
-      const msg = err?.message || '';
+      const msg = (err as any)?.message || '';
       if (msg.startsWith('MULTIPLE_WORKSPACES:')) {
         try {
           const workspaces = JSON.parse(msg.slice('MULTIPLE_WORKSPACES:'.length));

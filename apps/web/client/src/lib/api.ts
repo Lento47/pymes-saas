@@ -167,14 +167,15 @@ async function request<T>(
     res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body, signal: controller.signal });
   } catch (error: unknown) {
     clearTimeout(timeout);
+    const _e = error as any;
     if (!path.includes("/error-reports/client")) {
       void reportClientError({
         source: "FRONTEND",
         category: "API_NETWORK",
         severity: "ERROR",
         title: "Network request failed",
-        message: error?.message ?? `Falló la llamada ${method} ${path}`,
-        stack: error?.stack,
+        message: _e?.message ?? `Falló la llamada ${method} ${path}`,
+        stack: _e?.stack,
         method,
         url: `${API_BASE}${path}`,
         context_json: { path },

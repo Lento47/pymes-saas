@@ -188,7 +188,7 @@ function ClientMetrics({ contactId, queryClient }: { contactId: string; queryCli
   );
 }
 
-function MetricBadge({ icon: Icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+function MetricBadge({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: number }) {
   return (
     <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-card/40 px-3 py-2">
       <Icon className="w-3.5 h-3.5 text-primary/60 shrink-0" />

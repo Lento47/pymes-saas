@@ -360,7 +360,7 @@ function DealModal({
               <SelectContent>
                 <SelectItem value="__none__">Sin contacto</SelectItem>
                 {Array.isArray(contacts?.data ?? contacts)
-                  ? (contacts?.data ?? contacts as any[]).map((c) => (
+                  ? (contacts?.data ?? contacts as any[]).map((c: any) => (
                       <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
                     ))
                   : null}
@@ -435,7 +435,7 @@ export default function Pipeline() {
 
   const { data: stages = [], isLoading } = useQuery<Stage[]>({
     queryKey: ["/api/pipeline/stages"],
-    queryFn: api.getPipelineStages,
+    queryFn: () => api.getPipelineStages() as Promise<Stage[]>,
     staleTime: 30_000,
   });
 

@@ -170,20 +170,20 @@ export default function InvoicesPage() {
   const haciendaReadinessIssues = [...missingTaxProfileFields, ...missingHaciendaSettings];
   const isHaciendaWorkspaceReady = haciendaReadinessIssues.length === 0;
   const totalOverdue = useMemo(
-    () => invoices.filter((invoice) => invoice.status === "OVERDUE").length,
+    () => invoices.filter((invoice: any) => invoice.status === "OVERDUE").length,
     [invoices],
   );
   const overdueAmount = useMemo(
     () =>
       invoices
-        .filter((invoice) => invoice.status === "OVERDUE")
-        .reduce((sum: number, invoice) => sum + Number(invoice.balance_due ?? invoice.amount ?? 0), 0),
+        .filter((invoice: any) => invoice.status === "OVERDUE")
+        .reduce((sum: number, invoice: any) => sum + Number(invoice.balance_due ?? invoice.amount ?? 0), 0),
     [invoices],
   );
   const filteredInvoices = useMemo(() => {
     if (!search.trim()) return invoices;
     const q = search.toLowerCase();
-    return invoices.filter((invoice) =>
+    return invoices.filter((invoice: any) =>
       invoice.number?.toLowerCase().includes(q) ||
       invoice.contact?.full_name?.toLowerCase().includes(q),
     );
@@ -191,14 +191,14 @@ export default function InvoicesPage() {
 
   const availableChannels = useMemo(() => {
     const rows = Array.isArray(channelsData) ? channelsData : channelsData?.data ?? [];
-    return rows.filter((channel) =>
+    return rows.filter((channel: any) =>
       channel.status === "ACTIVE" && ["EMAIL", "WHATSAPP"].includes(channel.type),
     );
   }, [channelsData]);
 
   useEffect(() => {
     if (!selectedInvoice) return;
-    const preferred = availableChannels.find((channel) =>
+    const preferred = availableChannels.find((channel: any) =>
       channel.type === "WHATSAPP" ? selectedInvoice.contact?.phone : selectedInvoice.contact?.email,
     );
     setSelectedChannelId(preferred?.id ?? availableChannels[0]?.id ?? "");
@@ -275,7 +275,7 @@ export default function InvoicesPage() {
     mutationFn: api.detectOverdueInvoices,
     onSuccess: (result) => {
       const rows = Array.isArray(result) ? result : result?.data ?? [];
-      setHighlightedIds(rows.map((invoice) => invoice.id));
+      setHighlightedIds(rows.map((invoice: any) => invoice.id));
       invalidateInvoices();
       toast({ title: "Deudas detectadas", description: `${rows.length} factura(s) vencida(s)` });
     },
@@ -337,7 +337,7 @@ export default function InvoicesPage() {
   });
 
   const creditNoteMutation = useMutation({
-    mutationFn: (invoice => api.createCreditNote(invoice.id, {
+    mutationFn: (invoice: Record<string, any>) => api.createCreditNote(invoice.id, {
       number: `NC-${invoice.number}`,
       amount: Math.round(Number(invoice.amount) * 100) / 100,
       currency: invoice.currency,
@@ -395,14 +395,14 @@ export default function InvoicesPage() {
   const xmlPreviewMutation = useMutation({
     mutationFn: (id: string) => api.getInvoiceXmlPreview(id),
     onSuccess: (data) => {
-      setXmlPreview(data);
+      setXmlPreview(data as { xml: string });
       setShowXmlPreview(true);
     },
     onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const generateReminderMutation = useMutation({
-    mutationFn: (invoice => api.generateInvoiceReminder(invoice.id),
+    mutationFn: (invoice: Record<string, any>) => api.generateInvoiceReminder(invoice.id),
     onSuccess: (reminder: Record<string, any>, invoice: any) => {
       setSelectedInvoice(invoice);
       setReminderDraft(reminder?.draft_text ?? "");
@@ -456,7 +456,7 @@ export default function InvoicesPage() {
     onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
-  const openEditModal = (invoice) => {
+  const openEditModal = (invoice: any) => {
     setSelectedInvoice(invoice);
     setEditForm({
       number: invoice.number ?? "",
@@ -475,14 +475,14 @@ export default function InvoicesPage() {
     setShowEdit(true);
   };
 
-  const openReminderModal = (invoice) => {
+  const openReminderModal = (invoice: any) => {
     setSelectedInvoice(invoice);
     setReminderDraft(invoice.reminders?.[0]?.draft_text ?? "");
     setShowReminder(true);
     generateReminderMutation.mutate(invoice);
   };
 
-  const openPaymentModal = (invoice) => {
+  const openPaymentModal = (invoice: any) => {
     setSelectedInvoice(invoice);
     setPaymentForm({
       amount: String(Number(invoice.balance_due ?? 0).toFixed(2)),
@@ -621,7 +621,7 @@ export default function InvoicesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Todo contacto</SelectItem>
-              {contacts.map((contact) => (
+              {contacts.map((contact: any) => (
                 <SelectItem key={contact.id} value={contact.id}>
                   {contact.full_name}
                 </SelectItem>
@@ -652,7 +652,7 @@ export default function InvoicesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInvoices.map((invoice) => {
+                {filteredInvoices.map((invoice: any) => {
                   const overdueDays = invoice.status === "OVERDUE"
                     ? Math.max(0, differenceInCalendarDays(new Date(), new Date(invoice.due_date)))
                     : 0;
@@ -946,7 +946,7 @@ export default function InvoicesPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedInvoice.lines.map((line) => (
+                        {selectedInvoice.lines.map((line: any) => (
                           <tr key={line.id} className="border-t border-border/50 hover:bg-muted/30 transition-colors">
                             <td className="px-2 py-1.5 text-muted-foreground">{line.line_number}</td>
                             <td className="px-2 py-1.5 text-foreground">
@@ -968,7 +968,7 @@ export default function InvoicesPage() {
                 <div>
                   <span className="text-muted-foreground/60">Pagos registrados</span>
                   <div className="mt-1 space-y-1">
-                    {selectedInvoice.payments.map((p) => (
+                    {selectedInvoice.payments.map((p: any) => (
                       <div key={p.id} className="flex justify-between rounded border border-border bg-background px-2 py-1">
                         <span className="text-foreground">{formatMoney(p.amount, selectedInvoice.currency)}</span>
                         <span className="text-muted-foreground/60">{p.paid_at ? format(new Date(p.paid_at), "d MMM yyyy", { locale: es }) : "—"}</span>
@@ -1016,7 +1016,7 @@ export default function InvoicesPage() {
                 className="flex h-8 w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 <option value="">Sin contacto</option>
-                {contacts.map((c) => (
+                {contacts.map((c: any) => (
                   <option key={c.id} value={c.id}>{c.full_name}{c.company_name ? ` · ${c.company_name}` : ""}</option>
                 ))}
               </select>
@@ -1282,7 +1282,7 @@ export default function InvoicesPage() {
                     <SelectValue placeholder="Selecciona un canal" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableChannels.map((channel) => (
+                    {availableChannels.map((channel: any) => (
                       <SelectItem key={channel.id} value={channel.id}>
                         {channel.name} · {channel.type}
                       </SelectItem>

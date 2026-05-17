@@ -95,7 +95,7 @@ function InsightCard({ insight }: { insight: Insight }) {
 export function InsightsWidget() {
   const { data: insights, isLoading } = useQuery<Insight[]>({
     queryKey: ["/api/insights"],
-    queryFn: api.getInsights,
+    queryFn: () => api.getInsights() as Promise<Insight[]>,
     refetchInterval: 5 * 60 * 1000,
     staleTime: 3 * 60 * 1000,
   });

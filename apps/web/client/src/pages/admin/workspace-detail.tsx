@@ -62,7 +62,7 @@ export default function AdminWorkspaceDetail() {
   const [edit, setEdit] = useState<any>(null);
 
   const featuresMut = useMutation({
-    mutationFn: (d => api.platformUpdateWorkspaceFeatures(slug, d),
+    mutationFn: (d: Record<string, any>) => api.platformUpdateWorkspaceFeatures(slug, d),
     onSuccess: () => { toast({ title: "Configuración guardada" }); featuresQ.refetch(); },
     onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });

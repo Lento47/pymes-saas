@@ -34,13 +34,14 @@ export async function apiRequest(
       body: data ? JSON.stringify(data) : undefined,
     });
   } catch (error: unknown) {
+    const _e = error as any;
     void reportClientError({
       source: "FRONTEND",
       category: "QUERY_NETWORK",
       severity: "ERROR",
       title: "Query network failure",
-      message: error?.message ?? `Falló la llamada ${method} ${url}`,
-      stack: error?.stack,
+      message: _e?.message ?? `Falló la llamada ${method} ${url}`,
+      stack: _e?.stack,
       method,
       url: `${API_BASE}${url}`,
     });
@@ -66,8 +67,8 @@ export const getQueryFn: <T>(options: {
         category: "QUERY_NETWORK",
         severity: "ERROR",
         title: "Query fetch failure",
-        message: error?.message ?? "Falló una consulta de datos.",
-        stack: error?.stack,
+        message: (error as any)?.message ?? "Falló una consulta de datos.",
+        stack: (error as any)?.stack,
         url: `${API_BASE}${queryKey.join("/")}`,
       });
       throw error;

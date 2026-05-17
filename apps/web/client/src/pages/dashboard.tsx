@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
@@ -87,7 +87,7 @@ function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
 }
 
 // ── Insight styles ──
-const INSIGHT_STYLES: Record<string, { Icon: Record<string, any>; color: string; bg: string }> = {
+const INSIGHT_STYLES: Record<string, { Icon: React.ElementType; color: string; bg: string }> = {
   danger:   { Icon: CircleAlert,    color: "hsl(var(--danger))",  bg: "bg-red-500/10" },
   warning:  { Icon: TriangleAlert, color: "hsl(var(--warning))", bg: "bg-amber-500/10" },
   positive: { Icon: ShieldCheck,   color: "hsl(var(--success))", bg: "bg-emerald-500/10" },
@@ -149,8 +149,8 @@ export default function DashboardPage() {
   const totalPipeline = stageRows.reduce((s, r) => s + r.totalValue, 0);
   const firstCurrency = stageRows[0]?.currency ?? "CRC";
   const overdueCount = invoiceList.length;
-  const overdueAmount = invoiceList.reduce((s: number, i) => s + (i.amount || 0), 0);
-  const urgentTasks = taskList.filter((t) => t.priority === "HIGH").length;
+  const overdueAmount = invoiceList.reduce((s: number, i: any) => s + (i.amount || 0), 0);
+  const urgentTasks = taskList.filter((t: any) => t.priority === "HIGH").length;
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -347,7 +347,7 @@ export default function DashboardPage() {
               {activeTab === "tasks" ? (
                 taskList.length === 0 ? (
                   <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noTasks}</div>
-                ) : taskList.slice(0, 5).map((task) => (
+                ) : taskList.slice(0, 5).map((task: any) => (
                   <div key={task.id} className="flex items-center gap-3 px-5 py-3">
                     <div className="w-[18px] h-[18px] rounded-full border-2 border-border/60 cursor-pointer hover:border-primary/50 transition-colors shrink-0" />
                     <span className="flex-1 text-[13px] text-foreground truncate">{task.title}</span>
@@ -364,7 +364,7 @@ export default function DashboardPage() {
               ) : (
                 convList.length === 0 ? (
                   <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noMessagesToday}</div>
-                ) : convList.slice(0, 5).map((conv) => (
+                ) : convList.slice(0, 5).map((conv: any) => (
                   <Link key={conv.id} href={`/inbox/${conv.id}`}>
                     <div className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.02] transition-colors cursor-pointer">
                       <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">

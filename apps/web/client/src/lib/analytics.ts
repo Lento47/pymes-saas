@@ -1,11 +1,11 @@
 declare global {
   interface Window {
     dataLayer: Record<string, any>[];
-  gtag: (...args: Record<string, any>[]) => void;
+  gtag: (...args: any[]) => void;
   }
 }
 
-function gtag(...args: Record<string, any>[]) {
+function gtag(...args: any[]) {
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push(args);
 }

@@ -210,7 +210,7 @@ export function PlaygroundBoard() {
   }, [openCases, resolvedCases]);
 
   const totalOpen = openCases.length;
-  const totalResolved = resolvedCases.length + (cases ? cases.filter((c) => c.status === "RESOLVED").length : 0);
+  const totalResolved = resolvedCases.length + (cases ? cases.filter((c: any) => c.status === "RESOLVED").length : 0);
   const slaAtRisk = openCases.filter((c) => c.risk_level === "high" || c.risk_level === "critical").length;
   const escalated = openCases.filter((c) => c.status === "ESCALATED").length;
 

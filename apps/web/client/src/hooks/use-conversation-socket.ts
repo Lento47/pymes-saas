@@ -36,15 +36,15 @@ export function useConversationSocket(conversationId: string) {
   const handleNewMessage = useCallback(
     (message: Record<string, any>) => {
       // 1. Insert optimista — muestra el mensaje al instante.
-      qc.setQueryData(MESSAGES_KEY, (old) => {
+      qc.setQueryData(MESSAGES_KEY, (old: any) => {
         if (!old) return old;
         const existingData = Array.isArray(old.data) ? old.data : [];
-        const exists = existingData.some((m) => m.id === message.id);
+        const exists = existingData.some((m: any) => m.id === message.id);
 
         if (exists) {
           return {
             ...old,
-            data: existingData.map((m) =>
+            data: existingData.map((m: any) =>
               m.id === message.id ? { ...m, ...message } : m,
             ),
           };
@@ -85,11 +85,11 @@ export function useConversationSocket(conversationId: string) {
       if (payload.conversation_id !== conversationId) return;
 
       // Update solo ese mensaje en cache — sin refetch completo.
-      qc.setQueryData(MESSAGES_KEY, (old) => {
+      qc.setQueryData(MESSAGES_KEY, (old: any) => {
         if (!old?.data) return old;
         return {
           ...old,
-          data: old.data.map((m) =>
+          data: old.data.map((m: any) =>
             m.id === payload.message_id
               ? {
                   ...m,

@@ -173,7 +173,7 @@ export default function ContactsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {contactList.map((c) => (
+              {contactList.map((c: any) => (
                 <TableRow key={c.id} className="border-border hover:bg-foreground/[0.015] cursor-pointer" data-testid={`contact-row-${c.id}`}>
                   <TableCell>
                     <Link href={`/contacts/${c.id}`}>

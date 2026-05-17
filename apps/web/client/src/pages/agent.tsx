@@ -42,7 +42,7 @@ type FormField = {
 type EmbeddedForm = {
   id: string;
   title: string;
-  icon: React.ReactNode;
+  icon: React.ElementType;
   tool: string;
   fields: FormField[];
   values: Record<string, string>;
@@ -51,7 +51,7 @@ type EmbeddedForm = {
   error?: string;
 };
 
-const QUICK_FORMS: { label: string; icon: React.ReactNode; tool: string; title: string; fields: FormField[] }[] = [
+const QUICK_FORMS: { label: string; icon: React.ElementType; tool: string; title: string; fields: FormField[] }[] = [
   {
     label: 'Contacto', icon: UserPlus, tool: 'create_contact', title: 'Nuevo Contacto',
     fields: [
@@ -158,8 +158,8 @@ export default function Agent() {
         }
       }
     } catch (err: unknown) {
-      setError(err?.message || 'Error');
-      setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, role: 'system', content: err?.message || 'Error', isStreaming: false } : m));
+      setError((err as any)?.message || 'Error');
+      setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, role: 'system', content: (err as any)?.message || 'Error', isStreaming: false } : m));
     } finally {
       setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, isStreaming: false } : m));
       setIsStreaming(false);
@@ -194,7 +194,7 @@ export default function Agent() {
       const result = await api.executeAgentTool(activeForm.tool, args);
       setActiveForm(prev => prev ? { ...prev, isSubmitting: false, result: JSON.stringify(result, null, 2) } : null);
     } catch (err: unknown) {
-      setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: err?.message || 'Error' } : null);
+      setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: (err as any)?.message || 'Error' } : null);
     }
   };
 
@@ -213,7 +213,7 @@ export default function Agent() {
       );
       setEscalated(true);
     } catch (err: unknown) {
-      setError(err?.message || 'No se pudo crear la escalación');
+      setError((err as any)?.message || 'No se pudo crear la escalación');
     } finally {
       setEscalating(false);
     }

@@ -87,7 +87,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
               </SelectTrigger>
               <SelectContent className="border-border bg-card">
                 <SelectItem value="none">Sin contacto</SelectItem>
-                {contactList.map((c) => (
+                {contactList.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.full_name}{c.email ? ` — ${c.email}` : ""}{c.phone ? ` · ${c.phone}` : ""}
                   </SelectItem>

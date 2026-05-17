@@ -11,8 +11,8 @@ function PetSvg({ small }: { small?: boolean }) {
   const [lookingRight, setLookingRight] = useState(false);
 
   useEffect(() => {
-    let blinkTimer: Record<string, any>;
-    let lookTimer: Record<string, any>;
+    let blinkTimer: ReturnType<typeof setTimeout>;
+    let lookTimer: ReturnType<typeof setTimeout>;
 
     const scheduleBlink = () => {
       const delay = 1500 + Math.random() * 2500;
