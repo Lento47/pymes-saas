@@ -44,7 +44,7 @@ export class OcrService {
   async extractFromPdf(buffer: Buffer): Promise<string | null> {
     try {
       // @ts-ignore — pdf-parse is an optional dep; missing at build time is intentional
-      const mod: any = await import('pdf-parse').catch(() => null);
+      const mod: Record<string, any> = await import('pdf-parse').catch(() => null);
       if (!mod) {
         this.logger.warn('pdf-parse not installed; skipping PDF text extraction.');
         return null;

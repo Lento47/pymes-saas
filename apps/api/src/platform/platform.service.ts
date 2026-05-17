@@ -588,7 +588,7 @@ export class PlatformService {
       limits: workspace.limits_json,
     };
 
-    const updateData: any = {};
+    const updateData: Record<string, any> = {};
     if (dto.plan !== undefined) updateData.plan = dto.plan;
     if (dto.beta_profile !== undefined) updateData.beta_profile = dto.beta_profile;
     if (dto.features !== undefined) updateData.features_json = dto.features;

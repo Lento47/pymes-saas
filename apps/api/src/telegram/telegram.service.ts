@@ -158,7 +158,7 @@ export class TelegramService {
   /**
    * Process incoming Telegram update with deduplication and metadata storage
    */
-  async processUpdate(channelId: string, update: any): Promise<{ processed: boolean; duplicate?: boolean }> {
+  async processUpdate(channelId: string, update: Record<string, any>): Promise<{ processed: boolean; duplicate?: boolean }> {
     // Validate payload structure
     if (!update || typeof update !== 'object') {
       return { processed: false };
@@ -209,7 +209,7 @@ export class TelegramService {
       const conversationRef = `tg:${chat.id}`;
 
       // Extract attachments
-      const attachments: any[] = [];
+      const attachments: Record<string, any>[] = [];
       if (message.photo?.length) {
         attachments.push({ type: 'photo', file_id: message.photo[message.photo.length - 1].file_id });
       }

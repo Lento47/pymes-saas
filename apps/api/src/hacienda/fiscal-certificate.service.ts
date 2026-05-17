@@ -156,7 +156,7 @@ export class FiscalCertificateService {
     return this.toMetadata(updated);
   }
 
-  private toMetadata(cert: any): CertificateMetadata {
+  private toMetadata(cert: Record<string, any>): CertificateMetadata {
     // Never return storage_key, encrypted_pin, or raw cert data
     return {
       id: cert.id,

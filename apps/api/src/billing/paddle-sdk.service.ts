@@ -74,7 +74,7 @@ export class PaddleSdkService {
     // Check if a Paddle customer already exists with this email
     let customerId: string;
     try {
-      const searchResult: any = await paddle.customers.list({ email: [email] });
+      const searchResult: Record<string, any> = await paddle.customers.list({ email: [email] });
       const customers = searchResult?.result || searchResult?.items || [];
       if (customers.length > 0) {
         customerId = customers[0].id;
@@ -339,10 +339,10 @@ export class PaddleSdkService {
         return { synced: false, reason: `Customer ${customerId} not found` };
       }
 
-      const subsCollection: any = await (paddle as any).subscriptions.list({ customerId: [customerId] });
+      const subsCollection: Record<string, any> = await (paddle as any).subscriptions.list({ customerId: [customerId] });
       const subsPage = await subsCollection.next();
       const subsList = subsPage || [];
-      const activeSub = subsList.find((s: any) =>
+      const activeSub = subsList.find((s: Record<string, any>) =>
         ['active', 'trialing'].includes(s.status),
       );
 
@@ -766,7 +766,7 @@ export class PaddleSdkService {
       for (const key of addonKeys) {
         if (key in settings) { delete settings[key]; modified = true; }
       }
-      const updateData: any = { plan: 'FREE' };
+      const updateData: Record<string, any> = { plan: 'FREE' };
       if (modified) {
         updateData.settings_json = settings as any;
       }
@@ -1051,7 +1051,7 @@ export class PaddleSdkService {
     const paddle = this.requireClient();
     const appUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
 
-    const customData: any = { workspaceSlug: async () => {
+    const customData: Record<string, any> = { workspaceSlug: async () => {
       const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { slug: true } });
       return ws.slug;
     }};

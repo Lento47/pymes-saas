@@ -45,7 +45,7 @@ const TOOLS = [
   makeTool('get_settings', 'Get workspace settings and members'),
 ];
 
-function getToolsForResponse(): any[] {
+function getToolsForResponse(): Record<string, any>[] {
   if (process.env.PymesHub_MCP_COMPAT_MODE === 'true') {
     return [
       { name: 'get_workspace', description: 'Get workspace info', inputSchema: { type: 'object', properties: {} } },

@@ -122,7 +122,7 @@ export class BillingController {
       throw new BadRequestException('Missing paddle-signature header or webhook secret');
     }
 
-    let event: any;
+    let event: Record<string, any>;
     try {
       event = await this.paddleService.verifyWebhookSignature(
         request.rawBody?.toString() || JSON.stringify(request.body),

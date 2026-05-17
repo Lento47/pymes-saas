@@ -147,7 +147,7 @@ export class DiagnosticService {
   }
 
   async diagnose(input: DiagnosticInput): Promise<DiagnosticResult> {
-    let evidence: any = {};
+    let evidence: Record<string, any> = {};
 
     // If an error_report_id was provided, fetch the actual error report for context
     if (input.error_report_id) {
@@ -167,7 +167,7 @@ export class DiagnosticService {
     const classification = this.classify(input, evidence);
 
     // Look up known issues by error_code
-    let matchedIssue: any = null;
+    let matchedIssue: Record<string, any> | null = null;
     if (input.error_code) {
       matchedIssue = await (this.prisma as any).supportKnownIssue.findUnique({
         where: { error_code: input.error_code },
@@ -259,7 +259,7 @@ export class DiagnosticService {
     };
   }
 
-  private classify(input: DiagnosticInput, evidence: any): { category: string; risk_level: string; title: string; recommendation: string } {
+  private classify(input: DiagnosticInput, evidence: Record<string, any>): { category: string; risk_level: string; title: string; recommendation: string } {
     const msg = (input.user_description || '').toLowerCase() + ' ' + JSON.stringify(evidence).toLowerCase();
 
     if (msg.includes('circular') || msg.includes('undefined import') || msg.includes('cannot create')) {

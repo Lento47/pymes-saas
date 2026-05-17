@@ -47,7 +47,7 @@ export class CsvImportService {
 
     for (let i = 0; i < rows.length; i++) {
       try {
-        const contactData: any = {
+        const contactData: Record<string, any> = {
           workspace_id: workspaceId,
           full_name: this.getMapped(mapping, rows[i], 'full_name', ''),
           type: 'CUSTOMER' as const,

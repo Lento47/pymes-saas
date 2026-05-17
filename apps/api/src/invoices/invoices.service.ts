@@ -581,7 +581,7 @@ export class InvoicesService {
       document_type: InvoiceDocumentType.NOTA_CREDITO,
       issuance_mode: InvoiceIssuanceMode.HACIENDA,
       reference_invoice_id: sourceInvoiceId,
-      lines: dto.lines ?? source.lines.map((line: any) => ({
+      lines: dto.lines ?? source.lines.map((line) => ({
         description: line.description,
         quantity: Number(line.quantity),
         unit_price: Number(line.unit_price),
@@ -610,7 +610,7 @@ export class InvoicesService {
       issuance_mode: InvoiceIssuanceMode.HACIENDA,
       reference_invoice_id: sourceInvoiceId,
       amount: dto.amount ?? Number(source.amount),
-      lines: dto.lines ?? source.lines.map((line: any) => ({
+      lines: dto.lines ?? source.lines.map((line) => ({
         description: line.description,
         quantity: Number(line.quantity),
         unit_price: Number(line.unit_price),
@@ -709,7 +709,7 @@ export class InvoicesService {
     };
   }
 
-  private serializeInvoice(invoice: any) {
+  private serializeInvoice(invoice: Record<string, any>) {
     const amountPaid = this.getAmountPaid(invoice);
     const totalAmount = this.parseAmount(invoice.amount);
     const balanceDue = Math.max(0, totalAmount - amountPaid);
@@ -725,7 +725,7 @@ export class InvoicesService {
     };
   }
 
-  private parseAmount(value: any): number {
+  private parseAmount(value: unknown): number {
     if (value === null || value === undefined) return 0;
     if (typeof value === 'object' && typeof value.toNumber === 'function') {
       const n = value.toNumber();
@@ -735,14 +735,14 @@ export class InvoicesService {
     return isNaN(n) ? 0 : n;
   }
 
-  private getAmountPaid(invoice: any) {
+  private getAmountPaid(invoice: Record<string, any>) {
     return (invoice.payments ?? []).reduce(
-      (sum: number, payment: any) => sum + this.parseAmount(payment.amount),
+      (sum: number, payment) => sum + this.parseAmount(payment.amount),
       0,
     );
   }
 
-  private getBalanceDue(invoice: any) {
+  private getBalanceDue(invoice: Record<string, any>) {
     return Math.max(0, this.parseAmount(invoice.amount) - this.getAmountPaid(invoice));
   }
 
@@ -851,7 +851,7 @@ export class InvoicesService {
     }
   }
 
-  private ensureMutableInvoice(invoice: any) {
+  private ensureMutableInvoice(invoice: Record<string, any>) {
     if (
       invoice.issuance_mode === InvoiceIssuanceMode.HACIENDA &&
       [HaciendaStatus.SUBMITTED, HaciendaStatus.RECIBIDO, HaciendaStatus.PROCESANDO, HaciendaStatus.ACEPTADO].includes(invoice.hacienda_status)
@@ -862,7 +862,7 @@ export class InvoicesService {
     }
   }
 
-  private prepareLines(lines: any[] | undefined, fallbackAmount: number) {
+  private prepareLines(lines: Record<string, any>[] | undefined, fallbackAmount: number) {
     if (!lines?.length) {
       return {
         totalAmount: Number(fallbackAmount ?? 0),
@@ -1040,7 +1040,7 @@ export class InvoicesService {
     return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-0600`;
   }
 
-  private buildFallbackLines(invoice: any) {
+  private buildFallbackLines(invoice: Record<string, any>) {
     return [
       {
         line_number: 1,
@@ -1059,7 +1059,7 @@ export class InvoicesService {
     ];
   }
 
-  private getMissingWorkspaceTaxProfileFields(workspaceTaxProfile: any | null) {
+  private getMissingWorkspaceTaxProfileFields(workspaceTaxProfile: Record<string, any> | null) {
     if (!workspaceTaxProfile) {
       return [
         'razón social',
@@ -1243,7 +1243,7 @@ export class InvoicesService {
   private async trackQuickStart(workspaceId: string, step: string) {
     try {
       const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
-      const s: any = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const s: Record<string, any> = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
       const progress = s.quick_start_progress || {};
       if (progress[step]) return;
       s.quick_start_progress = { ...progress, [step]: true };

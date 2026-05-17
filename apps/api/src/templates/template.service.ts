@@ -28,7 +28,7 @@ export class TemplateService {
 
   // ─── Instantiate Templates ─────────────────────────────────────────────
 
-  async instantiateAutomationTemplate(workspaceId: string, templateId: string, overrides?: any) {
+  async instantiateAutomationTemplate(workspaceId: string, templateId: string, overrides?: Record<string, any>) {
     const template = await this.getSystemTemplate(templateId);
     if (template.type !== 'automation') throw new NotFoundException('Not an automation template');
 
@@ -47,7 +47,7 @@ export class TemplateService {
     });
   }
 
-  async instantiateMessageTemplate(workspaceId: string, templateId: string, overrides?: any) {
+  async instantiateMessageTemplate(workspaceId: string, templateId: string, overrides?: Record<string, any>) {
     const template = await this.getSystemTemplate(templateId);
     if (template.type !== 'message') throw new NotFoundException('Not a message template');
 

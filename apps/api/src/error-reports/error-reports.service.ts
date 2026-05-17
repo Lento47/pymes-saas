@@ -9,7 +9,7 @@ export class ErrorReportsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private get errorReportsRepo(): any {
+  private get errorReportsRepo(): Record<string, any> {
     return (this.prisma as any).errorReport;
   }
 

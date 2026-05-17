@@ -295,7 +295,7 @@ export class AiService {
   async analyzeDocument(
     workspaceId: string,
     meta: { fileName: string; mimeType: string; fileSize: number; ocrText?: string },
-  ): Promise<{ extractedText: string; summary: string; extractedData: any } | null> {
+  ): Promise<{ extractedText: string; summary: string; extractedData: Record<string, any> } | null> {
     const config = await this.getConfig(workspaceId);
     if (!config) return null;
 

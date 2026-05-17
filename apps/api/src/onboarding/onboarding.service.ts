@@ -62,7 +62,7 @@ export class OnboardingService {
   }
 
   async updateProject(workspaceId: string, data: Record<string, any>) {
-    const updateData: any = {
+    const updateData: Record<string, any> = {
       status: data.status,
       target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : undefined,
       checklist: data.checklist ?? undefined,

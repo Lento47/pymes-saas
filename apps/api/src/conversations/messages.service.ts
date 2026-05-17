@@ -147,7 +147,7 @@ export class MessagesService {
 
     if (contact) {
       // Auto-update name for LEAD contacts created from incoming messages
-      const contactUpdates: any = {};
+      const contactUpdates: Record<string, any> = {};
       if (contact.type === 'LEAD' && contact.full_name !== senderName) {
         contactUpdates.full_name = senderName;
       }
@@ -228,7 +228,7 @@ export class MessagesService {
         orderBy: { is_lead: 'desc' },
         select: { user_id: true },
       });
-      const updateData: any = {
+      const updateData: Record<string, any> = {
         department_id: route.department_id,
         ...(member ? { assigned_user_id: member.user_id } : {}),
       };
@@ -345,8 +345,8 @@ export class MessagesService {
     bodyText: string;
     providerMessageId: string;
     timestamp?: string;
-    rawPayload?: any;
-    whatsappMedia?: any | null;
+    rawPayload?: Record<string, any>;
+    whatsappMedia?: Record<string, any> | null;
   }): Promise<{
     status: 'created' | 'duplicate';
     messageId?: string;
@@ -494,7 +494,7 @@ export class MessagesService {
       this.logger.error(`Realtime emit failed: ${err?.message}`);
     }
 
-    let conversation: any = null;
+    let conversation: Record<string, any> | null = null;
     try {
       conversation = await this.prisma.conversation.findUnique({
         where: { id: conversationId },

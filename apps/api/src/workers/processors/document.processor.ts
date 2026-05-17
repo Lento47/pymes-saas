@@ -26,7 +26,7 @@ const MAX_OCR_CHARS = 8000;
 @Processor(QUEUE_NAMES.DOCUMENT)
 export class DocumentProcessor extends WorkerHost implements OnModuleDestroy {
   private readonly logger = new Logger(DocumentProcessor.name);
-  private tesseractWorker: any = null;
+  private tesseractWorker: Record<string, any> | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -104,7 +104,7 @@ export class DocumentProcessor extends WorkerHost implements OnModuleDestroy {
     }
   }
 
-  private async doProcess(doc: any, documentId: string, workspaceId: string) {
+  private async doProcess(doc: Record<string, any>, documentId: string, workspaceId: string) {
     let ocrText = '';
     let ocrFailed = false;
 
@@ -146,7 +146,7 @@ export class DocumentProcessor extends WorkerHost implements OnModuleDestroy {
     }
 
     let summaryText = '';
-    let extractedData: any = {};
+    let extractedData: Record<string, any> = {};
 
     const isFallback = ocrText.startsWith(doc.file_name + ' (') || ocrText.includes('KB)');
     const hasRealOcr = !ocrFailed && ocrText.length > 50 && !isFallback;

@@ -33,7 +33,7 @@ export class WorkspacesService {
     private readonly planLimits: PlanLimitsService,
   ) {}
 
-  private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
+  private serializeWorkspace<T extends { settings_json?: Record<string, any> | null }>(workspace: T) {
     const settings =
       workspace.settings_json && typeof workspace.settings_json === 'object'
         ? (workspace.settings_json as Record<string, any>)

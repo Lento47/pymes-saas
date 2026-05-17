@@ -26,7 +26,7 @@ export class TemplateController {
   async instantiateAutomation(
     @Param('id') id: string,
     @Param('workspaceId') workspaceId: string,
-    @Body() overrides?: any,
+    @Body() overrides?: Record<string, any>,
   ) {
     return this.templates.instantiateAutomationTemplate(workspaceId, id, overrides);
   }
@@ -36,7 +36,7 @@ export class TemplateController {
   async instantiateMessage(
     @Param('id') id: string,
     @Param('workspaceId') workspaceId: string,
-    @Body() overrides?: any,
+    @Body() overrides?: Record<string, any>,
   ) {
     return this.templates.instantiateMessageTemplate(workspaceId, id, overrides);
   }

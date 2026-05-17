@@ -14,7 +14,7 @@ export class WebhookEventsService {
   async ingest(
     provider: string,
     payload: Record<string, any>,
-  ): Promise<{ event: any; duplicate: boolean }> {
+  ): Promise<{ event: Record<string, any>; duplicate: boolean }> {
     const { eventType, fingerprint, phoneNumberId, wabaId, providerMessageId } =
       this.extractEventMeta(provider, payload);
 
@@ -292,14 +292,14 @@ export class WebhookEventsService {
     };
   }
 
-  private normalizePayload(obj: any): any {
+  private normalizePayload(obj: Record<string, any>): Record<string, any> {
     if (typeof obj !== 'object' || obj === null) return obj;
     if (Array.isArray(obj)) return obj.map((i) => this.normalizePayload(i));
     const keys = Object.keys(obj).filter(
       (k) => !['entry', 'changes', 'received_at', 'timestamp'].includes(k),
     );
     keys.sort();
-    const result: any = {};
+    const result: Record<string, any> = {};
     for (const k of keys) {
       result[k] = this.normalizePayload(obj[k]);
     }

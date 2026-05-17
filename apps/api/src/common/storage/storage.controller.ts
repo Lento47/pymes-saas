@@ -23,7 +23,7 @@ export class StorageController {
 
   constructor(
     private readonly config: ConfigService,
-    @Inject(StorageService) private readonly storage: any,
+    @Inject(StorageService) private readonly storage: Record<string, any>,
   ) {
     this.basePath = this.config.get<string>('STORAGE_LOCAL_PATH') ?? path.join(process.cwd(), 'uploads');
   }

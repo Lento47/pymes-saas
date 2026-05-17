@@ -107,7 +107,7 @@ export class ContactsService {
     if (dto.phone) {
       const normalized = dto.phone.replace(/\D/g, '');
       if (normalized.length >= 7) {
-        const rows: any[] = await (this.prisma as any).$queryRawUnsafe(
+        const rows: Record<string, any>[] = await (this.prisma as any).$queryRawUnsafe(
           `SELECT id FROM "contacts"
            WHERE workspace_id = $1
              AND phone IS NOT NULL
@@ -151,7 +151,7 @@ export class ContactsService {
   private async trackQuickStart(workspaceId: string, step: string) {
     try {
       const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
-      const s: any = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const s: Record<string, any> = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
       const progress = s.quick_start_progress || {};
       if (progress[step]) return;
       s.quick_start_progress = { ...progress, [step]: true };

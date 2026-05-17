@@ -266,7 +266,7 @@ export class ChannelsService {
 
   // ── Privados ───────────────────────────────────────────────────────────────
 
-  private sanitise(channel: any) {
+  private sanitise(channel: Record<string, any>) {
     const { config_json, ...rest } = channel;
     const safeConfig: Record<string, unknown> = {};
     const parsedConfig = parseJsonValue<Record<string, unknown>>(config_json, {});
@@ -287,7 +287,7 @@ export class ChannelsService {
   private async trackQuickStart(workspaceId: string, step: string) {
     try {
       const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
-      const s: any = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const s: Record<string, any> = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
       const progress = s.quick_start_progress || {};
       if (progress[step]) return;
       s.quick_start_progress = { ...progress, [step]: true };

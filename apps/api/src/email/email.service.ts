@@ -71,7 +71,7 @@ export class EmailService {
    * @returns         Object with Resend message id.
    */
   async sendOutbound(
-    channel: any,
+    channel: Record<string, any>,
     to: string,
     subject: string,
     bodyHtml: string,
@@ -225,7 +225,7 @@ export class EmailService {
    */
   private async resolveWorkspaceAndChannel(payload: Record<string, any>): Promise<{
     workspaceId: string | null;
-    channel: any | null;
+    channel: Record<string, any> | null;
   }> {
     const toAddress = this.extractPrimaryRecipient(payload.to);
 

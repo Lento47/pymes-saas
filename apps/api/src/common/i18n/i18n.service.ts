@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 type Locale = 'en' | 'es';
 
-type TranslationValue = string | ((params: any) => string);
+type TranslationValue = string | ((params: Record<string, any>) => string);
 interface TranslationSet {
   [key: string]: TranslationValue | TranslationSet;
 }
@@ -13,13 +13,13 @@ const MESSAGES: Record<Locale, TranslationSet> = {
       notFound: 'Not found',
       unauthorized: 'Unauthorized',
       forbidden: 'Forbidden',
-      planLimit: (p: any) =>
+      planLimit: (p: Record<string, any>) =>
         `Your ${p.plan} plan allows up to ${p.limit} ${p.resource}. Upgrade to add more.`,
       workspaceNotFound: 'Workspace not found',
       userNotFound: 'User not found',
       invalidCredentials: 'Invalid credentials',
       quotaExceeded: 'Quota exceeded',
-      planTierRequired: (p: any) =>
+      planTierRequired: (p: Record<string, any>) =>
         `${p.feature} requires ${p.plan} plan or higher.`,
     },
     notifications: {
@@ -33,13 +33,13 @@ const MESSAGES: Record<Locale, TranslationSet> = {
       notFound: 'No encontrado',
       unauthorized: 'No autorizado',
       forbidden: 'Prohibido',
-      planLimit: (p: any) =>
+      planLimit: (p: Record<string, any>) =>
         `Tu plan ${p.plan} permite un máximo de ${p.limit} ${p.resource}. Actualizá para agregar más.`,
       workspaceNotFound: 'Workspace no encontrado',
       userNotFound: 'Usuario no encontrado',
       invalidCredentials: 'Credenciales inválidas',
       quotaExceeded: 'Cuota excedida',
-      planTierRequired: (p: any) =>
+      planTierRequired: (p: Record<string, any>) =>
         `${p.feature} requiere plan ${p.plan} o superior.`,
     },
     notifications: {
@@ -72,7 +72,7 @@ export class I18nService {
 
   private resolve(key: string): TranslationValue | TranslationSet | undefined {
     const parts = key.split('.');
-    let current: any = MESSAGES[this.locale];
+    let current: Record<string, any> = MESSAGES[this.locale];
     for (const part of parts) {
       if (!current || typeof current !== 'object') return undefined;
       current = current[part];

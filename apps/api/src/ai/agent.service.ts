@@ -306,7 +306,7 @@ REGLAS:
       modelSettings: { temperature: 0.2, maxTokens: 1024 },
     });
 
-    const history: any[] = [{ role: 'user', content: inputWithContext }];
+    const history: Record<string, any>[] = [{ role: 'user', content: inputWithContext }];
 
     try {
       const runner = new Runner();
@@ -408,7 +408,7 @@ REGLAS:
       modelSettings: { temperature: 0.4, maxTokens: 200 },
     });
 
-    const history: any[] = [{ role: 'user', content: input }];
+    const history: Record<string, any>[] = [{ role: 'user', content: input }];
 
     try {
       const runner = new Runner();

@@ -201,8 +201,8 @@ export class EngineeringFixService {
       status?: string;
       pr_url?: string;
       pr_number?: number;
-      files_changed?: any;
-      test_added?: any;
+      files_changed?: Record<string, any>;
+      test_added?: Record<string, any>;
       fix_summary?: string;
       rollback_notes?: string;
       error_log?: string;
@@ -215,7 +215,7 @@ export class EngineeringFixService {
     if (actor) {
       await this.assertFixCaseAccessible(fixCaseId, actor);
     }
-    const updateData: any = { updated_at: new Date() };
+    const updateData: Record<string, any> = { updated_at: new Date() };
     if (data.status) updateData.status = data.status;
     if (data.pr_url !== undefined) updateData.pr_url = data.pr_url;
     if (data.pr_number !== undefined) updateData.pr_number = data.pr_number;

@@ -35,12 +35,12 @@ export class WhatsAppService {
   // ── Enviar mensaje outbound ────────────────────────────────────────────────
 
   async sendMessage(
-    channel: any,
+    channel: Record<string, any>,
     to: string,
     bodyText: string,
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
-    const cfg: any = parseJsonValue<Record<string, any>>(raw, {});
+    const cfg: Record<string, any> = parseJsonValue<Record<string, any>>(raw, {});
     this.logger.log(`[DIAG] sendMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(',')}`);
     if (!cfg?.access_token_encrypted) {
       this.logger.error(`WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`);
@@ -77,14 +77,14 @@ export class WhatsAppService {
   }
 
   async sendMedia(
-    channel: any,
+    channel: Record<string, any>,
     to: string,
     mediaUrl: string,
     mediaType: 'image' | 'document',
     caption?: string,
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
-    const cfg: any = parseJsonValue<Record<string, any>>(raw, {});
+    const cfg: Record<string, any> = parseJsonValue<Record<string, any>>(raw, {});
     if (!cfg?.access_token_encrypted) {
       throw new BadGatewayException('WhatsApp access token no configurado.');
     }
@@ -129,7 +129,7 @@ export class WhatsAppService {
       body: bodyBuffer,
       signal: AbortSignal.timeout(30_000),
     });
-    const uploadData: any = await uploadRes.json();
+    const uploadData: Record<string, any> = await uploadRes.json();
     if (!uploadRes.ok || !uploadData.id) {
       this.logger.error('Meta media upload failed:', JSON.stringify(uploadData));
       throw new BadGatewayException(uploadData?.error?.message ?? 'Error subiendo archivo a WhatsApp.');
@@ -137,7 +137,7 @@ export class WhatsAppService {
     const mediaId = uploadData.id;
 
     // Step 3: Send message with media_id
-    const msgPayload: any = {
+    const msgPayload: Record<string, any> = {
       messaging_product: 'whatsapp',
       to,
       type: mediaType,
@@ -154,7 +154,7 @@ export class WhatsAppService {
       body: JSON.stringify(msgPayload),
       signal: AbortSignal.timeout(10_000),
     });
-    const sendData: any = await sendRes.json();
+    const sendData: Record<string, any> = await sendRes.json();
     if (!sendRes.ok) {
       this.logger.error('Meta media send failed:', JSON.stringify(sendData));
       throw new BadGatewayException(sendData?.error?.message ?? 'Error enviando archivo por WhatsApp.');
@@ -163,14 +163,14 @@ export class WhatsAppService {
   }
 
   async sendTemplateMessage(
-    channel: any,
+    channel: Record<string, any>,
     to: string,
     templateName: string,
     language: string,
     variables: Record<string, string>,
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
-    const cfg: any = parseJsonValue<Record<string, any>>(raw, {});
+    const cfg: Record<string, any> = parseJsonValue<Record<string, any>>(raw, {});
     this.logger.log(`[DIAG] sendTemplateMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(',')}`);
     if (!cfg?.access_token_encrypted) {
       this.logger.error(`WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`);
@@ -179,7 +179,7 @@ export class WhatsAppService {
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
-    const components: any[] = [];
+    const components: Record<string, any>[] = [];
     if (Object.keys(variables).length > 0) {
       components.push({
         type: 'body',
@@ -270,9 +270,9 @@ export class WhatsAppService {
   async findActiveWhatsappChannelByPhoneNumberId(
     phoneNumberId: string,
     workspaceId?: string,
-  ): Promise<{ id: string; workspace_id: string; config_json: any } | null> {
+  ): Promise<{ id: string; workspace_id: string; config_json: Record<string, any> } | null> {
     // Fast path: works when config_json is real JSONB object
-    const fastWhere: any = {
+    const fastWhere: Record<string, any> = {
       type: 'WHATSAPP',
       status: 'ACTIVE',
       config_json: { path: ['phone_number_id'], equals: phoneNumberId },
@@ -287,7 +287,7 @@ export class WhatsAppService {
     if (direct) return direct;
 
     // Legacy fallback: handles config_json stored as string JSON
-    const fallbackWhere: any = { type: 'WHATSAPP', status: 'ACTIVE' };
+    const fallbackWhere: Record<string, any> = { type: 'WHATSAPP', status: 'ACTIVE' };
     if (workspaceId) fallbackWhere.workspace_id = workspaceId;
 
     const channels = await this.prisma.channel.findMany({
@@ -307,7 +307,7 @@ export class WhatsAppService {
    * Process a stored WhatsApp webhook event asynchronously.
    * Called by WebhookEventsProcessor after claiming the event.
    */
-  async processInboundFromEvent(event: any): Promise<void> {
+  async processInboundFromEvent(event: Record<string, any>): Promise<void> {
     const payload = event.payload_json as any;
     const value = payload?.entry?.[0]?.changes?.[0]?.value;
     const phoneNumberId = value?.metadata?.phone_number_id;
@@ -469,7 +469,7 @@ export class WhatsAppService {
       this.logger.warn(`downloadInboundMediaToStorage: Meta metadata fetch failed — id=${mediaId} status=${metaRes.status}`);
       return;
     }
-    const metaData: any = await metaRes.json();
+    const metaData: Record<string, any> = await metaRes.json();
     const downloadUrl = metaData.url;
     const mimeType = metaData.mime_type || media.mimeType || 'application/octet-stream';
 
@@ -658,7 +658,7 @@ export class WhatsAppService {
     });
     if (!mediaRes.ok) throw new BadGatewayException('Error al obtener metadata del media');
 
-    const mediaData: any = await mediaRes.json();
+    const mediaData: Record<string, any> = await mediaRes.json();
     const downloadUrl = mediaData.url;
 
     const fileRes = await fetch(downloadUrl, {

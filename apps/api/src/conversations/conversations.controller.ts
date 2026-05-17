@@ -151,7 +151,7 @@ export class ConversationsController {
   ) {
     let bodyText = dto.body_text ?? '';
     let bodyHtml = dto.body_html ?? '';
-    let template: any = null;
+    let template: Record<string, any> | null = null;
 
     if (dto.template_id) {
       template = await this.templatesService.getById(user.workspace_id, dto.template_id);

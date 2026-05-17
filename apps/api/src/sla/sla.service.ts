@@ -55,7 +55,7 @@ export class SlaService {
     });
   }
 
-  async assignPolicy(workspaceId: string, slaPolicyId: string, data?: any) {
+  async assignPolicy(workspaceId: string, slaPolicyId: string, data?: Record<string, any>) {
     return this.prisma.workspaceSlaAssignment.create({
       data: {
         workspace: { connect: { id: workspaceId } },
