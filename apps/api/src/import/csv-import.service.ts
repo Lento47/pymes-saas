@@ -79,7 +79,7 @@ export class CsvImportService {
           continue;
         }
 
-        await this.prisma.contact.create({ data: contactData });
+        await this.prisma.contact.create({ data: contactData as any });
         imported++;
       } catch (err) {
         errors.push({ row: i + 1, reason: err.message ?? 'Error desconocido' });

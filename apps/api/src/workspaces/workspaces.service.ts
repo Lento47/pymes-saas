@@ -86,7 +86,7 @@ export class WorkspacesService {
       },
     });
 
-    return this.serializeWorkspace(workspace);
+    return this.serializeWorkspace(workspace as any);
   }
 
   // ── GET /workspaces/current/dashboard ────────────────────────────────────
@@ -305,7 +305,7 @@ export class WorkspacesService {
       },
     });
 
-    const serialized = this.serializeWorkspace(refreshed);
+    const serialized = this.serializeWorkspace(refreshed as any);
     this.events.emitWorkspaceUpdated(workspaceId, serialized);
 
     if (settingsChanged) {

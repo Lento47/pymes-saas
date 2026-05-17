@@ -40,13 +40,13 @@ function createRedisConnection(config: ConfigService) {
   });
 
   redis.on('error', (err: unknown) => {
-    if (err?.code === 'ECONNREFUSED') {
+    if ((err as NodeJS.ErrnoException)?.code === 'ECONNREFUSED') {
       if (!redisWarned) {
         logger.warn('Redis not available — background jobs disabled, using fallback rate limiting');
         redisWarned = true;
       }
     } else {
-      logger.error(`Redis error: ${err?.message ?? err}`);
+      logger.error(`Redis error: ${(err as Error)?.message ?? err}`);
     }
   });
 

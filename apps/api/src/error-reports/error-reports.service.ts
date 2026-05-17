@@ -68,7 +68,7 @@ export class ErrorReportsService {
         },
       });
     } catch (error: unknown) {
-      this.logger.error(`No se pudo guardar el error reportado por cliente: ${error?.message}`, error?.stack);
+      this.logger.error(`No se pudo guardar el error reportado por cliente: ${(error as Error)?.message}`, (error as Error)?.stack);
       return null;
     }
   }
@@ -113,7 +113,7 @@ export class ErrorReportsService {
         },
       });
     } catch (error: unknown) {
-      this.logger.error(`No se pudo guardar el error del servidor: ${error?.message}`, error?.stack);
+      this.logger.error(`No se pudo guardar el error del servidor: ${(error as Error)?.message}`, (error as Error)?.stack);
       return null;
     }
   }
@@ -175,7 +175,7 @@ export class ErrorReportsService {
       this.logger.log(`Auto-opened diagnostic case ${created.id} from ${input.source} report (${module})`);
       return created.id;
     } catch (error: unknown) {
-      this.logger.error(`No se pudo abrir caso desde reporte de error: ${error?.message}`);
+      this.logger.error(`No se pudo abrir caso desde reporte de error: ${(error as Error)?.message}`);
       return null;
     }
   }

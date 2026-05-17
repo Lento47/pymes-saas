@@ -26,8 +26,8 @@ export class SummaryProcessor {
         await this.generateWorkspaceSummary(workspace.id);
       } catch (error: unknown) {
         this.logger.error(
-          `Failed to generate summary for workspace ${workspace.id}: ${error?.message}`,
-          error?.stack,
+          `Failed to generate summary for workspace ${workspace.id}: ${(error as Error)?.message}`,
+          (error as Error)?.stack,
         );
       }
     }

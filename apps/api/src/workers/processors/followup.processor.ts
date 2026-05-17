@@ -43,8 +43,8 @@ export class FollowupProcessor {
         });
       } catch (error: unknown) {
         this.logger.error(
-          `Failed to create overdue notification for task ${task.id}: ${error?.message}`,
-          error?.stack,
+          `Failed to create overdue notification for task ${task.id}: ${(error as Error)?.message}`,
+          (error as Error)?.stack,
         );
       }
     }
@@ -83,8 +83,8 @@ export class FollowupProcessor {
         });
       } catch (error: unknown) {
         this.logger.error(
-          `Failed to create no-reply notification for conversation ${conv.id}: ${error?.message}`,
-          error?.stack,
+          `Failed to create no-reply notification for conversation ${conv.id}: ${(error as Error)?.message}`,
+          (error as Error)?.stack,
         );
       }
     }

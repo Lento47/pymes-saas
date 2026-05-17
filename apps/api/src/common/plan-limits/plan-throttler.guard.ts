@@ -15,7 +15,7 @@ const PLAN_RATE_LIMITS: Record<string, number> = {
 @Injectable()
 export class PlanThrottlerGuard extends ThrottlerGuard {
   constructor(options: Record<string, any>, storageService: Record<string, any>, reflector: Reflector, private readonly prisma: PrismaService) {
-    super(options, storageService, reflector);
+    super(options as any, storageService as any, reflector);
   }
 
   protected override async getTracker(req: Record<string, any>): Promise<string> {

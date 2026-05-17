@@ -69,7 +69,7 @@ export class InboundController {
     if (!svixSignature || !svixId || !svixTimestamp) {
       throw new UnauthorizedException('Missing Svix webhook signature headers.');
     }
-    const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(body));
+    const rawBody = (req as any).rawBody ?? Buffer.from(JSON.stringify(body));
     const isValid = this.verifySvixSignature(webhookSecret, svixId, svixTimestamp, rawBody, svixSignature);
     if (!isValid) {
       throw new UnauthorizedException('Invalid webhook signature.');
