@@ -261,6 +261,7 @@ model Workspace {
   product_categories   ProductCategory[]
   products             Product[]
   stock_movements      StockMovement[]
+  invitations          Invitation[]
 
   @@index([slug])
   @@index([status])
@@ -294,6 +295,7 @@ model User {
   error_reports         ErrorReport[]
   assigned_deals        Deal[]              @relation("DealAssignee")
   billing_events        BillingEvent[]
+  sent_invitations      Invitation[]        @relation("InvitedBy")
 
   @@index([email])
   @@index([status])

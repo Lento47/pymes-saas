@@ -94,7 +94,7 @@ export class ConversationsService {
         contact_id:       dto.contact_id,
         subject:          dto.subject,
         status:           'NEW',
-        priority:         dto.priority ?? 'MEDIUM',
+        priority:         (dto.priority ?? 'MEDIUM') as any,
         category:         dto.category,
         assigned_user_id: dto.assigned_user_id,
       },
@@ -167,7 +167,7 @@ export class ConversationsService {
         ...(dto.contact_id !== undefined && { contact_id: dto.contact_id }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
         updated_at: new Date(),
-      },
+      } as any,
     });
 
     if (dto.status !== undefined) {

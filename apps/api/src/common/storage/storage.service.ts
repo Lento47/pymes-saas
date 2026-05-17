@@ -41,6 +41,14 @@ export class StorageService {
     return this.resolveProvider().healthCheck();
   }
 
+  async getPresignedUrl(key: string, expiresInSeconds: number): Promise<string> {
+    if (this.resolveMode() === 'remote') {
+      return this.remoteStorage.getPresignedUrl(key, expiresInSeconds);
+    }
+    // For local storage, return the download path
+    return this.getDownloadPath(key);
+  }
+
   buildKey(
     workspaceId: string,
     documentId: string,

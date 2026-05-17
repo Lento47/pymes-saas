@@ -237,7 +237,7 @@ export class InvitationsService {
       data: {
         workspace_id: workspaceId,
         email,
-        role: dto.role,
+        role: dto.role as any,
         department_ids: serializeJson(dto.department_ids ?? []) ?? '[]',
         token_hash: tokenHash,
         invited_by_id: requestingUser.id,
@@ -455,8 +455,9 @@ export class InvitationsService {
           });
 
       // Department memberships
-      if (invitation.department_ids.length > 0) {
-        for (const deptId of invitation.department_ids) {
+      const deptIds = Array.isArray(invitation.department_ids) ? invitation.department_ids as string[] : [];
+      if (deptIds.length > 0) {
+        for (const deptId of deptIds) {
           await tx.departmentMember.upsert({
             where: {
               department_id_user_id: { department_id: deptId, user_id: user.id },

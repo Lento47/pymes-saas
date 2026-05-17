@@ -89,7 +89,7 @@ export class PipelineService {
         title: dto.title,
         value: dto.value ?? null,
         currency: dto.currency ?? 'CRC',
-        priority: dto.priority ?? 'MEDIUM',
+        priority: (dto.priority ?? 'MEDIUM') as any,
         closing_date: dto.closing_date ? new Date(dto.closing_date) : null,
         notes: dto.notes ?? null,
       },
@@ -120,7 +120,7 @@ export class PipelineService {
         ...(closing_date !== undefined
           ? { closing_date: closing_date ? new Date(closing_date) : null }
           : {}),
-      },
+      } as any,
       include: DEAL_INCLUDE,
     });
   }
