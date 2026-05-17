@@ -32,7 +32,7 @@ export function ConversationNotes({ conversationId, initialNotes, onSaved }: Pro
       onSaved?.(notes);
       toast({ title: 'Notas guardadas' });
       setTimeout(() => setSaved(false), 2000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' });
     } finally {
       setSaving(false);

@@ -33,7 +33,7 @@ export async function apiRequest(
       headers: data ? { "Content-Type": "application/json" } : {},
       body: data ? JSON.stringify(data) : undefined,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     void reportClientError({
       source: "FRONTEND",
       category: "QUERY_NETWORK",
@@ -60,7 +60,7 @@ export const getQueryFn: <T>(options: {
     let res: Response;
     try {
       res = await fetch(`${API_BASE}${queryKey.join("/")}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       void reportClientError({
         source: "FRONTEND",
         category: "QUERY_NETWORK",

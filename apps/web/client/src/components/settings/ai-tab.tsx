@@ -48,7 +48,7 @@ export function AiTab() {
       setApiKey("");
       toast({ title: "Configuración de IA guardada" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const testConnection = useMutation({
@@ -61,7 +61,7 @@ export function AiTab() {
       setTestResult(result);
       toast({ title: "Conexion validada" });
     },
-    onError: (e: any) => {
+    onError: (e) => {
       setTestResult({ ok: false, message: e.message });
       toast({ title: "Fallo la conexion", description: e.message, variant: "destructive" });
     },

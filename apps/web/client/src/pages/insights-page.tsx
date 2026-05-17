@@ -28,7 +28,7 @@ export default function InsightsPage() {
               <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70 md:text-lg">{copy.description || "Stop guessing. Get severity-ranked alerts with suggested actions based on real operational data."}</p>
             </div>
             <div className="mt-16 grid gap-6 md:grid-cols-3">
-              {(copy.cards || [{ title: "Peligro", desc: "Alertas críticas", example: "" }]).map(({ title, desc, example }: any, i: number) => {
+              {(copy.cards || [{ title: "Peligro", desc: "Alertas críticas", example: "" }]).map(({  title, desc, example  }, i: number) => {
                 const iconDefs = [
                   { Icon: AlertTriangle, color: "#ef4444" },
                   { Icon: TrendingUp, color: "#f59e0b" },

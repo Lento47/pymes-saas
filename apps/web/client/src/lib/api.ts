@@ -78,8 +78,8 @@ export function isLoggedIn() {
   try { return !!getStorage().getItem('pymes_token'); } catch { return false; }
 }
 
-export function parsePlanError(err: any): { isPlanLimit: boolean; message: string } {
-  const raw: string = err?.message ?? "";
+export function parsePlanError(err: unknown): { isPlanLimit: boolean; message: string } {
+  const raw: string = err instanceof Error ? err.message : String(err);
   const isPlanLimit = raw.startsWith("403:");
   const message = isPlanLimit ? raw.replace(/^403:\s*/, "").replace(/^\d+\s*/, "").trim() : raw;
   return { isPlanLimit, message };
@@ -165,7 +165,7 @@ async function request<T>(
   try {
     updateLastActivity();
     res = await fetch(`${API_BASE}${path}`, { method, headers: buildHeaders(), body, signal: controller.signal });
-  } catch (error: any) {
+  } catch (error: unknown) {
     clearTimeout(timeout);
     if (!path.includes("/error-reports/client")) {
       void reportClientError({
@@ -234,16 +234,16 @@ async function request<T>(
 
 export const api = {
   getInvitePreview: (token: string) =>
-    request<any>("POST", "/api/auth/invite-preview", { token }),
+    request<Record<string, any>>("POST", "/api/auth/invite-preview", { token }),
   acceptInvite: (data: { token: string; name?: string; password?: string }) =>
-    request<any>("POST", "/api/auth/accept-invite", data),
-  previewInviteCode: (code: string) => request<any>("POST", "/api/auth/invite-code-preview", { code }),
+    request<Record<string, any>>("POST", "/api/auth/accept-invite", data),
+  previewInviteCode: (code: string) => request<Record<string, any>>("POST", "/api/auth/invite-code-preview", { code }),
   redeemInviteCode: (data: { code: string; name?: string; password?: string }) =>
-    request<any>("POST", "/api/auth/redeem-invite-code", data),
-  getInviteCodes: () => request<any>("GET", "/api/workspaces/current/invite-codes"),
+    request<Record<string, any>>("POST", "/api/auth/redeem-invite-code", data),
+  getInviteCodes: () => request<Record<string, any>>("GET", "/api/workspaces/current/invite-codes"),
   createInviteCode: (data: { role?: string; max_uses?: number; expires_in_days?: number }) =>
-    request<any>("POST", "/api/workspaces/current/invite-codes", data),
-  revokeInviteCode: (id: string) => request<any>("DELETE", `/api/workspaces/current/invite-codes/${id}`),
+    request<Record<string, any>>("POST", "/api/workspaces/current/invite-codes", data),
+  revokeInviteCode: (id: string) => request<Record<string, any>>("DELETE", `/api/workspaces/current/invite-codes/${id}`),
   login: async (email: string, password: string, workspaceSlug: string) => {
     const r = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
@@ -267,290 +267,290 @@ export const api = {
       }
       throw new Error(`${r.status}: ${text}`);
     }
-    return r.json() as Promise<{ access_token: string; refresh_token: string; user: any }>;
+    return r.json() as Promise<{ access_token: string; refresh_token: string; user: Record<string, any> }>;
   },
-  logout: () => request<any>("POST", "/api/auth/logout"),
-  getMe: () => request<any>("GET", "/api/auth/me"),
-  generateSummary: () => request<any>("POST", "/api/summaries/generate"),
+  logout: () => request<Record<string, any>>("POST", "/api/auth/logout"),
+  getMe: () => request<Record<string, any>>("GET", "/api/auth/me"),
+  generateSummary: () => request<Record<string, any>>("POST", "/api/summaries/generate"),
   getDailySummaries: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-    return request<any>("GET", `/api/summaries/daily${qs}`);
+    return request<Record<string, any>>("GET", `/api/summaries/daily${qs}`);
   },
   getConversations: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-    return request<any>("GET", `/api/conversations${qs}`);
+    return request<Record<string, any>>("GET", `/api/conversations${qs}`);
   },
-  getConversation: (id: string) => request<any>("GET", `/api/conversations/${id}`),
-  createConversation: (data: any) => request<any>("POST", "/api/conversations", data),
-  updateConversation: (id: string, data: any) => request<any>("PATCH", `/api/conversations/${id}`, data),
-  assignConversation: (id: string, userId: string) => request<any>("POST", `/api/conversations/${id}/assign`, { user_id: userId }),
-  resolveConversation: (id: string) => request<any>("POST", `/api/conversations/${id}/resolve`),
-  deleteConversation: (id: string) => request<any>("DELETE", `/api/conversations/${id}`),
-  getMessages: (conversationId: string) => request<any>("GET", `/api/conversations/${conversationId}/messages`),
-  sendMessage: (conversationId: string, data: any) => request<any>("POST", `/api/conversations/${conversationId}/messages`, data),
+  getConversation: (id: string) => request<Record<string, any>>("GET", `/api/conversations/${id}`),
+  createConversation: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/conversations", data),
+  updateConversation: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/conversations/${id}`, data),
+  assignConversation: (id: string, userId: string) => request<Record<string, any>>("POST", `/api/conversations/${id}/assign`, { user_id: userId }),
+  resolveConversation: (id: string) => request<Record<string, any>>("POST", `/api/conversations/${id}/resolve`),
+  deleteConversation: (id: string) => request<Record<string, any>>("DELETE", `/api/conversations/${id}`),
+  getMessages: (conversationId: string) => request<Record<string, any>>("GET", `/api/conversations/${conversationId}/messages`),
+  sendMessage: (conversationId: string, data: Record<string, any>) => request<Record<string, any>>("POST", `/api/conversations/${conversationId}/messages`, data),
   getContacts: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-    return request<any>("GET", `/api/contacts${qs}`);
+    return request<Record<string, any>>("GET", `/api/contacts${qs}`);
   },
-  getContact: (id: string) => request<any>("GET", `/api/contacts/${id}`),
-  createContact: (data: any) => request<any>("POST", "/api/contacts", data),
-  updateContact: (id: string, data: any) => request<any>("PATCH", `/api/contacts/${id}`, data),
-  deleteContact: (id: string) => request<any>("DELETE", `/api/contacts/${id}`),
-  getContactMetrics: (id: string) => request<any>("GET", `/api/contacts/${id}/metrics`),
-  extractContactData: (id: string) => request<any>("POST", `/api/contacts/${id}/extract`),
+  getContact: (id: string) => request<Record<string, any>>("GET", `/api/contacts/${id}`),
+  createContact: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/contacts", data),
+  updateContact: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/contacts/${id}`, data),
+  deleteContact: (id: string) => request<Record<string, any>>("DELETE", `/api/contacts/${id}`),
+  getContactMetrics: (id: string) => request<Record<string, any>>("GET", `/api/contacts/${id}/metrics`),
+  extractContactData: (id: string) => request<Record<string, any>>("POST", `/api/contacts/${id}/extract`),
   getTasks: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-    return request<any>("GET", `/api/tasks${qs}`);
+    return request<Record<string, any>>("GET", `/api/tasks${qs}`);
   },
   getInvoices: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-    return request<any>("GET", `/api/invoices${qs}`);
+    return request<Record<string, any>>("GET", `/api/invoices${qs}`);
   },
-  getInvoice: (id: string) => request<any>("GET", `/api/invoices/${id}`),
-  createInvoice: (data: any) => request<any>("POST", "/api/invoices", data),
-  updateInvoice: (id: string, data: any) => request<any>("PATCH", `/api/invoices/${id}`, data),
-  deleteInvoice: (id: string) => request<any>("DELETE", `/api/invoices/${id}`),
-  markInvoicePaid: (id: string) => request<any>("POST", `/api/invoices/${id}/paid`),
-  approveInvoice: (id: string) => request<any>("POST", `/api/invoices/${id}/approve`),
-  rejectInvoice: (id: string, reason: string) => request<any>("POST", `/api/invoices/${id}/reject`, { reason }),
-  getPendingApprovals: () => request<any>("GET", "/api/invoices/pending-approvals"),
-  registerInvoicePayment: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/payments`, data),
-  submitInvoiceToHacienda: (id: string) => request<any>("POST", `/api/invoices/${id}/submit`),
-  syncInvoiceHaciendaStatus: (id: string) => request<any>("GET", `/api/invoices/${id}/hacienda-status`),
-  createCreditNote: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/credit-note`, data),
-  createDebitNote: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/debit-note`, data),
-  createReceiverMessage: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/receiver-message`, data),
-  detectOverdueInvoices: () => request<any>("GET", "/api/invoices/overdue"),
-  generateInvoiceReminder: (id: string) => request<any>("POST", `/api/invoices/${id}/reminder`),
-  sendInvoiceReminder: (id: string, data: any) => request<any>("POST", `/api/invoices/${id}/reminder/send`, data),
-  validateInvoiceForHacienda: (id: string) => request<any>("POST", `/api/invoices/${id}/hacienda-validate`),
-  getInvoiceHaciendaErrorExplain: (id: string) => request<any>("GET", `/api/invoices/${id}/hacienda-error-explain`),
+  getInvoice: (id: string) => request<Record<string, any>>("GET", `/api/invoices/${id}`),
+  createInvoice: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/invoices", data),
+  updateInvoice: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/invoices/${id}`, data),
+  deleteInvoice: (id: string) => request<Record<string, any>>("DELETE", `/api/invoices/${id}`),
+  markInvoicePaid: (id: string) => request<Record<string, any>>("POST", `/api/invoices/${id}/paid`),
+  approveInvoice: (id: string) => request<Record<string, any>>("POST", `/api/invoices/${id}/approve`),
+  rejectInvoice: (id: string, reason: string) => request<Record<string, any>>("POST", `/api/invoices/${id}/reject`, { reason }),
+  getPendingApprovals: () => request<Record<string, any>>("GET", "/api/invoices/pending-approvals"),
+  registerInvoicePayment: (id: string, data: Record<string, any>) => request<Record<string, any>>("POST", `/api/invoices/${id}/payments`, data),
+  submitInvoiceToHacienda: (id: string) => request<Record<string, any>>("POST", `/api/invoices/${id}/submit`),
+  syncInvoiceHaciendaStatus: (id: string) => request<Record<string, any>>("GET", `/api/invoices/${id}/hacienda-status`),
+  createCreditNote: (id: string, data: Record<string, any>) => request<Record<string, any>>("POST", `/api/invoices/${id}/credit-note`, data),
+  createDebitNote: (id: string, data: Record<string, any>) => request<Record<string, any>>("POST", `/api/invoices/${id}/debit-note`, data),
+  createReceiverMessage: (id: string, data: Record<string, any>) => request<Record<string, any>>("POST", `/api/invoices/${id}/receiver-message`, data),
+  detectOverdueInvoices: () => request<Record<string, any>>("GET", "/api/invoices/overdue"),
+  generateInvoiceReminder: (id: string) => request<Record<string, any>>("POST", `/api/invoices/${id}/reminder`),
+  sendInvoiceReminder: (id: string, data: Record<string, any>) => request<Record<string, any>>("POST", `/api/invoices/${id}/reminder/send`, data),
+  validateInvoiceForHacienda: (id: string) => request<Record<string, any>>("POST", `/api/invoices/${id}/hacienda-validate`),
+  getInvoiceHaciendaErrorExplain: (id: string) => request<Record<string, any>>("GET", `/api/invoices/${id}/hacienda-error-explain`),
   getInvoiceTemplates: (industry?: string) => {
     const qs = industry ? `?industry=${encodeURIComponent(industry)}` : "";
-    return request<any>("GET", `/api/invoices/templates${qs}`);
+    return request<Record<string, any>>("GET", `/api/invoices/templates${qs}`);
   },
-  getInvoiceXmlPreview: (id: string) => request<any>("GET", `/api/invoices/${id}/xml-preview`),
-  createTask: (data: any) => request<any>("POST", "/api/tasks", data),
-  updateTask: (id: string, data: any) => request<any>("PATCH", `/api/tasks/${id}`, data),
-  completeTask: (id: string) => request<any>("POST", `/api/tasks/${id}/complete`),
-  deleteTask: (id: string) => request<any>("DELETE", `/api/tasks/${id}`),
-  getOverdueTasks: () => request<any>("GET", "/api/tasks/overdue"),
-  getDocument: (id: string) => request<any>("GET", `/api/documents/${id}`),
+  getInvoiceXmlPreview: (id: string) => request<Record<string, any>>("GET", `/api/invoices/${id}/xml-preview`),
+  createTask: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/tasks", data),
+  updateTask: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/tasks/${id}`, data),
+  completeTask: (id: string) => request<Record<string, any>>("POST", `/api/tasks/${id}/complete`),
+  deleteTask: (id: string) => request<Record<string, any>>("DELETE", `/api/tasks/${id}`),
+  getOverdueTasks: () => request<Record<string, any>>("GET", "/api/tasks/overdue"),
+  getDocument: (id: string) => request<Record<string, any>>("GET", `/api/documents/${id}`),
   getDocuments: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-    return request<any>("GET", `/api/documents${qs}`);
+    return request<Record<string, any>>("GET", `/api/documents${qs}`);
   },
-  uploadDocument: (formData: FormData) => request<any>("POST", "/api/documents/upload", formData, { isFormData: true }),
+  uploadDocument: (formData: FormData) => request<Record<string, any>>("POST", "/api/documents/upload", formData, { isFormData: true }),
   uploadAttachment: (formData: FormData) => request<{ url: string }>("POST", "/api/documents/upload-attachment", formData, { isFormData: true }),
-  deleteDocument: (id: string) => request<any>("DELETE", `/api/documents/${id}`),
-  getAutomations: () => request<any>("GET", "/api/automations"),
-  createAutomation: (data: any) => request<any>("POST", "/api/automations", data),
-  toggleAutomation: (id: string) => request<any>("POST", `/api/automations/${id}/toggle`),
-  updateAutomation: (id: string, data: any) => request<any>("PATCH", `/api/automations/${id}`, data),
-  deleteAutomation: (id: string) => request<any>("DELETE", `/api/automations/${id}`),
-  getWorkspace: () => request<any>("GET", "/api/workspaces/current"),
-  updateWorkspace: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
-  testAiConnection: (data: any) => request<any>("POST", "/api/workspaces/current/ai/test", data),
-  createCheckout: (priceId: string) => request<any>("POST", "/api/billing/checkout", { priceId }),
-  getBillingPrices: () => request<any>("GET", "/api/billing/prices"),
-  getAddonPrices: () => request<any>("GET", "/api/billing/addon-prices"),
-  createAddonCheckout: (addonKey: string) => request<any>("POST", "/api/billing/checkout-addon", { addonKey }),
-  getBillingPortal: () => request<any>("GET", "/api/billing/portal"),
+  deleteDocument: (id: string) => request<Record<string, any>>("DELETE", `/api/documents/${id}`),
+  getAutomations: () => request<Record<string, any>>("GET", "/api/automations"),
+  createAutomation: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/automations", data),
+  toggleAutomation: (id: string) => request<Record<string, any>>("POST", `/api/automations/${id}/toggle`),
+  updateAutomation: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/automations/${id}`, data),
+  deleteAutomation: (id: string) => request<Record<string, any>>("DELETE", `/api/automations/${id}`),
+  getWorkspace: () => request<Record<string, any>>("GET", "/api/workspaces/current"),
+  updateWorkspace: (data: Record<string, any>) => request<Record<string, any>>("PATCH", "/api/workspaces/current", data),
+  testAiConnection: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/workspaces/current/ai/test", data),
+  createCheckout: (priceId: string) => request<Record<string, any>>("POST", "/api/billing/checkout", { priceId }),
+  getBillingPrices: () => request<Record<string, any>>("GET", "/api/billing/prices"),
+  getAddonPrices: () => request<Record<string, any>>("GET", "/api/billing/addon-prices"),
+  createAddonCheckout: (addonKey: string) => request<Record<string, any>>("POST", "/api/billing/checkout-addon", { addonKey }),
+  getBillingPortal: () => request<Record<string, any>>("GET", "/api/billing/portal"),
   getBillingInvoices: (params?: { page?: number; limit?: number; search?: string }) => {
     const qs = params ? "?" + new URLSearchParams(
       Object.fromEntries(
         Object.entries(params).filter(([, v]) => v !== undefined && v !== '')
       ) as Record<string, string>
     ).toString() : "";
-    return request<any>("GET", `/api/billing/invoices${qs}`);
+    return request<Record<string, any>>("GET", `/api/billing/invoices${qs}`);
   },
-  getSubscription: () => request<any>("GET", "/api/workspaces/current/subscription"),
-  cancelPlan: () => request<any>("POST", "/api/billing/cancel"),
-  changePlan: (priceId: string) => request<any>("POST", "/api/billing/change-plan", { priceId }),
-  getApiKeys: () => request<any>("GET", "/api/workspaces/current/api-keys"),
-  updateApiKeys: (data: any) => request<any>("PATCH", "/api/workspaces/current", data),
-  getMembers: () => request<any>("GET", "/api/workspaces/current/members"),
-  inviteUser: (data: any) => request<any>("POST", "/api/workspaces/current/members/invite", data),
-  changeMemberRole: (userId: string, newRole: string) => request<any>("PATCH", `/api/workspaces/current/members/${userId}/role`, { role: newRole }),
-  removeMember: (userId: string) => request<any>("DELETE", `/api/workspaces/current/members/${userId}`),
-  updateUser: (userId: string, data: any) => request<any>("PATCH", `/api/users/${userId}`, data),
-  updateMe: (data: any) => request<any>("PATCH", "/api/users/me", data),
-  changePassword: (data: { current_password: string; new_password: string }) => request<any>("PATCH", "/api/users/me/password", data),
-  uploadAvatar: (formData: FormData) => request<any>("POST", "/api/users/me/avatar", formData, { isFormData: true }),
-  getChannels: () => request<any>("GET", "/api/channels"),
-  getAllChannels: () => request<any>("GET", "/api/channels?include_inactive=true"),
-  getWhatsAppConfig: () => request<any>("GET", "/api/channels/whatsapp-config"),
-  createChannel: (data: any) => request<any>("POST", "/api/channels", data),
-  updateChannel: (id: string, data: any) => request<any>("PATCH", `/api/channels/${id}`, data),
-  deleteChannel: (id: string) => request<any>("DELETE", `/api/channels/${id}`),
-  connectChannel: (id: string) => request<any>("POST", `/api/channels/${id}/connect`),
-  disconnectChannel: (id: string) => request<any>("POST", `/api/channels/${id}/disconnect`),
-  getNotifications: () => request<any>("GET", "/api/notifications"),
-  getUnreadCount: () => request<any>("GET", "/api/notifications/unread-count"),
-  markRead: (data: any) => request<any>("POST", "/api/notifications/mark-read", data),
+  getSubscription: () => request<Record<string, any>>("GET", "/api/workspaces/current/subscription"),
+  cancelPlan: () => request<Record<string, any>>("POST", "/api/billing/cancel"),
+  changePlan: (priceId: string) => request<Record<string, any>>("POST", "/api/billing/change-plan", { priceId }),
+  getApiKeys: () => request<Record<string, any>>("GET", "/api/workspaces/current/api-keys"),
+  updateApiKeys: (data: Record<string, any>) => request<Record<string, any>>("PATCH", "/api/workspaces/current", data),
+  getMembers: () => request<Record<string, any>>("GET", "/api/workspaces/current/members"),
+  inviteUser: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/workspaces/current/members/invite", data),
+  changeMemberRole: (userId: string, newRole: string) => request<Record<string, any>>("PATCH", `/api/workspaces/current/members/${userId}/role`, { role: newRole }),
+  removeMember: (userId: string) => request<Record<string, any>>("DELETE", `/api/workspaces/current/members/${userId}`),
+  updateUser: (userId: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/users/${userId}`, data),
+  updateMe: (data: Record<string, any>) => request<Record<string, any>>("PATCH", "/api/users/me", data),
+  changePassword: (data: { current_password: string; new_password: string }) => request<Record<string, any>>("PATCH", "/api/users/me/password", data),
+  uploadAvatar: (formData: FormData) => request<Record<string, any>>("POST", "/api/users/me/avatar", formData, { isFormData: true }),
+  getChannels: () => request<Record<string, any>>("GET", "/api/channels"),
+  getAllChannels: () => request<Record<string, any>>("GET", "/api/channels?include_inactive=true"),
+  getWhatsAppConfig: () => request<Record<string, any>>("GET", "/api/channels/whatsapp-config"),
+  createChannel: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/channels", data),
+  updateChannel: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/channels/${id}`, data),
+  deleteChannel: (id: string) => request<Record<string, any>>("DELETE", `/api/channels/${id}`),
+  connectChannel: (id: string) => request<Record<string, any>>("POST", `/api/channels/${id}/connect`),
+  disconnectChannel: (id: string) => request<Record<string, any>>("POST", `/api/channels/${id}/disconnect`),
+  getNotifications: () => request<Record<string, any>>("GET", "/api/notifications"),
+  getUnreadCount: () => request<Record<string, any>>("GET", "/api/notifications/unread-count"),
+  markRead: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/notifications/mark-read", data),
   getAuditLogs: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-    return request<any>("GET", `/api/audit${qs}`);
+    return request<Record<string, any>>("GET", `/api/audit${qs}`);
   },
-  getDashboard: () => request<any>("GET", "/api/workspaces/current/dashboard"),
-  getWorkspaceStats: () => request<any>("GET", "/api/workspaces/current/stats"),
-  getTodayStats: () => request<any>("GET", "/api/workspaces/current/stats/today"),
-  exportData: (type: string) => request<any>("GET", `/api/workspaces/current/export?type=${type}`),
+  getDashboard: () => request<Record<string, any>>("GET", "/api/workspaces/current/dashboard"),
+  getWorkspaceStats: () => request<Record<string, any>>("GET", "/api/workspaces/current/stats"),
+  getTodayStats: () => request<Record<string, any>>("GET", "/api/workspaces/current/stats/today"),
+  exportData: (type: string) => request<Record<string, any>>("GET", `/api/workspaces/current/export?type=${type}`),
   search: (q: string, types?: string) => {
     const params = new URLSearchParams({ q });
     if (types) params.set("types", types);
-    return request<any>("GET", `/api/search?${params.toString()}`);
+    return request<Record<string, any>>("GET", `/api/search?${params.toString()}`);
   },
   configureEmail: (id: string, data: { api_key?: string; from_email: string; inbound_email?: string; from_name: string }) =>
-    request<any>('POST', `/api/channels/${id}/configure-email`, data),
+    request<Record<string, any>>('POST', `/api/channels/${id}/configure-email`, data),
   configureWhatsApp: (id: string, data: { access_token: string; phone_number_id: string; waba_id: string }) =>
-    request<any>('POST', `/api/channels/${id}/configure-whatsapp`, data),
+    request<Record<string, any>>('POST', `/api/channels/${id}/configure-whatsapp`, data),
   configureTelegram: (id: string, data: { bot_token?: string }) =>
-    request<any>('POST', `/api/channels/${id}/configure-telegram`, data),
+    request<Record<string, any>>('POST', `/api/channels/${id}/configure-telegram`, data),
   getTelegramWebhookStatus: (channelId: string) =>
-    request<any>('GET', `/api/inbound/telegram/${channelId}/webhook-status`),
-  getDepartments: () => request<any>("GET", "/api/departments"),
-  createDepartment: (data: any) => request<any>("POST", "/api/departments", data),
-  updateDepartment: (id: string, data: any) => request<any>("PATCH", `/api/departments/${id}`, data),
-  deleteDepartment: (id: string) => request<any>("DELETE", `/api/departments/${id}`),
-  getDepartmentMembers: (id: string) => request<any>("GET", `/api/departments/${id}/members`),
+    request<Record<string, any>>('GET', `/api/inbound/telegram/${channelId}/webhook-status`),
+  getDepartments: () => request<Record<string, any>>("GET", "/api/departments"),
+  createDepartment: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/departments", data),
+  updateDepartment: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/departments/${id}`, data),
+  deleteDepartment: (id: string) => request<Record<string, any>>("DELETE", `/api/departments/${id}`),
+  getDepartmentMembers: (id: string) => request<Record<string, any>>("GET", `/api/departments/${id}/members`),
   addDepartmentMember: (id: string, data: { user_id: string; is_lead?: boolean }) =>
-    request<any>("POST", `/api/departments/${id}/members`, data),
+    request<Record<string, any>>("POST", `/api/departments/${id}/members`, data),
   removeDepartmentMember: (id: string, userId: string) =>
-    request<any>("DELETE", `/api/departments/${id}/members/${userId}`),
-  getInsights: () => request<any>("GET", "/api/insights"),
+    request<Record<string, any>>("DELETE", `/api/departments/${id}/members/${userId}`),
+  getInsights: () => request<Record<string, any>>("GET", "/api/insights"),
   validateTaxpayer: (identificacion: string) =>
-    request<any>("POST", "/api/hacienda/validate-taxpayer", { identificacion }),
+    request<Record<string, any>>("POST", "/api/hacienda/validate-taxpayer", { identificacion }),
   searchCabys: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-    return request<any>("GET", `/api/hacienda/cabys${qs}`);
+    return request<Record<string, any>>("GET", `/api/hacienda/cabys${qs}`);
   },
-  getExoneration: (authorization: string) => request<any>("GET", `/api/hacienda/exonerations/${authorization}`),
-  getExchangeRate: () => request<any>("GET", "/api/hacienda/exchange-rate"),
-  listCertificates: () => request<any[]>("GET", "/api/hacienda/certificates"),
-  uploadCertificate: (form: FormData) => request<any>("POST", "/api/hacienda/certificates", form, { isFormData: true }),
-  revokeCertificate: (id: string) => request<any>("DELETE", `/api/hacienda/certificates/${id}`),
+  getExoneration: (authorization: string) => request<Record<string, any>>("GET", `/api/hacienda/exonerations/${authorization}`),
+  getExchangeRate: () => request<Record<string, any>>("GET", "/api/hacienda/exchange-rate"),
+  listCertificates: () => request<Record<string, any>[]>("GET", "/api/hacienda/certificates"),
+  uploadCertificate: (form: FormData) => request<Record<string, any>>("POST", "/api/hacienda/certificates", form, { isFormData: true }),
+  revokeCertificate: (id: string) => request<Record<string, any>>("DELETE", `/api/hacienda/certificates/${id}`),
   // Business profile (onboarding wizard)
-  getBusinessProfile: () => request<any>("GET", "/api/workspaces/business-profile"),
+  getBusinessProfile: () => request<Record<string, any>>("GET", "/api/workspaces/business-profile"),
   saveBusinessProfile: (data: { categories: string[]; team_size: string; channels: string[]; needs: string[] }) =>
-    request<any>("POST", "/api/workspaces/business-profile", data),
-  getPipelineStages: () => request<any>("GET", "/api/pipeline/stages"),
-  createPipelineStage: (data: any) => request<any>("POST", "/api/pipeline/stages", data),
-  updatePipelineStage: (id: string, data: any) => request<any>("PATCH", `/api/pipeline/stages/${id}`, data),
-  deletePipelineStage: (id: string) => request<any>("DELETE", `/api/pipeline/stages/${id}`),
-  createDeal: (data: any) => request<any>("POST", "/api/pipeline/deals", data),
-  updateDeal: (id: string, data: any) => request<any>("PATCH", `/api/pipeline/deals/${id}`, data),
-  moveDeal: (id: string, stageId: string) => request<any>("PATCH", `/api/pipeline/deals/${id}/move`, { stage_id: stageId }),
-  winDeal: (id: string) => request<any>("POST", `/api/pipeline/deals/${id}/win`),
-  deleteDeal: (id: string) => request<any>("DELETE", `/api/pipeline/deals/${id}`),
-  refresh: (token: string) => request<any>("POST", "/api/auth/refresh", { refresh_token: token }),
-  getMyWorkspaces: () => request<any>("GET", "/api/auth/my-workspaces"),
+    request<Record<string, any>>("POST", "/api/workspaces/business-profile", data),
+  getPipelineStages: () => request<Record<string, any>>("GET", "/api/pipeline/stages"),
+  createPipelineStage: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/pipeline/stages", data),
+  updatePipelineStage: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/pipeline/stages/${id}`, data),
+  deletePipelineStage: (id: string) => request<Record<string, any>>("DELETE", `/api/pipeline/stages/${id}`),
+  createDeal: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/pipeline/deals", data),
+  updateDeal: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/pipeline/deals/${id}`, data),
+  moveDeal: (id: string, stageId: string) => request<Record<string, any>>("PATCH", `/api/pipeline/deals/${id}/move`, { stage_id: stageId }),
+  winDeal: (id: string) => request<Record<string, any>>("POST", `/api/pipeline/deals/${id}/win`),
+  deleteDeal: (id: string) => request<Record<string, any>>("DELETE", `/api/pipeline/deals/${id}`),
+  refresh: (token: string) => request<Record<string, any>>("POST", "/api/auth/refresh", { refresh_token: token }),
+  getMyWorkspaces: () => request<Record<string, any>>("GET", "/api/auth/my-workspaces"),
   switchWorkspace: (workspace_slug: string) =>
-    request<any>("POST", "/api/auth/switch-workspace", { workspace_slug }),
+    request<Record<string, any>>("POST", "/api/auth/switch-workspace", { workspace_slug }),
   register: (data: { email: string; name: string; password: string }) =>
-    request<any>("POST", "/api/auth/register", data),
-  platformListWorkspaces: () => request<any>("GET", "/api/platform/workspaces"),
-  platformGetWorkspaceBilling: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}/billing`),
-  platformUpdateWorkspaceBilling: (slug: string, data: any) =>
-    request<any>("PATCH", `/api/platform/workspaces/${slug}/billing`, data),
-  platformListMembers: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}/members`),
+    request<Record<string, any>>("POST", "/api/auth/register", data),
+  platformListWorkspaces: () => request<Record<string, any>>("GET", "/api/platform/workspaces"),
+  platformGetWorkspaceBilling: (slug: string) => request<Record<string, any>>("GET", `/api/platform/workspaces/${slug}/billing`),
+  platformUpdateWorkspaceBilling: (slug: string, data: Record<string, any>) =>
+    request<Record<string, any>>("PATCH", `/api/platform/workspaces/${slug}/billing`, data),
+  platformListMembers: (slug: string) => request<Record<string, any>>("GET", `/api/platform/workspaces/${slug}/members`),
   platformAssignMember: (slug: string, data: { email: string; role?: string }) =>
-    request<any>("POST", `/api/platform/workspaces/${slug}/members`, data),
+    request<Record<string, any>>("POST", `/api/platform/workspaces/${slug}/members`, data),
   platformUpdateMemberRole: (slug: string, userId: string, role: string) =>
-    request<any>("PATCH", `/api/platform/workspaces/${slug}/members/${userId}/role`, { role }),
+    request<Record<string, any>>("PATCH", `/api/platform/workspaces/${slug}/members/${userId}/role`, { role }),
   platformRemoveMember: (slug: string, userId: string) =>
-    request<any>("DELETE", `/api/platform/workspaces/${slug}/members/${userId}`),
+    request<Record<string, any>>("DELETE", `/api/platform/workspaces/${slug}/members/${userId}`),
   platformSearchUsers: (email?: string) => {
     const qs = email ? `?email=${encodeURIComponent(email)}` : "";
-    return request<any>("GET", `/api/platform/users${qs}`);
+    return request<Record<string, any>>("GET", `/api/platform/users${qs}`);
   },
   platformCreateUser: (data: { email: string; name: string; password: string; is_platform_admin?: boolean }) =>
-    request<any>("POST", "/api/platform/users", data),
+    request<Record<string, any>>("POST", "/api/platform/users", data),
   platformUpdateUserPassword: (userId: string, password: string) =>
-    request<any>("PATCH", `/api/platform/users/${userId}/password`, { password }),
+    request<Record<string, any>>("PATCH", `/api/platform/users/${userId}/password`, { password }),
   platformResetUserPassword: (userId: string) =>
-    request<any>("POST", `/api/platform/users/${userId}/reset-password`),
+    request<Record<string, any>>("POST", `/api/platform/users/${userId}/reset-password`),
   platformUpdateUserStatus: (userId: string, status: string) =>
-    request<any>("PATCH", `/api/platform/users/${userId}/status`, { status }),
-  platformDeleteUser: (userId: string) => request<any>("DELETE", `/api/platform/users/${userId}`),
-  platformGetStats: () => request<any>("GET", "/api/platform/stats"),
-  platformToggleAdmin: (userId: string) => request<any>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
-  platformGetWorkspaceBySlug: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}`),
-  platformDeleteWorkspace: (slug: string) => request<any>("DELETE", `/api/platform/workspaces/${slug}`),
-  platformGetWorkspaceFeatures: (slug: string) => request<any>("GET", `/api/platform/workspaces/${slug}/features`),
-  platformUpdateWorkspaceFeatures: (slug: string, data: any) => request<any>("PATCH", `/api/platform/workspaces/${slug}/features`, data),
-  platformGetPlanLimits: () => request<any>("GET", "/api/platform/plan-limits"),
-  platformUpdatePlanLimits: (overrides: { plan: string; resource: string; value: number }[]) => request<any>("PATCH", "/api/platform/plan-limits", { overrides }),
-  getCurrentFeatures: () => request<any>("GET", "/api/workspaces/current/features"),
-  askAssistant: (prompt: string) => request<any>("POST", "/api/workspaces/current/ai/assist", { prompt }),
-  createAgentStream: (message: string, conversationId?: string) => request<any>("POST", "/api/agent/stream", { message, conversationId }),
-  executeAgentTool: (tool: string, args?: any) => request<any>("POST", "/api/agent/tool", { tool, args }),
+    request<Record<string, any>>("PATCH", `/api/platform/users/${userId}/status`, { status }),
+  platformDeleteUser: (userId: string) => request<Record<string, any>>("DELETE", `/api/platform/users/${userId}`),
+  platformGetStats: () => request<Record<string, any>>("GET", "/api/platform/stats"),
+  platformToggleAdmin: (userId: string) => request<Record<string, any>>("PATCH", `/api/platform/users/${userId}/toggle-admin`),
+  platformGetWorkspaceBySlug: (slug: string) => request<Record<string, any>>("GET", `/api/platform/workspaces/${slug}`),
+  platformDeleteWorkspace: (slug: string) => request<Record<string, any>>("DELETE", `/api/platform/workspaces/${slug}`),
+  platformGetWorkspaceFeatures: (slug: string) => request<Record<string, any>>("GET", `/api/platform/workspaces/${slug}/features`),
+  platformUpdateWorkspaceFeatures: (slug: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/platform/workspaces/${slug}/features`, data),
+  platformGetPlanLimits: () => request<Record<string, any>>("GET", "/api/platform/plan-limits"),
+  platformUpdatePlanLimits: (overrides: { plan: string; resource: string; value: number }[]) => request<Record<string, any>>("PATCH", "/api/platform/plan-limits", { overrides }),
+  getCurrentFeatures: () => request<Record<string, any>>("GET", "/api/workspaces/current/features"),
+  askAssistant: (prompt: string) => request<Record<string, any>>("POST", "/api/workspaces/current/ai/assist", { prompt }),
+  createAgentStream: (message: string, conversationId?: string) => request<Record<string, any>>("POST", "/api/agent/stream", { message, conversationId }),
+  executeAgentTool: (tool: string, args?: any) => request<Record<string, any>>("POST", "/api/agent/tool", { tool, args }),
   escalateToSupport: (summary: string, severity?: string, evidence?: Record<string, any>) =>
-    request<any>("POST", "/api/agent/escalate", { summary, severity, evidence }),
+    request<Record<string, any>>("POST", "/api/agent/escalate", { summary, severity, evidence }),
   runDiagnostic: (module: string, error_code?: string, trace_id?: string, user_description?: string) =>
-    request<any>("POST", "/api/agent/diagnose", { module, error_code, trace_id, user_description }),
-  getRoutingRules: () => request<any>("GET", "/api/routing/rules"),
-  createRoutingRule: (data: any) => request<any>("POST", "/api/routing/rules", data),
-  updateRoutingRule: (id: string, data: any) => request<any>("PATCH", `/api/routing/rules/${id}`, data),
-  deleteRoutingRule: (id: string) => request<any>("DELETE", `/api/routing/rules/${id}`),
+    request<Record<string, any>>("POST", "/api/agent/diagnose", { module, error_code, trace_id, user_description }),
+  getRoutingRules: () => request<Record<string, any>>("GET", "/api/routing/rules"),
+  createRoutingRule: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/routing/rules", data),
+  updateRoutingRule: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/routing/rules/${id}`, data),
+  deleteRoutingRule: (id: string) => request<Record<string, any>>("DELETE", `/api/routing/rules/${id}`),
   ssoExchange: (code: string) =>
-    request<{ access_token: string; refresh_token?: string; user: any }>("POST", "/api/auth/sso-exchange", { code }),
+    request<{ access_token: string; refresh_token?: string; user: Record<string, any> }>("POST", "/api/auth/sso-exchange", { code }),
   facebookTokenLogin: (accessToken: string) =>
     request<{ code: string; slug: string }>("POST", "/api/auth/facebook/token", { accessToken }),
-  telegramTokenLogin: (data: any) =>
+  telegramTokenLogin: (data: Record<string, any>) =>
     request<{ code: string; slug: string }>("POST", "/api/auth/telegram/token", data),
-  checkSamlStatus: (workspaceSlug: string) => request<any>("GET", `/api/auth/saml/status/${workspaceSlug}`),
-  getSamlConfig: (workspaceId: string) => request<any>("GET", `/api/auth/saml/config/${workspaceId}`),
-  upsertSamlConfig: (workspaceId: string, data: any) => request<any>("PUT", `/api/auth/saml/config/${workspaceId}`, data),
-  enableSaml: (workspaceId: string) => request<any>("POST", `/api/auth/saml/config/${workspaceId}/enable`),
-  disableSaml: (workspaceId: string) => request<any>("POST", `/api/auth/saml/config/${workspaceId}/disable`),
-  getApiTokens: () => request<any>("GET", "/api/workspaces/current/api-tokens"),
-  createApiToken: (name: string) => request<any>("POST", "/api/workspaces/current/api-tokens", { name }),
-  revokeApiToken: (id: string) => request<any>("DELETE", `/api/workspaces/current/api-tokens/${id}`),
-  getEnterpriseConfig: (workspaceId: string) => request<any>("GET", `/api/enterprise/config/${workspaceId}`),
-  upsertEnterpriseConfig: (workspaceId: string, data: any) => request<any>("PUT", `/api/enterprise/config/${workspaceId}`, data),
-  getEnterpriseCapabilities: () => request<any>("GET", "/api/enterprise/capabilities"),
-  submitContactSales: (data: any) => request<any>("POST", "/api/contact-sales", data),
-  getOnboardingProject: () => request<any>("GET", "/api/onboarding"),
-  getOnboardingStatus: () => request<any>("GET", "/api/onboarding/status"),
-  saveOnboardingProject: (data: any) => request<any>("POST", "/api/onboarding", data),
-  getDiagnosticCases: () => request<any>("GET", "/api/agent/diagnostic-cases"),
+  checkSamlStatus: (workspaceSlug: string) => request<Record<string, any>>("GET", `/api/auth/saml/status/${workspaceSlug}`),
+  getSamlConfig: (workspaceId: string) => request<Record<string, any>>("GET", `/api/auth/saml/config/${workspaceId}`),
+  upsertSamlConfig: (workspaceId: string, data: Record<string, any>) => request<Record<string, any>>("PUT", `/api/auth/saml/config/${workspaceId}`, data),
+  enableSaml: (workspaceId: string) => request<Record<string, any>>("POST", `/api/auth/saml/config/${workspaceId}/enable`),
+  disableSaml: (workspaceId: string) => request<Record<string, any>>("POST", `/api/auth/saml/config/${workspaceId}/disable`),
+  getApiTokens: () => request<Record<string, any>>("GET", "/api/workspaces/current/api-tokens"),
+  createApiToken: (name: string) => request<Record<string, any>>("POST", "/api/workspaces/current/api-tokens", { name }),
+  revokeApiToken: (id: string) => request<Record<string, any>>("DELETE", `/api/workspaces/current/api-tokens/${id}`),
+  getEnterpriseConfig: (workspaceId: string) => request<Record<string, any>>("GET", `/api/enterprise/config/${workspaceId}`),
+  upsertEnterpriseConfig: (workspaceId: string, data: Record<string, any>) => request<Record<string, any>>("PUT", `/api/enterprise/config/${workspaceId}`, data),
+  getEnterpriseCapabilities: () => request<Record<string, any>>("GET", "/api/enterprise/capabilities"),
+  submitContactSales: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/contact-sales", data),
+  getOnboardingProject: () => request<Record<string, any>>("GET", "/api/onboarding"),
+  getOnboardingStatus: () => request<Record<string, any>>("GET", "/api/onboarding/status"),
+  saveOnboardingProject: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/onboarding", data),
+  getDiagnosticCases: () => request<Record<string, any>>("GET", "/api/agent/diagnostic-cases"),
   updateDiagnosticCaseStatus: (id: string, status: string) =>
-    request<any>("PATCH", `/api/agent/diagnostic-cases/${id}/status`, { status }),
+    request<Record<string, any>>("PATCH", `/api/agent/diagnostic-cases/${id}/status`, { status }),
   createFixCase: (diagnosticCaseId: string) =>
-    request<any>("POST", "/api/agent/fix-cases", { diagnostic_case_id: diagnosticCaseId }),
-  getCaseComments: (caseId: string) => request<any>("GET", `/api/agent/diagnostic-cases/${caseId}/comments`),
+    request<Record<string, any>>("POST", "/api/agent/fix-cases", { diagnostic_case_id: diagnosticCaseId }),
+  getCaseComments: (caseId: string) => request<Record<string, any>>("GET", `/api/agent/diagnostic-cases/${caseId}/comments`),
   createCaseComment: (caseId: string, body: string) =>
-    request<any>("POST", `/api/agent/diagnostic-cases/${caseId}/comments`, { body }),
-  getProducts: (params?: string) => request<any>("GET", `/api/inventory/products${params ? `?${params}` : ''}`) ,
-  getProduct: (id: string) => request<any>("GET", `/api/inventory/products/${id}`),
-  createProduct: (data: any) => request<any>("POST", "/api/inventory/products", data),
-  updateProduct: (id: string, data: any) => request<any>("PATCH", `/api/inventory/products/${id}`, data),
-  archiveProduct: (id: string) => request<any>("DELETE", `/api/inventory/products/${id}`),
-  adjustStock: (id: string, data: any) => request<any>("POST", `/api/inventory/products/${id}/adjust-stock`, data),
-  getLowStock: () => request<any>("GET", "/api/inventory/products/low-stock"),
-  getStockMovements: (params?: string) => request<any>("GET", `/api/inventory/movements${params ? `?${params}` : ''}`) ,
-  getCategories: () => request<any>("GET", "/api/inventory/categories"),
-  createCategory: (data: any) => request<any>("POST", "/api/inventory/categories", data),
-  updateCategory: (id: string, data: any) => request<any>("PATCH", `/api/inventory/categories/${id}`, data),
-  deleteCategory: (id: string) => request<any>("DELETE", `/api/inventory/categories/${id}`),
-  getFeatureFlags: (workspaceId: string) => request<any>("GET", `/api/feature-flags/check/${workspaceId}`),
-  getUsage: (workspaceId: string) => request<any>("GET", `/api/usage/${workspaceId}`),
+    request<Record<string, any>>("POST", `/api/agent/diagnostic-cases/${caseId}/comments`, { body }),
+  getProducts: (params?: string) => request<Record<string, any>>("GET", `/api/inventory/products${params ? `?${params}` : ''}`) ,
+  getProduct: (id: string) => request<Record<string, any>>("GET", `/api/inventory/products/${id}`),
+  createProduct: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/inventory/products", data),
+  updateProduct: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/inventory/products/${id}`, data),
+  archiveProduct: (id: string) => request<Record<string, any>>("DELETE", `/api/inventory/products/${id}`),
+  adjustStock: (id: string, data: Record<string, any>) => request<Record<string, any>>("POST", `/api/inventory/products/${id}/adjust-stock`, data),
+  getLowStock: () => request<Record<string, any>>("GET", "/api/inventory/products/low-stock"),
+  getStockMovements: (params?: string) => request<Record<string, any>>("GET", `/api/inventory/movements${params ? `?${params}` : ''}`) ,
+  getCategories: () => request<Record<string, any>>("GET", "/api/inventory/categories"),
+  createCategory: (data: Record<string, any>) => request<Record<string, any>>("POST", "/api/inventory/categories", data),
+  updateCategory: (id: string, data: Record<string, any>) => request<Record<string, any>>("PATCH", `/api/inventory/categories/${id}`, data),
+  deleteCategory: (id: string) => request<Record<string, any>>("DELETE", `/api/inventory/categories/${id}`),
+  getFeatureFlags: (workspaceId: string) => request<Record<string, any>>("GET", `/api/feature-flags/check/${workspaceId}`),
+  getUsage: (workspaceId: string) => request<Record<string, any>>("GET", `/api/usage/${workspaceId}`),
   getMessageTemplates: (workspaceId: string, channel?: string) => {
     const qs = channel ? `?channel=${encodeURIComponent(channel)}` : "";
-    return request<any>("GET", `/api/message-templates/${workspaceId}${qs}`);
+    return request<Record<string, any>>("GET", `/api/message-templates/${workspaceId}${qs}`);
   },
   getApprovedTemplates: (workspaceId: string, channel?: string) =>
-    request<any>("GET", `/api/message-templates/${workspaceId}/approved?channel=${channel ?? 'WHATSAPP'}`),
-  getSlaPolicies: () => request<any>("GET", "/api/sla/policies"),
-  getSlaAssignment: (workspaceId: string) => request<any>("GET", `/api/sla/assignment/${workspaceId}`),
-  assignSlaPolicy: (workspaceId: string, data: any) => request<any>("POST", `/api/sla/assignment/${workspaceId}`, data),
+    request<Record<string, any>>("GET", `/api/message-templates/${workspaceId}/approved?channel=${channel ?? 'WHATSAPP'}`),
+  getSlaPolicies: () => request<Record<string, any>>("GET", "/api/sla/policies"),
+  getSlaAssignment: (workspaceId: string) => request<Record<string, any>>("GET", `/api/sla/assignment/${workspaceId}`),
+  assignSlaPolicy: (workspaceId: string, data: Record<string, any>) => request<Record<string, any>>("POST", `/api/sla/assignment/${workspaceId}`, data),
   trackEvent: (event: string, category?: string, value?: number, metadata?: Record<string, string>) =>
-    request<any>("POST", "/api/metrics/event", { event, category, value, metadata }),
+    request<Record<string, any>>("POST", "/api/metrics/event", { event, category, value, metadata }),
   listSystemTemplates: (type: string, category?: string) => {
     const qs = new URLSearchParams({ type });
     if (category) qs.set("category", category);
-    return request<any>("GET", `/api/templates/system?${qs}`);
+    return request<Record<string, any>>("GET", `/api/templates/system?${qs}`);
   },
 };
 

@@ -18,15 +18,15 @@ export function ProductPicker({ open, onOpenChange, onSelect }: ProductPickerPro
     enabled: open,
   });
 
-  const products: any[] = Array.isArray(productsData) ? productsData : productsData?.data ?? [];
+  const \1: Record<string, any>[] = Array.isArray(productsData) ? productsData : productsData?.data ?? [];
 
   const filtered = search
-    ? products.filter((p: any) =>
+    ? products.filter((p) =>
         p.is_active !== false &&
         (p.name?.toLowerCase().includes(search.toLowerCase()) ||
          p.sku?.toLowerCase().includes(search.toLowerCase()))
       )
-    : products.filter((p: any) => p.is_active !== false);
+    : products.filter((p) => p.is_active !== false);
 
   if (!open) return null;
 
@@ -54,7 +54,7 @@ export function ProductPicker({ open, onOpenChange, onSelect }: ProductPickerPro
       ) : filtered.length === 0 ? (
         <p className="text-[10px] text-muted-foreground text-center py-3">Sin productos activos.</p>
       ) : (
-        filtered.slice(0, 30).map((p: any) => (
+        filtered.slice(0, 30).map((p) => (
           <button
             key={p.id}
             className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-[11px] flex items-center justify-between transition-colors"

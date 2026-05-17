@@ -33,28 +33,28 @@ export function DepartmentsTab() {
     queryFn: () => api.getMembers(),
   });
 
-  const departments: any[] = Array.isArray(depts) ? depts : [];
-  const allMembers: any[] = Array.isArray(membersData) ? membersData : [];
+  const \1: Record<string, any>[] = Array.isArray(depts) ? depts : [];
+  const \1: Record<string, any>[] = Array.isArray(membersData) ? membersData : [];
 
   const createMut = useMutation({
-    mutationFn: (d: any) => api.createDepartment(d),
+    mutationFn: (d => api.createDepartment(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       setCreateOpen(false);
       setName(""); setDescription(""); setColor("#4f8ef7");
       toast({ title: "Departamento creado" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, ...d }: any) => api.updateDepartment(id, d),
+    mutationFn: ({ id, ...d }) => api.updateDepartment(id, d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       setEditDept(null);
       toast({ title: "Departamento actualizado" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const deleteMut = useMutation({
@@ -64,27 +64,27 @@ export function DepartmentsTab() {
       setDeleteDept(null);
       toast({ title: "Departamento eliminado" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const addMemberMut = useMutation({
-    mutationFn: ({ deptId, userId }: any) => api.addDepartmentMember(deptId, { user_id: userId }),
+    mutationFn: ({ deptId, userId }) => api.addDepartmentMember(deptId, { user_id: userId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       setAddMemberDept(null);
       setMemberUserId("");
       toast({ title: "Miembro agregado" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const removeMemberMut = useMutation({
-    mutationFn: ({ deptId, userId }: any) => api.removeDepartmentMember(deptId, userId),
+    mutationFn: ({ deptId, userId }) => api.removeDepartmentMember(deptId, userId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["departments"] }),
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const openEdit = (dept: any) => {
+  const openEdit = (dept: Record<string, any>) => {
     setEditDept(dept);
     setName(dept.name);
     setDescription(dept.description ?? "");
@@ -106,7 +106,7 @@ export function DepartmentsTab() {
         <p className="text-sm text-muted-foreground text-center py-8">No hay departamentos aún.</p>
       ) : (
         <div className="space-y-3">
-          {departments.map((dept: any) => (
+          {departments.map((dept) => (
             <div key={dept.id} className="border border-border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -143,7 +143,7 @@ export function DepartmentsTab() {
               )}
               {dept.members?.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {dept.members.map((m: any) => (
+                  {dept.members.map((m) => (
                     <div key={m.id} className="flex items-center gap-1 bg-elevated rounded px-2 py-0.5 text-xs">
                       <span>{m.user?.name ?? m.user?.email}</span>
                       {m.is_lead && <Badge variant="outline" className="text-xs h-4 px-1">Lead</Badge>}
@@ -241,7 +241,7 @@ export function DepartmentsTab() {
               <Select value={memberUserId} onValueChange={setMemberUserId}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar usuario" /></SelectTrigger>
                 <SelectContent>
-                  {allMembers.map((m: any) => (
+                  {allMembers.map((m) => (
                     <SelectItem key={m.user?.id ?? m.id} value={m.user?.id ?? m.id}>
                       {m.user?.name ?? m.name} ({m.user?.email ?? m.email})
                     </SelectItem>

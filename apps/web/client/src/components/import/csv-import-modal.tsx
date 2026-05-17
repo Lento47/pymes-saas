@@ -46,7 +46,7 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [previewRows, setPreviewRows] = useState<Record<string, string>[]>([]);
   const [allRows, setAllRows] = useState<Record<string, string>[]>([]);
-  const [result, setResult] = useState<{ imported: number; skipped: number; errors: any[] } | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number; \1: Record<string, any>[] } | null>(null);
   const workspaceId = user?.workspace?.id ?? "";
   const entityLabel = entityType === "products" ? "Productos" : entityType === "invoices" ? "Facturas" : entityType === "pipeline" ? "Pipeline" : "Contactos";
   const fields = entityType === "products" ? PRODUCT_FIELDS : CONTACT_FIELDS;
@@ -207,7 +207,7 @@ export default function CsvImportModal({ open, onClose, entityType }: Props) {
             </p>
             {result.errors.length > 0 && (
               <div className="text-left rounded-lg border border-border p-3 max-h-32 overflow-y-auto">
-                {result.errors.map((e: any, i: number) => (
+                {result.errors.map((e: Record<string, any>, i: number) => (
                   <div key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
                     <AlertTriangle className="w-3 h-3 text-amber-400 flex-shrink-0 mt-0.5" />
                     Fila {e.row}: {e.reason}

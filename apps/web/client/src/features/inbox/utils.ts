@@ -28,7 +28,7 @@ export function buildConversationQueryParams(input: {
 }
 
 export function normalizeConversationResponse(
-  data: any
+  data: Record<string, any>
 ): InboxConversation[] {
   return Array.isArray(data) ? data : data?.data || [];
 }

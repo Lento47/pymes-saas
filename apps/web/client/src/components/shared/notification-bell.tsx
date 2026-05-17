@@ -125,7 +125,7 @@ export function NotificationBell() {
                   Sin notificaciones
                 </div>
               ) : (
-                notifications.map((n: any) => (
+                notifications.map((n) => (
                   <NotifItem
                     key={n.id}
                     notification={n}
@@ -164,7 +164,7 @@ function NotifItem({
   notification: n,
   onMarkRead,
 }: {
-  notification: any;
+  notification: Record<string, any>;
   onMarkRead: () => void;
 }) {
   const [hovering, setHovering] = useState(false);

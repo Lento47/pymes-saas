@@ -25,7 +25,7 @@ function slugifyHeading(text: string): string {
     .replace(/\s+/g, "-");
 }
 
-function extractText(node: any): string {
+function extractText(node: Record<string, any>): string {
   if (typeof node === "string") return node;
   if (Array.isArray(node)) return node.map(extractText).join("");
   if (node?.props?.children) return extractText(node.props.children);
@@ -150,10 +150,10 @@ return (
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      h2: ({ children, ...props }: any) => (
+                      h2: ({ children, ...props }: Record<string, any>) => (
                         <h2 id={slugifyHeading(extractText(children))} {...props}>{children}</h2>
                       ),
-                      h3: ({ children, ...props }: any) => (
+                      h3: ({ children, ...props }: Record<string, any>) => (
                         <h3 id={slugifyHeading(extractText(children))} {...props}>{children}</h3>
                       ),
                     }}

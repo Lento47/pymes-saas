@@ -79,7 +79,7 @@ function PlatformTab() {
     enabled: !!selectedSlug,
   });
 
-  const userSearchResults: any[] = searchResults?.data ?? searchResults ?? [];
+  const \1: Record<string, any>[] = searchResults?.data ?? searchResults ?? [];
 
   useEffect(() => {
     if (selectedSlug) {
@@ -109,13 +109,13 @@ function PlatformTab() {
   const revokeAccess = useMutation({
     mutationFn: ({ slug, userId }: { slug: string; userId: string }) => api.platformRemoveMember(slug, userId),
     onSuccess: () => { refetchMembers(); toast({ title: "Acceso revocado" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const assignUser = useMutation({
     mutationFn: () => api.platformAssignMember(selectedSlug!, { email: assignEmail, role: assignRole }),
     onSuccess: () => { setAssignOpen(false); setAssignEmail(""); refetchMembers(); toast({ title: "Usuario asignado" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const updateBilling = useMutation({
@@ -133,11 +133,11 @@ function PlatformTab() {
         notes: billingNotes || undefined,
       }),
     onSuccess: () => { toast({ title: "Facturación actualizada" }); refetchBilling(); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const wsList: any[] = Array.isArray(workspaces) ? workspaces : workspaces?.data ?? [];
-  const memberList: any[] = Array.isArray(members) ? members : members?.data ?? [];
+  const \1: Record<string, any>[] = Array.isArray(workspaces) ? workspaces : workspaces?.data ?? [];
+  const \1: Record<string, any>[] = Array.isArray(members) ? members : members?.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -149,14 +149,14 @@ function PlatformTab() {
         </div>
         {userSearchResults.length > 0 && (
           <div className="mt-3 space-y-2">
-            {userSearchResults.map((u: any) => (
+            {userSearchResults.map((u) => (
               <div key={u.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
                 <div>
                   <p className="text-sm font-medium">{u.name}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {(u.workspaces ?? []).map((w: any) => (
+                  {(u.workspaces ?? []).map((w) => (
                     <Badge key={w.slug} variant="outline" className={ROLE_COLORS[w.role] ?? ""}>{w.slug}</Badge>
                   ))}
                 </div>
@@ -169,7 +169,7 @@ function PlatformTab() {
       <section>
         <Label className="text-sm font-medium text-foreground mb-2 block">Seleccionar workspace</Label>
         <div className="space-y-2">
-          {wsList.map((w: any) => (
+          {wsList.map((w) => (
             <button
               key={w.slug}
               onClick={() => setSelectedSlug(w.slug)}
@@ -195,7 +195,7 @@ function PlatformTab() {
               <Button size="sm" onClick={() => setAssignOpen(true)}><UserPlus className="h-4 w-4 mr-1" />Asignar usuario</Button>
             </div>
             <div className="space-y-2">
-              {memberList.map((m: any) => (
+              {memberList.map((m) => (
                 <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
                   <div>
                     <p className="text-sm font-medium">{m.user?.name}</p>

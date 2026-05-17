@@ -33,7 +33,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
     enabled: open,
   });
 
-  const activeChannels = (Array.isArray(channels) ? channels : []).filter((c: any) => c.status === "ACTIVE");
+  const activeChannels = (Array.isArray(channels) ? channels : []).filter((c) => c.status === "ACTIVE");
   const contactList = Array.isArray(contacts) ? contacts : contacts?.data ?? [];
 
   const create = useMutation({
@@ -42,7 +42,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
       contact_id: (contactId && contactId !== "none") ? contactId : undefined,
       subject: subject || undefined,
     }),
-    onSuccess: (conv: any) => {
+    onSuccess: (conv) => {
       toast({ title: "Conversación creada" });
       qc.invalidateQueries({ queryKey: ["/api/conversations"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
@@ -50,7 +50,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
       setChannelId(""); setContactId(""); setSubject("");
       onCreated?.(conv.id);
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -72,7 +72,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
               <SelectContent className="border-border bg-card">
                 {activeChannels.length === 0
                   ? <SelectItem value="-" disabled>Sin canales activos</SelectItem>
-                  : activeChannels.map((c: any) => (
+                  : activeChannels.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name} ({c.type})</SelectItem>
                   ))
                 }
@@ -87,7 +87,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
               </SelectTrigger>
               <SelectContent className="border-border bg-card">
                 <SelectItem value="none">Sin contacto</SelectItem>
-                {contactList.map((c: any) => (
+                {contactList.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.full_name}{c.email ? ` — ${c.email}` : ""}{c.phone ? ` · ${c.phone}` : ""}
                   </SelectItem>

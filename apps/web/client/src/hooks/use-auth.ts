@@ -52,7 +52,7 @@ function attachWorkspaceUpdateListener() {
   const socket = getSocket();
   if (!socket || _wsUpdatedAttached) return;
   _wsUpdatedAttached = true;
-  socket.on("workspace:updated", (workspace: any) => {
+  socket.on("workspace:updated", (workspace: Record<string, any>) => {
     queryClient.setQueryData(["/api/workspaces/current"], workspace);
     if (!_user || !workspace?.id || _user.workspace?.id !== workspace.id) return;
     _user = {

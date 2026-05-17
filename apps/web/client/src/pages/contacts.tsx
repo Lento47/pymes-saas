@@ -87,7 +87,7 @@ export default function ContactsPage() {
       setForm({ firstName: "", lastName: "", email: "", phone: "", company: "", type: "CUSTOMER" });
       toast({ title: editingId ? "Contacto actualizado" : "Contacto creado" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       const apiMsg = Array.isArray(err?.message) ? err.message.join(", ") : err?.message ?? "";
       const { isPlanLimit, message } = parsePlanError(err);
       toast({
@@ -104,7 +104,7 @@ export default function ContactsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       toast({ title: "Contacto eliminado" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al eliminar contacto", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
@@ -173,7 +173,7 @@ export default function ContactsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {contactList.map((c: any) => (
+              {contactList.map((c) => (
                 <TableRow key={c.id} className="border-border hover:bg-foreground/[0.015] cursor-pointer" data-testid={`contact-row-${c.id}`}>
                   <TableCell>
                     <Link href={`/contacts/${c.id}`}>

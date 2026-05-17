@@ -18,7 +18,7 @@ export default function InventoryMovementsPage() {
     refetchInterval: 30000,
   });
 
-  const movements: any[] = movesData?.data ?? [];
+  const \1: Record<string, any>[] = movesData?.data ?? [];
 
   return (
     <div className="min-h-full bg-background">
@@ -50,7 +50,7 @@ export default function InventoryMovementsPage() {
                 </tr>
               </thead>
               <tbody>
-                {movements.map((m: any) => {
+                {movements.map((m) => {
                   const Icon = ICONS[m.type] || Package;
                   const color = COLORS[m.type] || "text-muted-foreground";
                   return (

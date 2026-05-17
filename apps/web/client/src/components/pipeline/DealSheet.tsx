@@ -25,7 +25,7 @@ interface DealSheetProps {
   open: boolean;
   onClose: () => void;
   stages: Array<{ id: string; name: string; color?: string }>;
-  deal?: any;
+  deal?: Record<string, any>;
   defaultStageId?: string;
 }
 
@@ -51,12 +51,12 @@ export function DealSheet({ open, onClose, stages, deal, defaultStageId }: DealS
   const { data: contacts } = useQuery({ queryKey: ["/api/contacts"], queryFn: () => api.getContacts(), staleTime: 30000 });
 
   const createMut = useMutation({
-    mutationFn: (data: any) => api.createDeal(data),
+    mutationFn: (data: Record<string, any>) => api.createDeal(data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }); onClose(); },
     onError: () => toast({ title: "Error al crear deal", variant: "destructive" }),
   });
   const updateMut = useMutation({
-    mutationFn: (data: any) => api.updateDeal(deal!.id, data),
+    mutationFn: (data: Record<string, any>) => api.updateDeal(deal!.id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }); onClose(); },
   });
   const deleteMut = useMutation({
@@ -155,7 +155,7 @@ export function DealSheet({ open, onClose, stages, deal, defaultStageId }: DealS
                 <SelectValue placeholder="Seleccionar etapa" />
               </SelectTrigger>
               <SelectContent>
-                {stages.map((s: any) => (
+                {stages.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color || "#8b7cf6" }} />

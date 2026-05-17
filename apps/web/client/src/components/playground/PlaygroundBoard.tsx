@@ -43,7 +43,7 @@ const AGENT_COLORS: Record<string, string> = {
   a1: "#f59e0b", a2: "#ef4444", a3: "#3b82f6", a4: "#8b5cf6", a5: "#22c55e",
 };
 
-function getAgentCallout(agent: AgentState, cases: any[]): string {
+function getAgentCallout(agent: AgentState, \1: Record<string, any>[]): string {
   if (agent.busy) {
     const c = cases[0];
     if (c?.matched_known_issue) return "Tengo la solución";
@@ -54,7 +54,7 @@ function getAgentCallout(agent: AgentState, cases: any[]): string {
   return "Disponible";
 }
 
-function AgentMascot({ agent, deptCases }: { agent: AgentState; deptCases: any[] }) {
+function AgentMascot({ agent, deptCases }: { agent: AgentState; \1: Record<string, any>[] }) {
   const c = AGENT_COLORS[agent.id] || "#6b7280";
   const callout = getAgentCallout(agent, deptCases);
   return (
@@ -77,7 +77,7 @@ function AgentMascot({ agent, deptCases }: { agent: AgentState; deptCases: any[]
 }
 
 function CaseCard({ c, onFix, onResolve, onEscalate, isFixing, compact }: {
-  c: any; onFix?: (id: string) => void; onResolve?: (id: string) => void;
+  c: Record<string, any>; onFix?: (id: string) => void; onResolve?: (id: string) => void;
   onEscalate?: (id: string) => void; isFixing?: boolean; compact?: boolean;
 }) {
   const statusColor =
@@ -179,20 +179,20 @@ export function PlaygroundBoard() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["diagnostic-cases"] }),
   });
 
-  const caseList: any[] = Array.isArray(cases) ? cases : [];
+  const \1: Record<string, any>[] = Array.isArray(cases) ? cases : [];
 
   const urgentCases = useMemo(() =>
-    caseList.filter((c: any) => c.risk_level === "critical" || c.risk_level === "high").slice(0, 3),
+    caseList.filter((c) => c.risk_level === "critical" || c.risk_level === "high").slice(0, 3),
     [caseList]
   );
 
   const openCases = useMemo(() =>
-    caseList.filter((c: any) => c.status !== "RESOLVED"),
+    caseList.filter((c) => c.status !== "RESOLVED"),
     [caseList]
   );
 
   const resolvedCases = useMemo(() =>
-    caseList.filter((c: any) => c.status === "RESOLVED").slice(0, 3),
+    caseList.filter((c) => c.status === "RESOLVED").slice(0, 3),
     [caseList]
   );
 
@@ -210,9 +210,9 @@ export function PlaygroundBoard() {
   }, [openCases, resolvedCases]);
 
   const totalOpen = openCases.length;
-  const totalResolved = resolvedCases.length + (cases ? cases.filter((c: any) => c.status === "RESOLVED").length : 0);
-  const slaAtRisk = openCases.filter((c: any) => c.risk_level === "high" || c.risk_level === "critical").length;
-  const escalated = openCases.filter((c: any) => c.status === "ESCALATED").length;
+  const totalResolved = resolvedCases.length + (cases ? cases.filter((c) => c.status === "RESOLVED").length : 0);
+  const slaAtRisk = openCases.filter((c) => c.risk_level === "high" || c.risk_level === "critical").length;
+  const escalated = openCases.filter((c) => c.status === "ESCALATED").length;
 
   const handleFix = (caseId: string) => { setFixingId(caseId); fixMut.mutate(caseId); };
   const handleResolve = (caseId: string) => statusMut.mutate({ id: caseId, status: "RESOLVED" });
@@ -223,7 +223,7 @@ export function PlaygroundBoard() {
       setAgents(prev => prev.map(a => {
         const dept = a.dept;
         const deptCases = casesByDept[dept] || [];
-        const hasOpen = deptCases.some((c: any) => c.status === "OPEN" || c.status === "INVESTIGATING");
+        const hasOpen = deptCases.some((c) => c.status === "OPEN" || c.status === "INVESTIGATING");
         return { ...a, busy: hasOpen, currentCase: hasOpen ? deptCases[0]?.id?.slice(0, 7) : undefined };
       }));
     }, 5000);
@@ -256,7 +256,7 @@ export function PlaygroundBoard() {
             <span className="text-[10px] text-muted-foreground/60">· Se atienden primero</span>
           </div>
           <div className="flex gap-3 flex-wrap">
-            {urgentCases.map((c: any) => (
+            {urgentCases.map((c) => (
               <CaseCard key={c.id} c={c} compact
                 onFix={handleFix} onResolve={handleResolve} onEscalate={handleEscalate}
                 isFixing={fixingId === c.id}
@@ -269,8 +269,8 @@ export function PlaygroundBoard() {
       {/* Department map */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {DEPTS.filter(d => d.key !== "resolved").map(d => {
-          const activeCase = (casesByDept[d.key] || []).filter((c: any) => c.status !== "RESOLVED")[0];
-          const nextCase = (casesByDept[d.key] || []).filter((c: any) => c.status !== "RESOLVED")[1];
+          const activeCase = (casesByDept[d.key] || []).filter((c) => c.status !== "RESOLVED")[0];
+          const nextCase = (casesByDept[d.key] || []).filter((c) => c.status !== "RESOLVED")[1];
           const deptAgents = agents.filter(a => a.dept === d.key);
 
           return (
@@ -288,7 +288,7 @@ export function PlaygroundBoard() {
               {/* Agent presence with callouts */}
               <div className="flex items-center gap-2 mb-3">
                 {deptAgents.map(a => (
-                  <AgentMascot key={a.id} agent={a} deptCases={(casesByDept[d.key] || []).filter((c: any) => c.status !== "RESOLVED")} />
+                  <AgentMascot key={a.id} agent={a} deptCases={(casesByDept[d.key] || []).filter((c) => c.status !== "RESOLVED")} />
                 ))}
               </div>
 
@@ -336,7 +336,7 @@ export function PlaygroundBoard() {
             <h3 className="text-sm font-semibold text-foreground">Resueltos</h3>
           </div>
           <div className="space-y-2">
-            {(casesByDept.resolved || []).map((c: any) => (
+            {(casesByDept.resolved || []).map((c) => (
               <CaseCard key={c.id} c={c} />
             ))}
             {(!casesByDept.resolved || casesByDept.resolved.length === 0) && (

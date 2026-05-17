@@ -87,7 +87,7 @@ function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
 }
 
 // ── Insight styles ──
-const INSIGHT_STYLES: Record<string, { Icon: any; color: string; bg: string }> = {
+const INSIGHT_STYLES: Record<string, { Icon: Record<string, any>; color: string; bg: string }> = {
   danger:   { Icon: CircleAlert,    color: "hsl(var(--danger))",  bg: "bg-red-500/10" },
   warning:  { Icon: TriangleAlert, color: "hsl(var(--warning))", bg: "bg-amber-500/10" },
   positive: { Icon: ShieldCheck,   color: "hsl(var(--success))", bg: "bg-emerald-500/10" },
@@ -126,13 +126,13 @@ export default function DashboardPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pending-approvals"] }),
   });
 
-  const approvalList: any[] = Array.isArray(pendingApprovals) ? pendingApprovals : [];
+  const \1: Record<string, any>[] = Array.isArray(pendingApprovals) ? pendingApprovals : [];
 
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
   const invoiceList = Array.isArray(overdueInvoices) ? overdueInvoices : overdueInvoices?.data ?? [];
   const stageList: PipelineStageSummary[] = Array.isArray(pipelineStagesData) ? pipelineStagesData : pipelineStagesData?.data ?? [];
-  const insightList: any[] = Array.isArray(insights) ? insights : [];
+  const \1: Record<string, any>[] = Array.isArray(insights) ? insights : [];
 
   const revenueChange = workspaceStats?.revenue_change_pct ?? 0;
   const hasPrevRevenue = (workspaceStats?.prev_month_revenue ?? 0) > 0;
@@ -149,8 +149,8 @@ export default function DashboardPage() {
   const totalPipeline = stageRows.reduce((s, r) => s + r.totalValue, 0);
   const firstCurrency = stageRows[0]?.currency ?? "CRC";
   const overdueCount = invoiceList.length;
-  const overdueAmount = invoiceList.reduce((s: number, i: any) => s + (i.amount || 0), 0);
-  const urgentTasks = taskList.filter((t: any) => t.priority === "HIGH").length;
+  const overdueAmount = invoiceList.reduce((s: number, i) => s + (i.amount || 0), 0);
+  const urgentTasks = taskList.filter((t) => t.priority === "HIGH").length;
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -193,7 +193,7 @@ export default function DashboardPage() {
               <span className="text-[11px] text-muted-foreground">{approvalList.length}</span>
             </div>
             <div className="space-y-2">
-              {approvalList.map((inv: any) => (
+              {approvalList.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between rounded-lg border border-border bg-background/50 px-3 py-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -287,7 +287,7 @@ export default function DashboardPage() {
                 <h2 className="text-sm font-medium text-foreground">Stock Bajo</h2>
               </div>
               <div className="space-y-2">
-                {lowStock.map((p: any) => (
+                {lowStock.map((p) => (
                   <div key={p.id} className="flex items-center justify-between text-xs">
                     <span className="text-foreground truncate max-w-[140px]">{p.name}</span>
                     <span className="text-amber-400 font-medium">
@@ -347,7 +347,7 @@ export default function DashboardPage() {
               {activeTab === "tasks" ? (
                 taskList.length === 0 ? (
                   <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noTasks}</div>
-                ) : taskList.slice(0, 5).map((task: any) => (
+                ) : taskList.slice(0, 5).map((task) => (
                   <div key={task.id} className="flex items-center gap-3 px-5 py-3">
                     <div className="w-[18px] h-[18px] rounded-full border-2 border-border/60 cursor-pointer hover:border-primary/50 transition-colors shrink-0" />
                     <span className="flex-1 text-[13px] text-foreground truncate">{task.title}</span>
@@ -364,7 +364,7 @@ export default function DashboardPage() {
               ) : (
                 convList.length === 0 ? (
                   <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noMessagesToday}</div>
-                ) : convList.slice(0, 5).map((conv: any) => (
+                ) : convList.slice(0, 5).map((conv) => (
                   <Link key={conv.id} href={`/inbox/${conv.id}`}>
                     <div className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.02] transition-colors cursor-pointer">
                       <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">
@@ -431,7 +431,7 @@ export default function DashboardPage() {
                 { severity: "positive", title: dash.insightNoAlerts, desc: dash.insightNoAlertsDesc },
                 { severity: "warning", title: `${overdueCount} ${dash.insightAlertsInvoices}`, desc: dash.insightAlertsDesc },
                 { severity: "info", title: dash.insightFollowUp, desc: dash.insightFollowUpDesc },
-              ] : insightList.slice(0, 3).map((ins: any) => ({ severity: ins.severity, title: ins.title, desc: ins.suggestion })))
+              ] : insightList.slice(0, 3).map((ins) => ({ severity: ins.severity, title: ins.title, desc: ins.suggestion })))
                 .map((ins, i) => {
                   const st = INSIGHT_STYLES[ins.severity] ?? INSIGHT_STYLES.info;
                   return (

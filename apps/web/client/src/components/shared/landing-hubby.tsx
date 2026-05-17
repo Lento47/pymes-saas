@@ -11,8 +11,8 @@ function PetSvg({ small }: { small?: boolean }) {
   const [lookingRight, setLookingRight] = useState(false);
 
   useEffect(() => {
-    let blinkTimer: any;
-    let lookTimer: any;
+    let blinkTimer: Record<string, any>;
+    let lookTimer: Record<string, any>;
 
     const scheduleBlink = () => {
       const delay = 1500 + Math.random() * 2500;
@@ -152,7 +152,7 @@ export function LandingHubby() {
           }
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessages(prev => prev.map(m => m.id === am.id ? { ...m, content: 'Hmm, algo falló. ¡Intentá de nuevo!' } : m));
     } finally {
       setLoading(false);

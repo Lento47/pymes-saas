@@ -77,7 +77,7 @@ export function DiagnosticButton({ module, className }: DiagnosticButtonProps) {
     try {
       const res = await api.runDiagnostic(module);
       setResult(res);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err?.message || "No se pudo completar el diagnóstico");
     } finally {
       setLoading(false);

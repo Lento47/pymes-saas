@@ -36,9 +36,9 @@ export function RoutingRulesTab() {
     queryFn: () => api.getChannels(),
   });
 
-  const rules: any[] = Array.isArray(data) ? data : data?.data ?? [];
-  const deptList: any[] = Array.isArray(depts) ? depts : depts?.data ?? [];
-  const channelList: any[] = Array.isArray(channels) ? channels : channels?.data ?? [];
+  const \1: Record<string, any>[] = Array.isArray(data) ? data : data?.data ?? [];
+  const \1: Record<string, any>[] = Array.isArray(depts) ? depts : depts?.data ?? [];
+  const \1: Record<string, any>[] = Array.isArray(channels) ? channels : channels?.data ?? [];
 
   const createMut = useMutation({
     mutationFn: () => api.createRoutingRule({ name, match_type: matchType, pattern: pattern || undefined, department_id: departmentId || undefined, channel_id: channelId || undefined }),
@@ -48,7 +48,7 @@ export function RoutingRulesTab() {
       setName(""); setPattern(""); setDepartmentId(""); setChannelId("");
       toast({ title: "Regla de enrutamiento creada" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const toggleMut = useMutation({
@@ -62,7 +62,7 @@ export function RoutingRulesTab() {
       qc.invalidateQueries({ queryKey: ["routing-rules"] });
       toast({ title: "Regla eliminada" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -101,7 +101,7 @@ export function RoutingRulesTab() {
                 <Select value={departmentId} onValueChange={setDepartmentId}>
                   <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue placeholder="Ninguno" /></SelectTrigger>
                   <SelectContent className="bg-card border-border">
-                    {deptList.map((d: any) => (
+                    {deptList.map((d) => (
                       <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -112,7 +112,7 @@ export function RoutingRulesTab() {
                 <Select value={channelId} onValueChange={setChannelId}>
                   <SelectTrigger className="mt-1 bg-[hsl(var(--elevated))] border-border"><SelectValue placeholder="Ninguno" /></SelectTrigger>
                   <SelectContent className="bg-card border-border">
-                    {channelList.map((c: any) => (
+                    {channelList.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -130,7 +130,7 @@ export function RoutingRulesTab() {
         <div className="text-muted-foreground text-sm">Cargando...</div>
       ) : (
         <div className="space-y-2">
-          {rules.map((rule: any) => (
+          {rules.map((rule) => (
             <div key={rule.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
               <div className="flex items-center gap-3 min-w-0">
                 <Shuffle className="h-4 w-4 text-muted-foreground shrink-0" />

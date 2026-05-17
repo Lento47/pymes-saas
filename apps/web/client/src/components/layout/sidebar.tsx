@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "notifications" | "settings" | "help";
-type NavItem = { path: string; icon: any; key: NavKey; badge?: "unread" | "overdue" };
+type NavItem = { path: string; icon: React.ReactNode; key: NavKey; badge?: "unread" | "overdue" };
 
 const BETA_LABELS: Partial<Record<NavKey, string>> = {
   contacts: "Clientes",
@@ -31,7 +31,7 @@ const BETA_LABELS: Partial<Record<NavKey, string>> = {
   inventory: "Inventario",
 };
 
-function navLabel(copy: any, key: NavKey, isBeta?: boolean): string {
+function navLabel(copy: Record<string, any>, key: NavKey, isBeta?: boolean): string {
   if (isBeta && BETA_LABELS[key]) return BETA_LABELS[key]!;
   if (key === "settings") return copy.settings;
   if (key === "help") return copy.help;
@@ -289,7 +289,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             {wsMenuOpen && multipleWorkspaces && (
               <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-sidebar shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="p-2 max-h-[280px] overflow-y-auto">
-                  {(myWorkspaces as any[]).map((m: any) => {
+                  {(myWorkspaces as any[]).map((m) => {
                     const isCurrent = m.workspace.id === user?.workspace?.id;
                     return (
                       <button

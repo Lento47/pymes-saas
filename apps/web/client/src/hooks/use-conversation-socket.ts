@@ -25,7 +25,7 @@ export function useConversationSocket(conversationId: string) {
   const CONVERSATION_KEY = ['conversation', conversationId];
   const CONVERSATIONS_KEY = ['conversations'];
 
-  function looksLikeMedia(message: any): boolean {
+  function looksLikeMedia(message: Record<string, any>): boolean {
     if (message.has_media || message.media_type) return true;
     const type = message.message_type;
     if (type === 'image' || type === 'document' || type === 'audio' || type === 'video' || type === 'sticker') return true;
@@ -34,17 +34,17 @@ export function useConversationSocket(conversationId: string) {
   }
 
   const handleNewMessage = useCallback(
-    (message: any) => {
+    (message: Record<string, any>) => {
       // 1. Insert optimista — muestra el mensaje al instante.
-      qc.setQueryData(MESSAGES_KEY, (old: any) => {
+      qc.setQueryData(MESSAGES_KEY, (old) => {
         if (!old) return old;
         const existingData = Array.isArray(old.data) ? old.data : [];
-        const exists = existingData.some((m: any) => m.id === message.id);
+        const exists = existingData.some((m) => m.id === message.id);
 
         if (exists) {
           return {
             ...old,
-            data: existingData.map((m: any) =>
+            data: existingData.map((m) =>
               m.id === message.id ? { ...m, ...message } : m,
             ),
           };
@@ -85,11 +85,11 @@ export function useConversationSocket(conversationId: string) {
       if (payload.conversation_id !== conversationId) return;
 
       // Update solo ese mensaje en cache — sin refetch completo.
-      qc.setQueryData(MESSAGES_KEY, (old: any) => {
+      qc.setQueryData(MESSAGES_KEY, (old) => {
         if (!old?.data) return old;
         return {
           ...old,
-          data: old.data.map((m: any) =>
+          data: old.data.map((m) =>
             m.id === payload.message_id
               ? {
                   ...m,
@@ -110,7 +110,7 @@ export function useConversationSocket(conversationId: string) {
   );
 
   const handleConversationUpdated = useCallback(
-    (update: any) => {
+    (update: Record<string, any>) => {
       qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
       if (update.id === conversationId) {
         qc.invalidateQueries({ queryKey: CONVERSATION_KEY });

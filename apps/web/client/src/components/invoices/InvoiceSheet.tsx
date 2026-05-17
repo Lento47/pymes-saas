@@ -67,7 +67,7 @@ interface InvoiceFormData {
 interface InvoiceSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contacts: any[];
+  \1: Record<string, any>[];
   isContactsLoading: boolean;
   hasContactsError: boolean;
   initialData: InvoiceFormData;
@@ -118,7 +118,7 @@ export function InvoiceSheet({
     }
   };
 
-  const selectProduct = (p: any) => {
+  const selectProduct = (p: Record<string, any>) => {
     onChange({
       product_id: p.id,
       line_description: p.name,
@@ -189,7 +189,7 @@ export function InvoiceSheet({
                 } />
               </SelectTrigger>
               <SelectContent>
-                {contacts.map((c: any) => (
+                {contacts.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.full_name}{c.company_name ? ` · ${c.company_name}` : ""}
                   </SelectItem>
@@ -287,7 +287,7 @@ export function InvoiceSheet({
                   <div className="space-y-1.5">
                     <Label className="text-[11px] text-muted-foreground">Usar plantilla</Label>
                     <Select onValueChange={(v) => {
-                      const tpl = templates.find((t: any) => t.industry === v);
+                      const tpl = templates.find((t) => t.industry === v);
                       if (tpl) {
                         onChange({
                           document_type: tpl.document_type,
@@ -304,7 +304,7 @@ export function InvoiceSheet({
                         <SelectValue placeholder="Seleccionar plantilla..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {templates.map((tpl: any) => (
+                        {templates.map((tpl) => (
                           <SelectItem key={tpl.industry} value={tpl.industry}>{tpl.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -351,7 +351,7 @@ export function InvoiceSheet({
                     {!productLoading && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />}
                     {productOpen && productResults.length > 0 && (
                       <div className="absolute z-50 w-full mt-1 max-h-44 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
-                        {productResults.map((p: any) => (
+                        {productResults.map((p) => (
                           <button
                             key={p.id}
                             type="button"
@@ -419,7 +419,7 @@ export function InvoiceSheet({
                     </div>
                     {cabysOpen && cabysResults.length > 0 && (
                       <div className="absolute z-50 w-full mt-1 max-h-44 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
-                        {cabysResults.map((r: any) => (
+                        {cabysResults.map((r) => (
                           <button
                             key={r.codigo}
                             type="button"

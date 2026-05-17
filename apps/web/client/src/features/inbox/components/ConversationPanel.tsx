@@ -180,13 +180,13 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   });
 
   const sendMut = useMutation({
-    mutationFn: (data: any) => api.sendMessage(id, data),
+    mutationFn: (data: Record<string, any>) => api.sendMessage(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["conversation-messages", id] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       setMessage("");
     },
-    onError: (e: any) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
   });
 
   const deleteMut = useMutation({
@@ -196,7 +196,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       toast({ title: "Conversación eliminada" });
       if (onBack) onBack();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const resolveMut = useMutation({
@@ -219,7 +219,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     queryFn: () => api.getInvoices({ conversation_id: id, limit: "10" }),
     enabled: !!id,
   });
-  const invoiceList: any[] = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
+  const \1: Record<string, any>[] = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
 
   const lineSubtotals = lines.map(l => l.quantity * l.unit_price);
   const lineTaxes = lines.map((l, i) => lineSubtotals[i] * (l.tax_rate / 100));
@@ -251,11 +251,11 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       setInvoiceForm({ number: "", currency: "USD", due_date: "", description: "" });
       toast({ title: "Factura creada" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const sendInvMut = useMutation({
-    mutationFn: async (invoice: any) => {
+    mutationFn: async (invoice) => {
       const channelId = conversation?.channel?.id;
       if (!channelId) throw new Error("Canal no válido");
       const reminder = await api.generateInvoiceReminder(invoice.id);
@@ -266,7 +266,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       qc.invalidateQueries({ queryKey: ["conversation-messages", id] });
       toast({ title: "Factura enviada" });
     },
-    onError: (e: any) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
   });
 
   const handleSend = () => {
@@ -280,8 +280,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     setMessage("");
   };
 
-  const msgList: any[] = Array.isArray(messages) ? messages : messages?.data || [];
-  const memberList: any[] = Array.isArray(members) ? members : members?.data || [];
+  const \1: Record<string, any>[] = Array.isArray(messages) ? messages : messages?.data || [];
+  const \1: Record<string, any>[] = Array.isArray(members) ? members : members?.data || [];
   const conversation = conv;
   const contact = conversation?.contact;
   const contactName = contact?.full_name || "Desconocido";
@@ -347,7 +347,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
               </Tooltip>
             </TooltipProvider>
             <SelectContent>
-              {memberList.map((m: any) => (
+              {memberList.map((m) => (
                 <SelectItem key={m.user?.id || m.id} value={m.user?.id || m.id}>
                   {m.user?.name || m.name || m.email}
                 </SelectItem>
@@ -430,7 +430,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
             <p className="text-xs">Sin mensajes</p>
           </div>
         ) : (
-          msgList.map((msg: any, idx: number) => {
+          msgList.map((msg: Record<string, any>, idx: number) => {
             const isOutbound = msg.direction === "OUTBOUND";
             const msgDate = msg.createdAt || msg.created_at ? new Date(msg.createdAt || msg.created_at) : null;
             const prevMsg = idx > 0 ? msgList[idx - 1] : null;
@@ -561,7 +561,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                   const { url } = await api.uploadAttachment(form);
                   const type = file.type.startsWith('image/') ? 'image' : 'document';
                   setAttachment({ file, url, type });
-                } catch (err: any) {
+                } catch (err: unknown) {
                   toast({ title: "Error", description: err.message || "No se pudo subir el archivo", variant: "destructive" });
                 } finally {
                   setUploading(false);
@@ -599,7 +599,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
           {invoiceList.length > 0 && (
             <div className="space-y-2">
-              {invoiceList.map((inv: any) => (
+              {invoiceList.map((inv) => (
                 <div key={inv.id} className="rounded-lg border border-border bg-background px-3 py-2">
                   <div className="flex items-center justify-between">
                     <div>
@@ -609,7 +609,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                       </div>
                       {inv.lines?.length > 0 && (
                         <div className="text-[10px] text-muted-foreground/60 mt-0.5">
-                          {inv.lines.map((l: any) => l.product?.name || l.description).join(", ")}
+                          {inv.lines.map((l) => l.product?.name || l.description).join(", ")}
                         </div>
                       )}
                     </div>

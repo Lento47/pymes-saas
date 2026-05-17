@@ -6,7 +6,7 @@ import { Sparkles, TrendingUp, MessageCircle, Receipt, Target, Loader2, RefreshC
 export function CustomerContextPanel({
   conversation,
 }: {
-  conversation: any;
+  conversation: Record<string, any>;
 }) {
   const queryClient = useQueryClient();
   const [showMetrics, setShowMetrics] = useState(false);
@@ -67,7 +67,7 @@ export function CustomerContextPanel({
   );
 }
 
-function ClientMetrics({ contactId, queryClient }: { contactId: string; queryClient: any }) {
+function ClientMetrics({ contactId, queryClient }: { contactId: string; queryClient: Record<string, any> }) {
   const { data: metrics, isLoading, isError } = useQuery({
     queryKey: ["contact-metrics", contactId],
     queryFn: () => api.getContactMetrics(contactId),
@@ -188,7 +188,7 @@ function ClientMetrics({ contactId, queryClient }: { contactId: string; queryCli
   );
 }
 
-function MetricBadge({ icon: Icon, label, value }: { icon: any; label: string; value: number }) {
+function MetricBadge({ icon: Icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
     <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-card/40 px-3 py-2">
       <Icon className="w-3.5 h-3.5 text-primary/60 shrink-0" />

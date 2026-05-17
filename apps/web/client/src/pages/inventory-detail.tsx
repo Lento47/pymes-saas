@@ -29,7 +29,7 @@ export default function InventoryDetailPage() {
     enabled: !!productId,
   });
 
-  const movements: any[] = movesData?.data ?? [];
+  const \1: Record<string, any>[] = movesData?.data ?? [];
 
   if (isLoading) {
     return (
@@ -133,7 +133,7 @@ export default function InventoryDetailPage() {
             <div className="px-6 py-12 text-center text-xs text-muted-foreground">Sin movimientos todavía</div>
           ) : (
             <div className="divide-y divide-border/60">
-              {movements.map((m: any) => {
+              {movements.map((m) => {
                 const Icon = ICONS[m.type] || Package;
                 const color = COLORS[m.type] || "text-muted-foreground";
                 return (

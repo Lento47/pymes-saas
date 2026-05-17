@@ -76,7 +76,7 @@ export default function TemplateBrowser({ open, onClose, type }: Props) {
           </div>
         ) : (
           <div className="grid gap-3">
-            {(templates as any[]).map((t: any) => (
+            {(templates as any[]).map((t) => (
               <div key={t.id} className="rounded-lg border border-border bg-[hsl(var(--elevated))] p-4 hover:border-primary/30 transition-colors">
                 <div className="flex items-start justify-between mb-2">
                   <div>

@@ -39,7 +39,7 @@ export default function AutomationsPage() {
   const filteredAutomations = useMemo(() => {
     if (!searchQuery.trim()) return automations;
     const q = searchQuery.toLowerCase().trim();
-    return automations.filter((a: any) =>
+    return automations.filter((a) =>
       a.name?.toLowerCase().includes(q) ||
       a.description?.toLowerCase().includes(q) ||
       a.trigger_type?.toLowerCase().includes(q) ||
@@ -47,24 +47,24 @@ export default function AutomationsPage() {
     );
   }, [automations, searchQuery]);
 
-  const toggleMut = useMutation({ mutationFn: (id: string) => api.toggleAutomation(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/automations"] }), onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err, 'No se pudo cambiar el estado.'), variant: 'destructive' }) });
-  const deleteMut = useMutation({ mutationFn: (id: string) => api.deleteAutomation(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/automations"] }); setDeleteId(null); toast({ title: 'Automatización eliminada' }); }, onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err, 'No se pudo eliminar.'), variant: 'destructive' }) });
+  const toggleMut = useMutation({ mutationFn: (id: string) => api.toggleAutomation(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/automations"] }), onError: (err) => toast({ title: 'Error', description: apiErrorDescription(err, 'No se pudo cambiar el estado.'), variant: 'destructive' }) });
+  const deleteMut = useMutation({ mutationFn: (id: string) => api.deleteAutomation(id), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/automations"] }); setDeleteId(null); toast({ title: 'Automatización eliminada' }); }, onError: (err) => toast({ title: 'Error', description: apiErrorDescription(err, 'No se pudo eliminar.'), variant: 'destructive' }) });
 
   const createMut = useMutation({
-    mutationFn: (data: any) => api.createAutomation(data),
+    mutationFn: (data: Record<string, any>) => api.createAutomation(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/automations"] }); setCreateOpen(false); setEditingAuto(null); },
-    onError: (err: any) => { const p = parsePlanError(err); toast({ title: p.isPlanLimit ? 'Límite de plan' : 'Error', description: p.message, variant: 'destructive' }); },
+    onError: (err) => { const p = parsePlanError(err); toast({ title: p.isPlanLimit ? 'Límite de plan' : 'Error', description: p.message, variant: 'destructive' }); },
     onSettled: () => setIsSaving(false),
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => api.updateAutomation(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Record<string, any> }) => api.updateAutomation(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/automations"] }); setCreateOpen(false); setEditingAuto(null); },
-    onError: (err: any) => { const p = parsePlanError(err); toast({ title: p.isPlanLimit ? 'Límite de plan' : 'Error', description: p.message, variant: 'destructive' }); },
+    onError: (err) => { const p = parsePlanError(err); toast({ title: p.isPlanLimit ? 'Límite de plan' : 'Error', description: p.message, variant: 'destructive' }); },
     onSettled: () => setIsSaving(false),
   });
 
-  const handleSave = async (payload: any) => {
+  const handleSave = async (payload: Record<string, any>) => {
     setIsSaving(true);
     if (editingAuto?.id) {
       await updateMut.mutateAsync({ id: editingAuto.id, data: payload });
@@ -73,7 +73,7 @@ export default function AutomationsPage() {
     }
   };
 
-  const openEdit = (a: any) => { setEditingAuto(a); setCreateOpen(true); };
+  const openEdit = (a: Record<string, any>) => { setEditingAuto(a); setCreateOpen(true); };
 
   const handleClose = () => {
     if (isSaving) return;
@@ -142,7 +142,7 @@ export default function AutomationsPage() {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-4 pb-16 lg:pb-4 space-y-3">
-          {filteredAutomations.map((auto: any) => (
+          {filteredAutomations.map((auto) => (
             <div key={auto.id}
               className="rounded-2xl p-4 transition-all duration-200 bg-card/40 border border-border hover:bg-card/60 hover:border-border/80"
             >
@@ -183,7 +183,7 @@ export default function AutomationsPage() {
                     <span className="text-[11px] text-muted-foreground">{auto.trigger_type.replace(/_/g,' ')}</span>
                     {auto.trigger_config_json?.channel_id && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full text-muted-foreground bg-muted/30">
-                        {channels?.find((c:any)=>c.id===auto.trigger_config_json.channel_id)?.name || 'Canal específico'}
+                        {channels?.find((c)=>c.id===auto.trigger_config_json.channel_id)?.name || 'Canal específico'}
                       </span>
                     )}
                   </div>

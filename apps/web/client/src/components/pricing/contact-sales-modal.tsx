@@ -39,7 +39,7 @@ export default function ContactSalesModal({ open, onClose }: Props) {
     onError: () => toast({ title: "Error", description: "No se pudo enviar. Intentá de nuevo.", variant: "destructive" }),
   });
 
-  const update = (key: string, value: any) => setForm((prev) => ({ ...prev, [key]: value }));
+  const update = (key: string, value: unknown) => setForm((prev) => ({ ...prev, [key]: value }));
 
   if (sent) {
     return (

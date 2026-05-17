@@ -31,7 +31,7 @@ const CHANNEL_ICONS: Record<string, any> = {
   MANUAL: Radio,
 };
 
-function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
+function EmailConfigModal({ channel, onClose }: { channel: Record<string, any>; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [apiKey, setApiKey] = useState("");
@@ -54,7 +54,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
       onClose();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const isEdit = channel?.status === "ACTIVE";
@@ -164,7 +164,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
   );
 }
 
-function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
+function WhatsAppConfigModal({ channel, onClose }: { channel: Record<string, any>; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [accessToken, setAccessToken] = useState("");
@@ -180,7 +180,7 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
       onClose();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const isEdit = channel?.status === "ACTIVE";
@@ -240,7 +240,7 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
   );
 }
 
-function TelegramConfigModal({ channel, onClose }: { channel: any; onClose: () => void }) {
+function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any>; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [botToken, setBotToken] = useState("");
@@ -254,7 +254,7 @@ function TelegramConfigModal({ channel, onClose }: { channel: any; onClose: () =
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
       onClose();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const isEdit = channel?.status === "ACTIVE";
@@ -377,7 +377,7 @@ function TelegramConfigModal({ channel, onClose }: { channel: any; onClose: () =
   );
 }
 
-function DeleteChannelDialog({ channel, onClose }: { channel: any; onClose: () => void }) {
+function DeleteChannelDialog({ channel, onClose }: { channel: Record<string, any>; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -388,7 +388,7 @@ function DeleteChannelDialog({ channel, onClose }: { channel: any; onClose: () =
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
       onClose();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -437,7 +437,7 @@ export function ChannelsTab() {
       setCreateOpen(false);
       setName("");
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const disconnect = useMutation({
@@ -446,7 +446,7 @@ export function ChannelsTab() {
       toast({ title: "Canal desactivado" });
       qc.invalidateQueries({ queryKey: ["/api/channels"] });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const channels = Array.isArray(data) ? data : [];
@@ -514,7 +514,7 @@ export function ChannelsTab() {
         <div className="text-muted-foreground text-sm">Cargando...</div>
       ) : (
         <div className="space-y-2">
-          {channels.map((ch: any) => {
+          {channels.map((ch) => {
             const Icon = CHANNEL_ICONS[ch.type] ?? Radio;
             const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
             const canConnect = ch.status !== "ACTIVE" && !needsConfig;

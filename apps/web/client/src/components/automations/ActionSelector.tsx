@@ -33,7 +33,7 @@ interface ActionSelectorProps {
   onChange: (v: string) => void;
   actionValue: string;
   onActionValueChange: (v: string) => void;
-  members: any[];
+  \1: Record<string, any>[];
 }
 
 export function ActionSelector({ value, onChange, actionValue, onActionValueChange, members }: ActionSelectorProps) {
@@ -106,7 +106,7 @@ export function ActionSelector({ value, onChange, actionValue, onActionValueChan
                   <SelectValue placeholder={value === "assign" ? "Seleccionar miembro" : "Seleccionar destinatario"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {members.filter((m: any) => m.user?.id || m.id).map((m: any) => (
+                  {members.filter((m) => m.user?.id || m.id).map((m) => (
                     <SelectItem key={m.user?.id || m.id} value={m.user?.id || m.id} className="text-[11px]">
                       {m.user?.name || m.name || m.email}
                     </SelectItem>
@@ -207,7 +207,7 @@ export function ActionSelector({ value, onChange, actionValue, onActionValueChan
                       <SelectValue placeholder="Sin asignar" />
                     </SelectTrigger>
                     <SelectContent>
-                      {members.filter((m: any) => m.user?.id || m.id).map((m: any) => (
+                      {members.filter((m) => m.user?.id || m.id).map((m) => (
                         <SelectItem key={m.user?.id || m.id} value={m.user?.id || m.id} className="text-[11px]">
                           {m.user?.name || m.name || m.email}
                         </SelectItem>

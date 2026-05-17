@@ -42,7 +42,7 @@ type FormField = {
 type EmbeddedForm = {
   id: string;
   title: string;
-  icon: any;
+  icon: React.ReactNode;
   tool: string;
   fields: FormField[];
   values: Record<string, string>;
@@ -51,7 +51,7 @@ type EmbeddedForm = {
   error?: string;
 };
 
-const QUICK_FORMS: { label: string; icon: any; tool: string; title: string; fields: FormField[] }[] = [
+const QUICK_FORMS: { label: string; icon: React.ReactNode; tool: string; title: string; fields: FormField[] }[] = [
   {
     label: 'Contacto', icon: UserPlus, tool: 'create_contact', title: 'Nuevo Contacto',
     fields: [
@@ -157,7 +157,7 @@ export default function Agent() {
           } catch {}
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err?.message || 'Error');
       setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, role: 'system', content: err?.message || 'Error', isStreaming: false } : m));
     } finally {
@@ -193,7 +193,7 @@ export default function Agent() {
       }
       const result = await api.executeAgentTool(activeForm.tool, args);
       setActiveForm(prev => prev ? { ...prev, isSubmitting: false, result: JSON.stringify(result, null, 2) } : null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: err?.message || 'Error' } : null);
     }
   };
@@ -212,7 +212,7 @@ export default function Agent() {
         'MEDIUM',
       );
       setEscalated(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err?.message || 'No se pudo crear la escalación');
     } finally {
       setEscalating(false);
