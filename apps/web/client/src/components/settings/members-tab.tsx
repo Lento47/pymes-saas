@@ -38,7 +38,7 @@ export function MembersTab() {
       setOpen(false);
       setEmail("");
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const members = Array.isArray(data) ? data : [];
@@ -79,7 +79,7 @@ export function MembersTab() {
 
       {isLoading ? <div className="text-muted-foreground text-sm">Cargando...</div> : (
         <div className="space-y-2">
-          {members.map((m: any) => (
+          {members.map((m) => (
             <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
               <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8">

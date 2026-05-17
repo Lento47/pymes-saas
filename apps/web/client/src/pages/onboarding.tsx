@@ -69,8 +69,8 @@ export default function OnboardingPage() {
         category: cat.category,
         items: cat.items.map(item => {
           const existing = (project.checklist as any[])
-            ?.find((c: any) => c.category === cat.category)
-            ?.items?.find((i: any) => i.label === item.label);
+            ?.find((c) => c.category === cat.category)
+            ?.items?.find((i) => i.label === item.label);
           return existing ? { ...item, completed: existing.completed ?? false, notes: existing.notes ?? "" } : item;
         }),
       }));
@@ -80,9 +80,9 @@ export default function OnboardingPage() {
   }, [project]);
 
   const saveMut = useMutation({
-    mutationFn: (data: any) => api.saveOnboardingProject(data),
+    mutationFn: (data: Record<string, any>) => api.saveOnboardingProject(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["onboarding"] }); toast({ title: "Avance guardado" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const toggleItem = (catIdx: number, itemIdx: number) => {

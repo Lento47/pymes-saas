@@ -28,7 +28,7 @@ export default function SecurityPage() {
               <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70 md:text-lg">{copy.description || "Multi-tenant isolation, audit logs, SSO, encryption, DPA and more."}</p>
             </div>
             <div className="mt-16 grid gap-8 md:grid-cols-2">
-              {(copy.cards || [{ title: "Aislamiento Multi-tenant", desc: "Cada workspace tiene datos aislados a nivel de base de datos." }]).map(({ title, desc }: any, i: number) => {
+              {(copy.cards || [{ title: "Aislamiento Multi-tenant", desc: "Cada workspace tiene datos aislados a nivel de base de datos." }]).map(({  title, desc  }, i: number) => {
                 const icons = [LockKeyhole, ShieldCheck, FileText, Key, Server, Globe2];
                 const Icon = icons[i % icons.length];
                 return (

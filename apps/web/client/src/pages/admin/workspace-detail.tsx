@@ -62,15 +62,15 @@ export default function AdminWorkspaceDetail() {
   const [edit, setEdit] = useState<any>(null);
 
   const featuresMut = useMutation({
-    mutationFn: (d: any) => api.platformUpdateWorkspaceFeatures(slug, d),
+    mutationFn: (d => api.platformUpdateWorkspaceFeatures(slug, d),
     onSuccess: () => { toast({ title: "Configuración guardada" }); featuresQ.refetch(); },
-    onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
   const deleteMut = useMutation({
     mutationFn: () => api.platformDeleteWorkspace(slug),
     onSuccess: () => { toast({ title: "Workspace eliminado" }); navigate("/admin/workspaces"); },
-    onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
   const openEditor = () => {

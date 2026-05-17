@@ -42,7 +42,7 @@ export default function AdminPlanLimits() {
       setEdits({});
       qc.invalidateQueries({ queryKey: ["/api/platform/plan-limits"] });
     },
-    onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
   const limits: Record<string, Record<string, number>> = data ?? {};

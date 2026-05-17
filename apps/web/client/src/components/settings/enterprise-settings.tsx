@@ -93,7 +93,7 @@ export default function EnterpriseSettingsTab() {
         },
       }),
     onSuccess: () => toast({ title: "Configuración guardada" }),
-    onError: (err: any) => toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" }),
+    onError: (err) => toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" }),
   });
 
   if (isLoading) {
@@ -240,7 +240,7 @@ export default function EnterpriseSettingsTab() {
         <div className="space-y-3">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase">Capacidades habilitadas</h4>
           <div className="grid gap-2 md:grid-cols-2">
-            {capabilities.map((cap: any) => (
+            {capabilities.map((cap) => (
               <div key={cap.key} className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--elevated))] p-3">
                 <div>
                   <span className="text-xs font-medium text-foreground">{cap.name}</span>

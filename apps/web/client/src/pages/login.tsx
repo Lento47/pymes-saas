@@ -83,7 +83,7 @@ function Field({
   );
 }
 
-declare const FB: any; // Facebook SDK injected by index.html
+declare const FB: Record<string, any>; // Facebook SDK injected by index.html
 
 export default function LoginPage() {
   const { login, loginWithSsoCode, isAuthenticated } = useAuth();
@@ -144,7 +144,7 @@ export default function LoginPage() {
         history.replaceState(null, "", "/");
         window.location.reload();
       })
-      .catch((err: any) => {
+      .catch((err: unknown) => {
         toast({ title: "Error", description: err?.message || "Código SSO inválido o expirado.", variant: "destructive" });
         history.replaceState(null, "", "/login");
       })
@@ -167,7 +167,7 @@ export default function LoginPage() {
 
   // Telegram Login Widget callback — fires when user completes auth
   useEffect(() => {
-    (window as any).onTelegramAuth = (user: any) => {
+    (window as any).onTelegramAuth = (user: Record<string, any>) => {
       if (!user?.id) return;
       setLoading(true);
       api.telegramTokenLogin(user)
@@ -192,7 +192,7 @@ export default function LoginPage() {
         loginWithFbToken(accessToken);
         return;
       }
-      FB.getLoginStatus((response: any) => {
+      FB.getLoginStatus((response: Record<string, any>) => {
         if (response.status === 'connected') {
           loginWithFbToken(response.authResponse.accessToken);
         }
@@ -233,7 +233,7 @@ export default function LoginPage() {
       const target = buildTarget();
       history.replaceState(null, "", target);
       window.dispatchEvent(new PopStateEvent("popstate"));
-    } catch (err: any) {
+    } catch (err: unknown) {
       const msg = err?.message || '';
       if (msg.startsWith('MULTIPLE_WORKSPACES:')) {
         try {
@@ -388,7 +388,7 @@ export default function LoginPage() {
               <button type="button"
                 onClick={() => {
                   if (typeof FB === 'undefined') return;
-                  FB.login((resp: any) => {
+                  FB.login((resp: Record<string, any>) => {
                     if (resp?.authResponse?.accessToken) (window as any).handleFbLogin(resp.authResponse.accessToken);
                   }, { config_id: '1375303354406780', scope: 'public_profile' });
                 }}

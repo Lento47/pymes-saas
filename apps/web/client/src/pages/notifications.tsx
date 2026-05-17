@@ -43,9 +43,9 @@ export default function NotificationsPage() {
 
   const notifications = Array.isArray(data?.data) ? data.data : data?.data?.data || [];
   const filtered = filter === "unread"
-    ? notifications.filter((n: any) => !n.read_at)
+    ? notifications.filter((n) => !n.read_at)
     : notifications;
-  const unreadCount = notifications.filter((n: any) => !n.read_at).length;
+  const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   const handleMarkRead = async (ids: string[]) => {
     try {
@@ -113,7 +113,7 @@ export default function NotificationsPage() {
           />
         ) : (
           <div className="space-y-2">
-            {filtered.map((n: any) => {
+            {filtered.map((n) => {
               const cfg = TYPE_BADGE[n.type] || { label: n.type, bg: "bg-zinc-500/10", color: "text-zinc-400", icon: Bell };
               const Icon = cfg.icon;
               const isUnread = !n.read_at;

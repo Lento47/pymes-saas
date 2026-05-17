@@ -32,7 +32,7 @@ interface TaskSheetProps {
   initialData: TaskFormData;
   onSave: (data: TaskFormData) => void;
   isSaving: boolean;
-  members: any[];
+  members: Record<string, any>[];
 }
 
 export function TaskSheet({ open, onOpenChange, editingId, initialData, onSave, isSaving, members }: TaskSheetProps) {
@@ -125,7 +125,7 @@ export function TaskSheet({ open, onOpenChange, editingId, initialData, onSave, 
                 <SelectValue placeholder="Sin asignar" />
               </SelectTrigger>
               <SelectContent>
-                {members.filter((m: any) => m.user?.id || m.id).map((m: any) => (
+                {members.filter((m) => m.user?.id || m.id).map((m) => (
                   <SelectItem key={m.user?.id || m.id} value={m.user?.id || m.id} className="text-xs">
                     {m.user?.name || m.name || m.email}
                   </SelectItem>

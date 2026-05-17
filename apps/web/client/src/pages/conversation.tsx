@@ -160,13 +160,13 @@ export default function ConversationPage() {
   });
 
   const sendMutation = useMutation({
-    mutationFn: (data: any) => api.sendMessage(id, data),
+    mutationFn: (data: Record<string, any>) => api.sendMessage(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setMessage("");
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
     },
   });
@@ -195,7 +195,7 @@ export default function ConversationPage() {
       toast({ title: "Conversación eliminada" });
       setLocation("/inbox");
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al eliminar", description: err.message, variant: "destructive" });
     },
   });
@@ -209,7 +209,7 @@ export default function ConversationPage() {
       setSelectedContactId("");
       toast({ title: "Contacto vinculado" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al vincular contacto", description: err.message, variant: "destructive" });
     },
   });
@@ -243,7 +243,7 @@ export default function ConversationPage() {
       });
       toast({ title: "Contacto creado y vinculado" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al crear contacto", description: err.message, variant: "destructive" });
     },
   });
@@ -267,7 +267,7 @@ export default function ConversationPage() {
       setShowContactDialog(false);
       toast({ title: "Contacto actualizado" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al actualizar contacto", description: err.message, variant: "destructive" });
     },
   });
@@ -297,7 +297,7 @@ export default function ConversationPage() {
       });
       toast({ title: "Factura creada y guardada" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al crear factura", description: err.message, variant: "destructive" });
     },
   });
@@ -325,13 +325,13 @@ export default function ConversationPage() {
       });
       toast({ title: "Pago registrado" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al registrar pago", description: err.message, variant: "destructive" });
     },
   });
 
   const sendInvoiceMutation = useMutation({
-    mutationFn: async (invoice: any) => {
+    mutationFn: async (invoice: Record<string, any>) => {
       const channelId = conversation?.channel?.id;
       if (!channelId) {
         throw new Error("Esta conversación no tiene un canal válido para enviar la factura.");
@@ -349,7 +349,7 @@ export default function ConversationPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
       toast({ title: "Factura enviada desde este chat" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al enviar factura", description: err.message, variant: "destructive" });
     },
   });
@@ -361,7 +361,7 @@ export default function ConversationPage() {
   const canSendInvoiceFromConversation = ["EMAIL", "WHATSAPP", "TELEGRAM"].includes(String(conversation?.channel?.type ?? "").toUpperCase());
   const contact = conversation?.contact;
   const assignedMember = memberList.find(
-    (m: any) => (m.user?.id || m.userId || m.id) === (conversation?.assigned_user?.id || conversation?.assigned_to_id || conversation?.assigned_user_id)
+    (m: Record<string, any>) => (m.user?.id || m.userId || m.id) === (conversation?.assigned_user?.id || conversation?.assigned_to_id || conversation?.assigned_user_id)
   );
 
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
@@ -383,7 +383,7 @@ export default function ConversationPage() {
     sendMutation.mutate({ body_text: message, direction: "OUTBOUND" });
   };
 
-  const openPaymentDialog = (invoice: any) => {
+  const openPaymentDialog = (invoice: Record<string, any>) => {
     setSelectedInvoice(invoice);
     setPaymentForm({
       amount: String(Number(invoice.balance_due ?? 0).toFixed(2)),
@@ -401,8 +401,8 @@ export default function ConversationPage() {
   const contactName = contact
     ? (contact.name || `${contact.firstName || ""} ${contact.lastName || ""}`.trim() || contact.email || "?")
     : "Desconocido";
-  const inferredEmail = contact?.email || (msgList.find((msg: any) => typeof msg.sender_ref === "string" && msg.sender_ref.includes("@"))?.sender_ref ?? "");
-  const inferredPhone = contact?.phone || (msgList.find((msg: any) => typeof msg.sender_ref === "string" && !msg.sender_ref.includes("@"))?.sender_ref ?? "");
+  const inferredEmail = contact?.email || (msgList.find((msg) => typeof msg.sender_ref === "string" && msg.sender_ref.includes("@"))?.sender_ref ?? "");
+  const inferredPhone = contact?.phone || (msgList.find((msg) => typeof msg.sender_ref === "string" && !msg.sender_ref.includes("@"))?.sender_ref ?? "");
   const openContactDialog = () => {
     const fullName = String(contact?.full_name ?? "").trim();
     const parts = fullName.split(/\s+/).filter(Boolean);
@@ -460,7 +460,7 @@ export default function ConversationPage() {
                     </SelectTrigger>
                   </TooltipTrigger>
                   <SelectContent>
-                    {memberList.map((m: any) => (
+                    {memberList.map((m) => (
                       <SelectItem key={m.user?.id || m.userId || m.id} value={m.user?.id || m.userId || m.id}>
                         {m.user?.name || m.name || m.email}
                       </SelectItem>
@@ -529,7 +529,7 @@ export default function ConversationPage() {
                 <p className="text-xs">Sin mensajes aún</p>
               </div>
             ) : (
-              msgList.map((msg: any, index: number) => {
+              msgList.map((msg: Record<string, any>, index: number) => {
                 const isOutbound = msg.direction === "OUTBOUND";
                 const msgDate = msg.createdAt || msg.created_at
                   ? new Date(msg.createdAt || msg.created_at)
@@ -874,7 +874,7 @@ export default function ConversationPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {invoiceList.map((invoice: any) => (
+                {invoiceList.map((invoice) => (
                   <div key={invoice.id} className="rounded-lg border border-border bg-background px-3 py-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
@@ -978,7 +978,7 @@ export default function ConversationPage() {
             </div>
             {conversation.tasks && conversation.tasks.length > 0 ? (
               <div className="space-y-2">
-                {conversation.tasks.map((task: any) => (
+                {conversation.tasks.map((task) => (
                   <div key={task.id} className="flex items-center gap-2">
                     <StatusBadge status={task.status} type="task" className="text-[9px]" />
                     <span className="text-xs text-foreground truncate">{task.title}</span>
@@ -1100,7 +1100,7 @@ export default function ConversationPage() {
                       <SelectValue placeholder="Seleccioná un contacto existente" />
                     </SelectTrigger>
                     <SelectContent>
-                      {contactList.map((existing: any) => (
+                      {contactList.map((existing) => (
                         <SelectItem key={existing.id} value={existing.id}>
                           {existing.full_name}
                           {existing.email ? ` · ${existing.email}` : existing.phone ? ` · ${existing.phone}` : ""}

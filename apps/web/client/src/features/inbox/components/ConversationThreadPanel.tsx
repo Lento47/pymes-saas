@@ -5,7 +5,7 @@ export function ConversationThreadPanel({
   conversation,
 }: {
   conversationId: string | null;
-  conversation?: any;
+  conversation?: Record<string, any>;
 }) {
   if (!conversationId || !conversation) {
     return (

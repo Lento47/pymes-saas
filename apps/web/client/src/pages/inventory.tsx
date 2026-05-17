@@ -57,33 +57,32 @@ export default function InventoryPage() {
     queryFn: api.getCategories,
   });
 
-  const products: any[] = prodData?.data ?? [];
-  const total = prodData?.meta?.total ?? 0;
+  const products: Record<string, any>[] = prodData?.data ?? [];
+  const catList: Record<string, any>[] = Array.isArray(categories) ? categories : [];
   const totalPages = prodData?.meta?.pages ?? 1;
-  const catList: any[] = Array.isArray(categories) ? categories : [];
 
   const createMut = useMutation({
-    mutationFn: (d: any) => api.createProduct(d),
+    mutationFn: (d => api.createProduct(d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setDrawerOpen(false); toast({ title: "Producto creado" }); },
-    onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, ...d }: any) => api.updateProduct(id, d),
+    mutationFn: ({ id, ...d }) => api.updateProduct(id, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setDrawerOpen(false); setEditingProduct(null); toast({ title: "Producto actualizado" }); },
-    onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
   const archiveMut = useMutation({
     mutationFn: (id: string) => api.archiveProduct(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); toast({ title: "Producto archivado" }); },
-    onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
   const adjustMut = useMutation({
-    mutationFn: ({ id, ...d }: any) => api.adjustStock(id, d),
+    mutationFn: ({ id, ...d }) => api.adjustStock(id, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setAdjusting(null); setAdjustQty(0); setAdjustReason(""); toast({ title: "Stock ajustado" }); },
-    onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
 
   const sorted = [...products].sort((a, b) => {
@@ -192,7 +191,7 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((p: any) => (
+                {sorted.map((p) => (
                   <ProductCard key={p.id} product={p} viewMode="table" onEdit={(prod) => { setEditingProduct(prod); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={setAdjusting} />
                 ))}
               </tbody>
@@ -200,7 +199,7 @@ export default function InventoryPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {sorted.map((p: any) => (
+            {sorted.map((p) => (
               <ProductCard key={p.id} product={p} viewMode="grid" onEdit={(prod) => { setEditingProduct(prod); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={setAdjusting} />
             ))}
           </div>

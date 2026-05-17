@@ -49,7 +49,7 @@ export function SamlConfig() {
       setCertificate('');
       toast({ title: 'Configuración SAML guardada' });
     },
-    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
+    onError: (err) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
   });
 
   const toggleMutation = useMutation({
@@ -61,7 +61,7 @@ export function SamlConfig() {
       qc.invalidateQueries({ queryKey: ['/api/auth/saml/config', workspaceId] });
       toast({ title: ssoConfig?.enabled ? 'SAML desactivado' : 'SAML activado' });
     },
-    onError: (err: any) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
+    onError: (err) => toast({ title: 'Error', description: apiErrorDescription(err), variant: 'destructive' }),
   });
 
   const slug = workspace?.slug || 'TU_SLUG';

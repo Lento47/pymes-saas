@@ -19,7 +19,7 @@ const TRIGGERS = [
 interface TriggerSelectorProps {
   value: string;
   onChange: (v: string) => void;
-  channels: any[];
+  channels: Record<string, any>[];
   channelId: string;
   onChannelChange: (v: string) => void;
 }
@@ -80,7 +80,7 @@ export function TriggerSelector({ value, onChange, channels, channelId, onChanne
               <SelectValue placeholder="Todos los canales" />
             </SelectTrigger>
             <SelectContent>
-              {channels?.map((c: any) => (
+              {channels?.map((c) => (
                 <SelectItem key={c.id} value={c.id} className="text-[11px]">
                   {c.name} ({c.type})
                 </SelectItem>

@@ -285,10 +285,10 @@ export default function BillingPage() {
 
   const addonCheckoutMut = useMutation({
     mutationFn: (addonKey: string) => api.createAddonCheckout(addonKey),
-    onSuccess: (data: any) => {
+    onSuccess: (data: Record<string, any>) => {
       if (data.checkoutUrl) window.location.href = data.checkoutUrl;
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   // ────────────────────────────────────────────────────────────────────────
@@ -338,7 +338,7 @@ export default function BillingPage() {
             toast({ title: "Plan cancelado", description: "Tu suscripción se cancelará al final del período." });
             refreshUser();
             queryClient.invalidateQueries({ queryKey: ["subscription"] });
-          } catch (err: any) {
+          } catch (err: unknown) {
             toast({ title: "Error", description: apiErrorDescription(err, "No se pudo cancelar el plan."), variant: "destructive" });
           } finally { setLoading(null); }
         }
@@ -373,7 +373,7 @@ export default function BillingPage() {
           successUrl: `${window.location.origin}/settings/billing?paddle=success`,
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err?.message !== 'Checkout closed') {
         toast({ title: "Error", description: apiErrorDescription(err, "No se pudo abrir el checkout."), variant: "destructive" });
       }
@@ -395,7 +395,7 @@ export default function BillingPage() {
         customData: { workspaceSlug: user?.workspace?.slug ?? null },
         settings: { displayMode: 'overlay', theme: 'dark', locale: 'es', successUrl: `${window.location.origin}/settings/billing?paddle=success` },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err?.message !== 'Checkout closed') toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
     } finally { setLoading(null); }
   };
@@ -879,7 +879,7 @@ function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }
             </p>
           </div>
         ) : (
-          invoices.map((inv: any) => (
+          invoices.map((inv) => (
             <div key={inv.id} className="flex items-center justify-between px-4 py-3 hover:bg-foreground/[0.015] transition-colors">
               <div>
                 <div className="text-xs font-medium text-foreground">

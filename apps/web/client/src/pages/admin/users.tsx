@@ -31,7 +31,7 @@ export default function AdminUsers() {
         ) : (
           <div className="rounded-xl border border-border/60 bg-card/40 overflow-hidden">
             <div className="divide-y divide-border/60">
-              {users.map((u: any) => (
+              {users.map((u) => (
                 <div key={u.id} className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3">
                     <Users className="w-4 h-4 text-muted-foreground" />

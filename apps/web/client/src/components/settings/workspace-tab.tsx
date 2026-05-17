@@ -52,7 +52,7 @@ export function WorkspaceTab() {
       setFinanceOptIn(workspace?.ai_message_finance_opt_in === true);
       toast({ title: "Permiso actualizado" });
     },
-    onError: (e: any) =>
+    onError: (e) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -60,7 +60,7 @@ export function WorkspaceTab() {
     queryKey: ["/api/hacienda/certificates"],
     queryFn: () => api.listCertificates(),
   });
-  const activeCert = (certificates ?? []).find((c: any) => c.status === "ACTIVE");
+  const activeCert = (certificates ?? []).find((c) => c.status === "ACTIVE");
 
   const uploadCert = useMutation({
     mutationFn: () => {
@@ -76,7 +76,7 @@ export function WorkspaceTab() {
       setCertPin("");
       refetchCerts();
     },
-    onError: (e: any) =>
+    onError: (e) =>
       toast({ title: "Error al cargar certificado", description: e.message, variant: "destructive" }),
   });
 

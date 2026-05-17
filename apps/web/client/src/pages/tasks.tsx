@@ -118,7 +118,7 @@ export default function TasksPage() {
       setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" });
       toast({ title: editingId ? "Tarea actualizada" : "Tarea creada" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
@@ -130,7 +130,7 @@ export default function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
       toast({ title: "Tarea eliminada" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al eliminar", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
@@ -142,7 +142,7 @@ export default function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
       toast({ title: "Tarea completada" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
@@ -151,10 +151,10 @@ export default function TasksPage() {
   const overdueList = Array.isArray(overdueTasks) ? overdueTasks : overdueTasks?.data || [];
 
   const taskList = search.trim()
-    ? allTasks.filter((t: any) => t.title?.toLowerCase().includes(search.toLowerCase()))
+    ? allTasks.filter((t) => t.title?.toLowerCase().includes(search.toLowerCase()))
     : allTasks;
 
-  const openEdit = (task: any) => {
+  const openEdit = (task: Record<string, any>) => {
     setEditingId(task.id);
     setForm({
       title: task.title || "",
@@ -207,11 +207,11 @@ export default function TasksPage() {
             </div>
             <div className="flex items-center gap-1.5 text-emerald-400">
               <Check className="w-3.5 h-3.5" />
-              <span><strong>{taskList.filter((t: any) => t.status === "DONE").length}</strong> completadas</span>
+              <span><strong>{taskList.filter((t) => t.status === "DONE").length}</strong> completadas</span>
             </div>
             <div className="flex items-center gap-1.5 text-amber-400">
               <Timer className="w-3.5 h-3.5" />
-              <span><strong>{taskList.filter((t: any) => t.status === "IN_PROGRESS").length}</strong> en progreso</span>
+              <span><strong>{taskList.filter((t) => t.status === "IN_PROGRESS").length}</strong> en progreso</span>
             </div>
             <div className="flex items-center gap-1.5 text-red-400">
               <AlertCircle className="w-3.5 h-3.5" />
@@ -286,7 +286,7 @@ export default function TasksPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {taskList.map((task: any) => {
+                {taskList.map((task) => {
                   const dueStr = task.dueDate || task.due_date || task.due_at;
                   const isOverdue = dueStr && isPast(new Date(dueStr)) && !isToday(new Date(dueStr)) && task.status !== "DONE";
                   const assigneeName = task.assigned_user?.name

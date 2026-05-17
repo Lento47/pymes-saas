@@ -72,7 +72,7 @@ export function IntegrationsTab() {
       toast({ title: isDelete ? "API key eliminada" : "API key guardada" });
       if (payload.resend_api_key !== undefined) setResendKey("");
     },
-    onError: (e: any) =>
+    onError: (e) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 

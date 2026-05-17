@@ -241,7 +241,7 @@ export default function PricingPage() {
               <div className="bg-indigo-900/20 border border-indigo-400/15 rounded-2xl p-6 transition-all hover:bg-indigo-900/30">
                 <div className="text-sm font-semibold text-white/75 mb-3">{copy.roi?.starter?.label || 'PLAN STARTER'}</div>
                 <div className="space-y-3">
-                  {(copy.roi?.starter?.items as readonly any[] || []).map((item: any, i: number) => (
+                  {(copy.roi?.starter?.items as readonly any[] || []).map((item: Record<string, any>, i: number) => (
                     <div key={i} className="flex items-start gap-3">
                       <span className="text-[#F59E0B] font-bold mt-0.5">+</span>
                       <div className="text-sm">
@@ -260,7 +260,7 @@ export default function PricingPage() {
                   </div>
                   <div className="text-sm font-semibold text-[#F59E0B] mb-3 mt-2">{copy.roi?.growth?.label || 'PLAN GROWTH'}</div>
                 <div className="space-y-3">
-                  {(copy.roi?.growth?.items as readonly any[] || []).map((item: any, i: number) => (
+                  {(copy.roi?.growth?.items as readonly any[] || []).map((item: Record<string, any>, i: number) => (
                     <div key={i} className="flex items-start gap-3">
                       <span className="text-[#F59E0B] font-bold mt-0.5">→</span>
                       <div className="text-sm">
@@ -276,7 +276,7 @@ export default function PricingPage() {
               <div className="bg-indigo-900/20 border border-indigo-400/15 rounded-2xl p-6 transition-all hover:bg-indigo-900/30">
                 <div className="text-sm font-semibold text-white/75 mb-3">{copy.roi?.businessPlus?.label || 'PLAN BUSINESS+'}</div>
                 <div className="space-y-3">
-                  {(copy.roi?.businessPlus?.items as readonly any[] || []).map((item: any, i: number) => (
+                  {(copy.roi?.businessPlus?.items as readonly any[] || []).map((item: Record<string, any>, i: number) => (
                     <div key={i} className="flex items-start gap-3">
                       <span className="text-[#F59E0B] font-bold mt-0.5">↑</span>
                       <div className="text-sm">

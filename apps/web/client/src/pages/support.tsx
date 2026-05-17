@@ -26,7 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
   ESCALATED: "bg-red-500/10 text-red-400 border-red-500/30",
 };
 
-function parseEvidence(evidence: any): { workspace?: any; user?: any; path?: string; method?: string; source?: string; status?: number; stack?: string } {
+function parseEvidence(evidence: any): { workspace?: Record<string, any>; user?: Record<string, any>; path?: string; method?: string; source?: string; status?: number; stack?: string } {
   if (!evidence) return {};
   try {
     const e = typeof evidence === "string" ? JSON.parse(evidence) : evidence;
@@ -101,10 +101,10 @@ export default function SupportPage() {
     },
   });
 
-  const caseList: any[] = Array.isArray(cases) ? cases : [];
-  const filtered = filter === "all" ? caseList : caseList.filter((c: any) => c.status === filter);
+  const caseList: Record<string, any>[] = Array.isArray(cases) ? cases : [];
+  const filtered = filter === "all" ? caseList : caseList.filter((c) => c.status === filter);
 
-  const openCount = caseList.filter((c: any) => c.status === "OPEN" || c.status === "INVESTIGATING").length;
+  const openCount = caseList.filter((c) => c.status === "OPEN" || c.status === "INVESTIGATING").length;
 
   return (
     <div className="min-h-full bg-background">
@@ -186,7 +186,7 @@ export default function SupportPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filtered.map((c: any) => {
+            {filtered.map((c) => {
               const RiskIcon = RISK_ICONS[c.risk_level] || Info;
               const riskColor = RISK_COLORS[c.risk_level] || "text-muted-foreground";
               const statusColor = STATUS_COLORS[c.status] || "bg-muted text-muted-foreground";
@@ -373,7 +373,7 @@ export default function SupportPage() {
                             </div>
                           ) : (
                             <div className="space-y-2 mb-3">
-                              {(Array.isArray(comments) ? comments : []).map((cm: any) => (
+                              {(Array.isArray(comments) ? comments : []).map((cm) => (
                                 <div key={cm.id} className="flex items-start gap-2 text-xs">
                                   <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 text-[9px] font-bold">
                                     {(cm.user?.name || cm.user?.email || "?").charAt(0).toUpperCase()}

@@ -32,12 +32,12 @@ const AUTOMATION_LIMITS: Record<string, number> = {
 interface AutomationSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  members: any[];
-  channels: any[];
+  members: Record<string, any>[];
+  channels: Record<string, any>[];
   currentPlan: string;
   currentCount: number;
-  editingAuto: any | null;
-  onSave: (payload: any) => Promise<void>;
+  editingAuto: Record<string, any> | null;
+  onSave: (payload: Record<string, any>) => Promise<void>;
   isSaving: boolean;
   onClose: () => void;
 }
@@ -67,7 +67,7 @@ export function AutomationSheet({
   const [channelId, setChannelId] = useState(editingAuto?.trigger_config_json?.channel_id ?? "");
   const [conditions, setConditions] = useState<ConditionRow[]>(
     editingAuto?.condition_config_json && Array.isArray(editingAuto.condition_config_json)
-      ? editingAuto.condition_config_json.map((c: any) => ({
+      ? editingAuto.condition_config_json.map((c) => ({
           field: c.field ?? "body_text",
           operator: c.operator ?? "contains",
           value: String(c.value ?? ""),
@@ -76,7 +76,7 @@ export function AutomationSheet({
   );
 
   const handleSave = useCallback(async () => {
-    const payload: any = {
+    const payload: Record<string, any> = {
       name: name.trim(),
       description: description.trim() || undefined,
       trigger_type: triggerType,

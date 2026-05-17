@@ -24,19 +24,19 @@ export function ProfileTab() {
   const updateName = useMutation({
     mutationFn: () => api.updateMe({ name }),
     onSuccess: () => { toast({ title: "Nombre actualizado" }); qc.invalidateQueries({ queryKey: ["/api/auth/me"] }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const changePass = useMutation({
     mutationFn: () => api.changePassword({ current_password: currentPass, new_password: newPass }),
     onSuccess: () => { toast({ title: "Contraseña actualizada" }); setCurrentPass(""); setNewPass(""); setConfirmPass(""); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const uploadAv = useMutation({
     mutationFn: (file: File) => { const fd = new FormData(); fd.append("file", file); return api.uploadAvatar(fd); },
-    onSuccess: (data: any) => { setAvatarPreview(data.avatar_url); qc.invalidateQueries({ queryKey: ["/api/auth/me"] }); toast({ title: "Foto actualizada" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onSuccess: (data: Record<string, any>) => { setAvatarPreview(data.avatar_url); qc.invalidateQueries({ queryKey: ["/api/auth/me"] }); toast({ title: "Foto actualizada" }); },
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   return (

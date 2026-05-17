@@ -32,7 +32,7 @@ export default function AdminWorkspaces() {
         ) : (
           <div className="rounded-xl border border-border/60 bg-card/40 overflow-hidden">
             <div className="divide-y divide-border/60">
-              {workspaces.map((ws: any) => (
+              {workspaces.map((ws) => (
                 <Link
                   key={ws.id}
                   href={`/admin/workspaces/${ws.slug}`}

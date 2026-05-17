@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { Layers } from "lucide-react";
 
 interface CategoryChipsProps {
-  categories: any[];
+  categories: Record<string, any>[];
   selected: string;
   onSelect: (id: string) => void;
 }
@@ -22,7 +22,7 @@ export function CategoryChips({ categories, selected, onSelect }: CategoryChipsP
         <Layers className="w-3 h-3" />
         Todas
       </button>
-      {categories.map((c: any) => (
+      {categories.map((c) => (
         <button
           key={c.id}
           onClick={() => onSelect(c.id)}

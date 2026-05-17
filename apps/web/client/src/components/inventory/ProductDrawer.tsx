@@ -11,11 +11,11 @@ import { api } from "@/lib/api";
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: Record<string, any>) => void;
   isSaving: boolean;
-  product?: any;
-  categories: any[];
-  onCategoryCreated?: (cat: any) => void;
+  product?: Record<string, any>;
+  categories: Record<string, any>[];
+  onCategoryCreated?: (cat: Record<string, any>) => void;
 }
 
 const EMPTY = { name: "", sku: "", description: "", type: "PRODUCT", unit_price: 0, cost_price: 0, min_stock: 0, unit_of_measure: "", track_inventory: true, category_id: "" };
@@ -79,7 +79,7 @@ export function ProductDrawer({ open, onClose, onSave, isSaving, product, catego
               <SelectTrigger className="h-9 text-xs bg-background border-border"><SelectValue placeholder="Sin categoría" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Sin categoría</SelectItem>
-                {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 <SelectItem value="__new__" className="text-primary font-medium">+ Nueva categoría</SelectItem>
               </SelectContent>
             </Select>

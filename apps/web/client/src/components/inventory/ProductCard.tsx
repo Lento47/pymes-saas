@@ -5,10 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
-  product: any;
-  onEdit: (p: any) => void;
+  product: Record<string, any>;
+  onEdit: (p: Record<string, any>) => void;
   onArchive: (id: string) => void;
-  onAdjust: (p: any) => void;
+  onAdjust: (p: Record<string, any>) => void;
   viewMode: "grid" | "table";
 }
 
