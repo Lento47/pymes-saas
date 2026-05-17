@@ -29,7 +29,7 @@ export class MessageTemplatesController {
   @Post(':workspaceId')
   @RequireFeature('message_templates')
   async create(@Param('workspaceId') workspaceId: string, @Body() data: Record<string, any>, @Req() req: Request) {
-    return this.templates.create(workspaceId, req.user?.sub, data);
+    return this.templates.create(workspaceId, (req as any).user?.sub, data);
   }
 
   @Put(':workspaceId/:id')

@@ -310,7 +310,7 @@ REGLAS:
 
     try {
       const runner = new Runner();
-      const result = await runner.run(agent, history, { maxTurns: 3 });
+      const result = await runner.run(agent, history as any, { maxTurns: 3 });
 
       // Extract text from result
       const finalOutput: string = (() => {
@@ -412,7 +412,7 @@ REGLAS:
 
     try {
       const runner = new Runner();
-      const result = await runner.run(agent, history, { maxTurns: 1 });
+      const result = await runner.run(agent, history as any, { maxTurns: 1 });
 
       const encoder = new TextEncoder();
       const stream = new ReadableStream({

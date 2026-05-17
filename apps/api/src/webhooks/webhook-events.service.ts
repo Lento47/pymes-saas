@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { parseJsonValue } from '../common/prisma/json';
 import { WebhookEventStatus } from '@prisma/client';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -63,7 +63,7 @@ export class WebhookEventsService {
 
       return { event, duplicate: false };
     } catch (err) {
-      if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002') {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         const existing = await this.prisma.webhookEvent.findUnique({
           where: { event_fingerprint: fingerprint },
         });

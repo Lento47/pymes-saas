@@ -56,7 +56,7 @@ export class WhatsAppWebhookController {
         this.logger.warn('WhatsApp webhook missing X-Hub-Signature-256 header');
         throw new UnauthorizedException('Missing webhook signature');
       }
-      const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(payload));
+      const rawBody = (req as any).rawBody ?? Buffer.from(JSON.stringify(payload));
       if (!this.verifyWebhookSignature(appSecret, signature, rawBody)) {
         this.logger.warn('Invalid WhatsApp webhook signature');
         throw new UnauthorizedException('Invalid webhook signature');

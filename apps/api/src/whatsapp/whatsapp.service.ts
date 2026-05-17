@@ -284,7 +284,7 @@ export class WhatsAppService {
       select: { id: true, workspace_id: true, config_json: true },
     });
 
-    if (direct) return direct;
+    if (direct) return direct as any;
 
     // Legacy fallback: handles config_json stored as string JSON
     const fallbackWhere: Record<string, any> = { type: 'WHATSAPP', status: 'ACTIVE' };
@@ -300,7 +300,7 @@ export class WhatsAppService {
       return cfg.phone_number_id === phoneNumberId;
     });
 
-    return matched ?? null;
+    return (matched ?? null) as any;
   }
 
   /**

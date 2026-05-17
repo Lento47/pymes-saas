@@ -22,7 +22,8 @@ export class AgentToolsController {
 
   @Post('tool')
   async execute(@Body() dto: AgentToolDto, @Req() req: Request) {
-    const auth = req.headers?.authorization || req.headers?.['PymesHub_founder_api_key'] || '';
+    const authHeader = req.headers?.authorization || req.headers?.['PymesHub_founder_api_key'] || '';
+    const auth = Array.isArray(authHeader) ? (authHeader[0] ?? '') : authHeader;
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : auth;
 
     if (!process.env.PymesHub_FOUNDER_API_KEY) {

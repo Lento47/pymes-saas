@@ -426,7 +426,7 @@ export class InvoicesService {
         related_entity_type: 'invoice',
         related_entity_id: invoiceId,
       }).catch((err) =>
-        this.logger.warn(`Failed to notify workspace ${workspaceId} about invoice ${invoiceNumber || invoiceId}`, err),
+        this.logger.warn(`Failed to notify workspace ${workspaceId} about invoice ${invoice.number || invoiceId}`, err),
       );
     }
 
@@ -727,8 +727,8 @@ export class InvoicesService {
 
   private parseAmount(value: unknown): number {
     if (value === null || value === undefined) return 0;
-    if (typeof value === 'object' && typeof value.toNumber === 'function') {
-      const n = value.toNumber();
+    if (typeof value === 'object' && typeof (value as { toNumber?: unknown }).toNumber === 'function') {
+      const n = (value as { toNumber(): number }).toNumber();
       return isNaN(n) ? 0 : n;
     }
     const n = Number(value);

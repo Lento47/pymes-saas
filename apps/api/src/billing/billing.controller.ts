@@ -133,7 +133,7 @@ export class BillingController {
       throw new BadRequestException(`Webhook signature verification failed: ${(error as Error).message}`);
     }
 
-    await this.paddleService.handleWebhookEvent(event);
+    await this.paddleService.handleWebhookEvent(event as any);
 
     return { received: true };
   }

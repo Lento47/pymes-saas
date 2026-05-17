@@ -136,13 +136,13 @@ export class AutomationProcessor extends WorkerHost {
         data: {
           status: 'FAILED',
           finished_at: new Date(),
-          error_message: error?.message ?? 'Unknown error',
+          error_message: (error as Error)?.message ?? 'Unknown error',
         },
       });
 
       this.logger.error(
-        `Automation job ${job.id} failed: execution=${execution.id}, error=${error?.message}`,
-        error?.stack,
+        `Automation job ${job.id} failed: execution=${execution.id}, error=${(error as Error)?.message}`,
+        (error as Error)?.stack,
       );
 
       throw error;
@@ -189,7 +189,7 @@ export class AutomationProcessor extends WorkerHost {
       case 'lte':
         return Number(entityValue) <= Number(value);
       case 'exists':
-        return value === true
+        return (value as any) === true
           ? entityValue !== undefined && entityValue !== null && entityValue !== ''
           : entityValue === undefined || entityValue === null || entityValue === '';
       default:

@@ -121,7 +121,7 @@ export class McpController {
     } else if (body.method === 'tools/list') {
       sseSend(res, { jsonrpc: '2.0', id: body.id,         result: { tools: getToolsForResponse() } });
     } else if (body.method === 'tools/call') {
-      const result = await this.executeToolCall(req.workspace_id, body.params, body.id, req);
+      const result = await this.executeToolCall((req as any).workspace_id, body.params, body.id, req);
       sseSend(res, result);
     } else if (body.method === 'notifications/initialized') {
       sseSend(res, { jsonrpc: '2.0', id: body.id, result: {} });
@@ -173,7 +173,7 @@ export class McpController {
 
       // Handle tools/call
       else if (body.method === 'tools/call') {
-        const result = await this.executeToolCall(req.workspace_id, body.params, body.id, req);
+        const result = await this.executeToolCall((req as any).workspace_id, body.params, body.id, req);
         sseSend(res, result);
       }
 
@@ -200,7 +200,7 @@ export class McpController {
       case 'tools/list':
         return res.json({ jsonrpc: '2.0', id: body.id,         result: { tools: getToolsForResponse() } });
       case 'tools/call': {
-        const result = await this.executeToolCall(req.workspace_id, body.params, body.id, req);
+        const result = await this.executeToolCall((req as any).workspace_id, body.params, body.id, req);
         return res.json(result);
       }
       default:
