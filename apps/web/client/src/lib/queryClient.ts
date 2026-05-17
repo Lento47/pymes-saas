@@ -67,8 +67,8 @@ export const getQueryFn: <T>(options: {
         category: "QUERY_NETWORK",
         severity: "ERROR",
         title: "Query fetch failure",
-        message: error?.message ?? "Falló una consulta de datos.",
-        stack: error?.stack,
+        message: (error as any)?.message ?? "Falló una consulta de datos.",
+        stack: (error as any)?.stack,
         url: `${API_BASE}${queryKey.join("/")}`,
       });
       throw error;

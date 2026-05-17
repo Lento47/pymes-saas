@@ -16,7 +16,7 @@ export function useNotificationsSocket() {
 
     const handleNotification = (notification: Record<string, any>) => {
       // Agregar al cache sin refetch
-      qc.setQueryData(['/api/notifications'], (old) => {
+      qc.setQueryData(['/api/notifications'], (old: any) => {
         if (!old) return old;
         return {
           ...old,
@@ -26,7 +26,7 @@ export function useNotificationsSocket() {
       });
 
       // Actualizar badge de no leídas
-      qc.setQueryData(['/api/notifications/unread-count'], (old) => {
+      qc.setQueryData(['/api/notifications/unread-count'], (old: any) => {
         if (!old) return { count: 1 };
         return { count: (old.count ?? 0) + 1 };
       });

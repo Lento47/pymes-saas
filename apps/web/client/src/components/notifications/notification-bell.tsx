@@ -104,7 +104,7 @@ export function NotificationBell() {
                   </p>
                 </div>
               ) : (
-                notifications.map((n) => {
+                notifications.map((n: any) => {
                   const cfg = getTypeConfig(n.type);
                   const Icon = cfg.icon;
                   const timeAgo = n.created_at

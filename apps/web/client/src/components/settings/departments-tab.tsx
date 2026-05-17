@@ -48,7 +48,7 @@ export function DepartmentsTab() {
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, ...d }) => api.updateDepartment(id, d),
+    mutationFn: ({ id, ...d }: { id: any; [key: string]: any }) => api.updateDepartment(id, d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       setEditDept(null);
@@ -68,7 +68,7 @@ export function DepartmentsTab() {
   });
 
   const addMemberMut = useMutation({
-    mutationFn: ({ deptId, userId }) => api.addDepartmentMember(deptId, { user_id: userId }),
+    mutationFn: ({ deptId, userId }: { deptId: any; userId: any }) => api.addDepartmentMember(deptId, { user_id: userId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       setAddMemberDept(null);
@@ -79,7 +79,7 @@ export function DepartmentsTab() {
   });
 
   const removeMemberMut = useMutation({
-    mutationFn: ({ deptId, userId }) => api.removeDepartmentMember(deptId, userId),
+    mutationFn: ({ deptId, userId }: { deptId: any; userId: any }) => api.removeDepartmentMember(deptId, userId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["departments"] }),
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -143,7 +143,7 @@ export function DepartmentsTab() {
               )}
               {dept.members?.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {dept.members.map((m) => (
+                  {dept.members.map((m: any) => (
                     <div key={m.id} className="flex items-center gap-1 bg-elevated rounded px-2 py-0.5 text-xs">
                       <span>{m.user?.name ?? m.user?.email}</span>
                       {m.is_lead && <Badge variant="outline" className="text-xs h-4 px-1">Lead</Badge>}

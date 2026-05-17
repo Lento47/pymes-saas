@@ -73,7 +73,7 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
 
         const convHits: SearchResult[] = (Array.isArray(convRes) ? convRes : convRes.data ?? [])
           .slice(0, 5)
-          .map((c) => ({
+          .map((c: any) => ({
             type: "conversation" as const,
             label: c.subject || "Sin asunto",
             description: c.contact?.full_name || c.contact?.name || "Contacto desconocido",
@@ -82,13 +82,13 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
 
         const contacts = Array.isArray(contactRes) ? contactRes : contactRes.data ?? [];
         const contactHits: SearchResult[] = contacts
-          .filter((c) =>
+          .filter((c: any) =>
             c.full_name?.toLowerCase().includes(q) ||
             c.email?.toLowerCase().includes(q) ||
             c.phone?.includes(q),
           )
           .slice(0, 3)
-          .map((c) => ({
+          .map((c: any) => ({
             type: "contact" as const,
             label: c.full_name || c.name || "Sin nombre",
             description: c.email || c.phone || "",

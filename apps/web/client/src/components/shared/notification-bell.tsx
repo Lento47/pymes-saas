@@ -125,7 +125,7 @@ export function NotificationBell() {
                   Sin notificaciones
                 </div>
               ) : (
-                notifications.map((n) => (
+                notifications.map((n: any) => (
                   <NotifItem
                     key={n.id}
                     notification={n}
