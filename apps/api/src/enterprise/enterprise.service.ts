@@ -17,7 +17,7 @@ export class EnterpriseService {
     });
   }
 
-  async upsertConfig(workspaceId: string, data: any) {
+  async upsertConfig(workspaceId: string, data: Record<string, any>) {
     const existing = await this.prisma.workspaceEnterpriseConfig.findUnique({
       where: { workspace_id: workspaceId },
     });
@@ -91,7 +91,7 @@ export class EnterpriseService {
     });
   }
 
-  async upsertCapability(id: string | undefined, data: any) {
+  async upsertCapability(id: string | undefined, data: Record<string, any>) {
     if (id) {
       return this.prisma.businessPlusCapability.update({
         where: { id },

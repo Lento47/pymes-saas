@@ -31,7 +31,7 @@ export class TasksService {
     } = filters;
     const skip = (page - 1) * limit;
 
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
 
     if (status)           where.status           = status;
     if (priority)         where.priority         = priority;

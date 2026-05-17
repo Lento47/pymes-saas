@@ -68,7 +68,7 @@ export class KnowledgeBaseService {
     });
 
     if (existing) {
-      const data: any = {
+      const data: Record<string, any> = {
         seen_count: { increment: 1 },
         last_seen_case_id: dCase.id,
         last_seen_at: new Date(),

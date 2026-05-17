@@ -18,13 +18,13 @@ export class SlaController {
 
   @Post('policies')
   @Roles('OWNER', 'ADMIN')
-  async createPolicy(@Body() data: any) {
+  async createPolicy(@Body() data: Record<string, any>) {
     return this.sla.upsertPolicy(undefined, data);
   }
 
   @Put('policies/:id')
   @Roles('OWNER', 'ADMIN')
-  async updatePolicy(@Param('id', ValidateUUIDPipe) id: string, @Body() data: any) {
+  async updatePolicy(@Param('id', ValidateUUIDPipe) id: string, @Body() data: Record<string, any>) {
     return this.sla.upsertPolicy(id, data);
   }
 

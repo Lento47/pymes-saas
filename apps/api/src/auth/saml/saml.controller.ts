@@ -133,7 +133,7 @@ export class SamlController {
   @Roles('OWNER', 'ADMIN')
   async upsertConfig(
     @Param('workspaceId') workspaceId: string,
-    @Body() data: any,
+    @Body() data: Record<string, any>,
     @Req() req: Request,
   ) {
     const user = (req as any).user;

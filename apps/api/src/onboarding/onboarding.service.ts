@@ -34,7 +34,7 @@ export class OnboardingService {
     return { exists: true, status: project.status, completed, total };
   }
 
-  async saveProject(workspaceId: string, data: any) {
+  async saveProject(workspaceId: string, data: Record<string, any>) {
     const existing = await this.prisma.onboardingProject.findUnique({ where: { workspace_id: workspaceId } });
     if (existing) {
       return this.prisma.onboardingProject.update({
@@ -61,7 +61,7 @@ export class OnboardingService {
     });
   }
 
-  async updateProject(workspaceId: string, data: any) {
+  async updateProject(workspaceId: string, data: Record<string, any>) {
     const updateData: any = {
       status: data.status,
       target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : undefined,

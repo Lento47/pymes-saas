@@ -68,7 +68,7 @@ export class DiagnosticService {
   // own cases so VIEWER/AGENT users see "Mis tickets" without leaking
   // unrelated incidents from other teammates.
   async listCases(workspaceId: string, opts?: { userId?: string }) {
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
     if (opts?.userId) where.user_id = opts.userId;
     const cases = await (this.prisma as any).supportDiagnosticCase.findMany({
       where,
@@ -78,7 +78,7 @@ export class DiagnosticService {
 
     // Mask internal error details from non-admin users
     if (opts?.userId) {
-      return cases.map((c: any) => ({
+      return cases.map((c: Record<string, any>) => ({
         ...c,
         title: 'Error procesando tu solicitud',
         user_description: 'Nuestro equipo está revisando este incidente.',
@@ -88,7 +88,7 @@ export class DiagnosticService {
   }
 
   async getCase(id: string, opts: { workspaceId: string; userId?: string }) {
-    const where: any = { id, workspace_id: opts.workspaceId };
+    const where: Record<string, any> = { id, workspace_id: opts.workspaceId };
     if (opts.userId) where.user_id = opts.userId;
     const case_ = await (this.prisma as any).supportDiagnosticCase.findFirst({ where });
     if (!case_) return null;

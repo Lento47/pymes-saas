@@ -25,7 +25,7 @@ export class EmailController {
 
   @Post('test-smtp')
   @UseGuards(JwtAuthGuard)
-  async testSmtp(@Body() body: any) {
+  async testSmtp(@Body() body: Record<string, any>) {
     if (!body.host || !body.user || !body.password) {
       throw new BadRequestException('Faltan datos: host, user y password son requeridos.');
     }
@@ -58,7 +58,7 @@ export class InboundController {
     @Headers('svix-signature') svixSignature: string | undefined,
     @Headers('svix-id') svixId: string | undefined,
     @Headers('svix-timestamp') svixTimestamp: string | undefined,
-    @Body() body: any,
+    @Body() body: Record<string, any>,
     @Req() req: Request,
   ) {
     const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;

@@ -303,7 +303,7 @@ export class PaddleSdkService {
           signal: AbortSignal.timeout(10_000),
         });
         if (res.ok) {
-          const body: any = await res.json();
+          const body: Record<string, any> = await res.json();
           const customers = body?.data || [];
           this.logger.log(`Auto-sync: Paddle API returned ${customers.length} customer(s) for email ${info.email}`);
           if (customers.length > 0) {
@@ -605,7 +605,7 @@ export class PaddleSdkService {
 
   // ── Private event handlers ───────────────────────────────────────────────
 
-  private async handleSubscriptionEvent(data: any): Promise<void> {
+  private async handleSubscriptionEvent(data: Record<string, any>): Promise<void> {
     this.logger.log(`[DIAG] Subscription event raw keys: ${Object.keys(data).join(', ')}`);
 
     const customerId = data.customerId || data.customer_id || data.customer?.id;
@@ -724,7 +724,7 @@ export class PaddleSdkService {
     }
   }
 
-  private async handleSubscriptionCanceled(data: any): Promise<void> {
+  private async handleSubscriptionCanceled(data: Record<string, any>): Promise<void> {
     const customerId = data.customerId || data.customer_id;
     if (!customerId) return;
 
@@ -788,7 +788,7 @@ export class PaddleSdkService {
     return Math.round((minor / divisor) * 100) / 100;
   }
 
-  private async handleTransactionCompleted(data: any): Promise<void> {
+  private async handleTransactionCompleted(data: Record<string, any>): Promise<void> {
     const subscriptionId = data.subscriptionId || data.subscription_id;
     if (!subscriptionId) return;
 

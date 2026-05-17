@@ -64,7 +64,7 @@ export class WhatsAppService {
       signal: AbortSignal.timeout(10_000),
     });
 
-    const data: any = await res.json();
+    const data: Record<string, any> = await res.json();
 
     if (!res.ok) {
       this.logger.error('Meta API error:', JSON.stringify(data));
@@ -209,7 +209,7 @@ export class WhatsAppService {
       signal: AbortSignal.timeout(10_000),
     });
 
-    const data: any = await res.json();
+    const data: Record<string, any> = await res.json();
 
     if (!res.ok) {
       this.logger.error('Meta template API error:', JSON.stringify(data));
@@ -357,7 +357,7 @@ export class WhatsAppService {
         bodyText = '💬 Sticker';
       } else if (msg.type === 'contacts') {
         const contactNames = (msg.contacts || [])
-          .map((c: any) => c.name?.formatted_name ?? 'Contacto')
+          .map((c: Record<string, any>) => c.name?.formatted_name ?? 'Contacto')
           .join(', ');
         bodyText = `👤 Contacto compartido: ${contactNames}`;
       } else {

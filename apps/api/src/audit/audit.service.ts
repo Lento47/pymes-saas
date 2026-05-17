@@ -18,7 +18,7 @@ export class AuditService {
       limit = 20,
     } = filters;
 
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
 
     if (entity_type) {
       where.entity_type = { contains: entity_type, mode: 'insensitive' };
@@ -68,8 +68,8 @@ export class AuditService {
       action: string;
       entity_type: string;
       entity_id: string;
-      before?: any;
-      after?: any;
+      before?: Record<string, any>;
+      after?: Record<string, any>;
     },
   ): Promise<void> {
     try {

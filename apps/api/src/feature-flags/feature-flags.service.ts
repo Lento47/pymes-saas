@@ -77,7 +77,7 @@ export class FeatureFlagsService implements OnModuleInit {
     return result;
   }
 
-  async upsertFlag(id: string | undefined, data: any) {
+  async upsertFlag(id: string | undefined, data: Record<string, any>) {
     if (id) {
       return this.prisma.featureFlag.update({
         where: { id },

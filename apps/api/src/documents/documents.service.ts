@@ -164,7 +164,7 @@ export class DocumentsService {
     const { status, contact_id, conversation_id, mime_type, q, page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
 
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
     if (status)          where.status          = status;
     if (contact_id)      where.contact_id      = contact_id;
     if (conversation_id) where.conversation_id = conversation_id;

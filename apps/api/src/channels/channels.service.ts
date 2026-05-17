@@ -48,7 +48,7 @@ export class ChannelsService {
   }
 
   async findAll(workspaceId: string, includeInactive = false) {
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
     if (!includeInactive) where.status = { not: 'INACTIVE' };
     const channels = await this.prisma.channel.findMany({
       where,

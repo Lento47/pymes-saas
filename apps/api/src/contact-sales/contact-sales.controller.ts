@@ -9,7 +9,7 @@ export class ContactSalesController {
   constructor(private readonly contactSales: ContactSalesService) {}
 
   @Post()
-  async submitInquiry(@Body() data: any) {
+  async submitInquiry(@Body() data: Record<string, any>) {
     return this.contactSales.submitInquiry(data);
   }
 

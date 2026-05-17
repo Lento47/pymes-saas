@@ -23,7 +23,7 @@ export class ContactsService {
     const { q, type, tag, page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
 
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
 
     if (type) where.type = type;
 

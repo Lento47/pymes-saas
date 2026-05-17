@@ -14,7 +14,7 @@ export class InsightsController {
 
   @Get()
   @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
-  getInsights(@CurrentUser() user: any) {
+  getInsights(@CurrentUser() user: Record<string, any>) {
     return this.insightsService.getInsights(user.workspace_id);
   }
 }

@@ -41,7 +41,7 @@ export class FollowupProcessor {
           related_entity_type: 'task',
           related_entity_id: task.id,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         this.logger.error(
           `Failed to create overdue notification for task ${task.id}: ${error?.message}`,
           error?.stack,
@@ -81,7 +81,7 @@ export class FollowupProcessor {
           related_entity_type: 'conversation',
           related_entity_id: conv.id,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         this.logger.error(
           `Failed to create no-reply notification for conversation ${conv.id}: ${error?.message}`,
           error?.stack,

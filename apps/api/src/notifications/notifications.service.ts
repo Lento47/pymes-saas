@@ -25,7 +25,7 @@ export class NotificationsService {
     const limit = Number(filters.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const where: any = { workspace_id: workspaceId, user_id: userId };
+    const where: Record<string, any> = { workspace_id: workspaceId, user_id: userId };
 
     if (filters.read !== undefined) {
       where.read_at = filters.read === 'true' ? { not: null } : null;

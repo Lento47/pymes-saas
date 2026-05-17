@@ -60,7 +60,7 @@ export class InvoicesService {
     } = filters;
 
     const skip = (page - 1) * limit;
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
 
     if (status) where.status = status;
     if (hacienda_status) where.hacienda_status = hacienda_status;

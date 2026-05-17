@@ -14,7 +14,7 @@ export class InventoryService {
   ) {}
 
   async listProducts(workspaceId: string, filters: { search?: string; category_id?: string; low_stock?: boolean; page?: number; limit?: number }) {
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
     if (filters.search) {
       where.OR = [
         { name: { contains: filters.search, mode: 'insensitive' } },
@@ -160,7 +160,7 @@ export class InventoryService {
   }
 
   async getMovements(workspaceId: string, productId?: string, page = 1, limit = 50) {
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
     if (productId) where.product_id = productId;
     const skip = (page - 1) * limit;
 

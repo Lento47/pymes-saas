@@ -36,8 +36,8 @@ export class AgentService {
   private async logToolCall(
     agentType: string,
     toolName: string,
-    input: any,
-    output: any,
+    input: Record<string, any>,
+    output: Record<string, any>,
     riskLevel: string,
   ): Promise<void> {
     if (!this.currentSessionId) return;
@@ -129,7 +129,7 @@ export class AgentService {
         name: 'list_documents', description: 'List uploaded documents/files with extracted text for insights',
         parameters: z.object({ search: z.string().optional().nullable() }),
         execute: async ({ search }) => {
-          const where: any = { workspace_id: workspaceId };
+          const where: Record<string, any> = { workspace_id: workspaceId };
           if (search) where.file_name = { contains: search, mode: 'insensitive' };
           return { documents: await prisma.document.findMany({ where, select: { id: true, file_name: true, mime_type: true, file_size: true, ocr_text: true, created_at: true }, take: 50, orderBy: { created_at: 'desc' } }) };
         },
@@ -221,7 +221,7 @@ export class AgentService {
           return { query, results, total: results.length };
         },
       }),
-    ].filter((t: any) => allowedTools.has(t.name));
+    ].filter((t: Record<string, any>) => allowedTools.has(t.name));
   }
 
   async streamWorkflow(
@@ -254,8 +254,8 @@ export class AgentService {
           this.prisma.contact.count({ where: { workspace_id: workspaceId } }),
         ]);
         const ctx: string[] = [`Workspace: ${ws?.name} (Plan: ${ws?.plan})`];
-        if (tasks.length) ctx.push(`Tareas pendientes: ${tasks.map((t: any) => t.title).join(', ')}`);
-          if (invoices.length) ctx.push(`Facturas: ${invoices.map((i: any) => `${i.number} (${i.status}) total:${i.amount} subtotal:${i.subtotal ?? i.amount} iva:${i.tax_rate ?? 0}%`).join(', ')}`);
+        if (tasks.length) ctx.push(`Tareas pendientes: ${tasks.map((t: Record<string, any>) => t.title).join(', ')}`);
+          if (invoices.length) ctx.push(`Facturas: ${invoices.map((i: Record<string, any>) => `${i.number} (${i.status}) total:${i.amount} subtotal:${i.subtotal ?? i.amount} iva:${i.tax_rate ?? 0}%`).join(', ')}`);
         if (contacts) ctx.push(`Contactos totales: ${contacts}`);
         inputWithContext = `Contexto:\n${ctx.join('\n')}\n\nPregunta: ${input}`;
       }

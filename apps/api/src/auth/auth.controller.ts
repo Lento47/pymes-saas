@@ -240,7 +240,7 @@ export class AuthController {
 
   @Post('telegram/token')
   @HttpCode(HttpStatus.OK)
-  async telegramTokenLogin(@Body() data: any) {
+  async telegramTokenLogin(@Body() data: Record<string, any>) {
     const profile = await this.authService.verifyTelegramAuth(data);
     const result = await this.authService.telegramLogin(profile);
     const code = this.authService.mintSsoExchangeCode(result.user.id, result.user.workspace.id);

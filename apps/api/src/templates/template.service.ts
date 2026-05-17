@@ -121,7 +121,7 @@ export class TemplateService {
 
   // ─── Seed data helpers ─────────────────────────────────────────────────
 
-  async upsertSystemTemplate(data: any) {
+  async upsertSystemTemplate(data: Record<string, any>) {
     return this.prisma.systemTemplate.upsert({
       where: { key: data.key },
       update: {
@@ -146,7 +146,7 @@ export class TemplateService {
     });
   }
 
-  async upsertWorkspaceTemplate(data: any) {
+  async upsertWorkspaceTemplate(data: Record<string, any>) {
     return this.prisma.workspaceTemplate.upsert({
       where: { key: data.key },
       update: {

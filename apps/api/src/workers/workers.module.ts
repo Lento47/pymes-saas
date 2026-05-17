@@ -39,7 +39,7 @@ function createRedisConnection(config: ConfigService) {
     reconnectOnError: () => false,
   });
 
-  redis.on('error', (err: any) => {
+  redis.on('error', (err: unknown) => {
     if (err?.code === 'ECONNREFUSED') {
       if (!redisWarned) {
         logger.warn('Redis not available — background jobs disabled, using fallback rate limiting');

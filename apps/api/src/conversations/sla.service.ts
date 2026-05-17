@@ -48,7 +48,7 @@ export class SlaService {
 
     if (!conv || conv.resolved_at) return;
 
-    const data: any = { resolved_at: new Date() };
+    const data: Record<string, any> = { resolved_at: new Date() };
 
     if (conv.created_at && conv.sla_target_hours) {
       const slaDeadline = new Date(conv.created_at.getTime() + conv.sla_target_hours * 3600_000);

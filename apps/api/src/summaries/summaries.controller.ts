@@ -23,7 +23,7 @@ export class SummariesController {
   @Get('daily')
   @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findAll(
-    @CurrentUser() user: any,
+    @CurrentUser() user: Record<string, any>,
     @Query() filters: FilterSummariesDto,
   ) {
     return this.summariesService.findAll(user.workspace_id, filters);
@@ -32,7 +32,7 @@ export class SummariesController {
   @Get('daily/:date')
   @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findByDate(
-    @CurrentUser() user: any,
+    @CurrentUser() user: Record<string, any>,
     @Param('date') date: string,
   ) {
     return this.summariesService.findByDate(user.workspace_id, date);
@@ -40,7 +40,7 @@ export class SummariesController {
 
   @Post('generate')
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
-  generate(@CurrentUser() user: any) {
+  generate(@CurrentUser() user: Record<string, any>) {
     return this.summariesService.generate(user.workspace_id);
   }
 }

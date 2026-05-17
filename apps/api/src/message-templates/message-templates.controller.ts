@@ -28,13 +28,13 @@ export class MessageTemplatesController {
 
   @Post(':workspaceId')
   @RequireFeature('message_templates')
-  async create(@Param('workspaceId') workspaceId: string, @Body() data: any, @Req() req: Request) {
+  async create(@Param('workspaceId') workspaceId: string, @Body() data: Record<string, any>, @Req() req: Request) {
     return this.templates.create(workspaceId, req.user?.sub, data);
   }
 
   @Put(':workspaceId/:id')
   @RequireFeature('message_templates')
-  async update(@Param('workspaceId') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string, @Body() data: any) {
+  async update(@Param('workspaceId') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string, @Body() data: Record<string, any>) {
     return this.templates.update(workspaceId, id, data);
   }
 
