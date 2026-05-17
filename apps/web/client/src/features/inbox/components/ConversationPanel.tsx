@@ -255,7 +255,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   });
 
   const sendInvMut = useMutation({
-    mutationFn: async (invoice) => {
+    mutationFn: async (invoice: any) => {
       const channelId = conversation?.channel?.id;
       if (!channelId) throw new Error("Canal no válido");
       const reminder = await api.generateInvoiceReminder(invoice.id);
@@ -562,7 +562,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                   const type = file.type.startsWith('image/') ? 'image' : 'document';
                   setAttachment({ file, url, type });
                 } catch (err: unknown) {
-                  toast({ title: "Error", description: err.message || "No se pudo subir el archivo", variant: "destructive" });
+                  toast({ title: "Error", description: (err as any)?.message || "No se pudo subir el archivo", variant: "destructive" });
                 } finally {
                   setUploading(false);
                   e.target.value = '';
@@ -609,7 +609,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                       </div>
                       {inv.lines?.length > 0 && (
                         <div className="text-[10px] text-muted-foreground/60 mt-0.5">
-                          {inv.lines.map((l) => l.product?.name || l.description).join(", ")}
+                          {inv.lines.map((l: any) => l.product?.name || l.description).join(", ")}
                         </div>
                       )}
                     </div>

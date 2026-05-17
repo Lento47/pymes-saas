@@ -156,7 +156,7 @@ function PlatformTab() {
                   <p className="text-xs text-muted-foreground">{u.email}</p>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {(u.workspaces ?? []).map((w) => (
+                  {(u.workspaces ?? []).map((w: any) => (
                     <Badge key={w.slug} variant="outline" className={ROLE_COLORS[w.role] ?? ""}>{w.slug}</Badge>
                   ))}
                 </div>
@@ -169,7 +169,7 @@ function PlatformTab() {
       <section>
         <Label className="text-sm font-medium text-foreground mb-2 block">Seleccionar workspace</Label>
         <div className="space-y-2">
-          {wsList.map((w) => (
+          {wsList.map((w: any) => (
             <button
               key={w.slug}
               onClick={() => setSelectedSlug(w.slug)}

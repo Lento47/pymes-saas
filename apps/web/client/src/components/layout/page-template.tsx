@@ -145,7 +145,7 @@ interface MetricCardProps {
   currency?: string;
   trend?: number;
   trendLabel?: string;
-  icon?: React.ReactNode;
+  icon?: React.ElementType;
   loading?: boolean;
   color?: "blue" | "orange" | "red" | "purple" | "green";
 }

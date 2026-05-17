@@ -57,7 +57,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
 }
 
 function StatCard({ icon: Icon, label, value, sub }: {
-  icon: React.ReactNode; label: string; value: string | number; sub?: string;
+  icon: React.ElementType; label: string; value: string | number; sub?: string;
 }) {
   return (
     <Card>
@@ -157,7 +157,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (!user?.is_platform_admin) return;
     Promise.all([api.platformGetStats(), api.platformListWorkspaces()])
-      .then(([s, w]) => { setStats(s); setWorkspaces(w); })
+      .then(([s, w]) => { setStats(s); setWorkspaces(w as any[]); })
       .finally(() => setLoading(false));
   }, [user]);
 

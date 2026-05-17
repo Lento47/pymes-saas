@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "notifications" | "settings" | "help";
-type NavItem = { path: string; icon: React.ReactNode; key: NavKey; badge?: "unread" | "overdue" };
+type NavItem = { path: string; icon: React.ElementType; key: NavKey; badge?: "unread" | "overdue" };
 
 const BETA_LABELS: Partial<Record<NavKey, string>> = {
   contacts: "Clientes",

@@ -275,7 +275,7 @@ export default function ConversationPage() {
   const createInvoiceMutation = useMutation({
     mutationFn: () =>
       api.createInvoice({
-        contact_id: conversation.contact.id,
+        contact_id: conversation?.contact?.id,
         conversation_id: id,
         number: invoiceForm.number,
         amount: Number(invoiceForm.amount),
@@ -401,8 +401,8 @@ export default function ConversationPage() {
   const contactName = contact
     ? (contact.name || `${contact.firstName || ""} ${contact.lastName || ""}`.trim() || contact.email || "?")
     : "Desconocido";
-  const inferredEmail = contact?.email || (msgList.find((msg) => typeof msg.sender_ref === "string" && msg.sender_ref.includes("@"))?.sender_ref ?? "");
-  const inferredPhone = contact?.phone || (msgList.find((msg) => typeof msg.sender_ref === "string" && !msg.sender_ref.includes("@"))?.sender_ref ?? "");
+  const inferredEmail = contact?.email || (msgList.find((msg: any) => typeof msg.sender_ref === "string" && msg.sender_ref.includes("@"))?.sender_ref ?? "");
+  const inferredPhone = contact?.phone || (msgList.find((msg: any) => typeof msg.sender_ref === "string" && !msg.sender_ref.includes("@"))?.sender_ref ?? "");
   const openContactDialog = () => {
     const fullName = String(contact?.full_name ?? "").trim();
     const parts = fullName.split(/\s+/).filter(Boolean);
@@ -460,7 +460,7 @@ export default function ConversationPage() {
                     </SelectTrigger>
                   </TooltipTrigger>
                   <SelectContent>
-                    {memberList.map((m) => (
+                    {memberList.map((m: any) => (
                       <SelectItem key={m.user?.id || m.userId || m.id} value={m.user?.id || m.userId || m.id}>
                         {m.user?.name || m.name || m.email}
                       </SelectItem>
@@ -874,7 +874,7 @@ export default function ConversationPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {invoiceList.map((invoice) => (
+                {invoiceList.map((invoice: any) => (
                   <div key={invoice.id} className="rounded-lg border border-border bg-background px-3 py-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
@@ -978,7 +978,7 @@ export default function ConversationPage() {
             </div>
             {conversation.tasks && conversation.tasks.length > 0 ? (
               <div className="space-y-2">
-                {conversation.tasks.map((task) => (
+                {conversation.tasks.map((task: any) => (
                   <div key={task.id} className="flex items-center gap-2">
                     <StatusBadge status={task.status} type="task" className="text-[9px]" />
                     <span className="text-xs text-foreground truncate">{task.title}</span>
@@ -1100,7 +1100,7 @@ export default function ConversationPage() {
                       <SelectValue placeholder="Seleccioná un contacto existente" />
                     </SelectTrigger>
                     <SelectContent>
-                      {contactList.map((existing) => (
+                      {contactList.map((existing: any) => (
                         <SelectItem key={existing.id} value={existing.id}>
                           {existing.full_name}
                           {existing.email ? ` · ${existing.email}` : existing.phone ? ` · ${existing.phone}` : ""}

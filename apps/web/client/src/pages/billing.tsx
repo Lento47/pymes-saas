@@ -374,7 +374,7 @@ export default function BillingPage() {
         },
       });
     } catch (err: unknown) {
-      if (err?.message !== 'Checkout closed') {
+      if ((err as any)?.message !== 'Checkout closed') {
         toast({ title: "Error", description: apiErrorDescription(err, "No se pudo abrir el checkout."), variant: "destructive" });
       }
     } finally {
@@ -396,7 +396,7 @@ export default function BillingPage() {
         settings: { displayMode: 'overlay', theme: 'dark', locale: 'es', successUrl: `${window.location.origin}/settings/billing?paddle=success` },
       });
     } catch (err: unknown) {
-      if (err?.message !== 'Checkout closed') toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
+      if ((err as any)?.message !== 'Checkout closed') toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
     } finally { setLoading(null); }
   };
 

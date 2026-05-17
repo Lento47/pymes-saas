@@ -87,7 +87,7 @@ export default function AdminDashboard() {
             <h2 className="text-sm font-semibold text-foreground mb-4">Registros últimos 12 meses</h2>
             <div className="flex items-end gap-1.5" style={{ height: "80px" }}>
               {(s.registrationsByMonth as { month: string; count: number }[]).map(d => {
-                const max = Math.max(...s.registrationsByMonth.map((r) => r.count), 1);
+                const max = Math.max(...s.registrationsByMonth.map((r: any) => r.count), 1);
                 return (
                   <div key={d.month} className="flex-1 flex flex-col items-center gap-1">
                     <div className="text-xs text-muted-foreground font-medium">{d.count || ""}</div>
