@@ -74,7 +74,7 @@ export class PaddleSdkService {
     // Check if a Paddle customer already exists with this email
     let customerId: string;
     try {
-      const searchResult: any = await paddle.customers.list({ email: [email] });
+      const searchResult: Record<string, any> = await paddle.customers.list({ email: [email] });
       const customers = searchResult?.result || searchResult?.items || [];
       if (customers.length > 0) {
         customerId = customers[0].id;
@@ -82,7 +82,7 @@ export class PaddleSdkService {
         const customer = await paddle.customers.create({ email, name });
         customerId = customer.id;
       }
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Error creating/getting customer: ${err?.message}`);
       throw err;
     }
@@ -303,7 +303,7 @@ export class PaddleSdkService {
           signal: AbortSignal.timeout(10_000),
         });
         if (res.ok) {
-          const body: any = await res.json();
+          const body: Record<string, any> = await res.json();
           const customers = body?.data || [];
           this.logger.log(`Auto-sync: Paddle API returned ${customers.length} customer(s) for email ${info.email}`);
           if (customers.length > 0) {
@@ -339,10 +339,10 @@ export class PaddleSdkService {
         return { synced: false, reason: `Customer ${customerId} not found` };
       }
 
-      const subsCollection: any = await (paddle as any).subscriptions.list({ customerId: [customerId] });
+      const subsCollection: Record<string, any> = await (paddle as any).subscriptions.list({ customerId: [customerId] });
       const subsPage = await subsCollection.next();
       const subsList = subsPage || [];
-      const activeSub = subsList.find((s: any) =>
+      const activeSub = subsList.find((s: Record<string, any>) =>
         ['active', 'trialing'].includes(s.status),
       );
 
@@ -605,7 +605,7 @@ export class PaddleSdkService {
 
   // ── Private event handlers ───────────────────────────────────────────────
 
-  private async handleSubscriptionEvent(data: any): Promise<void> {
+  private async handleSubscriptionEvent(data: Record<string, any>): Promise<void> {
     this.logger.log(`[DIAG] Subscription event raw keys: ${Object.keys(data).join(', ')}`);
 
     const customerId = data.customerId || data.customer_id || data.customer?.id;
@@ -724,7 +724,7 @@ export class PaddleSdkService {
     }
   }
 
-  private async handleSubscriptionCanceled(data: any): Promise<void> {
+  private async handleSubscriptionCanceled(data: Record<string, any>): Promise<void> {
     const customerId = data.customerId || data.customer_id;
     if (!customerId) return;
 
@@ -766,7 +766,7 @@ export class PaddleSdkService {
       for (const key of addonKeys) {
         if (key in settings) { delete settings[key]; modified = true; }
       }
-      const updateData: any = { plan: 'FREE' };
+      const updateData: Record<string, any> = { plan: 'FREE' };
       if (modified) {
         updateData.settings_json = settings as any;
       }
@@ -788,7 +788,7 @@ export class PaddleSdkService {
     return Math.round((minor / divisor) * 100) / 100;
   }
 
-  private async handleTransactionCompleted(data: any): Promise<void> {
+  private async handleTransactionCompleted(data: Record<string, any>): Promise<void> {
     const subscriptionId = data.subscriptionId || data.subscription_id;
     if (!subscriptionId) return;
 
@@ -1051,7 +1051,7 @@ export class PaddleSdkService {
     const paddle = this.requireClient();
     const appUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
 
-    const customData: any = { workspaceSlug: async () => {
+    const customData: Record<string, any> = { workspaceSlug: async () => {
       const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { slug: true } });
       return ws.slug;
     }};
@@ -1147,7 +1147,7 @@ export class PaddleSdkService {
         },
       });
       this.logger.log(`Billing diagnostic case created: ${title}`);
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Failed to create billing diagnostic case: ${err?.message}`);
     }
   }
@@ -1161,7 +1161,7 @@ export class PaddleSdkService {
       if (updated.count > 0) {
         this.logger.log(`Auto-resolved ${updated.count} billing case(s) for ${errorCode}`);
       }
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Failed to auto-resolve billing cases: ${err?.message}`);
     }
   }

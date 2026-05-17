@@ -21,13 +21,13 @@ export class FeatureFlagsController {
 
   @Post()
   @Roles('OWNER', 'ADMIN')
-  async createFlag(@Body() data: any) {
+  async createFlag(@Body() data: Record<string, any>) {
     return this.featureFlags.upsertFlag(undefined, data);
   }
 
   @Put(':id')
   @Roles('OWNER', 'ADMIN')
-  async updateFlag(@Param('id') id: string, @Body() data: any) {
+  async updateFlag(@Param('id') id: string, @Body() data: Record<string, any>) {
     return this.featureFlags.upsertFlag(id, data);
   }
 

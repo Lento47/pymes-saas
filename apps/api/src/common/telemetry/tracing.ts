@@ -41,7 +41,6 @@ if (OTEL_ENABLED) {
   });
 
   sdk.start();
-  console.log('OpenTelemetry SDK started');
 
   process.on('SIGTERM', () => sdk.shutdown());
   process.on('SIGINT', () => sdk.shutdown());

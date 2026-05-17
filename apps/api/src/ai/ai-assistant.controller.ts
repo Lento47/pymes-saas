@@ -46,7 +46,7 @@ export class AiAssistantController {
       });
 
       if (!res.ok) return { reply: '' };
-      const data: any = await res.json();
+      const data: Record<string, any> = await res.json();
       const reply = data?.result?.response || data?.choices?.[0]?.message?.content || '';
       return { reply: reply.trim() };
     } catch {

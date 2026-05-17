@@ -31,7 +31,7 @@ export class TelegramController {
   async webhook(
     @Param('channelId') channelId: string,
     @Headers('x-telegram-bot-api-secret-token') secretHeader: string | undefined,
-    @Body() update: any,
+    @Body() update: Record<string, any>,
   ) {
     // Verify Telegram-supplied secret token before accepting the update.
     // Without this, anyone who knows the channelId can inject fake updates.

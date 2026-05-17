@@ -23,13 +23,13 @@ export class OnboardingController {
 
   @Post()
   @Roles('OWNER', 'ADMIN')
-  async saveProject(@CurrentUser('workspace_id') workspaceId: string, @Body() data: any) {
+  async saveProject(@CurrentUser('workspace_id') workspaceId: string, @Body() data: Record<string, any>) {
     return this.onboarding.saveProject(workspaceId, data);
   }
 
   @Put()
   @Roles('OWNER', 'ADMIN')
-  async updateProject(@CurrentUser('workspace_id') workspaceId: string, @Body() data: any) {
+  async updateProject(@CurrentUser('workspace_id') workspaceId: string, @Body() data: Record<string, any>) {
     return this.onboarding.updateProject(workspaceId, data);
   }
 

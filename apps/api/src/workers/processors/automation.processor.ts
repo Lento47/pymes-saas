@@ -129,7 +129,7 @@ export class AutomationProcessor extends WorkerHost {
       );
 
       return { executionId: execution.id, actionsExecuted: actions.length };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 8. En catch: actualizar execution a FAILED antes de re-throw
       await this.prisma.automationExecution.update({
         where: { id: execution.id },
@@ -166,7 +166,7 @@ export class AutomationProcessor extends WorkerHost {
 
   private evaluateCondition(
     entity: Record<string, any>,
-    condition: { field: string; operator: string; value: any },
+    condition: { field: string; operator: string; value: Record<string, any> },
   ): boolean {
     const { field, operator, value } = condition;
     const entityValue = entity[field];

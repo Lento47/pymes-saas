@@ -11,7 +11,7 @@ export class SummariesService {
     const limit = Number(filters.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
 
     if (filters.from || filters.to) {
       where.summary_date = {};

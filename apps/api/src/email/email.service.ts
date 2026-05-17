@@ -71,7 +71,7 @@ export class EmailService {
    * @returns         Object with Resend message id.
    */
   async sendOutbound(
-    channel: any,
+    channel: Record<string, any>,
     to: string,
     subject: string,
     bodyHtml: string,
@@ -139,7 +139,7 @@ export class EmailService {
 
       this.logger.log(`Email sent via Resend — id: ${response.data?.id}`);
       return { id: response.data?.id ?? '' };
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error('Resend SDK error', err?.message ?? err);
       throw new BadGatewayException(
         `Resend failed to send email: ${err?.message ?? 'Unknown error'}`,
@@ -169,7 +169,7 @@ export class EmailService {
         },
       );
       return { success: true, message: `Conexión exitosa — Message ID: ${result.id}` };
-    } catch (err: any) {
+    } catch (err) {
       this.logger.warn(`SMTP test failed: ${err?.message ?? err}`);
       return { success: false, message: err?.message ?? 'Error de conexión SMTP' };
     }
@@ -190,7 +190,7 @@ export class EmailService {
    *
    * @param payload      Raw Resend webhook body (contains 'to' email address).
    */
-  async processInbound(payload: any): Promise<void> {
+  async processInbound(payload: Record<string, any>): Promise<void> {
     // SECURITY: Resolve workspace from the email address in the payload, not from client headers
     const { workspaceId, channel } = await this.resolveWorkspaceAndChannel(payload);
 
@@ -223,9 +223,9 @@ export class EmailService {
    * SECURITY: Resolve workspace and channel from email address in payload,
    * not from client-provided headers.
    */
-  private async resolveWorkspaceAndChannel(payload: any): Promise<{
+  private async resolveWorkspaceAndChannel(payload: Record<string, any>): Promise<{
     workspaceId: string | null;
-    channel: any | null;
+    channel: Record<string, any> | null;
   }> {
     const toAddress = this.extractPrimaryRecipient(payload.to);
 

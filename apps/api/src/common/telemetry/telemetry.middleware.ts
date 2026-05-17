@@ -1,8 +1,9 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
+import { Request, Response } from 'express';
 
 @Injectable()
 export class TelemetryMiddleware implements NestMiddleware {
-  use(req: any, res: any, next: () => void) {
+  use(req: Request, res: Response, next: () => void) {
     const start = Date.now();
     const { method, path } = req;
 

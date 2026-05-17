@@ -96,7 +96,7 @@ export class BillingController {
         'PLAN_CHANGE_FAILED',
         `Workspace ${user.workspace_id} intentó cambiar de plan y falló: ${(error as Error)?.message}`,
         'critical',
-      ).catch(() => {});
+      ).catch((err) => this.logger.warn(`Diagnostic case creation failed for workspace=${user.workspace_id}`, err));
       throw new InternalServerErrorException('No se pudo cambiar el plan. Intentalo de nuevo o contacta a soporte.');
     }
   }
@@ -122,7 +122,7 @@ export class BillingController {
       throw new BadRequestException('Missing paddle-signature header or webhook secret');
     }
 
-    let event: any;
+    let event: Record<string, any>;
     try {
       event = await this.paddleService.verifyWebhookSignature(
         request.rawBody?.toString() || JSON.stringify(request.body),

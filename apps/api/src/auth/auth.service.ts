@@ -28,6 +28,7 @@ export class AuthService {
     private readonly refreshTokenService: RefreshTokenService,
     private readonly demoData: DemoDataService,
   ) {}
+  private readonly logger = new Logger(AuthService.name);
 
   // ── Login ──────────────────────────────────────────────────────────────────
 
@@ -414,7 +415,9 @@ export class AuthService {
         },
       });
 
-      this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch(() => {});
+      this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch((err) =>
+        this.logger.warn(`Demo data population failed for workspace ${workspace.id}`, err),
+      );
 
       const access_token = this.signToken({
         sub: user.id, email: user.email, workspace_id: workspace.id,
@@ -577,7 +580,9 @@ export class AuthService {
         },
       });
 
-      this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch(() => {});
+      this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch((err) =>
+        this.logger.warn(`Demo data population failed for workspace ${workspace.id}`, err),
+      );
 
       const access_token = this.signToken({
         sub: user.id, email: user.email, workspace_id: workspace.id,
@@ -669,7 +674,9 @@ export class AuthService {
         },
       });
 
-      this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch(() => {});
+      this.demoData.populateDemoWorkspace(workspace.id, workspace.name).catch((err) =>
+        this.logger.warn(`Demo data population failed for workspace ${workspace.id}`, err),
+      );
 
       const access_token = this.signToken({
         sub: user.id, email: user.email, workspace_id: workspace.id,

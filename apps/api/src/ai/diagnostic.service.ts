@@ -70,7 +70,7 @@ export class DiagnosticService {
   // own cases so VIEWER/AGENT users see "Mis tickets" without leaking
   // unrelated incidents from other teammates.
   async listCases(workspaceId: string, opts?: { userId?: string }) {
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
     if (opts?.userId) where.user_id = opts.userId;
     const cases = await (this.prisma as any).supportDiagnosticCase.findMany({
       where,
@@ -80,7 +80,7 @@ export class DiagnosticService {
 
     // Mask internal error details from non-admin users
     if (opts?.userId) {
-      return cases.map((c: any) => ({
+      return cases.map((c: Record<string, any>) => ({
         ...c,
         title: 'Error procesando tu solicitud',
         user_description: 'Nuestro equipo está revisando este incidente.',
@@ -90,7 +90,7 @@ export class DiagnosticService {
   }
 
   async getCase(id: string, opts: { workspaceId: string; userId?: string }) {
-    const where: any = { id, workspace_id: opts.workspaceId };
+    const where: Record<string, any> = { id, workspace_id: opts.workspaceId };
     if (opts.userId) where.user_id = opts.userId;
     const case_ = await (this.prisma as any).supportDiagnosticCase.findFirst({ where });
     if (!case_) return null;
@@ -149,7 +149,7 @@ export class DiagnosticService {
   }
 
   async diagnose(input: DiagnosticInput): Promise<DiagnosticResult> {
-    let evidence: any = {};
+    let evidence: Record<string, any> = {};
 
     // If an error_report_id was provided, fetch the actual error report for context
     if (input.error_report_id) {
@@ -169,7 +169,7 @@ export class DiagnosticService {
     const classification = this.classify(input, evidence);
 
     // Look up known issues by error_code
-    let matchedIssue: any = null;
+    let matchedIssue: Record<string, any> | null = null;
     if (input.error_code) {
       matchedIssue = await (this.prisma as any).supportKnownIssue.findUnique({
         where: { error_code: input.error_code },
@@ -291,7 +291,7 @@ export class DiagnosticService {
     };
   }
 
-  private classify(input: DiagnosticInput, evidence: any): { category: string; risk_level: string; title: string; recommendation: string } {
+  private classify(input: DiagnosticInput, evidence: Record<string, any>): { category: string; risk_level: string; title: string; recommendation: string } {
     const msg = (input.user_description || '').toLowerCase() + ' ' + JSON.stringify(evidence).toLowerCase();
 
     if (msg.includes('circular') || msg.includes('undefined import') || msg.includes('cannot create')) {
@@ -427,7 +427,7 @@ export class DiagnosticService {
           related_entity_type: 'support_diagnostic_case',
           related_entity_id: caseId,
         });
-      } catch (err: any) {
+      } catch (err) {
         this.logger.error(`Notification to ${admin.user_id} failed: ${err?.message}`);
       }
     }

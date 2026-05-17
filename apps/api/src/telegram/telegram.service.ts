@@ -90,7 +90,9 @@ export class TelegramService {
     }
 
     // Remove existing webhook if any
-    await this.removeWebhook(channelId).catch(() => {});
+    await this.removeWebhook(channelId).catch((err) =>
+      this.logger.warn(`Failed to remove existing Telegram webhook for channel=${channelId}`, err),
+    );
 
     const bot = new Telegraf(token);
     const rawBaseUrl = this.config.get<string>('TELEGRAM_WEBHOOK_BASE_URL')
@@ -156,7 +158,7 @@ export class TelegramService {
   /**
    * Process incoming Telegram update with deduplication and metadata storage
    */
-  async processUpdate(channelId: string, update: any): Promise<{ processed: boolean; duplicate?: boolean }> {
+  async processUpdate(channelId: string, update: Record<string, any>): Promise<{ processed: boolean; duplicate?: boolean }> {
     // Validate payload structure
     if (!update || typeof update !== 'object') {
       return { processed: false };
@@ -207,7 +209,7 @@ export class TelegramService {
       const conversationRef = `tg:${chat.id}`;
 
       // Extract attachments
-      const attachments: any[] = [];
+      const attachments: Record<string, any>[] = [];
       if (message.photo?.length) {
         attachments.push({ type: 'photo', file_id: message.photo[message.photo.length - 1].file_id });
       }

@@ -9,7 +9,7 @@ export class ErrorReportsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private get errorReportsRepo(): any {
+  private get errorReportsRepo(): Record<string, any> {
     return (this.prisma as any).errorReport;
   }
 
@@ -67,7 +67,7 @@ export class ErrorReportsService {
           },
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(`No se pudo guardar el error reportado por cliente: ${error?.message}`, error?.stack);
       return null;
     }
@@ -112,7 +112,7 @@ export class ErrorReportsService {
           occurred_at: data.occurred_at ?? new Date(),
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(`No se pudo guardar el error del servidor: ${error?.message}`, error?.stack);
       return null;
     }
@@ -174,7 +174,7 @@ export class ErrorReportsService {
       });
       this.logger.log(`Auto-opened diagnostic case ${created.id} from ${input.source} report (${module})`);
       return created.id;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(`No se pudo abrir caso desde reporte de error: ${error?.message}`);
       return null;
     }

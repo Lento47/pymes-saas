@@ -1,4 +1,5 @@
 import './common/telemetry/tracing'; // ← PRIMERO
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
@@ -9,13 +10,15 @@ import { ErrorReportsService } from './error-reports/error-reports.service';
 import { PrismaService } from './common/prisma/prisma.service';
 import { AiTriageService } from './ai/ai-triage.service';
 
+const logger = new Logger('Bootstrap');
+
 process.on('uncaughtException', (err) => {
-  console.error('🔥 UNCAUGHT EXCEPTION — process will exit', err);
+  logger.error('UNCAUGHT EXCEPTION — process will exit', err);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('⚠️ UNHANDLED REJECTION', reason);
+  logger.error('UNHANDLED REJECTION', reason);
 });
 
 async function bootstrap() {
@@ -88,6 +91,6 @@ async function bootstrap() {
   const port = process.env.PORT ?? 4000;
   const host = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
   await app.listen(port, host);
-  console.log(`🚀 API corriendo en http://127.0.0.1:${port}/api`);
+  logger.log(`API ready — listening on http://127.0.0.1:${port}/api`);
 }
 bootstrap();

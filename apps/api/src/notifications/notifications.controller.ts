@@ -25,7 +25,7 @@ export class NotificationsController {
   @Get()
   @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findAll(
-    @CurrentUser() user: any,
+    @CurrentUser() user: Record<string, any>,
     @Query() filters: FilterNotificationsDto,
   ) {
     return this.notificationsService.findAll(
@@ -37,7 +37,7 @@ export class NotificationsController {
 
   @Get('unread-count')
   @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
-  getUnreadCount(@CurrentUser() user: any) {
+  getUnreadCount(@CurrentUser() user: Record<string, any>) {
     return this.notificationsService.getUnreadCount(
       user.workspaceId,
       user.id,
@@ -47,7 +47,7 @@ export class NotificationsController {
   @Post('mark-read')
   @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   markRead(
-    @CurrentUser() user: any,
+    @CurrentUser() user: Record<string, any>,
     @Body() dto: MarkReadDto,
   ) {
     return this.notificationsService.markRead(
@@ -59,7 +59,7 @@ export class NotificationsController {
 
   @Delete('old')
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
-  deleteOld(@CurrentUser() user: any) {
+  deleteOld(@CurrentUser() user: Record<string, any>) {
     return this.notificationsService.deleteOld(user.workspaceId);
   }
 }

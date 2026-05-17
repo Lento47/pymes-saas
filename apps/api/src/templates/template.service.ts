@@ -28,7 +28,7 @@ export class TemplateService {
 
   // ─── Instantiate Templates ─────────────────────────────────────────────
 
-  async instantiateAutomationTemplate(workspaceId: string, templateId: string, overrides?: any) {
+  async instantiateAutomationTemplate(workspaceId: string, templateId: string, overrides?: Record<string, any>) {
     const template = await this.getSystemTemplate(templateId);
     if (template.type !== 'automation') throw new NotFoundException('Not an automation template');
 
@@ -47,7 +47,7 @@ export class TemplateService {
     });
   }
 
-  async instantiateMessageTemplate(workspaceId: string, templateId: string, overrides?: any) {
+  async instantiateMessageTemplate(workspaceId: string, templateId: string, overrides?: Record<string, any>) {
     const template = await this.getSystemTemplate(templateId);
     if (template.type !== 'message') throw new NotFoundException('Not a message template');
 
@@ -121,7 +121,7 @@ export class TemplateService {
 
   // ─── Seed data helpers ─────────────────────────────────────────────────
 
-  async upsertSystemTemplate(data: any) {
+  async upsertSystemTemplate(data: Record<string, any>) {
     return this.prisma.systemTemplate.upsert({
       where: { key: data.key },
       update: {
@@ -146,7 +146,7 @@ export class TemplateService {
     });
   }
 
-  async upsertWorkspaceTemplate(data: any) {
+  async upsertWorkspaceTemplate(data: Record<string, any>) {
     return this.prisma.workspaceTemplate.upsert({
       where: { key: data.key },
       update: {

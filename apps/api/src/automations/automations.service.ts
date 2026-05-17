@@ -23,7 +23,7 @@ export class AutomationsService {
     const limit = Number(filters.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
 
     if (filters.enabled !== undefined) {
       where.enabled = filters.enabled === 'true';

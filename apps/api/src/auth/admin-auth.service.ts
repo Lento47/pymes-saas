@@ -38,7 +38,7 @@ export class AdminAuthService {
   async handleCallback(code: string, stateRaw: string): Promise<{
     access_token: string;
     refresh_token: string;
-    user: any;
+    user: Record<string, any>;
   }> {
     const [state] = (stateRaw ?? '').split('|');
     if (!state || state.length < 16) {

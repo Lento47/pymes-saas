@@ -23,7 +23,7 @@ export class MessageTemplatesService {
     });
   }
 
-  async create(workspaceId: string, userId: string, data: any) {
+  async create(workspaceId: string, userId: string, data: Record<string, any>) {
     return this.prisma.messageTemplate.create({
       data: {
         workspace: { connect: { id: workspaceId } },
@@ -40,7 +40,7 @@ export class MessageTemplatesService {
     });
   }
 
-  async update(workspaceId: string, id: string, data: any) {
+  async update(workspaceId: string, id: string, data: Record<string, any>) {
     return this.prisma.messageTemplate.updateMany({
       where: { id, workspace_id: workspaceId },
       data: {

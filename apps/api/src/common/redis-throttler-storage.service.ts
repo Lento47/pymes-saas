@@ -1,9 +1,10 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ThrottlerStorage } from '@nestjs/throttler';
 import Redis from 'ioredis';
 
 @Injectable()
 export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy {
+  private readonly logger = new Logger(RedisThrottlerStorage.name);
   private redis: Redis | null = null;
 
   constructor() {
@@ -41,7 +42,9 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
 
   async onModuleDestroy() {
     if (this.redis) {
-      await this.redis.quit().catch(() => {});
+      await this.redis.quit().catch((err) =>
+        this.logger.warn('Redis quit failed during shutdown', err),
+      );
     }
   }
 

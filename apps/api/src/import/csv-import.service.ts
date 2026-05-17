@@ -47,7 +47,7 @@ export class CsvImportService {
 
     for (let i = 0; i < rows.length; i++) {
       try {
-        const contactData: any = {
+        const contactData: Record<string, any> = {
           workspace_id: workspaceId,
           full_name: this.getMapped(mapping, rows[i], 'full_name', ''),
           type: 'CUSTOMER' as const,
@@ -81,7 +81,7 @@ export class CsvImportService {
 
         await this.prisma.contact.create({ data: contactData });
         imported++;
-      } catch (err: any) {
+      } catch (err) {
         errors.push({ row: i + 1, reason: err.message ?? 'Error desconocido' });
         skipped++;
       }
@@ -166,7 +166,7 @@ export class CsvImportService {
           },
         });
         imported++;
-      } catch (err: any) {
+      } catch (err) {
         errors.push({ row: i + 1, reason: err.message ?? 'Error desconocido' });
         skipped++;
       }
@@ -266,7 +266,7 @@ export class CsvImportService {
           },
         });
         imported++;
-      } catch (err: any) {
+      } catch (err) {
         errors.push({ row: i + 1, reason: err.message ?? 'Error desconocido' });
         skipped++;
       }

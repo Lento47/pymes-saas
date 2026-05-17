@@ -92,7 +92,7 @@ export class ApiTokenGuard implements CanActivate {
     return true;
   }
 
-  private async setWorkspaceFromHeader(request: any) {
+  private async setWorkspaceFromHeader(request: Record<string, any>) {
     const slug = request.headers['x-workspace-slug'] as string;
     if (slug) {
       const ws = await this.prisma.workspace.findUnique({ where: { slug }, select: { id: true } });

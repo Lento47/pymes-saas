@@ -33,7 +33,7 @@ export class WorkspacesService {
     private readonly planLimits: PlanLimitsService,
   ) {}
 
-  private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
+  private serializeWorkspace<T extends { settings_json?: Record<string, any> | null }>(workspace: T) {
     const settings =
       workspace.settings_json && typeof workspace.settings_json === 'object'
         ? (workspace.settings_json as Record<string, any>)
@@ -407,7 +407,7 @@ export class WorkspacesService {
     const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-    const [row] = await this.prisma.$queryRawUnsafe<
+    const [row] = await this.prisma.rawQuery<
       Array<{
         contacts: number | bigint;
         conversations: number | bigint;

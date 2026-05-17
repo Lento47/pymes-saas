@@ -36,7 +36,7 @@ export class AutomationsController {
   @Get()
   @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findAll(
-    @CurrentUser() user: any,
+    @CurrentUser() user: Record<string, any>,
     @Query() filters: FilterAutomationsDto,
   ) {
     return this.automationsService.findAll(user.workspace_id, filters);
@@ -46,7 +46,7 @@ export class AutomationsController {
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   @RequireFeature('automations')
   async create(
-    @CurrentUser() user: any,
+    @CurrentUser() user: Record<string, any>,
     @Body() dto: CreateAutomationDto,
   ) {
     await this.features.assertEnabled(user.workspace_id, 'automations');
@@ -61,7 +61,7 @@ export class AutomationsController {
   @Get(':id')
   @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findOne(
-    @CurrentUser() user: any,
+    @CurrentUser() user: Record<string, any>,
     @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.automationsService.findOne(user.workspace_id, id);
@@ -71,7 +71,7 @@ export class AutomationsController {
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   @RequireFeature('automations')
   update(
-    @CurrentUser() user: any,
+    @CurrentUser() user: Record<string, any>,
     @Param('id', ValidateUUIDPipe) id: string,
     @Body() dto: UpdateAutomationDto,
   ) {
@@ -82,7 +82,7 @@ export class AutomationsController {
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   @RequireFeature('automations')
   toggle(
-    @CurrentUser() user: any,
+    @CurrentUser() user: Record<string, any>,
     @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.automationsService.toggle(user.workspace_id, id);
@@ -91,7 +91,7 @@ export class AutomationsController {
   @Get(':id/executions')
   @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   getExecutions(
-    @CurrentUser() user: any,
+    @CurrentUser() user: Record<string, any>,
     @Param('id', ValidateUUIDPipe) id: string,
     @Query() pagination: PaginationDto,
   ) {
@@ -106,7 +106,7 @@ export class AutomationsController {
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   @RequireFeature('automations')
   remove(
-    @CurrentUser() user: any,
+    @CurrentUser() user: Record<string, any>,
     @Param('id', ValidateUUIDPipe) id: string,
   ) {
     return this.automationsService.remove(user.workspace_id, id);

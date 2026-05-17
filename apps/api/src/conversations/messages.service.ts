@@ -12,6 +12,7 @@ import { AutomationsService } from '../automations/automations.service';
 import { RoutingService } from '../routing/routing.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { StorageService } from '../common/storage/storage.service';
+import { parseJsonValue } from '../common/prisma/json';
 
 @Injectable()
 export class MessagesService {
@@ -146,7 +147,7 @@ export class MessagesService {
 
     if (contact) {
       // Auto-update name for LEAD contacts created from incoming messages
-      const contactUpdates: any = {};
+      const contactUpdates: Record<string, any> = {};
       if (contact.type === 'LEAD' && contact.full_name !== senderName) {
         contactUpdates.full_name = senderName;
       }
@@ -227,7 +228,7 @@ export class MessagesService {
         orderBy: { is_lead: 'desc' },
         select: { user_id: true },
       });
-      const updateData: any = {
+      const updateData: Record<string, any> = {
         department_id: route.department_id,
         ...(member ? { assigned_user_id: member.user_id } : {}),
       };
@@ -279,7 +280,7 @@ export class MessagesService {
           : {}),
       },
       select: { id: true },
-    }).catch((err: any) => {
+    }).catch((err) => {
       // Silently skip if columns don't exist yet (migration pending)
       if (err?.code === 'P2025' || err?.message?.includes('column')) {
         // Fallback: update only existing columns
@@ -344,8 +345,8 @@ export class MessagesService {
     bodyText: string;
     providerMessageId: string;
     timestamp?: string;
-    rawPayload?: any;
-    whatsappMedia?: any | null;
+    rawPayload?: Record<string, any>;
+    whatsappMedia?: Record<string, any> | null;
   }): Promise<{
     status: 'created' | 'duplicate';
     messageId?: string;
@@ -493,7 +494,7 @@ export class MessagesService {
       this.logger.error(`Realtime emit failed: ${err?.message}`);
     }
 
-    let conversation: any = null;
+    let conversation: Record<string, any> | null = null;
     try {
       conversation = await this.prisma.conversation.findUnique({
         where: { id: conversationId },
@@ -544,7 +545,7 @@ export class MessagesService {
   serializeMessageForClient(msg: Record<string, any>): Record<string, any> {
     const rawPayload = msg.raw_payload_json;
     // Handle both object and string payloads (legacy stringifyJson bug)
-    const payload = typeof rawPayload === 'string' ? (() => { try { return JSON.parse(rawPayload); } catch { return {}; } })() : (rawPayload || {});
+    const payload = parseJsonValue<Record<string, any>>(rawPayload, {});
 
     // 1) Check whatsapp_media stored during inbound processing
     let wm = payload?.whatsapp_media;

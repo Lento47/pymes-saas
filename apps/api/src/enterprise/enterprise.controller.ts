@@ -19,7 +19,7 @@ export class EnterpriseController {
 
   @Put('config/:workspaceId')
   @Roles('OWNER', 'ADMIN')
-  async upsertConfig(@Param('workspaceId') workspaceId: string, @Body() data: any) {
+  async upsertConfig(@Param('workspaceId') workspaceId: string, @Body() data: Record<string, any>) {
     return this.enterprise.upsertConfig(workspaceId, data);
   }
 
@@ -40,13 +40,13 @@ export class EnterpriseController {
 
   @Post('capabilities')
   @Roles('OWNER', 'ADMIN')
-  async createCapability(@Body() data: any) {
+  async createCapability(@Body() data: Record<string, any>) {
     return this.enterprise.upsertCapability(undefined, data);
   }
 
   @Put('capabilities/:id')
   @Roles('OWNER', 'ADMIN')
-  async updateCapability(@Param('id') id: string, @Body() data: any) {
+  async updateCapability(@Param('id') id: string, @Body() data: Record<string, any>) {
     return this.enterprise.upsertCapability(id, data);
   }
 }

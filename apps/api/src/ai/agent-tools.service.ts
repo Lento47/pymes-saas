@@ -99,7 +99,7 @@ export class AgentToolsService {
   }
 
   private async listContacts(workspaceId: string, args: Record<string, any>) {
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
     if (args.search) where.full_name = { contains: args.search, mode: 'insensitive' };
     const contacts = await this.prisma.contact.findMany({
       where,
@@ -110,7 +110,7 @@ export class AgentToolsService {
   }
 
   private async listTasks(workspaceId: string, args: Record<string, any>) {
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
     if (args.status) where.status = args.status;
     const tasks = await this.prisma.task.findMany({
       where,
@@ -146,7 +146,7 @@ export class AgentToolsService {
   }
 
   private async listConversations(workspaceId: string, args: Record<string, any>) {
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
     if (args.status) where.status = args.status;
     const conversations = await this.prisma.conversation.findMany({
       where,
@@ -294,7 +294,7 @@ export class AgentToolsService {
 
   private async updateTask(workspaceId: string, args: Record<string, any>) {
     if (!args.id) throw new BadRequestException('update_task requires "id"');
-    const data: any = {};
+    const data: Record<string, any> = {};
     if (args.title !== undefined) data.title = args.title;
     if (args.description !== undefined) data.description = args.description;
     if (args.status !== undefined) data.status = args.status;
@@ -333,7 +333,7 @@ export class AgentToolsService {
   }
 
   private async listDocuments(workspaceId: string, args: Record<string, any>) {
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
     if (args.search) where.file_name = { contains: args.search, mode: 'insensitive' };
     const docs = await this.prisma.document.findMany({
       where,
@@ -360,7 +360,7 @@ export class AgentToolsService {
       errors,
       count: errors.length,
       summary: errors.length > 0
-        ? `${errors.length} error(es) reciente(s). ${errors.filter((e: any) => e.status_code && e.status_code >= 500).length} son del servidor (5xx).`
+        ? `${errors.length} error(es) reciente(s). ${errors.filter((e: Record<string, any>) => e.status_code && e.status_code >= 500).length} son del servidor (5xx).`
         : 'No hay errores recientes en este workspace.',
     };
   }

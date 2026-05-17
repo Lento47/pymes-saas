@@ -15,7 +15,7 @@ export class SlaService {
     return this.prisma.slaPolicy.findUnique({ where: { key } });
   }
 
-  async upsertPolicy(id: string | undefined, data: any) {
+  async upsertPolicy(id: string | undefined, data: Record<string, any>) {
     if (id) {
       return this.prisma.slaPolicy.update({
         where: { id },
@@ -55,7 +55,7 @@ export class SlaService {
     });
   }
 
-  async assignPolicy(workspaceId: string, slaPolicyId: string, data?: any) {
+  async assignPolicy(workspaceId: string, slaPolicyId: string, data?: Record<string, any>) {
     return this.prisma.workspaceSlaAssignment.create({
       data: {
         workspace: { connect: { id: workspaceId } },

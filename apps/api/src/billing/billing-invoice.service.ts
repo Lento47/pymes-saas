@@ -95,7 +95,7 @@ export class BillingInvoiceService {
       planName: inv.plan_name,
       planInterval: inv.plan_interval,
       seats: inv.seats,
-      lineItems: lineItems.map((li: any) => ({
+      lineItems: lineItems.map((li: Record<string, any>) => ({
         description: li.description,
         quantity: li.quantity,
         unitPrice: li.unitPrice,
@@ -120,7 +120,7 @@ export class BillingInvoiceService {
     const limit = Math.min(filters?.limit ?? 10, 100);
     const skip = (page - 1) * limit;
 
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
 
     if (filters?.search) {
       const s = filters.search;

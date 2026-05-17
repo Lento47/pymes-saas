@@ -48,7 +48,7 @@ export class ChannelsService {
   }
 
   async findAll(workspaceId: string, includeInactive = false) {
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
     if (!includeInactive) where.status = { not: 'INACTIVE' };
     const channels = await this.prisma.channel.findMany({
       where,
@@ -186,7 +186,7 @@ export class ChannelsService {
       try {
         access_token_encrypted = this.crypto.encrypt(dto.access_token);
         this.logger.log(`[DIAG] configureWhatsApp: encrypt OK, encryptedLen=${access_token_encrypted.length}`);
-      } catch (err: any) {
+      } catch (err) {
         this.logger.error(`[DIAG] configureWhatsApp: encrypt FAILED — ${err?.message}`);
         throw new BadRequestException('Error al guardar el token. Verificá que ENCRYPTION_KEY esté configurada en el servidor.');
       }
@@ -266,7 +266,7 @@ export class ChannelsService {
 
   // ── Privados ───────────────────────────────────────────────────────────────
 
-  private sanitise(channel: any) {
+  private sanitise(channel: Record<string, any>) {
     const { config_json, ...rest } = channel;
     const safeConfig: Record<string, unknown> = {};
     const parsedConfig = parseJsonValue<Record<string, unknown>>(config_json, {});
@@ -287,7 +287,7 @@ export class ChannelsService {
   private async trackQuickStart(workspaceId: string, step: string) {
     try {
       const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
-      const s: any = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const s: Record<string, any> = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
       const progress = s.quick_start_progress || {};
       if (progress[step]) return;
       s.quick_start_progress = { ...progress, [step]: true };

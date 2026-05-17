@@ -82,7 +82,7 @@ export class SamlController {
       const code = this.authService.mintSsoExchangeCode(auth.user.id, ws.id);
       this.logger.log(`SAML login success: ${result.email} → workspace ${ws.id}`);
       res.redirect(`${baseRedirect}/login?code=${encodeURIComponent(code)}&slug=${ws.slug}`);
-    } catch (err: any) {
+    } catch (err) {
       this.logger.warn(`SAML login failed for ${result.email}: ${err.message}`);
       // Don't echo err.message into the URL — it ends up in proxy logs.
       res.redirect(`${baseRedirect}/login?error=sso_failed`);
@@ -133,7 +133,7 @@ export class SamlController {
   @Roles('OWNER', 'ADMIN')
   async upsertConfig(
     @Param('workspaceId') workspaceId: string,
-    @Body() data: any,
+    @Body() data: Record<string, any>,
     @Req() req: Request,
   ) {
     const user = (req as any).user;

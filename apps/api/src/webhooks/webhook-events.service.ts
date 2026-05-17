@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { parseJsonValue } from '../common/prisma/json';
-import { WebhookEventStatus, Prisma } from '@prisma/client';
+import { WebhookEventStatus } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -13,7 +14,7 @@ export class WebhookEventsService {
   async ingest(
     provider: string,
     payload: Record<string, any>,
-  ): Promise<{ event: any; duplicate: boolean }> {
+  ): Promise<{ event: Record<string, any>; duplicate: boolean }> {
     const { eventType, fingerprint, phoneNumberId, wabaId, providerMessageId } =
       this.extractEventMeta(provider, payload);
 
@@ -62,7 +63,7 @@ export class WebhookEventsService {
 
       return { event, duplicate: false };
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002') {
         const existing = await this.prisma.webhookEvent.findUnique({
           where: { event_fingerprint: fingerprint },
         });
@@ -78,7 +79,7 @@ export class WebhookEventsService {
   }
 
   async claimNext(workerId: string): Promise<any | null> {
-    const result = await this.prisma.$queryRawUnsafe<any[]>(`
+    const result = await this.prisma.rawQuery<any[]>(`
       UPDATE "webhook_events"
       SET
         status = 'PROCESSING'::"WebhookEventStatus",
@@ -108,7 +109,7 @@ export class WebhookEventsService {
   async claimBatch(workerId: string, batchSize: number = 25): Promise<any[]> {
     if (batchSize < 1) return [];
 
-    const result = await this.prisma.$queryRawUnsafe<any[]>(
+    const result = await this.prisma.rawQuery<any[]>(
       `UPDATE "webhook_events"
        SET
          status = 'PROCESSING'::"WebhookEventStatus",
@@ -187,7 +188,7 @@ export class WebhookEventsService {
   }
 
   async sweepStuck(): Promise<number> {
-    const stuckEvents = await this.prisma.$queryRawUnsafe<any[]>(`
+    const stuckEvents = await this.prisma.rawQuery<any[]>(`
       UPDATE "webhook_events"
       SET
         status = CASE
@@ -291,14 +292,14 @@ export class WebhookEventsService {
     };
   }
 
-  private normalizePayload(obj: any): any {
+  private normalizePayload(obj: Record<string, any>): Record<string, any> {
     if (typeof obj !== 'object' || obj === null) return obj;
     if (Array.isArray(obj)) return obj.map((i) => this.normalizePayload(i));
     const keys = Object.keys(obj).filter(
       (k) => !['entry', 'changes', 'received_at', 'timestamp'].includes(k),
     );
     keys.sort();
-    const result: any = {};
+    const result: Record<string, any> = {};
     for (const k of keys) {
       result[k] = this.normalizePayload(obj[k]);
     }

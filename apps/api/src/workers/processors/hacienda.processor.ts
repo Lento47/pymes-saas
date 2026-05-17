@@ -59,7 +59,9 @@ export class HaciendaProcessor extends WorkerHost {
             hacienda_last_checked_at: new Date(),
             updated_at: new Date(),
           },
-        }).catch(() => {});
+        }).catch((err) =>
+          this.logger.warn(`Failed to save invoice ${invoiceId} ERROR status for Hacienda`, err),
+        );
       }
 
       throw err; // re-throw so BullMQ retries
@@ -258,7 +260,9 @@ export class HaciendaProcessor extends WorkerHost {
                     body,
                     related_entity_type: 'invoice',
                     related_entity_id: invoice.id,
-                  }).catch(() => {});
+                  }).catch((err) =>
+                    this.logger.warn(`Failed to notify admin about invoice ${invoice.id} Hacienda status`, err),
+                  );
                 }
               }
             }

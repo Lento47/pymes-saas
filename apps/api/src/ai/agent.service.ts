@@ -36,8 +36,8 @@ export class AgentService {
   private async logToolCall(
     agentType: string,
     toolName: string,
-    input: any,
-    output: any,
+    input: Record<string, any>,
+    output: Record<string, any>,
     riskLevel: string,
   ): Promise<void> {
     if (!this.currentSessionId) return;
@@ -129,7 +129,7 @@ export class AgentService {
         name: 'list_documents', description: 'List uploaded documents/files with extracted text for insights',
         parameters: z.object({ search: z.string().optional().nullable() }),
         execute: async ({ search }) => {
-          const where: any = { workspace_id: workspaceId };
+          const where: Record<string, any> = { workspace_id: workspaceId };
           if (search) where.file_name = { contains: search, mode: 'insensitive' };
           return { documents: await prisma.document.findMany({ where, select: { id: true, file_name: true, mime_type: true, file_size: true, ocr_text: true, created_at: true }, take: 50, orderBy: { created_at: 'desc' } }) };
         },
@@ -221,7 +221,7 @@ export class AgentService {
           return { query, results, total: results.length };
         },
       }),
-    ].filter((t: any) => allowedTools.has(t.name));
+    ].filter((t: Record<string, any>) => allowedTools.has(t.name));
   }
 
   async streamWorkflow(
@@ -254,8 +254,8 @@ export class AgentService {
           this.prisma.contact.count({ where: { workspace_id: workspaceId } }),
         ]);
         const ctx: string[] = [`Workspace: ${ws?.name} (Plan: ${ws?.plan})`];
-        if (tasks.length) ctx.push(`Tareas pendientes: ${tasks.map((t: any) => t.title).join(', ')}`);
-          if (invoices.length) ctx.push(`Facturas: ${invoices.map((i: any) => `${i.number} (${i.status}) total:${i.amount} subtotal:${i.subtotal ?? i.amount} iva:${i.tax_rate ?? 0}%`).join(', ')}`);
+        if (tasks.length) ctx.push(`Tareas pendientes: ${tasks.map((t: Record<string, any>) => t.title).join(', ')}`);
+          if (invoices.length) ctx.push(`Facturas: ${invoices.map((i: Record<string, any>) => `${i.number} (${i.status}) total:${i.amount} subtotal:${i.subtotal ?? i.amount} iva:${i.tax_rate ?? 0}%`).join(', ')}`);
         if (contacts) ctx.push(`Contactos totales: ${contacts}`);
         inputWithContext = `Contexto:\n${ctx.join('\n')}\n\nPregunta: ${input}`;
       }
@@ -306,7 +306,7 @@ REGLAS:
       modelSettings: { temperature: 0.2, maxTokens: 1024 },
     });
 
-    const history: any[] = [{ role: 'user', content: inputWithContext }];
+    const history: Record<string, any>[] = [{ role: 'user', content: inputWithContext }];
 
     try {
       const runner = new Runner();
@@ -351,7 +351,7 @@ REGLAS:
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: output })}\n\n`));
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: output } })}\n\n`));
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          } catch (err: any) {
+          } catch (err) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err.message } })}\n\n`));
           } finally {
             controller.close();
@@ -360,7 +360,7 @@ REGLAS:
       });
 
       return { stream, model, agent_type: agentType };
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Agent SDK error: ${err.message}`);
       return { error: `Error del agente: ${err.message}` };
     }
@@ -408,7 +408,7 @@ REGLAS:
       modelSettings: { temperature: 0.4, maxTokens: 200 },
     });
 
-    const history: any[] = [{ role: 'user', content: input }];
+    const history: Record<string, any>[] = [{ role: 'user', content: input }];
 
     try {
       const runner = new Runner();
@@ -423,7 +423,7 @@ REGLAS:
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: text })}\n\n`));
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: text } })}\n\n`));
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          } catch (err: any) {
+          } catch (err) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err.message } })}\n\n`));
           } finally {
             controller.close();
@@ -432,7 +432,7 @@ REGLAS:
       });
 
       return { stream, model: 'gpt-4.1-mini', agent_type: 'hubby' };
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`Public agent error: ${err.message}`);
       return { error: `Error: ${err.message}` };
     }

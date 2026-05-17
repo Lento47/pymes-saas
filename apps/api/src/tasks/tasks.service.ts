@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -13,6 +14,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class TasksService {
+  private readonly logger = new Logger(TasksService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly automationsService: AutomationsService,
@@ -29,7 +31,7 @@ export class TasksService {
     } = filters;
     const skip = (page - 1) * limit;
 
-    const where: any = { workspace_id: workspaceId };
+    const where: Record<string, any> = { workspace_id: workspaceId };
 
     if (status)           where.status           = status;
     if (priority)         where.priority         = priority;
@@ -185,7 +187,9 @@ export class TasksService {
         body: `La tarea "${task.title}" fue marcada como completada.`,
         related_entity_type: 'task',
         related_entity_id: task.id,
-      }).catch(() => {});
+      }).catch((err) =>
+        this.logger.warn(`Failed to notify user about completed task ${task.id} in workspace ${workspaceId}`, err),
+      );
     }
 
     return updated;

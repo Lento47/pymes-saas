@@ -41,7 +41,7 @@ export class HaciendaWebhookController {
     @Param('workspaceId') workspaceId: string,
     @Headers('x-PymesHub-webhook-token') headerToken: string | undefined,
     @Query('token') queryToken: string | undefined,
-    @Body() payload: any,
+    @Body() payload: Record<string, any>,
     @Headers('user-agent') userAgent?: string,
   ) {
     const expectedSecret = this.configService.get<string>('HACIENDA_WEBHOOK_SECRET');

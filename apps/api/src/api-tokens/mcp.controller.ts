@@ -6,15 +6,15 @@ import { PrismaService } from '../common/prisma/prisma.service';
 interface McpRequest {
   jsonrpc: '2.0';
   method: string;
-  params?: any;
+  params?: Record<string, any>;
   id: string | number;
 }
 
-function sseSend(res: Response, data: any) {
+function sseSend(res: Response, data: Record<string, any>) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
-function makeTool(name: string, description: string, properties: any = {}, required: string[] = []): any {
+function makeTool(name: string, description: string, properties: Record<string, any> = {}, required: string[] = []): any {
   return {
     name,
     description,
@@ -45,7 +45,7 @@ const TOOLS = [
   makeTool('get_settings', 'Get workspace settings and members'),
 ];
 
-function getToolsForResponse(): any[] {
+function getToolsForResponse(): Record<string, any>[] {
   if (process.env.PymesHub_MCP_COMPAT_MODE === 'true') {
     return [
       { name: 'get_workspace', description: 'Get workspace info', inputSchema: { type: 'object', properties: {} } },
@@ -74,7 +74,7 @@ export class McpController {
 
   @Get('sse')
   @UseGuards(ApiTokenGuard)
-  async sseGet(@Req() req: any, @Res() res: Response) {
+  async sseGet(@Req() req: Request, @Res() res: Response) {
     const sessionId = this.newSessionId();
     this.mcpSessions.set(sessionId, Date.now());
     res.setHeader('Mcp-Session-Id', sessionId);
@@ -102,7 +102,7 @@ export class McpController {
 
   @Post('sse')
   @UseGuards(ApiTokenGuard)
-  async ssePost(@Req() req: any, @Res() res: Response, @Body() body: any) {
+  async ssePost(@Req() req: Request, @Res() res: Response, @Body() body: Record<string, any>) {
     const sessionId = this.newSessionId();
     this.mcpSessions.set(sessionId, Date.now());
     res.setHeader('Mcp-Session-Id', sessionId);
@@ -137,9 +137,9 @@ export class McpController {
   @Post()
   @UseGuards(ApiTokenGuard)
   async handle(
-    @Req() req: any,
+    @Req() req: Request,
     @Res() res: Response,
-    @Body() body: any,
+    @Body() body: Record<string, any>,
     @Headers('accept') accept?: string,
   ) {
     const isSSE = accept?.includes('text/event-stream');
@@ -208,13 +208,13 @@ export class McpController {
     }
   }
 
-  private async executeToolCall(workspaceId: string, params: { name: string; arguments: any }, id: string | number, req: any) {
+  private async executeToolCall(workspaceId: string, params: { name: string; arguments: Record<string, any> }, id: string | number, req: Request) {
     const auth = req.headers?.authorization || '';
     const sessionKey = auth.replace(/^Bearer /, '').slice(0, 32);
     try {
       const result = await this.executeTool(workspaceId, params.name, params.arguments || {}, sessionKey);
       return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } };
-    } catch (err: any) {
+    } catch (err) {
       return { jsonrpc: '2.0', id, error: { code: -32000, message: err.message } };
     }
   }
@@ -259,7 +259,7 @@ export class McpController {
         return { contacts };
       }
       case 'list_tasks': {
-        const where: any = { workspace_id: workspaceId };
+        const where: Record<string, any> = { workspace_id: workspaceId };
         if (args.status) where.status = args.status;
         const tasks = await this.prisma.task.findMany({ where, select: { id: true, title: true, status: true, priority: true, due_at: true }, take: 50, orderBy: { created_at: 'desc' } });
         return { tasks };
@@ -273,7 +273,7 @@ export class McpController {
         return { invoices };
       }
       case 'list_conversations': {
-        const where: any = { workspace_id: workspaceId };
+        const where: Record<string, any> = { workspace_id: workspaceId };
         if (args.status) where.status = args.status;
         const conversations = await this.prisma.conversation.findMany({ where, select: { id: true, subject: true, status: true, priority: true, created_at: true }, take: 50, orderBy: { created_at: 'desc' } });
         return { conversations };

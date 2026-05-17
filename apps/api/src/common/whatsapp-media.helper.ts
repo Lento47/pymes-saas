@@ -12,7 +12,7 @@ export interface ExtractedWhatsAppMedia {
   rawMedia: Record<string, unknown>;
 }
 
-export function extractWhatsAppMediaFromMessage(msg: any): ExtractedWhatsAppMedia | null {
+export function extractWhatsAppMediaFromMessage(msg: Record<string, any>): ExtractedWhatsAppMedia | null {
   if (!msg || typeof msg !== 'object') return null;
 
   const type = msg.type as WhatsAppMediaKind | undefined;

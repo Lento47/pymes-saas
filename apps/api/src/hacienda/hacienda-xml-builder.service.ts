@@ -12,11 +12,11 @@ const DOCUMENT_ROOT_ELEMENTS: Record<string, string> = {
 @Injectable()
 export class HaciendaXmlBuilderService {
   buildInvoiceXml(payload: {
-    invoice: any;
-    workspaceTaxProfile: any;
-    contact: any;
-    lines: any[];
-    referenceInvoice?: any;
+    invoice: Record<string, any>;
+    workspaceTaxProfile: Record<string, any>;
+    contact: Record<string, any>;
+    lines: Record<string, any>[];
+    referenceInvoice?: Record<string, any>;
   }): string {
     const { invoice, workspaceTaxProfile, contact, lines, referenceInvoice } = payload;
 
@@ -85,7 +85,7 @@ export class HaciendaXmlBuilderService {
 
   // ── Private builders ──────────────────────────────────────────────────────
 
-  private buildLineaDetalle(line: any): string {
+  private buildLineaDetalle(line: Record<string, any>): string {
     const exoneracionXml = line.exoneration_json
       ? this.buildExonerationXml(line.exoneration_json)
       : '';
@@ -118,7 +118,7 @@ export class HaciendaXmlBuilderService {
    * exists on InvoiceLine, we treat all lines as mercancía (most common).
    * TODO: Add `line_category` field to InvoiceLine and classify properly.
    */
-  private computeResumen(lines: any[], invoice: any) {
+  private computeResumen(lines: Record<string, any>[], invoice: Record<string, any>) {
     let totalMercGravados = 0;
     let totalMercExentos = 0;
     let totalServGravados = 0;
@@ -168,7 +168,7 @@ export class HaciendaXmlBuilderService {
     };
   }
 
-  private buildUbicacionXml(profile: any): string {
+  private buildUbicacionXml(profile: Record<string, any>): string {
     if (!profile?.province && !profile?.canton && !profile?.district) return '';
     return `
     <Ubicacion>
@@ -179,7 +179,7 @@ export class HaciendaXmlBuilderService {
     </Ubicacion>`;
   }
 
-  private buildReferenciaXml(refInvoice: any, currentInvoice: any): string {
+  private buildReferenciaXml(refInvoice: Record<string, any>, currentInvoice: Record<string, any>): string {
     const razon =
       currentInvoice.document_type === 'NOTA_CREDITO'
         ? (currentInvoice.description ?? 'Anulación de factura electrónica')
@@ -194,7 +194,7 @@ export class HaciendaXmlBuilderService {
   </InformacionReferencia>`;
   }
 
-  private buildExonerationXml(exon: any): string {
+  private buildExonerationXml(exon: Record<string, any>): string {
     const tipo = exon.tipo_documento ?? exon.tipoDocumento ?? '';
     const numero = exon.numero_documento ?? exon.numeroDocumento ?? '';
     const nombre = exon.nombre_institucion ?? exon.nombreInstitucion ?? '';

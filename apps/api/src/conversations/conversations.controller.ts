@@ -151,7 +151,7 @@ export class ConversationsController {
   ) {
     let bodyText = dto.body_text ?? '';
     let bodyHtml = dto.body_html ?? '';
-    let template: any = null;
+    let template: Record<string, any> | null = null;
 
     if (dto.template_id) {
       template = await this.templatesService.getById(user.workspace_id, dto.template_id);
@@ -183,7 +183,7 @@ export class ConversationsController {
           bodyHtml || bodyText,
           bodyText,
         );
-      } catch (err: any) {
+      } catch (err) {
         this.logger.error(`Email dispatch failed: ${err?.message}`);
       }
     }
@@ -205,7 +205,7 @@ export class ConversationsController {
         } else {
           await this.whatsAppService.sendMessage(conv.channel, to, bodyText);
         }
-      } catch (err: any) {
+      } catch (err) {
         this.logger.error(`WhatsApp dispatch failed: ${err?.message}`);
       }
     }
@@ -217,7 +217,7 @@ export class ConversationsController {
           (conv.contact as any).telegram_chat_id,
           bodyText,
         );
-      } catch (err: any) {
+      } catch (err) {
         this.logger.error(`Telegram dispatch failed: ${err?.message}`);
       }
     }
@@ -254,7 +254,7 @@ export class ConversationsController {
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
       res.send(buffer);
-    } catch (err: any) {
+    } catch (err) {
       res.status(404).json({ statusCode: 404, message: err.message || 'Media no disponible' });
     }
   }

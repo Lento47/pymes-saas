@@ -11,7 +11,7 @@ export class ContactSalesService {
     private readonly emailService: EmailService,
   ) {}
 
-  async submitInquiry(data: any) {
+  async submitInquiry(data: Record<string, any>) {
     const inquiry = await this.prisma.contactSalesInquiry.create({
       data: {
         workspace_id: data.workspace_id ?? null,
@@ -63,7 +63,7 @@ export class ContactSalesService {
     return inquiry;
   }
 
-  private async sendNotifications(data: any, inquiryId: string) {
+  private async sendNotifications(data: Record<string, any>, inquiryId: string) {
     const salesEmail = process.env.CONTACT_SALES_EMAIL || 'ventas@pymeshub.lat';
     const from = 'PymesHub <no-reply@pymeshub.lat>';
 
@@ -107,7 +107,7 @@ export class ContactSalesService {
         bodyHtml,
         details,
       );
-    } catch (err: any) {
+    } catch (err) {
       this.logger.warn(`Sales notification email failed: ${err?.message}`);
     }
 
@@ -128,7 +128,7 @@ export class ContactSalesService {
           confirmHtml,
           `Gracias ${data.contact_name}. Recibimos tu solicitud. Te contactaremos pronto.`,
         );
-      } catch (err: any) {
+      } catch (err) {
         this.logger.warn(`Confirmation email failed: ${err?.message}`);
       }
     }

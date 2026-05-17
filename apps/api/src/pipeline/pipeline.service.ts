@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { HaciendaStatus, InvoiceDocumentType, InvoiceIssuanceMode, InvoiceStatus } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -25,6 +25,7 @@ const DEFAULT_STAGES = [
 
 @Injectable()
 export class PipelineService {
+  private readonly logger = new Logger(PipelineService.name);
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
@@ -112,7 +113,9 @@ export class PipelineService {
         body: `Se te asignó el negocio "${deal.title}" en el pipeline.`,
         related_entity_type: 'deal',
         related_entity_id: deal.id,
-      }).catch(() => {});
+      }).catch((err) =>
+        this.logger.warn(`Pipeline notification failed for workspace ${workspaceId}`, err),
+      );
     }
 
     this.trackQuickStart(workspaceId, 'pipeline_created');
@@ -149,7 +152,9 @@ export class PipelineService {
         body: `El negocio "${deal.title}" pasó a la etapa "${deal.stage?.name || 'nueva'}".`,
         related_entity_type: 'deal',
         related_entity_id: deal.id,
-      }).catch(() => {});
+      }).catch((err) =>
+        this.logger.warn(`Pipeline notification failed for workspace ${workspaceId}`, err),
+      );
     }
     return deal;
   }
@@ -207,7 +212,9 @@ export class PipelineService {
         body: `El negocio "${deal.title}" fue marcado como ganado. Se generó la factura ${invoice.number}.`,
         related_entity_type: 'deal',
         related_entity_id: deal.id,
-      }).catch(() => {});
+      }).catch((err) =>
+        this.logger.warn(`Pipeline notification failed for workspace ${workspaceId}`, err),
+      );
     }
 
     return { deal: updatedDeal, invoice_id: invoice.id, invoice_number: invoiceNumber };
@@ -228,7 +235,7 @@ export class PipelineService {
   private async trackQuickStart(workspaceId: string, step: string) {
     try {
       const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
-      const s: any = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const s: Record<string, any> = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
       const progress = s.quick_start_progress || {};
       if (progress[step]) return;
       s.quick_start_progress = { ...progress, [step]: true };

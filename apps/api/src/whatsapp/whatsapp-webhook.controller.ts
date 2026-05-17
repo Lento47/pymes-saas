@@ -12,6 +12,7 @@ import {
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import * as crypto from 'crypto';
 import { WhatsAppService } from './whatsapp.service';
@@ -28,7 +29,7 @@ export class WhatsAppWebhookController {
     @Query('hub.mode') mode: string,
     @Query('hub.verify_token') token: string,
     @Query('hub.challenge') challenge: string,
-    @Res() res: any,
+    @Res() res: Response,
   ) {
     const result = this.whatsappService.verifyWebhook(mode, token, challenge);
     if (result === null) {
@@ -43,8 +44,8 @@ export class WhatsAppWebhookController {
   @Throttle({ webhook: { limit: 10, ttl: 60_000 } }) // SECURITY: Strict rate limit for webhooks
   async receiveWebhook(
     @Headers('x-hub-signature-256') signature: string | undefined,
-    @Body() payload: any,
-    @Req() req: any,
+    @Body() payload: Record<string, any>,
+    @Req() req: Request,
   ) {
     // SECURITY: Verify webhook signature from Meta when configured.
     // If WHATSAPP_APP_SECRET is not set, accept the webhook without

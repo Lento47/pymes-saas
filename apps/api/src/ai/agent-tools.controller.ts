@@ -1,4 +1,5 @@
 import { Body, Controller, Post, Req, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Request } from 'express';
 import { timingSafeEqual } from 'crypto';
 import { AgentToolsService } from './agent-tools.service';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -20,7 +21,7 @@ export class AgentToolsController {
   ) {}
 
   @Post('tool')
-  async execute(@Body() dto: AgentToolDto, @Req() req: any) {
+  async execute(@Body() dto: AgentToolDto, @Req() req: Request) {
     const auth = req.headers?.authorization || req.headers?.['PymesHub_founder_api_key'] || '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : auth;
 

@@ -91,7 +91,7 @@ export class AgentController {
   @Roles('ADMIN')
   async updateFixCase(
     @Param('id', ValidateUUIDPipe) fixCaseId: string,
-    @Body() body: { status?: string; pr_url?: string; pr_number?: number; files_changed?: any; test_added?: any; fix_summary?: string; rollback_notes?: string; error_log?: string },
+    @Body() body: { status?: string; pr_url?: string; pr_number?: number; files_changed?: Record<string, any>; test_added?: Record<string, any>; fix_summary?: string; rollback_notes?: string; error_log?: string },
     @CurrentUser() user: { id: string; workspace_id: string; is_platform_admin: boolean },
   ) {
     return this.fixService.updateFixStatus(fixCaseId, body, {
