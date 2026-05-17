@@ -129,8 +129,8 @@ function formatMoney(amount: unknown, currency = "USD") {
   }).format(value);
 }
 
-function getErrorMessage(err: unknown) {
-  return err instanceof Error ? err.message : "Ocurrió un error inesperado";
+function getErrorMessage(err: any) {
+  return err?.message ?? "Ocurrió un error inesperado";
 }
 
 export default function InvoicesPage() {
@@ -240,20 +240,20 @@ export default function InvoicesPage() {
   const haciendaReadinessIssues = [...missingTaxProfileFields, ...missingHaciendaSettings];
   const isHaciendaWorkspaceReady = haciendaReadinessIssues.length === 0;
   const totalOverdue = useMemo(
-    () => invoices.filter((invoice) => invoice.status === "OVERDUE").length,
+    () => invoices.filter((invoice: any) => invoice.status === "OVERDUE").length,
     [invoices],
   );
   const overdueAmount = useMemo(
     () =>
       invoices
-        .filter((invoice) => invoice.status === "OVERDUE")
-        .reduce((sum: number, invoice: Record<string, any>) => sum + Number(invoice.balance_due ?? invoice.amount ?? 0), 0),
+        .filter((invoice: any) => invoice.status === "OVERDUE")
+        .reduce((sum: number, invoice: any) => sum + Number(invoice.balance_due ?? invoice.amount ?? 0), 0),
     [invoices],
   );
   const filteredInvoices = useMemo(() => {
     if (!search.trim()) return invoices;
     const q = search.toLowerCase();
-    return invoices.filter((invoice) =>
+    return invoices.filter((invoice: any) =>
       invoice.number?.toLowerCase().includes(q) ||
       invoice.contact?.full_name?.toLowerCase().includes(q),
     );
@@ -261,14 +261,14 @@ export default function InvoicesPage() {
 
   const availableChannels = useMemo(() => {
     const rows = Array.isArray(channelsData) ? channelsData : channelsData?.data ?? [];
-    return rows.filter((channel) =>
+    return rows.filter((channel: any) =>
       channel.status === "ACTIVE" && ["EMAIL", "WHATSAPP"].includes(channel.type),
     );
   }, [channelsData]);
 
   useEffect(() => {
     if (!selectedInvoice) return;
-    const preferred = availableChannels.find((channel) =>
+    const preferred = availableChannels.find((channel: any) =>
       channel.type === "WHATSAPP" ? selectedInvoice.contact?.phone : selectedInvoice.contact?.email,
     );
     setSelectedChannelId(preferred?.id ?? availableChannels[0]?.id ?? "");
@@ -333,20 +333,20 @@ export default function InvoicesPage() {
       });
       toast({ title: "Factura creada" });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" });
     },
   });
 
   const detectMutation = useMutation({
     mutationFn: api.detectOverdueInvoices,
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
       const rows = Array.isArray(result) ? result : result?.data ?? [];
-      setHighlightedIds(rows.map((invoice) => invoice.id));
+      setHighlightedIds(rows.map((invoice: any) => invoice.id));
       invalidateInvoices();
       toast({ title: "Deudas detectadas", description: `${rows.length} factura(s) vencida(s)` });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" });
     },
   });
@@ -357,7 +357,7 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Factura saldada" });
     },
-    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const registerPaymentMutation = useMutation({
@@ -382,7 +382,7 @@ export default function InvoicesPage() {
       });
       toast({ title: "Pago registrado" });
     },
-    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -391,7 +391,7 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Factura eliminada" });
     },
-    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const cancelMutation = useMutation({
@@ -400,11 +400,11 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Factura cancelada" });
     },
-    onError: (err) => toast({ title: "Error al cancelar", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Error al cancelar", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const creditNoteMutation = useMutation({
-    mutationFn: (invoice: Record<string, any>) => api.createCreditNote(invoice.id, {
+    mutationFn: (invoice: any) => api.createCreditNote(invoice.id, {
       number: `NC-${invoice.number}`,
       amount: Number(invoice.amount),
       currency: invoice.currency,
@@ -414,7 +414,7 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Nota de crédito creada. Revisa y envía a Hacienda." });
     },
-    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const submitHaciendaMutation = useMutation({
@@ -423,7 +423,7 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Comprobante enviado a Hacienda" });
     },
-    onError: (err) => toast({ title: "Error Hacienda", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Error Hacienda", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const syncHaciendaMutation = useMutation({
@@ -432,16 +432,16 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Estado Hacienda actualizado" });
     },
-    onError: (err) => toast({ title: "Error Hacienda", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Error Hacienda", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const generateReminderMutation = useMutation({
-    mutationFn: (invoice: Record<string, any>) => api.generateInvoiceReminder(invoice.id),
-    onSuccess: (reminder: unknown, invoice: Record<string, any>) => {
+    mutationFn: (invoice: any) => api.generateInvoiceReminder(invoice.id),
+    onSuccess: (reminder: any, invoice: any) => {
       setSelectedInvoice(invoice);
       setReminderDraft(reminder?.draft_text ?? "");
     },
-    onError: (err) => {
+    onError: (err: any) => {
       setShowReminder(false);
       toast({ title: "Error al redactar", description: getErrorMessage(err), variant: "destructive" });
     },
@@ -460,7 +460,7 @@ export default function InvoicesPage() {
       setReminderDraft("");
       toast({ title: "Recordatorio enviado" });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast({ title: "Error al enviar", description: getErrorMessage(err), variant: "destructive" });
     },
   });
@@ -487,10 +487,10 @@ export default function InvoicesPage() {
       setSelectedInvoice(null);
       toast({ title: "Factura actualizada" });
     },
-    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
-  const openEditModal = (invoice: Record<string, any>) => {
+  const openEditModal = (invoice: any) => {
     setSelectedInvoice(invoice);
     setEditForm({
       number: invoice.number ?? "",
@@ -509,14 +509,14 @@ export default function InvoicesPage() {
     setShowEdit(true);
   };
 
-  const openReminderModal = (invoice: Record<string, any>) => {
+  const openReminderModal = (invoice: any) => {
     setSelectedInvoice(invoice);
     setReminderDraft(invoice.reminders?.[0]?.draft_text ?? "");
     setShowReminder(true);
     generateReminderMutation.mutate(invoice);
   };
 
-  const openPaymentModal = (invoice: Record<string, any>) => {
+  const openPaymentModal = (invoice: any) => {
     setSelectedInvoice(invoice);
     setPaymentForm({
       amount: String(Number(invoice.balance_due ?? 0).toFixed(2)),
@@ -643,7 +643,7 @@ export default function InvoicesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Todo contacto</SelectItem>
-              {contacts.map((contact) => (
+              {contacts.map((contact: any) => (
                 <SelectItem key={contact.id} value={contact.id}>
                   {contact.full_name}
                 </SelectItem>
@@ -672,7 +672,7 @@ export default function InvoicesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInvoices.map((invoice) => {
+                {filteredInvoices.map((invoice: any) => {
                   const overdueDays = invoice.status === "OVERDUE"
                     ? Math.max(0, differenceInCalendarDays(new Date(), new Date(invoice.due_date)))
                     : 0;
@@ -929,7 +929,7 @@ export default function InvoicesPage() {
                       ? "Selecciona un contacto"
                       : "No hay contactos disponibles"}
                 </option>
-                {contacts.map((contact) => (
+                {contacts.map((contact: any) => (
                   <option key={contact.id} value={contact.id}>
                     {contact.full_name}
                     {contact.company_name ? ` · ${contact.company_name}` : ""}
@@ -1220,7 +1220,7 @@ export default function InvoicesPage() {
                 <div>
                   <span className="text-muted-foreground">Pagos registrados</span>
                   <div className="mt-1 space-y-1">
-                    {selectedInvoice.payments.map((p) => (
+                    {selectedInvoice.payments.map((p: any) => (
                       <div key={p.id} className="flex justify-between rounded border border-border bg-background px-2 py-1">
                         <span className="text-foreground">{formatMoney(p.amount, selectedInvoice.currency)}</span>
                         <span className="text-muted-foreground">{p.paid_at ? format(new Date(p.paid_at), "d MMM yyyy", { locale: es }) : "—"}</span>
@@ -1268,7 +1268,7 @@ export default function InvoicesPage() {
                 className="flex h-8 w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 <option value="">Sin contacto</option>
-                {contacts.map((c) => (
+                {contacts.map((c: any) => (
                   <option key={c.id} value={c.id}>{c.full_name}{c.company_name ? ` · ${c.company_name}` : ""}</option>
                 ))}
               </select>
@@ -1534,7 +1534,7 @@ export default function InvoicesPage() {
                     <SelectValue placeholder="Selecciona un canal" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableChannels.map((channel) => (
+                    {availableChannels.map((channel: any) => (
                       <SelectItem key={channel.id} value={channel.id}>
                         {channel.name} · {channel.type}
                       </SelectItem>

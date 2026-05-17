@@ -84,7 +84,7 @@ export default function DocumentsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       toast({ title: "Archivo subido correctamente" });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast({ title: "Error al subir", description: err.message, variant: "destructive" });
     },
   });
@@ -95,14 +95,14 @@ export default function DocumentsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       toast({ title: "Archivo eliminado" });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast({ title: "Error al eliminar", description: err.message, variant: "destructive" });
     },
   });
 
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const handleDownload = async (doc: Record<string, any>) => {
+  const handleDownload = async (doc: any) => {
     try {
       setDownloadingId(doc.id);
       const full = await api.getDocument(doc.id);
@@ -118,7 +118,7 @@ export default function DocumentsPage() {
       } else {
         toast({ title: "No se pudo obtener la URL de descarga", variant: "destructive" });
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast({ title: "Error al descargar", description: err.message, variant: "destructive" });
     } finally {
       setDownloadingId(null);
@@ -260,7 +260,7 @@ export default function DocumentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {docList.map((doc) => {
+              {docList.map((doc: any) => {
                 const mime = doc.mimeType || doc.mime_type;
                 const dateStr = doc.createdAt || doc.created_at;
                 const uploaderName = doc.uploadedBy?.firstName || doc.uploaded_by?.firstName;

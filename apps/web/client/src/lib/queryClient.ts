@@ -33,14 +33,14 @@ export async function apiRequest(
       headers: data ? { "Content-Type": "application/json" } : {},
       body: data ? JSON.stringify(data) : undefined,
     });
-  } catch (error: unknown) {
+  } catch (error: any) {
     void reportClientError({
       source: "FRONTEND",
       category: "QUERY_NETWORK",
       severity: "ERROR",
       title: "Query network failure",
-      message: (error instanceof Error ? error.message : String(error)) ?? `Falló la llamada ${method} ${url}`,
-      stack: error instanceof Error ? error.stack : undefined,
+      message: error?.message ?? `Falló la llamada ${method} ${url}`,
+      stack: error?.stack,
       method,
       url: `${API_BASE}${url}`,
     });
@@ -60,7 +60,7 @@ export const getQueryFn: <T>(options: {
     let res: Response;
     try {
       res = await fetch(`${API_BASE}${queryKey.join("/")}`);
-    } catch (error: unknown) {
+    } catch (error: any) {
       void reportClientError({
         source: "FRONTEND",
         category: "QUERY_NETWORK",

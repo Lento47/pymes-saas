@@ -118,7 +118,7 @@ export default function BillingPage() {
       } else {
         setCheckoutError('Could not create checkout session. Please try again.');
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       setCheckoutError(err?.message ?? 'Checkout failed. Please try again.');
     } finally {
       setCheckoutLoading(null);

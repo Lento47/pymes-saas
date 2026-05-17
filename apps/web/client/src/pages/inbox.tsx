@@ -95,7 +95,7 @@ function NewConversationModal() {
     enabled: open,
   });
 
-  const activeChannels = (Array.isArray(channels) ? channels : []).filter((c) => c.status === "ACTIVE");
+  const activeChannels = (Array.isArray(channels) ? channels : []).filter((c: any) => c.status === "ACTIVE");
   const contactList = Array.isArray(contacts) ? contacts : contacts?.data ?? [];
 
   const create = useMutation({
@@ -104,14 +104,14 @@ function NewConversationModal() {
       contact_id: (contactId && contactId !== "none") ? contactId : undefined,
       subject: subject || undefined,
     }),
-    onSuccess: (conv) => {
+    onSuccess: (conv: any) => {
       toast({ title: "Conversación creada" });
       qc.invalidateQueries({ queryKey: ["/api/conversations"] });
       setOpen(false);
       setChannelId(""); setContactId(""); setSubject("");
       navigate(`/inbox/${conv.id}`);
     },
-    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -133,7 +133,7 @@ function NewConversationModal() {
               <SelectContent className="bg-card border-border">
                 {activeChannels.length === 0
                   ? <SelectItem value="-" disabled>Sin canales activos</SelectItem>
-                  : activeChannels.map((c) => (
+                  : activeChannels.map((c: any) => (
                     <SelectItem key={c.id} value={c.id}>{c.name} ({c.type})</SelectItem>
                   ))
                 }
@@ -149,7 +149,7 @@ function NewConversationModal() {
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
                 <SelectItem value="none">Sin contacto</SelectItem>
-                {contactList.map((c) => (
+                {contactList.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.full_name}{c.email ? ` — ${c.email}` : ""}{c.phone ? ` · ${c.phone}` : ""}
                   </SelectItem>
@@ -249,7 +249,7 @@ export default function InboxPage() {
       ) : (
         <div className="rounded-lg border border-border overflow-hidden bg-card">
           <div className="divide-y divide-border">
-            {convList.map((conv) => (
+            {convList.map((conv: any) => (
               <Link key={conv.id} href={`/inbox/${conv.id}`}>
                 <div
                   className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] cursor-pointer transition-colors"

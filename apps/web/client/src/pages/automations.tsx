@@ -173,7 +173,7 @@ function prettyJson(value: unknown) {
   return JSON.stringify(value ?? {}, null, 2);
 }
 
-function inferBuilderMode(auto: Record<string, any>): BuilderMode {
+function inferBuilderMode(auto: any): BuilderMode {
   const action = auto?.action_config_json;
   const condition = auto?.condition_config_json;
   const actionType = Array.isArray(action) ? action[0]?.type : action?.type;
@@ -196,7 +196,7 @@ function inferBuilderMode(auto: Record<string, any>): BuilderMode {
   return "advanced";
 }
 
-function automationToManualForm(auto: Record<string, any>): ManualFormState {
+function automationToManualForm(auto: any): ManualFormState {
   const action = Array.isArray(auto?.action_config_json)
     ? auto.action_config_json[0] ?? {}
     : auto?.action_config_json ?? {};
@@ -232,7 +232,7 @@ function automationToManualForm(auto: Record<string, any>): ManualFormState {
   };
 }
 
-function automationToAdvancedForm(auto: Record<string, any>): AdvancedFormState {
+function automationToAdvancedForm(auto: any): AdvancedFormState {
   return {
     name: auto?.name ?? "",
     triggerType: auto?.trigger_type ?? "MESSAGE_RECEIVED",
@@ -322,7 +322,7 @@ function ManualBuilder({
 }: {
   form: ManualFormState;
   setForm: (next: ManualFormState) => void;
-  members: Record<string, any>[];
+  members: any[];
 }) {
   const fieldOptions = FIELD_OPTIONS[form.triggerType] ?? [];
 
@@ -538,7 +538,7 @@ function ManualBuilder({
                 <SelectItem value="AUTO">
                   {form.actionType === "assign" ? "Sin asignar" : "Auto (asignado u owner)"}
                 </SelectItem>
-                {members.map((member) => (
+                {members.map((member: any) => (
                   <SelectItem key={member.user?.id || member.id} value={member.user?.id || member.id}>
                     {member.user?.name || member.name || member.email}
                   </SelectItem>
@@ -657,7 +657,7 @@ function ManualBuilder({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="AUTO">Sin asignar</SelectItem>
-                    {members.map((member) => (
+                    {members.map((member: any) => (
                       <SelectItem key={member.user?.id || member.id} value={member.user?.id || member.id}>
                         {member.user?.name || member.name || member.email}
                       </SelectItem>
@@ -863,7 +863,7 @@ export default function AutomationsPage() {
       setAiForm(emptyAiForm());
       toast({ title: "Automatización creada" });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       const { isPlanLimit, message } = parsePlanError(err);
       toast({
         title: isPlanLimit ? "🔒 Límite de plan alcanzado" : "No se pudo crear la automatización",
@@ -892,7 +892,7 @@ export default function AutomationsPage() {
       setEditTarget(null);
       toast({ title: "Automatización actualizada" });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast({ title: "No se pudo actualizar", description: err.message, variant: "destructive" });
     },
   });
@@ -904,7 +904,7 @@ export default function AutomationsPage() {
       setDeleteTarget(null);
       toast({ title: "Automatización eliminada" });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast({ title: "No se pudo eliminar", description: err.message, variant: "destructive" });
     },
   });
@@ -912,12 +912,12 @@ export default function AutomationsPage() {
   const toggleMutation = useMutation({
     mutationFn: (id: string) => api.toggleAutomation(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/automations"] }),
-    onError: (err) => {
+    onError: (err: any) => {
       toast({ title: "No se pudo cambiar el estado", description: err.message, variant: "destructive" });
     },
   });
 
-  function openEdit(auto: Record<string, any>) {
+  function openEdit(auto: any) {
     const mode = inferBuilderMode(auto);
     setEditMode(mode);
     setEditManualForm(automationToManualForm(auto));
@@ -978,7 +978,7 @@ export default function AutomationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {autoList.map((auto) => (
+              {autoList.map((auto: any) => (
                 <TableRow key={auto.id} className="border-border hover:bg-white/[0.02]">
                   <TableCell>
                     <div className="text-sm text-foreground font-medium">{auto.name}</div>
