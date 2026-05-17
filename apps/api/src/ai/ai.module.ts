@@ -18,6 +18,9 @@ import { EngineeringFixService } from './engineering-fix.service';
 import { SupportNotificationService } from './support-notification.service';
 import { KnowledgeBaseService } from './knowledge-base.service';
 import { CaseCommentsService } from './case-comments.service';
+import { CloudflareAiService } from './cloudflare-ai.service';
+
+import { AiTriageService } from './ai-triage.service';
 
 // NOTE: do NOT import EmailModule here. Adding it creates a cycle
 // AiModule → EmailModule → ConversationsModule → AiModule (the last
@@ -45,9 +48,11 @@ import { CaseCommentsService } from './case-comments.service';
     SupportNotificationService,
     KnowledgeBaseService,
     CaseCommentsService,
+    CloudflareAiService,
+    AiTriageService,
   ],
   controllers: [AgentController, AgentToolsController, AiAssistantController, PublicAgentController],
-  exports: [AiService, AgentService, AgentToolsService, SupportNotificationService, KnowledgeBaseService],
+  exports: [AiService, AgentService, AgentToolsService, SupportNotificationService, KnowledgeBaseService, CloudflareAiService, AiTriageService],
 })
 export class AiModule {}
 

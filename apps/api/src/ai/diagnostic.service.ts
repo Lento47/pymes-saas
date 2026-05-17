@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { AiTriageService } from './ai-triage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EngineeringFixService } from './engineering-fix.service';
 import { SupportNotificationService } from './support-notification.service';
@@ -62,6 +63,7 @@ export class DiagnosticService {
     private readonly fixService: EngineeringFixService,
     private readonly supportNotifications: SupportNotificationService,
     private readonly knowledgeBase: KnowledgeBaseService,
+    private readonly triage: AiTriageService,
   ) {}
 
   // ADMIN/platform-admin: full workspace view. Otherwise scope to caller's
@@ -174,34 +176,64 @@ export class DiagnosticService {
       });
     }
 
-    // Fallback: search by module + severity if no exact match
-    if (!matchedIssue && input.module) {
+    // Fallback: search by module + severity if no exact match.
+    // IMPORTANT: ONLY use this for real diagnostic cases (not USER_GUIDANCE).
+    // A module-based fallback known issue without a matching error_code
+    // is MISLEADING — it shows the user a "known problem" that may have
+    // nothing to do with their actual situation (e.g. showing WhatsApp
+    // webhook issue when they clicked "Diagnosticar" on Inbox).
+    let moduleFallbackIssue: any = null;
+    if (!matchedIssue && input.module && classification.category !== 'USER_GUIDANCE') {
       const candidates = await (this.prisma as any).supportKnownIssue.findMany({
         where: { module: input.module, is_active: true },
         orderBy: { severity: 'asc' },
         take: 3,
       });
       if (candidates.length > 0) {
-        matchedIssue = candidates[0];
+        moduleFallbackIssue = candidates[0];
       }
     }
+    // Only show matched known issue when it's an exact error_code match,
+    // OR when it's a real case (not USER_GUIDANCE) with a module match.
+    const effectiveMatchedIssue = matchedIssue || moduleFallbackIssue;
 
     // Don't persist USER_GUIDANCE cases — they're just noise, not real issues.
     // EXCEPT billing: always create a case for billing events (mission critical).
     if (classification.category === 'USER_GUIDANCE' && input.module !== 'billing') {
       this.logger.log(`Skipping USER_GUIDANCE case for ${input.module}: ${classification.title}`);
+
+      // Try AI-powered contextual analysis for the module
+      let aiAnalysis: { explanation: string; guidance: string } | null = null;
+      if (input.workspaceId && input.module) {
+        try {
+          const healthData = await this.collectModuleHealthData(input.workspaceId, input.module);
+          const aiResult = await this.triage.analyzeModuleHealth(
+            input.workspaceId,
+            input.module,
+            healthData,
+          );
+          if (aiResult && aiResult.confidence !== 'LOW') {
+            aiAnalysis = {
+              explanation: aiResult.explanation,
+              guidance: aiResult.guidance,
+            };
+          }
+        } catch {
+          // AI analysis failed — fall through to default USER_GUIDANCE
+        }
+      }
+
+      const recommendation = aiAnalysis?.guidance
+        ? `${classification.recommendation}\n\n${aiAnalysis.guidance}`
+        : classification.recommendation;
+
       return {
-        case_id: 'skipped',
+        case_id: aiAnalysis ? 'ai_analyzed' : 'skipped',
         category: classification.category,
         risk_level: classification.risk_level,
-        title: classification.title,
-        recommendation: classification.recommendation,
-        matched_known_issue: matchedIssue ? {
-          error_code: matchedIssue.error_code,
-          title: matchedIssue.title,
-          workaround: matchedIssue.workaround,
-          fix_status: matchedIssue.fix_status,
-        } : undefined,
+        title: aiAnalysis?.explanation || classification.title,
+        recommendation,
+        matched_known_issue: undefined,
       };
     }
 
@@ -215,7 +247,7 @@ export class DiagnosticService {
         trace_id: input.trace_id,
         category: classification.category,
         risk_level: classification.risk_level,
-        status: matchedIssue ? 'INVESTIGATING' : 'OPEN',
+        status: effectiveMatchedIssue ? 'INVESTIGATING' : 'OPEN',
         title: classification.title,
         user_description: input.user_description,
         safe_summary: classification.recommendation,
@@ -233,7 +265,7 @@ export class DiagnosticService {
     // Internal/system-triggered call: actor is the case's own workspace
     // (the diagnostic case lives there), and we mark isPlatformAdmin=true
     // so the assert passes regardless — this isn't user-initiated.
-    if (matchedIssue) {
+    if (effectiveMatchedIssue) {
       this.fixService
         .createFixCase(caseRecord.id, {
           workspaceId: input.workspaceId,
@@ -250,11 +282,11 @@ export class DiagnosticService {
       risk_level: classification.risk_level,
       title: classification.title,
       recommendation: classification.recommendation,
-      matched_known_issue: matchedIssue ? {
-        error_code: matchedIssue.error_code,
-        title: matchedIssue.title,
-        workaround: matchedIssue.workaround,
-        fix_status: matchedIssue.fix_status,
+      matched_known_issue: effectiveMatchedIssue ? {
+        error_code: effectiveMatchedIssue.error_code,
+        title: effectiveMatchedIssue.title,
+        workaround: effectiveMatchedIssue.workaround,
+        fix_status: effectiveMatchedIssue.fix_status,
       } : undefined,
     };
   }
@@ -304,6 +336,79 @@ export class DiagnosticService {
 
   private result(category: string, risk_level: string, title: string, recommendation: string) {
     return { category, risk_level, title, recommendation };
+  }
+
+  /**
+   * Collect real workspace data for a module to give AI contextual analysis.
+   */
+  private async collectModuleHealthData(workspaceId: string, module: string): Promise<Record<string, any>> {
+    const data: Record<string, any> = { module, timestamp: new Date().toISOString() };
+
+    try {
+      if (module === 'inbox' || module === 'conversations') {
+        // Active channels
+        const channels = await (this.prisma as any).channel.findMany({
+          where: { workspace_id: workspaceId },
+          select: { type: true, status: true },
+        });
+        data.active_channels = channels.filter((c: any) => c.status === 'ACTIVE').length;
+        data.total_channels = channels.length;
+        data.channel_types = [...new Set(channels.map((c: any) => c.type))];
+
+        // Recent conversations (last 24h)
+        const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentConvs = await (this.prisma as any).conversation.count({
+          where: { workspace_id: workspaceId, created_at: { gte: dayAgo } },
+        });
+        data.conversations_24h = recentConvs;
+
+        // Unassigned conversations
+        const unassigned = await (this.prisma as any).conversation.count({
+          where: { workspace_id: workspaceId, assigned_user_id: null, status: { not: 'RESOLVED' } },
+        });
+        data.unassigned_conversations = unassigned;
+
+        // Recent errors
+        const recentErrors = await (this.prisma as any).errorReport.count({
+          where: { workspace_id: workspaceId, created_at: { gte: dayAgo } },
+        });
+        data.recent_errors_24h = recentErrors;
+
+        // Messages (last hour)
+        const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const recentMessages = await (this.prisma as any).message.count({
+          where: { conversation: { workspace_id: workspaceId }, created_at: { gte: hourAgo } },
+        });
+        data.messages_last_hour = recentMessages;
+      } else if (module === 'channels') {
+        const channels = await (this.prisma as any).channel.findMany({
+          where: { workspace_id: workspaceId },
+          select: { type: true, status: true, created_at: true },
+        });
+        data.total = channels.length;
+        data.active = channels.filter((c: any) => c.status === 'ACTIVE').length;
+        data.pending_setup = channels.filter((c: any) => c.status === 'PENDING_SETUP').length;
+        data.error = channels.filter((c: any) => c.status === 'ERROR').length;
+        data.types = [...new Set(channels.map((c: any) => c.type))];
+      } else if (module === 'dashboard') {
+        const convCount = await (this.prisma as any).conversation.count({
+          where: { workspace_id: workspaceId },
+        });
+        const contactCount = await (this.prisma as any).contact.count({
+          where: { workspace_id: workspaceId },
+        });
+        const taskCount = await (this.prisma as any).task.count({
+          where: { workspace_id: workspaceId, status: { not: 'DONE' } },
+        });
+        data.conversations = convCount;
+        data.contacts = contactCount;
+        data.open_tasks = taskCount;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to collect health data for ${module}: ${err.message}`);
+    }
+
+    return data;
   }
 
   private async notifyAdmins(workspaceId: string, caseId: string, classification: { category: string; risk_level: string; title: string }) {

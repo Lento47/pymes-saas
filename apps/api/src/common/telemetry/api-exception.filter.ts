@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ErrorReportsService } from '../../error-reports/error-reports.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AiTriageService } from '../../ai/ai-triage.service';
 
 const SILENT_404_PATTERNS = [
   /\.php(\?.*)?$/i, /\/\.env\d*$/i, /\/\.env\..*$/i, /\/\.git\//i,
@@ -40,6 +41,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
   constructor(
     private readonly errorReports: ErrorReportsService,
     private readonly prisma: PrismaService,
+    private readonly triage?: AiTriageService,
   ) {}
 
   async catch(exception: unknown, host: ArgumentsHost) {
@@ -134,6 +136,13 @@ export class ApiExceptionFilter implements ExceptionFilter {
         status_code: status,
         user_agent: request.headers['user-agent'] ?? null,
         context_json: { params: request.params, query: request.query, workspace_slug: request.headers['x-workspace-slug'] ?? null },
+      });
+    }
+
+    // 3) Trigger AI triage (non-blocking — fire & forget)
+    if (diagnosticCaseId && this.triage) {
+      this.triage.triage(diagnosticCaseId).catch((err: any) => {
+        this.logger.warn(`AI triage failed for case ${diagnosticCaseId}: ${err?.message}`);
       });
     }
 
