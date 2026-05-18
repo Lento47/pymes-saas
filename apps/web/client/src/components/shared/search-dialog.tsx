@@ -152,7 +152,7 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Buscar páginas, conversaciones, contactos..."
-            className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[hsl(var(--fg-3))]"
+            className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-[hsl(var(--fg-3))]"
           />
           <kbd
             className="text-[10px] px-1.5 py-0.5 rounded"
@@ -198,7 +198,7 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
                   {getTypeIcon(r.type)}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white truncate">{r.label}</div>
+                  <div className="text-sm text-foreground truncate">{r.label}</div>
                   {r.description && (
                     <div
                       className="text-[11px] truncate"

@@ -35,7 +35,11 @@ export function ProfileTab() {
 
   const uploadAv = useMutation({
     mutationFn: (file: File) => { const fd = new FormData(); fd.append("file", file); return api.uploadAvatar(fd); },
-    onSuccess: (data: Record<string, any>) => { setAvatarPreview(data.avatar_url); qc.invalidateQueries({ queryKey: ["/api/auth/me"] }); toast({ title: "Foto actualizada" }); },
+    onSuccess: (data: Record<string, any>) => {
+      setAvatarPreview(prev => { if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev); return data.avatar_url; });
+      qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "Foto actualizada" });
+    },
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -50,7 +54,7 @@ export function ProfileTab() {
           <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
             <Camera className="h-5 w-5 text-white" />
           </div>
-          <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { setAvatarPreview(URL.createObjectURL(f)); uploadAv.mutate(f); } }} />
+          <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (!f) return; const url = URL.createObjectURL(f); setAvatarPreview(prev => { if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev); return url; }); uploadAv.mutate(f); }} />
         </label>
         <div>
           <p className="text-sm font-semibold">{user?.name}</p>

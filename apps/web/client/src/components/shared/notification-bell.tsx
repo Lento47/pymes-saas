@@ -100,7 +100,7 @@ export function NotificationBell() {
               className="flex items-center justify-between px-3 py-2"
               style={{ borderBottom: "1px solid hsl(var(--border))" }}
             >
-              <span className="text-xs font-semibold text-white">
+              <span className="text-xs font-semibold text-foreground">
                 Notificaciones
               </span>
               {unreadCount > 0 && (
@@ -199,7 +199,7 @@ function NotifItem({
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium text-white truncate">
+            <span className="text-xs font-medium text-foreground truncate">
               {title}
             </span>
             {hovering && isUnread && (
