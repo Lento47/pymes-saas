@@ -39,7 +39,7 @@ const mockPrisma = {
   invoice: { aggregate: jest.fn() },
   automationRule: { count: jest.fn() },
   message: { count: jest.fn() },
-  $queryRawUnsafe: jest.fn().mockResolvedValue([{
+  rawQuery: jest.fn().mockResolvedValue([{
     contacts: 10, conversations: 5, tasks: 8, documents: 4,
     automations: 2, members: 3, active_conversations: 2,
     pending_tasks: 3, total_document_bytes: 1024,
