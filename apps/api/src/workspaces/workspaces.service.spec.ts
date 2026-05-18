@@ -104,12 +104,12 @@ describe('WorkspacesService', () => {
 
   describe('inviteUser', () => {
     it('throws ForbiddenException when agent tries to invite', async () => {
-      await expect(service.inviteUser('w1', agentUser, { email: 'new@test.com', role: 'AGENT' }))
+      await expect(service.inviteUser('w1', agentUser, { email: 'new@test.com', role: 'AGENT' as any }))
         .rejects.toThrow(ForbiddenException);
     });
 
     it('throws BadRequestException when inviting with OWNER role', async () => {
-      await expect(service.inviteUser('w1', ownerUser, { email: 'new@test.com', role: 'OWNER' }))
+      await expect(service.inviteUser('w1', ownerUser, { email: 'new@test.com', role: 'OWNER' as any }))
         .rejects.toThrow(BadRequestException);
     });
 
@@ -117,7 +117,7 @@ describe('WorkspacesService', () => {
       mockPrisma.user.findUnique.mockResolvedValue({ id: 'u3', email: 'existing@test.com' });
       mockPrisma.workspaceUser.findUnique.mockResolvedValue({ id: 'wu1' });
 
-      await expect(service.inviteUser('w1', ownerUser, { email: 'existing@test.com', role: 'AGENT' }))
+      await expect(service.inviteUser('w1', ownerUser, { email: 'existing@test.com', role: 'AGENT' as any }))
         .rejects.toThrow(ConflictException);
     });
 
@@ -129,7 +129,7 @@ describe('WorkspacesService', () => {
       mockPrisma.workspace.findUniqueOrThrow.mockResolvedValue({ id: 'w1', name: 'Acme', slug: 'acme' });
       mockPrisma.channel.findFirst.mockResolvedValue(null);
 
-      const result = await service.inviteUser('w1', ownerUser, { email: 'brand-new@test.com', role: 'AGENT' });
+      const result = await service.inviteUser('w1', ownerUser, { email: 'brand-new@test.com', role: 'AGENT' as any });
 
       expect(mockPrisma.user.create).toHaveBeenCalledTimes(1);
       expect(mockPrisma.workspaceUser.create).toHaveBeenCalledTimes(1);

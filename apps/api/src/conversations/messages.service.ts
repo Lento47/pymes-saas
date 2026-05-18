@@ -486,8 +486,8 @@ export class MessagesService {
       await this.tasksService.create(workspaceId, systemUser, {
         title: result.task_title,
         description: result.task_description ?? undefined,
-        priority,
-        source: 'AUTOMATION',
+        priority: priority as any,
+        source: 'AUTOMATION' as any,
         conversation_id: conversationId,
         contact_id: contactId ?? undefined,
       });

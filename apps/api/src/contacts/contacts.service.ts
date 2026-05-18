@@ -106,7 +106,7 @@ export class ContactsService {
     return this.prisma.contact.create({
       data: {
         workspace_id:  workspaceId,
-        type:          dto.type ?? 'CUSTOMER',
+        type:          (dto.type ?? 'CUSTOMER') as any,
         full_name:     dto.full_name,
         company_name:  dto.company_name,
         email:         dto.email,
@@ -186,7 +186,7 @@ export class ContactsService {
         ...(dto.external_ref !== undefined && { external_ref: dto.external_ref }),
         ...(dto.tags         !== undefined && { tags_json: stringifyJson(dto.tags) }),
         updated_at: new Date(),
-      },
+      } as any,
     });
   }
 

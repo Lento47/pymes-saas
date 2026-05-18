@@ -96,8 +96,8 @@ export class TasksService {
         title:           dto.title,
         description:     dto.description,
         status:          'TODO',
-        priority:        dto.priority ?? 'MEDIUM',
-        source:          dto.source   ?? 'MANUAL',
+        priority:        (dto.priority ?? 'MEDIUM') as any,
+        source:          (dto.source   ?? 'MANUAL') as any,
         assigned_user_id: dto.assigned_user_id,
         conversation_id: dto.conversation_id,
         contact_id:      dto.contact_id,
@@ -150,7 +150,7 @@ export class TasksService {
         ...(dto.assigned_user_id !== undefined && { assigned_user_id: dto.assigned_user_id }),
         ...(dto.due_at           !== undefined && { due_at: dto.due_at ? new Date(dto.due_at) : null }),
         updated_at: new Date(),
-      },
+      } as any,
     });
   }
 

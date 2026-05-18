@@ -48,7 +48,7 @@ export class PermissionsGuard implements CanActivate {
     if (!membership) throw new ForbiddenException('Sin acceso a este workspace.');
 
     const overrides = membership.permissions_json
-      ? (parseJsonRecord(membership.permissions_json) as Record<string, boolean>)
+      ? (parseJsonRecord(JSON.stringify(membership.permissions_json)) as Record<string, boolean>)
       : null;
 
     for (const key of required) {

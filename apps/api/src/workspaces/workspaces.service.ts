@@ -206,7 +206,7 @@ export class WorkspacesService {
       data: {
         ...rest,
         ...(settingsChanged ? { settings_json: nextSettings } : {}),
-      },
+      } as any,
       select: {
         id: true,
         name: true,
@@ -558,7 +558,7 @@ export class WorkspacesService {
       data: {
         workspace_id: workspaceId,
         user_id: user.id,
-        role: dto.role,
+        role: dto.role as any,
         is_owner: false,
       },
     });
@@ -679,7 +679,7 @@ export class WorkspacesService {
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
       },
-      data: { role: dto.role },
+      data: { role: dto.role as any },
     });
   }
 

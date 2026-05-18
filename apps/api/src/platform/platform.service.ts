@@ -171,7 +171,7 @@ export class PlatformService {
       data: {
         workspace_id: workspace.id,
         user_id: user.id,
-        role: dto.role ?? 'AGENT',
+        role: (dto.role ?? 'AGENT') as any,
         is_owner: false,
       },
     });
@@ -192,7 +192,7 @@ export class PlatformService {
 
     return this.prisma.workspaceUser.update({
       where: { workspace_id_user_id: { workspace_id: workspace.id, user_id: userId } },
-      data: { role: dto.role },
+      data: { role: dto.role as any },
     });
   }
 
@@ -274,19 +274,19 @@ export class PlatformService {
       const subscription = currentSubscription
         ? await tx.workspaceSubscription.update({
             where: { id: currentSubscription.id },
-            data: nextSubscriptionData,
+            data: nextSubscriptionData as any,
           })
         : await tx.workspaceSubscription.create({
             data: {
               workspace: { connect: { id: workspace.id } },
               ...nextSubscriptionData,
-            },
+            } as any,
           });
 
       if (workspace.plan !== effectivePlan) {
         await tx.workspace.update({
           where: { id: workspace.id },
-          data: { plan: effectivePlan },
+          data: { plan: effectivePlan as any },
         });
       }
 
@@ -298,7 +298,7 @@ export class PlatformService {
           source: dto.provider ? 'BILLING_UPDATE' : 'MANUAL',
           event_type: dto.event_type ?? 'MANUAL_PLAN_UPDATE',
           actor_user_id: actorUserId,
-          applied_plan: effectivePlan,
+          applied_plan: effectivePlan as any,
           payload_json:
             dto.payload_json || dto.metadata_json
               ? stringifyJson(dto.payload_json ?? dto.metadata_json ?? null)

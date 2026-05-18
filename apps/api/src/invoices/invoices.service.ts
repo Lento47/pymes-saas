@@ -136,9 +136,9 @@ export class InvoicesService {
         description: dto.description,
         notes_json: (dto.notes as any) ?? undefined,
         status: dto.issuance_mode === InvoiceIssuanceMode.HACIENDA ? InvoiceStatus.DRAFT : InvoiceStatus.SENT,
-        document_type: dto.document_type ?? InvoiceDocumentType.FACTURA_ELECTRONICA,
-        issuance_mode: dto.issuance_mode ?? InvoiceIssuanceMode.MANUAL_ONLY,
-        hacienda_status: dto.hacienda_status ?? HaciendaStatus.DRAFT,
+        document_type: (dto.document_type ?? InvoiceDocumentType.FACTURA_ELECTRONICA) as any,
+        issuance_mode: (dto.issuance_mode ?? InvoiceIssuanceMode.MANUAL_ONLY) as any,
+        hacienda_status: (dto.hacienda_status ?? HaciendaStatus.DRAFT) as any,
         sale_condition: dto.sale_condition,
         payment_method: dto.payment_method,
         activity_code: dto.activity_code,
@@ -244,7 +244,7 @@ export class InvoicesService {
               ? { lines: { create: [] } }
               : {}),
           updated_at: new Date(),
-        },
+        } as any,
         include: this.invoiceInclude(),
       });
     });
@@ -263,7 +263,7 @@ export class InvoicesService {
         ? await this.prisma.invoice.update({
             where: { id },
             data: {
-              status: finalStatus,
+              status: finalStatus as any,
               paid_at: finalStatus === InvoiceStatus.PAID ? invoice.paid_at ?? new Date() : null,
               updated_at: new Date(),
             },
@@ -553,8 +553,8 @@ export class InvoicesService {
       contact_id: dto.contact_id ?? source.contact_id,
       currency: dto.currency ?? source.currency,
       due_date: dto.due_date ?? source.due_date.toISOString(),
-      document_type: InvoiceDocumentType.NOTA_CREDITO,
-      issuance_mode: InvoiceIssuanceMode.HACIENDA,
+      document_type: InvoiceDocumentType.NOTA_CREDITO as any,
+      issuance_mode: InvoiceIssuanceMode.HACIENDA as any,
       reference_invoice_id: sourceInvoiceId,
       lines: dto.lines ?? source.lines.map((line: any) => ({
         description: line.description,
@@ -581,8 +581,8 @@ export class InvoicesService {
       contact_id: dto.contact_id ?? source.contact_id,
       currency: dto.currency ?? source.currency,
       due_date: dto.due_date ?? source.due_date.toISOString(),
-      document_type: InvoiceDocumentType.NOTA_DEBITO,
-      issuance_mode: InvoiceIssuanceMode.HACIENDA,
+      document_type: InvoiceDocumentType.NOTA_DEBITO as any,
+      issuance_mode: InvoiceIssuanceMode.HACIENDA as any,
       reference_invoice_id: sourceInvoiceId,
       amount: dto.amount ?? Number(source.amount),
       lines: dto.lines ?? source.lines.map((line: any) => ({
