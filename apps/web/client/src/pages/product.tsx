@@ -93,10 +93,8 @@ function MarketingMenuAction({
   }
 
   return (
-    <Link href={href}>
-      <a onClick={() => onNavigate(href)} className={classes}>
-        {content}
-      </a>
+    <Link href={href} onClick={() => onNavigate(href)} className={classes}>
+      {content}
     </Link>
   );
 }
@@ -477,27 +475,19 @@ export default function Landing() {
                     <LanguageSwitcher variant="marketing" />
                   </div>
                   <div className="hidden md:flex items-center gap-4">
-                    <Link href="/pricing">
-                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    <Link href="/pricing" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
                         {copy.nav.pricing}
-                      </a>
                     </Link>
-                    <Link href="/documentation">
-                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    <Link href="/documentation" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
                         {copy.nav.documentation}
-                      </a>
                     </Link>
                   </div>
-                  <Link href="/login">
-                    <a className="font-marketing hidden sm:block text-sm font-medium text-white/78 transition hover:text-white">
-                      {copy.nav.logIn}
-                    </a>
+                  <Link href="/login" className="font-marketing hidden sm:block text-sm font-medium text-white/78 transition hover:text-white">
+                    {copy.nav.logIn}
                   </Link>
-                  <Link href="/login">
-                    <a className="glow-button font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
-                      {copy.nav.getStarted}
-                      <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
-                    </a>
+                  <Link href="/login" className="glow-button font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
+                    {copy.nav.getStarted}
+                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Link>
                   <button
                     type="button"
@@ -512,26 +502,18 @@ export default function Landing() {
               {mobileMenuOpen && (
                 <div className="md:hidden mt-2 glass-panel luminous-border rounded-[28px] p-4" data-mobile-menu>
                   <div className="space-y-2">
-                    <Link href="/pricing">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/pricing" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.pricing}
-                      </a>
                     </Link>
-                    <Link href="/documentation">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/documentation" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.documentation}
-                      </a>
                     </Link>
-                    <Link href="/login">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/login" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.logIn}
-                      </a>
                     </Link>
-                    <Link href="/login">
-                      <a className="glow-button font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px]">
+                    <Link href="/login" className="glow-button font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px]">
                         {copy.nav.getStarted}
                         <ArrowRight className="h-3 w-3 inline" />
-                      </a>
                     </Link>
                   </div>
                 </div>
@@ -921,11 +903,9 @@ export default function Landing() {
                   {copy.security.ctaDescription}
                 </p>
                 <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                  <Link href="/login">
-                    <a className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
+                  <Link href="/login" className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
                       {copy.security.ctaPrimary}
                       <ArrowRight className="h-5 w-5" />
-                    </a>
                   </Link>
                   <button
                     type="button"

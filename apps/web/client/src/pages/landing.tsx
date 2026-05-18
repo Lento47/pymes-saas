@@ -96,10 +96,8 @@ function MarketingMenuAction({
   }
 
   return (
-    <Link href={href}>
-      <a onClick={() => onNavigate(href)} className={classes}>
-        {content}
-      </a>
+    <Link href={href} onClick={() => onNavigate(href)} className={classes}>
+      {content}
     </Link>
   );
 }
@@ -458,32 +456,22 @@ export default function Landing() {
 
                 <div className="flex items-center gap-1 md:gap-4 flex-shrink-0">
                   <div className="hidden md:flex items-center gap-4">
-                    <Link href="/pricing">
-                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    <Link href="/pricing" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
                         {copy.nav.pricing}
-                      </a>
                     </Link>
-                    <Link href="/documentation">
-                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    <Link href="/documentation" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
                         {copy.nav.documentation}
-                      </a>
                     </Link>
-                    <Link href="/product">
-                      <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    <Link href="/product" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
                         {copy.nav.platform}
-                      </a>
                     </Link>
                   </div>
-                  <Link href="/login">
-                    <a className="font-marketing hidden sm:block text-sm font-medium text-white/78 transition hover:text-white">
-                      {copy.nav.logIn}
-                    </a>
+                  <Link href="/login" className="font-marketing hidden sm:block text-sm font-medium text-white/78 transition hover:text-white">
+                    {copy.nav.logIn}
                   </Link>
-                  <Link href="/register">
-                    <a className="font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
+                  <Link href="/register" className="font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
                       {copy.nav.getStarted}
                       <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
-                    </a>
                   </Link>
                   <button
                     type="button"
@@ -498,47 +486,31 @@ export default function Landing() {
               {mobileMenuOpen && (
                 <div className="md:hidden mt-2 glass-panel rounded-xl p-4" data-mobile-menu>
                   <div className="space-y-2">
-                    <Link href="/product">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/product" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.platform}
-                      </a>
                     </Link>
-                    <Link href="/product">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/product" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.workflows}
-                      </a>
                     </Link>
-                    <Link href="/product">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/product" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.insights}
-                      </a>
                     </Link>
-                    <Link href="/product">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/product" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.security}
-                      </a>
                     </Link>
                     <div className="border-t border-white/[0.06] pt-2" />
-                    <Link href="/pricing">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/pricing" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.pricing}
-                      </a>
                     </Link>
-                    <Link href="/documentation">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/documentation" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.documentation}
-                      </a>
                     </Link>
-                    <Link href="/login">
-                      <a className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/login" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
                         {copy.nav.logIn}
-                      </a>
                     </Link>
-                    <Link href="/register">
-                      <a className="font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px]">
+                    <Link href="/register" className="font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px]">
                         {copy.nav.getStarted}
                         <ArrowRight className="h-3 w-3 inline" />
-                      </a>
                     </Link>
                   </div>
                 </div>
@@ -618,16 +590,12 @@ export default function Landing() {
               </p>
 
               <div className="mt-8 md:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-                <Link href="/register">
-                  <a className="font-marketing inline-flex items-center gap-2 rounded-lg bg-[#2563eb] px-6 md:px-8 py-3.5 md:py-4 text-sm md:text-base font-bold text-white transition hover:translate-y-[-1px]">
+                <Link href="/register" className="font-marketing inline-flex items-center gap-2 rounded-lg bg-[#2563eb] px-6 md:px-8 py-3.5 md:py-4 text-sm md:text-base font-bold text-white transition hover:translate-y-[-1px]">
                     {copy.primaryCta}
                     <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
-                  </a>
                 </Link>
-                <Link href="/product">
-                  <a className="font-marketing inline-flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
+                <Link href="/product" className="font-marketing inline-flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
                     {copy.secondaryCta}
-                  </a>
                 </Link>
               </div>
 

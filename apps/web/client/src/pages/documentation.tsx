@@ -32,15 +32,11 @@ export default function DocumentationCenterPage() {
 
             <div className="flex items-center gap-2 md:gap-4">
               <LanguageSwitcher variant="marketing" />
-              <Link href="/">
-                <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
-                  {copy.back}
-                </a>
+              <Link href="/" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                {copy.back}
               </Link>
-              <Link href="/login">
-                <a className="inline-flex items-center gap-2 rounded-full bg-[#5870ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#5870ff]/80 md:px-6">
-                  {copy.openWorkspace}
-                </a>
+              <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-[#5870ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#5870ff]/80 md:px-6">
+                {copy.openWorkspace}
               </Link>
             </div>
           </nav>
@@ -57,11 +53,9 @@ export default function DocumentationCenterPage() {
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/legal">
-                <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-indigo-900/20 px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
-                  <ExternalLink className="h-4 w-4" />
-                  {copy.openLegal}
-                </a>
+              <Link href="/legal" className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-indigo-900/20 px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
+                <ExternalLink className="h-4 w-4" />
+                {copy.openLegal}
               </Link>
             </div>
           </section>
@@ -84,8 +78,7 @@ export default function DocumentationCenterPage() {
 
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {docs.map((doc) => (
-                      <Link key={doc.slug} href={`/documentation/${doc.slug}`}>
-                        <a className="group flex flex-col rounded-xl border border-indigo-400/20 bg-indigo-900/10 p-5 transition-all duration-200 hover:border-indigo-400/40 hover:bg-indigo-900/20">
+                      <Link key={doc.slug} href={`/documentation/${doc.slug}`} className="group flex flex-col rounded-xl border border-indigo-400/20 bg-indigo-900/10 p-5 transition-all duration-200 hover:border-indigo-400/40 hover:bg-indigo-900/20">
                           <div className="flex items-center gap-3">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
                               <BookOpen className="h-4 w-4" />
@@ -100,7 +93,6 @@ export default function DocumentationCenterPage() {
                           <p className="mt-2 text-sm leading-6 text-white/75">
                             {doc.summary}
                           </p>
-                        </a>
                       </Link>
                     ))}
                   </div>
