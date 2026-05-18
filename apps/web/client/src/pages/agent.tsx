@@ -266,7 +266,7 @@ export default function Agent() {
             )}
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-lg"
               style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))' }}>
-              <Sparkles style={{ width: 24, height: 24, color: 'hsl(var(--fg))' }} />
+              <Sparkles style={{ width: 24, height: 24, color: 'hsl(var(--primary-foreground))' }} />
             </div>
             <h2 className="text-xl font-semibold text-foreground mb-1.5 tracking-tight">Asistente IA</h2>
             <p className="text-sm text-muted-foreground/80 text-center mb-10 max-w-sm leading-relaxed">
@@ -300,7 +300,7 @@ export default function Agent() {
                     ) : msg.role === 'tool' ? (
                       <span className="text-[11px]">⚡</span>
                     ) : (
-                      <Sparkles style={{ width: 12, height: 12, color: 'hsl(var(--fg))' }} />
+                      <Sparkles style={{ width: 12, height: 12, color: 'hsl(var(--primary-foreground))' }} />
                     )}
                   </div>
                 )}
