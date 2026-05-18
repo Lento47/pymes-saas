@@ -133,30 +133,26 @@ export default function DocumentationCenterPage() {
                     desc: "Tipos de cookies, finalidad, duración y gestión del consentimiento.",
                   },
                 ].map((item) => (
-                  <Link key={item.href} href={item.href}>
-                    <a className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
-                          <FileText className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-semibold text-white group-hover:text-white/90">
-                            {item.title}
-                          </h3>
-                          <p className="mt-1 text-xs leading-5 text-white/40">{item.desc}</p>
-                        </div>
+                  <Link key={item.href} href={item.href} className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
+                        <FileText className="h-4 w-4" />
                       </div>
-                    </a>
+                      <div>
+                        <h3 className="text-sm font-semibold text-white group-hover:text-white/90">
+                          {item.title}
+                        </h3>
+                        <p className="mt-1 text-xs leading-5 text-white/40">{item.desc}</p>
+                      </div>
+                    </div>
                   </Link>
                 ))}
               </div>
 
               <div className="mt-6 text-center">
-                <Link href="/legal">
-                  <a className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
-                    <ExternalLink className="h-4 w-4" />
-                    Ver todos los documentos legales
-                  </a>
+                <Link href="/legal" className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
+                  <ExternalLink className="h-4 w-4" />
+                  Ver todos los documentos legales
                 </Link>
               </div>
             </section>

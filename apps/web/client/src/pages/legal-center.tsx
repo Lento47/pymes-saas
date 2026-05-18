@@ -51,15 +51,11 @@ export function LegalCenterPage() {
 
             <div className="flex items-center gap-2 md:gap-4">
               <LanguageSwitcher variant="marketing" />
-              <Link href="/documentation">
-                <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
-                  {copy.backToDocs}
-                </a>
+              <Link href="/documentation" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                {copy.backToDocs}
               </Link>
-              <Link href="/">
-                <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
-                  {copy.backToLanding}
-                </a>
+              <Link href="/" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                {copy.backToLanding}
               </Link>
             </div>
           </nav>
@@ -86,10 +82,8 @@ export function LegalCenterPage() {
                 </h3>
                 <nav className="space-y-1">
                   {docs.map((doc) => (
-                    <Link key={doc.slug} href={`/legal/${doc.slug}`}>
-                      <a className="block rounded-lg px-3 py-2 text-sm text-white/52 transition hover:bg-white/[0.04] hover:text-white/85">
-                        {doc.title}
-                      </a>
+                    <Link key={doc.slug} href={`/legal/${doc.slug}`} className="block rounded-lg px-3 py-2 text-sm text-white/52 transition hover:bg-white/[0.04] hover:text-white/85">
+                      {doc.title}
                     </Link>
                   ))}
                 </nav>
@@ -100,22 +94,20 @@ export function LegalCenterPage() {
             <div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {docs.map((doc) => (
-                  <Link key={doc.slug} href={`/legal/${doc.slug}`}>
-                    <a className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
-                          <ShieldCheck className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-semibold text-white group-hover:text-white/90">
-                            {doc.title}
-                          </h3>
-                          <p className="mt-1 text-xs leading-5 text-white/40">
-                            {doc.summary}
-                          </p>
-                        </div>
+                  <Link key={doc.slug} href={`/legal/${doc.slug}`} className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 group-hover:text-white/80 group-hover:bg-white/[0.1] transition-colors">
+                        <ShieldCheck className="h-4 w-4" />
                       </div>
-                    </a>
+                      <div>
+                        <h3 className="text-sm font-semibold text-white group-hover:text-white/90">
+                          {doc.title}
+                        </h3>
+                        <p className="mt-1 text-xs leading-5 text-white/40">
+                          {doc.summary}
+                        </p>
+                      </div>
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -167,10 +159,8 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
               <BrandLockup compact />
               <div className="flex items-center gap-2 md:gap-4">
                 <LanguageSwitcher variant="marketing" />
-                <Link href="/legal">
-                  <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
-                    {copy.backToLegal}
-                  </a>
+                <Link href="/legal" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                  {copy.backToLegal}
                 </Link>
               </div>
             </nav>
@@ -207,15 +197,11 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
             <BrandLockup compact />
             <div className="flex items-center gap-2 md:gap-4">
               <LanguageSwitcher variant="marketing" />
-              <Link href="/legal">
-                <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
-                  {copy.backToLegal}
-                </a>
+              <Link href="/legal" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                {copy.backToLegal}
               </Link>
-              <Link href="/documentation">
-                <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
-                  {copy.backToDocs}
-                </a>
+              <Link href="/documentation" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                {copy.backToDocs}
               </Link>
             </div>
           </nav>
@@ -232,17 +218,17 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                   {legalDocs.map((legalDoc) => {
                     const isActive = legalDoc.slug === slug;
                     return (
-                      <Link key={legalDoc.slug} href={`/legal/${legalDoc.slug}`}>
-                        <a
-                          className={cn(
-                            "block rounded-lg px-3 py-2 text-sm transition",
-                            isActive
-                              ? "bg-white/[0.06] text-[#F59E0B] font-medium"
-                              : "text-white/48 hover:bg-white/[0.04] hover:text-white/80",
-                          )}
-                        >
-                          {legalDoc.title}
-                        </a>
+                      <Link
+                        key={legalDoc.slug}
+                        href={`/legal/${legalDoc.slug}`}
+                        className={cn(
+                          "block rounded-lg px-3 py-2 text-sm transition",
+                          isActive
+                            ? "bg-white/[0.06] text-[#F59E0B] font-medium"
+                            : "text-white/48 hover:bg-white/[0.04] hover:text-white/80",
+                        )}
+                      >
+                        {legalDoc.title}
                       </Link>
                     );
                   })}
@@ -252,11 +238,9 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
 
             {/* Main content */}
             <div className="mx-auto w-full max-w-3xl">
-              <Link href="/legal">
-                <a className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
-                  <ArrowLeft className="h-4 w-4" />
-                  {copy.backToLegal}
-                </a>
+              <Link href="/legal" className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
+                <ArrowLeft className="h-4 w-4" />
+                {copy.backToLegal}
               </Link>
 
               <article className="mt-8">
@@ -331,21 +315,17 @@ export function LegalDocumentPage({ slug }: LegalDocumentPageProps) {
                 {/* Previous / Next navigation */}
                 <div className="mt-16 flex items-center justify-between border-t border-white/[0.05] pt-8">
                   {prevDoc ? (
-                    <Link href={`/legal/${prevDoc}`}>
-                      <a className="group flex items-center gap-2 text-sm text-white/50 transition hover:text-white/80">
-                        <ArrowLeft className="h-4 w-4" />
-                        Anterior
-                      </a>
+                    <Link href={`/legal/${prevDoc}`} className="group flex items-center gap-2 text-sm text-white/50 transition hover:text-white/80">
+                      <ArrowLeft className="h-4 w-4" />
+                      Anterior
                     </Link>
                   ) : (
                     <span />
                   )}
                   {nextDoc ? (
-                    <Link href={`/legal/${nextDoc}`}>
-                      <a className="group flex items-center gap-2 text-sm text-white/50 transition hover:text-white/80">
-                        Siguiente
-                        <ArrowLeft className="h-4 w-4 rotate-180" />
-                      </a>
+                    <Link href={`/legal/${nextDoc}`} className="group flex items-center gap-2 text-sm text-white/50 transition hover:text-white/80">
+                      Siguiente
+                      <ArrowLeft className="h-4 w-4 rotate-180" />
                     </Link>
                   ) : (
                     <span />
