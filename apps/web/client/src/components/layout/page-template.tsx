@@ -14,7 +14,6 @@ interface PageTemplateProps {
     variant?: "primary" | "secondary";
     icon?: React.ReactNode;
   }>;
-  showSearch?: boolean;
 }
 
 export function PageTemplate({
@@ -22,7 +21,6 @@ export function PageTemplate({
   description,
   children,
   actions,
-  showSearch = true,
 }: PageTemplateProps) {
   return (
     <div className="min-h-full bg-gray-50">
@@ -37,40 +35,32 @@ export function PageTemplate({
               )}
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {showSearch && (
-                <input
-                  type="text"
-                  placeholder="Buscar..."
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hidden sm:block"
-                />
-              )}
-
-              {actions?.map((action, i) => (
-                <Button
-                  key={i}
-                  variant={action.variant === "primary" ? "default" : "outline"}
-                  size="sm"
-                  onClick={action.onClick}
-                  asChild={!!action.href}
-                  className="gap-2"
-                >
-                  {action.href ? (
-                    <Link href={action.href}>
-                      <a className="flex items-center gap-2">
+            {actions && actions.length > 0 && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {actions.map((action, i) => (
+                  <Button
+                    key={i}
+                    variant={action.variant === "primary" ? "default" : "outline"}
+                    size="sm"
+                    onClick={action.onClick}
+                    asChild={!!action.href}
+                    className="gap-2"
+                  >
+                    {action.href ? (
+                      <Link href={action.href} className="flex items-center gap-2">
                         {action.icon || <Plus className="w-4 h-4" />}
                         {action.label}
-                      </a>
-                    </Link>
-                  ) : (
-                    <>
-                      {action.icon || <Plus className="w-4 h-4" />}
-                      {action.label}
-                    </>
-                  )}
-                </Button>
-              ))}
-            </div>
+                      </Link>
+                    ) : (
+                      <>
+                        {action.icon || <Plus className="w-4 h-4" />}
+                        {action.label}
+                      </>
+                    )}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -113,10 +103,8 @@ export function SectionCard({
             {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
           </div>
           {linkTo && (
-            <Link href={linkTo}>
-              <a className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 flex-shrink-0">
-                {linkLabel} <ArrowRight className="w-4 h-4" />
-              </a>
+            <Link href={linkTo} className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 flex-shrink-0">
+              {linkLabel} <ArrowRight className="w-4 h-4" />
             </Link>
           )}
         </div>
@@ -222,11 +210,7 @@ export function TableRow({ children, onClick, href, className = "" }: TableRowPr
   );
 
   if (href) {
-    return (
-      <Link href={href}>
-        <a>{content}</a>
-      </Link>
-    );
+    return <Link href={href}>{content}</Link>;
   }
 
   return content;
