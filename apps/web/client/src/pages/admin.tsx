@@ -3,6 +3,31 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2, Users, Building2, MessageSquare, FileText, TrendingUp, BarChart3 } from "lucide-react";
 
+// ── Types ──────────────────────────────────────────────────────────────────
+
+type PlatformStats = {
+  totalWorkspaces: number;
+  totalUsers: number;
+  activeUsers: number;
+  totalConversations: number;
+  totalInvoices: number;
+  profiledWorkspaces: number;
+  categoriesDistribution: { category: string; count: number }[];
+  registrationsByMonth: { month: string; count: number }[];
+  usageByCategory: { category: string; avg_contacts: number; avg_conversations: number; avg_invoices: number }[];
+};
+
+type WorkspaceSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  plan: string;
+  status: string;
+  member_count: number;
+  created_at: string;
+  business_profile?: { categories?: string[] };
+};
+
 // ── Category labels ────────────────────────────────────────────────────────
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -142,9 +167,10 @@ function RegistrationsChart({ data }: { data: { month: string; count: number }[]
 
 export default function AdminPage() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<any>(null);
-  const [workspaces, setWorkspaces] = useState<any[]>([]);
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [wsSearch, setWsSearch] = useState("");
 
   // Guard: only platform admins
@@ -157,7 +183,8 @@ export default function AdminPage() {
   useEffect(() => {
     if (!user?.is_platform_admin) return;
     Promise.all([api.platformGetStats(), api.platformListWorkspaces()])
-      .then(([s, w]) => { setStats(s); setWorkspaces(w as any[]); })
+      .then(([s, w]) => { setStats(s as PlatformStats); setWorkspaces(w as WorkspaceSummary[]); })
+      .catch(() => setFetchError("No se pudieron cargar los datos del panel."))
       .finally(() => setLoading(false));
   }, [user]);
 
@@ -166,7 +193,15 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <Loader2 style={{ width: 24, height: 24, animation: "spin 1s linear infinite", color: "hsl(var(--accent))" }} />
+        <Loader2 className="animate-spin" style={{ width: 24, height: 24, color: "hsl(var(--accent))" }} />
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <p style={{ fontSize: "14px", color: "hsl(var(--fg-2))" }}>{fetchError}</p>
       </div>
     );
   }
@@ -246,8 +281,8 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      {/* Section 4 — Usage by segment */}
-      {stats?.usageByCategory?.length > 0 && (
+      {/* Section 3 — Usage by segment */}
+      {(stats?.usageByCategory?.length ?? 0) > 0 && (
         <Card style={{ marginBottom: "20px" }}>
           <h2 style={{ fontSize: "14px", fontWeight: 600, color: "hsl(var(--fg))", marginBottom: "16px" }}>
             Métricas promedio por segmento
@@ -264,7 +299,7 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {(stats.usageByCategory as any[]).map((row, i) => (
+                {(stats?.usageByCategory ?? []).map((row, i) => (
                   <tr key={row.category} style={{ borderBottom: "1px solid hsl(var(--border))", background: i % 2 === 0 ? "transparent" : "hsl(var(--border) / 0.3)" }}>
                     <td style={{ padding: "8px 12px", color: "hsl(var(--fg))", fontWeight: 500 }}>
                       {CATEGORY_LABELS[row.category] ?? row.category}
@@ -280,7 +315,7 @@ export default function AdminPage() {
         </Card>
       )}
 
-      {/* Section 3 — Workspace table */}
+      {/* Section 4 — Workspace table */}
       <Card>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
           <h2 style={{ fontSize: "14px", fontWeight: 600, color: "hsl(var(--fg))" }}>
