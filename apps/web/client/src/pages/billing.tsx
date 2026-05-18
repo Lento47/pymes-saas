@@ -18,7 +18,7 @@ import { HelpButton } from "@/components/shared/help-button";
 import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import {
   Crown, ArrowUpRight, ArrowDownRight, Check, Loader2, Info, ExternalLink,
-  Users, Zap, Receipt, FolderOpen, Database, TrendingUp, Search, Package, Layers,
+  Users, Zap, Receipt, FolderOpen, Database, Search, Package, Layers,
 } from "lucide-react";
 
 const PLAN_ORDER = ["FREE", "STARTER", "GROWTH", "BUSINESS", "BUSINESS_PLUS"] as const;
@@ -817,6 +817,7 @@ export default function BillingPage() {
 function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
     queryKey: ["/api/billing/invoices", { page, search }],
@@ -899,14 +900,20 @@ function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }
                   variant="outline"
                   className="h-7 text-[10px]"
                 onClick={async () => {
-                  const token = getAuthToken();
-                  const apiBase = import.meta.env.VITE_API_URL || '';
-                  const res = await fetch(`${apiBase}/api/billing/invoices/${inv.id}/pdf`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                  });
-                  const blob = await res.blob();
-                  const url = URL.createObjectURL(blob);
-                  window.open(url, "_blank");
+                  try {
+                    const token = getAuthToken();
+                    const apiBase = import.meta.env.VITE_API_URL || '';
+                    const res = await fetch(`${apiBase}/api/billing/invoices/${inv.id}/pdf`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (!res.ok) throw new Error(`Error ${res.status}`);
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    window.open(url, "_blank");
+                    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+                  } catch {
+                    toast({ title: "No se pudo descargar el PDF", variant: "destructive" });
+                  }
                 }}
                 >
                   PDF
