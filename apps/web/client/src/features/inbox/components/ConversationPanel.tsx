@@ -49,6 +49,7 @@ function DateSeparator({ date }: { date: Date }) {
 
 function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; mediaType: "image" | "video" | "audio" | "document"; caption?: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -69,6 +70,7 @@ function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; m
       })
       .then((blob) => {
         const url = URL.createObjectURL(blob);
+        blobUrlRef.current = url;
         setBlobUrl(url);
         setLoading(false);
       })
@@ -79,7 +81,7 @@ function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; m
 
     return () => {
       controller.abort();
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
     };
   }, [messageId]);
 
