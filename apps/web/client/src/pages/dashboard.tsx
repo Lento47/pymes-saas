@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
@@ -8,10 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import {
-  TrendingUp, Receipt, CheckSquare, BarChart4, ChevronDown, Sparkles, ArrowRight,
+  Receipt, BarChart4, Sparkles, ArrowRight,
   ShieldCheck, TriangleAlert, CircleAlert, Info, Plus, FileText, MessageCircle, Package,
 } from "lucide-react";
-import { format, formatDistanceToNowStrict } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import OnboardingTour from "@/components/shared/onboarding-tour";
 import QuickStartChecklist from "@/components/shared/quick-start-checklist";
@@ -21,7 +21,6 @@ interface PipelineDealSummary { value: string | null; currency: string; }
 interface PipelineStageSummary { id: string; name: string; color: string; deals: PipelineDealSummary[]; }
 function sumPipelineValue(deals: PipelineDealSummary[]) { return deals.reduce((s, d) => { const n = d.value ? parseFloat(d.value) : 0; return isFinite(n) ? s + n : s; }, 0); }
 function fmtMoney(n: number, cur: string) { return new Intl.NumberFormat("es-CR", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(n); }
-function timeAgo(date: string) { try { return formatDistanceToNowStrict(new Date(date), { addSuffix: true }); } catch { return ""; } }
 
 // ── Clean revenue chart ──
 function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
@@ -101,20 +100,20 @@ export default function DashboardPage() {
   const dash = messages.dashboard;
   const [activeTab, setActiveTab] = useState<"tasks" | "messages">("tasks");
 
-  const { data: todayStats, isLoading: statsLoading, isError: statsError } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
+  const { isLoading: statsLoading, isError: statsError } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
   const { data: dashboard } = useQuery({ queryKey: ["/api/workspaces/current/dashboard"], queryFn: api.getDashboard, staleTime: 0, refetchOnMount: true, refetchInterval: 60000 });
   const workspaceStats = dashboard?.stats;
   const workspace = dashboard?.workspace;
   const { data: conversations, isLoading: convsLoading } = useQuery({ queryKey: ["/api/conversations", "dash"], queryFn: () => api.getConversations({ limit: "10" }) });
   const { data: tasks, isLoading: tasksLoading } = useQuery({ queryKey: ["/api/tasks", "dash"], queryFn: () => api.getTasks({ limit: "10" }) });
-  const { data: overdueInvoices, isLoading: invoicesLoading } = useQuery({ queryKey: ["/api/invoices", "overdue-widget"], queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }), refetchInterval: 60000 });
+  const { data: overdueInvoices } = useQuery({ queryKey: ["/api/invoices", "overdue-widget"], queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }), refetchInterval: 60000 });
   const { data: pipelineStagesData, isLoading: pipelineLoading } = useQuery({ queryKey: ["/api/pipeline/stages", "dash"], queryFn: () => api.getPipelineStages(), refetchInterval: 60000 });
   const { data: insights } = useQuery({ queryKey: ["/api/insights"], queryFn: api.getInsights, staleTime: 3 * 60 * 1000 });
   const { data: onboardStatus } = useQuery({ queryKey: ["onboarding-status"], queryFn: api.getOnboardingStatus, staleTime: 5 * 60 * 1000, retry: false });
   const { data: lowStock } = useQuery({ queryKey: ["low-stock-dash"], queryFn: api.getLowStock, refetchInterval: 120000, retry: false });
   const { data: pendingApprovals } = useQuery({ queryKey: ["pending-approvals"], queryFn: api.getPendingApprovals, refetchInterval: 30000, retry: false });
 
-  const isLoading = statsLoading && convsLoading && tasksLoading;
+  const isLoading = statsLoading || convsLoading || tasksLoading;
   const hasError = statsError;
 
   const approveMut = useMutation({
@@ -149,7 +148,6 @@ export default function DashboardPage() {
   const totalPipeline = stageRows.reduce((s, r) => s + r.totalValue, 0);
   const firstCurrency = stageRows[0]?.currency ?? "CRC";
   const overdueCount = invoiceList.length;
-  const overdueAmount = invoiceList.reduce((s: number, i: any) => s + (i.amount || 0), 0);
   const urgentTasks = taskList.filter((t: any) => t.priority === "HIGH").length;
 
   const greeting = () => {
@@ -399,7 +397,7 @@ export default function DashboardPage() {
               <div className="text-center py-4">
                 <p className="text-[13px] text-muted-foreground/70">Aún no tienes oportunidades en el pipeline.</p>
                 <p className="text-[11px] text-muted-foreground/75 mt-1">Crea tu primera oportunidad para dar seguimiento a negocios potenciales.</p>
-                <Link href="/pipeline"><button className="mt-3 text-[12px] px-4 py-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors">{dash.newOpportunity}</button></Link>
+                <Link href="/pipeline" className="mt-3 inline-block text-[12px] px-4 py-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors">{dash.newOpportunity}</Link>
               </div>
             ) : (
               <div className="space-y-3">
