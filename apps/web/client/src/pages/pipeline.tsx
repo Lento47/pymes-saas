@@ -83,7 +83,7 @@ function DealCard({
       className="rounded-md p-3 cursor-pointer select-none transition-all hover:brightness-110 active:opacity-70"
       style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))" }}
     >
-      <div className="text-white text-[13px] font-medium leading-snug mb-2">{deal.title}</div>
+      <div className="text-foreground text-[13px] font-medium leading-snug mb-2">{deal.title}</div>
 
       {deal.value && (
         <div className="flex items-center gap-1 mb-1.5">
@@ -156,7 +156,7 @@ function KanbanColumn({
         className="px-3 py-2.5 flex items-center gap-2 rounded-t-lg"
         style={{ borderBottom: "1px solid hsl(var(--border))", borderLeft: `3px solid ${stage.color}` }}
       >
-        <span className="flex-1 text-[13px] font-semibold text-white truncate">{stage.name}</span>
+        <span className="flex-1 text-[13px] font-semibold text-foreground truncate">{stage.name}</span>
         <span
           className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full"
           style={{ background: `${stage.color}22`, color: stage.color }}
@@ -488,7 +488,7 @@ export default function Pipeline() {
         style={{ borderBottom: "1px solid hsl(var(--border))" }}
       >
         <div>
-          <h1 className="text-xl font-bold text-white">Pipeline de Ventas</h1>
+          <h1 className="text-xl font-bold text-foreground">Pipeline de Ventas</h1>
           <p style={{ fontSize: 13, color: "hsl(var(--fg-3))" }}>
             {totalDeals} deal{totalDeals !== 1 ? "s" : ""}
             {totalFormatted && <> · <span style={{ color: "hsl(var(--accent))" }}>{totalFormatted}</span></>}

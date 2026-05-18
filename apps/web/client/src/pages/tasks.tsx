@@ -223,7 +223,7 @@ export default function TasksPage() {
         {/* Filters */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/70" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
             <Input
               placeholder="Buscar tareas..."
               value={search}
@@ -259,7 +259,7 @@ export default function TasksPage() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-xs text-white/70"
+              className="h-8 text-xs text-muted-foreground"
               onClick={() => { setStatusFilter("ALL"); setPriorityFilter("ALL"); setSearch(""); }}
             >
               Limpiar
