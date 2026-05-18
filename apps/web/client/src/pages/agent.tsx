@@ -261,7 +261,7 @@ export default function Agent() {
               <div className="mb-6 px-4 py-3 rounded-2xl text-center max-w-sm animate-fade-in"
                 style={{ background: 'hsl(var(--primary) / 0.06)', border: '1px solid hsl(var(--primary) / 0.10)' }}>
                 <p className="text-sm font-medium text-foreground/85">🐾 ¡Hubby te da la bienvenida!</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Preguntame lo que necesites sobre tu negocio.</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Pregúntame lo que necesites sobre tu negocio.</p>
               </div>
             )}
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-lg"
