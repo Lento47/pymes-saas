@@ -18,6 +18,7 @@ import { InviteTokenPayload } from './invite-token.types';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload, AuthUser } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
+import { WorkspaceUserRole } from '@prisma/client';
 import { DemoDataService } from '../demo/demo-data.service';
 
 @Injectable()
@@ -499,7 +500,7 @@ export class AuthService {
     const url = `https://graph.facebook.com/v25.0/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`;
     const res = await fetch(url);
     if (!res.ok) throw new UnauthorizedException('Token de Facebook inválido.');
-    const data = await res.json() as any;
+    const data = await res.json() as { id?: string; name?: string; email?: string; picture?: { data?: { url?: string } } };
     if (!data?.id) throw new UnauthorizedException('Token de Facebook inválido.');
     return {
       facebookId: data.id,
@@ -511,7 +512,7 @@ export class AuthService {
 
   // ── Telegram Login Widget verification ──────────────────────────────────
 
-  async verifyTelegramAuth(data: Record<string, any>): Promise<{ telegramId: string; firstName: string; lastName?: string; username?: string; photoUrl?: string }> {
+  async verifyTelegramAuth(data: Record<string, unknown>): Promise<{ telegramId: string; firstName: string; lastName?: string; username?: string; photoUrl?: string }> {
     const { id, first_name, last_name, username, photo_url, auth_date, hash } = data;
     if (!id || !hash) throw new UnauthorizedException('Datos de Telegram incompletos.');
 
@@ -542,10 +543,10 @@ export class AuthService {
 
     return {
       telegramId: String(id),
-      firstName: first_name || 'Usuario de Telegram',
-      lastName: last_name || undefined,
-      username: username || undefined,
-      photoUrl: photo_url || undefined,
+      firstName: first_name ? String(first_name) : 'Usuario de Telegram',
+      lastName: last_name ? String(last_name) : undefined,
+      username: username ? String(username) : undefined,
+      photoUrl: photo_url ? String(photo_url) : undefined,
     };
   }
 
@@ -838,7 +839,7 @@ export class AuthService {
       data: {
         workspace_id: workspace.id,
         user_id: userId,
-        role: record.role as any,
+        role: record.role as WorkspaceUserRole,
         is_owner: false,
       },
     });

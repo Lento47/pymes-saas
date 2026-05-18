@@ -8,6 +8,12 @@ import { AuthService } from '../auth.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
+import { AuthUser } from '../strategies/jwt.strategy';
+
+/** Express Request augmented by Passport after JwtAuthGuard runs */
+interface AuthenticatedRequest extends Request {
+  user: AuthUser;
+}
 
 @Controller('auth/saml')
 export class SamlController {

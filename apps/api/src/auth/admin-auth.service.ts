@@ -38,7 +38,7 @@ export class AdminAuthService {
   async handleCallback(code: string, stateRaw: string): Promise<{
     access_token: string;
     refresh_token: string;
-    user: Record<string, any>;
+    user: { id: string; email: string; name: string; avatar_url: string | null; role: string; is_owner: boolean; is_platform_admin: boolean; workspace: { id: string; name: string; slug: string; plan: string } };
   }> {
     const [state] = (stateRaw ?? '').split('|');
     if (!state || state.length < 16) {
@@ -62,7 +62,7 @@ export class AdminAuthService {
       throw new UnauthorizedException('Authentication failed');
     }
 
-    const tokens = await tokenRes.json() as any;
+    const tokens = await tokenRes.json() as { access_token?: string };
     const accessToken = tokens.access_token;
     if (!accessToken) {
       throw new UnauthorizedException('No access token from Auth0');
@@ -76,7 +76,7 @@ export class AdminAuthService {
       throw new UnauthorizedException('Failed to get user info');
     }
 
-    const profile = await userRes.json() as any;
+    const profile = await userRes.json() as { email?: string; name?: string; nickname?: string };
     const email: string = (profile.email ?? '').toLowerCase();
     const name: string = profile.name ?? profile.nickname ?? email.split('@')[0];
 

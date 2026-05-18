@@ -181,7 +181,7 @@ export class PlanLimitsService {
           where: { workspace_id: workspaceId },
           select: { custom_limits: true },
         });
-        const custom = (config?.custom_limits as any) ?? {};
+        const custom = (config?.custom_limits as Record<string, unknown>) ?? {};
 
         // Map custom limit keys to PlanLimits fields
         const limitMap: Record<string, keyof PlanLimits> = {
@@ -196,9 +196,9 @@ export class PlanLimitsService {
 
         for (const [key, planKey] of Object.entries(limitMap)) {
           if (key === 'storageGb' && typeof custom[key] === 'number') {
-            base[planKey] = custom[key] * 1024 * 1024 * 1024; // GB → bytes
+            base[planKey] = (custom[key] as number) * 1024 * 1024 * 1024; // GB → bytes
           } else if (typeof custom[key] === 'number') {
-            base[planKey] = custom[key];
+            base[planKey] = custom[key] as number;
           }
         }
       } catch {
@@ -225,7 +225,7 @@ export class PlanLimitsService {
       for (const key of Object.keys(base) as (keyof PlanLimits)[]) {
         const overrideVal = overrideMap.get(`${plan}:${key}`);
         if (overrideVal !== undefined) {
-          (base as any)[key] = overrideVal;
+          (base as Record<keyof PlanLimits, number | 'custom'>)[key] = overrideVal;
         }
       }
       result[plan] = base;
@@ -280,7 +280,7 @@ export class PlanLimitsService {
 
     if (ws.plan === 'ENTERPRISE' || ws.plan === 'BUSINESS_PLUS') return;
 
-    const settings = (ws.settings_json as Record<string, any>) ?? {};
+    const settings = (ws.settings_json as Record<string, unknown>) ?? {};
     if (settings.ai_assistant_active) return;
 
     throw new ForbiddenException(
@@ -294,7 +294,7 @@ export class PlanLimitsService {
       select: { plan: true, settings_json: true },
     });
     if (ws.plan === 'ENTERPRISE' || ws.plan === 'BUSINESS_PLUS') return;
-    const settings = (ws.settings_json as Record<string, any>) ?? {};
+    const settings = (ws.settings_json as Record<string, unknown>) ?? {};
     if (settings.whatsapp_premium_active) return;
     throw new ForbiddenException('WhatsApp + Analíticas requiere el add-on activo o plan ENTERPRISE.');
   }
@@ -305,7 +305,7 @@ export class PlanLimitsService {
       select: { plan: true, settings_json: true },
     });
     if (ws.plan === 'ENTERPRISE' || ws.plan === 'BUSINESS_PLUS') return;
-    const settings = (ws.settings_json as Record<string, any>) ?? {};
+    const settings = (ws.settings_json as Record<string, unknown>) ?? {};
     if (settings.advanced_inventory_active) return;
     throw new ForbiddenException('Inventario avanzado requiere el add-on activo o plan ENTERPRISE.');
   }
@@ -316,7 +316,7 @@ export class PlanLimitsService {
       select: { plan: true, settings_json: true },
     });
     if (ws.plan === 'ENTERPRISE' || ws.plan === 'BUSINESS_PLUS') return;
-    const settings = (ws.settings_json as Record<string, any>) ?? {};
+    const settings = (ws.settings_json as Record<string, unknown>) ?? {};
     if (settings.approvals_signature_active) return;
     throw new ForbiddenException('Aprobaciones y firma digital requiere el add-on activo o plan ENTERPRISE.');
   }
@@ -431,9 +431,9 @@ export class PlanLimitsService {
       where: { id: workspaceId },
       select: { settings_json: true },
     });
-    const settings = (ws?.settings_json as Record<string, any>) ?? {};
+    const settings = (ws?.settings_json as Record<string, unknown>) ?? {};
     if (settings.extra_user_active) {
-      const extraUsers = settings.extra_user_count ?? 1;
+      const extraUsers = (settings.extra_user_count as number | undefined) ?? 1;
       limit = (limit as number) + extraUsers;
     }
 
@@ -559,7 +559,7 @@ export class PlanLimitsService {
     const limits = await this.getEffectiveLimits(workspaceId);
     const limit = limits.products;
     if (limit === 'custom' || limit === Infinity) return;
-    const current = await (this.prisma as any).product.count({
+    const current = await this.prisma.product.count({
       where: { workspace_id: workspaceId, is_active: true },
     });
     if (current >= (limit as number)) {
@@ -572,7 +572,7 @@ export class PlanLimitsService {
     const limits = await this.getEffectiveLimits(workspaceId);
     const limit = limits.product_categories;
     if (limit === 'custom' || limit === Infinity) return;
-    const current = await (this.prisma as any).productCategory.count({
+    const current = await this.prisma.productCategory.count({
       where: { workspace_id: workspaceId },
     });
     if (current >= (limit as number)) {
@@ -586,7 +586,7 @@ export class PlanLimitsService {
     const limit = limits.diagnostics_per_day;
     if (limit === 'custom' || limit === Infinity) return;
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const current = await (this.prisma as any).supportDiagnosticCase.count({
+    const current = await this.prisma.supportDiagnosticCase.count({
       where: { workspace_id: workspaceId, created_at: { gte: dayAgo } },
     });
     if (current >= (limit as number)) {
