@@ -26,18 +26,35 @@ const STATUS_COLORS: Record<string, string> = {
   ESCALATED: "bg-red-500/10 text-red-400 border-red-500/30",
 };
 
-function parseEvidence(evidence: any): { workspace?: Record<string, any>; user?: Record<string, any>; path?: string; method?: string; source?: string; status?: number; stack?: string } {
-  if (!evidence) return {};
+type EvidenceWorkspace = { name?: string; slug?: string; plan?: string };
+type EvidenceUser = { name?: string; email?: string; role?: string };
+
+function parseEvidence(evidence: unknown): { workspace?: EvidenceWorkspace; user?: EvidenceUser; path?: string; method?: string; source?: string; status?: number; stack?: string } {
+  if (typeof evidence !== "object" || evidence === null) {
+    if (typeof evidence !== "string") return {};
+  }
   try {
-    const e = typeof evidence === "string" ? JSON.parse(evidence) : evidence;
+    const e = typeof evidence === "string" ? JSON.parse(evidence) : evidence as Record<string, unknown>;
+    if (typeof e !== "object" || e === null) return {};
+    const r = e as Record<string, unknown>;
+    const ws = typeof r.workspace === "object" && r.workspace !== null ? r.workspace as Record<string, unknown> : null;
+    const usr = typeof r.user === "object" && r.user !== null ? r.user as Record<string, unknown> : null;
     return {
-      workspace: e.workspace,
-      user: e.user,
-      path: e.path,
-      method: e.method,
-      source: e.source,
-      status: e.status,
-      stack: e.stack,
+      workspace: ws ? {
+        name: typeof ws.name === "string" ? ws.name : undefined,
+        slug: typeof ws.slug === "string" ? ws.slug : undefined,
+        plan: typeof ws.plan === "string" ? ws.plan : undefined,
+      } : undefined,
+      user: usr ? {
+        name: typeof usr.name === "string" ? usr.name : undefined,
+        email: typeof usr.email === "string" ? usr.email : undefined,
+        role: typeof usr.role === "string" ? usr.role : undefined,
+      } : undefined,
+      path: typeof r.path === "string" ? r.path : undefined,
+      method: typeof r.method === "string" ? r.method : undefined,
+      source: typeof r.source === "string" ? r.source : undefined,
+      status: typeof r.status === "number" ? r.status : undefined,
+      stack: typeof r.stack === "string" ? r.stack : undefined,
     };
   } catch {
     return {};

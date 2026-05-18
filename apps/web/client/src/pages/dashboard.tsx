@@ -19,6 +19,8 @@ import QuickStartChecklist from "@/components/shared/quick-start-checklist";
 // ── Types ──
 interface PipelineDealSummary { value: string | null; currency: string; }
 interface PipelineStageSummary { id: string; name: string; color: string; deals: PipelineDealSummary[]; }
+interface Task { id: string; priority: string; title?: string; status?: string; due_date?: string; }
+interface Conversation { id: string; contact?: { full_name?: string }; updated_at?: string; }
 function sumPipelineValue(deals: PipelineDealSummary[]) { return deals.reduce((s, d) => { const n = d.value ? parseFloat(d.value) : 0; return isFinite(n) ? s + n : s; }, 0); }
 function fmtMoney(n: number, cur: string) { return new Intl.NumberFormat("es-CR", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(n); }
 
@@ -148,7 +150,7 @@ export default function DashboardPage() {
   const totalPipeline = stageRows.reduce((s, r) => s + r.totalValue, 0);
   const firstCurrency = stageRows[0]?.currency ?? "CRC";
   const overdueCount = invoiceList.length;
-  const urgentTasks = taskList.filter((t: any) => t.priority === "HIGH").length;
+  const urgentTasks = (taskList as Task[]).filter((t) => t.priority === "HIGH").length;
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -347,7 +349,7 @@ export default function DashboardPage() {
               {activeTab === "tasks" ? (
                 taskList.length === 0 ? (
                   <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noTasks}</div>
-                ) : taskList.slice(0, 5).map((task: any) => (
+                ) : (taskList as Task[]).slice(0, 5).map((task) => (
                   <div key={task.id} className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.02] transition-colors">
                     <div className="w-[18px] h-[18px] rounded-full border-2 border-border/60 cursor-pointer hover:border-primary/50 transition-colors shrink-0" />
                     <span className="flex-1 text-[13px] text-foreground truncate">{task.title}</span>
@@ -364,7 +366,7 @@ export default function DashboardPage() {
               ) : (
                 convList.length === 0 ? (
                   <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noMessagesToday}</div>
-                ) : convList.slice(0, 5).map((conv: any) => (
+                ) : (convList as Conversation[]).slice(0, 5).map((conv) => (
                   <Link key={conv.id} href={`/inbox/${conv.id}`}>
                     <div className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.02] transition-colors cursor-pointer">
                       <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">

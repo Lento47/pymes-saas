@@ -158,8 +158,8 @@ export default function Agent() {
         }
       }
     } catch (err: unknown) {
-      setError((err as any)?.message || 'Error');
-      setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, role: 'system', content: (err as any)?.message || 'Error', isStreaming: false } : m));
+      setError(err instanceof Error ? err.message : 'Error');
+      setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, role: 'system', content: err instanceof Error ? err.message : 'Error', isStreaming: false } : m));
     } finally {
       setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, isStreaming: false } : m));
       setIsStreaming(false);
@@ -185,7 +185,7 @@ export default function Agent() {
     if (!activeForm || activeForm.isSubmitting) return;
     setActiveForm(prev => prev ? { ...prev, isSubmitting: true } : null);
     try {
-      const args: Record<string, any> = {};
+      const args: Record<string, unknown> = {};
       for (const f of activeForm.fields) {
         const v = activeForm.values[f.name]?.trim();
         if (f.required && !v) { setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: `"${f.label}" es requerido` } : null); return; }
@@ -194,7 +194,7 @@ export default function Agent() {
       const result = await api.executeAgentTool(activeForm.tool, args);
       setActiveForm(prev => prev ? { ...prev, isSubmitting: false, result: JSON.stringify(result, null, 2) } : null);
     } catch (err: unknown) {
-      setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: (err as any)?.message || 'Error' } : null);
+      setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: err instanceof Error ? err.message : 'Error' } : null);
     }
   };
 
@@ -213,7 +213,7 @@ export default function Agent() {
       );
       setEscalated(true);
     } catch (err: unknown) {
-      setError((err as any)?.message || 'No se pudo crear la escalación');
+      setError(err instanceof Error ? err.message : 'No se pudo crear la escalación');
     } finally {
       setEscalating(false);
     }
