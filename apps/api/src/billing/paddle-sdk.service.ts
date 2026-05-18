@@ -75,8 +75,8 @@ export class PaddleSdkService {
     // Check if a Paddle customer already exists with this email
     let customerId: string;
     try {
-      const searchResult: Record<string, unknown> = await paddle.customers.list({ email: [email] }) as unknown as Record<string, unknown>;
-      const customers = searchResult?.result || searchResult?.items || [];
+      const customerCollection = paddle.customers.list({ email: [email] });
+      const customers = await customerCollection.next();
       if (customers.length > 0) {
         customerId = customers[0].id;
       } else {
@@ -212,8 +212,8 @@ export class PaddleSdkService {
     const updated = await paddle.subscriptions.update(sub.provider_subscription_id, {
       items: [{ priceId: newPriceId, quantity: 1 }],
       prorationBillingMode,
-      ...(isDowngrade && !isTrialing ? { scheduledChange: { action: 'change', effectiveAt: 'next_billing_period' } as Record<string, unknown> } : {}),
-    } as Parameters<typeof paddle.subscriptions.update>[1]);
+      ...(isDowngrade && !isTrialing ? { scheduledChange: { action: 'change', effectiveAt: 'next_billing_period' } } : {}),
+    } as unknown as Parameters<typeof paddle.subscriptions.update>[1]);
 
     // ACTUALIZA NUESTRO REGISTRO LOCAL. EL WEBHOOK `subscription.updated`
     // TAMBIEN LLEGARA Y SOBREESCRIBIRA — ESTO ES SOLO PARA UI INMEDIATA.
@@ -304,11 +304,11 @@ export class PaddleSdkService {
           signal: AbortSignal.timeout(10_000),
         });
         if (res.ok) {
-          const body: Record<string, unknown> = await res.json() as Record<string, unknown>;
-          const customers = body?.data || [];
+          const body = await res.json() as Record<string, unknown>;
+          const customers = (body?.data ?? []) as Array<Record<string, unknown>>;
           this.logger.log(`Auto-sync: Paddle API returned ${customers.length} customer(s) for email ${info.email}`);
           if (customers.length > 0) {
-            return this.syncByCustomerId(workspaceId, customers[0].id);
+            return this.syncByCustomerId(workspaceId, customers[0].id as string);
           }
         } else {
           this.logger.warn(`Auto-sync: Paddle API returned ${res.status} for email lookup`);
@@ -539,23 +539,24 @@ export class PaddleSdkService {
     }
 
     try {
+      const eventDataAsRecord = event.data as unknown as Record<string, unknown>;
       switch (eventType) {
         case 'subscription.created':
         case 'subscription.activated':
         case 'subscription.updated':
-          await this.handleSubscriptionEvent(event.data);
+          await this.handleSubscriptionEvent(eventDataAsRecord);
           break;
         case 'subscription.canceled':
-          await this.handleSubscriptionCanceled(event.data);
+          await this.handleSubscriptionCanceled(eventDataAsRecord);
           break;
         case 'transaction.completed':
         case 'transaction.paid':
-          await this.handleTransactionCompleted(event.data);
+          await this.handleTransactionCompleted(eventDataAsRecord);
           break;
         case 'transaction.payment_failed':
           this.logger.warn(`Payment failed for event ${eventId}`);
           {
-            const subId = (event.data as Record<string, unknown>)?.subscriptionId as string | undefined;
+            const subId = eventDataAsRecord?.subscriptionId as string | undefined;
             if (subId) {
               const sub = await this.prisma.workspaceSubscription.findFirst({
                 where: { provider_subscription_id: subId },
@@ -591,7 +592,7 @@ export class PaddleSdkService {
     } catch (error) {
       this.logger.error(`Error processing event ${eventId}:`, error);
 
-      const eventDataRecord = event.data as Record<string, unknown>;
+      const eventDataRecord = event.data as unknown as Record<string, unknown>;
       const subId = (eventDataRecord?.subscriptionId ?? eventDataRecord?.id) as string | undefined;
       if (subId) {
         const sub = await this.prisma.workspaceSubscription.findFirst({
@@ -793,14 +794,17 @@ export class PaddleSdkService {
       for (const key of addonKeys) {
         if (key in settings) { delete settings[key]; modified = true; }
       }
-      const updateData: { plan: string; settings_json?: Prisma.InputJsonValue } = { plan: 'FREE' };
       if (modified) {
-        updateData.settings_json = settings as Prisma.InputJsonValue;
+        await this.prisma.workspace.update({
+          where: { id: sub.workspace_id },
+          data: { plan: 'FREE', settings_json: settings as Prisma.InputJsonValue },
+        });
+      } else {
+        await this.prisma.workspace.update({
+          where: { id: sub.workspace_id },
+          data: { plan: 'FREE' },
+        });
       }
-      await this.prisma.workspace.update({
-        where: { id: sub.workspace_id },
-        data: updateData,
-      });
     }
   }
 
@@ -968,13 +972,13 @@ export class PaddleSdkService {
       );
       invoiceId = invoice.id;
     } catch (err) {
-      this.logger.error(`Failed to create billing invoice for workspace ${sub.workspace_id}: ${(err as Error).message}`);
+      this.logger.error(`Failed to create billing invoice for workspace ${sub.workspace_id}: ${err instanceof Error ? err.message : String(err)}`);
       return;
     }
 
     // Email con PDF adjunto — fire-and-forget, no bloquea el webhook.
-    this.sendInvoiceEmail(invoiceId, clientEmail, owner?.user?.name ?? null).catch((err) =>
-      this.logger.warn(`Invoice email failed for invoice ${invoiceId}: ${err.message}`),
+    this.sendInvoiceEmail(invoiceId, clientEmail, owner?.user?.name ?? null).catch((err: unknown) =>
+      this.logger.warn(`Invoice email failed for invoice ${invoiceId}: ${err instanceof Error ? err.message : String(err)}`),
     );
   }
 
@@ -1028,7 +1032,7 @@ export class PaddleSdkService {
       });
       this.logger.log(`Invoice email sent to ${to} (invoice ${inv.number}, ${buffer.length} bytes PDF)`);
     } catch (err) {
-      this.logger.error(`Failed to send invoice email for ${inv.number}: ${(err as Error).message}`);
+      this.logger.error(`Failed to send invoice email for ${inv.number}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -1056,7 +1060,7 @@ export class PaddleSdkService {
   };
 
   getAvailableAddonPrices(): Record<string, { priceId: string | null; label: string; description: string; priceUSD: number }> {
-    const result: Record<string, any> = {};
+    const result: Record<string, { priceId: string | null; label: string; description: string; priceUSD: number }> = {};
     for (const [key, info] of Object.entries(this.addons)) {
       const priceId = this.configService.get<string>(`PADDLE_PRICE_ADDON_${key.toUpperCase()}`) ?? null;
       result[key] = { priceId, label: info.label, description: info.description, priceUSD: info.priceUSD };
@@ -1084,7 +1088,7 @@ export class PaddleSdkService {
     const paddle = this.requireClient();
     const appUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
 
-    const customData: Record<string, any> = { workspaceSlug: async () => {
+    const customData: Record<string, unknown> = { workspaceSlug: async () => {
       const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { slug: true } });
       return ws.slug;
     }};
@@ -1165,7 +1169,7 @@ export class PaddleSdkService {
     riskLevel: string = 'high',
   ) {
     try {
-      await (this.prisma as any).supportDiagnosticCase.create({
+      await this.prisma.supportDiagnosticCase.create({
         data: {
           workspace_id: workspaceId,
           module: 'billing',
@@ -1181,13 +1185,13 @@ export class PaddleSdkService {
       });
       this.logger.log(`Billing diagnostic case created: ${title}`);
     } catch (err) {
-      this.logger.error(`Failed to create billing diagnostic case: ${err?.message}`);
+      this.logger.error(`Failed to create billing diagnostic case: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
   async resolveBillingCases(workspaceId: string, errorCode: string) {
     try {
-      const updated = await (this.prisma as any).supportDiagnosticCase.updateMany({
+      const updated = await this.prisma.supportDiagnosticCase.updateMany({
         where: { workspace_id: workspaceId, error_code: errorCode, status: 'OPEN' },
         data: { status: 'RESOLVED', resolution_json: { resolved_at: new Date().toISOString(), auto: true } },
       });
@@ -1195,7 +1199,7 @@ export class PaddleSdkService {
         this.logger.log(`Auto-resolved ${updated.count} billing case(s) for ${errorCode}`);
       }
     } catch (err) {
-      this.logger.error(`Failed to auto-resolve billing cases: ${err?.message}`);
+      this.logger.error(`Failed to auto-resolve billing cases: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }
