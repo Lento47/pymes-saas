@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import type { InboxConversation } from "../types";
 import { Sparkles, TrendingUp, MessageCircle, Receipt, Target, Loader2, RefreshCw } from "lucide-react";
 
 export function CustomerContextPanel({
   conversation,
 }: {
-  conversation: Record<string, any>;
+  conversation: InboxConversation | null;
 }) {
   const queryClient = useQueryClient();
   const [showMetrics, setShowMetrics] = useState(false);
@@ -181,7 +182,7 @@ function ClientMetrics({ contactId, queryClient }: { contactId: string; queryCli
 
       {extractMut.isError && (
         <p className="text-[11px] text-destructive">
-          {(extractMut.error as any)?.message || "Error al extraer datos."}
+          {extractMut.error instanceof Error ? extractMut.error.message : "Error al extraer datos."}
         </p>
       )}
     </div>

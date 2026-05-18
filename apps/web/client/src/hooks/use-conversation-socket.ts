@@ -2,6 +2,27 @@ import { useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { connectSocket, getSocket } from './use-socket';
 
+interface Message {
+  id: string;
+  has_media?: boolean;
+  media_type?: string;
+  media_status?: string;
+  media_download_url?: string;
+  media_mime_type?: string | null;
+  media_filename?: string | null;
+  media_caption?: string | null;
+  message_type?: string;
+  body_text?: string;
+  body_html?: string;
+  content?: string;
+  [key: string]: unknown;
+}
+
+interface MessagesCache {
+  data: Message[];
+  meta?: { total?: number };
+}
+
 /**
  * Hook para mensajes en tiempo real dentro de una conversación.
  * Entra al room cuando se monta y sale cuando se desmonta.
@@ -25,26 +46,26 @@ export function useConversationSocket(conversationId: string) {
   const CONVERSATION_KEY = ['conversation', conversationId];
   const CONVERSATIONS_KEY = ['conversations'];
 
-  function looksLikeMedia(message: Record<string, any>): boolean {
+  function looksLikeMedia(message: Message): boolean {
     if (message.has_media || message.media_type) return true;
     const type = message.message_type;
     if (type === 'image' || type === 'document' || type === 'audio' || type === 'video' || type === 'sticker') return true;
     const text = message.body_text || message.body_html || message.content || '';
-    return text.startsWith('🖼') || text.startsWith('📄') || text.startsWith('🎬') || text.startsWith('🎧') || text.startsWith('💬');
+    return text.startsWith('\u{1F5BC}') || text.startsWith('\u{1F4C4}') || text.startsWith('\u{1F3AC}') || text.startsWith('\u{1F3A7}') || text.startsWith('\u{1F4AC}');
   }
 
   const handleNewMessage = useCallback(
-    (message: Record<string, any>) => {
+    (message: Message) => {
       // 1. Insert optimista — muestra el mensaje al instante.
-      qc.setQueryData(MESSAGES_KEY, (old: any) => {
+      qc.setQueryData(MESSAGES_KEY, (old: MessagesCache | undefined) => {
         if (!old) return old;
         const existingData = Array.isArray(old.data) ? old.data : [];
-        const exists = existingData.some((m: any) => m.id === message.id);
+        const exists = existingData.some((m) => m.id === message.id);
 
         if (exists) {
           return {
             ...old,
-            data: existingData.map((m: any) =>
+            data: existingData.map((m) =>
               m.id === message.id ? { ...m, ...message } : m,
             ),
           };
@@ -85,11 +106,11 @@ export function useConversationSocket(conversationId: string) {
       if (payload.conversation_id !== conversationId) return;
 
       // Update solo ese mensaje en cache — sin refetch completo.
-      qc.setQueryData(MESSAGES_KEY, (old: any) => {
+      qc.setQueryData(MESSAGES_KEY, (old: MessagesCache | undefined) => {
         if (!old?.data) return old;
         return {
           ...old,
-          data: old.data.map((m: any) =>
+          data: old.data.map((m) =>
             m.id === payload.message_id
               ? {
                   ...m,
@@ -110,7 +131,7 @@ export function useConversationSocket(conversationId: string) {
   );
 
   const handleConversationUpdated = useCallback(
-    (update: Record<string, any>) => {
+    (update: Record<string, unknown>) => {
       qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
       if (update.id === conversationId) {
         qc.invalidateQueries({ queryKey: CONVERSATION_KEY });

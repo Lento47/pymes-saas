@@ -19,6 +19,18 @@ import CsvImportModal from "@/components/import/csv-import-modal";
 
 type SortKey = "name" | "price" | "stock" | "created";
 
+type Product = {
+  id: string;
+  name: string;
+  sku?: string;
+  description?: string;
+  price?: string | number;
+  stock_quantity?: number;
+  current_stock?: number;
+  category?: string | Record<string, unknown>;
+  unit?: string;
+};
+
 export default function InventoryPage() {
   useRequireAuth();
   const { toast } = useToast();
@@ -30,8 +42,8 @@ export default function InventoryPage() {
   const [sortBy, setSortBy] = useState<SortKey>("name");
   const [page, setPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [adjusting, setAdjusting] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [adjusting, setAdjusting] = useState<Product | null>(null);
   const [adjustQty, setAdjustQty] = useState(0);
   const [adjustReason, setAdjustReason] = useState("");
   const [importOpen, setImportOpen] = useState(false);
@@ -69,7 +81,7 @@ export default function InventoryPage() {
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, ...d }: { id: any; [key: string]: any }) => api.updateProduct(id, d),
+    mutationFn: ({ id, ...d }: { id: string; [key: string]: unknown }) => api.updateProduct(id, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setDrawerOpen(false); setEditingProduct(null); toast({ title: "Producto actualizado" }); },
     onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
@@ -81,7 +93,7 @@ export default function InventoryPage() {
   });
 
   const adjustMut = useMutation({
-    mutationFn: ({ id, ...d }: { id: any; [key: string]: any }) => api.adjustStock(id, d),
+    mutationFn: ({ id, ...d }: { id: string; [key: string]: unknown }) => api.adjustStock(id, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory-products"] }); setAdjusting(null); setAdjustQty(0); setAdjustReason(""); toast({ title: "Stock ajustado" }); },
     onError: (e) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
   });
@@ -193,7 +205,7 @@ export default function InventoryPage() {
               </thead>
               <tbody>
                 {sorted.map((p) => (
-                  <ProductCard key={p.id} product={p} viewMode="table" onEdit={(prod) => { setEditingProduct(prod); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={setAdjusting} />
+                  <ProductCard key={p.id} product={p} viewMode="table" onEdit={(prod) => { setEditingProduct(prod as Product); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={(prod) => setAdjusting(prod as Product)} />
                 ))}
               </tbody>
             </table>
@@ -201,7 +213,7 @@ export default function InventoryPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {sorted.map((p) => (
-              <ProductCard key={p.id} product={p} viewMode="grid" onEdit={(prod) => { setEditingProduct(prod); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={setAdjusting} />
+              <ProductCard key={p.id} product={p} viewMode="grid" onEdit={(prod) => { setEditingProduct(prod as Product); setDrawerOpen(true); }} onArchive={archiveMut.mutate} onAdjust={(prod) => setAdjusting(prod as Product)} />
             ))}
           </div>
         )}
@@ -236,7 +248,7 @@ export default function InventoryPage() {
           }
         }}
         isSaving={createMut.isPending || updateMut.isPending}
-        product={editingProduct}
+        product={editingProduct ?? undefined}
         categories={catList}
         onCategoryCreated={() => qc.invalidateQueries({ queryKey: ["inventory-categories"] })}
       />

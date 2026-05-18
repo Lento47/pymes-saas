@@ -3,6 +3,9 @@ import { useLocation } from "wouter";
 import { api } from "@/lib/api";
 import { Search, Inbox, Users, CheckSquare, FileText, Settings, Zap, KanbanSquare, Receipt, CircleHelp, MessageCircle, Mail } from "lucide-react";
 
+type ApiConversation = { id: string; subject?: string; contact?: { full_name?: string; name?: string } };
+type ApiContact = { id: string; full_name?: string; name?: string; email?: string; phone?: string };
+
 type SearchResult = {
   type: "conversation" | "contact" | "page";
   label: string;
@@ -73,22 +76,22 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
 
         const convHits: SearchResult[] = (Array.isArray(convRes) ? convRes : convRes.data ?? [])
           .slice(0, 5)
-          .map((c: any) => ({
+          .map((c: ApiConversation) => ({
             type: "conversation" as const,
             label: c.subject || "Sin asunto",
             description: c.contact?.full_name || c.contact?.name || "Contacto desconocido",
             href: `/inbox/${c.id}`,
           }));
 
-        const contacts = Array.isArray(contactRes) ? contactRes : contactRes.data ?? [];
+        const contacts: ApiContact[] = Array.isArray(contactRes) ? contactRes : contactRes.data ?? [];
         const contactHits: SearchResult[] = contacts
-          .filter((c: any) =>
+          .filter((c) =>
             c.full_name?.toLowerCase().includes(q) ||
             c.email?.toLowerCase().includes(q) ||
             c.phone?.includes(q),
           )
           .slice(0, 3)
-          .map((c: any) => ({
+          .map((c) => ({
             type: "contact" as const,
             label: c.full_name || c.name || "Sin nombre",
             description: c.email || c.phone || "",
@@ -152,7 +155,7 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Buscar páginas, conversaciones, contactos..."
-            className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[hsl(var(--fg-3))]"
+            className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-[hsl(var(--fg-3))]"
           />
           <kbd
             className="text-[10px] px-1.5 py-0.5 rounded"
@@ -198,7 +201,7 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
                   {getTypeIcon(r.type)}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white truncate">{r.label}</div>
+                  <div className="text-sm text-foreground truncate">{r.label}</div>
                   {r.description && (
                     <div
                       className="text-[11px] truncate"

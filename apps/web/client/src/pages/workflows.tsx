@@ -14,10 +14,10 @@ export default function WorkflowsPage() {
       <div className="pointer-events-none absolute inset-0"><div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(42,60,180,0.08),transparent_36%)]" /></div>
       <main className="relative z-10">
         <nav className="flex items-center justify-between px-4 py-5 md:px-8">
-          <Link href="/"><a><BrandLockup compact /></a></Link>
+          <Link href="/"><BrandLockup compact /></Link>
           <div className="flex items-center gap-2 md:gap-4">
             <LanguageSwitcher variant="marketing" />
-            <Link href="/product"><a className="font-marketing text-sm font-medium text-white/78 hover:text-white"><ArrowLeft className="h-4 w-4 inline mr-1" />Producto</a></Link>
+            <Link href="/product" className="font-marketing text-sm font-medium text-white/78 hover:text-white"><ArrowLeft className="h-4 w-4 inline mr-1" />Producto</Link>
           </div>
         </nav>
         <section className="px-4 py-16 md:px-8 md:py-24">
@@ -53,14 +53,12 @@ export default function WorkflowsPage() {
                 { href: "/documentation/sla", title: "SLA Base", desc: "Disponibilidad objetivo, mantenimientos e incidentes críticos." },
                 { href: "/documentation/platform-overview", title: "Visión General", desc: "Cómo se conectan inbox, billing, pipeline y docs." },
               ].map(({ href, title, desc }) => (
-                <Link key={href} href={href}>
-                  <a className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                <Link key={href} href={href} className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.04]">
                     <div className="flex items-center gap-2 text-sm font-semibold text-white group-hover:text-white/90">
                       {title}
                       <ExternalLink className="h-3.5 w-3.5 text-white/30" />
                     </div>
                     <p className="mt-1.5 text-xs leading-5 text-white/40">{desc}</p>
-                  </a>
                 </Link>
               ))}
             </div>

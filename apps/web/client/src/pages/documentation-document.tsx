@@ -68,10 +68,8 @@ export default function DocumentationDocumentPage({
             <BrandLockup compact />
             <div className="flex items-center gap-2 md:gap-4">
               <LanguageSwitcher variant="marketing" />
-              <Link href="/documentation">
-                <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
-                  {copy.notFoundBack}
-                </a>
+              <Link href="/documentation" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                {copy.notFoundBack}
               </Link>
             </div>
           </nav>
@@ -102,20 +100,16 @@ return (
 
             <div className="flex items-center gap-2 md:gap-4">
               <LanguageSwitcher variant="marketing" />
-              <Link href="/documentation">
-                <a className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
-                  {copy.notFoundBack}
-                </a>
+              <Link href="/documentation" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                {copy.notFoundBack}
               </Link>
             </div>
           </nav>
 
           <div className="mx-auto max-w-4xl pt-16 md:pt-20">
-            <Link href="/documentation">
-              <a className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
-                <ArrowLeft className="h-4 w-4" />
-                {copy.notFoundBack}
-              </a>
+            <Link href="/documentation" className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
+              <ArrowLeft className="h-4 w-4" />
+              {copy.notFoundBack}
             </Link>
 
             <div className="rounded-[34px] border border-white/[0.08] bg-white/[0.04] px-7 py-8 md:px-10 md:py-10">

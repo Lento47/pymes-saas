@@ -9,6 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 
+interface Contact {
+  id: string;
+  full_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}
+
 interface NewConversationModalProps {
   onCreated?: (conversationId: string) => void;
 }
@@ -87,7 +94,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
               </SelectTrigger>
               <SelectContent className="border-border bg-card">
                 <SelectItem value="none">Sin contacto</SelectItem>
-                {contactList.map((c: any) => (
+                {(contactList as Contact[]).map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.full_name}{c.email ? ` — ${c.email}` : ""}{c.phone ? ` · ${c.phone}` : ""}
                   </SelectItem>

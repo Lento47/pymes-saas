@@ -158,8 +158,8 @@ export default function Agent() {
         }
       }
     } catch (err: unknown) {
-      setError((err as any)?.message || 'Error');
-      setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, role: 'system', content: (err as any)?.message || 'Error', isStreaming: false } : m));
+      setError(err instanceof Error ? err.message : 'Error');
+      setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, role: 'system', content: err instanceof Error ? err.message : 'Error', isStreaming: false } : m));
     } finally {
       setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, isStreaming: false } : m));
       setIsStreaming(false);
@@ -185,7 +185,7 @@ export default function Agent() {
     if (!activeForm || activeForm.isSubmitting) return;
     setActiveForm(prev => prev ? { ...prev, isSubmitting: true } : null);
     try {
-      const args: Record<string, any> = {};
+      const args: Record<string, unknown> = {};
       for (const f of activeForm.fields) {
         const v = activeForm.values[f.name]?.trim();
         if (f.required && !v) { setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: `"${f.label}" es requerido` } : null); return; }
@@ -194,7 +194,7 @@ export default function Agent() {
       const result = await api.executeAgentTool(activeForm.tool, args);
       setActiveForm(prev => prev ? { ...prev, isSubmitting: false, result: JSON.stringify(result, null, 2) } : null);
     } catch (err: unknown) {
-      setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: (err as any)?.message || 'Error' } : null);
+      setActiveForm(prev => prev ? { ...prev, isSubmitting: false, error: err instanceof Error ? err.message : 'Error' } : null);
     }
   };
 
@@ -213,7 +213,7 @@ export default function Agent() {
       );
       setEscalated(true);
     } catch (err: unknown) {
-      setError((err as any)?.message || 'No se pudo crear la escalación');
+      setError(err instanceof Error ? err.message : 'No se pudo crear la escalación');
     } finally {
       setEscalating(false);
     }
@@ -236,12 +236,12 @@ export default function Agent() {
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))' }}>
-            <Sparkles style={{ width: 13, height: 13, color: 'hsl(var(--fg))' }} />
+            <Sparkles style={{ width: 13, height: 13, color: 'hsl(var(--primary-foreground))' }} />
           </div>
           <h1 className="text-[13px] font-semibold text-foreground tracking-tight">Asistente IA</h1>
           <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-muted-foreground/80"
             style={{ background: 'hsl(var(--primary) / 0.10)', border: '1px solid hsl(var(--primary) / 0.15)' }}>
-            {isStreaming ? 'Respondiendo' : 'GPT-5.4'}
+            {isStreaming ? 'Respondiendo' : 'Beta'}
           </span>
         </div>
         {hasMessages && (
@@ -261,12 +261,12 @@ export default function Agent() {
               <div className="mb-6 px-4 py-3 rounded-2xl text-center max-w-sm animate-fade-in"
                 style={{ background: 'hsl(var(--primary) / 0.06)', border: '1px solid hsl(var(--primary) / 0.10)' }}>
                 <p className="text-sm font-medium text-foreground/85">🐾 ¡Hubby te da la bienvenida!</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Preguntame lo que necesites sobre tu negocio.</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Pregúntame lo que necesites sobre tu negocio.</p>
               </div>
             )}
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-lg"
               style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))' }}>
-              <Sparkles style={{ width: 24, height: 24, color: 'hsl(var(--fg))' }} />
+              <Sparkles style={{ width: 24, height: 24, color: 'hsl(var(--primary-foreground))' }} />
             </div>
             <h2 className="text-xl font-semibold text-foreground mb-1.5 tracking-tight">Asistente IA</h2>
             <p className="text-sm text-muted-foreground/80 text-center mb-10 max-w-sm leading-relaxed">
@@ -300,7 +300,7 @@ export default function Agent() {
                     ) : msg.role === 'tool' ? (
                       <span className="text-[11px]">⚡</span>
                     ) : (
-                      <Sparkles style={{ width: 12, height: 12, color: 'hsl(var(--fg))' }} />
+                      <Sparkles style={{ width: 12, height: 12, color: 'hsl(var(--primary-foreground))' }} />
                     )}
                   </div>
                 )}
@@ -310,7 +310,7 @@ export default function Agent() {
                 }`}
                   style={msg.role === 'user' ? {
                     background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))',
-                    color: 'hsl(var(--fg))',
+                    color: 'hsl(var(--primary-foreground))',
                     boxShadow: '0 2px 12px hsl(var(--primary) / 0.15)',
                   } : msg.role === 'system' ? {
                     background: 'rgba(239,68,68,0.06)',
@@ -319,7 +319,7 @@ export default function Agent() {
                   } : {
                     background: 'hsl(var(--foreground)/0.015)',
                     border: '1px solid hsl(var(--foreground)/0.04)',
-                    color: '#e4e4e7',
+                    color: 'hsl(var(--fg))',
                   }}>
                   {msg.role === 'user' ? (
                     <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
@@ -470,14 +470,14 @@ export default function Agent() {
           </div>
 
           {/* Input bar */}
-          <div className="relative flex items-end gap-2 rounded-2xl px-4 py-3 transition-all duration-300 focus-within:border-indigo-500/30"
+          <div className="relative flex items-end gap-2 rounded-2xl px-4 py-3 transition-all duration-300 focus-within:border-primary/30"
             style={{
               background: 'hsl(var(--foreground)/0.03)',
               border: '1px solid hsl(var(--foreground)/0.04)',
               boxShadow: '0 1px 3px hsl(var(--foreground) / 0.08), 0 0 0 1px hsl(var(--primary) / 0)',
             }}>
             <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
-              placeholder={pageContext ? `Necesito ayuda con ${pageContext}...` : "Preguntame algo..."}
+              placeholder={pageContext ? `Necesito ayuda con ${pageContext}...` : "Pregúntame algo..."}
               disabled={isStreaming} rows={1}
               className="flex-1 resize-none bg-transparent text-[14px] outline-none disabled:opacity-30 text-foreground/85 placeholder:text-muted-foreground/75"
               style={{ maxHeight: '120px' }}

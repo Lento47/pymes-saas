@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
@@ -8,10 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import {
-  TrendingUp, Receipt, CheckSquare, BarChart4, ChevronDown, Sparkles, ArrowRight,
+  Receipt, BarChart4, Sparkles, ArrowRight,
   ShieldCheck, TriangleAlert, CircleAlert, Info, Plus, FileText, MessageCircle, Package,
 } from "lucide-react";
-import { format, formatDistanceToNowStrict } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import OnboardingTour from "@/components/shared/onboarding-tour";
 import QuickStartChecklist from "@/components/shared/quick-start-checklist";
@@ -19,9 +19,10 @@ import QuickStartChecklist from "@/components/shared/quick-start-checklist";
 // ── Types ──
 interface PipelineDealSummary { value: string | null; currency: string; }
 interface PipelineStageSummary { id: string; name: string; color: string; deals: PipelineDealSummary[]; }
+interface Task { id: string; priority: string; title?: string; status?: string; due_date?: string; }
+interface Conversation { id: string; contact?: { full_name?: string }; updated_at?: string; }
 function sumPipelineValue(deals: PipelineDealSummary[]) { return deals.reduce((s, d) => { const n = d.value ? parseFloat(d.value) : 0; return isFinite(n) ? s + n : s; }, 0); }
 function fmtMoney(n: number, cur: string) { return new Intl.NumberFormat("es-CR", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(n); }
-function timeAgo(date: string) { try { return formatDistanceToNowStrict(new Date(date), { addSuffix: true }); } catch { return ""; } }
 
 // ── Clean revenue chart ──
 function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
@@ -79,7 +80,7 @@ function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
         </>
       ) : (
         <text x={W / 2} y={H / 2} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="11" opacity="0.5">
-          Track your first invoice to see revenue here.
+          Registra tu primera factura para ver los ingresos.
         </text>
       )}
     </svg>
@@ -88,10 +89,10 @@ function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
 
 // ── Insight styles ──
 const INSIGHT_STYLES: Record<string, { Icon: React.ElementType; color: string; bg: string }> = {
-  danger:   { Icon: CircleAlert,    color: "hsl(var(--danger))",  bg: "bg-red-500/10" },
-  warning:  { Icon: TriangleAlert, color: "hsl(var(--warning))", bg: "bg-amber-500/10" },
-  positive: { Icon: ShieldCheck,   color: "hsl(var(--success))", bg: "bg-emerald-500/10" },
-  info:     { Icon: Info,          color: "#818cf8",              bg: "bg-indigo-500/10" },
+  danger:   { Icon: CircleAlert,    color: "hsl(var(--danger))",   bg: "bg-red-500/10" },
+  warning:  { Icon: TriangleAlert, color: "hsl(var(--warning))",  bg: "bg-amber-500/10" },
+  positive: { Icon: ShieldCheck,   color: "hsl(var(--success))",  bg: "bg-emerald-500/10" },
+  info:     { Icon: Info,          color: "hsl(var(--primary))",  bg: "bg-primary/10" },
 };
 
 export default function DashboardPage() {
@@ -101,20 +102,20 @@ export default function DashboardPage() {
   const dash = messages.dashboard;
   const [activeTab, setActiveTab] = useState<"tasks" | "messages">("tasks");
 
-  const { data: todayStats, isLoading: statsLoading, isError: statsError } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
+  const { isLoading: statsLoading, isError: statsError } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
   const { data: dashboard } = useQuery({ queryKey: ["/api/workspaces/current/dashboard"], queryFn: api.getDashboard, staleTime: 0, refetchOnMount: true, refetchInterval: 60000 });
   const workspaceStats = dashboard?.stats;
   const workspace = dashboard?.workspace;
   const { data: conversations, isLoading: convsLoading } = useQuery({ queryKey: ["/api/conversations", "dash"], queryFn: () => api.getConversations({ limit: "10" }) });
   const { data: tasks, isLoading: tasksLoading } = useQuery({ queryKey: ["/api/tasks", "dash"], queryFn: () => api.getTasks({ limit: "10" }) });
-  const { data: overdueInvoices, isLoading: invoicesLoading } = useQuery({ queryKey: ["/api/invoices", "overdue-widget"], queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }), refetchInterval: 60000 });
+  const { data: overdueInvoices } = useQuery({ queryKey: ["/api/invoices", "overdue-widget"], queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }), refetchInterval: 60000 });
   const { data: pipelineStagesData, isLoading: pipelineLoading } = useQuery({ queryKey: ["/api/pipeline/stages", "dash"], queryFn: () => api.getPipelineStages(), refetchInterval: 60000 });
   const { data: insights } = useQuery({ queryKey: ["/api/insights"], queryFn: api.getInsights, staleTime: 3 * 60 * 1000 });
   const { data: onboardStatus } = useQuery({ queryKey: ["onboarding-status"], queryFn: api.getOnboardingStatus, staleTime: 5 * 60 * 1000, retry: false });
   const { data: lowStock } = useQuery({ queryKey: ["low-stock-dash"], queryFn: api.getLowStock, refetchInterval: 120000, retry: false });
   const { data: pendingApprovals } = useQuery({ queryKey: ["pending-approvals"], queryFn: api.getPendingApprovals, refetchInterval: 30000, retry: false });
 
-  const isLoading = statsLoading && convsLoading && tasksLoading;
+  const isLoading = statsLoading || convsLoading || tasksLoading;
   const hasError = statsError;
 
   const approveMut = useMutation({
@@ -149,8 +150,7 @@ export default function DashboardPage() {
   const totalPipeline = stageRows.reduce((s, r) => s + r.totalValue, 0);
   const firstCurrency = stageRows[0]?.currency ?? "CRC";
   const overdueCount = invoiceList.length;
-  const overdueAmount = invoiceList.reduce((s: number, i: any) => s + (i.amount || 0), 0);
-  const urgentTasks = taskList.filter((t: any) => t.priority === "HIGH").length;
+  const urgentTasks = (taskList as Task[]).filter((t) => t.priority === "HIGH").length;
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -239,7 +239,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Status banner with image */}
-        <div className="relative rounded-md overflow-hidden border border-border/60 mb-4 min-h-[72px] sm:min-h-[88px] bg-gradient-to-r from-primary/5 via-background to-transparent">
+        <div className="relative rounded-xl overflow-hidden border border-border/60 mb-4 min-h-[72px] sm:min-h-[88px] bg-gradient-to-r from-primary/5 via-background to-transparent">
           <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5 relative h-full">
             <div className="flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary/80" />
@@ -261,7 +261,7 @@ export default function DashboardPage() {
       {onboardStatus && (!onboardStatus.exists || (onboardStatus.completed < (onboardStatus.total || 15))) && (
         <div className="px-4 sm:px-6 pb-1">
           <Link href="/onboarding">
-            <div className="rounded-md border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-5 py-3 cursor-pointer hover:border-primary/40 transition-colors">
+            <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-5 py-3 cursor-pointer hover:border-primary/40 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-lg">🚀</span>
@@ -277,35 +277,37 @@ export default function DashboardPage() {
                         <span className="text-[11px] text-muted-foreground">{onboardStatus.completed} de {onboardStatus.total || 15}</span>
                       </div>
                     )}
-          </div>
-
-          {/* Low Stock Alert */}
-          {Array.isArray(lowStock) && lowStock.length > 0 && (
-            <div className="rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Package className="w-[15px] h-[15px] text-amber-400" />
-                <h2 className="text-sm font-medium text-foreground">Stock Bajo</h2>
-              </div>
-              <div className="space-y-2">
-                {lowStock.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between text-xs">
-                    <span className="text-foreground truncate max-w-[140px]">{p.name}</span>
-                    <span className="text-amber-400 font-medium">
-                      {p.current_stock} / {p.min_stock} {p.unit_of_measure || "uds"}
-                    </span>
                   </div>
-                ))}
-              </div>
-              <Link href="/inventory">
-                <span className="text-[11px] text-primary hover:text-primary/80 mt-3 inline-block cursor-pointer">Ver inventario →</span>
-              </Link>
-            </div>
-          )}
-        </div>
+                </div>
                 <ArrowRight className="w-4 h-4 text-muted-foreground" />
               </div>
             </div>
           </Link>
+        </div>
+      )}
+
+      {/* Low Stock Alert */}
+      {Array.isArray(lowStock) && lowStock.length > 0 && (
+        <div className="px-4 sm:px-6 pb-1">
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Package className="w-[15px] h-[15px] text-amber-400" />
+              <h2 className="text-sm font-medium text-foreground">Stock Bajo</h2>
+            </div>
+            <div className="space-y-2">
+              {lowStock.map((p) => (
+                <div key={p.id} className="flex items-center justify-between text-xs">
+                  <span className="text-foreground truncate max-w-[140px]">{p.name}</span>
+                  <span className="text-amber-400 font-medium">
+                    {p.current_stock} / {p.min_stock} {p.unit_of_measure || "uds"}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <Link href="/inventory">
+              <span className="text-[11px] text-primary hover:text-primary/80 mt-3 inline-block cursor-pointer">Ver inventario →</span>
+            </Link>
+          </div>
         </div>
       )}
 
@@ -314,7 +316,7 @@ export default function DashboardPage() {
         {/* ── Left: Revenue + Today (8 col) ── */}
         <div className="lg:col-span-8 space-y-5">
           {/* Revenue Overview */}
-          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
+          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-sm font-medium text-foreground">{dash.revenueOverview}</h2>
@@ -333,7 +335,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Today: Tasks + Messages */}
-          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm overflow-hidden">
+          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm overflow-hidden">
             <div className="flex items-center border-b border-border/60">
               {(["tasks", "messages"] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
@@ -347,8 +349,8 @@ export default function DashboardPage() {
               {activeTab === "tasks" ? (
                 taskList.length === 0 ? (
                   <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noTasks}</div>
-                ) : taskList.slice(0, 5).map((task: any) => (
-                  <div key={task.id} className="flex items-center gap-3 px-5 py-3">
+                ) : (taskList as Task[]).slice(0, 5).map((task) => (
+                  <div key={task.id} className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.02] transition-colors">
                     <div className="w-[18px] h-[18px] rounded-full border-2 border-border/60 cursor-pointer hover:border-primary/50 transition-colors shrink-0" />
                     <span className="flex-1 text-[13px] text-foreground truncate">{task.title}</span>
                     <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${
@@ -364,7 +366,7 @@ export default function DashboardPage() {
               ) : (
                 convList.length === 0 ? (
                   <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noMessagesToday}</div>
-                ) : convList.slice(0, 5).map((conv: any) => (
+                ) : (convList as Conversation[]).slice(0, 5).map((conv) => (
                   <Link key={conv.id} href={`/inbox/${conv.id}`}>
                     <div className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.02] transition-colors cursor-pointer">
                       <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">
@@ -388,16 +390,16 @@ export default function DashboardPage() {
         {/* ── Right: Pipeline + Activity + Insights + Quick Actions (4 col) ── */}
         <div className="lg:col-span-4 space-y-5">
           {/* Pipeline */}
-          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
+          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-medium text-foreground">{dash.pipelineOverview}</h2>
               <Link href="/pipeline" className="text-[11px] text-primary hover:text-primary/80">{dash.viewPipeline} →</Link>
             </div>
             {pipelineLoading ? <Skeleton className="h-16 w-full" /> : stageRows.length === 0 ? (
               <div className="text-center py-4">
-                <p className="text-[13px] text-muted-foreground/70">You don't have any opportunities yet.</p>
-                <p className="text-[11px] text-muted-foreground/75 mt-1">Create your first opportunity to track potential deals.</p>
-                <Link href="/pipeline"><button className="mt-3 text-[12px] px-4 py-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors">{dash.newOpportunity}</button></Link>
+                <p className="text-[13px] text-muted-foreground/70">Aún no tienes oportunidades en el pipeline.</p>
+                <p className="text-[11px] text-muted-foreground/75 mt-1">Crea tu primera oportunidad para dar seguimiento a negocios potenciales.</p>
+                <Link href="/pipeline" className="mt-3 inline-block text-[12px] px-4 py-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors">{dash.newOpportunity}</Link>
               </div>
             ) : (
               <div className="space-y-3">
@@ -421,7 +423,7 @@ export default function DashboardPage() {
           </div>
 
           {/* AI Insights */}
-          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
+          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-[15px] h-[15px] text-primary" />
               <h2 className="text-sm font-medium text-foreground">{dash.aiInsights}</h2>
@@ -450,7 +452,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
+          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <h2 className="text-sm font-medium text-foreground mb-4">{dash.quickActions}</h2>
             <div className="grid grid-cols-3 gap-2">
               {[
@@ -463,7 +465,7 @@ export default function DashboardPage() {
               ].map(({ label, href, Icon }) => (
                 <Link key={label} href={href}>
                   <div className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-lg hover:bg-foreground/[0.03] transition-colors cursor-pointer">
-                    <Icon className="w-[16px] h-[16px] text-muted-foreground/60" />
+                    <Icon className="w-[16px] h-[16px] text-muted-foreground/80" />
                     <span className="text-[10px] text-muted-foreground/70 text-center leading-tight">{label}</span>
                   </div>
                 </Link>

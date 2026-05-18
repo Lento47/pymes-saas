@@ -45,7 +45,7 @@ export default function AcceptInvitePage() {
   const token = useMemo(() => parseTokenFromUrl(), []);
   const code = useMemo(() => parseCodeFromUrl(), []);
   const isCodeFlow = !!code;
-  const [preview, setPreview] = useState<any>(null);
+  const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export default function AcceptInvitePage() {
       void (async () => {
         try {
           const result = await api.previewInviteCode(code);
-          setPreview({ ...result, email: user?.email || "", requires_account_setup: false });
+          setPreview({ ...result, email: user?.email || "", requires_account_setup: false } as InvitePreview);
         } catch (err) { setError(parseError(err)); }
         finally { setLoading(false); }
       })();
@@ -67,7 +67,7 @@ export default function AcceptInvitePage() {
     }
 
     if (!token) {
-      setError("El enlace no incluye un token de invitación válido.");
+      // no token y no code — muestra el formulario de entrada manual
       setLoading(false);
       return;
     }
@@ -76,7 +76,7 @@ export default function AcceptInvitePage() {
     void api.getInvitePreview(token)
       .then((result) => {
         if (!active) return;
-        setPreview(result);
+        setPreview(result as InvitePreview);
         setName(result.name ?? "");
       })
       .catch((err) => {
@@ -103,7 +103,7 @@ export default function AcceptInvitePage() {
     setError(null);
 
     try {
-      if (isCodeFlow) {
+      if (isCodeFlow || codeInput) {
         await api.redeemInviteCode({ code: codeInput, name, password });
         toast({ title: "Invitación aceptada", description: "Ya eres miembro del workspace." });
         history.replaceState(null, "", "/");
@@ -138,7 +138,7 @@ export default function AcceptInvitePage() {
           </p>
         </div>
 
-        {isCodeFlow && !code && (
+        {!loading && !isCodeFlow && !token && !preview && (
           <form onSubmit={handleAccept} className="space-y-4">
             <div>
               <Label>Código de invitación</Label>

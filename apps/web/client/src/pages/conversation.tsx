@@ -17,7 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRoute, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
-import { ArrowLeft, Coins, ExternalLink, CheckCircle2, CheckCheck, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, FileText, Paperclip, Image, X, Smile, Pencil } from "lucide-react";
+import { ArrowLeft, Coins, ExternalLink, CheckCircle2, CheckCheck, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, FileText, Paperclip, Image, X, Smile } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ImageLightbox } from "@/components/shared/image-lightbox";
@@ -69,6 +69,14 @@ export default function ConversationPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedFile?.type.startsWith("image/")) { setFilePreviewUrl(null); return; }
+    const url = URL.createObjectURL(selectedFile);
+    setFilePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [showDelete, setShowDelete] = useState(false);
@@ -675,9 +683,9 @@ export default function ConversationPage() {
           <div className="border border-border rounded-xl bg-card overflow-hidden">
             {selectedFile && (
               <div className="flex items-center gap-2 px-4 pt-2.5 pb-1 border-b border-border bg-muted/30">
-                {selectedFile.type.startsWith("image/") ? (
+                {selectedFile.type.startsWith("image/") && filePreviewUrl ? (
                   <img
-                    src={URL.createObjectURL(selectedFile)}
+                    src={filePreviewUrl}
                     alt="preview"
                     className="w-10 h-10 rounded object-cover"
                   />

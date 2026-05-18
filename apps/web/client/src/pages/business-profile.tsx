@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle2 } from "lucide-react";
@@ -108,6 +109,7 @@ function RadioChip({ label, sub, selected, onClick }: {
 
 export default function BusinessProfilePage() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [step, setStep]             = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
   const [teamSize, setTeamSize]     = useState("");
@@ -131,7 +133,7 @@ export default function BusinessProfilePage() {
     setSaving(true);
     try {
       await api.saveBusinessProfile({ categories, team_size: teamSize, channels, needs });
-      window.location.hash = "#/";
+      navigate("/");
     } catch {
       toast({ title: "No se pudo guardar el perfil", description: "Intente nuevamente.", variant: "destructive" });
     } finally {
@@ -219,12 +221,12 @@ export default function BusinessProfilePage() {
             </button>
           ) : (
             <button type="button" onClick={finish} disabled={!canNext[step] || saving} style={{ height: "32px", padding: "0 20px", background: (!canNext[step] || saving) ? "hsl(var(--accent) / 0.7)" : "hsl(var(--accent))", color: "#fff", border: "none", borderRadius: "4px", fontSize: "13px", fontWeight: 500, cursor: (!canNext[step] || saving) ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
-              {saving && <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} />}
+              {saving && <Loader2 className="animate-spin" style={{ width: 13, height: 13 }} />}
               Finalizar
             </button>
           )}
 
-          <button type="button" onClick={() => { window.location.hash = "#/"; }} style={{ marginLeft: "auto", height: "32px", padding: "0 12px", background: "transparent", border: "none", fontSize: "12px", color: "hsl(var(--fg-2))", cursor: "pointer", textDecoration: "underline" }}>
+          <button type="button" onClick={() => navigate("/")} style={{ marginLeft: "auto", height: "32px", padding: "0 12px", background: "transparent", border: "none", fontSize: "12px", color: "hsl(var(--fg-2))", cursor: "pointer", textDecoration: "underline" }}>
             Saltar por ahora
           </button>
         </div>

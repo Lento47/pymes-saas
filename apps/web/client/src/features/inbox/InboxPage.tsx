@@ -71,7 +71,7 @@ export default function InboxPage() {
             </div>
           </section>
         )}
-        <CustomerContextPanel conversation={selectedConversation as any} />
+        <CustomerContextPanel conversation={selectedConversation} />
       </div>
 
       {/* Mobile: list or conversation detail */}

@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+type AiTestResult = { ok: boolean; message?: string; provider?: string; model?: string; latency_ms?: number; reply?: string };
+
 const AI_PROVIDERS = [
   { id: "openai",    label: "OpenAI",          models: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"] },
   { id: "anthropic", label: "Anthropic (Claude)", models: ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-7"] },
@@ -24,7 +26,7 @@ export function AiTab() {
   const [model, setModel]       = useState("");
   const [apiKey, setApiKey]     = useState("");
   const [showKey, setShowKey]   = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<AiTestResult | null>(null);
 
   useEffect(() => {
     if (workspace) {
@@ -58,7 +60,7 @@ export function AiTab() {
       ai_api_key: apiKey || undefined,
     }),
     onSuccess: (result) => {
-      setTestResult(result);
+      setTestResult(result as AiTestResult);
       toast({ title: "Conexion validada" });
     },
     onError: (e) => {

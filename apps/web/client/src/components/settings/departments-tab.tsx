@@ -11,13 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
+type DeptMember = { id: string; user_id: string; is_lead?: boolean; user?: { id: string; name?: string; email?: string } };
+type Department = { id: string; name: string; description?: string; color?: string; is_active?: boolean; _count?: { conversations: number }; members?: DeptMember[] };
+type WorkspaceMember = { id: string; user?: { id: string; name?: string; email?: string }; name?: string; email?: string };
+
 export function DepartmentsTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
-  const [editDept, setEditDept] = useState<any>(null);
-  const [deleteDept, setDeleteDept] = useState<any>(null);
-  const [addMemberDept, setAddMemberDept] = useState<any>(null);
+  const [editDept, setEditDept] = useState<Department | null>(null);
+  const [deleteDept, setDeleteDept] = useState<Department | null>(null);
+  const [addMemberDept, setAddMemberDept] = useState<Department | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState("#4f8ef7");
@@ -33,8 +37,8 @@ export function DepartmentsTab() {
     queryFn: () => api.getMembers(),
   });
 
-  const departments: Record<string, any>[] = Array.isArray(depts) ? depts : [];
-  const allMembers: Record<string, any>[] = Array.isArray(membersData) ? membersData : [];
+  const departments: Department[] = Array.isArray(depts) ? depts as Department[] : [];
+  const allMembers: WorkspaceMember[] = Array.isArray(membersData) ? membersData as WorkspaceMember[] : [];
 
   const createMut = useMutation({
     mutationFn: (d: Record<string, any>) => api.createDepartment(d),
@@ -48,7 +52,7 @@ export function DepartmentsTab() {
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, ...d }: { id: any; [key: string]: any }) => api.updateDepartment(id, d),
+    mutationFn: ({ id, ...d }: { id: string; [key: string]: unknown }) => api.updateDepartment(id, d as Record<string, unknown>),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       setEditDept(null);
@@ -68,7 +72,7 @@ export function DepartmentsTab() {
   });
 
   const addMemberMut = useMutation({
-    mutationFn: ({ deptId, userId }: { deptId: any; userId: any }) => api.addDepartmentMember(deptId, { user_id: userId }),
+    mutationFn: ({ deptId, userId }: { deptId: string; userId: string }) => api.addDepartmentMember(deptId, { user_id: userId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       setAddMemberDept(null);
@@ -79,12 +83,12 @@ export function DepartmentsTab() {
   });
 
   const removeMemberMut = useMutation({
-    mutationFn: ({ deptId, userId }: { deptId: any; userId: any }) => api.removeDepartmentMember(deptId, userId),
+    mutationFn: ({ deptId, userId }: { deptId: string; userId: string }) => api.removeDepartmentMember(deptId, userId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["departments"] }),
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const openEdit = (dept: Record<string, any>) => {
+  const openEdit = (dept: Department) => {
     setEditDept(dept);
     setName(dept.name);
     setDescription(dept.description ?? "");
@@ -141,9 +145,9 @@ export function DepartmentsTab() {
               {dept.description && (
                 <p className="text-xs text-muted-foreground">{dept.description}</p>
               )}
-              {dept.members?.length > 0 && (
+              {(dept.members?.length ?? 0) > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {dept.members.map((m: any) => (
+                  {dept.members?.map((m) => (
                     <div key={m.id} className="flex items-center gap-1 bg-elevated rounded px-2 py-0.5 text-xs">
                       <span>{m.user?.name ?? m.user?.email}</span>
                       {m.is_lead && <Badge variant="outline" className="text-xs h-4 px-1">Lead</Badge>}
@@ -215,7 +219,7 @@ export function DepartmentsTab() {
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => updateMut.mutate({ id: editDept?.id, is_active: !editDept?.is_active })}
+                onClick={() => updateMut.mutate({ id: editDept?.id ?? "", is_active: !editDept?.is_active })}
               >
                 {editDept?.is_active ? <PowerOff className="h-4 w-4 mr-1" /> : <Plug className="h-4 w-4 mr-1" />}
                 {editDept?.is_active ? "Desactivar" : "Activar"}
@@ -223,7 +227,7 @@ export function DepartmentsTab() {
               <Button
                 className="flex-1"
                 disabled={!name.trim() || updateMut.isPending}
-                onClick={() => updateMut.mutate({ id: editDept?.id, name, description: description || undefined, color })}
+                onClick={() => updateMut.mutate({ id: editDept?.id ?? "", name, description: description || undefined, color })}
               >
                 Guardar
               </Button>
@@ -252,7 +256,7 @@ export function DepartmentsTab() {
             <Button
               className="w-full"
               disabled={!memberUserId || addMemberMut.isPending}
-              onClick={() => addMemberMut.mutate({ deptId: addMemberDept?.id, userId: memberUserId })}
+              onClick={() => addMemberMut.mutate({ deptId: addMemberDept?.id ?? "", userId: memberUserId })}
             >
               Agregar
             </Button>
@@ -272,7 +276,7 @@ export function DepartmentsTab() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteMut.mutate(deleteDept?.id)}
+              onClick={() => deleteMut.mutate(deleteDept?.id ?? "")}
             >
               Eliminar
             </AlertDialogAction>
