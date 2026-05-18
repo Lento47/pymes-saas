@@ -1,48 +1,51 @@
 # ─────────────────────────────────────────────
 # Stage 1 — Builder
 # ─────────────────────────────────────────────
+# Build context: monorepo root (.)
 FROM node:20-alpine AS builder
 
-# Install pnpm globally
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy manifests first for better layer caching
-COPY package.json pnpm-lock.yaml ./
+# Copy monorepo manifests first for better layer caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Install all dependencies (including devDependencies needed for build)
-RUN pnpm install --frozen-lockfile
+# Copy api package.json (needed for workspace dep resolution before install)
+COPY apps/api/package.json ./apps/api/
 
-# Copy the rest of the source
-COPY . .
+# Install only api and its transitive workspace dependencies
+RUN pnpm install --frozen-lockfile --filter saas-api...
 
-# Generate Prisma client (schema wasn't available during postinstall)
-RUN pnpm exec prisma generate
+# Copy the full api source
+COPY apps/api/ ./apps/api/
+
+# Generate Prisma client
+RUN pnpm --filter saas-api exec prisma generate
 
 # Compile TypeScript → dist/
-RUN pnpm run build
+RUN pnpm --filter saas-api run build
 
-# Prune dev dependencies so the production install is lean
-RUN pnpm prune --prod --no-optional
+# Create a standalone production deployment with flat node_modules
+# (installs only production dependencies into /standalone/node_modules)
+RUN pnpm --filter saas-api deploy --prod /standalone
+# dist/ is in .gitignore so pnpm deploy excludes it — copy manually
+RUN cp -r /app/apps/api/dist /standalone/dist
 
 # ─────────────────────────────────────────────
 # Stage 2 — Runner
 # ─────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
-# Security: do not run as root
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 
-# Copy only what is needed at runtime
-COPY --from=builder --chown=appuser:appgroup /app/dist       ./dist
-COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
-COPY --from=builder --chown=appuser:appgroup /app/package.json ./package.json
-
-# Copy Prisma schema so migrations can run inside the container
-COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
+# Copy only the standalone deployment (flat node_modules + built output)
+COPY --from=builder --chown=appuser:appgroup /standalone/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appgroup /standalone/package.json  ./package.json
+COPY --from=builder --chown=appuser:appgroup /standalone/dist          ./dist
+COPY --from=builder --chown=appuser:appgroup /standalone/prisma        ./prisma
 
 USER appuser
 
