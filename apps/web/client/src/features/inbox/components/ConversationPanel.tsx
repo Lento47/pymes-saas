@@ -27,6 +27,21 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { PriorityDot } from "@/components/shared/priority-dot";
 import { ProductPicker } from "@/components/inventory/ProductPicker";
 
+interface Invoice {
+  id: string;
+  number?: string;
+  amount?: number;
+  balance_due?: number;
+  currency?: string;
+  status?: string;
+  lines?: InvoiceLine[];
+}
+
+interface InvoiceLine {
+  product?: { name?: string };
+  description?: string;
+}
+
 function getInitials(name: string) {
   return name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
 }
@@ -221,7 +236,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     queryFn: () => api.getInvoices({ conversation_id: id, limit: "10" }),
     enabled: !!id,
   });
-  const invoiceList: Record<string, any>[] = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
+  const invoiceList: Invoice[] = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
 
   const lineSubtotals = lines.map(l => l.quantity * l.unit_price);
   const lineTaxes = lines.map((l, i) => lineSubtotals[i] * (l.tax_rate / 100));
@@ -257,7 +272,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   });
 
   const sendInvMut = useMutation({
-    mutationFn: async (invoice: any) => {
+    mutationFn: async (invoice: Invoice) => {
       const channelId = conversation?.channel?.id;
       if (!channelId) throw new Error("Canal no válido");
       const reminder = await api.generateInvoiceReminder(invoice.id);
@@ -564,7 +579,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                   const type = file.type.startsWith('image/') ? 'image' : 'document';
                   setAttachment({ file, url, type });
                 } catch (err: unknown) {
-                  toast({ title: "Error", description: (err as any)?.message || "No se pudo subir el archivo", variant: "destructive" });
+                  toast({ title: "Error", description: err instanceof Error ? err.message : "No se pudo subir el archivo", variant: "destructive" });
                 } finally {
                   setUploading(false);
                   e.target.value = '';
@@ -607,11 +622,11 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                     <div>
                       <div className="text-xs font-medium">{inv.number}</div>
                       <div className="text-[11px] text-muted-foreground">
-                        {new Intl.NumberFormat("es-CR", { style: "currency", currency: inv.currency, maximumFractionDigits: 0 }).format(inv.amount || 0)} · <StatusBadge status={inv.status} type="invoice" className="inline" />
+                        {new Intl.NumberFormat("es-CR", { style: "currency", currency: inv.currency ?? "USD", maximumFractionDigits: 0 }).format(inv.amount || 0)} · <StatusBadge status={inv.status ?? ""} type="invoice" className="inline" />
                       </div>
-                      {inv.lines?.length > 0 && (
+                      {(inv.lines?.length ?? 0) > 0 && (
                         <div className="text-[10px] text-muted-foreground/60 mt-0.5">
-                          {inv.lines.map((l: any) => l.product?.name || l.description).join(", ")}
+                          {inv.lines!.map((l: InvoiceLine) => l.product?.name || l.description).join(", ")}
                         </div>
                       )}
                     </div>
