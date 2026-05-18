@@ -310,7 +310,7 @@ export default function Agent() {
                 }`}
                   style={msg.role === 'user' ? {
                     background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))',
-                    color: 'hsl(var(--fg))',
+                    color: 'hsl(var(--primary-foreground))',
                     boxShadow: '0 2px 12px hsl(var(--primary) / 0.15)',
                   } : msg.role === 'system' ? {
                     background: 'rgba(239,68,68,0.06)',
