@@ -47,12 +47,22 @@ function notifyListeners() {
 // Mantener el usuario en memoria sincronizado cuando otros miembros del workspace
 // cambian algo (p. ej. el nombre del workspace). El servidor emite 'workspace:updated'
 // al room `workspace:<id>`.
+type WorkspaceUpdatePayload = {
+  id?: string;
+  name?: string;
+  slug?: string;
+  plan?: string;
+  timezone?: string;
+  locale?: string;
+  status?: string;
+};
+
 let _wsUpdatedAttached = false;
 function attachWorkspaceUpdateListener() {
   const socket = getSocket();
   if (!socket || _wsUpdatedAttached) return;
   _wsUpdatedAttached = true;
-  socket.on("workspace:updated", (workspace: Record<string, any>) => {
+  socket.on("workspace:updated", (workspace: WorkspaceUpdatePayload) => {
     queryClient.setQueryData(["/api/workspaces/current"], workspace);
     if (!_user || !workspace?.id || _user.workspace?.id !== workspace.id) return;
     _user = {
@@ -83,14 +93,14 @@ if (_storedRefreshToken && !isLoggedIn()) {
     _restorePromise = (async () => {
       try {
         const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000));
-        const r = await Promise.race([api.refresh(_storedRefreshToken), timeout]) as any;
+        const r = await (Promise.race([api.refresh(_storedRefreshToken), timeout]) as unknown as ReturnType<typeof api.refresh>);
         setAuthState(r.access_token, getWorkspaceSlug()!, r.refresh_token);
 
         if (r.user) {
           _user = r.user;
           setAuthState(r.access_token, r.user.workspace.slug, r.refresh_token);
         } else {
-          const me = await Promise.race([api.getMe(), timeout]) as any;
+          const me = await Promise.race([api.getMe(), timeout]) as unknown as AuthUser;
           _user = me;
           setAuthState(r.access_token, me.workspace.slug, r.refresh_token);
         }
@@ -184,19 +194,19 @@ export function useAuth() {
 
   const login = async (email: string, password: string, workspaceSlug?: string) => {
     const res = await api.login(email, password, workspaceSlug || "");
-    applyAuthResult(res as any);
+    applyAuthResult(res as unknown as { access_token: string; refresh_token?: string; user: AuthUser });
     return res;
   };
 
   const register = async (data: { name: string; email: string; password: string }) => {
     const res = await api.register(data);
-    applyAuthResult(res as any);
+    applyAuthResult(res as unknown as { access_token: string; refresh_token?: string; user: AuthUser });
     return res;
   };
 
   const acceptInvite = async (token: string, name?: string, password?: string) => {
     const res = await api.acceptInvite({ token, name, password });
-    applyAuthResult(res as any);
+    applyAuthResult(res as unknown as { access_token: string; refresh_token?: string; user: AuthUser });
     return res;
   };
 
@@ -205,7 +215,7 @@ export function useAuth() {
   // calls this on mount when it detects ?code=... in the URL.
   const loginWithSsoCode = async (code: string) => {
     const res = await api.ssoExchange(code);
-    applyAuthResult(res as any);
+    applyAuthResult(res as unknown as { access_token: string; refresh_token?: string; user: AuthUser });
     return res;
   };
 
