@@ -79,7 +79,7 @@ function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
         </>
       ) : (
         <text x={W / 2} y={H / 2} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="11" opacity="0.5">
-          Track your first invoice to see revenue here.
+          Registra tu primera factura para ver los ingresos.
         </text>
       )}
     </svg>
@@ -88,10 +88,10 @@ function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
 
 // ── Insight styles ──
 const INSIGHT_STYLES: Record<string, { Icon: React.ElementType; color: string; bg: string }> = {
-  danger:   { Icon: CircleAlert,    color: "hsl(var(--danger))",  bg: "bg-red-500/10" },
-  warning:  { Icon: TriangleAlert, color: "hsl(var(--warning))", bg: "bg-amber-500/10" },
-  positive: { Icon: ShieldCheck,   color: "hsl(var(--success))", bg: "bg-emerald-500/10" },
-  info:     { Icon: Info,          color: "#818cf8",              bg: "bg-indigo-500/10" },
+  danger:   { Icon: CircleAlert,    color: "hsl(var(--danger))",   bg: "bg-red-500/10" },
+  warning:  { Icon: TriangleAlert, color: "hsl(var(--warning))",  bg: "bg-amber-500/10" },
+  positive: { Icon: ShieldCheck,   color: "hsl(var(--success))",  bg: "bg-emerald-500/10" },
+  info:     { Icon: Info,          color: "hsl(var(--primary))",  bg: "bg-primary/10" },
 };
 
 export default function DashboardPage() {
@@ -239,7 +239,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Status banner with image */}
-        <div className="relative rounded-md overflow-hidden border border-border/60 mb-4 min-h-[72px] sm:min-h-[88px] bg-gradient-to-r from-primary/5 via-background to-transparent">
+        <div className="relative rounded-xl overflow-hidden border border-border/60 mb-4 min-h-[72px] sm:min-h-[88px] bg-gradient-to-r from-primary/5 via-background to-transparent">
           <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5 relative h-full">
             <div className="flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary/80" />
@@ -261,7 +261,7 @@ export default function DashboardPage() {
       {onboardStatus && (!onboardStatus.exists || (onboardStatus.completed < (onboardStatus.total || 15))) && (
         <div className="px-4 sm:px-6 pb-1">
           <Link href="/onboarding">
-            <div className="rounded-md border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-5 py-3 cursor-pointer hover:border-primary/40 transition-colors">
+            <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-5 py-3 cursor-pointer hover:border-primary/40 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-lg">🚀</span>
@@ -277,35 +277,37 @@ export default function DashboardPage() {
                         <span className="text-[11px] text-muted-foreground">{onboardStatus.completed} de {onboardStatus.total || 15}</span>
                       </div>
                     )}
-          </div>
-
-          {/* Low Stock Alert */}
-          {Array.isArray(lowStock) && lowStock.length > 0 && (
-            <div className="rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Package className="w-[15px] h-[15px] text-amber-400" />
-                <h2 className="text-sm font-medium text-foreground">Stock Bajo</h2>
-              </div>
-              <div className="space-y-2">
-                {lowStock.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between text-xs">
-                    <span className="text-foreground truncate max-w-[140px]">{p.name}</span>
-                    <span className="text-amber-400 font-medium">
-                      {p.current_stock} / {p.min_stock} {p.unit_of_measure || "uds"}
-                    </span>
                   </div>
-                ))}
-              </div>
-              <Link href="/inventory">
-                <span className="text-[11px] text-primary hover:text-primary/80 mt-3 inline-block cursor-pointer">Ver inventario →</span>
-              </Link>
-            </div>
-          )}
-        </div>
+                </div>
                 <ArrowRight className="w-4 h-4 text-muted-foreground" />
               </div>
             </div>
           </Link>
+        </div>
+      )}
+
+      {/* Low Stock Alert */}
+      {Array.isArray(lowStock) && lowStock.length > 0 && (
+        <div className="px-4 sm:px-6 pb-1">
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Package className="w-[15px] h-[15px] text-amber-400" />
+              <h2 className="text-sm font-medium text-foreground">Stock Bajo</h2>
+            </div>
+            <div className="space-y-2">
+              {lowStock.map((p) => (
+                <div key={p.id} className="flex items-center justify-between text-xs">
+                  <span className="text-foreground truncate max-w-[140px]">{p.name}</span>
+                  <span className="text-amber-400 font-medium">
+                    {p.current_stock} / {p.min_stock} {p.unit_of_measure || "uds"}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <Link href="/inventory">
+              <span className="text-[11px] text-primary hover:text-primary/80 mt-3 inline-block cursor-pointer">Ver inventario →</span>
+            </Link>
+          </div>
         </div>
       )}
 
@@ -314,7 +316,7 @@ export default function DashboardPage() {
         {/* ── Left: Revenue + Today (8 col) ── */}
         <div className="lg:col-span-8 space-y-5">
           {/* Revenue Overview */}
-          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
+          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-sm font-medium text-foreground">{dash.revenueOverview}</h2>
@@ -333,7 +335,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Today: Tasks + Messages */}
-          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm overflow-hidden">
+          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm overflow-hidden">
             <div className="flex items-center border-b border-border/60">
               {(["tasks", "messages"] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
@@ -348,7 +350,7 @@ export default function DashboardPage() {
                 taskList.length === 0 ? (
                   <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noTasks}</div>
                 ) : taskList.slice(0, 5).map((task: any) => (
-                  <div key={task.id} className="flex items-center gap-3 px-5 py-3">
+                  <div key={task.id} className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.02] transition-colors">
                     <div className="w-[18px] h-[18px] rounded-full border-2 border-border/60 cursor-pointer hover:border-primary/50 transition-colors shrink-0" />
                     <span className="flex-1 text-[13px] text-foreground truncate">{task.title}</span>
                     <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${
@@ -388,15 +390,15 @@ export default function DashboardPage() {
         {/* ── Right: Pipeline + Activity + Insights + Quick Actions (4 col) ── */}
         <div className="lg:col-span-4 space-y-5">
           {/* Pipeline */}
-          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
+          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-medium text-foreground">{dash.pipelineOverview}</h2>
               <Link href="/pipeline" className="text-[11px] text-primary hover:text-primary/80">{dash.viewPipeline} →</Link>
             </div>
             {pipelineLoading ? <Skeleton className="h-16 w-full" /> : stageRows.length === 0 ? (
               <div className="text-center py-4">
-                <p className="text-[13px] text-muted-foreground/70">You don't have any opportunities yet.</p>
-                <p className="text-[11px] text-muted-foreground/75 mt-1">Create your first opportunity to track potential deals.</p>
+                <p className="text-[13px] text-muted-foreground/70">Aún no tienes oportunidades en el pipeline.</p>
+                <p className="text-[11px] text-muted-foreground/75 mt-1">Crea tu primera oportunidad para dar seguimiento a negocios potenciales.</p>
                 <Link href="/pipeline"><button className="mt-3 text-[12px] px-4 py-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors">{dash.newOpportunity}</button></Link>
               </div>
             ) : (
@@ -421,7 +423,7 @@ export default function DashboardPage() {
           </div>
 
           {/* AI Insights */}
-          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
+          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-[15px] h-[15px] text-primary" />
               <h2 className="text-sm font-medium text-foreground">{dash.aiInsights}</h2>
@@ -450,7 +452,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="rounded-md border border-border/60 bg-card/60 backdrop-blur-sm p-5">
+          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
             <h2 className="text-sm font-medium text-foreground mb-4">{dash.quickActions}</h2>
             <div className="grid grid-cols-3 gap-2">
               {[
@@ -463,7 +465,7 @@ export default function DashboardPage() {
               ].map(({ label, href, Icon }) => (
                 <Link key={label} href={href}>
                   <div className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-lg hover:bg-foreground/[0.03] transition-colors cursor-pointer">
-                    <Icon className="w-[16px] h-[16px] text-muted-foreground/60" />
+                    <Icon className="w-[16px] h-[16px] text-muted-foreground/80" />
                     <span className="text-[10px] text-muted-foreground/70 text-center leading-tight">{label}</span>
                   </div>
                 </Link>
