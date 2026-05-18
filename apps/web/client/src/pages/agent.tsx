@@ -236,7 +236,7 @@ export default function Agent() {
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))' }}>
-            <Sparkles style={{ width: 13, height: 13, color: 'hsl(var(--fg))' }} />
+            <Sparkles style={{ width: 13, height: 13, color: 'hsl(var(--primary-foreground))' }} />
           </div>
           <h1 className="text-[13px] font-semibold text-foreground tracking-tight">Asistente IA</h1>
           <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-muted-foreground/80"
