@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '@/common/prisma/prisma.service';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { WorkspacePlan } from '@prisma/client';
 
 export class QuotaExceededError extends BadRequestException {
@@ -55,6 +55,20 @@ export class PlanLimitsService {
       users: 15,
     },
     ENTERPRISE: {
+      contacts: 999999,
+      invoicesPerMonth: 999999,
+      automations: 999999,
+      storageGB: 999999,
+      users: 999999,
+    },
+    BUSINESS_PLUS: {
+      contacts: 50000,
+      invoicesPerMonth: 5000,
+      automations: 250,
+      storageGB: 100,
+      users: 30,
+    },
+    BETA_INFORMAL: {
       contacts: 999999,
       invoicesPerMonth: 999999,
       automations: 999999,
@@ -184,6 +198,8 @@ export class PlanLimitsService {
       GROWTH: 'BUSINESS',
       BUSINESS: 'ENTERPRISE',
       ENTERPRISE: 'ENTERPRISE',
+      BUSINESS_PLUS: 'ENTERPRISE',
+      BETA_INFORMAL: 'ENTERPRISE',
       FREE: 'STARTER',
     };
     return upgradePath[currentPlan] || 'GROWTH';
