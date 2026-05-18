@@ -176,7 +176,8 @@ export default function AdminPage() {
   // Guard: only platform admins
   useEffect(() => {
     if (user && !user.is_platform_admin) {
-      window.location.hash = "#/";
+      history.replaceState(null, "", "/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
     }
   }, [user]);
 
