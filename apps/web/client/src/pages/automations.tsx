@@ -21,7 +21,7 @@ export default function AutomationsPage() {
   useRequireAuth(); const { user } = useAuth();
   const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
-  const [editingAuto, setEditingAuto] = useState<any>(null);
+  const [editingAuto, setEditingAuto] = useState<Record<string, any> | null>(null);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -66,10 +66,14 @@ export default function AutomationsPage() {
 
   const handleSave = async (payload: Record<string, any>) => {
     setIsSaving(true);
-    if (editingAuto?.id) {
-      await updateMut.mutateAsync({ id: editingAuto.id, data: payload });
-    } else {
-      await createMut.mutateAsync(payload);
+    try {
+      if (editingAuto?.id) {
+        await updateMut.mutateAsync({ id: editingAuto.id, data: payload });
+      } else {
+        await createMut.mutateAsync(payload);
+      }
+    } catch {
+      // error already handled by mutation's onError callback
     }
   };
 
@@ -88,7 +92,7 @@ export default function AutomationsPage() {
         <div className="flex items-center gap-3">
           <Zap className="w-4 h-4 text-violet-500" />
           <h1 className="text-[15px] font-semibold text-foreground">Automatizaciones</h1>
-          <span className="text-[11px] text-muted-foreground">{automations?.length || 0} activas</span>
+          <span className="text-[11px] text-muted-foreground">{automations.filter((a: any) => a.enabled).length} activas</span>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setTemplateOpen(true)} className="gap-1.5 rounded-xl text-[12px]">
