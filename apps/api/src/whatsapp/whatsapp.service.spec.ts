@@ -57,10 +57,8 @@ describe('WhatsAppService — channel resolution', () => {
         { provide: CryptoService, useValue: mockCrypto() },
         { provide: StorageService, useValue: mockStorage() },
         { provide: MessagesService, useValue: mockMessages() },
-        {
-          provide: WebhookEventsService,
-          useValue: mockWebhookEvents(),
-        },
+        { provide: WebhookEventsService, useValue: mockWebhookEvents() },
+        { provide: require('../gateways/events.gateway').EventsGateway, useValue: { emitToWorkspace: jest.fn(), emitToUser: jest.fn() } },
       ],
     }).compile();
 
@@ -147,13 +145,11 @@ describe('WhatsAppService — channel resolution', () => {
       const phoneNumberId = '123456789';
       const workspaceId = 'ws-1';
 
-      // Fast path misses because wrong workspace
+      // Fast path misses
       prisma.channel.findFirst.mockResolvedValue(null);
 
-      // Fallback: same phoneNumberId but different workspace
-      prisma.channel.findMany.mockResolvedValue([
-        mockActiveChannel(phoneNumberId, 'ws-other', { phone_number_id: phoneNumberId }, 'channel-other'),
-      ]);
+      // DB respects workspace_id filter → returns empty (no channels in ws-1 with that phone_number_id)
+      prisma.channel.findMany.mockResolvedValue([]);
 
       const result = await service.findActiveWhatsappChannelByPhoneNumberId(
         phoneNumberId,
