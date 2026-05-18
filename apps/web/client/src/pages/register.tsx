@@ -188,11 +188,9 @@ export default function RegisterPage() {
       <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
         <div className="w-full max-w-[34rem]">
           <div className="mb-8 flex items-center justify-between gap-4">
-            <Link href="/login">
-              <a className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
-                <ArrowLeft className="h-4 w-4" />
-                {reg.backToLogin}
-              </a>
+            <Link href="/login" className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
+              <ArrowLeft className="h-4 w-4" />
+              {reg.backToLogin}
             </Link>
             <LanguageSwitcher variant="marketing" />
           </div>
@@ -325,21 +323,15 @@ export default function RegisterPage() {
 
             <div className="mt-8 flex flex-col items-center gap-4 text-center">
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/58">
-                <Link href="/legal/terms-of-service">
-                  <a className="transition hover:text-white/82">{reg.terms}</a>
-                </Link>
+                <Link href="/legal/terms-of-service" className="transition hover:text-white/80">{reg.terms}</Link>
                 <span className="h-1 w-1 rounded-full bg-white/24" />
-                <Link href="/legal/privacy-policy">
-                  <a className="transition hover:text-white/82">{reg.privacy}</a>
-                </Link>
+                <Link href="/legal/privacy-policy" className="transition hover:text-white/80">{reg.privacy}</Link>
               </div>
 
               <p className="text-sm text-[#b3bcdf]/58">
                 {reg.alreadyHaveAccount}{" "}
-                <Link href="/login">
-                  <a className="font-medium text-[#F59E0B] transition hover:text-[#FDE68A]">
-                    {reg.logIn}
-                  </a>
+                <Link href="/login" className="font-medium text-[#F59E0B] transition hover:text-[#FDE68A]">
+                  {reg.logIn}
                 </Link>
               </p>
 

@@ -140,7 +140,6 @@ export default function LoginPage() {
     setLoading(true);
     loginWithSsoCode(code)
       .then(() => {
-        window.location.hash = "#/";
         history.replaceState(null, "", "/");
         window.location.reload();
       })
@@ -173,7 +172,6 @@ export default function LoginPage() {
       api.telegramTokenLogin(user)
         .then(res => loginWithSsoCode(res.code))
         .then(() => {
-          window.location.hash = "#/";
           history.replaceState(null, "", "/");
           window.location.reload();
         })
@@ -203,7 +201,6 @@ export default function LoginPage() {
       api.facebookTokenLogin(token)
         .then(res => loginWithSsoCode(res.code))
         .then(() => {
-          window.location.hash = "#/";
           history.replaceState(null, "", "/");
           window.location.reload();
         })
@@ -274,11 +271,9 @@ export default function LoginPage() {
       <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
         <div className="w-full max-w-[34rem]">
           <div className="mb-8 flex items-center justify-between gap-4">
-            <Link href="/">
-              <a className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/85 transition hover:text-white">
-                <ArrowLeft className="h-4 w-4" />
-                {copy.back}
-              </a>
+            <Link href="/" className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/85 transition hover:text-white">
+              <ArrowLeft className="h-4 w-4" />
+              {copy.back}
             </Link>
 
             <LanguageSwitcher variant="marketing" />
@@ -431,15 +426,11 @@ export default function LoginPage() {
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <Link href="/accept-invite">
-                  <a className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/95 transition hover:border-white/18 hover:text-white">
-                    {copy.acceptInvite}
-                  </a>
+                <Link href="/accept-invite" className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/95 transition hover:border-white/18 hover:text-white">
+                  {copy.acceptInvite}
                 </Link>
-                <Link href="/legal">
-                  <a className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/95 transition hover:border-white/18 hover:text-white">
-                    {copy.legalCenter}
-                  </a>
+                <Link href="/legal" className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/95 transition hover:border-white/18 hover:text-white">
+                  {copy.legalCenter}
                 </Link>
               </div>
             </div>
@@ -448,29 +439,21 @@ export default function LoginPage() {
 
             <div className="mt-10 flex flex-col items-center gap-4 text-center">
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/80">
-                <Link href="/legal/terms-of-service">
-                  <a className="transition hover:text-white/82">{copy.terms}</a>
-                </Link>
+                <Link href="/legal/terms-of-service" className="transition hover:text-white/80">{copy.terms}</Link>
                 <span className="h-1 w-1 rounded-full bg-white/40" />
-                <Link href="/legal/privacy-policy">
-                  <a className="transition hover:text-white/82">{copy.privacy}</a>
-                </Link>
+                <Link href="/legal/privacy-policy" className="transition hover:text-white/80">{copy.privacy}</Link>
               </div>
 
               <p className="text-sm text-white/85">
                 {copy.noWorkspace}{" "}
-                <Link href="/">
-                  <a className="font-medium text-[#F59E0B] transition hover:text-[#F59E0B]">
-                    {copy.explore}
-                  </a>
+                <Link href="/" className="font-medium text-[#F59E0B] transition hover:text-[#F59E0B]">
+                  {copy.explore}
                 </Link>
               </p>
 
               <p className="text-sm text-white/85">
-                <Link href="/register">
-                  <a className="font-medium text-[#F59E0B] transition hover:text-[#F59E0B]">
-                    Create account →
-                  </a>
+                <Link href="/register" className="font-medium text-[#F59E0B] transition hover:text-[#F59E0B]">
+                  Create account →
                 </Link>
               </p>
 
