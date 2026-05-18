@@ -3,6 +3,9 @@ import { useLocation } from "wouter";
 import { api } from "@/lib/api";
 import { Search, Inbox, Users, CheckSquare, FileText, Settings, Zap, KanbanSquare, Receipt, CircleHelp, MessageCircle, Mail } from "lucide-react";
 
+type ApiConversation = { id: string; subject?: string; contact?: { full_name?: string; name?: string } };
+type ApiContact = { id: string; full_name?: string; name?: string; email?: string; phone?: string };
+
 type SearchResult = {
   type: "conversation" | "contact" | "page";
   label: string;
@@ -73,22 +76,22 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
 
         const convHits: SearchResult[] = (Array.isArray(convRes) ? convRes : convRes.data ?? [])
           .slice(0, 5)
-          .map((c: any) => ({
+          .map((c: ApiConversation) => ({
             type: "conversation" as const,
             label: c.subject || "Sin asunto",
             description: c.contact?.full_name || c.contact?.name || "Contacto desconocido",
             href: `/inbox/${c.id}`,
           }));
 
-        const contacts = Array.isArray(contactRes) ? contactRes : contactRes.data ?? [];
+        const contacts: ApiContact[] = Array.isArray(contactRes) ? contactRes : contactRes.data ?? [];
         const contactHits: SearchResult[] = contacts
-          .filter((c: any) =>
+          .filter((c) =>
             c.full_name?.toLowerCase().includes(q) ||
             c.email?.toLowerCase().includes(q) ||
             c.phone?.includes(q),
           )
           .slice(0, 3)
-          .map((c: any) => ({
+          .map((c) => ({
             type: "contact" as const,
             label: c.full_name || c.name || "Sin nombre",
             description: c.email || c.phone || "",

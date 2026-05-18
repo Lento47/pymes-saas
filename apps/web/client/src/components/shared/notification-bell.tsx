@@ -7,6 +7,8 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Link } from "wouter";
 
+type Notification = { id: string; read_at?: string | null; body?: string; title?: string; type?: string; created_at?: string };
+
 /** Compact notification bell icon with unread badge + dropdown panel */
 export function NotificationBell() {
   const qc = useQueryClient();
@@ -125,7 +127,7 @@ export function NotificationBell() {
                   Sin notificaciones
                 </div>
               ) : (
-                notifications.map((n: any) => (
+                (notifications as Notification[]).map((n) => (
                   <NotifItem
                     key={n.id}
                     notification={n}
@@ -164,7 +166,7 @@ function NotifItem({
   notification: n,
   onMarkRead,
 }: {
-  notification: Record<string, any>;
+  notification: Notification;
   onMarkRead: () => void;
 }) {
   const [hovering, setHovering] = useState(false);

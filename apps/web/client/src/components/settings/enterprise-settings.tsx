@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Save, Building2 } from "lucide-react";
 
+type Capability = { key: string; name: string; status: string };
+
 const SLA_TIERS = ["none", "standard", "priority", "custom"];
 const SUPPORT_TIERS = ["standard", "priority", "dedicated", "custom"];
 const SECURITY_TIERS = ["standard", "advanced", "custom"];
@@ -29,12 +31,13 @@ export default function EnterpriseSettingsTab() {
     retry: false,
   });
 
-  const { data: capabilities = [] } = useQuery({
+  const { data: capData = [] } = useQuery({
     queryKey: ["enterprise-capabilities"],
     queryFn: api.getEnterpriseCapabilities,
     retry: false,
     staleTime: 60000,
   });
+  const capabilities = capData as Capability[];
 
   const [customPrice, setCustomPrice] = useState("");
   const [customAnnualPrice, setCustomAnnualPrice] = useState("");
@@ -240,7 +243,7 @@ export default function EnterpriseSettingsTab() {
         <div className="space-y-3">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase">Capacidades habilitadas</h4>
           <div className="grid gap-2 md:grid-cols-2">
-            {capabilities.map((cap: any) => (
+            {capabilities.map((cap) => (
               <div key={cap.key} className="flex items-center justify-between rounded-lg border border-border bg-[hsl(var(--elevated))] p-3">
                 <div>
                   <span className="text-xs font-medium text-foreground">{cap.name}</span>

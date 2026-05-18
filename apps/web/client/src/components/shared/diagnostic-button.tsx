@@ -4,6 +4,9 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 
+type KnownIssue = { title: string; workaround?: string };
+type DiagnosticResult = { case_id: string; category: string; risk_level: string; recommendation?: string; matched_known_issue?: KnownIssue };
+
 interface DiagnosticButtonProps {
   module: string;
   className?: string;
@@ -64,7 +67,7 @@ const RISK_COLOR: Record<string, string> = {
 
 export function DiagnosticButton({ module, className }: DiagnosticButtonProps) {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<DiagnosticResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const moduleGuide = MODULE_GUIDANCE[module] || MODULE_GUIDANCE.conversations;
@@ -76,9 +79,9 @@ export function DiagnosticButton({ module, className }: DiagnosticButtonProps) {
     setResult(null);
     try {
       const res = await api.runDiagnostic(module);
-      setResult(res);
+      setResult(res as DiagnosticResult);
     } catch (err: unknown) {
-      setError((err as any)?.message || "No se pudo completar el diagnóstico");
+      setError(err instanceof Error ? err.message : "No se pudo completar el diagnóstico");
     } finally {
       setLoading(false);
     }

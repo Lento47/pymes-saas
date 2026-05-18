@@ -13,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
+type Channel = { id: string; name: string; type: string; status: string; config?: Record<string, string>; workspace_id?: string };
+type TelegramWebhookStatus = { url?: string; pending_update_count?: number; last_error_message?: string; last_error_date?: number };
+
 const CHANNEL_TYPE_COLORS: Record<string, string> = {
   EMAIL: "bg-blue-500/10 text-blue-400",
   WHATSAPP: "bg-green-500/10 text-green-400",
@@ -244,7 +247,7 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
   const { toast } = useToast();
   const qc = useQueryClient();
   const [botToken, setBotToken] = useState("");
-  const [webhookStatus, setWebhookStatus] = useState<any>(null);
+  const [webhookStatus, setWebhookStatus] = useState<TelegramWebhookStatus | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
 
   const save = useMutation({
@@ -330,7 +333,7 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
               </p>
               <p>
                 Pendientes:{" "}
-                <span className={webhookStatus.pending_update_count > 0 ? "text-yellow-400" : "text-green-400"}>
+                <span className={(webhookStatus.pending_update_count ?? 0) > 0 ? "text-yellow-400" : "text-green-400"}>
                   {webhookStatus.pending_update_count ?? "—"}
                 </span>
               </p>
@@ -419,8 +422,8 @@ export function ChannelsTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
-  const [configChannel, setConfigChannel] = useState<any>(null);
-  const [deleteChannel, setDeleteChannel] = useState<any>(null);
+  const [configChannel, setConfigChannel] = useState<Channel | null>(null);
+  const [deleteChannel, setDeleteChannel] = useState<Channel | null>(null);
   const [name, setName] = useState("");
   const [type, setType] = useState("EMAIL");
 
