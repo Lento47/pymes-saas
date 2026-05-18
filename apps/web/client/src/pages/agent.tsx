@@ -241,7 +241,7 @@ export default function Agent() {
           <h1 className="text-[13px] font-semibold text-foreground tracking-tight">Asistente IA</h1>
           <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-muted-foreground/80"
             style={{ background: 'hsl(var(--primary) / 0.10)', border: '1px solid hsl(var(--primary) / 0.15)' }}>
-            {isStreaming ? 'Respondiendo' : 'GPT-5.4'}
+            {isStreaming ? 'Respondiendo' : 'Beta'}
           </span>
         </div>
         {hasMessages && (
@@ -319,7 +319,7 @@ export default function Agent() {
                   } : {
                     background: 'hsl(var(--foreground)/0.015)',
                     border: '1px solid hsl(var(--foreground)/0.04)',
-                    color: '#e4e4e7',
+                    color: 'hsl(var(--fg))',
                   }}>
                   {msg.role === 'user' ? (
                     <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
@@ -470,14 +470,14 @@ export default function Agent() {
           </div>
 
           {/* Input bar */}
-          <div className="relative flex items-end gap-2 rounded-2xl px-4 py-3 transition-all duration-300 focus-within:border-indigo-500/30"
+          <div className="relative flex items-end gap-2 rounded-2xl px-4 py-3 transition-all duration-300 focus-within:border-primary/30"
             style={{
               background: 'hsl(var(--foreground)/0.03)',
               border: '1px solid hsl(var(--foreground)/0.04)',
               boxShadow: '0 1px 3px hsl(var(--foreground) / 0.08), 0 0 0 1px hsl(var(--primary) / 0)',
             }}>
             <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
-              placeholder={pageContext ? `Necesito ayuda con ${pageContext}...` : "Preguntame algo..."}
+              placeholder={pageContext ? `Necesito ayuda con ${pageContext}...` : "Pregúntame algo..."}
               disabled={isStreaming} rows={1}
               className="flex-1 resize-none bg-transparent text-[14px] outline-none disabled:opacity-30 text-foreground/85 placeholder:text-muted-foreground/75"
               style={{ maxHeight: '120px' }}
