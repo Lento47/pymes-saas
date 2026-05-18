@@ -8,6 +8,12 @@ import { AuthService } from '../auth.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
+import { AuthUser } from '../strategies/jwt.strategy';
+
+/** Express Request augmented by Passport after JwtAuthGuard runs */
+interface AuthenticatedRequest extends Request {
+  user: AuthUser;
+}
 
 @Controller('auth/saml')
 export class SamlController {
@@ -82,8 +88,9 @@ export class SamlController {
       const code = this.authService.mintSsoExchangeCode(auth.user.id, ws.id);
       this.logger.log(`SAML login success: ${result.email} → workspace ${ws.id}`);
       res.redirect(`${baseRedirect}/login?code=${encodeURIComponent(code)}&slug=${ws.slug}`);
-    } catch (err) {
-      this.logger.warn(`SAML login failed for ${result.email}: ${err.message}`);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      this.logger.warn(`SAML login failed for ${result.email}: ${errMsg}`);
       // Don't echo err.message into the URL — it ends up in proxy logs.
       res.redirect(`${baseRedirect}/login?error=sso_failed`);
     }
@@ -95,7 +102,7 @@ export class SamlController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('OWNER', 'ADMIN')
   async getConfig(@Param('workspaceId') workspaceId: string, @Req() req: Request) {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     if (user?.workspace_id !== workspaceId) {
       throw new ForbiddenException('Cannot access SSO config for another workspace');
     }
@@ -136,7 +143,7 @@ export class SamlController {
     @Body() data: Record<string, any>,
     @Req() req: Request,
   ) {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     if (user?.workspace_id !== workspaceId) {
       throw new ForbiddenException('Cannot modify SSO config for another workspace');
     }
@@ -198,7 +205,7 @@ export class SamlController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('OWNER', 'ADMIN')
   async enableSso(@Param('workspaceId') workspaceId: string, @Req() req: Request) {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     if (user?.workspace_id !== workspaceId) {
       throw new ForbiddenException();
     }
@@ -214,7 +221,7 @@ export class SamlController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('OWNER', 'ADMIN')
   async disableSso(@Param('workspaceId') workspaceId: string, @Req() req: Request) {
-    const user = (req as any).user;
+    const user = (req as AuthenticatedRequest).user;
     if (user?.workspace_id !== workspaceId) {
       throw new ForbiddenException();
     }

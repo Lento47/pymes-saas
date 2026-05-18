@@ -7,12 +7,22 @@ import { EventsGateway } from '../gateways/events.gateway';
 import { AiService } from '../ai/ai.service';
 import { TasksService } from '../tasks/tasks.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { Priority } from '@prisma/client';
+import { Contact, Priority } from '@prisma/client';
 import { AutomationsService } from '../automations/automations.service';
 import { RoutingService } from '../routing/routing.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { StorageService } from '../common/storage/storage.service';
 import { parseJsonValue } from '../common/prisma/json';
+
+/** Shape of a single attachment entry stored in Message.attachments_json */
+interface AttachmentEntry {
+  storageKey?: string;
+  type?: string;
+  mediaId?: string;
+  mimeType?: string;
+  filename?: string;
+  caption?: string;
+}
 
 @Injectable()
 export class MessagesService {
@@ -89,7 +99,7 @@ export class MessagesService {
         body_text: dto.body_text,
         body_html: dto.body_html,
         sent_at: new Date(),
-        message_type: (dto as any).media_type || undefined,
+        message_type: dto.media_type || undefined,
       },
       include: {
         sender_user: { select: { id: true, name: true, avatar_url: true } },
@@ -135,7 +145,7 @@ export class MessagesService {
         where: { workspace_id: workspaceId, email: senderRef },
       });
     } else if (normalizedPhone) {
-      const contactRows = await (this.prisma as any).$queryRawUnsafe(
+      const contactRows = await this.prisma.rawQuery<Contact[]>(
         `SELECT * FROM "contacts"
          WHERE workspace_id = $1
            AND (phone = $2 OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = $3)
@@ -152,8 +162,8 @@ export class MessagesService {
         contactUpdates.full_name = senderName;
       }
       // Store Telegram chat_id if not already set
-      const tgChatId = (payload as any).telegram_chat_id;
-      if (tgChatId && !(contact as any).telegram_chat_id) {
+      const tgChatId = payload.telegram_chat_id as string | undefined;
+      if (tgChatId && !contact.telegram_chat_id) {
         contactUpdates.telegram_chat_id = tgChatId;
       }
       if (Object.keys(contactUpdates).length > 0) {
@@ -173,7 +183,7 @@ export class MessagesService {
           full_name: senderName,
           email: isEmail ? senderRef : undefined,
           phone: !isEmail ? senderRef : undefined,
-          telegram_chat_id: (payload as any).telegram_chat_id || undefined,
+          telegram_chat_id: (payload.telegram_chat_id as string | undefined) || undefined,
         },
       });
     }
@@ -255,7 +265,7 @@ export class MessagesService {
         sender_ref: senderRef,
         body_text: bodyText,
         body_html: payload.body_html ?? payload.html ?? null,
-        raw_payload_json: payload as any,
+        raw_payload_json: payload,
         sent_at: new Date(),
       },
     });
@@ -370,8 +380,9 @@ export class MessagesService {
           where: { id: existingMessage.id },
           select: { raw_payload_json: true },
         });
-        const existingPayload = (existing?.raw_payload_json as any) ?? {};
-        if (!existingPayload.whatsapp_media?.id || existingPayload.whatsapp_media.id !== params.whatsappMedia.id) {
+        const existingPayload = (existing?.raw_payload_json as Record<string, unknown> | null) ?? {};
+        const existingWm = existingPayload.whatsapp_media as { id?: string } | undefined;
+        if (!existingWm?.id || existingWm.id !== params.whatsappMedia.id) {
           await this.prisma.message.update({
             where: { id: existingMessage.id },
             data: {
@@ -490,18 +501,18 @@ export class MessagesService {
       if (message) {
         this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessageForClient(message));
       }
-    } catch (err) {
-      this.logger.error(`Realtime emit failed: ${err?.message}`);
+    } catch (err: unknown) {
+      this.logger.error(`Realtime emit failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    let conversation: Record<string, any> | null = null;
+    let conversation: { subject: string | null; assigned_user_id: string | null } | null = null;
     try {
       conversation = await this.prisma.conversation.findUnique({
         where: { id: conversationId },
         select: { subject: true, assigned_user_id: true },
       });
-    } catch (err) {
-      this.logger.error(`Failed to fetch conversation for notification: ${err?.message}`);
+    } catch (err: unknown) {
+      this.logger.error(`Failed to fetch conversation for notification: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     if (conversation?.assigned_user_id) {
@@ -570,7 +581,7 @@ export class MessagesService {
     }
 
     // 3) Check attachments_json (MinIO-stored media from downloadInboundMediaToStorage)
-    const attachments = msg.attachments_json as any[] | null | undefined;
+    const attachments = msg.attachments_json as AttachmentEntry[] | null | undefined;
     const attachmentEntry = attachments?.[0] ?? null;
 
     const mediaType = wm?.mediaType ?? wm?.kind ?? attachmentEntry?.type ?? msg.message_type ?? null;
@@ -621,7 +632,7 @@ export class MessagesService {
     });
     if (!msg) return null;
 
-    const attachments = msg.attachments_json as any[] | null | undefined;
+    const attachments = msg.attachments_json as AttachmentEntry[] | null | undefined;
     const entry = attachments?.[0] ?? null;
     if (!entry?.storageKey) return null;
 

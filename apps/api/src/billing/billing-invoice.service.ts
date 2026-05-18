@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BillingInvoiceStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { generateBillingInvoicePdf, type BillingInvoicePdfData } from './billing-invoice-pdf.service';
 
@@ -59,13 +60,13 @@ export class BillingInvoiceService {
           number,
           workspace_id: workspaceId,
           subscription_id: subscriptionId,
-          status: (params.status as any) || 'PAID',
+          status: (params.status as BillingInvoiceStatus | undefined) ?? 'PAID',
           client_name: params.clientName,
           client_email: params.clientEmail,
           plan_name: params.planName,
           plan_interval: params.planInterval,
           seats: params.seats,
-          line_items: lineItems as any,
+          line_items: lineItems as Prisma.InputJsonValue,
           subtotal,
           tax_rate: taxRate,
           tax_amount: taxAmount,
@@ -83,7 +84,7 @@ export class BillingInvoiceService {
 
   async getPdfBuffer(invoiceId: string): Promise<{ buffer: Buffer; filename: string }> {
     const inv = await this.prisma.billingInvoice.findUniqueOrThrow({ where: { id: invoiceId } });
-    const lineItems = (inv.line_items as any[]) || [];
+    const lineItems = (inv.line_items as Array<Record<string, unknown>>) || [];
     const buffer = await generateBillingInvoicePdf({
       id: inv.id,
       number: inv.number,
@@ -95,7 +96,7 @@ export class BillingInvoiceService {
       planName: inv.plan_name,
       planInterval: inv.plan_interval,
       seats: inv.seats,
-      lineItems: lineItems.map((li: Record<string, any>) => ({
+      lineItems: lineItems.map((li: Record<string, unknown>) => ({
         description: li.description,
         quantity: li.quantity,
         unitPrice: li.unitPrice,
@@ -120,7 +121,7 @@ export class BillingInvoiceService {
     const limit = Math.min(filters?.limit ?? 10, 100);
     const skip = (page - 1) * limit;
 
-    const where: Record<string, any> = { workspace_id: workspaceId };
+    const where: Record<string, unknown> = { workspace_id: workspaceId };
 
     if (filters?.search) {
       const s = filters.search;

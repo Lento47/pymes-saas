@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
-import { SAML } from '@node-saml/node-saml';
+import { SAML, Profile } from '@node-saml/node-saml';
 
 export interface SamlIdpConfig {
   entityId: string;
@@ -98,13 +98,15 @@ export class SamlService {
     // submissions of the same SAMLResponse are rejected.
     this.rememberAssertion(responseHash, Date.now() + 10 * 60 * 1000);
 
-    const profile = result.profile || {} as Record<string, any>;
-    const email = (profile?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ||
-      (profile as any)?.email ||
-      (profile as any)?.mail ||
-      (profile as any)?.nameID) as string;
+    const profile: Profile | null = result.profile ?? null;
+    const email = (
+      (profile?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] as string | undefined) ||
+      profile?.email ||
+      profile?.mail ||
+      profile?.nameID
+    ) as string;
 
-    const nameId = (profile as any)?.nameID || email;
+    const nameId = profile?.nameID || email;
 
     if (!email) {
       this.logger.error(`SAML response missing email for workspace ${workspaceSlug}`);
