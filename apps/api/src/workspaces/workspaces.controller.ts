@@ -78,6 +78,46 @@ export class WorkspacesController {
     return this.service.exportData(workspaceId, type);
   }
 
+  @Get('current/landing-config')
+  @Roles(WorkspaceUserRole.ADMIN)
+  async getLandingConfig(@CurrentUser('workspace_id') workspaceId: string) {
+    const workspace = await this.service.getCurrent(workspaceId);
+    const settings =
+      workspace.settings_json && typeof workspace.settings_json === 'object'
+        ? (workspace.settings_json as Record<string, any>)
+        : {};
+
+    return settings.landing_config ?? {};
+  }
+
+  @Patch('current/landing-config')
+  @Roles(WorkspaceUserRole.ADMIN)
+  async updateLandingConfig(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Body() dto: Record<string, any>,
+  ) {
+    const workspace = await this.service.getCurrent(workspaceId);
+    const settings =
+      workspace.settings_json && typeof workspace.settings_json === 'object'
+        ? (workspace.settings_json as Record<string, any>)
+        : {};
+    const current =
+      settings.landing_config && typeof settings.landing_config === 'object'
+        ? (settings.landing_config as Record<string, any>)
+        : {};
+    const landing_config = {
+      ...current,
+      ...dto,
+      updated_at: new Date().toISOString(),
+    };
+
+    await this.service.updateCurrent(workspaceId, {
+      settings_json: { landing_config },
+    } as UpdateWorkspaceDto);
+
+    return landing_config;
+  }
+
   @Patch('current')
   @Roles(WorkspaceUserRole.ADMIN)
   updateCurrent(
