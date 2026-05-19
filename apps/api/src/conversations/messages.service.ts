@@ -100,6 +100,19 @@ export class MessagesService {
         body_html: dto.body_html,
         sent_at: new Date(),
         message_type: dto.media_type || undefined,
+        attachments_json: dto.media_url
+          ? [
+              {
+                storageKey: dto.media_url.includes('/api/storage/file/')
+                  ? dto.media_url.split('/api/storage/file/').pop()!
+                  : dto.media_url,
+                type: dto.media_type ?? 'document',
+                mimeType: null,
+                filename: dto.media_url.split('/').pop() || null,
+                caption: dto.body_text || null,
+              },
+            ]
+          : undefined,
       },
       include: {
         sender_user: { select: { id: true, name: true, avatar_url: true } },
