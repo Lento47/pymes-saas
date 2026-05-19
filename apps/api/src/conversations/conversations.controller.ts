@@ -212,11 +212,22 @@ export class ConversationsController {
 
     if (conv?.channel?.type === 'TELEGRAM' && (conv.contact as any)?.telegram_chat_id) {
       try {
-        await this.telegramService.sendMessage(
-          conv.channel.id,
-          (conv.contact as any).telegram_chat_id,
-          bodyText,
-        );
+        const chatId = (conv.contact as any).telegram_chat_id;
+        if (dto.media_url && dto.media_type) {
+          await this.telegramService.sendMedia(
+            conv.channel.id,
+            chatId,
+            dto.media_url,
+            dto.media_type,
+            bodyText || undefined,
+          );
+        } else {
+          await this.telegramService.sendMessage(
+            conv.channel.id,
+            chatId,
+            bodyText,
+          );
+        }
       } catch (err) {
         this.logger.error(`Telegram dispatch failed: ${err?.message}`);
       }

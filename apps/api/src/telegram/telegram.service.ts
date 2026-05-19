@@ -322,6 +322,164 @@ export class TelegramService {
     }
   }
 
+  // ── Media sending ───────────────────────────────────────────────────────────
+
+  /**
+   * Download a file from storage and return a source object (Buffer or stream)
+   * that Telegraf can send. Handles both full URLs and storage keys.
+   */
+  private async resolveFileInput(mediaUrl: string): Promise<{ source: Buffer; filename: string }> {
+    const trimmed = mediaUrl.trim();
+    // If it's a storage key (no protocol), download via StorageService
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      const key = trimmed.includes('/api/storage/file/')
+        ? trimmed.split('/api/storage/file/').pop()!
+        : trimmed;
+      const buffer = await this.storage.download(key);
+      return { source: buffer, filename: key.split('/').pop() || 'file' };
+    }
+    // Full URL — fetch it
+    const res = await fetch(trimmed, { signal: AbortSignal.timeout(30_000) });
+    if (!res.ok) throw new Error(`Failed to fetch media URL: ${res.status}`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const urlPath = new URL(trimmed).pathname;
+    return { source: buffer, filename: urlPath.split('/').pop() || 'file' };
+  }
+
+  /**
+   * Send a photo (image) to a Telegram chat.
+   * Supports all image formats Telegram accepts (JPEG, PNG, GIF, WebP).
+   */
+  async sendPhoto(
+    channelId: string,
+    chatId: string,
+    mediaUrl: string,
+    caption?: string,
+  ): Promise<any> {
+    const token = await this.getBotToken(channelId);
+    if (!token) throw new NotFoundException('No bot token configured');
+
+    try {
+      const bot = new Telegraf(token);
+      const { source } = await this.resolveFileInput(mediaUrl);
+      const result = await bot.telegram.sendPhoto(chatId, { source } as any, {
+        caption,
+        parse_mode: 'HTML',
+      });
+      this.logger.log(`Photo sent to chat ${chatId} in channel ${channelId}`);
+      return result;
+    } catch (err) {
+      this.logger.error(`Failed to send photo: ${(err as Error).message}`);
+      throw new BadRequestException(`Failed to send photo: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Send a video to a Telegram chat.
+   * Supports MP4, MOV, AVI, MKV, WebM.
+   */
+  async sendVideo(
+    channelId: string,
+    chatId: string,
+    mediaUrl: string,
+    caption?: string,
+  ): Promise<any> {
+    const token = await this.getBotToken(channelId);
+    if (!token) throw new NotFoundException('No bot token configured');
+
+    try {
+      const bot = new Telegraf(token);
+      const { source } = await this.resolveFileInput(mediaUrl);
+      const result = await bot.telegram.sendVideo(chatId, { source } as any, {
+        caption,
+        parse_mode: 'HTML',
+      });
+      this.logger.log(`Video sent to chat ${chatId} in channel ${channelId}`);
+      return result;
+    } catch (err) {
+      this.logger.error(`Failed to send video: ${(err as Error).message}`);
+      throw new BadRequestException(`Failed to send video: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Send an audio file to a Telegram chat.
+   * Supports MP3, M4A, OGG, WAV, FLAC.
+   */
+  async sendAudio(
+    channelId: string,
+    chatId: string,
+    mediaUrl: string,
+    caption?: string,
+  ): Promise<any> {
+    const token = await this.getBotToken(channelId);
+    if (!token) throw new NotFoundException('No bot token configured');
+
+    try {
+      const bot = new Telegraf(token);
+      const { source } = await this.resolveFileInput(mediaUrl);
+      const result = await bot.telegram.sendAudio(chatId, { source } as any, {
+        caption,
+        parse_mode: 'HTML',
+      });
+      this.logger.log(`Audio sent to chat ${chatId} in channel ${channelId}`);
+      return result;
+    } catch (err) {
+      this.logger.error(`Failed to send audio: ${(err as Error).message}`);
+      throw new BadRequestException(`Failed to send audio: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Send a document (any file type) to a Telegram chat.
+   */
+  async sendDocument(
+    channelId: string,
+    chatId: string,
+    mediaUrl: string,
+    caption?: string,
+  ): Promise<any> {
+    const token = await this.getBotToken(channelId);
+    if (!token) throw new NotFoundException('No bot token configured');
+
+    try {
+      const bot = new Telegraf(token);
+      const { source } = await this.resolveFileInput(mediaUrl);
+      const result = await bot.telegram.sendDocument(chatId, { source } as any, {
+        caption,
+        parse_mode: 'HTML',
+      });
+      this.logger.log(`Document sent to chat ${chatId} in channel ${channelId}`);
+      return result;
+    } catch (err) {
+      this.logger.error(`Failed to send document: ${(err as Error).message}`);
+      throw new BadRequestException(`Failed to send document: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Unified media sender — routes by media_type string.
+   * Supported types: image, video, audio, document (default).
+   */
+  async sendMedia(
+    channelId: string,
+    chatId: string,
+    mediaUrl: string,
+    mediaType: string,
+    caption?: string,
+  ): Promise<any> {
+    switch (mediaType) {
+      case 'image':
+        return this.sendPhoto(channelId, chatId, mediaUrl, caption);
+      case 'video':
+        return this.sendVideo(channelId, chatId, mediaUrl, caption);
+      case 'audio':
+        return this.sendAudio(channelId, chatId, mediaUrl, caption);
+      default:
+        return this.sendDocument(channelId, chatId, mediaUrl, caption);
+    }
+  }
+
   /**
    * Get webhook status for debugging
    */
