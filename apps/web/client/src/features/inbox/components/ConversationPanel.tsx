@@ -23,6 +23,7 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PriorityDot } from "@/components/shared/priority-dot";
 import { ProductPicker } from "@/components/inventory/ProductPicker";
@@ -62,45 +63,14 @@ function DateSeparator({ date }: { date: Date }) {
   );
 }
 
-function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; mediaType: "image" | "video" | "audio" | "document"; caption?: string }) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const blobUrlRef = useRef<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+function MediaRenderer({ messageId, mediaType, caption }: {
+  messageId: string;
+  mediaType: "image" | "video" | "audio" | "document";
+  caption?: string;
+}) {
+  const blobUrl = useMediaBlobUrl(`/api/conversations/messages/${messageId}/media`);
 
-  useEffect(() => {
-    setLoading(true);
-    setError(false);
-    const token = localStorage.getItem("pymes_token");
-    const apiBase = import.meta.env.VITE_PymesHub_API_URL ?? "";
-    const controller = new AbortController();
-
-    fetch(`${apiBase}/api/conversations/messages/${messageId}/media`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      signal: controller.signal,
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("No se pudo cargar");
-        return res.blob();
-      })
-      .then((blob) => {
-        const url = URL.createObjectURL(blob);
-        blobUrlRef.current = url;
-        setBlobUrl(url);
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-        setError(true);
-      });
-
-    return () => {
-      controller.abort();
-      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
-    };
-  }, [messageId]);
-
-  if (loading) {
+  if (!blobUrl) {
     const label = mediaType === "image" ? "imagen"
       : mediaType === "video" ? "video"
       : mediaType === "audio" ? "audio"
@@ -113,14 +83,6 @@ function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; m
     );
   }
 
-  if (!blobUrl || error) {
-    return (
-      <p className="text-[12px] text-muted-foreground italic px-1">
-        No se pudo cargar el archivo
-      </p>
-    );
-  }
-
   if (mediaType === "image" || mediaType === "video") {
     return (
       <div>
@@ -130,7 +92,8 @@ function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; m
           <img src={blobUrl} alt={caption || "Imagen"} className="rounded-lg max-w-full max-h-64 object-contain" />
         )}
         {caption && <p className="text-[11px] text-muted-foreground/80 mt-1.5">{caption}</p>}
-        <a href={blobUrl} download={caption || mediaType} className="inline-block mt-1 text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
+        <a href={blobUrl} download={caption || mediaType}
+          className="inline-block mt-1 text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
           Descargar
         </a>
       </div>
@@ -151,7 +114,8 @@ function MediaRenderer({ messageId, mediaType, caption }: { messageId: string; m
       <span className="text-lg">📄</span>
       <div className="min-w-0">
         <p className="text-[12px] font-medium text-foreground truncate">{caption || "Documento"}</p>
-        <a href={blobUrl} download={caption || "documento"} className="text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
+        <a href={blobUrl} download={caption || "documento"}
+          className="text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
           Descargar
         </a>
       </div>
@@ -179,13 +143,13 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const id = conversationId || "";
 
   const { data: conv } = useQuery({
-    queryKey: ["conversation", id],
+    queryKey: ["/api/conversations", id],
     queryFn: () => api.getConversation(id),
     enabled: !!id,
   });
 
   const { data: messages, isLoading: msgsLoading } = useQuery({
-    queryKey: ["conversation-messages", id],
+    queryKey: ["/api/conversations", id, "messages"],
     queryFn: () => api.getMessages(id),
     enabled: !!id,
   });
@@ -199,7 +163,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const sendMut = useMutation({
     mutationFn: (data: Record<string, any>) => api.sendMessage(id, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["conversation-messages", id] });
+      qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       setMessage("");
     },
@@ -218,12 +182,12 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
   const resolveMut = useMutation({
     mutationFn: () => api.resolveConversation(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["conversation", id] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/conversations", id] }),
   });
 
   const assignMut = useMutation({
     mutationFn: (userId: string) => api.assignConversation(id, userId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["conversation", id] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/conversations", id] }),
   });
 
   const [showInvoice, setShowInvoice] = useState(false);
@@ -280,7 +244,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["conversation-invoices", id] });
-      qc.invalidateQueries({ queryKey: ["conversation-messages", id] });
+      qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
       toast({ title: "Factura enviada" });
     },
     onError: (e) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
@@ -389,7 +353,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hidden sm:inline-flex"
-                  onClick={() => qc.invalidateQueries({ queryKey: ["conversation-messages", id] })}>
+                  onClick={() => qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] })}>
                   <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
               </TooltipTrigger>
