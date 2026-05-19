@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { ImageLightbox } from "@/components/shared/image-lightbox";
 import { MarkdownRenderer } from "@/components/shared/markdown-renderer";
 import { EmojiPicker } from "@/components/shared/emoji-picker";
+import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -55,6 +56,106 @@ function DateSeparator({ date }: { date: Date }) {
       <div className="flex-1 h-px bg-border" />
       <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</span>
       <div className="flex-1 h-px bg-border" />
+    </div>
+  );
+}
+
+function MessageMediaContent({
+  msg,
+  onImageClick,
+}: {
+  msg: Record<string, any>;
+  onImageClick: (url: string) => void;
+}) {
+  const blobUrl = useMediaBlobUrl(msg.has_media ? msg.media_download_url : null);
+
+  if (!msg.has_media) return null;
+
+  if (msg.media_status === "processing" || msg.media_status === "pending") {
+    return (
+      <div className="flex items-center gap-2 text-xs mt-1.5 p-3 bg-black/10 dark:bg-white/10 rounded-xl animate-pulse">
+        <Loader2 className="w-4 h-4 animate-spin shrink-0 text-[#8774e1]" />
+        <span className="text-muted-foreground">Descargando media...</span>
+      </div>
+    );
+  }
+
+  if (!blobUrl) {
+    return (
+      <div className="flex items-center gap-2 text-xs mt-1.5 p-3 bg-black/10 dark:bg-white/10 rounded-xl animate-pulse">
+        <Loader2 className="w-4 h-4 animate-spin shrink-0 text-[#8774e1]" />
+        <span className="text-muted-foreground">Cargando media...</span>
+      </div>
+    );
+  }
+
+  if (msg.media_type === "image" || msg.media_mime_type?.startsWith("image/")) {
+    return (
+      <div className="mt-1.5 max-w-full">
+        <div className="relative rounded-xl overflow-hidden bg-black/5 dark:bg-white/5" style={{ aspectRatio: "16/9", maxHeight: 280 }}>
+          <img
+            src={blobUrl}
+            alt={msg.media_filename || "Imagen"}
+            className="w-full h-full object-cover cursor-pointer transition-transform hover:scale-[1.02]"
+            loading="lazy"
+            onClick={() => onImageClick(blobUrl)}
+          />
+        </div>
+        {msg.media_caption && (
+          <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5 opacity-80">
+            {msg.media_caption}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (msg.media_type === "video" || msg.media_mime_type?.startsWith("video/")) {
+    return (
+      <div className="mt-1.5 max-w-full">
+        <div className="relative rounded-xl overflow-hidden bg-black/5 dark:bg-white/5" style={{ aspectRatio: "16/9", maxHeight: 280 }}>
+          <video src={blobUrl} controls className="w-full h-full object-contain" preload="metadata">
+            Tu navegador no soporta video.
+          </video>
+        </div>
+        {msg.media_caption && (
+          <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5 opacity-80">
+            {msg.media_caption}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (msg.media_type === "audio" || msg.media_type === "voice" || msg.media_mime_type?.startsWith("audio/")) {
+    return (
+      <div className="mt-1.5 flex items-center gap-3 rounded-xl bg-black/5 dark:bg-white/5 px-4 py-3">
+        <div className="w-9 h-9 rounded-full bg-[#8774e1]/20 flex items-center justify-center">
+          <Volume2 className="w-4 h-4 text-[#8774e1]" />
+        </div>
+        <audio src={blobUrl} controls className="flex-1 h-9" preload="none">
+          Tu navegador no soporta audio.
+        </audio>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1.5">
+      <a
+        href={blobUrl}
+        download={msg.media_filename || "archivo"}
+        className="flex items-center gap-3 text-sm text-[#8774e1] hover:underline bg-black/5 dark:bg-white/5 rounded-xl px-4 py-3 transition-colors hover:bg-black/10 dark:hover:bg-white/10"
+      >
+        <FileText className="w-5 h-5 shrink-0" />
+        <span className="truncate flex-1">{msg.media_filename || "Archivo adjunto"}</span>
+        <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-50" />
+      </a>
+      {msg.media_caption && (
+        <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5 opacity-80">
+          {msg.media_caption}
+        </p>
+      )}
     </div>
   );
 }
@@ -627,72 +728,7 @@ export default function ConversationPage() {
                         ) : null}
 
                         {/* ── Media rendering ── */}
-                        {msg.has_media && (
-                          msg.media_status === "processing" || msg.media_status === "pending" ? (
-                            <div className="flex items-center gap-2 text-xs mt-1.5 p-3 bg-black/10 dark:bg-white/10 rounded-xl animate-pulse">
-                              <Loader2 className="w-4 h-4 animate-spin shrink-0 text-[#8774e1]" />
-                              <span className="text-muted-foreground">Descargando media...</span>
-                            </div>
-                          ) : msg.media_download_url ? (
-                          <div className="mt-1.5 max-w-full">
-                            {msg.media_type === "image" || msg.media_mime_type?.startsWith("image/") ? (
-                              <div className="relative rounded-xl overflow-hidden bg-black/5 dark:bg-white/5" style={{ aspectRatio: '16/9', maxHeight: 280 }}>
-                                <img
-                                  src={msg.media_download_url}
-                                  alt={msg.media_filename || "Imagen"}
-                                  className="w-full h-full object-cover cursor-pointer transition-transform hover:scale-[1.02]"
-                                  loading="lazy"
-                                  onClick={() => setLightboxUrl(msg.media_download_url)}
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = "none";
-                                  }}
-                                />
-                              </div>
-                            ) : msg.media_type === "video" || msg.media_mime_type?.startsWith("video/") ? (
-                              <div className="relative rounded-xl overflow-hidden bg-black/5 dark:bg-white/5" style={{ aspectRatio: '16/9', maxHeight: 280 }}>
-                                <video
-                                  src={msg.media_download_url}
-                                  controls
-                                  className="w-full h-full object-contain"
-                                  preload="metadata"
-                                >
-                                  Tu navegador no soporta video.
-                                </video>
-                              </div>
-                            ) : msg.media_type === "audio" || msg.media_mime_type?.startsWith("audio/") ? (
-                              <div className="flex items-center gap-3 rounded-xl bg-black/5 dark:bg-white/5 px-4 py-3">
-                                <div className="w-9 h-9 rounded-full bg-[#8774e1]/20 flex items-center justify-center">
-                                  <Volume2 className="w-4 h-4 text-[#8774e1]" />
-                                </div>
-                                <audio
-                                  src={msg.media_download_url}
-                                  controls
-                                  className="flex-1 h-9"
-                                  preload="none"
-                                >
-                                  Tu navegador no soporta audio.
-                                </audio>
-                              </div>
-                            ) : (
-                              <a
-                                href={msg.media_download_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 text-sm text-[#8774e1] hover:underline bg-black/5 dark:bg-white/5 rounded-xl px-4 py-3 transition-colors hover:bg-black/10 dark:hover:bg-white/10"
-                              >
-                                <FileText className="w-5 h-5 shrink-0" />
-                                <span className="truncate flex-1">{msg.media_filename || "Archivo adjunto"}</span>
-                                <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-50" />
-                              </a>
-                            )}
-                            {msg.media_caption && (
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5 opacity-80">
-                                {msg.media_caption}
-                              </p>
-                            )}
-                          </div>
-                          ) : null
-                        )}
+                        <MessageMediaContent msg={msg} onImageClick={setLightboxUrl} />
                         <div className={cn("flex items-center gap-1.5 mt-1", isOutbound ? "justify-end" : "justify-start")}>
                           <span className="text-[10px] text-muted-foreground/60">
                             {msgDate ? format(msgDate, "h:mm a") : ""}

@@ -42,9 +42,9 @@ export function useConversationSocket(conversationId: string) {
   const qc = useQueryClient();
 
   // Keep these aligned with ConversationPanel.tsx and InboxPage.tsx query keys.
-  const MESSAGES_KEY = ['conversation-messages', conversationId];
-  const CONVERSATION_KEY = ['conversation', conversationId];
-  const CONVERSATIONS_KEY = ['conversations'];
+  const MESSAGES_KEY = ["/api/conversations", conversationId, "messages"];
+  const CONVERSATION_KEY = ["/api/conversations", conversationId];
+  const CONVERSATIONS_KEY = ["/api/conversations"];
 
   function looksLikeMedia(message: Message): boolean {
     if (message.has_media || message.media_type) return true;
