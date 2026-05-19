@@ -79,7 +79,6 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Disconnected: ${client.id}`);
-    client.leaveAll();
   }
 
   // ── Eventos del cliente ────────────────────────────────────────────────────
