@@ -10,7 +10,6 @@ import { ConversationPanel } from "./components/ConversationPanel";
 import { CustomerContextPanel } from "./components/CustomerContextPanel";
 import { buildConversationQueryParams, normalizeConversationResponse } from "./utils";
 import type { ChannelTab, ConversationStatusFilter } from "./types";
-import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import { HelpButton } from "@/components/shared/help-button";
 import { InboxIcon } from "lucide-react";
 
@@ -37,10 +36,6 @@ export default function InboxPage() {
   return (
     <div className="flex flex-col h-full bg-background">
       <InboxHeader />
-
-      <div className="px-4 sm:px-6 pb-2">
-        <DiagnosticButton module="inbox" />
-      </div>
 
       <InboxToolbar
         search={search}
