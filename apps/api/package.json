@@ -7,6 +7,8 @@
     "start": "node dist/main",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
+    "deploy:build": "prisma validate --schema ./prisma/schema.prisma && prisma generate --schema ./prisma/schema.prisma && prisma migrate deploy --schema ./prisma/schema.prisma && pnpm run build",
+    "deploy:start": "node dist/main",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "ts-node prisma/seed.ts",
@@ -17,7 +19,7 @@
     "test": "node --no-deprecation node_modules/jest/bin/jest.js",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "postinstall": "prisma generate --schema ./prisma/schema.prisma || true"
+    "postinstall": "prisma generate --schema ./prisma/schema.prisma"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1028.0",
