@@ -52,8 +52,8 @@ export default function InboxPage() {
       />
 
       {/* Desktop layout */}
-      <div className="hidden md:grid flex-1 min-h-0 gap-px bg-border"
-        style={{ gridTemplateColumns: "340px minmax(0,1fr) 300px" }}>
+      <div className="hidden md:grid flex-1 min-h-0 divide-x divide-border"
+        style={{ gridTemplateColumns: "380px minmax(0,1fr) 320px" }}>
         <ConversationList
           conversations={conversations}
           isLoading={conversationsQuery.isLoading}

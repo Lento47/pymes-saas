@@ -1,18 +1,18 @@
-import { InboxIcon } from "lucide-react";
 import type { ChannelTab, InboxConversation } from "../types";
 import { ConversationListItem } from "./ConversationListItem";
 import { ConversationEmptyState } from "./ConversationEmptyState";
 
 function ConversationListSkeleton() {
   return (
-    <div className="space-y-2 p-2">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="animate-pulse rounded-2xl bg-foreground/[0.03] p-4">
+    <div className="py-1">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} className="animate-pulse px-4 py-3">
           <div className="flex gap-3">
-            <div className="h-10 w-10 rounded-full bg-foreground/[0.06]" />
-            <div className="flex-1 space-y-2">
-              <div className="h-3 w-24 rounded bg-foreground/[0.06]" />
-              <div className="h-3 w-full rounded bg-foreground/[0.04]" />
+            <div className="h-10 w-10 shrink-0 rounded-full bg-muted/60" />
+            <div className="flex-1 space-y-2 pt-0.5">
+              <div className="h-3 w-28 rounded bg-muted/60" />
+              <div className="h-3 w-16 rounded bg-muted/40" />
+              <div className="h-3 w-3/4 rounded bg-muted/30" />
             </div>
           </div>
         </div>
@@ -35,23 +35,26 @@ export function ConversationList({
   channelTab: ChannelTab;
 }) {
   return (
-    <section className="flex min-h-0 flex-col rounded-xl sm:border sm:border-border bg-card sm:shadow-sm">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+    <section className="flex min-h-0 flex-col bg-card">
+      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Conversaciones</h2>
-          <p className="text-xs text-muted-foreground/70">
-            {conversations.length} encontradas
-          </p>
+          {!isLoading && (
+            <p className="mt-0.5 text-xs text-muted-foreground/70">
+              {conversations.length}{" "}
+              {conversations.length === 1 ? "encontrada" : "encontradas"}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {isLoading ? (
           <ConversationListSkeleton />
         ) : conversations.length === 0 ? (
           <ConversationEmptyState channelTab={channelTab} />
         ) : (
-          <div className="space-y-2">
+          <div>
             {conversations.map((conversation) => (
               <ConversationListItem
                 key={conversation.id}
