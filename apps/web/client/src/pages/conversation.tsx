@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
@@ -17,7 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRoute, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
-import { ArrowLeft, Coins, ExternalLink, CheckCircle2, CheckCheck, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, FileText, Paperclip, Image, X, Smile } from "lucide-react";
+import { ArrowLeft, Coins, ExternalLink, CheckCircle2, CheckCheck, Check, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, FileText, Paperclip, Image, X, Smile, Play, Volume2, Upload, FileIcon, ChevronDown } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ImageLightbox } from "@/components/shared/image-lightbox";
@@ -77,6 +77,10 @@ export default function ConversationPage() {
     setFilePreviewUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [selectedFile]);
+
+  const messageAnimStyles = useMemo(() => ({
+    "--slide-in": "0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+  } as React.CSSProperties), []);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [showDelete, setShowDelete] = useState(false);
@@ -372,19 +376,29 @@ export default function ConversationPage() {
     (m: Record<string, any>) => (m.user?.id || m.userId || m.id) === (conversation?.assigned_user?.id || conversation?.assigned_to_id || conversation?.assigned_user_id)
   );
 
-  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
+  const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
     const el = scrollContainerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
     else messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const threshold = 150;
+    setIsNearBottom(el.scrollHeight - el.scrollTop - el.clientHeight < threshold);
+  }, []);
+
   const prevLengthRef = useRef(0);
   useEffect(() => {
     if (msgList.length === 0) return;
     const isInitial = prevLengthRef.current === 0;
-    scrollToBottom(isInitial ? "auto" : "smooth");
+    if (isInitial || isNearBottom) {
+      scrollToBottom(isInitial ? 'auto' : 'smooth');
+    }
     prevLengthRef.current = msgList.length;
-  }, [msgList.length]);
+  }, [msgList.length, isNearBottom]);
 
   const handleSend = () => {
     if (!message.trim()) return;
@@ -528,9 +542,29 @@ export default function ConversationPage() {
             </div>
           </div>
 
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4 pr-1">
+          <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto pb-4 pr-1 relative">
             {msgsLoading ? (
-              <PageLoader />
+              <div className="space-y-4 p-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className={cn("flex gap-3", i % 2 === 0 ? "justify-end" : "justify-start")}>
+                    <div className={cn(
+                      "animate-pulse rounded-2xl",
+                      i % 2 === 0 ? "bg-[#8774e1]/30 rounded-br-sm" : "bg-card border border-border/50 rounded-bl-sm",
+                      "px-3.5 py-2.5",
+                      i % 2 === 0 ? "w-3/5" : "w-2/4"
+                    )}>
+                      <div className={cn(
+                        "h-3 rounded",
+                        i % 2 === 0 ? "bg-white/20" : "bg-foreground/10"
+                      )} style={{ width: `${70 + Math.random() * 30}%` }} />
+                      <div className={cn(
+                        "h-3 rounded mt-2",
+                        i % 2 === 0 ? "bg-white/20" : "bg-foreground/10"
+                      )} style={{ width: `${40 + Math.random() * 30}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : msgList.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
                 <MessageCircle className="w-8 h-8 opacity-30" />
@@ -573,96 +607,105 @@ export default function ConversationPage() {
                       )}
                       <div
                         className={cn(
-                          "max-w-[68%] rounded-2xl px-3.5 py-2",
+                          "max-w-[72%] rounded-2xl px-3.5 py-2.5",
                           isOutbound
-                            ? "bg-primary/20 text-foreground rounded-tr-sm"
-                            : "bg-muted text-foreground rounded-tl-sm"
+                            ? "bg-[#8774e1] text-white rounded-br-sm"
+                            : "bg-card border border-border/50 text-foreground rounded-bl-sm"
                         )}
                       >
                         {isFirstInGroup && !isOutbound && (
-                          <div className="text-[10px] font-medium text-muted-foreground mb-1">
+                          <div className="text-[10px] font-medium text-[#8774e1] mb-1">
                             {contactName}
                           </div>
                         )}
                         {msg.body_text || msg.body_html || msg.content || msg.body ? (
-                          <MarkdownRenderer
-                            content={msg.body_text || msg.body_html || msg.content || msg.body}
-                          />
+                          <div className={cn("text-sm leading-relaxed whitespace-pre-wrap", isOutbound && "text-white/90")}>
+                            <MarkdownRenderer
+                              content={msg.body_text || msg.body_html || msg.content || msg.body}
+                            />
+                          </div>
                         ) : null}
 
                         {/* ── Media rendering ── */}
                         {msg.has_media && (
                           msg.media_status === "processing" || msg.media_status === "pending" ? (
-                            <div className="flex items-center gap-2 text-muted-foreground text-xs mt-1.5 p-2 bg-black/5 rounded-lg">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                              <span>Procesando media...</span>
+                            <div className="flex items-center gap-2 text-xs mt-1.5 p-3 bg-black/10 dark:bg-white/10 rounded-xl animate-pulse">
+                              <Loader2 className="w-4 h-4 animate-spin shrink-0 text-[#8774e1]" />
+                              <span className="text-muted-foreground">Descargando media...</span>
                             </div>
                           ) : msg.media_download_url ? (
                           <div className="mt-1.5 max-w-full">
                             {msg.media_type === "image" || msg.media_mime_type?.startsWith("image/") ? (
-                              <img
-                                src={msg.media_download_url}
-                                alt={msg.media_filename || "Imagen"}
-                                className="rounded-lg max-h-64 w-full object-cover cursor-pointer"
-                                loading="lazy"
-                                onClick={() => setLightboxUrl(msg.media_download_url)}
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display = "none";
-                                }}
-                              />
+                              <div className="relative rounded-xl overflow-hidden bg-black/5 dark:bg-white/5" style={{ aspectRatio: '16/9', maxHeight: 280 }}>
+                                <img
+                                  src={msg.media_download_url}
+                                  alt={msg.media_filename || "Imagen"}
+                                  className="w-full h-full object-cover cursor-pointer transition-transform hover:scale-[1.02]"
+                                  loading="lazy"
+                                  onClick={() => setLightboxUrl(msg.media_download_url)}
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
+                              </div>
                             ) : msg.media_type === "video" || msg.media_mime_type?.startsWith("video/") ? (
-                              <video
-                                src={msg.media_download_url}
-                                controls
-                                className="rounded-lg max-h-64 w-full"
-                                preload="metadata"
-                              >
-                                Tu navegador no soporta video.
-                              </video>
+                              <div className="relative rounded-xl overflow-hidden bg-black/5 dark:bg-white/5" style={{ aspectRatio: '16/9', maxHeight: 280 }}>
+                                <video
+                                  src={msg.media_download_url}
+                                  controls
+                                  className="w-full h-full object-contain"
+                                  preload="metadata"
+                                >
+                                  Tu navegador no soporta video.
+                                </video>
+                              </div>
                             ) : msg.media_type === "audio" || msg.media_mime_type?.startsWith("audio/") ? (
-                              <audio
-                                src={msg.media_download_url}
-                                controls
-                                className="w-full h-10"
-                                preload="none"
-                              >
-                                Tu navegador no soporta audio.
-                              </audio>
+                              <div className="flex items-center gap-3 rounded-xl bg-black/5 dark:bg-white/5 px-4 py-3">
+                                <div className="w-9 h-9 rounded-full bg-[#8774e1]/20 flex items-center justify-center">
+                                  <Volume2 className="w-4 h-4 text-[#8774e1]" />
+                                </div>
+                                <audio
+                                  src={msg.media_download_url}
+                                  controls
+                                  className="flex-1 h-9"
+                                  preload="none"
+                                >
+                                  Tu navegador no soporta audio.
+                                </audio>
+                              </div>
                             ) : (
                               <a
                                 href={msg.media_download_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-2 text-sm text-primary hover:underline bg-muted/50 rounded-lg px-3 py-2"
+                                className="flex items-center gap-3 text-sm text-[#8774e1] hover:underline bg-black/5 dark:bg-white/5 rounded-xl px-4 py-3 transition-colors hover:bg-black/10 dark:hover:bg-white/10"
                               >
-                                <FileText className="w-4 h-4" />
-                                {msg.media_filename || "Archivo adjunto"}
+                                <FileText className="w-5 h-5 shrink-0" />
+                                <span className="truncate flex-1">{msg.media_filename || "Archivo adjunto"}</span>
+                                <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-50" />
                               </a>
                             )}
                             {msg.media_caption && (
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5">
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap mt-1.5 opacity-80">
                                 {msg.media_caption}
                               </p>
                             )}
                           </div>
                           ) : null
                         )}
-                        <div className={cn("flex items-center gap-1 mt-1", isOutbound ? "justify-end" : "justify-left")}>
-                          <span className="text-[10px] text-muted-foreground">
+                        <div className={cn("flex items-center gap-1.5 mt-1", isOutbound ? "justify-end" : "justify-start")}>
+                          <span className="text-[10px] text-muted-foreground/60">
                             {msgDate ? format(msgDate, "h:mm a") : ""}
                           </span>
                           {isOutbound && (
                             <span title={msg.read_at ? "Leído" : msg.delivered_at ? "Entregado" : "Enviado"}>
-                              <CheckCheck
-                                className={cn(
-                                  "w-3 h-3",
-                                  msg.read_at
-                                    ? "text-primary"
-                                    : msg.delivered_at
-                                      ? "text-muted-foreground"
-                                      : "text-muted-foreground/50"
-                                )}
-                              />
+                              {msg.read_at ? (
+                                <CheckCheck className="w-3.5 h-3.5 text-[#8774e1]" />
+                              ) : msg.delivered_at ? (
+                                <CheckCheck className="w-3.5 h-3.5 text-muted-foreground/60" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5 text-muted-foreground/40" />
+                              )}
                             </span>
                           )}
                         </div>
@@ -674,6 +717,15 @@ export default function ConversationPage() {
             )}
             <div ref={messagesEndRef} />
           </div>
+
+          {!isNearBottom && (
+            <button
+              onClick={() => scrollToBottom('smooth')}
+              className="absolute bottom-24 right-6 z-10 w-9 h-9 rounded-full bg-primary shadow-lg flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-all animate-in fade-in slide-in-from-bottom-1"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          )}
 
           {/* ── Typing indicator ── */}
           {typingUsers.length > 0 && (
