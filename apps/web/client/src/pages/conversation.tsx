@@ -591,7 +591,13 @@ export default function ConversationPage() {
                         ) : null}
 
                         {/* ── Media rendering ── */}
-                        {msg.has_media && msg.media_download_url && (
+                        {msg.has_media && (
+                          msg.media_status === "processing" || msg.media_status === "pending" ? (
+                            <div className="flex items-center gap-2 text-muted-foreground text-xs mt-1.5 p-2 bg-black/5 rounded-lg">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                              <span>Procesando media...</span>
+                            </div>
+                          ) : msg.media_download_url ? (
                           <div className="mt-1.5 max-w-full">
                             {msg.media_type === "image" || msg.media_mime_type?.startsWith("image/") ? (
                               <img
@@ -639,6 +645,7 @@ export default function ConversationPage() {
                               </p>
                             )}
                           </div>
+                          ) : null
                         )}
                         <div className={cn("flex items-center gap-1 mt-1", isOutbound ? "justify-end" : "justify-left")}>
                           <span className="text-[10px] text-muted-foreground">
