@@ -91,18 +91,23 @@ export class WhatsAppService {
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
-    // Step 1: Download file from storage or URL
+    // Step 1: Download file from storage or URL.
+    // Check for internal storage path BEFORE checking http/https — when PUBLIC_URL is set,
+    // attachment URLs are absolute (https://api.host/api/storage/file/...) but require JWT
+    // auth and must be fetched via storage.download() instead of an unauthenticated HTTP call.
     const trimmedUrl = mediaUrl.trim();
+    const STORAGE_PATH = '/api/storage/file/';
     let fileBuffer: Buffer;
-    if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+    if (trimmedUrl.includes(STORAGE_PATH)) {
+      const key = trimmedUrl.split(STORAGE_PATH).pop()!;
+      this.logger.log(`[DIAG] sendMedia: storage.download key prefix=${key.slice(0, 40)}`);
+      fileBuffer = await this.storage.download(key);
+    } else if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
       const res = await fetch(trimmedUrl, { signal: AbortSignal.timeout(30_000) });
       if (!res.ok) throw new BadGatewayException(`Failed to fetch media: ${res.status}`);
       fileBuffer = Buffer.from(await res.arrayBuffer());
     } else {
-      const key = trimmedUrl.includes('/api/storage/file/')
-        ? trimmedUrl.split('/api/storage/file/').pop()!
-        : trimmedUrl.replace(/^https?:\/\/[^/]+\/?/, '');
-      fileBuffer = await this.storage.download(key);
+      fileBuffer = await this.storage.download(trimmedUrl);
     }
 
     // Determine MIME type from mediaType and file extension

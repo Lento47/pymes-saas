@@ -174,6 +174,8 @@ export class ConversationsController {
       include: { contact: true, channel: true },
     });
 
+    let dispatchError: string | undefined;
+
     if (conv?.channel?.type === 'EMAIL' && (conv.contact as any)?.email) {
       try {
         await this.emailService.sendOutbound(
@@ -183,8 +185,9 @@ export class ConversationsController {
           bodyHtml || bodyText,
           bodyText,
         );
-      } catch (err) {
+      } catch (err: any) {
         this.logger.error(`Email dispatch failed: ${err?.message}`);
+        dispatchError = err?.message ?? 'Error enviando por email';
       }
     }
 
@@ -208,8 +211,9 @@ export class ConversationsController {
         } else {
           await this.whatsAppService.sendMessage(conv.channel, to, bodyText);
         }
-      } catch (err) {
+      } catch (err: any) {
         this.logger.error(`WhatsApp dispatch failed: ${err?.message}`);
+        dispatchError = err?.message ?? 'Error enviando por WhatsApp';
       }
     }
 
@@ -231,11 +235,15 @@ export class ConversationsController {
             bodyText,
           );
         }
-      } catch (err) {
+      } catch (err: any) {
         this.logger.error(`Telegram dispatch failed: ${err?.message}`);
+        dispatchError = err?.message ?? 'Error enviando por Telegram';
       }
     }
 
+    if (dispatchError) {
+      return { ...message, delivery_status: 'dispatch_failed', dispatch_error: dispatchError };
+    }
     return message;
   }
 
