@@ -80,7 +80,7 @@ export class WhatsAppService {
     channel: Record<string, any>,
     to: string,
     mediaUrl: string,
-    mediaType: 'image' | 'document',
+    mediaType: 'image' | 'video' | 'audio' | 'document' | 'sticker',
     caption?: string,
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
@@ -91,33 +91,55 @@ export class WhatsAppService {
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
-    // Step 1: Download file from our storage
+    // Step 1: Download file from storage or URL
     const trimmedUrl = mediaUrl.trim();
-    const key = trimmedUrl.includes('/api/storage/file/')
-      ? trimmedUrl.split('/api/storage/file/').pop()!
-      : trimmedUrl.replace(/^https?:\/\/[^/]+\/?/, '');
-    const fileBuffer = await this.storage.download(key);
-    const contentType = key.endsWith('.png') ? 'image/png'
-      : key.endsWith('.jpg') || key.endsWith('.jpeg') ? 'image/jpeg'
-      : key.endsWith('.pdf') ? 'application/pdf'
-      : 'application/octet-stream';
+    let fileBuffer: Buffer;
+    if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+      const res = await fetch(trimmedUrl, { signal: AbortSignal.timeout(30_000) });
+      if (!res.ok) throw new BadGatewayException(`Failed to fetch media: ${res.status}`);
+      fileBuffer = Buffer.from(await res.arrayBuffer());
+    } else {
+      const key = trimmedUrl.includes('/api/storage/file/')
+        ? trimmedUrl.split('/api/storage/file/').pop()!
+        : trimmedUrl.replace(/^https?:\/\/[^/]+\/?/, '');
+      fileBuffer = await this.storage.download(key);
+    }
+
+    // Determine MIME type from mediaType and file extension
+    const ext = this.guessExtensionFromUrl(mediaUrl);
+    const mimeMap: Record<string, string> = {
+      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+      gif: 'image/gif', webp: 'image/webp',
+      mp4: 'video/mp4', mov: 'video/quicktime', avi: 'video/x-msvideo', mkv: 'video/x-matroska',
+      mp3: 'audio/mpeg', ogg: 'audio/ogg', opus: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4',
+      pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      zip: 'application/zip', rar: 'application/vnd.rar', '7z': 'application/x-7z-compressed',
+    };
+    const contentType = mimeMap[ext] ?? 'application/octet-stream';
+    const fileName = mediaUrl.split('/').pop() || `${mediaType}.${ext}`;
 
     // Step 2: Upload to Meta Media API using multipart/form-data
-    const boundary = `----WhatsApp${Date.now()}${Math.random().toString(36).slice(2)}`;
+    const boundary = `----HermesWhatsApp${Date.now()}${Math.random().toString(36).slice(2)}`;
     const CRLF = '\r\n';
-    let body = '';
-    body += `--${boundary}${CRLF}`;
-    body += `Content-Disposition: form-data; name="messaging_product"${CRLF}${CRLF}whatsapp${CRLF}`;
-    body += `--${boundary}${CRLF}`;
-    body += `Content-Disposition: form-data; name="type"${CRLF}${CRLF}${contentType}${CRLF}`;
-    body += `--${boundary}${CRLF}`;
-    body += `Content-Disposition: form-data; name="file"; filename="${mediaType === 'image' ? 'image' : 'document'}"${CRLF}`;
-    body += `Content-Type: ${contentType}${CRLF}${CRLF}`;
-    const bodyEnd = `${CRLF}--${boundary}--${CRLF}`;
+
+    // Build multipart body: only messaging_product + file (NO standalone type field)
+    const headerParts: string[] = [
+      `--${boundary}`,
+      `Content-Disposition: form-data; name="messaging_product"`,
+      '',
+      'whatsapp',
+      `--${boundary}`,
+      `Content-Disposition: form-data; name="file"; filename="${fileName}"`,
+      `Content-Type: ${contentType}`,
+      '',
+    ];
+    const headerStr = headerParts.join(CRLF) + CRLF;
+    const footerStr = CRLF + `--${boundary}--` + CRLF;
     const bodyBuffer = Buffer.concat([
-      Buffer.from(body, 'utf-8'),
+      Buffer.from(headerStr, 'utf-8'),
       fileBuffer,
-      Buffer.from(bodyEnd, 'utf-8'),
+      Buffer.from(footerStr, 'utf-8'),
     ]);
 
     const uploadRes = await fetch(`${META_API_BASE}/${phoneNumberId}/media`, {
@@ -127,7 +149,7 @@ export class WhatsAppService {
         'Content-Type': `multipart/form-data; boundary=${boundary}`,
       },
       body: bodyBuffer,
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(60_000),
     });
     const uploadData: Record<string, any> = await uploadRes.json();
     if (!uploadRes.ok || !uploadData.id) {
@@ -160,6 +182,12 @@ export class WhatsAppService {
       throw new BadGatewayException(sendData?.error?.message ?? 'Error enviando archivo por WhatsApp.');
     }
     return { message_id: sendData.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  private guessExtensionFromUrl(url: string): string {
+    const clean = url.split('?')[0].split('#')[0];
+    const parts = clean.split('.');
+    return parts.length > 1 ? parts.pop()!.toLowerCase() : 'bin';
   }
 
   async sendTemplateMessage(

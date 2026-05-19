@@ -193,7 +193,10 @@ export class ConversationsController {
         const to = ((conv.contact as any).phone as string).replace(/\D/g, '');
         this.logger.log(`[DIAG] WhatsApp dispatch: conv=${conversationId}, channel=${conv.channel.id}, phone=${to}`);
         if (dto.media_url && dto.media_type) {
-          await this.whatsAppService.sendMedia(conv.channel, to, dto.media_url, dto.media_type as 'image' | 'document', dto.body_text || undefined);
+          const waType = ['image', 'video', 'audio', 'document', 'sticker'].includes(dto.media_type)
+            ? dto.media_type as 'image' | 'video' | 'audio' | 'document' | 'sticker'
+            : 'document';
+          await this.whatsAppService.sendMedia(conv.channel, to, dto.media_url, waType, dto.body_text || undefined);
         } else if (template?.external_template_id) {
           await this.whatsAppService.sendTemplateMessage(
             conv.channel,
