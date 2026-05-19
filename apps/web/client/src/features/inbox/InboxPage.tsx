@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
 import { useInboxSocket } from "@/hooks/use-inbox-socket";
-import { InboxHeader } from "./components/InboxHeader";
 import { InboxToolbar } from "./components/InboxToolbar";
 import { ConversationList } from "./components/ConversationList";
 import { ConversationPanel } from "./components/ConversationPanel";
@@ -35,8 +34,6 @@ export default function InboxPage() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <InboxHeader />
-
       <InboxToolbar
         search={search}
         onSearchChange={setSearch}
