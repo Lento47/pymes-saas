@@ -73,7 +73,7 @@ function Chip({children, tone='neutral', style={}}){
 function Logo(){
   return (
     <a className="logo" href="#">
-      <span className="logo-mark"/>
+      <img src="https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/pymesHubic.png" alt="PymesHub" style={{width:28,height:28,borderRadius:8,objectFit:'contain'}}/>
       PymesHub
     </a>
   );
