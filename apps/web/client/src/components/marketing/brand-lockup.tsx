@@ -15,19 +15,14 @@ export function BrandLockup({
 }: BrandLockupProps) {
   return (
     <div className={cn("inline-flex items-center gap-3", className)}>
-      <span
-        aria-hidden="true"
+      <img
+        src="https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/pymesHubic.png"
+        alt="PymesHub"
         className={cn(
           compact ? "h-7 w-7" : "h-8 w-8",
-          "shrink-0 rounded-[8px]",
+          "shrink-0 rounded-[8px] object-contain",
           markClassName,
         )}
-        style={{
-          background:
-            "radial-gradient(circle at 30% 25%, rgba(255,255,255,.6) 0%, rgba(255,255,255,0) 50%), linear-gradient(135deg, #4F46E5, #3730A3)",
-          boxShadow:
-            "inset 0 1px 0 rgba(255,255,255,.4), 0 4px 10px -2px rgba(79,70,229,.5)",
-        }}
       />
       <span
         className={cn(
