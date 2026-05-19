@@ -8,8 +8,9 @@ import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   ArrowLeft, Send, Loader2, MessageCircle, CheckCircle2, RefreshCw,
-  Trash2, UserPlus, Info, Receipt, Plus, X, Paperclip,
+  Trash2, UserPlus, Info, Receipt, Plus, X, Paperclip, AlertTriangle,
 } from "lucide-react";
+import { SensitiveText } from "@/components/shared/sensitive-text";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -47,9 +48,20 @@ function getInitials(name: string) {
   return name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
 }
 
-const CHANNEL_ICONS: Record<string, any> = {
-  WHATSAPP: MessageCircle, EMAIL: Info, TELEGRAM: Send, FORM: Info, API: Info, MANUAL: Info,
+const CHANNEL_LABELS: Record<string, string> = {
+  WHATSAPP: "WhatsApp", EMAIL: "Email", TELEGRAM: "Telegram",
+  FORM: "Formulario", API: "API", MANUAL: "Manual",
 };
+
+const STATUS_LABELS: Record<string, string> = {
+  OPEN: "Abierto", RESOLVED: "Resuelto", PENDING: "Pendiente",
+};
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 function DateSeparator({ date }: { date: Date }) {
   return (
@@ -162,11 +174,18 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
   const sendMut = useMutation({
     mutationFn: (data: Record<string, any>) => api.sendMessage(id, data),
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       setMessage("");
       setAttachment(null);
+      if (response?.delivery_status === "dispatch_failed") {
+        toast({
+          title: "Mensaje guardado, envío falló",
+          description: response.dispatch_error ?? "No se pudo enviar al canal externo.",
+          variant: "destructive",
+        });
+      }
     },
     onError: (e) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
   });
@@ -299,23 +318,30 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
   if (!id) return null;
 
+  const channelLabel = CHANNEL_LABELS[channelType] || channelType;
+  const statusLabel = conversation?.status ? STATUS_LABELS[conversation.status] ?? conversation.status : null;
+  const assigneeName = (conversation as any)?.assigned_user?.name ?? null;
+  const subtitleParts = [channelLabel, statusLabel, assigneeName ?? "Sin asignar"].filter(Boolean);
+
   return (
     <div className="flex flex-col min-h-0 h-full max-h-dvh bg-background">
-      {/* Header toolbar */}
-      <div className="flex items-center gap-2 border-b border-border px-3 sm:px-4 py-2 shrink-0">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 border-b border-border px-3 sm:px-4 py-2.5 shrink-0">
         {onBack && (
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onBack}>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={onBack}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
         )}
-        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">
+        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[11px] font-semibold text-muted-foreground shrink-0">
           {getInitials(contactName)}
         </div>
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className="text-[13px] font-medium text-foreground truncate">{contactName}</span>
-          {conversation?.status && <StatusBadge status={conversation.status} type="conversation" />}
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold text-foreground truncate leading-tight">{contactName}</p>
+          <p className="text-[10px] text-muted-foreground/60 truncate leading-tight mt-px">
+            {subtitleParts.join(" · ")}
+          </p>
         </div>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 shrink-0">
           <Select onValueChange={(v) => assignMut.mutate(v)}>
             <TooltipProvider>
               <Tooltip>
@@ -389,7 +415,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-2 min-h-0" onScroll={handleScroll}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 min-h-0 bg-muted/[0.15]" onScroll={handleScroll}>
         {!nearBottom && msgList.length > 0 && (
           <div className="sticky bottom-2 flex justify-center z-10 mb-2">
             <button
@@ -423,18 +449,24 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
             return (
               <div key={msg.id}>
                 {showSep && msgDate && <DateSeparator date={msgDate} />}
-                <div className={cn("flex gap-2 mb-0.5", isOutbound ? "justify-end" : "justify-start", isFirst && idx > 0 && "mt-3")}>
+                <div className={cn("flex gap-2 mb-0.5", isOutbound ? "justify-end" : "justify-start", isFirst && idx > 0 && "mt-2")}>
                   {!isOutbound && (
                     <div className={cn("w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold text-muted-foreground shrink-0 mt-auto", !isFirst && "invisible")}>
                       {getInitials(contactName)}
                     </div>
                   )}
-                  <div className={cn("max-w-[85%] sm:max-w-[68%] rounded-2xl px-3.5 py-2", isOutbound ? "bg-primary/20 rounded-tr-sm" : "bg-muted rounded-tl-sm")}>
-                    {isFirst && !isOutbound && <div className="text-[10px] font-medium text-muted-foreground mb-1">{contactName}</div>}
+                  <div className={cn(
+                    "max-w-[72%] rounded-2xl px-3.5 py-2.5",
+                    isOutbound
+                      ? "bg-primary/10 rounded-br-sm"
+                      : "bg-card border border-border/50 rounded-bl-sm shadow-[0_1px_2px_0_rgb(0,0,0,0.04)]"
+                  )}>
+                    {isFirst && !isOutbound && (
+                      <div className="text-[10px] font-medium text-muted-foreground/70 mb-1">{contactName}</div>
+                    )}
                     {(() => {
                       const text = msg.body_text || msg.body_html || msg.content || "";
 
-                      // Media messages: use DTO fields, not emoji parsing
                       if (msg.has_media && msg.media_type && msg.id) {
                         const caption = msg.media_caption || (
                           !text.startsWith("🖼️") && !text.startsWith("📄") &&
@@ -444,13 +476,13 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                           text !== "🎧 Audio" && text !== "💬 Sticker"
                         ) ? text : undefined;
 
-                        if (msg.media_type === 'image' || msg.media_type === 'sticker') {
+                        if (msg.media_type === "image" || msg.media_type === "sticker") {
                           return <MediaRenderer messageId={msg.id} mediaType="image" caption={caption} />;
                         }
-                        if (msg.media_type === 'video') {
+                        if (msg.media_type === "video") {
                           return <MediaRenderer messageId={msg.id} mediaType="video" caption={caption} />;
                         }
-                        if (msg.media_type === 'audio') {
+                        if (msg.media_type === "audio") {
                           return <MediaRenderer messageId={msg.id} mediaType="audio" caption={caption} />;
                         }
                         return <MediaRenderer messageId={msg.id} mediaType="document" caption={caption} />;
@@ -486,20 +518,24 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                             {parts.map((part: string, i: number) =>
                               urlRegex.test(part) ? (
                                 <a key={i} href={part} target="_blank" rel="noreferrer"
-                                  className="text-blue-400 hover:text-blue-300 underline underline-offset-2">
+                                  className="text-blue-400 hover:text-blue-300 underline underline-offset-2 break-all">
                                   {part}
                                 </a>
                               ) : (
-                                <span key={i}>{part}</span>
+                                <SensitiveText key={i} text={part} />
                               )
                             )}
                           </p>
                         );
                       }
 
-                      return <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{text}</p>;
+                      return (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                          <SensitiveText text={text} />
+                        </p>
+                      );
                     })()}
-                    <div className={cn("text-[10px] text-muted-foreground mt-1", isOutbound ? "text-right" : "text-left")}>
+                    <div className={cn("text-[10px] text-muted-foreground/50 mt-1.5", isOutbound ? "text-right" : "text-left")}>
                       {msgDate ? format(msgDate, "h:mm a") : ""}
                     </div>
                   </div>
@@ -511,21 +547,25 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Message input */}
-      <div className="border-t border-border p-3 shrink-0">
+      {/* Composer */}
+      <div className="border-t border-border px-3 py-3 shrink-0 bg-background">
         {attachment && (
-          <div className="flex items-center gap-2 mb-2 px-1">
-            <div className="flex-1 text-[11px] text-muted-foreground truncate">
-              📎 {attachment.file.name}
-              {uploading && <Loader2 className="w-3 h-3 animate-spin inline ml-1" />}
-            </div>
-            <button onClick={() => setAttachment(null)} className="text-muted-foreground hover:text-foreground shrink-0">
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-1.5">
+            <Paperclip className="w-3 h-3 text-muted-foreground shrink-0" />
+            <span className="flex-1 truncate text-[11px] text-foreground">{attachment.file.name}</span>
+            <span className="text-[10px] text-muted-foreground/60 shrink-0">{formatSize(attachment.file.size)}</span>
+            {uploading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground shrink-0" />}
+            <button
+              type="button"
+              onClick={() => setAttachment(null)}
+              className="text-muted-foreground/60 hover:text-muted-foreground transition-colors shrink-0 ml-1"
+            >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
-        <div className="flex items-end gap-2">
-          <label className="cursor-pointer text-muted-foreground hover:text-foreground p-1.5 shrink-0">
+        <div className="flex items-end gap-0 rounded-xl border border-border bg-background overflow-hidden focus-within:border-primary/40 transition-colors">
+          <label className="cursor-pointer flex items-center justify-center p-2.5 text-muted-foreground hover:text-foreground transition-colors shrink-0">
             <Paperclip className="w-4 h-4" />
             <input
               type="file"
@@ -535,20 +575,20 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 const form = new FormData();
-                form.append('file', file);
+                form.append("file", file);
                 setUploading(true);
                 try {
                   const { url } = await api.uploadAttachment(form);
-                  const type = file.type.startsWith('image/') ? 'image'
-                    : file.type.startsWith('video/') ? 'video'
-                    : file.type.startsWith('audio/') ? 'audio'
-                    : 'document';
+                  const type = file.type.startsWith("image/") ? "image"
+                    : file.type.startsWith("video/") ? "video"
+                    : file.type.startsWith("audio/") ? "audio"
+                    : "document";
                   setAttachment({ file, url, type });
                 } catch (err: unknown) {
                   toast({ title: "Error", description: err instanceof Error ? err.message : "No se pudo subir el archivo", variant: "destructive" });
                 } finally {
                   setUploading(false);
-                  e.target.value = '';
+                  e.target.value = "";
                 }
               }}
             />
@@ -563,14 +603,22 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
               }
             }}
             placeholder="Escribe un mensaje..."
-            className="min-h-[40px] max-h-[120px] text-sm bg-background border-border resize-none"
+            className="flex-1 border-0 bg-transparent min-h-[40px] max-h-[100px] py-2.5 px-0 text-sm resize-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             rows={1}
           />
-          <Button type="button" size="sm" className="h-9 shrink-0" onClick={handleSend} disabled={(!message.trim() && !attachment) || sendMut.isPending || uploading}>
+          <Button
+            type="button"
+            size="sm"
+            className="m-1.5 h-8 w-8 p-0 rounded-lg shrink-0"
+            onClick={handleSend}
+            disabled={(!message.trim() && !attachment) || sendMut.isPending || uploading}
+          >
             {sendMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground/80 mt-1 ml-1">Enter para enviar · Shift+Enter para nueva línea</p>
+        <p className="text-[10px] text-muted-foreground/40 mt-1.5 ml-1">
+          {channelLabel ? `Enviando por ${channelLabel} · ` : ""}Enter para enviar
+        </p>
       </div>
 
       {/* Invoice dialog */}
