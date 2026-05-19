@@ -14,6 +14,9 @@ COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared-types/package.json ./packages/shared-types/
 
+# Copy Prisma schema before install so the postinstall "prisma generate" can find it
+COPY apps/api/prisma ./apps/api/prisma
+
 # Install dependencies - use workspace install
 RUN pnpm install --frozen-lockfile --recursive
 
