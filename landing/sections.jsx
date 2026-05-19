@@ -23,24 +23,31 @@ function Nav(){
 }
 
 function SocialProof(){
+  const cfg = window.useLandingConfig ? window.useLandingConfig() : {};
   const brands=['Volcán','Cafetería Sol','Avilés Auto','Mar y Sol','Tecno Plus','Ferretería Real','Pura Vida','La Bodega'];
+  const defaultStats=[
+    ['12,400+','conversaciones centralizadas al día'],
+    ['38%','más rápido el tiempo de respuesta'],
+    ['+22 países','en Latinoamérica'],
+    ['4.9 ★','satisfacción del equipo de soporte'],
+  ];
+  const cfgStats = cfg?.sections?.socialProof?.stats;
+  const stats = cfgStats?.length
+    ? cfgStats.map(s=>[s.number||'',s.label||''])
+    : defaultStats;
+  const title = cfg?.sections?.socialProof?.title || 'Usado por negocios que crecen en Latinoamérica';
   return (
     <section className="section-tight" style={{padding:'48px 80px',maxWidth:1440,margin:'0 auto'}}>
       <div style={{textAlign:'center'}}>
-        <div className="kicker" style={{color:'#6F6F7A'}}>Usado por negocios que crecen en Latinoamérica</div>
+        <div className="kicker" style={{color:'#6F6F7A'}}>{title}</div>
         <div style={{display:'flex',justifyContent:'center',gap:40,flexWrap:'wrap',marginTop:22,opacity:0.7}}>
           {brands.map(b=>(
             <span key={b} style={{fontFamily:'Bricolage Grotesque',fontWeight:700,fontSize:22,color:'#2F2F38',letterSpacing:'-.02em',opacity:.7}}>{b}</span>
           ))}
         </div>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4, 1fr)',gap:0,marginTop:48,borderTop:'1px solid #E4E4E8',borderBottom:'1px solid #E4E4E8'}}>
-        {[
-          ['12,400+','conversaciones centralizadas al día'],
-          ['38%','más rápido el tiempo de respuesta'],
-          ['+22 países','en Latinoamérica'],
-          ['4.9 ★','satisfacción del equipo de soporte'],
-        ].map(([n,l],i)=>(
+      <div style={{display:'grid',gridTemplateColumns:`repeat(${stats.length}, 1fr)`,gap:0,marginTop:48,borderTop:'1px solid #E4E4E8',borderBottom:'1px solid #E4E4E8'}}>
+        {stats.map(([n,l],i)=>(
           <div key={i} style={{padding:'34px 28px',borderLeft:i?'1px solid #E4E4E8':'none'}}>
             <div className="display" style={{fontSize:44,letterSpacing:'-.03em',color:'var(--indigo)'}}>{n}</div>
             <div style={{marginTop:6,color:'#6F6F7A',fontSize:14.5,maxWidth:'28ch'}}>{l}</div>
@@ -52,7 +59,8 @@ function SocialProof(){
 }
 
 function HowItWorks(){
-  const steps=[
+  const cfg = window.useLandingConfig ? window.useLandingConfig() : {};
+  const defaultSteps=[
     {n:'01', t:'Conecta tus canales', d:'WhatsApp, email y formularios listos en minutos. Sin código, sin fricción.',
       color:'#DCF3E0', ink:'#1F5A3A', el:<ClayBubble size={150} color="#25D366"/>},
     {n:'02', t:'Organiza tu negocio', d:'Contactos, oportunidades, tareas y documentos en un solo espacio.',
@@ -60,6 +68,15 @@ function HowItWorks(){
     {n:'03', t:'Automatiza con IA',   d:'Resúmenes, clasificación y respuestas sugeridas en cada conversación.',
       color:'#E6E3FF', ink:'#332A77', el:<ClayAINode size={150}/>},
   ];
+  const palette=[
+    {color:'#DCF3E0',ink:'#1F5A3A',el:<ClayBubble size={150} color="#25D366"/>},
+    {color:'#FFE8DA',ink:'#7B3A1E',el:<Clay shape="cube" size={140} color="#FF8A5B"/>},
+    {color:'#E6E3FF',ink:'#332A77',el:<ClayAINode size={150}/>},
+  ];
+  const cfgSteps = cfg?.sections?.howItWorks;
+  const steps = cfgSteps?.length
+    ? cfgSteps.map((s,i)=>({n:s.number||String(i+1).padStart(2,'0'), t:s.title||'', d:s.description||'', ...palette[i%palette.length]}))
+    : defaultSteps;
   return (
     <section className="section">
       <div style={{display:'flex',alignItems:'end',justifyContent:'space-between',gap:32,marginBottom:42}}>
@@ -105,7 +122,8 @@ function FeatureBento(){
 }
 
 function Benefits(){
-  const list=[
+  const cfg = window.useLandingConfig ? window.useLandingConfig() : {};
+  const defaultList=[
     ['Nunca pierdas un lead', 'Cada conversación queda registrada, asignada y con seguimiento.'],
     ['Responde más rápido',   'La IA prepara respuestas y resúmenes en segundos.'],
     ['Centraliza la operación','Ventas, soporte, cobros y documentos en un solo lugar.'],
@@ -113,6 +131,10 @@ function Benefits(){
     ['Escala con eficiencia', 'Crece sin tener que sumar más herramientas dispersas.'],
     ['Equipo más alineado',   'Visibilidad clara de quién, qué y cuándo en tu negocio.'],
   ];
+  const cfgBenefits = cfg?.sections?.benefits;
+  const list = cfgBenefits?.length
+    ? cfgBenefits.map(b=>[b.title||'',b.description||''])
+    : defaultList;
   return (
     <section className="section-bg-dark">
       <div className="section">
@@ -175,20 +197,16 @@ function Integrations(){
 }
 
 function Testimonials(){
-  const items=[
-    {
-      q:'Pasamos de cinco herramientas a una. El equipo dejó de perder mensajes en WhatsApp y nuestras ventas crecieron 27% en el primer trimestre.',
-      n:'Lucía Madrigal', r:'Gerente Comercial · Ferretería Volcán', c:'#FF8A5B', loc:'San José, CR'
-    },
-    {
-      q:'La IA nos resume hilos largos en segundos y nos sugiere la respuesta. Es como tener un asistente más, pero sin las complicaciones.',
-      n:'Carlos Rivera', r:'Fundador · Tecno Plus', c:'#6366F1', loc:'CDMX, MX'
-    },
-    {
-      q:'La facturación electrónica conectada con Hacienda nos ahorra una mañana entera todos los lunes. Increíble lo simple que es.',
-      n:'Andrea Quirós', r:'CFO · Cafetería Sol', c:'#22A06B', loc:'Medellín, CO'
-    },
+  const cfg = window.useLandingConfig ? window.useLandingConfig() : {};
+  const defaultItems=[
+    {q:'Pasamos de cinco herramientas a una. El equipo dejó de perder mensajes en WhatsApp y nuestras ventas crecieron 27% en el primer trimestre.',n:'Lucía Madrigal',r:'Gerente Comercial · Ferretería Volcán',c:'#FF8A5B',loc:'San José, CR'},
+    {q:'La IA nos resume hilos largos en segundos y nos sugiere la respuesta. Es como tener un asistente más, pero sin las complicaciones.',n:'Carlos Rivera',r:'Fundador · Tecno Plus',c:'#6366F1',loc:'CDMX, MX'},
+    {q:'La facturación electrónica conectada con Hacienda nos ahorra una mañana entera todos los lunes. Increíble lo simple que es.',n:'Andrea Quirós',r:'CFO · Cafetería Sol',c:'#22A06B',loc:'Medellín, CO'},
   ];
+  const cfgT = cfg?.sections?.testimonials;
+  const items = cfgT?.length
+    ? cfgT.map(t=>({q:t.quote||'',n:t.name||'',r:t.role||'',c:t.avatarColor1||'#4F46E5',loc:t.location||'',img:t.avatarImageUrl,initials:t.avatarInitials}))
+    : defaultItems;
   return (
     <section className="section-bg-warm">
       <div className="section">
@@ -203,9 +221,12 @@ function Testimonials(){
                 &ldquo;{it.q}&rdquo;
               </div>
               <div style={{display:'flex',alignItems:'center',gap:12,marginTop:24}}>
-                <div className="avatar" style={{background:`linear-gradient(135deg, ${it.c}, color-mix(in oklab, ${it.c}, black 22%))`}}>
-                  {it.n.split(' ').map(p=>p[0]).join('').slice(0,2)}
-                </div>
+                {it.img
+                  ? <img src={it.img} alt={it.n} className="avatar" style={{objectFit:'cover'}}/>
+                  : <div className="avatar" style={{background:`linear-gradient(135deg, ${it.c}, color-mix(in oklab, ${it.c}, black 22%))`}}>
+                      {it.initials || it.n.split(' ').map(p=>p[0]).join('').slice(0,2)}
+                    </div>
+                }
                 <div>
                   <div style={{fontWeight:700,fontSize:14}}>{it.n}</div>
                   <div style={{fontSize:12.5,color:'#6F6F7A'}}>{it.r}</div>
@@ -221,16 +242,17 @@ function Testimonials(){
 }
 
 function Pricing(){
-  const plans=[
-    {n:'Starter',  p:'$29',   d:'Para equipos que están comenzando.',
-      f:['1 número de WhatsApp','Bandeja unificada','CRM básico','3 usuarios incluidos','Soporte por email'], cta:'Empezar gratis', highlight:false},
-    {n:'Growth',   p:'$79',   d:'Para negocios en crecimiento.',
-      f:['3 números de WhatsApp','Automatizaciones con IA','Documentos & OCR','10 usuarios incluidos','Soporte prioritario'], cta:'Iniciar 14 días', highlight:true},
-    {n:'Business', p:'$159',  d:'Para operaciones consolidadas.',
-      f:['Múltiples sucursales','Facturación electrónica','Analítica avanzada','25 usuarios incluidos','Onboarding asistido'], cta:'Hablar con ventas', highlight:false},
-    {n:'Business+', p:'A medida', d:'Para empresas con necesidades específicas.',
-      f:['SLA dedicado','SSO + auditoría','Usuarios ilimitados','Integraciones a medida','Customer Success'], cta:'Contactar', highlight:false},
+  const cfg = window.useLandingConfig ? window.useLandingConfig() : {};
+  const defaultPlans=[
+    {n:'Starter',  p:'$29',   d:'Para equipos que están comenzando.',f:['1 número de WhatsApp','Bandeja unificada','CRM básico','3 usuarios incluidos','Soporte por email'],cta:'Empezar gratis',highlight:false},
+    {n:'Growth',   p:'$79',   d:'Para negocios en crecimiento.',f:['3 números de WhatsApp','Automatizaciones con IA','Documentos & OCR','10 usuarios incluidos','Soporte prioritario'],cta:'Iniciar 14 días',highlight:true},
+    {n:'Business', p:'$159',  d:'Para operaciones consolidadas.',f:['Múltiples sucursales','Facturación electrónica','Analítica avanzada','25 usuarios incluidos','Onboarding asistido'],cta:'Hablar con ventas',highlight:false},
+    {n:'Business+',p:'A medida',d:'Para empresas con necesidades específicas.',f:['SLA dedicado','SSO + auditoría','Usuarios ilimitados','Integraciones a medida','Customer Success'],cta:'Contactar',highlight:false},
   ];
+  const cfgPlans = cfg?.sections?.pricing;
+  const plans = cfgPlans?.length
+    ? cfgPlans.map(p=>({n:p.name||'',p:p.price||'',d:p.description||'',f:p.features||[],cta:p.cta||'',highlight:p.highlight||false}))
+    : defaultPlans;
   return (
     <section className="section">
       <div style={{display:'flex',alignItems:'end',justifyContent:'space-between',gap:32,marginBottom:48}}>
@@ -275,14 +297,19 @@ function Pricing(){
 }
 
 function FAQ(){
-  const items=[
-    ['¿Cuánto toma poner PymesHub en marcha?', 'La mayoría de equipos están operando en menos de un día. Para configuraciones avanzadas, nuestro equipo de Customer Success acompaña el proceso.'],
-    ['¿Qué pasa con mis datos al migrar?', 'Migramos contactos, conversaciones y documentos sin pérdida de información. La migración es asistida en todos los planes.'],
-    ['¿Necesito un número de WhatsApp Business?', 'Recomendamos uno, pero también puedes usar tu número existente. Nuestro equipo te ayuda a configurarlo con Meta.'],
-    ['¿Cómo se cobra el plan?', 'Mensual o anual, con descuento del 20% al pagar por año. Aceptamos tarjeta y transferencia local en varios países.'],
-    ['¿Ofrecen soporte en español?', 'Sí, soporte 100% en español, con horarios laborales LATAM y opciones prioritarias 24/7 en Business+.'],
-    ['¿Mis datos están seguros?', 'Cifrado en tránsito y en reposo, copias de seguridad redundantes, control de acceso por rol y auditoría.'],
+  const cfg = window.useLandingConfig ? window.useLandingConfig() : {};
+  const defaultItems=[
+    ['¿Cuánto toma poner PymesHub en marcha?','La mayoría de equipos están operando en menos de un día. Para configuraciones avanzadas, nuestro equipo de Customer Success acompaña el proceso.'],
+    ['¿Qué pasa con mis datos al migrar?','Migramos contactos, conversaciones y documentos sin pérdida de información. La migración es asistida en todos los planes.'],
+    ['¿Necesito un número de WhatsApp Business?','Recomendamos uno, pero también puedes usar tu número existente. Nuestro equipo te ayuda a configurarlo con Meta.'],
+    ['¿Cómo se cobra el plan?','Mensual o anual, con descuento del 20% al pagar por año. Aceptamos tarjeta y transferencia local en varios países.'],
+    ['¿Ofrecen soporte en español?','Sí, soporte 100% en español, con horarios laborales LATAM y opciones prioritarias 24/7 en Business+.'],
+    ['¿Mis datos están seguros?','Cifrado en tránsito y en reposo, copias de seguridad redundantes, control de acceso por rol y auditoría.'],
   ];
+  const cfgFaq = cfg?.sections?.faq;
+  const items = cfgFaq?.length
+    ? cfgFaq.map(f=>[f.question||'',f.answer||''])
+    : defaultItems;
   const [open,setOpen]=useStateS(0);
   return (
     <section className="section">

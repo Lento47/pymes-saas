@@ -57,6 +57,7 @@ import AdminWorkspaceDetail from "@/pages/admin/workspace-detail";
 import AdminUsers from "@/pages/admin/users";
 import AdminPlanLimits from "@/pages/admin/plan-limits";
 import AdminLogin from "@/pages/admin/login";
+import AdminLandingEditor from "@/pages/admin/landing-editor";
 import BusinessProfilePage from "@/pages/business-profile";
 
 function AppLoader() {
@@ -218,6 +219,9 @@ function AppRouter() {
       </Route>
       <Route path="/admin/plan-limits">
         {() => <PlatformAdminLayout><AdminPlanLimits /></PlatformAdminLayout>}
+      </Route>
+      <Route path="/admin/landing">
+        {() => <PlatformAdminLayout><AdminLandingEditor /></PlatformAdminLayout>}
       </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}
