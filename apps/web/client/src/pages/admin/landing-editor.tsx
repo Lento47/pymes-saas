@@ -103,7 +103,7 @@ function Btn({ children, onClick, variant = "primary", disabled, style }: {
         display: "inline-flex", alignItems: "center", gap: 6,
         background: bg, color, border: variant === "ghost" ? "1px solid hsl(var(--border))" : "none",
         borderRadius: 7, padding: "7px 14px", fontSize: 13, fontWeight: 500,
-        cursor: disabled ? "not-allowed", opacity: disabled ? 0.5 : 1,
+        cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
         ...style,
       } as React.CSSProperties}
     >
