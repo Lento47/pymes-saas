@@ -20,7 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRoute, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
-import { ArrowLeft, Coins, ExternalLink, CheckCircle2, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, Info } from "lucide-react";
+import { ArrowLeft, Coins, ExternalLink, CheckCircle2, FileText, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, Info } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn, formatMoney } from "@/lib/utils";
 
@@ -561,9 +561,80 @@ export default function ConversationPage() {
                             {contactName}
                           </div>
                         )}
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                          {msg.body_text || msg.body_html || msg.content || msg.body}
-                        </p>
+                        {(msg.body_text || msg.body_html || msg.content || msg.body) && (
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {msg.body_text || msg.body_html || msg.content || msg.body}
+                          </p>
+                        )}
+
+                        {/* ── Media rendering ── */}
+                        {msg.has_media && (
+                          msg.media_status === 'processing' || msg.media_status === 'pending' ? (
+                            <div className="flex items-center gap-2 text-muted-foreground text-xs mt-1.5 p-2 bg-black/5 rounded-lg">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                              <span>Procesando media...</span>
+                            </div>
+                          ) : msg.media_download_url ? (
+                            <div className="mt-1.5 max-w-full">
+                              {msg.media_type === 'image' || msg.media_type === 'photo' || msg.media_mime_type?.startsWith('image/') ? (
+                                <img
+                                  src={msg.media_download_url}
+                                  alt={msg.media_filename || 'Imagen'}
+                                  className="rounded-lg max-h-64 w-full object-cover cursor-pointer"
+                                  loading="lazy"
+                                  onClick={() => window.open(msg.media_download_url, '_blank')}
+                                  onError={(e) => {
+                                    const img = e.target as HTMLImageElement;
+                                    img.style.display = 'none';
+                                    const placeholder = img.nextElementSibling as HTMLElement | null;
+                                    if (placeholder) placeholder.style.display = 'flex';
+                                  }}
+                                />
+                              ) : msg.media_type === 'video' || msg.media_mime_type?.startsWith('video/') ? (
+                                <video
+                                  src={msg.media_download_url}
+                                  controls
+                                  className="rounded-lg max-h-64 w-full"
+                                  preload="metadata"
+                                >
+                                  Tu navegador no soporta video.
+                                </video>
+                              ) : (msg.media_type === 'audio' || msg.media_type === 'voice') || msg.media_mime_type?.startsWith('audio/') ? (
+                                <audio
+                                  src={msg.media_download_url}
+                                  controls
+                                  className="w-full h-10"
+                                  preload="none"
+                                >
+                                  Tu navegador no soporta audio.
+                                </audio>
+                              ) : (
+                                <a
+                                  href={msg.media_download_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 text-sm text-primary hover:underline bg-muted/50 rounded-lg px-3 py-2"
+                                >
+                                  <FileText className="w-4 h-4 shrink-0" />
+                                  {msg.media_filename || 'Archivo adjunto'}
+                                </a>
+                              )}
+                              {/* Fallback shown when image fails to load */}
+                              <div
+                                className="hidden items-center gap-2 text-xs text-muted-foreground p-2 bg-muted/30 rounded-lg"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Media no disponible</span>
+                              </div>
+                              {msg.media_caption && (
+                                <p className="text-xs text-muted-foreground mt-1 leading-relaxed whitespace-pre-wrap">
+                                  {msg.media_caption}
+                                </p>
+                              )}
+                            </div>
+                          ) : null
+                        )}
+
                         <div className={cn("text-[10px] text-muted-foreground mt-1", isOutbound ? "text-right" : "text-left")}>
                           {msgDate ? format(msgDate, "h:mm a") : ""}
                         </div>
