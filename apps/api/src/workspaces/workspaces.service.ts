@@ -6,9 +6,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
+import { StorageService } from '../common/storage/storage.service';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
@@ -17,7 +19,8 @@ import { AiProvider, AiService } from '../ai/ai.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 import { EmailService } from '../email/email.service';
 import { EventsGateway } from '../gateways/events.gateway';
-import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { PlanLimitsService } from '../billing/plan-limits.service';
+import { RefreshTokenService } from '../auth/refresh-token.service';
 
 @Injectable()
 export class WorkspacesService {
@@ -26,12 +29,23 @@ export class WorkspacesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
+    private readonly storage: StorageService,
     private readonly aiService: AiService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly events: EventsGateway,
     private readonly planLimits: PlanLimitsService,
+    private readonly refreshTokenService: RefreshTokenService,
   ) {}
+
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;');
+  }
 
   private serializeWorkspace<T extends { settings_json?: any | null }>(workspace: T) {
     const settings =
@@ -49,12 +63,12 @@ export class WorkspacesService {
       hacienda_environment: settings.hacienda_environment ?? 'staging',
       hacienda_callback_url: settings.hacienda_callback_url ?? null,
       hacienda_username_set: !!(settings.hacienda_username),
-      hacienda_password_set: !!(settings.hacienda_password_enc || settings.hacienda_password),
+      hacienda_password_set: !!(settings.hacienda_password),
       hacienda_client_id_set: !!(settings.hacienda_client_id),
       hacienda_token_url_set: !!(settings.hacienda_token_url),
-      hacienda_access_token_set: !!(settings.hacienda_access_token_enc || settings.hacienda_access_token),
+      hacienda_access_token_set: !!(settings.hacienda_access_token),
       hacienda_certificate_path_set: !!(settings.hacienda_certificate_path),
-      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin_enc || settings.hacienda_certificate_pin),
+      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin),
       hacienda_signing_enabled: settings.hacienda_signing_enabled === true,
     };
   }
@@ -81,33 +95,6 @@ export class WorkspacesService {
     });
 
     return this.serializeWorkspace(workspace);
-  }
-
-  // ── GET /workspaces/current/subscription ─────────────────────────────────
-
-  async getSubscription(workspaceId: string) {
-    const sub = await this.prisma.workspaceSubscription.findFirst({
-      where: { workspace_id: workspaceId },
-      select: {
-        id: true,
-        plan: true,
-        status: true,
-        provider: true,
-        provider_customer_id: true,
-        provider_subscription_id: true,
-        current_period_start: true,
-        current_period_end: true,
-        trial_ends_at: true,
-        cancel_at_period_end: true,
-      },
-    });
-
-    if (!sub) {
-      return null;
-    }
-
-    const limits = this.planLimits.getLimits(sub.plan);
-    return { ...sub, limits };
   }
 
   // ── PATCH /workspaces/current ─────────────────────────────────────────────
@@ -159,27 +146,15 @@ export class WorkspacesService {
       }
     };
 
-    // Encrypt sensitive fields; non-sensitive fields stored as plain text.
-    const setOrUnsetEnc = (plainKey: string, encKey: string, value: string | undefined) => {
-      if (value === undefined) return;
-      if (value === '') {
-        delete nextSettings[plainKey];
-        delete nextSettings[encKey];
-      } else {
-        nextSettings[encKey] = this.crypto.encrypt(value);
-        delete nextSettings[plainKey]; // remove legacy plaintext key if present
-      }
-    };
-
     setOrUnset('hacienda_environment', hacienda_environment);
     setOrUnset('hacienda_username', hacienda_username);
-    setOrUnsetEnc('hacienda_password', 'hacienda_password_enc', hacienda_password);
+    setOrUnset('hacienda_password', hacienda_password);
     setOrUnset('hacienda_client_id', hacienda_client_id);
     setOrUnset('hacienda_token_url', hacienda_token_url);
-    setOrUnsetEnc('hacienda_access_token', 'hacienda_access_token_enc', hacienda_access_token);
+    setOrUnset('hacienda_access_token', hacienda_access_token);
     setOrUnset('hacienda_callback_url', hacienda_callback_url);
     setOrUnset('hacienda_certificate_path', hacienda_certificate_path);
-    setOrUnsetEnc('hacienda_certificate_pin', 'hacienda_certificate_pin_enc', hacienda_certificate_pin);
+    setOrUnset('hacienda_certificate_pin', hacienda_certificate_pin);
 
     if (hacienda_signing_enabled !== undefined) {
       nextSettings.hacienda_signing_enabled = hacienda_signing_enabled === 'true';
@@ -203,6 +178,7 @@ export class WorkspacesService {
 
     const workspace = await this.prisma.workspace.update({
       where: { id: workspaceId },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data: {
         ...rest,
         ...(settingsChanged ? { settings_json: nextSettings } : {}),
@@ -331,6 +307,51 @@ export class WorkspacesService {
     }
   }
 
+  // ── Landing page config ───────────────────────────────────────────────────
+
+  async getLandingConfig(workspaceId: string) {
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const settings = (workspace.settings_json as Record<string, any>) ?? {};
+    return (settings.landing_config as Record<string, any>) ?? {};
+  }
+
+  async updateLandingConfig(workspaceId: string, dto: Record<string, any>) {
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const currentSettings = ((workspace.settings_json as Record<string, any>) ?? {});
+    const currentLanding = (currentSettings.landing_config as Record<string, any>) ?? {};
+
+    const next: Record<string, any> = { ...currentLanding };
+    for (const [key, val] of Object.entries(dto)) {
+      if (val !== undefined) {
+        if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+          next[key] = { ...(currentLanding[key] ?? {}), ...val };
+        } else {
+          next[key] = val;
+        }
+      }
+    }
+
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { settings_json: { ...currentSettings, landing_config: next } },
+    });
+    return next;
+  }
+
+  async uploadLandingImage(workspaceId: string, file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No se adjuntó ningún archivo.');
+    const key = `${workspaceId}/landing/${randomUUID().replace(/-/g, '')}-${file.originalname.replace(/[^a-z0-9.]/gi, '_')}`;
+    await this.storage.upload(key, file.buffer, file.mimetype);
+    const url = await this.storage.getPresignedUrl(key, 60 * 60 * 24 * 365);
+    return { url, key };
+  }
+
   // ── GET /workspaces/current/api-keys ──────────────────────────────────────
 
   async getApiKeys(workspaceId: string) {
@@ -386,28 +407,6 @@ export class WorkspacesService {
       _sum: { file_size: true },
     });
 
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-
-    const [monthlyRevenue, prevMonthRevenue] = await Promise.all([
-      this.prisma.invoice.aggregate({
-        where: { workspace_id: workspaceId, created_at: { gte: startOfMonth } },
-        _sum: { amount: true },
-      }),
-      this.prisma.invoice.aggregate({
-        where: { workspace_id: workspaceId, created_at: { gte: startOfPrevMonth, lte: endOfPrevMonth } },
-        _sum: { amount: true },
-      }),
-    ]);
-
-    const revenueThisMonth = Number(monthlyRevenue._sum.amount ?? 0);
-    const revenuePrevMonth = Number(prevMonthRevenue._sum.amount ?? 0);
-    const revenueChange = revenuePrevMonth > 0
-      ? ((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth * 100)
-      : 0;
-
     return {
       contacts,
       conversations,
@@ -418,9 +417,6 @@ export class WorkspacesService {
       documentStorageBytes: totalDocumentSize._sum.file_size ?? 0,
       automations,
       members,
-      monthly_revenue: revenueThisMonth,
-      prev_month_revenue: revenuePrevMonth,
-      revenue_change_pct: Math.round(revenueChange),
     };
   }
 
@@ -516,6 +512,9 @@ export class WorkspacesService {
     requestingUser: AuthUser,
     dto: InviteUserDto,
   ) {
+    // Check user limit for workspace plan
+    await this.planLimits.checkUserLimit(workspaceId);
+
     // Solo ADMIN u OWNER pueden invitar
     if (!['ADMIN', 'OWNER'].includes(requestingUser.role)) {
       throw new ForbiddenException('Solo ADMIN u OWNER pueden invitar usuarios.');
@@ -527,8 +526,6 @@ export class WorkspacesService {
         'No se puede invitar con rol OWNER. Transfiere la propiedad explícitamente.',
       );
     }
-
-    await this.planLimits.checkUserLimit(workspaceId);
 
     let user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -623,11 +620,13 @@ export class WorkspacesService {
       return;
     }
 
+    const safeName = this.escapeHtml(params.workspaceName);
+    const safeRole = this.escapeHtml(params.role);
     const subject = `Te invitaron a ${params.workspaceName} en Pymeshub`;
     const bodyHtml = `
       <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
-        <h2 style="margin-bottom: 12px;">Invitación a ${params.workspaceName}</h2>
-        <p>Te agregaron al workspace con rol <strong>${params.role}</strong>.</p>
+        <h2 style="margin-bottom: 12px;">Invitación a ${safeName}</h2>
+        <p>Te agregaron al workspace con rol <strong>${safeRole}</strong>.</p>
         <p>Si ya tienes la app de escritorio, ábrela desde aquí:</p>
         <p><a href="${params.desktopUrl}">Abrir en la app</a></p>
         <p>Si no, usa el navegador:</p>
@@ -675,12 +674,22 @@ export class WorkspacesService {
       throw new BadRequestException('Usa la ruta de transferencia de propiedad.');
     }
 
-    return this.prisma.workspaceUser.update({
+    // ADMIN can only change roles below their own level (AGENT, VIEWER)
+    if (requestingUser.role === 'ADMIN' && membership.role === 'ADMIN') {
+      throw new ForbiddenException('Un ADMIN no puede modificar el rol de otro ADMIN.');
+    }
+
+    const updated = await this.prisma.workspaceUser.update({
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
       },
       data: { role: dto.role as any },
     });
+
+    // Invalidate all sessions for the affected user so the role change takes effect immediately
+    await this.refreshTokenService.revokeAll(targetUserId, workspaceId);
+
+    return updated;
   }
 
   // ── DELETE /workspaces/current/members/:userId ────────────────────────────
@@ -715,5 +724,28 @@ export class WorkspacesService {
     });
 
     return { message: 'Miembro removido del workspace.' };
+  }
+
+  async getSubscription(workspaceId: string) {
+    const sub = await this.prisma.workspaceSubscription.findFirst({
+      where: { workspace_id: workspaceId },
+      orderBy: { created_at: 'desc' },
+      select: {
+        plan: true,
+        status: true,
+        billing_interval: true,
+        current_period_start: true,
+        current_period_end: true,
+        cancel_at_period_end: true,
+        trial_ends_at: true,
+      },
+    });
+
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { plan: true },
+    });
+
+    return sub ?? { plan: ws?.plan ?? 'FREE', status: 'MANUAL' };
   }
 }

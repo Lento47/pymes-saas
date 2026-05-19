@@ -1,4 +1,3 @@
-import { WorkspaceUserRole } from '@prisma/client';
 import {
   Body,
   Controller,
@@ -8,9 +7,12 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { WorkspacesService } from './workspaces.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -18,6 +20,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
+import { UpdateLandingConfigDto } from './dto/landing-config.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
@@ -38,11 +41,6 @@ export class WorkspacesController {
     return this.service.getCurrent(workspaceId);
   }
 
-  @Get('current/subscription')
-  getSubscription(@CurrentUser('workspace_id') workspaceId: string) {
-    return this.service.getSubscription(workspaceId);
-  }
-
   @Get('current/stats')
   getStats(@CurrentUser('workspace_id') workspaceId: string) {
     return this.service.getStats(workspaceId);
@@ -54,19 +52,19 @@ export class WorkspacesController {
   }
 
   @Get('current/api-keys')
-  @Roles(WorkspaceUserRole.ADMIN)
+  @Roles('ADMIN' as any)
   getApiKeys(@CurrentUser('workspace_id') workspaceId: string) {
     return this.service.getApiKeys(workspaceId);
   }
 
   @Get('current/export')
-  @Roles(WorkspaceUserRole.ADMIN)
+  @Roles('ADMIN' as any)
   exportData(@CurrentUser('workspace_id') workspaceId: string, @Query('type') type: string) {
     return this.service.exportData(workspaceId, type);
   }
 
   @Patch('current')
-  @Roles(WorkspaceUserRole.ADMIN)
+  @Roles('ADMIN' as any)
   updateCurrent(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: UpdateWorkspaceDto,
@@ -75,13 +73,43 @@ export class WorkspacesController {
   }
 
   @Post('current/ai/test')
-  @Roles(WorkspaceUserRole.ADMIN)
-  async testAiConnection(
+  @Roles('ADMIN' as any)
+  testAiConnection(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() dto: TestAiConnectionDto,
   ) {
-    await this.planLimits.enforcePlanTier(workspaceId, 'ENTERPRISE', 'Inteligencia Artificial');
     return this.service.testAiConnection(workspaceId, dto);
+  }
+
+  @Get('current/subscription')
+  getSubscription(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.service.getSubscription(workspaceId);
+  }
+
+  // ── Landing config ────────────────────────────────────────────────────────
+
+  @Get('current/landing-config')
+  getLandingConfig(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.service.getLandingConfig(workspaceId);
+  }
+
+  @Patch('current/landing-config')
+  @Roles('ADMIN' as any)
+  updateLandingConfig(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Body() dto: UpdateLandingConfigDto,
+  ) {
+    return this.service.updateLandingConfig(workspaceId, dto);
+  }
+
+  @Post('current/landing-config/image')
+  @Roles('ADMIN' as any)
+  @UseInterceptors(FileInterceptor('image', { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }))
+  uploadLandingImage(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.service.uploadLandingImage(workspaceId, file);
   }
 
   // ── Members ────────────────────────────────────────────────────────────────
@@ -92,7 +120,7 @@ export class WorkspacesController {
   }
 
   @Post('current/members/invite')
-  @Roles(WorkspaceUserRole.ADMIN)
+  @Roles('ADMIN' as any)
   async inviteUser(
     @CurrentUser() user: AuthUser,
     @Body() dto: InviteUserDto,
@@ -102,7 +130,7 @@ export class WorkspacesController {
   }
 
   @Patch('current/members/:userId/role')
-  @Roles(WorkspaceUserRole.ADMIN)
+  @Roles('ADMIN' as any)
   changeMemberRole(
     @CurrentUser() user: AuthUser,
     @Param('userId') targetUserId: string,
@@ -112,7 +140,7 @@ export class WorkspacesController {
   }
 
   @Delete('current/members/:userId')
-  @Roles(WorkspaceUserRole.ADMIN)
+  @Roles('ADMIN' as any)
   removeMember(
     @CurrentUser() user: AuthUser,
     @Param('userId') targetUserId: string,

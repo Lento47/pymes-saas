@@ -46,6 +46,8 @@ const mockAiService = { getWorkspaceConfig: jest.fn(), getDefaultModel: jest.fn(
 const mockEmailService = { sendOutbound: jest.fn() };
 const mockEventsGateway = { emitToWorkspace: jest.fn(), emitToUser: jest.fn() };
 const mockPlanLimits = { checkUserLimit: jest.fn(), enforceMembers: jest.fn(), getUpgradePlan: jest.fn(), getLimits: jest.fn(), isPlanAtLeast: jest.fn(), enforcePlanTier: jest.fn() };
+const mockStorageService = { upload: jest.fn(), getSignedUrl: jest.fn(), delete: jest.fn() };
+const mockRefreshTokenService = { revokeAll: jest.fn() };
 
 describe('WorkspacesService', () => {
   let service: WorkspacesService;
@@ -62,7 +64,9 @@ describe('WorkspacesService', () => {
         { provide: AiService, useValue: mockAiService },
         { provide: EmailService, useValue: mockEmailService },
         { provide: require('../gateways/events.gateway').EventsGateway, useValue: mockEventsGateway },
-        { provide: require('../common/plan-limits/plan-limits.service').PlanLimitsService, useValue: mockPlanLimits },
+        { provide: require('../billing/plan-limits.service').PlanLimitsService, useValue: mockPlanLimits },
+        { provide: require('../common/storage/storage.service').StorageService, useValue: mockStorageService },
+        { provide: require('../auth/refresh-token.service').RefreshTokenService, useValue: mockRefreshTokenService },
       ],
     }).compile();
 
