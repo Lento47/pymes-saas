@@ -7,8 +7,12 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { WorkspacesService } from './workspaces.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -16,6 +20,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
+import { UpdateLandingConfigDto } from './dto/landing-config.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
 import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
@@ -79,6 +84,32 @@ export class WorkspacesController {
   @Get('current/subscription')
   getSubscription(@CurrentUser('workspace_id') workspaceId: string) {
     return this.service.getSubscription(workspaceId);
+  }
+
+  // ── Landing config ────────────────────────────────────────────────────────
+
+  @Get('current/landing-config')
+  getLandingConfig(@CurrentUser('workspace_id') workspaceId: string) {
+    return this.service.getLandingConfig(workspaceId);
+  }
+
+  @Patch('current/landing-config')
+  @Roles('ADMIN' as any)
+  updateLandingConfig(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Body() dto: UpdateLandingConfigDto,
+  ) {
+    return this.service.updateLandingConfig(workspaceId, dto);
+  }
+
+  @Post('current/landing-config/image')
+  @Roles('ADMIN' as any)
+  @UseInterceptors(FileInterceptor('image', { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }))
+  uploadLandingImage(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.service.uploadLandingImage(workspaceId, file);
   }
 
   // ── Members ────────────────────────────────────────────────────────────────

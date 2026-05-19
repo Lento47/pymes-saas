@@ -6,9 +6,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
+import { StorageService } from '../common/storage/storage.service';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
@@ -27,6 +29,7 @@ export class WorkspacesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
+    private readonly storage: StorageService,
     private readonly aiService: AiService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
@@ -301,6 +304,51 @@ export class WorkspacesService {
     } catch (error) {
       throw new BadRequestException((error as Error).message || 'No se pudo validar la conexion con el proveedor de IA.');
     }
+  }
+
+  // ── Landing page config ───────────────────────────────────────────────────
+
+  async getLandingConfig(workspaceId: string) {
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const settings = (workspace.settings_json as Record<string, any>) ?? {};
+    return (settings.landing_config as Record<string, any>) ?? {};
+  }
+
+  async updateLandingConfig(workspaceId: string, dto: Record<string, any>) {
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const currentSettings = ((workspace.settings_json as Record<string, any>) ?? {});
+    const currentLanding = (currentSettings.landing_config as Record<string, any>) ?? {};
+
+    const next: Record<string, any> = { ...currentLanding };
+    for (const [key, val] of Object.entries(dto)) {
+      if (val !== undefined) {
+        if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+          next[key] = { ...(currentLanding[key] ?? {}), ...val };
+        } else {
+          next[key] = val;
+        }
+      }
+    }
+
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { settings_json: { ...currentSettings, landing_config: next } },
+    });
+    return next;
+  }
+
+  async uploadLandingImage(workspaceId: string, file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No se adjuntó ningún archivo.');
+    const key = `${workspaceId}/landing/${randomUUID().replace(/-/g, '')}-${file.originalname.replace(/[^a-z0-9.]/gi, '_')}`;
+    await this.storage.upload(key, file.buffer, file.mimetype);
+    const url = await this.storage.getPresignedUrl(key, 60 * 60 * 24 * 365);
+    return { url, key };
   }
 
   // ── GET /workspaces/current/api-keys ──────────────────────────────────────

@@ -14,7 +14,7 @@ import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
   Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot,
   Sun, Moon, Search, Menu, X, ChevronRight, Building2,
-  CreditCard, Layers, Plug, PlugZap, Shuffle, BrainCircuit, ShieldCheck, UserCircle, LifeBuoy,
+  CreditCard, Layers, Plug, PlugZap, Shuffle, BrainCircuit, ShieldCheck, UserCircle, LifeBuoy, LayoutTemplate,
 } from "lucide-react";
 
 type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "notifications" | "settings" | "help";
@@ -103,6 +103,7 @@ const ADMIN_ITEMS = [
   { href: "/admin", icon: LayoutDashboard, key: "adminDashboard" as const },
   { href: "/admin/workspaces", icon: Shield, key: "adminWorkspaces" as const },
   { href: "/admin/plan-limits", icon: ShieldCheck, key: "adminPlanLimits" as const },
+  { href: "/admin/landing", icon: LayoutTemplate, key: "adminLanding" as const },
 ] as const;
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
@@ -403,7 +404,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               <div className="space-y-1">
                 {ADMIN_ITEMS.map(({ href, icon: Icon, key }) => {
                   const active = isActive(href);
-                  const label = key === "adminDashboard" ? copy.adminDashboard : key === "adminWorkspaces" ? copy.adminWorkspaces : copy.adminPlanLimits;
+                  const label = key === "adminDashboard" ? copy.adminDashboard : key === "adminWorkspaces" ? copy.adminWorkspaces : key === "adminLanding" ? "Landing Page" : copy.adminPlanLimits;
                   return (
                     <Link key={href} to={href}
                       className={cn(
