@@ -1,24 +1,23 @@
 # =============================================================================
-# CI Pipeline — NestJS SaaS (pnpm + Prisma + PostgreSQL 16)
+# CI Pipeline — PymesHub API (NestJS + Prisma + PostgreSQL 16)
 # =============================================================================
-name: CI
+name: API CI
 
 on:
   push:
     branches:
-      - main
-      - develop
+      - main-api
   pull_request:
     branches:
-      - main
+      - main-api
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: api-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint-and-type-check:
-    name: Lint & Type Check
+  build:
+    name: Validate Prisma & Build API
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -30,7 +29,7 @@ jobs:
 
       - name: Info — Context
         run: |
-          echo "🔍 CI Context"
+          echo "🔍 API CI Context"
           echo "  Branch:    ${{ github.ref_name }}"
           echo "  Commit:    ${{ github.sha }}"
           echo "  Actor:     ${{ github.actor }}"
@@ -57,16 +56,19 @@ jobs:
       - name: Info — Prisma version
         run: pnpm exec prisma --version
 
+      - name: Validate Prisma schema
+        run: pnpm exec prisma validate
+
       - name: Generate Prisma Client
         run: pnpm exec prisma generate
 
-      - name: Build (NestJS / TypeScript)
+      - name: Build API (NestJS / TypeScript)
         run: pnpm run build
 
   test:
-    name: Tests
+    name: API Tests with PostgreSQL
     runs-on: ubuntu-latest
-    needs: lint-and-type-check
+    needs: build
     defaults:
       run:
         working-directory: apps/api
@@ -95,7 +97,7 @@ jobs:
 
       - name: Info — Context
         run: |
-          echo "🔍 CI Context"
+          echo "🔍 API Test Context"
           echo "  Branch:    ${{ github.ref_name }}"
           echo "  Commit:    ${{ github.sha }}"
           echo "  DB Host:   localhost:5432"
@@ -116,11 +118,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --loglevel verbose
 
+      - name: Validate Prisma schema
+        run: pnpm exec prisma validate
+
       - name: Generate Prisma Client
         run: pnpm exec prisma generate
 
       - name: Run Prisma migrations
         run: pnpm exec prisma migrate deploy
 
-      - name: Run tests (verbose)
+      - name: Run tests
         run: pnpm exec jest --verbose --detectOpenHandles --passWithNoTests
