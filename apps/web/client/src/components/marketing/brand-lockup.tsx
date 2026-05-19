@@ -1,11 +1,4 @@
-import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-
-const ICON_CANDIDATES = [
-  "/images/pymesHub.png",
-  "/images/pymesHub-icon.svg",
-  "/images/pymesHub-icon.png",
-];
 
 interface BrandLockupProps {
   className?: string;
@@ -20,69 +13,27 @@ export function BrandLockup({
   textClassName,
   compact = false,
 }: BrandLockupProps) {
-  const [iconIndex, setIconIndex] = useState(0);
-  const currentIcon = useMemo(() => ICON_CANDIDATES[iconIndex], [iconIndex]);
-  const useFallbackMark = iconIndex >= ICON_CANDIDATES.length;
-
   return (
     <div className={cn("inline-flex items-center gap-3", className)}>
-      {!useFallbackMark ? (
-        <span
-          className={cn(
-            compact ? "h-8 w-8" : "h-9 w-9",
-            "inline-flex shrink-0 items-center justify-center overflow-visible",
-            markClassName
-          )}
-        >
-          <img
-            src={currentIcon}
-            alt=""
-            aria-hidden="true"
-            onError={() => setIconIndex((current) => current + 1)}
-            className="h-full w-full object-contain"
-          />
-        </span>
-      ) : (
-        <svg
-          viewBox="0 0 32 32"
-          aria-hidden="true"
-          className={cn(
-            compact ? "h-8 w-8" : "h-9 w-9",
-            "text-[#FBBF24] drop-shadow-[0_0_12px_rgba(231,255,90,0.4)]",
-            markClassName
-          )}
-          fill="none"
-        >
-          <path
-            d="M9.5 5.75 17 12.4l-4.1 1.5 6.7 6.2"
-            stroke="currentColor"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="m14.4 4.9 7.2 6.1-4 1.5 5.9 5.6"
-            stroke="currentColor"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity="0.9"
-          />
-          <path
-            d="m12.1 18.8 5.3-1.9"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            opacity="0.55"
-          />
-        </svg>
-      )}
-
+      <span
+        aria-hidden="true"
+        className={cn(
+          compact ? "h-7 w-7" : "h-8 w-8",
+          "shrink-0 rounded-[8px]",
+          markClassName,
+        )}
+        style={{
+          background:
+            "radial-gradient(circle at 30% 25%, rgba(255,255,255,.6) 0%, rgba(255,255,255,0) 50%), linear-gradient(135deg, #4F46E5, #3730A3)",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,.4), 0 4px 10px -2px rgba(79,70,229,.5)",
+        }}
+      />
       <span
         className={cn(
           "font-marketing font-semibold uppercase text-white",
           compact ? "text-sm tracking-[0.24em]" : "text-lg tracking-[0.28em]",
-          textClassName
+          textClassName,
         )}
       >
         PymesHub
