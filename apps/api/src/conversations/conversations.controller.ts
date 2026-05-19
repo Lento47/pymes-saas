@@ -1,5 +1,6 @@
 import { WorkspaceUserRole } from '@prisma/client';
 import {
+  BadGatewayException,
   Body,
   Controller,
   Delete,
@@ -185,18 +186,19 @@ export class ConversationsController {
         );
       } catch (err) {
         this.logger.error(`Email dispatch failed: ${err?.message}`);
+        throw new BadGatewayException(err?.message ?? 'No se pudo enviar el email.');
       }
     }
 
     if (conv?.channel?.type === 'WHATSAPP' && (conv.contact as any)?.phone) {
       try {
         const to = ((conv.contact as any).phone as string).replace(/\D/g, '');
-        this.logger.log(`[DIAG] WhatsApp dispatch: conv=${conversationId}, channel=${conv.channel.id}, phone=${to}`);
+        this.logger.log(`[DIAG] WhatsApp dispatch: conv=${conversationId}, channel=${conv.channel.id}, phone=${to}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? 'none'}`);
         if (dto.media_url && dto.media_type) {
           const waType = ['image', 'video', 'audio', 'document', 'sticker'].includes(dto.media_type)
             ? dto.media_type as 'image' | 'video' | 'audio' | 'document' | 'sticker'
             : 'document';
-          await this.whatsAppService.sendMedia(conv.channel, to, dto.media_url, waType, dto.body_text || undefined);
+          await this.whatsAppService.sendMedia(conv.channel, to, dto.media_url, waType, bodyText || undefined);
         } else if (template?.external_template_id) {
           await this.whatsAppService.sendTemplateMessage(
             conv.channel,
@@ -210,12 +212,14 @@ export class ConversationsController {
         }
       } catch (err) {
         this.logger.error(`WhatsApp dispatch failed: ${err?.message}`);
+        throw new BadGatewayException(err?.message ?? 'No se pudo enviar el mensaje por WhatsApp.');
       }
     }
 
     if (conv?.channel?.type === 'TELEGRAM' && (conv.contact as any)?.telegram_chat_id) {
       try {
         const chatId = (conv.contact as any).telegram_chat_id;
+        this.logger.log(`[DIAG] Telegram dispatch: conv=${conversationId}, channel=${conv.channel.id}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? 'none'}`);
         if (dto.media_url && dto.media_type) {
           await this.telegramService.sendMedia(
             conv.channel.id,
@@ -233,6 +237,7 @@ export class ConversationsController {
         }
       } catch (err) {
         this.logger.error(`Telegram dispatch failed: ${err?.message}`);
+        throw new BadGatewayException(err?.message ?? 'No se pudo enviar el mensaje por Telegram.');
       }
     }
 
