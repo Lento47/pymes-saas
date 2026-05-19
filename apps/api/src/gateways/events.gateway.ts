@@ -10,6 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
+import { PrismaService } from '../common/prisma/prisma.service';
 
 // ─── Eventos emitidos al cliente ─────────────────────────────────────────────
 // message:new          → nuevo mensaje en una conversación (DTO enriquecido)
@@ -38,14 +39,17 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private readonly logger = new Logger(EventsGateway.name);
 
-  constructor(private readonly jwtService: JwtService) { }
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+  ) { }
 
   // ── Conexión ───────────────────────────────────────────────────────────────
 
   async handleConnection(client: Socket) {
     try {
       const token =
-        (client.handshake.auth as any)?.token ||
+        (client.handshake.auth as Record<string, unknown>)?.token as string | undefined ||
         client.handshake.headers.authorization?.replace('Bearer ', '');
 
       if (!token) throw new Error('No token');
@@ -75,6 +79,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Disconnected: ${client.id}`);
+    client.leaveAll();
   }
 
   // ── Eventos del cliente ────────────────────────────────────────────────────
@@ -85,6 +90,17 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() conversationId: string,
   ) {
+    const workspaceId = client.data.workspaceId as string | undefined;
+    if (!workspaceId) {
+      return { ok: false, error: 'Unauthenticated' };
+    }
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, workspace_id: workspaceId },
+      select: { id: true },
+    });
+    if (!conv) {
+      return { ok: false, error: 'Not found' };
+    }
     await client.join(`conversation:${conversationId}`);
     return { ok: true, room: `conversation:${conversationId}` };
   }

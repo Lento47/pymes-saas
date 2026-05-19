@@ -183,8 +183,7 @@ export class ConversationsService {
         ...(dto.subject          !== undefined && { subject: dto.subject }),
         ...(dto.assigned_user_id !== undefined && { assigned_user_id: dto.assigned_user_id }),
         ...(dto.contact_id !== undefined && { contact_id: dto.contact_id }),
-          ...(dto.subject !== undefined && { subject: dto.subject }),
-          updated_at: new Date(),
+        updated_at: new Date(),
       },
       select: { id: true },
     });

@@ -16,7 +16,7 @@ interface DiagnosticCaseTriageShape {
   created_at: Date;
 }
 
-const HERMES_WEBHOOK_URL = process.env.HERMES_WEBHOOK_URL || 'http://localhost:8644/webhooks/pymes-bugs';
+const HERMES_WEBHOOK_URL = process.env.HERMES_WEBHOOK_URL;
 
 export type TriageVerdict = 'USER_ERROR' | 'MISCONFIGURATION' | 'BUG' | 'PLATFORM_INCIDENT' | 'UNKNOWN';
 
@@ -308,6 +308,10 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
   }
 
   private async notifyHermesWebhook(dCase: DiagnosticCaseTriageShape, verdict: TriageResult): Promise<void> {
+    if (!HERMES_WEBHOOK_URL) {
+      this.logger.warn('HERMES_WEBHOOK_URL not configured — bug escalation skipped');
+      return;
+    }
     const payload = {
       event_type: 'bug_escalated',
       verdict: verdict.verdict === 'PLATFORM_INCIDENT' ? '🚨 Incidente de plataforma' : '🐛 Bug',
@@ -318,7 +322,7 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
       similar_count: verdict.similar_cases_count,
     };
 
-    const response = await fetch(HERMES_WEBHOOK_URL, {
+    const response = await fetch(HERMES_WEBHOOK_URL!, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

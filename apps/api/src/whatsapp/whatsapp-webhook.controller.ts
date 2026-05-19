@@ -8,6 +8,7 @@ import {
   Logger,
   Post,
   Query,
+  RawBodyRequest,
   Req,
   Res,
   UnauthorizedException,
@@ -44,8 +45,8 @@ export class WhatsAppWebhookController {
   @Throttle({ webhook: { limit: 10, ttl: 60_000 } }) // SECURITY: Strict rate limit for webhooks
   async receiveWebhook(
     @Headers('x-hub-signature-256') signature: string | undefined,
-    @Body() payload: Record<string, any>,
-    @Req() req: Request,
+    @Body() payload: Record<string, unknown>,
+    @Req() req: RawBodyRequest<Request>,
   ) {
     // SECURITY: Verify webhook signature from Meta when configured.
     // If WHATSAPP_APP_SECRET is not set, accept the webhook without
@@ -56,7 +57,7 @@ export class WhatsAppWebhookController {
         this.logger.warn('WhatsApp webhook missing X-Hub-Signature-256 header');
         throw new UnauthorizedException('Missing webhook signature');
       }
-      const rawBody = (req as any).rawBody ?? Buffer.from(JSON.stringify(payload));
+      const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(payload));
       if (!this.verifyWebhookSignature(appSecret, signature, rawBody)) {
         this.logger.warn('Invalid WhatsApp webhook signature');
         throw new UnauthorizedException('Invalid webhook signature');

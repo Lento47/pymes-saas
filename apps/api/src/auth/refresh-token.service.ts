@@ -76,10 +76,19 @@ export class RefreshTokenService {
     ]);
     if (!membership) throw new UnauthorizedException('Sin acceso al workspace.');
 
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
+    // Atomic revoke — only succeed if token is still unrevoked.
+    // If count === 0, a concurrent request already revoked it → treat as reuse.
+    const revokeResult = await this.prisma.refreshToken.updateMany({
+      where: { id: stored.id, revoked_at: null },
       data: { revoked_at: new Date() },
     });
+    if (revokeResult.count === 0) {
+      await this.prisma.refreshToken.updateMany({
+        where: { family: stored.family, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+      throw new UnauthorizedException('Token reutilizado — todas las sesiones han sido revocadas.');
+    }
 
     const [newRefreshToken, accessToken] = await Promise.all([
       this.create(stored.user_id, stored.workspace_id, stored.family),
