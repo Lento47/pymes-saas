@@ -1,10 +1,22 @@
 import { memo, useCallback } from "react";
-import { formatDistanceToNow, formatDistanceToNowStrict } from "date-fns";
+import { format, formatDistanceToNowStrict, isToday, isThisWeek } from "date-fns";
+import { es } from "date-fns/locale";
 import type { InboxConversation } from "../types";
 import { AvatarFallback } from "@/components/shared/avatar-fallback";
 import { ChannelBadge } from "@/components/shared/channel-badge";
 import { hasSensitiveContent } from "@/components/shared/sensitive-text";
 import { Lock } from "lucide-react";
+
+function formatSmartTimestamp(dateStr: string): string {
+  const date = new Date(dateStr);
+  if (isToday(date)) {
+    return format(date, "h:mm a");
+  }
+  if (isThisWeek(date, { weekStartsOn: 1 })) {
+    return format(date, "EEE", { locale: es }).replace(/^\w/, (c) => c.toUpperCase()).slice(0, 3);
+  }
+  return format(date, "d MMM", { locale: es });
+}
 
 const STATUS_DOT: Record<string, string> = {
   OPEN: "bg-emerald-400",
@@ -42,13 +54,13 @@ function ConversationListItemImpl({
       onClick={onClick}
       className={[
         "relative w-full px-4 py-3.5 text-left transition-colors border-b border-border/40 last:border-0",
-        selected ? "bg-primary/[0.07]" : "hover:bg-muted/30",
+        selected ? "bg-primary/[0.06]" : "hover:bg-muted/30",
       ].join(" ")}
     >
       {selected && (
         <span
           aria-hidden
-          className="absolute bottom-3 left-0 top-3 w-[3px] rounded-r-full bg-primary"
+          className="absolute bottom-3 left-0 top-3 w-[3px] rounded-r-full bg-primary shadow-sm"
         />
       )}
 
@@ -70,7 +82,7 @@ function ConversationListItemImpl({
             </p>
             {timestamp && (
               <span className="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums">
-                {formatDistanceToNow(new Date(timestamp), { addSuffix: false })}
+                {formatSmartTimestamp(timestamp)}
               </span>
             )}
           </div>
@@ -79,7 +91,7 @@ function ConversationListItemImpl({
           <div className="mt-0.5 flex flex-wrap items-center gap-1">
             <ChannelBadge channel={conversation.channel?.type} />
             {!conversation.assigned_user && (
-              <span className="rounded-full bg-amber-500/8 px-1.5 py-px text-[10px] font-medium text-amber-400/70">
+              <span className="rounded-full bg-amber-500/[0.06] px-1.5 py-px text-[10px] font-medium text-amber-400/60">
                 Sin asignar
               </span>
             )}

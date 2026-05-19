@@ -11,6 +11,7 @@ import {
   Trash2, UserPlus, Info, Receipt, Plus, X, Paperclip, AlertTriangle,
 } from "lucide-react";
 import { SensitiveText } from "@/components/shared/sensitive-text";
+import { ChannelBadge } from "@/components/shared/channel-badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -322,6 +323,11 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const statusLabel = conversation?.status ? STATUS_LABELS[conversation.status] ?? conversation.status : null;
   const assigneeName = (conversation as any)?.assigned_user?.name ?? null;
   const subtitleParts = [channelLabel, statusLabel, assigneeName ?? "Sin asignar"].filter(Boolean);
+  const statusDotClass = conversation?.status === "OPEN"
+    ? "bg-emerald-400"
+    : conversation?.status === "PENDING"
+    ? "bg-amber-400"
+    : "bg-blue-400/50";
 
   return (
     <div className="flex flex-col min-h-0 h-full max-h-dvh bg-background">
@@ -337,9 +343,21 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-semibold text-foreground truncate leading-tight">{contactName}</p>
-          <p className="text-[10px] text-muted-foreground/60 truncate leading-tight mt-px">
-            {subtitleParts.join(" · ")}
-          </p>
+          <div className="flex items-center gap-1 mt-px flex-wrap">
+            <ChannelBadge channel={channelType} />
+            {statusLabel && (
+              <>
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDotClass}`} />
+                <span className="text-[10px] text-muted-foreground/60">{statusLabel}</span>
+              </>
+            )}
+            {(assigneeName || !conversation?.assigned_user) && (
+              <>
+                <span className="text-[10px] text-muted-foreground/40">·</span>
+                <span className="text-[10px] text-muted-foreground/60">{assigneeName ?? "Sin asignar"}</span>
+              </>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
           <Select onValueChange={(v) => assignMut.mutate(v)}>
@@ -456,9 +474,9 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                     </div>
                   )}
                   <div className={cn(
-                    "max-w-[72%] rounded-2xl px-3.5 py-2.5",
+                    "max-w-[75%] rounded-2xl px-3.5 py-2.5",
                     isOutbound
-                      ? "bg-primary/10 rounded-br-sm"
+                      ? "bg-primary/[0.08] border border-primary/[0.12] rounded-br-sm"
                       : "bg-card border border-border/50 rounded-bl-sm shadow-[0_1px_2px_0_rgb(0,0,0,0.04)]"
                   )}>
                     {isFirst && !isOutbound && (
@@ -550,7 +568,13 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       {/* Composer */}
       <div className="border-t border-border px-3 py-3 shrink-0 bg-background">
         {attachment && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-1.5">
+          <div className="mb-2 rounded-lg border border-border/60 bg-muted/30 overflow-hidden">
+            {uploading && (
+              <div className="h-0.5 w-full bg-amber-400/30">
+                <div className="h-full w-1/2 bg-amber-400 animate-pulse rounded-full" />
+              </div>
+            )}
+            <div className="flex items-center gap-2 px-3 py-1.5">
             <Paperclip className="w-3 h-3 text-muted-foreground shrink-0" />
             <span className="flex-1 truncate text-[11px] text-foreground">{attachment.file.name}</span>
             <span className="text-[10px] text-muted-foreground/60 shrink-0">{formatSize(attachment.file.size)}</span>
@@ -562,6 +586,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
             >
               <X className="w-3.5 h-3.5" />
             </button>
+            </div>
           </div>
         )}
         <div className="flex items-end gap-0 rounded-xl border border-border bg-background overflow-hidden focus-within:border-primary/40 transition-colors">
@@ -617,7 +642,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
           </Button>
         </div>
         <p className="text-[10px] text-muted-foreground/40 mt-1.5 ml-1">
-          {channelLabel ? `Enviando por ${channelLabel} · ` : ""}Enter para enviar
+          {channelLabel ? `Enviando por ${channelLabel} · ` : ""}↑ Enter para enviar · Shift+Enter nueva línea
         </p>
       </div>
 
