@@ -584,15 +584,23 @@ export class MessagesService {
     const attachments = msg.attachments_json as AttachmentEntry[] | null | undefined;
     const attachmentEntry = attachments?.[0] ?? null;
 
+    // 4) Telegram pending: raw payload contains attachments[] but MinIO download not done yet
+    const tgAtts = (!attachmentEntry && !wm)
+      ? (payload?.attachments as Array<{ type: string; file_id: string }> | undefined)
+      : undefined;
+    const tgPending = tgAtts?.[0] ?? null;
+
     const mediaType = wm?.mediaType ?? wm?.kind ?? attachmentEntry?.type ?? msg.message_type ?? null;
     const mediaId = wm?.whatsappMediaId ?? wm?.id ?? attachmentEntry?.mediaId ?? null;
-    const hasMedia = !!mediaId;
+    const hasMedia = !!mediaId || !!tgPending;
 
-    // Prefer MinIO storage URL over Meta proxy
-    const storageUrl = attachmentEntry?.storageKey
+    // Only return a URL when storage is ready or WhatsApp media ID is available.
+    // Telegram pending has no proxiable URL until MinIO download completes.
+    const downloadUrl = attachmentEntry?.storageKey
       ? `/api/conversations/messages/${msg.id}/media`
-      : null;
-    const downloadUrl = hasMedia ? `/api/conversations/messages/${msg.id}/media` : null;
+      : wm?.whatsappMediaId
+        ? `/api/conversations/messages/${msg.id}/media`
+        : null;
 
     return {
       ...msg,

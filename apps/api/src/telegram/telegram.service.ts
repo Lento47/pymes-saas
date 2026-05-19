@@ -4,7 +4,10 @@ import { randomBytes, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { MessagesService } from '../conversations/messages.service';
+import { StorageService } from '../common/storage/storage.service';
+import { EventsGateway } from '../gateways/events.gateway';
 import { Telegraf } from 'telegraf';
+import type { Prisma } from '@prisma/client';
 
 interface TelegramWebhookInfo {
   url: string;
@@ -30,6 +33,8 @@ export class TelegramService {
     private readonly crypto: CryptoService,
     private readonly messagesService: MessagesService,
     private readonly config: ConfigService,
+    private readonly storage: StorageService,
+    private readonly events: EventsGateway,
   ) {}
 
   /**
@@ -226,7 +231,7 @@ export class TelegramService {
         attachments.push({ type: 'voice', file_id: message.voice.file_id });
       }
 
-      await this.messagesService.receiveInbound(
+      const result = await this.messagesService.receiveInbound(
         'telegram',
         channel.workspace_id,
         {
@@ -251,6 +256,19 @@ export class TelegramService {
           },
         },
       );
+
+      // Launch media download fire-and-forget after message is persisted
+      if (result.ok && result.message_id && result.conversation_id && attachments.length > 0) {
+        this.downloadTelegramMediaToStorage(
+          channel.id,
+          channel.workspace_id,
+          result.conversation_id,
+          result.message_id,
+          attachments[0] as { type: string; file_id: string; file_name?: string },
+        ).catch((err: unknown) =>
+          this.logger.error(`Telegram media download failed: ${err instanceof Error ? err.message : String(err)}`),
+        );
+      }
 
       this.logger.debug(`Telegram message ${tgMessageId} from ${senderRef} → workspace ${channel.workspace_id}`);
       return { processed: true };
@@ -355,5 +373,79 @@ export class TelegramService {
   async clearBotCache(channelId: string): Promise<void> {
     this.bots.delete(channelId);
     this.webhookCache.delete(channelId);
+  }
+
+  // ── Private: Telegram media download to MinIO ──────────────────────────────
+
+  private async downloadTelegramMediaToStorage(
+    channelId: string,
+    workspaceId: string,
+    conversationId: string,
+    messageId: string,
+    attachment: { type: string; file_id: string; file_name?: string },
+  ): Promise<void> {
+    const token = await this.getBotToken(channelId);
+    if (!token) return;
+
+    const bot = new Telegraf(token);
+    const fileInfo = await bot.telegram.getFile(attachment.file_id);
+    if (!fileInfo.file_path) return;
+
+    const downloadUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.file_path}`;
+    const res = await fetch(downloadUrl, { signal: AbortSignal.timeout(30_000) });
+    if (!res.ok) throw new Error(`Telegram file fetch failed: ${res.status}`);
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const ext = fileInfo.file_path.split('.').pop() ?? '';
+    const storageKey = `telegram-media/${workspaceId}/${messageId}.${ext}`;
+    const mimeType = this.guessMimeFromExt(ext, attachment.type);
+
+    await this.storage.upload(storageKey, buffer, mimeType);
+
+    await this.prisma.message.update({
+      where: { id: messageId },
+      data: {
+        attachments_json: [
+          {
+            provider: 'telegram',
+            mediaId: attachment.file_id,
+            storageKey,
+            mimeType,
+            size: buffer.length,
+            type: attachment.type,
+            filename: attachment.file_name ?? null,
+            caption: null,
+          },
+        ] as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    this.events.emitMediaReady({
+      message_id: messageId,
+      conversation_id: conversationId,
+      media_type: attachment.type,
+      media_status: 'available',
+      media_download_url: `/api/conversations/messages/${messageId}/media`,
+      media_mime_type: mimeType,
+      media_filename: attachment.file_name ?? null,
+      media_caption: null,
+    });
+
+    this.logger.log(`Telegram media stored: message=${messageId}, key=${storageKey}`);
+  }
+
+  private guessMimeFromExt(ext: string, mediaType: string): string {
+    const map: Record<string, string> = {
+      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+      webp: 'image/webp', mp4: 'video/mp4', mov: 'video/quicktime',
+      mp3: 'audio/mpeg', ogg: 'audio/ogg', oga: 'audio/ogg',
+      pdf: 'application/pdf', doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    };
+    if (map[ext]) return map[ext];
+    if (mediaType === 'photo') return 'image/jpeg';
+    if (mediaType === 'audio' || mediaType === 'voice') return 'audio/ogg';
+    if (mediaType === 'video') return 'video/mp4';
+    return 'application/octet-stream';
   }
 }
