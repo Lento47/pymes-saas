@@ -1,31 +1,55 @@
-import { BookOpen, ExternalLink, FileText, Globe, Mail, ShieldCheck } from "lucide-react";
+import { Instagram, Linkedin, ShieldCheck, Twitter, Youtube } from "lucide-react";
 import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
-import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useI18n } from "@/components/providers/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const PRODUCT_LINKS = [
-  { href: "/documentation/workspace-launch-guide", key: "quickStart" },
-  { href: "/documentation/sla", key: "apiRef" },
-  { href: "/documentation/trust-center-overview", key: "security" },
+  { href: "/inbox", key: "inboxUnified" },
+  { href: "/crm", key: "crm" },
+  { href: "/tasks", key: "tasks" },
+  { href: "/documents", key: "documents" },
+  { href: "/billing", key: "billing" },
+  { href: "/automations", key: "automations" },
+  { href: "/analytics", key: "analytics" },
 ] as const;
 
-const RESOURCES_LINKS = [
-  { href: "/documentation/support-policy", key: "support" },
-  { href: "/documentation/platform-overview", key: "platform" },
-  { href: "/legal", key: "legalHub" },
+const SOLUTIONS_LINKS = [
+  { href: "/solutions/small-teams", key: "smallTeams" },
+  { href: "/solutions/retail", key: "retail" },
+  { href: "/solutions/services", key: "services" },
+  { href: "/solutions/agencies", key: "agencies" },
+  { href: "/solutions/ecommerce", key: "ecommerce" },
 ] as const;
 
 const COMPANY_LINKS = [
-  { href: "/product", key: "about" },
-  { href: "mailto:soporte@pymeshub.lat", key: "contact" },
+  { href: "/about", key: "about" },
+  { href: "/customers", key: "clients" },
+  { href: "/careers", key: "careers" },
+  { href: "/press", key: "press" },
+  { href: "mailto:hola@pymeshub.com", key: "contact" },
+] as const;
+
+const RESOURCES_LINKS = [
+  { href: "/blog", key: "blog" },
+  { href: "/customers", key: "successCases" },
+  { href: "/documentation", key: "helpCenter" },
+  { href: "/community", key: "community" },
+  { href: "/changelog", key: "changelog" },
 ] as const;
 
 const LEGAL_LINKS = [
-  { href: "/legal/terms-of-service", key: "terms" },
   { href: "/legal/privacy-policy", key: "privacy" },
-  { href: "/legal/cookies-policy", key: "cookies" },
+  { href: "/legal/terms-of-service", key: "terms" },
+  { href: "https://status.pymeshub.com", key: "status" },
+  { href: "/legal/trust-center-overview", key: "security" },
+] as const;
+
+const SOCIAL_LINKS = [
+  { href: "https://x.com/pymeshub", Icon: Twitter, label: "X" },
+  { href: "https://linkedin.com/company/pymeshub", Icon: Linkedin, label: "LinkedIn" },
+  { href: "https://instagram.com/pymeshub", Icon: Instagram, label: "Instagram" },
+  { href: "https://youtube.com/@pymeshub", Icon: Youtube, label: "YouTube" },
 ] as const;
 
 export function Footer({ className }: { className?: string }) {
@@ -41,7 +65,29 @@ export function Footer({ className }: { className?: string }) {
       style={{ background: "linear-gradient(180deg, rgba(5,9,29,0.4) 0%, rgba(5,9,29,0.96) 40%, #05091d 100%)" }}
     >
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-10 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1fr]">
+          {/* Column 0 — Brand */}
+          <div>
+            <BrandLockup compact markClassName="h-7 w-7" textClassName="text-sm tracking-[0.18em]" />
+            <p className="mt-4 text-sm leading-relaxed text-white/50" style={{ maxWidth: "28ch" }}>
+              {f.tagline}
+            </p>
+            <div className="mt-5 flex gap-3">
+              {SOCIAL_LINKS.map(({ href, Icon, label }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-white/40 transition hover:border-white/30 hover:text-white/80"
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </a>
+              ))}
+            </div>
+          </div>
+
           {/* Column 1 — Producto */}
           <div>
             <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
@@ -60,13 +106,13 @@ export function Footer({ className }: { className?: string }) {
             </ul>
           </div>
 
-          {/* Column 2 — Recursos */}
+          {/* Column 2 — Soluciones */}
           <div>
             <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
-              {f.colDev}
+              {f.colSolutions}
             </h3>
             <ul className="mt-4 space-y-3">
-              {RESOURCES_LINKS.map(({ href, key }) => (
+              {SOLUTIONS_LINKS.map(({ href, key }) => (
                 <li key={key}>
                   <Link href={href}>
                     <a className="text-sm text-white/56 transition hover:text-white/90">
@@ -96,13 +142,13 @@ export function Footer({ className }: { className?: string }) {
             </ul>
           </div>
 
-          {/* Column 4 — Legal */}
+          {/* Column 4 — Recursos */}
           <div>
             <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
-              {f.colLegal}
+              {f.colResources}
             </h3>
             <ul className="mt-4 space-y-3">
-              {LEGAL_LINKS.map(({ href, key }) => (
+              {RESOURCES_LINKS.map(({ href, key }) => (
                 <li key={key}>
                   <Link href={href}>
                     <a className="text-sm text-white/56 transition hover:text-white/90">
@@ -116,27 +162,22 @@ export function Footer({ className }: { className?: string }) {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 flex flex-col items-center gap-4 border-t border-white/[0.05] pt-8 sm:flex-row sm:justify-between">
-          <div className="flex items-center gap-3">
-            <BrandLockup compact markClassName="h-6 w-6" textClassName="text-xs tracking-[0.18em]" />
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.05] pt-8">
+          <p className="text-xs text-white/30">
+            &copy; 2025 PymesHub Inc. &middot; {f.builtIn}
+          </p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {LEGAL_LINKS.map(({ href, key }) => (
+              <a
+                key={key}
+                href={href}
+                className="text-xs text-white/36 transition hover:text-white/70"
+              >
+                {f[key]}
+              </a>
+            ))}
           </div>
-
-          <div className="flex items-center gap-2 text-xs text-white/36">
-            <Mail className="h-3.5 w-3.5" />
-            <span>soporte@pymeshub.lat</span>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-white/30">
-            <ShieldCheck className="h-3.5 w-3.5 text-white/25" />
-            <span>{f.compliance}</span>
-          </div>
-
-          <LanguageSwitcher variant="marketing" />
         </div>
-
-        <p className="mt-6 text-center text-xs text-white/20">
-          &copy; 2026 PymesHub S.A., Lim&oacute;n, Costa Rica. {f.rights}.
-        </p>
       </div>
     </footer>
   );
