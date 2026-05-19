@@ -76,9 +76,9 @@ export class AutomationsService {
         name: dto.name,
         description: dto.description,
         trigger_type: dto.trigger_type,
-        trigger_config_json: dto.trigger_config_json as any,
-        condition_config_json: dto.condition_config_json as any,
-        action_config_json: dto.action_config_json as any,
+        trigger_config_json: dto.trigger_config_json,
+        condition_config_json: dto.condition_config_json,
+        action_config_json: dto.action_config_json,
         enabled: dto.enabled ?? true,
       },
     });
@@ -116,13 +116,13 @@ export class AutomationsService {
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.trigger_type !== undefined && { trigger_type: dto.trigger_type }),
         ...(dto.trigger_config_json !== undefined && {
-          trigger_config_json: dto.trigger_config_json as any,
+          trigger_config_json: dto.trigger_config_json,
         }),
         ...(dto.condition_config_json !== undefined && {
-          condition_config_json: dto.condition_config_json as any,
+          condition_config_json: dto.condition_config_json,
         }),
         ...(dto.action_config_json !== undefined && {
-          action_config_json: dto.action_config_json as any,
+          action_config_json: dto.action_config_json,
         }),
         ...(dto.enabled !== undefined && { enabled: dto.enabled }),
       },

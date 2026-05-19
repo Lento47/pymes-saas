@@ -11,7 +11,7 @@ import { HaciendaXmlBuilderService } from '../../hacienda/hacienda-xml-builder.s
 import { HaciendaXmlValidatorService } from '../../hacienda/hacienda-xml-validator.service';
 import { FiscalSequenceService } from '../../hacienda/fiscal-sequence.service';
 import { parseJsonValue } from '../../common/prisma/json';
-import { HaciendaStatus } from '@prisma/client';
+import { HaciendaStatus, WorkspaceUserRole } from '@prisma/client';
 import { QUEUE_NAMES } from '../queues.constants';
 
 interface HaciendaSubmitJobData {
@@ -238,7 +238,7 @@ export class HaciendaProcessor extends WorkerHost {
                 const admins = await this.prisma.workspaceUser.findMany({
                   where: {
                     workspace_id: ws.workspace_id,
-                    role: { in: ['OWNER', 'ADMIN'] as any },
+                    role: { in: [WorkspaceUserRole.OWNER, WorkspaceUserRole.ADMIN] },
                   },
                   select: { user_id: true },
                   take: 3,

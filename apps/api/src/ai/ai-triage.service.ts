@@ -3,6 +3,19 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { AiService } from './ai.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
+interface DiagnosticCaseTriageShape {
+  id: string;
+  workspace_id: string;
+  user_id: string | null;
+  error_code: string | null;
+  category: string;
+  risk_level: string;
+  title: string;
+  user_description: string | null;
+  evidence_json: import('@prisma/client').Prisma.JsonValue;
+  created_at: Date;
+}
+
 const HERMES_WEBHOOK_URL = process.env.HERMES_WEBHOOK_URL || 'http://localhost:8644/webhooks/pymes-bugs';
 
 export type TriageVerdict = 'USER_ERROR' | 'MISCONFIGURATION' | 'BUG' | 'PLATFORM_INCIDENT' | 'UNKNOWN';
@@ -46,7 +59,7 @@ export class AiTriageService {
    */
   async triage(diagnosticCaseId: string): Promise<void> {
     try {
-      const dCase = await (this.prisma as any).supportDiagnosticCase.findUnique({
+      const dCase = await this.prisma.supportDiagnosticCase.findUnique({
         where: { id: diagnosticCaseId },
         select: {
           id: true,
@@ -74,8 +87,8 @@ export class AiTriageService {
         const verdict = this.heuristicTriage(dCase, similarCount);
         await this.applyVerdict(dCase, verdict);
       }
-    } catch (err: any) {
-      this.logger.error(`AI triage failed for case ${diagnosticCaseId}: ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.error(`AI triage failed for case ${diagnosticCaseId}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -87,7 +100,7 @@ export class AiTriageService {
   async analyzeModuleHealth(
     workspaceId: string,
     module: string,
-    contextData: Record<string, any>,
+    contextData: Record<string, unknown>,
   ): Promise<{
     verdict: TriageVerdict;
     confidence: 'HIGH' | 'MEDIUM' | 'LOW';
@@ -114,12 +127,12 @@ export class AiTriageService {
     }
   }
 
-  private async countSimilar(errorCode: string, createdAt: Date): Promise<number> {
+  private async countSimilar(errorCode: string | null, createdAt: Date): Promise<number> {
     const windowStart = new Date(createdAt.getTime() - this.dedupWindowMs);
     try {
-      const count = await (this.prisma as any).supportDiagnosticCase.count({
+      const count = await this.prisma.supportDiagnosticCase.count({
         where: {
-          error_code: errorCode,
+          error_code: errorCode ?? undefined,
           created_at: { gte: windowStart, lt: createdAt },
         },
       });
@@ -130,10 +143,10 @@ export class AiTriageService {
   }
 
   private async classifyWithAI(
-    dCase: any,
+    dCase: DiagnosticCaseTriageShape,
     similarCount: number,
   ): Promise<TriageResult | null> {
-    const evidence = typeof dCase.evidence_json === 'object'
+    const evidence = (dCase.evidence_json !== null && typeof dCase.evidence_json === 'object' && !Array.isArray(dCase.evidence_json))
       ? dCase.evidence_json
       : {};
 
@@ -173,7 +186,7 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
     }
   }
 
-  private heuristicTriage(dCase: any, similarCount: number): TriageResult {
+  private heuristicTriage(dCase: DiagnosticCaseTriageShape, similarCount: number): TriageResult {
     const is5xx = dCase.risk_level === 'high' || dCase.category === 'PLATFORM_INCIDENT';
     const isConfig = dCase.category === 'WORKSPACE_CONFIGURATION';
     const isAuth = dCase.error_code?.includes('AUTH') || dCase.error_code === 'MISSING_CONFIG';
@@ -205,7 +218,7 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
     };
   }
 
-  private async applyVerdict(dCase: any, verdict: TriageResult): Promise<void> {
+  private async applyVerdict(dCase: DiagnosticCaseTriageShape, verdict: TriageResult): Promise<void> {
     const triageJson = {
       triage: {
         verdict: verdict.verdict,
@@ -218,10 +231,10 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
       },
     };
 
-    const existingEvidence = typeof dCase.evidence_json === 'object' ? dCase.evidence_json : {};
+    const existingEvidence = (dCase.evidence_json !== null && typeof dCase.evidence_json === 'object' && !Array.isArray(dCase.evidence_json)) ? dCase.evidence_json : {};
     const mergedEvidence = { ...existingEvidence, ...triageJson };
 
-    const update: any = {
+    const update: Record<string, unknown> = {
       evidence_json: mergedEvidence,
     };
 
@@ -253,23 +266,23 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
     }
 
     try {
-      await (this.prisma as any).supportDiagnosticCase.update({
+      await this.prisma.supportDiagnosticCase.update({
         where: { id: dCase.id },
-        data: update,
+        data: update as import('@prisma/client').Prisma.SupportDiagnosticCaseUpdateInput,
       });
 
       if (update.status === 'ESCALATED' || update.category === 'PLATFORM_INCIDENT' || update.category === 'PRODUCT_BUG') {
         await this.notifyBugEscalation(dCase, verdict);
       }
-    } catch (err: any) {
-      this.logger.error(`Failed to apply triage verdict for case ${dCase.id}: ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.error(`Failed to apply triage verdict for case ${dCase.id}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
-  private async notifyBugEscalation(dCase: any, verdict: TriageResult): Promise<void> {
+  private async notifyBugEscalation(dCase: DiagnosticCaseTriageShape, verdict: TriageResult): Promise<void> {
     try {
       // Notify platform admins via internal notification
-      const admins = await (this.prisma as any).user.findMany({
+      const admins = await this.prisma.user.findMany({
         where: { is_platform_admin: true },
         select: { id: true },
       });
@@ -286,15 +299,15 @@ Respondé SOLO con un JSON así, sin explicaciones extra:
       }
 
       // Notify Hermes agent via webhook (deliver-only = 0 tokens hasta que el humano investigue)
-      this.notifyHermesWebhook(dCase, verdict).catch((err: any) => {
-        this.logger.warn(`Hermes webhook notification failed: ${err.message}`);
+      this.notifyHermesWebhook(dCase, verdict).catch((err: unknown) => {
+        this.logger.warn(`Hermes webhook notification failed: ${err instanceof Error ? err.message : String(err)}`);
       });
-    } catch (err: any) {
-      this.logger.warn(`Escalation notification failed: ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.warn(`Escalation notification failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
-  private async notifyHermesWebhook(dCase: any, verdict: TriageResult): Promise<void> {
+  private async notifyHermesWebhook(dCase: DiagnosticCaseTriageShape, verdict: TriageResult): Promise<void> {
     const payload = {
       event_type: 'bug_escalated',
       verdict: verdict.verdict === 'PLATFORM_INCIDENT' ? '🚨 Incidente de plataforma' : '🐛 Bug',

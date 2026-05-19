@@ -31,7 +31,7 @@ export class KnowledgeBaseService {
   constructor(private readonly prisma: PrismaService) {}
 
   async learnFromCase(diagnosticCaseId: string): Promise<void> {
-    const dCase = await (this.prisma as any).supportDiagnosticCase.findUnique({
+    const dCase = await this.prisma.supportDiagnosticCase.findUnique({
       where: { id: diagnosticCaseId },
       select: {
         id: true,
@@ -53,22 +53,25 @@ export class KnowledgeBaseService {
 
     // Filter 2: extract resolution body and require a minimum length
     // so we don't promote one-line shrugs into the catalog.
-    const resolution = (dCase.resolution_json as any) || {};
+    const resolutionRaw = dCase.resolution_json;
+    const resolution = (resolutionRaw !== null && typeof resolutionRaw === 'object' && !Array.isArray(resolutionRaw))
+      ? (resolutionRaw as Record<string, unknown>)
+      : {} as Record<string, unknown>;
     const body: string =
-      resolution.resolution || resolution.summary || '';
-    const workaround: string = resolution.workaround || '';
+      String(resolution.resolution || resolution.summary || '');
+    const workaround: string = String(resolution.workaround || '');
     const longestField = body.length >= workaround.length ? body : workaround;
     if (longestField.length < 50) {
       return;
     }
 
     // Look up existing known-issue entry.
-    const existing = await (this.prisma as any).supportKnownIssue.findUnique({
+    const existing = await this.prisma.supportKnownIssue.findUnique({
       where: { error_code: dCase.error_code },
     });
 
     if (existing) {
-      const data: Record<string, any> = {
+      const data: Record<string, unknown> = {
         seen_count: { increment: 1 },
         last_seen_case_id: dCase.id,
         last_seen_at: new Date(),
@@ -84,8 +87,8 @@ export class KnowledgeBaseService {
         }
       }
 
-      await (this.prisma as any).supportKnownIssue
-        .update({ where: { error_code: dCase.error_code }, data })
+      await this.prisma.supportKnownIssue
+        .update({ where: { error_code: dCase.error_code }, data: data as import('@prisma/client').Prisma.SupportKnownIssueUpdateInput })
         .catch((err) => {
           this.logger.warn(
             `Failed to refresh known-issue ${dCase.error_code}: ${err?.message}`,
@@ -99,7 +102,7 @@ export class KnowledgeBaseService {
     }
 
     // No existing entry — create as auto-learned.
-    await (this.prisma as any).supportKnownIssue
+    await this.prisma.supportKnownIssue
       .create({
         data: {
           error_code: dCase.error_code,

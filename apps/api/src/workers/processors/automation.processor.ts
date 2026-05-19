@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
+import { ConversationStatus, Priority } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { stringifyJson } from '../../common/prisma/json';
@@ -36,7 +37,7 @@ export class AutomationProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<AutomationJobData>): Promise<any> {
+  async process(job: Job<AutomationJobData>): Promise<Record<string, unknown>> {
     const { ruleId, workspaceId, triggerEntityType, triggerEntityId } = job.data;
 
     this.logger.log(
@@ -69,7 +70,7 @@ export class AutomationProcessor extends WorkerHost {
 
     try {
       // 4. Evaluar condiciones
-      const conditionConfig = rule.condition_config_json as any;
+      const conditionConfig = rule.condition_config_json as Record<string, unknown> | Array<Record<string, unknown>> | null;
       let conditionMet = true;
 
       const conditions = Array.isArray(conditionConfig)
@@ -83,7 +84,7 @@ export class AutomationProcessor extends WorkerHost {
           const entity = await this.loadEntity(triggerEntityType, triggerEntityId);
           if (entity) {
             conditionMet = conditions.every((condition) =>
-              this.evaluateCondition(entity, condition),
+              this.evaluateCondition(entity, condition as { field: string; operator: string; value: unknown }),
             );
           }
         } catch {
@@ -103,7 +104,7 @@ export class AutomationProcessor extends WorkerHost {
       }
 
       // 6. Ejecutar acciones
-      const rawActions = rule.action_config_json as any;
+      const rawActions = rule.action_config_json as unknown as AutomationAction | AutomationAction[] | null;
       const actions: AutomationAction[] = Array.isArray(rawActions)
         ? (rawActions as AutomationAction[])
         : rawActions && typeof rawActions === 'object'
@@ -149,7 +150,7 @@ export class AutomationProcessor extends WorkerHost {
     }
   }
 
-  private async loadEntity(entityType: string, entityId: string): Promise<any> {
+  private async loadEntity(entityType: string, entityId: string): Promise<Record<string, unknown> | null> {
     switch (entityType) {
       case 'conversation':
         return this.prisma.conversation.findUnique({ where: { id: entityId } });
@@ -165,8 +166,8 @@ export class AutomationProcessor extends WorkerHost {
   }
 
   private evaluateCondition(
-    entity: Record<string, any>,
-    condition: { field: string; operator: string; value: Record<string, any> },
+    entity: Record<string, unknown>,
+    condition: { field: string; operator: string; value: unknown },
   ): boolean {
     const { field, operator, value } = condition;
     const entityValue = entity[field];
@@ -189,7 +190,7 @@ export class AutomationProcessor extends WorkerHost {
       case 'lte':
         return Number(entityValue) <= Number(value);
       case 'exists':
-        return (value as any) === true
+        return value === true
           ? entityValue !== undefined && entityValue !== null && entityValue !== ''
           : entityValue === undefined || entityValue === null || entityValue === '';
       default:
@@ -237,7 +238,7 @@ export class AutomationProcessor extends WorkerHost {
         if (conversationTargetId) {
           await this.prisma.conversation.update({
             where: { id: conversationTargetId },
-            data: { priority: action.priority as any },
+            data: { priority: action.priority as Priority },
           });
         }
         break;
@@ -246,7 +247,7 @@ export class AutomationProcessor extends WorkerHost {
         if (conversationTargetId) {
           await this.prisma.conversation.update({
             where: { id: conversationTargetId },
-            data: { status: action.status as any },
+            data: { status: action.status as ConversationStatus },
           });
         }
         break;
@@ -266,7 +267,7 @@ export class AutomationProcessor extends WorkerHost {
             workspace_id: workspaceId,
             title: action.title ?? 'Tarea automática',
             description: action.description,
-            priority: (action.priority as any) ?? 'MEDIUM',
+            priority: (action.priority as Priority) ?? 'MEDIUM',
             status: 'TODO',
             source: 'AUTOMATION',
             assigned_user_id: action.assigned_user_id ?? action.user_id,
@@ -298,7 +299,7 @@ export class AutomationProcessor extends WorkerHost {
         break;
 
       default:
-        this.logger.warn(`Unknown action type: ${(action as any).type}`);
+        this.logger.warn(`Unknown action type: ${action.type}`);
     }
   }
 

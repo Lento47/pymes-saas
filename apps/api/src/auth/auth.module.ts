@@ -19,7 +19,7 @@ import { DemoModule } from '../demo/demo.module';
       // Keep main-api's 30m expiry. Pin algorithm to HS256 to defeat
       // algorithm-confusion attacks (alg=none / RS256-as-HS256). H3 fix.
       signOptions: {
-        expiresIn: (process.env.JWT_EXPIRES_IN ?? '30m') as any,
+        expiresIn: process.env.JWT_EXPIRES_IN as `${number}m` ?? '30m',
         algorithm: 'HS256',
       },
       verifyOptions: {

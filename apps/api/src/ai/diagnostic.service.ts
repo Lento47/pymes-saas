@@ -10,6 +10,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { EngineeringFixService } from './engineering-fix.service';
 import { SupportNotificationService } from './support-notification.service';
 import { KnowledgeBaseService } from './knowledge-base.service';
+import { Prisma } from '@prisma/client';
 
 export interface DiagnosticInput {
   workspaceId: string;
@@ -70,9 +71,9 @@ export class DiagnosticService {
   // own cases so VIEWER/AGENT users see "Mis tickets" without leaking
   // unrelated incidents from other teammates.
   async listCases(workspaceId: string, opts?: { userId?: string }) {
-    const where: Record<string, any> = { workspace_id: workspaceId };
+    const where: { workspace_id: string; user_id?: string } = { workspace_id: workspaceId };
     if (opts?.userId) where.user_id = opts.userId;
-    const cases = await (this.prisma as any).supportDiagnosticCase.findMany({
+    const cases = await this.prisma.supportDiagnosticCase.findMany({
       where,
       orderBy: { created_at: 'desc' },
       take: 50,
@@ -80,7 +81,7 @@ export class DiagnosticService {
 
     // Mask internal error details from non-admin users
     if (opts?.userId) {
-      return cases.map((c: Record<string, any>) => ({
+      return cases.map((c) => ({
         ...c,
         title: 'Error procesando tu solicitud',
         user_description: 'Nuestro equipo está revisando este incidente.',
@@ -90,9 +91,9 @@ export class DiagnosticService {
   }
 
   async getCase(id: string, opts: { workspaceId: string; userId?: string }) {
-    const where: Record<string, any> = { id, workspace_id: opts.workspaceId };
+    const where: { id: string; workspace_id: string; user_id?: string } = { id, workspace_id: opts.workspaceId };
     if (opts.userId) where.user_id = opts.userId;
-    const case_ = await (this.prisma as any).supportDiagnosticCase.findFirst({ where });
+    const case_ = await this.prisma.supportDiagnosticCase.findFirst({ where });
     if (!case_) return null;
     // Mask internal error details for non-admin users
     if (opts.userId) {
@@ -109,7 +110,7 @@ export class DiagnosticService {
   ) {
     // RBAC: a workspace-scoped admin can only update cases that belong
     // to their own workspace. Platform admins can act cross-workspace.
-    const existing = await (this.prisma as any).supportDiagnosticCase.findUnique({
+    const existing = await this.prisma.supportDiagnosticCase.findUnique({
       where: { id },
       select: { id: true, workspace_id: true },
     });
@@ -118,7 +119,7 @@ export class DiagnosticService {
       throw new ForbiddenException('Diagnostic case belongs to another workspace');
     }
 
-    const updated = await (this.prisma as any).supportDiagnosticCase.update({
+    const updated = await this.prisma.supportDiagnosticCase.update({
       where: { id },
       data: { status },
     });
@@ -128,9 +129,9 @@ export class DiagnosticService {
     // Errors inside notifyResolution are caught internally so they
     // never roll back the status update.
     if (status === 'RESOLVED') {
-      this.supportNotifications.notifyResolution(id).catch((err) => {
+      this.supportNotifications.notifyResolution(id).catch((err: unknown) => {
         this.logger.warn(
-          `notifyResolution failed for diagnostic case ${id}: ${err?.message}`,
+          `notifyResolution failed for diagnostic case ${id}: ${err instanceof Error ? err.message : String(err)}`,
         );
       });
 
@@ -138,9 +139,9 @@ export class DiagnosticService {
       // whether the case is worth promoting (needs error_code +
       // resolution body ≥ 50 chars) and whether to refresh an
       // existing entry vs create a new auto-learned one.
-      this.knowledgeBase.learnFromCase(id).catch((err) => {
+      this.knowledgeBase.learnFromCase(id).catch((err: unknown) => {
         this.logger.warn(
-          `learnFromCase failed for diagnostic case ${id}: ${err?.message}`,
+          `learnFromCase failed for diagnostic case ${id}: ${err instanceof Error ? err.message : String(err)}`,
         );
       });
     }
@@ -149,11 +150,11 @@ export class DiagnosticService {
   }
 
   async diagnose(input: DiagnosticInput): Promise<DiagnosticResult> {
-    let evidence: Record<string, any> = {};
+    let evidence: Record<string, unknown> = {};
 
     // If an error_report_id was provided, fetch the actual error report for context
     if (input.error_report_id) {
-      const errorReport = await (this.prisma as any).errorReport.findUnique({
+      const errorReport = await this.prisma.errorReport.findUnique({
         where: { id: input.error_report_id },
         select: { message: true, route: true, status_code: true, source: true, category: true, stack: true },
       });
@@ -169,9 +170,9 @@ export class DiagnosticService {
     const classification = this.classify(input, evidence);
 
     // Look up known issues by error_code
-    let matchedIssue: Record<string, any> | null = null;
+    let matchedIssue: import('@prisma/client').SupportKnownIssue | null = null;
     if (input.error_code) {
-      matchedIssue = await (this.prisma as any).supportKnownIssue.findUnique({
+      matchedIssue = await this.prisma.supportKnownIssue.findUnique({
         where: { error_code: input.error_code },
       });
     }
@@ -182,9 +183,9 @@ export class DiagnosticService {
     // is MISLEADING — it shows the user a "known problem" that may have
     // nothing to do with their actual situation (e.g. showing WhatsApp
     // webhook issue when they clicked "Diagnosticar" on Inbox).
-    let moduleFallbackIssue: any = null;
+    let moduleFallbackIssue: import('@prisma/client').SupportKnownIssue | null = null;
     if (!matchedIssue && input.module && classification.category !== 'USER_GUIDANCE') {
-      const candidates = await (this.prisma as any).supportKnownIssue.findMany({
+      const candidates = await this.prisma.supportKnownIssue.findMany({
         where: { module: input.module, is_active: true },
         orderBy: { severity: 'asc' },
         take: 3,
@@ -238,7 +239,7 @@ export class DiagnosticService {
     }
 
     // Create the diagnostic case for real issues
-    const caseRecord = await (this.prisma as any).supportDiagnosticCase.create({
+    const caseRecord = await this.prisma.supportDiagnosticCase.create({
       data: {
         workspace_id: input.workspaceId,
         user_id: input.userId,
@@ -251,14 +252,14 @@ export class DiagnosticService {
         title: classification.title,
         user_description: input.user_description,
         safe_summary: classification.recommendation,
-        evidence_json: evidence,
+        evidence_json: evidence as Prisma.InputJsonValue,
       },
     });
 
     this.logger.log(`Diagnostic case created: ${caseRecord.id} (${classification.category} / ${classification.risk_level})`);
 
-    this.notifyAdmins(input.workspaceId, caseRecord.id, classification).catch((err) =>
-      this.logger.error(`Failed to notify admins of diagnostic case: ${err?.message}`),
+    this.notifyAdmins(input.workspaceId, caseRecord.id, classification).catch((err: unknown) =>
+      this.logger.error(`Failed to notify admins of diagnostic case: ${err instanceof Error ? err.message : String(err)}`),
     );
 
     // Proactive resolution: if a known issue matched, auto-create a fix case.
@@ -271,8 +272,8 @@ export class DiagnosticService {
           workspaceId: input.workspaceId,
           isPlatformAdmin: true,
         })
-        .catch((err) =>
-          this.logger.error(`Failed to auto-create fix case for ${caseRecord.id}: ${err?.message}`),
+        .catch((err: unknown) =>
+          this.logger.error(`Failed to auto-create fix case for ${caseRecord.id}: ${err instanceof Error ? err.message : String(err)}`),
         );
     }
 
@@ -291,7 +292,7 @@ export class DiagnosticService {
     };
   }
 
-  private classify(input: DiagnosticInput, evidence: Record<string, any>): { category: string; risk_level: string; title: string; recommendation: string } {
+  private classify(input: DiagnosticInput, evidence: Record<string, unknown>): { category: string; risk_level: string; title: string; recommendation: string } {
     const msg = (input.user_description || '').toLowerCase() + ' ' + JSON.stringify(evidence).toLowerCase();
 
     if (msg.includes('circular') || msg.includes('undefined import') || msg.includes('cannot create')) {
@@ -341,78 +342,78 @@ export class DiagnosticService {
   /**
    * Collect real workspace data for a module to give AI contextual analysis.
    */
-  private async collectModuleHealthData(workspaceId: string, module: string): Promise<Record<string, any>> {
-    const data: Record<string, any> = { module, timestamp: new Date().toISOString() };
+  private async collectModuleHealthData(workspaceId: string, module: string): Promise<Record<string, unknown>> {
+    const data: Record<string, unknown> = { module, timestamp: new Date().toISOString() };
 
     try {
       if (module === 'inbox' || module === 'conversations') {
         // Active channels
-        const channels = await (this.prisma as any).channel.findMany({
+        const channels = await this.prisma.channel.findMany({
           where: { workspace_id: workspaceId },
           select: { type: true, status: true },
         });
-        data.active_channels = channels.filter((c: any) => c.status === 'ACTIVE').length;
+        data.active_channels = channels.filter((c) => c.status === 'ACTIVE').length;
         data.total_channels = channels.length;
-        data.channel_types = [...new Set(channels.map((c: any) => c.type))];
+        data.channel_types = [...new Set(channels.map((c) => c.type))];
 
         // Recent conversations (last 24h)
         const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const recentConvs = await (this.prisma as any).conversation.count({
+        const recentConvs = await this.prisma.conversation.count({
           where: { workspace_id: workspaceId, created_at: { gte: dayAgo } },
         });
         data.conversations_24h = recentConvs;
 
         // Unassigned conversations
-        const unassigned = await (this.prisma as any).conversation.count({
+        const unassigned = await this.prisma.conversation.count({
           where: { workspace_id: workspaceId, assigned_user_id: null, status: { not: 'RESOLVED' } },
         });
         data.unassigned_conversations = unassigned;
 
         // Recent errors
-        const recentErrors = await (this.prisma as any).errorReport.count({
+        const recentErrors = await this.prisma.errorReport.count({
           where: { workspace_id: workspaceId, created_at: { gte: dayAgo } },
         });
         data.recent_errors_24h = recentErrors;
 
         // Messages (last hour)
         const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        const recentMessages = await (this.prisma as any).message.count({
+        const recentMessages = await this.prisma.message.count({
           where: { conversation: { workspace_id: workspaceId }, created_at: { gte: hourAgo } },
         });
         data.messages_last_hour = recentMessages;
       } else if (module === 'channels') {
-        const channels = await (this.prisma as any).channel.findMany({
+        const channels = await this.prisma.channel.findMany({
           where: { workspace_id: workspaceId },
           select: { type: true, status: true, created_at: true },
         });
         data.total = channels.length;
-        data.active = channels.filter((c: any) => c.status === 'ACTIVE').length;
-        data.pending_setup = channels.filter((c: any) => c.status === 'PENDING_SETUP').length;
-        data.error = channels.filter((c: any) => c.status === 'ERROR').length;
-        data.types = [...new Set(channels.map((c: any) => c.type))];
+        data.active = channels.filter((c) => c.status === 'ACTIVE').length;
+        data.pending_setup = channels.filter((c) => c.status === 'PENDING_SETUP').length;
+        data.error = channels.filter((c) => c.status === 'ERROR').length;
+        data.types = [...new Set(channels.map((c) => c.type))];
       } else if (module === 'dashboard') {
-        const convCount = await (this.prisma as any).conversation.count({
+        const convCount = await this.prisma.conversation.count({
           where: { workspace_id: workspaceId },
         });
-        const contactCount = await (this.prisma as any).contact.count({
+        const contactCount = await this.prisma.contact.count({
           where: { workspace_id: workspaceId },
         });
-        const taskCount = await (this.prisma as any).task.count({
+        const taskCount = await this.prisma.task.count({
           where: { workspace_id: workspaceId, status: { not: 'DONE' } },
         });
         data.conversations = convCount;
         data.contacts = contactCount;
         data.open_tasks = taskCount;
       }
-    } catch (err: any) {
-      this.logger.warn(`Failed to collect health data for ${module}: ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.warn(`Failed to collect health data for ${module}: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     return data;
   }
 
   private async notifyAdmins(workspaceId: string, caseId: string, classification: { category: string; risk_level: string; title: string }) {
-    const admins = await (this.prisma as any).workspaceUser.findMany({
+    const admins = await this.prisma.workspaceUser.findMany({
       where: { workspace_id: workspaceId, role: { in: ['OWNER', 'ADMIN'] } },
       select: { user_id: true },
     });
@@ -427,8 +428,8 @@ export class DiagnosticService {
           related_entity_type: 'support_diagnostic_case',
           related_entity_id: caseId,
         });
-      } catch (err) {
-        this.logger.error(`Notification to ${admin.user_id} failed: ${err?.message}`);
+      } catch (err: unknown) {
+        this.logger.error(`Notification to ${admin.user_id} failed: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   }
