@@ -330,15 +330,20 @@ export class TelegramService {
    */
   private async resolveFileInput(mediaUrl: string): Promise<{ source: Buffer; filename: string }> {
     const trimmed = mediaUrl.trim();
-    // If it's a storage key (no protocol), download via StorageService
-    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-      const key = trimmed.includes('/api/storage/file/')
-        ? trimmed.split('/api/storage/file/').pop()!
-        : trimmed;
+    const storageProxyMarker = '/api/storage/file/';
+    const storageProxyIndex = trimmed.indexOf(storageProxyMarker);
+
+    if (storageProxyIndex >= 0) {
+      const key = decodeURIComponent(trimmed.slice(storageProxyIndex + storageProxyMarker.length));
       const buffer = await this.storage.download(key);
       return { source: buffer, filename: key.split('/').pop() || 'file' };
     }
-    // Full URL — fetch it
+
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      const buffer = await this.storage.download(trimmed);
+      return { source: buffer, filename: trimmed.split('/').pop() || 'file' };
+    }
+
     const res = await fetch(trimmed, { signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error(`Failed to fetch media URL: ${res.status}`);
     const buffer = Buffer.from(await res.arrayBuffer());
