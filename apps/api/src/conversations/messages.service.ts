@@ -10,6 +10,18 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { Priority } from '@prisma/client';
 import { AutomationsService } from '../automations/automations.service';
 import { stringifyJson } from '../common/prisma/json';
+import { StorageService } from '../common/storage/storage.service';
+
+interface AttachmentEntry {
+  provider: string;
+  mediaId: string;
+  storageKey: string;
+  mimeType: string;
+  size: number;
+  type: string;
+  filename: string | null;
+  caption: string | null;
+}
 
 @Injectable()
 export class MessagesService {
@@ -23,6 +35,7 @@ export class MessagesService {
     private readonly tasksService: TasksService,
     private readonly notificationsService: NotificationsService,
     private readonly automationsService: AutomationsService,
+    private readonly storage: StorageService,
   ) { }
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 50) {
@@ -49,7 +62,7 @@ export class MessagesService {
     ]);
 
     return {
-      data,
+      data: data.map((m) => this.serializeMessageForClient(m)),
       meta: { total, page, limit, pages: Math.ceil(total / limit) },
     };
   }
@@ -159,6 +172,11 @@ export class MessagesService {
       });
     }
 
+    const messageType = typeof payload.message_type === 'string' ? payload.message_type : null;
+    const telegramMessageId = typeof payload.telegram_message_id === 'string' ? payload.telegram_message_id : null;
+    const telegramChatId = typeof payload.telegram_chat_id === 'string' ? payload.telegram_chat_id : null;
+    const telegramUserId = typeof payload.telegram_user_id === 'string' ? payload.telegram_user_id : null;
+
     const message = await this.prisma.message.create({
       data: {
         workspace_id: workspaceId,
@@ -169,6 +187,10 @@ export class MessagesService {
         body_text: bodyText,
         body_html: payload.body_html ?? payload.html ?? null,
         raw_payload_json: stringifyJson(payload),
+        message_type: messageType,
+        telegram_message_id: telegramMessageId,
+        telegram_chat_id: telegramChatId,
+        telegram_user_id: telegramUserId,
         sent_at: new Date(),
       },
     });
@@ -178,8 +200,8 @@ export class MessagesService {
       data: { last_message_at: new Date(), updated_at: new Date() },
     });
 
-    // Emitir en tiempo real
-    this.events.emitNewMessage(conversation.id, workspaceId, message);
+    // Emitir en tiempo real (con campos de media enriquecidos)
+    this.events.emitNewMessage(conversation.id, workspaceId, this.serializeMessageForClient(message));
 
     // Notificar al agente asignado sobre nuevo mensaje
     if (conversation.assigned_user_id) {
@@ -521,5 +543,101 @@ export class MessagesService {
         }
       }
     }
+  }
+
+  // ── Serializer para el cliente ─────────────────────────────────────────────
+
+  /**
+   * Enriquece un mensaje Prisma con campos de media derivados de raw_payload_json
+   * y attachments_json (MinIO). Único punto de serialización para socket y REST.
+   */
+  serializeMessageForClient(msg: Record<string, unknown>): Record<string, unknown> {
+    const payload = msg.raw_payload_json as Record<string, unknown> | null | undefined;
+
+    // 1) WhatsApp media — stored as whatsapp_media in raw_payload_json
+    const wm = payload?.whatsapp_media as Record<string, unknown> | undefined;
+
+    // 2) Telegram attachments — stored as attachments array in raw_payload_json
+    const tgAttachments = payload?.attachments as Array<{ type: string; file_id: string; file_name?: string }> | undefined;
+    const tgMedia = !wm ? tgAttachments?.[0] : undefined;
+
+    // 3) MinIO-stored attachment (already downloaded)
+    const storedAttachments = msg.attachments_json as unknown as AttachmentEntry[] | null | undefined;
+    const attachmentEntry = storedAttachments?.[0] ?? null;
+
+    const mediaId = (wm?.whatsappMediaId ?? wm?.id ?? attachmentEntry?.mediaId ?? tgMedia?.file_id) as string | undefined;
+    const hasMedia = !!mediaId;
+
+    const mediaType = (wm?.mediaType ?? wm?.kind ?? attachmentEntry?.type ?? tgMedia?.type ?? null) as string | null;
+    const mimeType = (wm?.mimeType ?? wm?.mime_type ?? attachmentEntry?.mimeType ?? null) as string | null;
+    const filename = (wm?.filename ?? attachmentEntry?.filename ?? tgMedia?.file_name ?? null) as string | null;
+    const caption = (wm?.caption ?? attachmentEntry?.caption ?? null) as string | null;
+
+    // Only provide download URL when:
+    // - Media is in MinIO (storageKey exists), OR
+    // - WhatsApp media ID is available (can proxy from Meta API)
+    // Telegram media has no external fallback — URL only available after download to MinIO
+    const downloadUrl = attachmentEntry?.storageKey
+      ? `/api/conversations/messages/${msg.id as string}/media`
+      : wm?.whatsappMediaId
+        ? `/api/conversations/messages/${msg.id as string}/media`
+        : null;
+
+    const mediaStatus = attachmentEntry?.storageKey
+      ? 'available'
+      : hasMedia
+        ? 'processing'
+        : 'none';
+
+    return {
+      ...msg,
+      has_media: hasMedia || !!attachmentEntry,
+      media_type: mediaType,
+      media_mime_type: mimeType,
+      media_filename: filename,
+      media_caption: caption,
+      media_download_url: downloadUrl,
+      media_status: mediaStatus,
+    };
+  }
+
+  // ── Proxy de media almacenada ──────────────────────────────────────────────
+
+  /**
+   * Descarga un archivo almacenado en MinIO/local para un mensaje.
+   * Retorna null si el mensaje no tiene media almacenada todavía.
+   */
+  async getMediaContent(
+    messageId: string,
+    workspaceId: string,
+  ): Promise<{ buffer: Buffer; contentType: string } | null> {
+    const msg = await this.prisma.message.findFirst({
+      where: { id: messageId, workspace_id: workspaceId },
+      select: { attachments_json: true },
+    });
+    if (!msg) return null;
+
+    const attachments = msg.attachments_json as unknown as AttachmentEntry[] | null | undefined;
+    const entry = attachments?.[0] ?? null;
+    if (!entry?.storageKey) return null;
+
+    const result = await this.storage.read(entry.storageKey);
+    const chunks: Buffer[] = [];
+    for await (const chunk of result.stream) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as unknown as string));
+    }
+    const buffer = Buffer.concat(chunks);
+
+    const MIME: Record<string, string> = {
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+      '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg',
+      '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.oga': 'audio/ogg',
+      '.m4a': 'audio/mp4', '.amr': 'audio/amr',
+    };
+    const ext = '.' + (entry.storageKey.split('.').pop()?.toLowerCase() ?? '');
+    const contentType = entry.mimeType || MIME[ext] || 'application/octet-stream';
+
+    return { buffer, contentType };
   }
 }

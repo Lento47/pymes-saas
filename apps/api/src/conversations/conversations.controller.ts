@@ -9,8 +9,10 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { ConversationsService } from './conversations.service';
@@ -178,5 +180,26 @@ export class ConversationsController {
     }
 
     return message;
+  }
+
+  @Get('messages/:messageId/media')
+  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  async getMessageMedia(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('messageId', ValidateUUIDPipe) messageId: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const media = await this.messagesService.getMediaContent(messageId, workspaceId);
+      if (media) {
+        res.setHeader('Content-Type', media.contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+        return res.send(media.buffer);
+      }
+      return res.status(404).json({ statusCode: 404, message: 'Media no disponible aún' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al obtener media';
+      return res.status(404).json({ statusCode: 404, message: msg });
+    }
   }
 }

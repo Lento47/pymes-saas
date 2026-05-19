@@ -206,4 +206,23 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .to(`workspace:${workspaceId}`)
       .emit('workspace:updated', workspace);
   }
+
+  /**
+   * Emitir notificación de media lista (descargada a MinIO) al room de la conversación.
+   * El frontend actualiza solo ese mensaje sin refetch completo.
+   */
+  emitMediaReady(payload: {
+    message_id: string;
+    conversation_id: string;
+    media_type: string;
+    media_status: string;
+    media_download_url: string;
+    media_mime_type: string | null;
+    media_filename: string | null;
+    media_caption: string | null;
+  }) {
+    this.server
+      .to(`conversation:${payload.conversation_id}`)
+      .emit('message:media-ready', payload);
+  }
 }
