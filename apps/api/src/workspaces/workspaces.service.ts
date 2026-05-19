@@ -19,7 +19,7 @@ import { AiProvider, AiService } from '../ai/ai.service';
 import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
 import { EmailService } from '../email/email.service';
 import { EventsGateway } from '../gateways/events.gateway';
-import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { PlanLimitsService } from '../billing/plan-limits.service';
 import { RefreshTokenService } from '../auth/refresh-token.service';
 
 @Injectable()
