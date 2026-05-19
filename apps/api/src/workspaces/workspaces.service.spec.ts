@@ -64,7 +64,7 @@ describe('WorkspacesService', () => {
         { provide: AiService, useValue: mockAiService },
         { provide: EmailService, useValue: mockEmailService },
         { provide: require('../gateways/events.gateway').EventsGateway, useValue: mockEventsGateway },
-        { provide: require('../billing/plan-limits.service').PlanLimitsService, useValue: mockPlanLimits },
+        { provide: require('../common/plan-limits/plan-limits.service').PlanLimitsService, useValue: mockPlanLimits },
         { provide: require('../common/storage/storage.service').StorageService, useValue: mockStorageService },
         { provide: require('../auth/refresh-token.service').RefreshTokenService, useValue: mockRefreshTokenService },
       ],
