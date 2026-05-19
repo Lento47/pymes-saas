@@ -530,7 +530,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
             <Paperclip className="w-4 h-4" />
             <input
               type="file"
-              accept="image/*,.pdf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/ogg,audio/wav,.pdf,.docx,.xlsx"
               className="hidden"
               onChange={async (e) => {
                 const file = e.target.files?.[0];
@@ -540,7 +540,10 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                 setUploading(true);
                 try {
                   const { url } = await api.uploadAttachment(form);
-                  const type = file.type.startsWith('image/') ? 'image' : 'document';
+                  const type = file.type.startsWith('image/') ? 'image'
+                    : file.type.startsWith('video/') ? 'video'
+                    : file.type.startsWith('audio/') ? 'audio'
+                    : 'document';
                   setAttachment({ file, url, type });
                 } catch (err: unknown) {
                   toast({ title: "Error", description: err instanceof Error ? err.message : "No se pudo subir el archivo", variant: "destructive" });

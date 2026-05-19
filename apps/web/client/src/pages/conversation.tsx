@@ -168,6 +168,7 @@ export default function ConversationPage() {
   const id = params?.id || "";
   const [message, setMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
@@ -501,9 +502,33 @@ export default function ConversationPage() {
     prevLengthRef.current = msgList.length;
   }, [msgList.length, isNearBottom]);
 
-  const handleSend = () => {
-    if (!message.trim()) return;
-    sendMutation.mutate({ body_text: message, direction: "OUTBOUND" });
+  const handleSend = async () => {
+    if (!message.trim() && !selectedFile) return;
+
+    let mediaPayload: { media_url?: string; media_type?: string } = {};
+
+    if (selectedFile) {
+      try {
+        setUploading(true);
+        const form = new FormData();
+        form.append('file', selectedFile);
+        const { url } = await api.uploadAttachment(form);
+        const mt = selectedFile.type.startsWith('image/') ? 'image'
+          : selectedFile.type.startsWith('video/') ? 'video'
+          : selectedFile.type.startsWith('audio/') ? 'audio'
+          : 'document';
+        mediaPayload = { media_url: url, media_type: mt };
+      } catch {
+        toast({ title: 'Error', description: 'No se pudo subir el archivo.', variant: 'destructive' });
+        return;
+      } finally {
+        setUploading(false);
+        setSelectedFile(null);
+      }
+    }
+
+    sendMutation.mutate({ body_text: message, direction: "OUTBOUND", ...mediaPayload });
+    setMessage('');
   };
 
   const openPaymentDialog = (invoice: Record<string, any>) => {
@@ -861,10 +886,10 @@ export default function ConversationPage() {
                 size="sm"
                 className="h-7 px-3 gap-1.5 text-xs"
                 onClick={handleSend}
-                disabled={(!message.trim() && !selectedFile) || sendMutation.isPending}
+                disabled={(!message.trim() && !selectedFile) || sendMutation.isPending || uploading}
                 data-testid="button-send"
               >
-                {sendMutation.isPending
+                {(sendMutation.isPending || uploading)
                   ? <Loader2 className="w-3 h-3 animate-spin" />
                   : <Send className="w-3 h-3" />}
                 Enviar
