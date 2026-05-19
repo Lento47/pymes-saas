@@ -123,12 +123,15 @@ export class WhatsAppService {
     const boundary = `----HermesWhatsApp${Date.now()}${Math.random().toString(36).slice(2)}`;
     const CRLF = '\r\n';
 
-    // Build multipart body: only messaging_product + file (NO standalone type field)
     const headerParts: string[] = [
       `--${boundary}`,
       `Content-Disposition: form-data; name="messaging_product"`,
       '',
       'whatsapp',
+      `--${boundary}`,
+      `Content-Disposition: form-data; name="type"`,
+      '',
+      contentType,
       `--${boundary}`,
       `Content-Disposition: form-data; name="file"; filename="${fileName}"`,
       `Content-Type: ${contentType}`,
