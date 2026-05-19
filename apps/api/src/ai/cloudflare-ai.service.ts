@@ -86,14 +86,14 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
         return [];
       }
 
-      const data = await res.json() as any;
+      const data = await res.json() as Record<string, unknown>;
 
       // Cloudflare AI Search response shape: { results: [{ title, url, content }] }
-      const results: any[] = data.results ?? data.data ?? [];
-      return results.map((r: any) => ({
-        title: r.title ?? r.name ?? 'Source',
-        url: r.url,
-        snippet: r.content ?? r.snippet ?? r.text,
+      const results: Record<string, unknown>[] = (data.results ?? data.data ?? []) as Record<string, unknown>[];
+      return results.map((r) => ({
+        title: String(r.title ?? r.name ?? 'Source'),
+        url: r.url as string | undefined,
+        snippet: (r.content ?? r.snippet ?? r.text) as string | undefined,
       }));
     } catch (err) {
       this.logger.warn('Cloudflare AI search failed', err);

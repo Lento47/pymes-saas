@@ -1136,7 +1136,9 @@ export class AuthService {
         where: { user_id: user.id, revoked_at: null },
         data: { revoked_at: new Date() },
       })
-      .catch(() => undefined);
+      .catch((err: unknown) => {
+        this.logger.error(`Failed to revoke refresh tokens on password reset for user ${user.id}: ${err instanceof Error ? err.message : String(err)}`);
+      });
 
     return { message: 'Contraseña actualizada correctamente.' };
   }

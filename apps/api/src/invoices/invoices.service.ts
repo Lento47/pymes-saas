@@ -10,6 +10,7 @@ import {
   InvoiceDocumentType,
   InvoiceIssuanceMode,
   InvoiceStatus,
+  Prisma,
   WorkspaceUserRole,
 } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -135,13 +136,13 @@ export class InvoicesService {
     }
 
     // Check if approvals_signature addon is active — if so, route to PENDING_APPROVAL
-    let initialStatus = dto.issuance_mode === InvoiceIssuanceMode.HACIENDA ? InvoiceStatus.DRAFT : InvoiceStatus.SENT;
+    let initialStatus: InvoiceStatus = dto.issuance_mode === InvoiceIssuanceMode.HACIENDA ? InvoiceStatus.DRAFT : InvoiceStatus.SENT;
     if (initialStatus === InvoiceStatus.SENT) {
       const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { plan: true, settings_json: true } });
       if (ws && ws.plan !== 'ENTERPRISE' && ws.plan !== 'BUSINESS_PLUS') {
         const settings = (ws.settings_json as Record<string, any>) ?? {};
         if (settings.approvals_signature_active) {
-          initialStatus = 'PENDING_APPROVAL' as any;
+          initialStatus = InvoiceStatus.PENDING_APPROVAL;
         }
       }
     }
@@ -160,7 +161,7 @@ export class InvoicesService {
         currency: dto.currency ?? 'USD',
         due_date: new Date(dto.due_date),
         description: dto.description,
-        notes_json: (dto.notes as any) ?? undefined,
+        notes_json: (dto.notes as Prisma.InputJsonValue) ?? undefined,
         status: initialStatus,
         document_type: dto.document_type ?? InvoiceDocumentType.FACTURA_ELECTRONICA,
         issuance_mode: dto.issuance_mode ?? InvoiceIssuanceMode.MANUAL_ONLY,
@@ -255,7 +256,7 @@ export class InvoicesService {
           ...(dto.currency !== undefined && { currency: dto.currency }),
           ...(dto.due_date !== undefined && { due_date: new Date(dto.due_date) }),
           ...(dto.description !== undefined && { description: dto.description }),
-          ...(dto.notes !== undefined && { notes_json: dto.notes as any }),
+          ...(dto.notes !== undefined && { notes_json: dto.notes as Prisma.InputJsonValue }),
           ...(dto.status !== undefined && { status: dto.status }),
           ...(dto.issue_date !== undefined && { issue_date: new Date(dto.issue_date) }),
           ...(dto.sale_condition !== undefined && { sale_condition: dto.sale_condition }),
@@ -647,7 +648,7 @@ export class InvoicesService {
         issuance_mode: InvoiceIssuanceMode.HACIENDA,
         hacienda_status: HaciendaStatus.DRAFT,
         description: dto.description ?? `Mensaje del receptor para ${source.number}`,
-        notes_json: dto.notes as any,
+        notes_json: (dto.notes as Prisma.InputJsonValue) ?? undefined,
         issue_date: new Date(),
       },
       include: this.invoiceInclude(),
@@ -905,7 +906,7 @@ export class InvoicesService {
   }
 
   private async deductStock(workspaceId: string, invoiceId: string) {
-    const lines = await (this.prisma as any).invoiceLine.findMany({
+    const lines = await this.prisma.invoiceLine.findMany({
       where: { invoice_id: invoiceId, workspace_id: workspaceId, product_id: { not: null } },
       include: { product: { select: { id: true, track_inventory: true, type: true, current_stock: true } } },
     });
@@ -913,7 +914,7 @@ export class InvoicesService {
     for (const line of lines) {
       if (!line.product || !line.product.track_inventory || line.product.type === 'SERVICE') continue;
 
-      const existingMovement = await (this.prisma as any).stockMovement.findFirst({
+      const existingMovement = await this.prisma.stockMovement.findFirst({
         where: { product_id: line.product_id, reference_type: 'invoice', reference_id: invoiceId, type: 'OUT' },
       });
       if (existingMovement) continue;
@@ -924,12 +925,12 @@ export class InvoicesService {
       const previousStock = line.product.current_stock;
       const newStock = Math.max(0, previousStock - qty);
 
-      await (this.prisma as any).product.update({
+      await this.prisma.product.update({
         where: { id: line.product_id },
         data: { current_stock: newStock },
       });
 
-      await (this.prisma as any).stockMovement.create({
+      await this.prisma.stockMovement.create({
         data: {
           workspace_id: workspaceId,
           product_id: line.product_id,
@@ -946,17 +947,17 @@ export class InvoicesService {
   }
 
   private async reverseStock(workspaceId: string, invoiceId: string) {
-    const movements = await (this.prisma as any).stockMovement.findMany({
+    const movements = await this.prisma.stockMovement.findMany({
       where: { reference_type: 'invoice', reference_id: invoiceId, type: 'OUT' },
     });
 
     for (const mov of movements) {
-      const alreadyReversed = await (this.prisma as any).stockMovement.findFirst({
+      const alreadyReversed = await this.prisma.stockMovement.findFirst({
         where: { product_id: mov.product_id, reference_type: 'invoice', reference_id: invoiceId, type: 'REVERSAL', quantity: mov.quantity },
       });
       if (alreadyReversed) continue;
 
-      const product = await (this.prisma as any).product.findUnique({
+      const product = await this.prisma.product.findUnique({
         where: { id: mov.product_id },
         select: { current_stock: true },
       });
@@ -964,12 +965,12 @@ export class InvoicesService {
 
       const newStock = product.current_stock + mov.quantity;
 
-      await (this.prisma as any).product.update({
+      await this.prisma.product.update({
         where: { id: mov.product_id },
         data: { current_stock: newStock },
       });
 
-      await (this.prisma as any).stockMovement.create({
+      await this.prisma.stockMovement.create({
         data: {
           workspace_id: workspaceId,
           product_id: mov.product_id,

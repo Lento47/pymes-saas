@@ -36,8 +36,8 @@ export class AgentService {
   private async logToolCall(
     agentType: string,
     toolName: string,
-    input: Record<string, any>,
-    output: Record<string, any>,
+    input: Record<string, unknown>,
+    output: Record<string, unknown>,
     riskLevel: string,
   ): Promise<void> {
     if (!this.currentSessionId) return;
@@ -47,8 +47,8 @@ export class AgentService {
           session_id: this.currentSessionId,
           agent_type: agentType,
           tool_name: toolName,
-          input_json: input as any,
-          output_json: output as any,
+          input_json: input as import('@prisma/client').Prisma.InputJsonValue,
+          output_json: output as import('@prisma/client').Prisma.InputJsonValue,
           risk_level: riskLevel,
           allowed: true,
         },
@@ -129,7 +129,7 @@ export class AgentService {
         name: 'list_documents', description: 'List uploaded documents/files with extracted text for insights',
         parameters: z.object({ search: z.string().optional().nullable() }),
         execute: async ({ search }) => {
-          const where: Record<string, any> = { workspace_id: workspaceId };
+          const where: { workspace_id: string; file_name?: { contains: string; mode: 'insensitive' } } = { workspace_id: workspaceId };
           if (search) where.file_name = { contains: search, mode: 'insensitive' };
           return { documents: await prisma.document.findMany({ where, select: { id: true, file_name: true, mime_type: true, file_size: true, ocr_text: true, created_at: true }, take: 50, orderBy: { created_at: 'desc' } }) };
         },
@@ -155,7 +155,7 @@ export class AgentService {
         parameters: z.object({ limit: z.number().optional().describe('Max errors to return (default 10, max 50)') }),
         execute: async ({ limit }: { limit?: number }) => {
           const take = Math.min(limit || 10, 50);
-          const errors = await (prisma as any).errorReport.findMany({
+          const errors = await prisma.errorReport.findMany({
             where: { workspace_id: workspaceId },
             select: { id: true, source: true, category: true, severity: true, title: true, message: true, route: true, method: true, status_code: true, occurred_at: true, context_json: true },
             orderBy: { occurred_at: 'desc' },
@@ -221,7 +221,7 @@ export class AgentService {
           return { query, results, total: results.length };
         },
       }),
-    ].filter((t: Record<string, any>) => allowedTools.has(t.name));
+    ].filter((t) => allowedTools.has(t.name));
   }
 
   async streamWorkflow(
@@ -254,8 +254,8 @@ export class AgentService {
           this.prisma.contact.count({ where: { workspace_id: workspaceId } }),
         ]);
         const ctx: string[] = [`Workspace: ${ws?.name} (Plan: ${ws?.plan})`];
-        if (tasks.length) ctx.push(`Tareas pendientes: ${tasks.map((t: Record<string, any>) => t.title).join(', ')}`);
-          if (invoices.length) ctx.push(`Facturas: ${invoices.map((i: Record<string, any>) => `${i.number} (${i.status}) total:${i.amount} subtotal:${i.subtotal ?? i.amount} iva:${i.tax_rate ?? 0}%`).join(', ')}`);
+        if (tasks.length) ctx.push(`Tareas pendientes: ${tasks.map((t) => t.title).join(', ')}`);
+          if (invoices.length) ctx.push(`Facturas: ${invoices.map((i) => `${i.number} (${i.status}) total:${i.amount} subtotal:${i.subtotal ?? i.amount} iva:${i.tax_rate ?? 0}%`).join(', ')}`);
         if (contacts) ctx.push(`Contactos totales: ${contacts}`);
         inputWithContext = `Contexto:\n${ctx.join('\n')}\n\nPregunta: ${input}`;
       }
@@ -306,19 +306,21 @@ REGLAS:
       modelSettings: { temperature: 0.2, maxTokens: 1024 },
     });
 
-    const history: Record<string, any>[] = [{ role: 'user', content: inputWithContext }];
+    const history: { role: string; content: string }[] = [{ role: 'user', content: inputWithContext }];
 
     try {
       const runner = new Runner();
-      const result = await runner.run(agent, history as any, { maxTurns: 3 });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await runner.run(agent, history as unknown as string, { maxTurns: 3 });
 
       // Extract text from result
+      const rawResult = result as unknown as Record<string, unknown>;
       const finalOutput: string = (() => {
-        const fo = (result as any).finalOutput;
+        const fo = rawResult.finalOutput;
         if (typeof fo === 'string') return fo;
-        if (fo && typeof fo === 'object' && typeof fo.text === 'string') return fo.text;
+        if (fo && typeof fo === 'object' && typeof (fo as Record<string, unknown>).text === 'string') return (fo as Record<string, unknown>).text as string;
         if (fo) return JSON.stringify(fo);
-        const out = (result as any).output;
+        const out = rawResult.output;
         if (typeof out === 'string') return out;
         return '';
       })();
@@ -327,14 +329,14 @@ REGLAS:
 
       // Log tool calls from agent result
       try {
-        const rawItems = (result as any).rawResponses ?? (result as any).newItems ?? [];
+        const rawItems = (rawResult.rawResponses ?? rawResult.newItems ?? []) as Record<string, unknown>[];
         for (const item of rawItems) {
           if (item.type === 'function_call' || item.type === 'function_call_output') {
-            const toolName = item.name || item.function_name || 'unknown';
+            const toolName = String(item.name || item.function_name || 'unknown');
             const isWrite = AgentService.WRITE_TOOLS.has(toolName);
             await this.logToolCall('hubby', toolName,
-              item.arguments ? JSON.parse(typeof item.arguments === 'string' ? item.arguments : '{}') : {},
-              item.output || item.return_value || {},
+              item.arguments ? JSON.parse(typeof item.arguments === 'string' ? item.arguments : '{}') as Record<string, unknown> : {},
+              (item.output || item.return_value || {}) as Record<string, unknown>,
               isWrite ? 'medium' : 'low',
             );
           }
@@ -351,8 +353,8 @@ REGLAS:
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: output })}\n\n`));
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: output } })}\n\n`));
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          } catch (err) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err.message } })}\n\n`));
+          } catch (err: unknown) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err instanceof Error ? err.message : String(err) } })}\n\n`));
           } finally {
             controller.close();
           }
@@ -360,9 +362,9 @@ REGLAS:
       });
 
       return { stream, model, agent_type: agentType };
-    } catch (err) {
-      this.logger.error(`Agent SDK error: ${err.message}`);
-      return { error: `Error del agente: ${err.message}` };
+    } catch (err: unknown) {
+      this.logger.error(`Agent SDK error: ${err instanceof Error ? err.message : String(err)}`);
+      return { error: `Error del agente: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
 
@@ -408,23 +410,25 @@ REGLAS:
       modelSettings: { temperature: 0.4, maxTokens: 200 },
     });
 
-    const history: Record<string, any>[] = [{ role: 'user', content: input }];
+    const history: { role: string; content: string }[] = [{ role: 'user', content: input }];
 
     try {
       const runner = new Runner();
-      const result = await runner.run(agent, history as any, { maxTurns: 1 });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await runner.run(agent, history as unknown as string, { maxTurns: 1 });
+      const rawPublicResult = result as unknown as Record<string, unknown>;
 
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            const final = await (result.finalOutput || (result as any).output);
+            const final = rawPublicResult.finalOutput ?? rawPublicResult.output;
             const text = typeof final === 'string' ? final : JSON.stringify(final || '');
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: text })}\n\n`));
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: text } })}\n\n`));
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          } catch (err) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err.message } })}\n\n`));
+          } catch (err: unknown) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err instanceof Error ? err.message : String(err) } })}\n\n`));
           } finally {
             controller.close();
           }
@@ -432,9 +436,9 @@ REGLAS:
       });
 
       return { stream, model: 'gpt-4.1-mini', agent_type: 'hubby' };
-    } catch (err) {
-      this.logger.error(`Public agent error: ${err.message}`);
-      return { error: `Error: ${err.message}` };
+    } catch (err: unknown) {
+      this.logger.error(`Public agent error: ${err instanceof Error ? err.message : String(err)}`);
+      return { error: `Error: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
 }

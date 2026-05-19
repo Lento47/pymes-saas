@@ -22,7 +22,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // ✅ SECURITY: Add Helmet.js for HTTP security headers
   app.use(helmet({

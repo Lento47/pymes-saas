@@ -23,7 +23,7 @@ export class ContactsService {
     const { q, type, tag, page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, any> = { workspace_id: workspaceId };
+    const where: Record<string, unknown> = { workspace_id: workspaceId };
 
     if (type) where.type = type;
 
@@ -35,6 +35,10 @@ export class ContactsService {
         { phone: { contains: q } },
         { external_ref: { contains: q } },
       ];
+    }
+
+    if (tag) {
+      where.tags_json = { path: [], array_contains: tag };
     }
 
     const [data, total] = await Promise.all([
@@ -68,20 +72,18 @@ export class ContactsService {
       this.prisma.contact.count({ where }),
     ]);
 
-    const normalizedData = data
-      .map((contact) => ({
-        ...contact,
-        tags_json: parseJsonValue<string[]>(contact.tags_json, []),
-      }))
-      .filter((contact) => !tag || contact.tags_json.includes(tag));
+    const normalizedData = data.map((contact) => ({
+      ...contact,
+      tags_json: parseJsonValue<string[]>(contact.tags_json, []),
+    }));
 
     return {
       data: normalizedData,
       meta: {
-        total: tag ? normalizedData.length : total,
+        total,
         page,
         limit,
-        pages: Math.ceil((tag ? normalizedData.length : total) / limit),
+        pages: Math.ceil(total / limit),
       },
     };
   }
