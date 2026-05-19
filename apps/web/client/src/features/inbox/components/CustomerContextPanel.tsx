@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { InboxConversation } from "../types";
+import { useToast } from "@/hooks/use-toast";
 import {
   Sparkles, TrendingUp, MessageCircle, Receipt, Target,
-  Loader2, ChevronDown, ChevronUp, User, Hash,
+  Loader2, ChevronDown, ChevronUp, User, Hash, Copy, ExternalLink,
 } from "lucide-react";
 
 const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
@@ -36,6 +37,7 @@ export function CustomerContextPanel({
   conversation: InboxConversation | null;
 }) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [showMetrics, setShowMetrics] = useState(false);
 
   if (!conversation) {
@@ -97,6 +99,37 @@ export function CustomerContextPanel({
           </div>
         )}
       </div>
+
+      {/* Quick actions */}
+      {(contactId || (conversation as any)?.external_id) && (
+        <div className="px-4 py-3 border-b border-border/40 space-y-1.5">
+          <SectionHeader label="Acciones" />
+          <div className="flex flex-wrap gap-1.5">
+            {(conversation as any)?.external_id && (
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText((conversation as any).external_id);
+                  toast({ title: "ID copiado" });
+                }}
+                className="flex items-center gap-1 rounded-md border border-border/50 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <Copy className="w-2.5 h-2.5 shrink-0" />
+                Copiar ID externo
+              </button>
+            )}
+            {contactId && (
+              <a
+                href={`/contacts/${contactId}`}
+                className="flex items-center gap-1 rounded-md border border-border/50 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                Ver en contactos
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Metrics section */}
       {contactId && (

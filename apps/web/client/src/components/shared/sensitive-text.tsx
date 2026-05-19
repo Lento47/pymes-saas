@@ -1,5 +1,5 @@
 import { useState, memo } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ShieldAlert } from "lucide-react";
 
 type Segment =
   | { kind: "plain"; text: string }
@@ -7,14 +7,20 @@ type Segment =
 
 // Matches: LABEL=value or LABEL: value where LABEL contains a sensitive keyword
 const LABEL_VALUE_RE =
-  /\b([\w-]*(?:PRIVATE[_-]?KEY|API[_-]?KEY|API[_-]?SECRET|ACCESS[_-]?KEY|SECRET[_-]?KEY|ACCESS[_-]?SECRET|SECRET|TOKEN|PASSWORD|PASSWD|PRIVATE|JWT|AUTH[_-]?KEY|CREDENTIAL|APIKEY|AUTHKEY|SECRETKEY)[\w-]*)\s*([=:])\s*(\S+)/gi;
+  /\b([\w-]*(?:PRIVATE[_-]?KEY|API[_-]?KEY|API[_-]?SECRET|ACCESS[_-]?KEY|SECRET[_-]?KEY|ACCESS[_-]?SECRET|SECRET|TOKEN|PASSWORD|PASSWD|PRIVATE|JWT|AUTH[_-]?KEY|CREDENTIAL|APIKEY|AUTHKEY|SECRETKEY|MNEMONIC|SEED[_-]?PHRASE|WALLET[_-]?KEY)[\w-]*)\s*([=:])\s*(\S+)/gi;
 
 // Bare JWT tokens (three base64-url segments separated by dots)
 const JWT_RE =
   /(eyJ[A-Za-z0-9+/=_-]{8,}\.[A-Za-z0-9+/=_-]{8,}\.[A-Za-z0-9+/=_-]{8,})/g;
 
+// Bearer token pattern
+const BEARER_RE = /\b(Bearer)\s+([A-Za-z0-9._~+/=-]{20,})/gi;
+
 // Long hex strings (40+ hex chars — typical for private keys, hashes)
 const HEX_RE = /\b([0-9a-fA-F]{40,})\b/g;
+
+// Long base64 strings (44+ chars) not already matched by hex
+const BASE64_RE = /\b([A-Za-z0-9+/]{44,}={0,2})\b/g;
 
 type Hit = { start: number; end: number; seg: Segment };
 
@@ -43,6 +49,17 @@ function findHits(text: string): Hit[] {
     }
   }
 
+  const br = new RegExp(BEARER_RE.source, "gi");
+  while ((m = br.exec(text)) !== null) {
+    if (!hits.some((h) => h.start <= m!.index && m!.index < h.end)) {
+      hits.push({
+        start: m.index,
+        end: m.index + m[0].length,
+        seg: { kind: "secret", label: "Bearer", sep: " ", value: m[2] },
+      });
+    }
+  }
+
   const hx = new RegExp(HEX_RE.source, "g");
   while ((m = hx.exec(text)) !== null) {
     if (!hits.some((h) => h.start <= m!.index && m!.index < h.end)) {
@@ -50,6 +67,17 @@ function findHits(text: string): Hit[] {
         start: m.index,
         end: m.index + m[0].length,
         seg: { kind: "secret", label: "valor", sep: "", value: m[0] },
+      });
+    }
+  }
+
+  const b64 = new RegExp(BASE64_RE.source, "g");
+  while ((m = b64.exec(text)) !== null) {
+    if (!hits.some((h) => h.start <= m!.index && m!.index < h.end)) {
+      hits.push({
+        start: m.index,
+        end: m.index + m[0].length,
+        seg: { kind: "secret", label: "dato", sep: "", value: m[0] },
       });
     }
   }
@@ -100,6 +128,7 @@ export const SensitiveText = memo(function SensitiveText({
         const isOn = revealed.has(i);
         return (
           <span key={i} className="inline-flex items-baseline gap-0.5">
+            <ShieldAlert className="w-2.5 h-2.5 text-amber-400/70 shrink-0 self-center" />
             <span className="font-medium text-amber-400/80 text-[0.9em]">
               {seg.label}
               {seg.sep}
@@ -123,7 +152,7 @@ export const SensitiveText = memo(function SensitiveText({
                   return next;
                 });
               }}
-              className="ml-0.5 inline-flex items-center text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+              className="ml-0.5 inline-flex items-center opacity-60 hover:opacity-100 text-muted-foreground transition-opacity"
               title={isOn ? "Ocultar" : "Mostrar temporalmente"}
             >
               {isOn ? (
