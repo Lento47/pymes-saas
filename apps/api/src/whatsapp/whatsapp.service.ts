@@ -94,19 +94,26 @@ export class WhatsAppService {
     // Step 1: Download file from storage or URL
     const trimmedUrl = mediaUrl.trim();
     let fileBuffer: Buffer;
-    if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+    let resolvedFileName: string;
+    const storageProxyMarker = '/api/storage/file/';
+    const storageProxyIndex = trimmedUrl.indexOf(storageProxyMarker);
+
+    if (storageProxyIndex >= 0) {
+      const key = decodeURIComponent(trimmedUrl.slice(storageProxyIndex + storageProxyMarker.length));
+      fileBuffer = await this.storage.download(key);
+      resolvedFileName = key.split('/').pop() || 'file';
+    } else if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
       const res = await fetch(trimmedUrl, { signal: AbortSignal.timeout(30_000) });
       if (!res.ok) throw new BadGatewayException(`Failed to fetch media: ${res.status}`);
       fileBuffer = Buffer.from(await res.arrayBuffer());
+      resolvedFileName = new URL(trimmedUrl).pathname.split('/').pop() || 'file';
     } else {
-      const key = trimmedUrl.includes('/api/storage/file/')
-        ? trimmedUrl.split('/api/storage/file/').pop()!
-        : trimmedUrl.replace(/^https?:\/\/[^/]+\/?/, '');
-      fileBuffer = await this.storage.download(key);
+      fileBuffer = await this.storage.download(trimmedUrl);
+      resolvedFileName = trimmedUrl.split('/').pop() || 'file';
     }
 
     // Determine MIME type from mediaType and file extension
-    const ext = this.guessExtensionFromUrl(mediaUrl);
+    const ext = this.guessExtensionFromUrl(resolvedFileName);
     const mimeMap: Record<string, string> = {
       png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
       gif: 'image/gif', webp: 'image/webp',
@@ -117,7 +124,7 @@ export class WhatsAppService {
       zip: 'application/zip', rar: 'application/vnd.rar', '7z': 'application/x-7z-compressed',
     };
     const contentType = mimeMap[ext] ?? 'application/octet-stream';
-    const fileName = mediaUrl.split('/').pop() || `${mediaType}.${ext}`;
+    const fileName = resolvedFileName || `${mediaType}.${ext}`;
 
     // Step 2: Upload to Meta Media API using multipart/form-data
     const boundary = `----HermesWhatsApp${Date.now()}${Math.random().toString(36).slice(2)}`;
