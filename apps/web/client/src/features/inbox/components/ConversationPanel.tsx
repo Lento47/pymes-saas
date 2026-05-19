@@ -166,6 +166,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       setMessage("");
+      setAttachment(null);
     },
     onError: (e) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
   });
@@ -251,14 +252,13 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   });
 
   const handleSend = () => {
+    if (sendMut.isPending || uploading) return;
     if (!message.trim() && !attachment) return;
     if (attachment) {
       sendMut.mutate({ body_text: message, direction: "OUTBOUND", media_url: attachment.url, media_type: attachment.type });
     } else {
       sendMut.mutate({ body_text: message, direction: "OUTBOUND" });
     }
-    setAttachment(null);
-    setMessage("");
   };
 
   const msgList: Record<string, any>[] = Array.isArray(messages) ? messages : messages?.data || [];
@@ -433,7 +433,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                     {isFirst && !isOutbound && <div className="text-[10px] font-medium text-muted-foreground mb-1">{contactName}</div>}
                     {(() => {
                       const text = msg.body_text || msg.body_html || msg.content || "";
-                      const API_BASE = import.meta.env.VITE_PymesHub_API_URL ?? "";
 
                       // Media messages: use DTO fields, not emoji parsing
                       if (msg.has_media && msg.media_type && msg.id) {
@@ -567,7 +566,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
             className="min-h-[40px] max-h-[120px] text-sm bg-background border-border resize-none"
             rows={1}
           />
-          <Button type="submit" size="sm" className="h-9 shrink-0" disabled={(!message.trim() && !attachment) || sendMut.isPending || uploading}>
+          <Button type="button" size="sm" className="h-9 shrink-0" onClick={handleSend} disabled={(!message.trim() && !attachment) || sendMut.isPending || uploading}>
             {sendMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
