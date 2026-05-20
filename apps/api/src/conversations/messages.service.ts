@@ -121,10 +121,10 @@ export class MessagesService {
 
     await this.conversationsService.touchLastMessage(conversationId);
 
-    // Emitir en tiempo real
-    this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessageForClient(message));
+    const serialized = this.serializeMessageForClient(message);
+    this.events.emitNewMessage(conversationId, workspaceId, serialized);
 
-    return message;
+    return serialized;
   }
 
   async receiveInbound(
@@ -615,8 +615,74 @@ export class MessagesService {
         ? `/api/conversations/messages/${msg.id}/media`
         : null;
 
+    // Build normalized attachments array
+    const attachmentsList: Array<Record<string, any>> = [];
+
+    // 1) attachments_json entries
+    if (attachments) {
+      for (const entry of attachments) {
+        attachmentsList.push({
+          id: msg.id,
+          type: entry.type ?? 'document',
+          mimeType: entry.mimeType ?? null,
+          fileName: entry.filename ?? null,
+          sizeBytes: null,
+          url: entry.storageKey ? `/api/conversations/messages/${msg.id}/media` : null,
+          thumbnailUrl: null,
+          durationMs: null,
+          width: null,
+          height: null,
+          latitude: null,
+          longitude: null,
+          displayName: null,
+          status: entry.storageKey ? 'available' : 'processing',
+        });
+      }
+    }
+
+    // 2) WhatsApp media
+    if (wm) {
+      attachmentsList.push({
+        id: msg.id,
+        type: wm.mediaType ?? 'document',
+        mimeType: wm.mimeType ?? null,
+        fileName: wm.filename ?? null,
+        sizeBytes: null,
+        url: wm.whatsappMediaId ? `/api/conversations/messages/${msg.id}/media` : null,
+        thumbnailUrl: null,
+        durationMs: null,
+        width: null,
+        height: null,
+        latitude: null,
+        longitude: null,
+        displayName: null,
+        status: 'available',
+      });
+    }
+
+    // 3) Telegram pending
+    if (tgPending) {
+      attachmentsList.push({
+        id: msg.id,
+        type: tgPending.type ?? 'document',
+        mimeType: null,
+        fileName: null,
+        sizeBytes: null,
+        url: null,
+        thumbnailUrl: null,
+        durationMs: null,
+        width: null,
+        height: null,
+        latitude: null,
+        longitude: null,
+        displayName: null,
+        status: 'processing',
+      });
+    }
+
     return {
       ...msg,
+      attachments: attachmentsList,
       has_media: hasMedia || !!attachmentEntry,
       media_type: mediaType,
       media_mime_type: wm?.mimeType ?? wm?.mime_type ?? attachmentEntry?.mimeType ?? null,
@@ -659,17 +725,17 @@ export class MessagesService {
 
     const buffer = await this.storage.download(entry.storageKey);
 
-    const ext = (() => {
-      const last = entry.storageKey.split('.').pop()?.toLowerCase() ?? '';
-      return `.${last}`;
-    })();
-    const MIME: Record<string, string> = {
-      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-      '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
-      '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg',
-      '.ogg': 'audio/ogg', '.wav': 'audio/wav',
-    };
-    const contentType = MIME[ext] ?? 'application/octet-stream';
+    let contentType = entry.mimeType ?? null;
+    if (!contentType) {
+      const ext = `.${entry.storageKey.split('.').pop()?.toLowerCase() ?? ''}`;
+      const MIME_MAP: Record<string, string> = {
+        '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+        '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg',
+        '.ogg': 'audio/ogg', '.wav': 'audio/wav',
+      };
+      contentType = MIME_MAP[ext] ?? 'application/octet-stream';
+    }
 
     return { buffer, contentType };
   }
