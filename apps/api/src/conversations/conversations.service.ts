@@ -250,9 +250,9 @@ export class ConversationsService {
 
   // ── Helper interno — actualizar last_message_at ────────────────────────────
 
-  async touchLastMessage(conversationId: string) {
+  async touchLastMessage(workspaceId: string, conversationId: string) {
     await this.prisma.conversation.update({
-      where: { id: conversationId },
+      where: { id: conversationId, workspace_id: workspaceId },
       data:  { last_message_at: new Date(), status: 'OPEN', updated_at: new Date() },
       select: { id: true },
     });
