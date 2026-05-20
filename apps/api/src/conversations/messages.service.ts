@@ -681,19 +681,32 @@ export class MessagesService {
     }
 
     return {
-      ...msg,
-      attachments: attachmentsList,
+      id: msg.id,
+      workspace_id: msg.workspace_id,
+      conversation_id: msg.conversation_id,
+      direction: msg.direction,
+      sender_name: msg.sender_name,
+      sender_ref: msg.sender_ref,
+      sender_user_id: msg.sender_user_id,
+      sender_user: msg.sender_user,
+      body_text: msg.body_text,
+      body_html: msg.body_html,
+      sent_at: msg.sent_at,
+      created_at: msg.created_at,
+      message_type: msg.message_type,
+      cost_category: msg.cost_category,
+      provider: msg.provider,
+      provider_message_id: msg.provider_message_id,
+      delivery_status: msg.delivery_status,
+      delivery_error: msg.delivery_error,
       has_media: hasMedia || !!attachmentEntry,
       media_type: mediaType,
       media_mime_type: wm?.mimeType ?? wm?.mime_type ?? attachmentEntry?.mimeType ?? null,
       media_filename: wm?.filename ?? attachmentEntry?.filename ?? null,
       media_caption: wm?.caption ?? attachmentEntry?.caption ?? null,
       media_download_url: downloadUrl,
-      media_status: attachmentEntry?.storageKey
-        ? 'available'
-        : hasMedia
-          ? 'processing'
-          : 'none',
+      media_status: attachmentEntry?.storageKey ? 'available' : hasMedia ? 'processing' : 'none',
+      attachments: attachmentsList,
     };
   }
 
@@ -733,6 +746,10 @@ export class MessagesService {
         '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
         '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg',
         '.ogg': 'audio/ogg', '.wav': 'audio/wav',
+        '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.ppt': 'application/vnd.ms-powerpoint', '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        '.csv': 'text/csv', '.txt': 'text/plain', '.zip': 'application/zip',
       };
       contentType = MIME_MAP[ext] ?? 'application/octet-stream';
     }
