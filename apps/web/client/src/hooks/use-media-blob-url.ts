@@ -5,14 +5,29 @@ const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_A
 
 const MAX_CACHE_SIZE = 50;
 const blobCache = new Map<string, string>();
+const errorCache = new Map<string, number>(); // mediaUrl → timestamp of last error
+
+// Minimum seconds before retrying a previously failed URL
+const ERROR_RETRY_MS = 30_000;
 
 export function useMediaBlobUrl(mediaUrl: string | null | undefined): { blobUrl: string | null; error: string | null; loading: boolean } {
   const [blobUrl, setBlobUrl] = useState<string | null>(() =>
     mediaUrl ? (blobCache.get(mediaUrl) ?? null) : null,
   );
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(() => !mediaUrl || !!blobCache.get(mediaUrl ?? '') ? false : true);
-  const currentBlobUrlRef = useRef<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    if (!mediaUrl) return null;
+    if (blobCache.has(mediaUrl)) return null;
+    const lastError = errorCache.get(mediaUrl);
+    if (lastError && Date.now() - lastError < ERROR_RETRY_MS) return 'Media no disponible';
+    return null;
+  });
+  const [loading, setLoading] = useState(() => {
+    if (!mediaUrl) return false;
+    if (blobCache.has(mediaUrl)) return false;
+    const lastError = errorCache.get(mediaUrl);
+    if (lastError && Date.now() - lastError < ERROR_RETRY_MS) return false;
+    return true;
+  });
 
   useEffect(() => {
     if (!mediaUrl) {
@@ -23,9 +38,14 @@ export function useMediaBlobUrl(mediaUrl: string | null | undefined): { blobUrl:
     setError(null);
 
     if (blobCache.has(mediaUrl)) {
-      const cached = blobCache.get(mediaUrl)!;
-      setBlobUrl(cached);
-      currentBlobUrlRef.current = cached;
+      setBlobUrl(blobCache.get(mediaUrl)!);
+      setLoading(false);
+      return;
+    }
+
+    const lastError = errorCache.get(mediaUrl);
+    if (lastError && Date.now() - lastError < ERROR_RETRY_MS) {
+      setError('Media no disponible');
       setLoading(false);
       return;
     }
@@ -49,7 +69,26 @@ export function useMediaBlobUrl(mediaUrl: string | null | undefined): { blobUrl:
         if (slug) headers['x-workspace-slug'] = slug;
 
         const res = await fetch(`${API_BASE}${mediaUrl}`, { headers });
-        if (!res.ok || cancelled) return;
+        if (cancelled) return;
+
+        if (res.status === 404 || res.status === 410) {
+          let detail = 'Media no disponible';
+          try {
+            const body = await res.json();
+            if (body?.message) detail = body.message;
+          } catch { /* ignore */ }
+          errorCache.set(mediaUrl, Date.now());
+          setError(detail);
+          setLoading(false);
+          return;
+        }
+
+        if (!res.ok) {
+          errorCache.set(mediaUrl, Date.now());
+          setError('Error al cargar el medio');
+          setLoading(false);
+          return;
+        }
 
         const blob = await res.blob();
         if (cancelled) return;
@@ -66,11 +105,12 @@ export function useMediaBlobUrl(mediaUrl: string | null | undefined): { blobUrl:
         }
         const url = URL.createObjectURL(blob);
         blobCache.set(mediaUrl, url);
-        currentBlobUrlRef.current = url;
+        errorCache.delete(mediaUrl);
         setBlobUrl(url);
         setLoading(false);
       } catch (err) {
         if (!cancelled) {
+          errorCache.set(mediaUrl, Date.now());
           setError(err instanceof Error ? err.message : 'Unknown error');
           setLoading(false);
         }
@@ -80,24 +120,10 @@ export function useMediaBlobUrl(mediaUrl: string | null | undefined): { blobUrl:
     return () => {
       cancelled = true;
       clearTimeout(timeoutId);
-      if (currentBlobUrlRef.current) {
-        try { URL.revokeObjectURL(currentBlobUrlRef.current); } catch { /* ignore */ }
-        currentBlobUrlRef.current = null;
-      }
     };
   }, [mediaUrl]);
 
   return { blobUrl, error, loading };
-}
-
-// Revoke all blob URLs on page unload to prevent memory leaks
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    blobCache.forEach((url) => {
-      try { URL.revokeObjectURL(url); } catch { /* ignore */ }
-    });
-    blobCache.clear();
-  });
 }
 
 // Revoke all blob URLs on page unload to prevent memory leaks
