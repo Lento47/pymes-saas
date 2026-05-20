@@ -310,7 +310,9 @@ export class TelegramService {
     }
 
     try {
-      const bot = new Telegraf(token);
+      // Reuse cached bot instance instead of creating a new Telegraf per message
+      const bot = this.bots.get(channelId) || new Telegraf(token);
+      if (!this.bots.has(channelId)) this.bots.set(channelId, bot);
       const result = await bot.telegram.sendMessage(chatId, text, {
         parse_mode: 'HTML',
       });

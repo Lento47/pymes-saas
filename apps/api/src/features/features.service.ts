@@ -59,13 +59,17 @@ const PLAN_FEATURES: Record<string, FeatureFlags> = {
   BUSINESS_PLUS: { ...ALL_FEATURES_ON },
 };
 
+// "Unlimited" sentinel for enterprise tiers — high enough for practical purposes.
+// Not Number.MAX_SAFE_INTEGER to avoid JSON serialization precision issues.
+const UNLIMITED = 999_999;
+
 const PLAN_LIMITS: Record<string, FeatureLimits> = {
   FREE: { 'contacts.max': 100, 'users.max': 1, 'channels.max': 1, 'orders.monthly_max': 50, 'invoices.monthly_max': 50, 'automations.max': 5, 'storage.gb': 0.1 },
   STARTER: { 'contacts.max': 500, 'users.max': 3, 'channels.max': 2, 'orders.monthly_max': 200, 'invoices.monthly_max': 200, 'automations.max': 25, 'storage.gb': 1 },
   GROWTH: { 'contacts.max': 5000, 'users.max': 10, 'channels.max': 5, 'orders.monthly_max': 1000, 'invoices.monthly_max': 1000, 'automations.max': 100, 'storage.gb': 10 },
   BUSINESS: { 'contacts.max': 50000, 'users.max': 50, 'channels.max': 20, 'orders.monthly_max': 5000, 'invoices.monthly_max': 5000, 'automations.max': 500, 'storage.gb': 50 },
-  ENTERPRISE: { 'contacts.max': 999999, 'users.max': 999999, 'channels.max': 999999, 'orders.monthly_max': 999999, 'invoices.monthly_max': 999999, 'automations.max': 999999, 'storage.gb': 999999 },
-  BUSINESS_PLUS: { 'contacts.max': 999999, 'users.max': 999999, 'channels.max': 999999, 'orders.monthly_max': 999999, 'invoices.monthly_max': 999999, 'automations.max': 999999, 'storage.gb': 999999 },
+  ENTERPRISE: { 'contacts.max': UNLIMITED, 'users.max': UNLIMITED, 'channels.max': UNLIMITED, 'orders.monthly_max': UNLIMITED, 'invoices.monthly_max': UNLIMITED, 'automations.max': UNLIMITED, 'storage.gb': UNLIMITED },
+  BUSINESS_PLUS: { 'contacts.max': UNLIMITED, 'users.max': UNLIMITED, 'channels.max': UNLIMITED, 'orders.monthly_max': UNLIMITED, 'invoices.monthly_max': UNLIMITED, 'automations.max': UNLIMITED, 'storage.gb': UNLIMITED },
 };
 
 const BETA_PROFILE_FEATURES: Record<string, Partial<FeatureFlags>> = {

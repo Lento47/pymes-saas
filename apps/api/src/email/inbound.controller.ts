@@ -92,9 +92,13 @@ export class InboundController {
       const toSign = `${msgId}.${timestamp}.${rawBody.toString('utf8')}`;
       const expected = crypto.createHmac('sha256', secretBytes).update(toSign).digest('base64');
       const sigs = signatureHeader.split(' ').map(s => s.replace(/^v\d+,/, ''));
-      return sigs.some(sig =>
-        crypto.timingSafeEqual(Buffer.from(sig, 'base64'), Buffer.from(expected, 'base64')),
-      );
+      const expectedBuf = Buffer.from(expected, 'base64');
+      return sigs.some(sig => {
+        const sigBuf = Buffer.from(sig, 'base64');
+        // timingSafeEqual throws if buffers differ in length — guard against it
+        if (sigBuf.length !== expectedBuf.length) return false;
+        return crypto.timingSafeEqual(sigBuf, expectedBuf);
+      });
     } catch {
       return false;
     }
