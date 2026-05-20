@@ -85,7 +85,12 @@ export class StorageService {
       if (!body) throw new InternalServerErrorException('Empty response body');
       return Buffer.from(body);
     } catch (err) {
-      this.logger.error(`Error descargando archivo ${key}:`, err);
+      const error = err as Error & { Code?: string; $metadata?: { httpStatusCode?: number } };
+      if (error.Code === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+        this.logger.warn(`Key not found in storage: ${key}`);
+      } else {
+        this.logger.error(`Error descargando archivo ${key}:`, err);
+      }
       throw new InternalServerErrorException('Error al descargar el archivo del storage.');
     }
   }
