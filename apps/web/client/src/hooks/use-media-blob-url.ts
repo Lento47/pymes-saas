@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAuthToken, getWorkspaceSlug } from '@/lib/api';
 
-const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? '';
+const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? import.meta.env.API_URL ?? '';
 
 // Module-level cache: avoids re-fetching the same media URL across renders / re-mounts
 const blobCache = new Map<string, string>(); // mediaUrl -> objectURL
@@ -56,4 +56,14 @@ export function useMediaBlobUrl(mediaUrl: string | null | undefined): string | n
   }, [mediaUrl]);
 
   return blobUrl;
+}
+
+// Revoke all blob URLs on page unload to prevent memory leaks
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    blobCache.forEach((url) => {
+      try { URL.revokeObjectURL(url); } catch { /* ignore */ }
+    });
+    blobCache.clear();
+  });
 }

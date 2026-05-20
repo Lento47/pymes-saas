@@ -1,34 +1,27 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
-import { format, isSameDay } from "date-fns";
-import { es } from "date-fns/locale";
-import {
-  ArrowLeft, Send, Loader2, MessageCircle, CheckCircle2, RefreshCw,
-  Trash2, UserPlus, Info, Receipt, Plus, X, Paperclip, AlertTriangle,
-} from "lucide-react";
-import { SensitiveText } from "@/components/shared/sensitive-text";
-import { ChannelBadge } from "@/components/shared/channel-badge";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
-import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PriorityDot } from "@/components/shared/priority-dot";
 import { ProductPicker } from "@/components/inventory/ProductPicker";
+import { Loader2, Plus, X, Send } from "lucide-react";
+import { ConversationHeader } from "./conversation/ConversationHeader";
+import { MessageTimeline } from "./conversation/MessageTimeline";
+import { MessageComposer } from "./conversation/MessageComposer";
+import { normalizeMessage } from "@/features/inbox/message-adapters";
+import type { UiMessage } from "@/features/inbox/message-types";
 
 interface Invoice {
   id: string;
@@ -45,10 +38,6 @@ interface InvoiceLine {
   description?: string;
 }
 
-function getInitials(name: string) {
-  return name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
-}
-
 const CHANNEL_LABELS: Record<string, string> = {
   WHATSAPP: "WhatsApp", EMAIL: "Email", TELEGRAM: "Telegram",
   FORM: "Formulario", API: "API", MANUAL: "Manual",
@@ -58,82 +47,9 @@ const STATUS_LABELS: Record<string, string> = {
   OPEN: "Abierto", RESOLVED: "Resuelto", PENDING: "Pendiente",
 };
 
-function formatSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function DateSeparator({ date }: { date: Date }) {
-  return (
-    <div className="flex items-center gap-3 my-3">
-      <div className="flex-1 h-px bg-border/60" />
-      <span className="text-[10px] text-muted-foreground/80 shrink-0">
-        {format(date, "d MMM yyyy", { locale: es })}
-      </span>
-      <div className="flex-1 h-px bg-border/60" />
-    </div>
-  );
-}
-
-function MediaRenderer({ messageId, mediaType, caption }: {
-  messageId: string;
-  mediaType: "image" | "video" | "audio" | "document";
-  caption?: string;
-}) {
-  const blobUrl = useMediaBlobUrl(`/api/conversations/messages/${messageId}/media`);
-
-  if (!blobUrl) {
-    const label = mediaType === "image" ? "imagen"
-      : mediaType === "video" ? "video"
-      : mediaType === "audio" ? "audio"
-      : "documento";
-    return (
-      <div className="flex items-center gap-2 text-muted-foreground py-3">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        <span className="text-[11px]">Cargando {label}...</span>
-      </div>
-    );
-  }
-
-  if (mediaType === "image" || mediaType === "video") {
-    return (
-      <div>
-        {mediaType === "video" ? (
-          <video controls src={blobUrl} className="rounded-lg max-w-full max-h-64" />
-        ) : (
-          <img src={blobUrl} alt={caption || "Imagen"} className="rounded-lg max-w-full max-h-64 object-contain" />
-        )}
-        {caption && <p className="text-[11px] text-muted-foreground/80 mt-1.5">{caption}</p>}
-        <a href={blobUrl} download={caption || mediaType}
-          className="inline-block mt-1 text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
-          Descargar
-        </a>
-      </div>
-    );
-  }
-
-  if (mediaType === "audio") {
-    return (
-      <div className="space-y-1">
-        {caption && <p className="text-[12px] font-medium text-foreground">{caption}</p>}
-        <audio controls src={blobUrl} className="h-8 w-full max-w-[240px]" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-lg">📄</span>
-      <div className="min-w-0">
-        <p className="text-[12px] font-medium text-foreground truncate">{caption || "Documento"}</p>
-        <a href={blobUrl} download={caption || "documento"}
-          className="text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
-          Descargar
-        </a>
-      </div>
-    </div>
-  );
+function getInitials(name: string) {
+  if (!name) return "?";
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
 }
 
 interface Props {
@@ -147,10 +63,12 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const qc = useQueryClient();
   const { user } = useAuth();
   useConversationSocket(conversationId || '');
+
   const [message, setMessage] = useState("");
   const [attachment, setAttachment] = useState<{ file: File; url: string; type: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const id = conversationId || "";
@@ -177,7 +95,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     mutationFn: (data: Record<string, any>) => api.sendMessage(id, data),
     onSuccess: (response: any) => {
       qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
-      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["/api/conversations"] });
       setMessage("");
       setAttachment(null);
       if (response?.delivery_status === "dispatch_failed") {
@@ -194,7 +112,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const deleteMut = useMutation({
     mutationFn: () => api.deleteConversation(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["/api/conversations"] });
       toast({ title: "Conversación eliminada" });
       if (onBack) onBack();
     },
@@ -271,7 +189,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     onError: (e) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
   });
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     if (sendMut.isPending || uploading) return;
     if (!message.trim() && !attachment) return;
     if (attachment) {
@@ -279,7 +197,25 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     } else {
       sendMut.mutate({ body_text: message, direction: "OUTBOUND" });
     }
-  };
+  }, [message, attachment, sendMut, uploading]);
+
+  const handleAttach = useCallback(async (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    setUploading(true);
+    try {
+      const { url } = await api.uploadAttachment(form);
+      const type = file.type.startsWith("image/") ? "image"
+        : file.type.startsWith("video/") ? "video"
+        : file.type.startsWith("audio/") ? "audio"
+        : "document";
+      setAttachment({ file, url, type });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "No se pudo subir el archivo", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  }, [toast]);
 
   const msgList: Record<string, any>[] = Array.isArray(messages) ? messages : messages?.data || [];
   const memberList: Record<string, any>[] = Array.isArray(members) ? members : members?.data || [];
@@ -292,13 +228,17 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const [nearBottom, setNearBottom] = useState(true);
   const [initialLoaded, setInitialLoaded] = useState(false);
 
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
     setNearBottom(scrollHeight - scrollTop - clientHeight < 150);
-  };
+  }, []);
 
-  // Scroll to bottom on initial load (after DOM renders)
+  const scrollToBottom = useCallback(() => {
+    setNearBottom(true);
+    if (bottomRef.current) bottomRef.current.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, []);
+
   useEffect(() => {
     if (msgsLoading || initialLoaded || !bottomRef.current) return;
     const timer = setTimeout(() => {
@@ -309,7 +249,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     return () => clearTimeout(timer);
   }, [msgsLoading, msgList.length]);
 
-  // Keep scrolled to bottom on new messages
   useEffect(() => {
     if (!initialLoaded) return;
     if (nearBottom && bottomRef.current) {
@@ -322,331 +261,60 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const channelLabel = CHANNEL_LABELS[channelType] || channelType;
   const statusLabel = conversation?.status ? STATUS_LABELS[conversation.status] ?? conversation.status : null;
   const assigneeName = (conversation as any)?.assigned_user?.name ?? null;
-  const subtitleParts = [channelLabel, statusLabel, assigneeName ?? "Sin asignar"].filter(Boolean);
   const statusDotClass = conversation?.status === "OPEN"
     ? "bg-emerald-400"
     : conversation?.status === "PENDING"
-    ? "bg-amber-400"
-    : "bg-blue-400/50";
+      ? "bg-amber-400"
+      : "bg-blue-400/50";
+  const statusDotSize = "w-1.5 h-1.5 rounded-full";
+
+  const uiMessages: UiMessage[] = msgList.map(normalizeMessage);
 
   return (
     <div className="flex flex-col min-h-0 h-full max-h-dvh bg-background">
-      {/* Header */}
-      <div className="flex items-center gap-2.5 border-b border-border px-3 sm:px-4 py-2.5 shrink-0">
-        {onBack && (
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={onBack}>
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-        )}
-        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[11px] font-semibold text-muted-foreground shrink-0">
-          {getInitials(contactName)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-foreground truncate leading-tight">{contactName}</p>
-          <div className="flex items-center gap-1 mt-px flex-wrap">
-            <ChannelBadge channel={channelType} />
-            {statusLabel && (
-              <>
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDotClass}`} />
-                <span className="text-[10px] text-muted-foreground/60">{statusLabel}</span>
-              </>
-            )}
-            {(assigneeName || !conversation?.assigned_user) && (
-              <>
-                <span className="text-[10px] text-muted-foreground/40">·</span>
-                <span className="text-[10px] text-muted-foreground/60">{assigneeName ?? "Sin asignar"}</span>
-              </>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-0.5 shrink-0">
-          <Select onValueChange={(v) => assignMut.mutate(v)}>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <SelectTrigger className="h-7 w-7 p-0 border-0 bg-transparent">
-                    <UserPlus className="w-3.5 h-3.5 text-muted-foreground" />
-                  </SelectTrigger>
-                </TooltipTrigger>
-                <TooltipContent>Asignar</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <SelectContent>
-              {memberList.map((m) => (
-                <SelectItem key={m.user?.id || m.id} value={m.user?.id || m.id}>
-                  {m.user?.name || m.name || m.email}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <ConversationHeader
+        contactName={contactName}
+        contactAvatarInitials={getInitials(contactName)}
+        channelType={channelType || undefined}
+        statusLabel={statusLabel ?? undefined}
+        assigneeName={assigneeName}
+        statusDotClass={`${statusDotClass} ${statusDotSize}`}
+        onBack={onBack}
+        onAssign={(userId) => assignMut.mutate(userId)}
+        onResolve={() => resolveMut.mutate()}
+        onRefresh={() => qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] })}
+        onInvoice={() => { setInvoiceForm({ number: "", currency: "USD", due_date: "", description: "" }); setLines([]); setShowInvoice(true); }}
+        onDelete={() => setShowDelete(true)}
+        members={memberList as Array<{ user?: { id: string; name?: string }; id: string; name?: string; email?: string }>}
+        canResolve={conversation?.status !== "RESOLVED"}
+        canSendInvoice={canSendInvoice}
+      />
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
-                  onClick={() => resolveMut.mutate()}
-                  disabled={conversation?.status === "RESOLVED"}>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Resolver</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      <MessageTimeline
+        messages={uiMessages}
+        isLoading={msgsLoading}
+        contactName={contactName}
+        contactAvatarInitials={getInitials(contactName)}
+        scrollRef={scrollRef}
+        bottomRef={bottomRef}
+        nearBottom={nearBottom}
+        onScrollToBottom={scrollToBottom}
+        onScroll={handleScroll}
+      />
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hidden sm:inline-flex"
-                  onClick={() => qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] })}>
-                  <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Refrescar</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      <MessageComposer
+        value={message}
+        onChange={setMessage}
+        onSend={handleSend}
+        onAttach={handleAttach}
+        onRemoveAttachment={() => setAttachment(null)}
+        attachment={attachment}
+        uploading={uploading}
+        isPending={sendMut.isPending}
+        channelLabel={channelLabel}
+        disabled={!id}
+      />
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hidden sm:inline-flex"
-                  onClick={() => { setInvoiceForm({ number: "", currency: "USD", due_date: "", description: "" }); setLines([]); setShowInvoice(true); }}
-                  title="Factura">
-                  <Receipt className="w-3.5 h-3.5 text-muted-foreground" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Factura</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                  onClick={() => setShowDelete(true)}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Eliminar</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 min-h-0 bg-muted/[0.15]" onScroll={handleScroll}>
-        {!nearBottom && msgList.length > 0 && (
-          <div className="sticky bottom-2 flex justify-center z-10 mb-2">
-            <button
-              onClick={() => {
-                setNearBottom(true);
-                if (bottomRef.current) bottomRef.current.scrollIntoView({ block: "end", behavior: "smooth" });
-              }}
-              className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-medium shadow-lg hover:opacity-90 transition-opacity"
-            >
-              ↓ Nuevos mensajes
-            </button>
-          </div>
-        )}
-        {msgsLoading ? (
-          <div className="flex items-center justify-center h-full"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-        ) : msgList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-            <MessageCircle className="w-8 h-8 opacity-20" />
-            <p className="text-xs">Sin mensajes</p>
-          </div>
-        ) : (
-          msgList.map((msg: Record<string, any>, idx: number) => {
-            const isOutbound = msg.direction === "OUTBOUND";
-            const msgDate = msg.createdAt || msg.created_at ? new Date(msg.createdAt || msg.created_at) : null;
-            const prevMsg = idx > 0 ? msgList[idx - 1] : null;
-            const prevDate = prevMsg?.createdAt || prevMsg?.created_at ? new Date(prevMsg.createdAt || prevMsg.created_at) : null;
-            const showSep = msgDate && (!prevDate || !isSameDay(msgDate, prevDate));
-            const prevOutbound = prevMsg?.direction === "OUTBOUND";
-            const isFirst = !prevMsg || prevOutbound !== isOutbound;
-
-            return (
-              <div key={msg.id}>
-                {showSep && msgDate && <DateSeparator date={msgDate} />}
-                <div className={cn("flex gap-2 mb-0.5", isOutbound ? "justify-end" : "justify-start", isFirst && idx > 0 && "mt-2")}>
-                  {!isOutbound && (
-                    <div className={cn("w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold text-muted-foreground shrink-0 mt-auto", !isFirst && "invisible")}>
-                      {getInitials(contactName)}
-                    </div>
-                  )}
-                  <div className={cn(
-                    "max-w-[75%] rounded-2xl px-3.5 py-2.5",
-                    isOutbound
-                      ? "bg-primary/[0.08] border border-primary/[0.12] rounded-br-sm"
-                      : "bg-card border border-border/50 rounded-bl-sm shadow-[0_1px_2px_0_rgb(0,0,0,0.04)]"
-                  )}>
-                    {isFirst && !isOutbound && (
-                      <div className="text-[10px] font-medium text-muted-foreground/70 mb-1">{contactName}</div>
-                    )}
-                    {(() => {
-                      const text = msg.body_text || msg.body_html || msg.content || "";
-
-                      if (msg.has_media && msg.media_type && msg.id) {
-                        const caption = msg.media_caption || (
-                          !text.startsWith("🖼️") && !text.startsWith("📄") &&
-                          !text.startsWith("🎬") && !text.startsWith("🎧") &&
-                          !text.startsWith("💬") && text !== "🖼️ Imagen" &&
-                          text !== "📄 Documento" && text !== "🎬 Video" &&
-                          text !== "🎧 Audio" && text !== "💬 Sticker"
-                        ) ? text : undefined;
-
-                        if (msg.media_type === "image" || msg.media_type === "sticker") {
-                          return <MediaRenderer messageId={msg.id} mediaType="image" caption={caption} />;
-                        }
-                        if (msg.media_type === "video") {
-                          return <MediaRenderer messageId={msg.id} mediaType="video" caption={caption} />;
-                        }
-                        if (msg.media_type === "audio") {
-                          return <MediaRenderer messageId={msg.id} mediaType="audio" caption={caption} />;
-                        }
-                        return <MediaRenderer messageId={msg.id} mediaType="document" caption={caption} />;
-                      }
-
-                      if (text.startsWith("📍 ")) {
-                        const lines = text.split("\n");
-                        const label = lines[0].replace("📍 ", "");
-                        const coordsLine = lines.find((l: string) => l.includes(","));
-                        const [lat, lng] = coordsLine ? coordsLine.split(",").map((s: string) => s.trim()) : [];
-                        const mapsUrl = lat && lng ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}` : null;
-                        return (
-                          <div>
-                            <p className="text-sm font-medium text-foreground">📍 {label}</p>
-                            {lines.slice(1).filter((l: string) => !l.includes(",")).map((l: string, i: number) => (
-                              <p key={i} className="text-[11px] text-muted-foreground/80 mt-0.5">{l}</p>
-                            ))}
-                            {mapsUrl && (
-                              <a href={mapsUrl} target="_blank" rel="noreferrer"
-                                className="inline-flex items-center gap-1 mt-2 text-[11px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
-                                Ver en Google Maps →
-                              </a>
-                            )}
-                          </div>
-                        );
-                      }
-
-                      const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
-                      const parts = text.split(urlRegex);
-                      if (parts.length > 1) {
-                        return (
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-                            {parts.map((part: string, i: number) =>
-                              urlRegex.test(part) ? (
-                                <a key={i} href={part} target="_blank" rel="noreferrer"
-                                  className="text-blue-400 hover:text-blue-300 underline underline-offset-2 break-all">
-                                  {part}
-                                </a>
-                              ) : (
-                                <SensitiveText key={i} text={part} />
-                              )
-                            )}
-                          </p>
-                        );
-                      }
-
-                      return (
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-                          <SensitiveText text={text} />
-                        </p>
-                      );
-                    })()}
-                    <div className={cn("text-[10px] text-muted-foreground/50 mt-1.5", isOutbound ? "text-right" : "text-left")}>
-                      {msgDate ? format(msgDate, "h:mm a") : ""}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Composer */}
-      <div className="border-t border-border px-3 py-3 shrink-0 bg-background">
-        {attachment && (
-          <div className="mb-2 rounded-lg border border-border/60 bg-muted/30 overflow-hidden">
-            {uploading && (
-              <div className="h-0.5 w-full bg-amber-400/30">
-                <div className="h-full w-1/2 bg-amber-400 animate-pulse rounded-full" />
-              </div>
-            )}
-            <div className="flex items-center gap-2 px-3 py-1.5">
-            <Paperclip className="w-3 h-3 text-muted-foreground shrink-0" />
-            <span className="flex-1 truncate text-[11px] text-foreground">{attachment.file.name}</span>
-            <span className="text-[10px] text-muted-foreground/60 shrink-0">{formatSize(attachment.file.size)}</span>
-            {uploading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground shrink-0" />}
-            <button
-              type="button"
-              onClick={() => setAttachment(null)}
-              className="text-muted-foreground/60 hover:text-muted-foreground transition-colors shrink-0 ml-1"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            </div>
-          </div>
-        )}
-        <div className="flex items-end gap-0 rounded-xl border border-border bg-background overflow-hidden focus-within:border-primary/40 transition-colors">
-          <label className="cursor-pointer flex items-center justify-center p-2.5 text-muted-foreground hover:text-foreground transition-colors shrink-0">
-            <Paperclip className="w-4 h-4" />
-            <input
-              type="file"
-              accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/ogg,audio/wav,.pdf,.docx,.xlsx"
-              className="hidden"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const form = new FormData();
-                form.append("file", file);
-                setUploading(true);
-                try {
-                  const { url } = await api.uploadAttachment(form);
-                  const type = file.type.startsWith("image/") ? "image"
-                    : file.type.startsWith("video/") ? "video"
-                    : file.type.startsWith("audio/") ? "audio"
-                    : "document";
-                  setAttachment({ file, url, type });
-                } catch (err: unknown) {
-                  toast({ title: "Error", description: err instanceof Error ? err.message : "No se pudo subir el archivo", variant: "destructive" });
-                } finally {
-                  setUploading(false);
-                  e.target.value = "";
-                }
-              }}
-            />
-          </label>
-          <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="Escribe un mensaje..."
-            className="flex-1 border-0 bg-transparent min-h-[40px] max-h-[100px] py-2.5 px-0 text-sm resize-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-            rows={1}
-          />
-          <Button
-            type="button"
-            size="sm"
-            className="m-1.5 h-8 w-8 p-0 rounded-lg shrink-0"
-            onClick={handleSend}
-            disabled={(!message.trim() && !attachment) || sendMut.isPending || uploading}
-          >
-            {sendMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </Button>
-        </div>
-        <p className="text-[10px] text-muted-foreground/40 mt-1.5 ml-1">
-          {channelLabel ? `Enviando por ${channelLabel} · ` : ""}↑ Enter para enviar · Shift+Enter nueva línea
-        </p>
-      </div>
-
-      {/* Invoice dialog */}
       <Dialog open={showInvoice} onOpenChange={setShowInvoice}>
         <DialogContent className="bg-card border-border sm:max-w-[560px]">
           <DialogHeader>
@@ -701,7 +369,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                 <Input type="date" value={invoiceForm.due_date} onChange={e => setInvoiceForm(p => ({ ...p, due_date: e.target.value }))} className="h-7 text-xs bg-background border-border" />
               </div>
 
-              {/* Line items */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-[11px]">Productos / Líneas</Label>
@@ -710,7 +377,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                   </Button>
                 </div>
 
-                {/* Product picker panel */}
                 {showProductPicker && (
                   <ProductPicker
                     open={showProductPicker}
@@ -728,7 +394,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
                   />
                 )}
 
-                {/* Line items table */}
                 {lines.length > 0 && (
                   <div className="space-y-1 mt-2">
                     {lines.map((line, i) => {
@@ -800,7 +465,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete dialog */}
       <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
         <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>

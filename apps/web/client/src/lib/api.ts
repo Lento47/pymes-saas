@@ -15,7 +15,7 @@ export class ApiError extends Error {
   }
 }
 
-const API_BASE = import.meta.env.VITE_PymesHub_API_URL ?? import.meta.env.VITE_API_URL ??
+const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? import.meta.env.API_URL ??
   ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 
 // ── Auth state ──

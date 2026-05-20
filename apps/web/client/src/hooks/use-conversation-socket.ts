@@ -56,33 +56,29 @@ export function useConversationSocket(conversationId: string) {
 
   const handleNewMessage = useCallback(
     (message: Message) => {
-      // 1. Insert optimista — muestra el mensaje al instante.
-      qc.setQueryData(MESSAGES_KEY, (old: MessagesCache | undefined) => {
+      // Guard: ignore messages for other conversations
+      if (message.conversation_id && message.conversation_id !== conversationId) return;
+
+      qc.setQueryData(MESSAGES_KEY, (old: MessagesCache | Message[] | undefined) => {
         if (!old) return old;
-        const existingData = Array.isArray(old.data) ? old.data : [];
-        const exists = existingData.some((m) => m.id === message.id);
+        // Normalize: handle both plain array and { data, meta } shapes
+        const dataArray = Array.isArray(old) ? old : (Array.isArray(old.data) ? old.data : []);
+        const exists = dataArray.some((m) => m.id === message.id);
 
         if (exists) {
-          return {
-            ...old,
-            data: existingData.map((m) =>
-              m.id === message.id ? { ...m, ...message } : m,
-            ),
-          };
+          const updated = dataArray.map((m) => m.id === message.id ? { ...m, ...message } : m);
+          return Array.isArray(old) ? updated : { ...old, data: updated };
         }
 
-        return {
-          ...old,
-          data: [...existingData, message],
-          meta: { ...old.meta, total: (old.meta?.total ?? 0) + 1 },
-        };
+        const newData = [...dataArray, message];
+        return Array.isArray(old) ? newData : { ...old, data: newData, meta: { ...old.meta, total: (old.meta?.total ?? 0) + 1 } };
       });
 
-      // 2. Refetch inmediato — trae DTO enriquecido del backend.
+      // Refetch to get the full serialized DTO
       qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
       qc.invalidateQueries({ queryKey: MESSAGES_KEY });
 
-      // 3. Si parece media, refetch diferido — captura media async (MinIO).
+      // Deferred refetch for media
       if (looksLikeMedia(message)) {
         window.setTimeout(() => {
           qc.invalidateQueries({ queryKey: MESSAGES_KEY });
@@ -106,25 +102,25 @@ export function useConversationSocket(conversationId: string) {
       if (payload.conversation_id !== conversationId) return;
 
       // Update solo ese mensaje en cache — sin refetch completo.
-      qc.setQueryData(MESSAGES_KEY, (old: MessagesCache | undefined) => {
-        if (!old?.data) return old;
-        return {
-          ...old,
-          data: old.data.map((m) =>
-            m.id === payload.message_id
-              ? {
-                  ...m,
-                  has_media: true,
-                  media_type: payload.media_type,
-                  media_status: payload.media_status,
-                  media_download_url: payload.media_download_url,
-                  media_mime_type: payload.media_mime_type,
-                  media_filename: payload.media_filename,
-                  media_caption: payload.media_caption,
-                }
-              : m,
-          ),
-        };
+      qc.setQueryData(MESSAGES_KEY, (old: MessagesCache | Message[] | undefined) => {
+        if (!old) return old;
+        const dataArray = Array.isArray(old) ? old : (Array.isArray(old.data) ? old.data : []);
+        if (dataArray.length === 0) return old;
+        const updated = dataArray.map((m) =>
+          m.id === payload.message_id
+            ? {
+                ...m,
+                has_media: true,
+                media_type: payload.media_type,
+                media_status: payload.media_status,
+                media_download_url: payload.media_download_url,
+                media_mime_type: payload.media_mime_type,
+                media_filename: payload.media_filename,
+                media_caption: payload.media_caption,
+              }
+            : m,
+        );
+        return Array.isArray(old) ? updated : { ...old, data: updated };
       });
     },
     [qc, conversationId],

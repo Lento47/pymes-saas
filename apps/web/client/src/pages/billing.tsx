@@ -902,7 +902,7 @@ function BillingHistory({ openBillingPortal }: { openBillingPortal: () => void }
                 onClick={async () => {
                   try {
                     const token = getAuthToken();
-                    const apiBase = import.meta.env.VITE_API_URL || '';
+                    const apiBase = import.meta.env.VITE_API_URL ?? import.meta.env.API_URL ?? '';
                     const res = await fetch(`${apiBase}/api/billing/invoices/${inv.id}/pdf`, {
                       headers: { Authorization: `Bearer ${token}` },
                     });
