@@ -128,7 +128,7 @@ export class MessagesService {
       },
     });
 
-    await this.conversationsService.touchLastMessage(conversationId);
+    await this.conversationsService.touchLastMessage(workspaceId, conversationId);
 
     const serialized = this.serializeMessageForClient(message);
     this.events.emitNewMessage(conversationId, workspaceId, serialized);
