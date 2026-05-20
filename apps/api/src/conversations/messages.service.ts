@@ -107,7 +107,16 @@ export class MessagesService {
                   ? dto.media_url.split('/api/storage/file/').pop()!
                   : dto.media_url,
                 type: dto.media_type ?? 'document',
-                mimeType: null,
+                mimeType: (() => {
+                  const ext = dto.media_url?.split('.').pop()?.toLowerCase() ?? '';
+                  const MIME: Record<string, string> = {
+                    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+                    webp: 'image/webp', svg: 'image/svg+xml', mp4: 'video/mp4', mp3: 'audio/mpeg',
+                    ogg: 'audio/ogg', wav: 'audio/wav', pdf: 'application/pdf',
+                    doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                  };
+                  return MIME[ext] ?? null;
+                })(),
                 filename: dto.media_url.split('/').pop() || null,
                 caption: dto.body_text || null,
               },
@@ -121,10 +130,10 @@ export class MessagesService {
 
     await this.conversationsService.touchLastMessage(conversationId);
 
-    // Emitir en tiempo real
-    this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessageForClient(message));
+    const serialized = this.serializeMessageForClient(message);
+    this.events.emitNewMessage(conversationId, workspaceId, serialized);
 
-    return message;
+    return serialized;
   }
 
   async receiveInbound(
@@ -506,7 +515,7 @@ export class MessagesService {
 
     try {
       const message = await this.prisma.message.findUnique({
-        where: { id: messageId },
+        where: { id: messageId, workspace_id: workspaceId },
         include: {
           sender_user: { select: { id: true, name: true, avatar_url: true } },
         },
@@ -615,19 +624,101 @@ export class MessagesService {
         ? `/api/conversations/messages/${msg.id}/media`
         : null;
 
+    // Build normalized attachments array
+    const attachmentsList: Array<Record<string, any>> = [];
+
+    // 1) attachments_json entries
+    if (attachments) {
+      for (const entry of attachments) {
+        attachmentsList.push({
+          id: msg.id,
+          type: entry.type ?? 'document',
+          mimeType: entry.mimeType ?? null,
+          fileName: entry.filename ?? null,
+          sizeBytes: null,
+          url: entry.storageKey ? `/api/conversations/messages/${msg.id}/media` : null,
+          thumbnailUrl: null,
+          durationMs: null,
+          width: null,
+          height: null,
+          latitude: null,
+          longitude: null,
+          displayName: null,
+          status: entry.storageKey ? 'available' : 'processing',
+        });
+      }
+    }
+
+    // 2) WhatsApp media — skip if attachments_json already has a storage-backed entry
+    const hasStorageBacked = attachmentsList.some(a => a.status === 'available');
+    if (wm && !hasStorageBacked) {
+      attachmentsList.push({
+        id: msg.id,
+        type: wm.mediaType ?? 'document',
+        mimeType: wm.mimeType ?? null,
+        fileName: wm.filename ?? null,
+        sizeBytes: null,
+        url: wm.whatsappMediaId ? `/api/conversations/messages/${msg.id}/media` : null,
+        thumbnailUrl: null,
+        durationMs: null,
+        width: null,
+        height: null,
+        latitude: null,
+        longitude: null,
+        displayName: null,
+        status: 'available',
+      });
+    }
+
+    // 3) Telegram pending
+    if (tgPending) {
+      attachmentsList.push({
+        id: msg.id,
+        type: tgPending.type ?? 'document',
+        mimeType: null,
+        fileName: null,
+        sizeBytes: null,
+        url: null,
+        thumbnailUrl: null,
+        durationMs: null,
+        width: null,
+        height: null,
+        latitude: null,
+        longitude: null,
+        displayName: null,
+        status: 'processing',
+      });
+    }
+
     return {
-      ...msg,
+      id: msg.id,
+      workspace_id: msg.workspace_id,
+      conversation_id: msg.conversation_id,
+      direction: msg.direction,
+      sender_name: msg.sender_name,
+      sender_ref: msg.sender_ref,
+      sender_user_id: msg.sender_user_id,
+      sender_user: msg.sender_user,
+      body_text: msg.body_text,
+      body_html: msg.body_html,
+      sent_at: msg.sent_at,
+      created_at: msg.created_at,
+      message_type: msg.message_type,
+      cost_category: msg.cost_category,
+      provider: msg.provider,
+      provider_message_id: msg.provider_message_id,
+      delivery_status: msg.delivery_status,
+      delivery_error: msg.delivery_error,
       has_media: hasMedia || !!attachmentEntry,
       media_type: mediaType,
       media_mime_type: wm?.mimeType ?? wm?.mime_type ?? attachmentEntry?.mimeType ?? null,
       media_filename: wm?.filename ?? attachmentEntry?.filename ?? null,
       media_caption: wm?.caption ?? attachmentEntry?.caption ?? null,
       media_download_url: downloadUrl,
-      media_status: attachmentEntry?.storageKey
-        ? 'available'
-        : hasMedia
-          ? 'processing'
-          : 'none',
+      media_status: attachmentsList.length > 0
+        ? (attachmentsList.some(a => a.status === 'available') ? 'available' : 'processing')
+        : (hasMedia ? 'processing' : 'none'),
+      attachments: attachmentsList,
     };
   }
 
@@ -659,17 +750,21 @@ export class MessagesService {
 
     const buffer = await this.storage.download(entry.storageKey);
 
-    const ext = (() => {
-      const last = entry.storageKey.split('.').pop()?.toLowerCase() ?? '';
-      return `.${last}`;
-    })();
-    const MIME: Record<string, string> = {
-      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-      '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
-      '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg',
-      '.ogg': 'audio/ogg', '.wav': 'audio/wav',
-    };
-    const contentType = MIME[ext] ?? 'application/octet-stream';
+    let contentType = entry.mimeType ?? null;
+    if (!contentType) {
+      const ext = `.${entry.storageKey.split('.').pop()?.toLowerCase() ?? ''}`;
+      const MIME_MAP: Record<string, string> = {
+        '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+        '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg',
+        '.ogg': 'audio/ogg', '.wav': 'audio/wav',
+        '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.ppt': 'application/vnd.ms-powerpoint', '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        '.csv': 'text/csv', '.txt': 'text/plain', '.zip': 'application/zip',
+      };
+      contentType = MIME_MAP[ext] ?? 'application/octet-stream';
+    }
 
     return { buffer, contentType };
   }
