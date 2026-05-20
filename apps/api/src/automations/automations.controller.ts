@@ -36,26 +36,27 @@ export class AutomationsController {
   @Get()
   @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   findAll(
-    @CurrentUser() user: Record<string, any>,
+    @CurrentUser('workspace_id') workspaceId: string,
     @Query() filters: FilterAutomationsDto,
   ) {
-    return this.automationsService.findAll(user.workspace_id, filters);
+    return this.automationsService.findAll(workspaceId, filters);
   }
 
   @Post()
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   @RequireFeature('automations')
   async create(
-    @CurrentUser() user: Record<string, any>,
+    @CurrentUser('workspace_id') workspaceId: string,
+    @CurrentUser('id') userId: string,
     @Body() dto: CreateAutomationDto,
   ) {
-    await this.features.assertEnabled(user.workspace_id, 'automations');
-    await this.planLimits.enforceAutomations(user.workspace_id);
+    await this.features.assertEnabled(workspaceId, 'automations');
+    await this.planLimits.enforceAutomations(workspaceId);
     // Advanced condition builder requires GROWTH+
     if (dto.condition_config_json && Object.keys(dto.condition_config_json).length > 0) {
-      await this.planLimits.enforcePlanTier(user.workspace_id, 'GROWTH', 'Constructor avanzado de condiciones');
+      await this.planLimits.enforcePlanTier(workspaceId, 'GROWTH', 'Constructor avanzado de condiciones');
     }
-    return this.automationsService.create(user.workspace_id, user.id, dto);
+    return this.automationsService.create(workspaceId, userId, dto);
   }
 
   @Get(':id')

@@ -2,6 +2,7 @@ import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min, IsIn } from 'cla
 import { Type } from 'class-transformer';
 
 export class CreateProductDto {
+  @IsOptional()
   @IsString()
   category_id?: string;
 

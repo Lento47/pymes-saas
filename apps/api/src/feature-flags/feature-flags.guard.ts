@@ -25,6 +25,11 @@ export class FeatureFlagGuard implements CanActivate {
     const workspaceId = req.user?.workspace_id;
     if (!workspaceId) return false;
 
-    return this.featureFlags.isEnabled(requiredFeature, workspaceId);
+    try {
+      return await this.featureFlags.isEnabled(requiredFeature, workspaceId);
+    } catch (err) {
+      // If isEnabled throws (e.g., DB error), fail closed rather than 500
+      return false;
+    }
   }
 }
