@@ -27,7 +27,12 @@ export class StorageService {
   private readonly logger = new Logger(StorageService.name);
 
   constructor(private readonly config: ConfigService) {
-    const endpoint = this.config.get<string>('STORAGE_ENDPOINT');
+    let endpoint = this.config.get<string>('STORAGE_ENDPOINT');
+
+    // Ensure endpoint has a protocol prefix (MinIO / S3-compatible)
+    if (endpoint && !/^https?:\/\//i.test(endpoint)) {
+      endpoint = `http://${endpoint}`;
+    }
 
     this.client = new S3Client({
       region:      this.config.get<string>('STORAGE_REGION') ?? 'us-east-1',
@@ -42,7 +47,8 @@ export class StorageService {
       }),
     });
 
-    this.bucket = this.config.get<string>('STORAGE_BUCKET') ?? 'pymes-documents';
+    this.bucket = this.config.get<string>('STORAGE_BUCKET') ?? 'pymes-attachments';
+    this.logger.log(`Storage connected: endpoint=${endpoint ?? 'AWS default'}, bucket=${this.bucket}`);
   }
 
   // ── Subir archivo ──────────────────────────────────────────────────────────
@@ -63,8 +69,10 @@ export class StorageService {
       );
       return { key, size: buffer.length };
     } catch (err) {
-      this.logger.error(`Error subiendo archivo ${key}:`, err);
-      throw new InternalServerErrorException('Error al subir el archivo al storage.');
+      const error = err as Error & { Code?: string; $metadata?: { httpStatusCode?: number } };
+      const detail = error.Code ?? error.message ?? 'Unknown error';
+      this.logger.error(`Error subiendo archivo ${key} (code=${detail}):`, error);
+      throw new InternalServerErrorException(`Error al subir el archivo al storage (${detail})`);
     }
   }
 
