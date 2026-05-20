@@ -68,7 +68,8 @@ export class AgentService {
       try { return this.crypto.decrypt(s.ai_api_key_enc); }
       catch { this.logger.warn(`No se pudo desencriptar API key del workspace ${workspaceId}`); }
     }
-    if (process.env.OPENAI_API_KEY) return process.env.OPENAI_API_KEY;
+    // Do NOT fall back to platform-wide OPENAI_API_KEY — each workspace
+    // must configure its own key to prevent cross-workspace billing.
     return null;
   }
 
