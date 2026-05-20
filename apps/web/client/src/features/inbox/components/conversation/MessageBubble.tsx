@@ -139,7 +139,7 @@ export const MessageBubble = function MessageBubble({
       }
       default:
         return (
-          <div className={`text-sm ${isShort ? "leading-snug" : "leading-relaxed"} text-foreground whitespace-pre-wrap break-words`}>
+          <div className={`text-sm ${isShort ? "leading-snug" : "leading-relaxed"} text-foreground whitespace-pre-wrap break-words overflow-hidden`}>
             {renderTextWithLinks(message.bodyText)}
           </div>
         );

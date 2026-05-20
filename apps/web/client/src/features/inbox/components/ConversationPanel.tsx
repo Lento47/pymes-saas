@@ -210,7 +210,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         bottomRef.current?.scrollIntoView({ block: "end", behavior: "instant" });
         setNearBottom(true);
         setInitialLoaded(true);
-      }, 200);
+      }, 300);
       return () => clearTimeout(timer);
     }
 

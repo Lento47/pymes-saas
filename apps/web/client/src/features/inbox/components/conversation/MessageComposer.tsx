@@ -38,6 +38,20 @@ export function MessageComposer({
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const file = items[i].getAsFile?.();
+      if (file) {
+        e.preventDefault();
+        onAttach(file);
+        return;
+      }
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -77,6 +91,7 @@ export function MessageComposer({
           onChange={(e) => onChange(e.target.value)}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           placeholder="Escribe un mensaje..."
           rows={1}
           disabled={disabled}

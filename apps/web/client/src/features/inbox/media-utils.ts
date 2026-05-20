@@ -12,9 +12,7 @@ export function classifyMediaType(mimeType?: string | null, filename?: string | 
   }
 
   if (mimeType) {
-    if (mimeType.startsWith("image/")) {
-      return mimeType.includes("webp") ? "sticker" : "image";
-    }
+    if (mimeType.startsWith("image/")) return "image";
     if (mimeType.startsWith("video/")) return "video";
     if (mimeType.startsWith("audio/")) return "audio";
     if (mimeType === "application/pdf" || mimeType.startsWith("application/")) return "document";
@@ -23,7 +21,6 @@ export function classifyMediaType(mimeType?: string | null, filename?: string | 
 
   if (filename) {
     const ext = filename.split(".").pop()?.toLowerCase();
-    if (ext === "webp") return "sticker";
     if (["jpg", "jpeg", "png", "gif", "svg", "bmp", "ico", "tiff", "webp"].includes(ext ?? "")) return "image";
     if (["mp4", "webm", "mov", "avi", "mkv", "flv", "wmv"].includes(ext ?? "")) return "video";
     if (["mp3", "wav", "ogg", "aac", "flac", "m4a", "opus"].includes(ext ?? "")) return "audio";
@@ -34,10 +31,7 @@ export function classifyMediaType(mimeType?: string | null, filename?: string | 
 }
 
 export function isStickerType(mimeType?: string | null, filename?: string | null, messageType?: string | null): boolean {
-  if (messageType === "sticker") return true;
-  if (mimeType === "image/webp") return true;
-  if (filename?.endsWith(".webp")) return true;
-  return false;
+  return messageType === "sticker";
 }
 
 export function formatFileSize(bytes: number): string {
