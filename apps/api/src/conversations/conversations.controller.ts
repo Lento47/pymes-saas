@@ -274,6 +274,7 @@ export class ConversationsController {
       res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
       res.send(buffer);
     } catch (err) {
+      res.setHeader('Cache-Control', 'public, max-age=5');
       res.status(404).json({ statusCode: 404, message: err.message || 'Media no disponible' });
     }
   }

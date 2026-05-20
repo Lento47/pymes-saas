@@ -748,9 +748,9 @@ export class MessagesService {
     const entry = attachments?.[0] ?? null;
     if (!entry?.storageKey) return null;
 
-    const buffer = await this.storage.download(entry.storageKey);
-
-    let contentType = entry.mimeType ?? null;
+    try {
+      const buffer = await this.storage.download(entry.storageKey);
+      let contentType = entry.mimeType ?? null;
     if (!contentType) {
       const ext = `.${entry.storageKey.split('.').pop()?.toLowerCase() ?? ''}`;
       const MIME_MAP: Record<string, string> = {
@@ -767,6 +767,10 @@ export class MessagesService {
     }
 
     return { buffer, contentType };
+    } catch (err) {
+      this.logger.warn(`Storage download failed for key=${entry.storageKey}, falling through to WhatsApp fallback: ${(err as Error).message}`);
+      return null;
+    }
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
