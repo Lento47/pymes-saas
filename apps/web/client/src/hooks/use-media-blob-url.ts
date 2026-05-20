@@ -1,32 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getAuthToken, getWorkspaceSlug } from '@/lib/api';
 
 const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? import.meta.env.API_URL ?? '';
 
-// Module-level cache: avoids re-fetching the same media URL across renders / re-mounts
-const blobCache = new Map<string, string>(); // mediaUrl -> objectURL
+const MAX_CACHE_SIZE = 50;
+const blobCache = new Map<string, string>();
 
-/**
- * Fetches a JWT-protected media URL with auth headers and returns a blob objectURL
- * suitable for use as `src` in <img>, <video>, and <audio> elements.
- *
- * Results are cached in memory for the page session so each file is only
- * fetched once regardless of how many times the component remounts.
- */
-export function useMediaBlobUrl(mediaUrl: string | null | undefined): string | null {
+export function useMediaBlobUrl(mediaUrl: string | null | undefined): { blobUrl: string | null; error: string | null; loading: boolean } {
   const [blobUrl, setBlobUrl] = useState<string | null>(() =>
     mediaUrl ? (blobCache.get(mediaUrl) ?? null) : null,
   );
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(() => !mediaUrl || !!blobCache.get(mediaUrl ?? '') ? false : true);
+  const currentBlobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!mediaUrl) return;
-
-    if (blobCache.has(mediaUrl)) {
-      setBlobUrl(blobCache.get(mediaUrl)!);
+    if (!mediaUrl) {
+      setLoading(false);
       return;
     }
 
+    setError(null);
+
+    if (blobCache.has(mediaUrl)) {
+      const cached = blobCache.get(mediaUrl)!;
+      setBlobUrl(cached);
+      currentBlobUrlRef.current = cached;
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     let cancelled = false;
+
+    const timeoutId = setTimeout(() => {
+      if (!cancelled) {
+        setError('Timeout');
+        setLoading(false);
+      }
+    }, 10000);
 
     (async () => {
       try {
@@ -42,20 +54,50 @@ export function useMediaBlobUrl(mediaUrl: string | null | undefined): string | n
         const blob = await res.blob();
         if (cancelled) return;
 
+        if (blobCache.size >= MAX_CACHE_SIZE) {
+          const oldestKey = blobCache.keys().next().value;
+          if (oldestKey) {
+            const oldestUrl = blobCache.get(oldestKey);
+            if (oldestUrl) {
+              URL.revokeObjectURL(oldestUrl);
+            }
+            blobCache.delete(oldestKey);
+          }
+        }
         const url = URL.createObjectURL(blob);
         blobCache.set(mediaUrl, url);
+        currentBlobUrlRef.current = url;
         setBlobUrl(url);
-      } catch {
-        // fail silently — broken media shows nothing rather than crashing
+        setLoading(false);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Unknown error');
+          setLoading(false);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
+      if (currentBlobUrlRef.current) {
+        try { URL.revokeObjectURL(currentBlobUrlRef.current); } catch { /* ignore */ }
+        currentBlobUrlRef.current = null;
+      }
     };
   }, [mediaUrl]);
 
-  return blobUrl;
+  return { blobUrl, error, loading };
+}
+
+// Revoke all blob URLs on page unload to prevent memory leaks
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    blobCache.forEach((url) => {
+      try { URL.revokeObjectURL(url); } catch { /* ignore */ }
+    });
+    blobCache.clear();
+  });
 }
 
 // Revoke all blob URLs on page unload to prevent memory leaks
