@@ -21,14 +21,15 @@ export function getSocket(): Socket | null {
 //      EL BACKEND EN OTRO PUERTO, ESTO ROMPE — AGREGAR `VITE_WS_URL` SI HACE
 //      FALTA SER FLEXIBLE.
 //
-// PROD: USA `VITE_API_URL` (ej. `https://api.pymeshub.lat`) PARA QUE EL WS
+// PROD: USA `API_URL` (ej. `https://api.pymeshub.lat`) PARA QUE EL WS
 //       VAYA A RAILWAY, NO A CLOUDFLARE PAGES (QUE ES SOLO ESTATICO).
-//       SI `VITE_API_URL` NO ESTA SETEADO EN CLOUDFLARE, CAE A
-//       `window.location.origin` QUE NO TIENE WS — LA UI EN VIVO NO FUNCIONA.
+//       CAE A `VITE_API_URL` Y LUEGO A `window.location.origin`.
 // ───────────────────────────────────────────────────────────────────────────
 const WS_URL = import.meta.env.DEV
   ? `${window.location.protocol}//${window.location.hostname}:4000`
-  : (import.meta.env.VITE_API_URL as string | undefined) ?? (import.meta.env.API_URL as string | undefined) ?? window.location.origin;
+  : (import.meta.env.API_URL as string | undefined)
+    ?? (import.meta.env.VITE_API_URL as string | undefined)
+    ?? window.location.origin;
 
 export function connectSocket() {
   if (_socket?.connected) return _socket;

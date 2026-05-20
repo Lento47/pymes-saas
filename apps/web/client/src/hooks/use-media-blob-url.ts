@@ -57,3 +57,13 @@ export function useMediaBlobUrl(mediaUrl: string | null | undefined): string | n
 
   return blobUrl;
 }
+
+// Revoke all blob URLs on page unload to prevent memory leaks
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    blobCache.forEach((url) => {
+      try { URL.revokeObjectURL(url); } catch { /* ignore */ }
+    });
+    blobCache.clear();
+  });
+}

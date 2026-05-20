@@ -24,7 +24,16 @@ function extractSenderInfo(raw: Record<string, any>): { name?: string | null; re
 
 function extractBodyText(raw: Record<string, any>): string {
   if (raw.body_text) return String(raw.body_text);
-  if (raw.body_html) return String(raw.body_html).replace(/<[^>]*>/g, "");
+  if (raw.body_html) {
+    const stripped = String(raw.body_html).replace(/<[^>]*>/g, "");
+    return stripped
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(Number(num)))
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  }
   return "";
 }
 
@@ -144,38 +153,6 @@ export function normalizeMessage(raw: Record<string, any>): UiMessage {
     deliveryError: raw.delivery_error ?? null,
     raw,
   };
-}
-
-export function groupMessagesByDate(messages: UiMessage[]): MessageGroup[] {
-  const sorted = [...messages].sort((a, b) => {
-    if (!a.sentAt && !b.sentAt) return 0;
-    if (!a.sentAt) return 1;
-    if (!b.sentAt) return -1;
-    return a.sentAt.getTime() - b.sentAt.getTime();
-  });
-
-  const groups: MessageGroup[] = [];
-  const noDateMessages: UiMessage[] = [];
-
-  for (const msg of sorted) {
-    if (!msg.sentAt) {
-      noDateMessages.push(msg);
-      continue;
-    }
-
-    const lastGroup = groups[groups.length - 1];
-    if (lastGroup && isSameDay(lastGroup.date, msg.sentAt)) {
-      lastGroup.messages.push(msg);
-    } else {
-      groups.push({ date: msg.sentAt, messages: [msg] });
-    }
-  }
-
-  if (noDateMessages.length > 0) {
-    groups.push({ date: new Date(0), messages: noDateMessages });
-  }
-
-  return groups;
 }
 
 export function isConsecutiveMessage(current: UiMessage, previous: UiMessage | null): boolean {

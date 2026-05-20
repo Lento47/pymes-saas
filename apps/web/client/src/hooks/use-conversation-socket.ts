@@ -104,7 +104,7 @@ export function useConversationSocket(conversationId: string) {
       // Update solo ese mensaje en cache — sin refetch completo.
       qc.setQueryData(MESSAGES_KEY, (old: MessagesCache | Message[] | undefined) => {
         if (!old) return old;
-        const dataArray = Array.isArray(old) ? old : (old.data ? old.data : []);
+        const dataArray = Array.isArray(old) ? old : (Array.isArray(old.data) ? old.data : []);
         if (dataArray.length === 0) return old;
         const updated = dataArray.map((m) =>
           m.id === payload.message_id

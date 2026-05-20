@@ -48,7 +48,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function getInitials(name: string) {
-  return name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
+  if (!name) return "?";
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
 }
 
 interface Props {
@@ -265,6 +266,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     : conversation?.status === "PENDING"
       ? "bg-amber-400"
       : "bg-blue-400/50";
+  const statusDotSize = "w-1.5 h-1.5 rounded-full";
 
   const uiMessages: UiMessage[] = msgList.map(normalizeMessage);
 
@@ -276,7 +278,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         channelType={channelType || undefined}
         statusLabel={statusLabel ?? undefined}
         assigneeName={assigneeName}
-        statusDotClass={statusDotClass}
+        statusDotClass={`${statusDotClass} ${statusDotSize}`}
         onBack={onBack}
         onAssign={(userId) => assignMut.mutate(userId)}
         onResolve={() => resolveMut.mutate()}
