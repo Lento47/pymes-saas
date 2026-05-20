@@ -174,35 +174,38 @@ export class PipelineService {
     if (deal.status === 'WON') throw new BadRequestException('Deal already won');
     if (!deal.contact_id) throw new BadRequestException('Deal needs a contact to generate invoice');
 
-    const invoiceCount = await this.prisma.invoice.count({ where: { workspace_id: workspaceId } });
-    const invoiceNumber = `DEAL-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(4, '0')}`;
-
     const amount = deal.value ? Number(deal.value) : 0;
     const dueDate = deal.closing_date ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    const [updatedDeal, invoice] = await this.prisma.$transaction([
-      this.prisma.deal.update({
-        where: { id },
-        data: { status: 'WON' },
-        include: { assigned_user: { select: { id: true } } },
-      }),
-      this.prisma.invoice.create({
-        data: {
-          workspace_id: workspaceId,
-          contact_id: deal.contact_id,
-          number: invoiceNumber,
-          amount,
-          currency: deal.currency,
-          due_date: dueDate,
-          description: deal.notes ?? deal.title,
-          status: InvoiceStatus.DRAFT,
-          document_type: InvoiceDocumentType.FACTURA_ELECTRONICA,
-          issuance_mode: InvoiceIssuanceMode.MANUAL_ONLY,
-          hacienda_status: HaciendaStatus.DRAFT,
-          issue_date: new Date(),
-        },
-      }),
-    ]);
+    // Interactive transaction: count + insert atomically to prevent duplicate invoice numbers
+    const [updatedDeal, invoice] = await this.prisma.$transaction(async (tx) => {
+      const invoiceCount = await tx.invoice.count({ where: { workspace_id: workspaceId } });
+      const invoiceNumber = `DEAL-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(4, '0')}`;
+
+      return Promise.all([
+        tx.deal.update({
+          where: { id },
+          data: { status: 'WON' },
+          include: { assigned_user: { select: { id: true } } },
+        }),
+        tx.invoice.create({
+          data: {
+            workspace_id: workspaceId,
+            contact_id: deal.contact_id,
+            number: invoiceNumber,
+            amount,
+            currency: deal.currency,
+            due_date: dueDate,
+            description: deal.notes ?? deal.title,
+            status: InvoiceStatus.DRAFT,
+            document_type: InvoiceDocumentType.FACTURA_ELECTRONICA,
+            issuance_mode: InvoiceIssuanceMode.MANUAL_ONLY,
+            hacienda_status: HaciendaStatus.DRAFT,
+            issue_date: new Date(),
+          },
+        }),
+      ]);
+    });
 
     if (deal.assigned_user_id) {
       this.notificationsService.create(workspaceId, {
