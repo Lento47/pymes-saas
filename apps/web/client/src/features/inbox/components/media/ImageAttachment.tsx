@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import { getMediaProxyUrl, safeFileName } from "@/features/inbox/media-utils";
 import { cn } from "@/lib/utils";
-import { FileText, Download, Loader2, AlertCircle } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Download, Loader2, AlertCircle, Search } from "lucide-react";
+import { SensitiveText } from "@/components/shared/sensitive-text";
 
 interface ImageAttachmentProps {
   messageId: string;
@@ -14,22 +14,20 @@ interface ImageAttachmentProps {
 
 export function ImageAttachment({ messageId, caption, mimeType, className }: ImageAttachmentProps) {
   const mediaUrl = getMediaProxyUrl(messageId);
-  const blobUrl = useMediaBlobUrl(mediaUrl);
+  const { blobUrl, error, loading: hookLoading } = useMediaBlobUrl(mediaUrl);
   const [imgError, setImgError] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  if (!blobUrl && !imgError) {
+  if (hookLoading && !blobUrl) {
     return (
-      <div className={cn("flex flex-col items-center gap-2", className)}>
-        <Skeleton className="h-40 w-64 rounded-lg" />
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      <div className={cn("relative flex items-center justify-center h-40 w-full max-w-64 rounded-lg bg-muted/50", className)}>
+        <Loader2 className="absolute inset-0 m-auto h-4 w-4 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  if (imgError || !blobUrl) {
+  if (imgError || error || !blobUrl) {
     return (
-      <div className={cn("flex items-center gap-2 rounded-lg border border-border/50 bg-card/50 px-3 py-2.5 text-sm text-muted-foreground", className)}>
+      <div className={cn("flex items-center gap-2 rounded-lg border border-border/50 bg-card/50 px-3 py-2.5 text-sm text-muted-foreground", className)} role="alert">
         <AlertCircle className="h-4 w-4" />
         <span>No se pudo cargar la imagen</span>
       </div>
@@ -38,28 +36,28 @@ export function ImageAttachment({ messageId, caption, mimeType, className }: Ima
 
   return (
     <div className={cn("flex flex-col", className)}>
-      <img
-        src={blobUrl}
-        alt={caption ?? "Imagen adjunta"}
-        className="max-h-64 max-w-full rounded-lg object-contain"
-        onLoad={() => setLoading(false)}
-        onError={() => {
-          setImgError(true);
-          setLoading(false);
-        }}
-      />
-      {loading && (
-        <div className="flex justify-center py-2">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      <div className="relative group cursor-pointer" onClick={() => blobUrl && window.open(blobUrl, "_blank")}>
+        <img
+          src={blobUrl}
+          alt={caption ?? "Imagen adjunta"}
+          role="img"
+          className="max-h-64 max-w-full rounded-lg object-contain"
+          onError={() => setImgError(true)}
+        />
+        <div className="absolute inset-0 bg-black/30 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <Search className="w-6 h-6 text-white" />
         </div>
-      )}
+      </div>
       {caption && (
-        <p className="mt-1.5 text-[11px] text-muted-foreground/80">{caption}</p>
+        <p className="mt-1.5 text-[11px] text-muted-foreground/80">
+          <SensitiveText text={caption} />
+        </p>
       )}
       <a
         href={blobUrl}
         download={safeFileName(mimeType ?? "image")}
-        className="mt-1 text-[11px] text-blue-400 hover:text-blue-300"
+        aria-label={`Descargar imagen: ${safeFileName(mimeType ?? "image")}`}
+        className="mt-1 text-[11px] text-primary hover:text-primary/80 transition-colors"
       >
         Descargar
       </a>

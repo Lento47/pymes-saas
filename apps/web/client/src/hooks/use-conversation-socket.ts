@@ -44,7 +44,7 @@ export function useConversationSocket(conversationId: string) {
   // Keep these aligned with ConversationPanel.tsx and InboxPage.tsx query keys.
   const MESSAGES_KEY = ["/api/conversations", conversationId, "messages"];
   const CONVERSATION_KEY = ["/api/conversations", conversationId];
-  const CONVERSATIONS_KEY = ["/api/conversations"];
+  const CONVERSATIONS_KEY = ["conversations"];
 
   function looksLikeMedia(message: Message): boolean {
     if (message.has_media || message.media_type) return true;
@@ -76,7 +76,6 @@ export function useConversationSocket(conversationId: string) {
 
       // Refetch to get the full serialized DTO
       qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
-      qc.invalidateQueries({ queryKey: MESSAGES_KEY });
 
       // Deferred refetch for media
       if (looksLikeMedia(message)) {

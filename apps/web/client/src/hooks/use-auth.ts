@@ -228,6 +228,7 @@ export function useAuth() {
     _clearInactivityMonitor();
     disconnectSocket();
     _wsUpdatedAttached = false;
+    queryClient.clear();
     resetAuthAndTheme();
     _user = null;
     notifyListeners();
@@ -285,6 +286,7 @@ export function setSessionTtlDays(days: number): void {
 }
 
 function applyAuthResult(res: { access_token: string; refresh_token?: string; user: AuthUser }) {
+  queryClient.clear();
   setAuthState(res.access_token, res.user.workspace.slug, res.refresh_token);
   _user = res.user;
   connectSocket();

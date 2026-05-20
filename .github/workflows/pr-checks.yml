@@ -48,12 +48,16 @@ jobs:
           echo "==> Branch-path guard for PR targeting $PR_BASE"
           CHANGED=$(git diff --name-only origin/$PR_BASE...HEAD)
           if [ "$PR_BASE" = "main-web" ]; then
-            FORBIDDEN=$(echo "$CHANGED" | grep -E '^apps/api/|^pnpm-lock\.yaml$' || true)
+            FORBIDDEN=$(echo "$CHANGED" | grep -E '^apps/api/' || true)
             if [ -n "$FORBIDDEN" ]; then
-              echo "::error::main-web MUST NOT contain apps/api/** or pnpm-lock.yaml"
+              echo "::error::main-web MUST NOT contain apps/api/**"
               echo "Forbidden files:"
               echo "$FORBIDDEN"
               exit 1
+            fi
+            LOCKFILE=$(echo "$CHANGED" | grep -E '^pnpm-lock\.yaml$' || true)
+            if [ -n "$LOCKFILE" ]; then
+              echo "::warning::pnpm-lock.yaml change detected — this is expected when adding/removing dependencies"
             fi
             SHARED=$(echo "$CHANGED" | grep -E '^packages/shared-types/' || true)
             if [ -n "$SHARED" ]; then

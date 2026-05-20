@@ -10,7 +10,7 @@ import { Lock } from "lucide-react";
 function formatSmartTimestamp(dateStr: string): string {
   const date = new Date(dateStr);
   if (isToday(date)) {
-    return format(date, "h:mm a");
+    return format(date, "h:mm a", { locale: es });
   }
   if (isThisWeek(date, { weekStartsOn: 1 })) {
     return format(date, "EEE", { locale: es }).replace(/^\w/, (c) => c.toUpperCase()).slice(0, 3);
@@ -39,8 +39,9 @@ function ConversationListItemImpl({
     conversation.contact?.name ||
     "Contacto desconocido";
 
+  const msgs = conversation.messages;
   const preview =
-    conversation.messages?.[0]?.body_text ||
+    (msgs?.[msgs.length - 1]?.body_text) ||
     conversation.subject ||
     "Sin mensajes todavía";
 

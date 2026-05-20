@@ -17,7 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRoute, useLocation, Link } from "wouter";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
-import { ArrowLeft, Coins, ExternalLink, CheckCircle2, CheckCheck, Check, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, FileText, Paperclip, Image, X, Smile, Play, Volume2, Upload, FileIcon, ChevronDown } from "lucide-react";
+import { ArrowLeft, Coins, ExternalLink, CheckCircle2, CheckCheck, Check, Loader2, Mail, MessageCircle, Globe, Phone, Plus, Receipt, RefreshCw, Send, Trash2, UserPlus, UserPlus2, FileText, Paperclip, Image, X, Smile, Play, Volume2, Upload, FileIcon, ChevronDown, AlertCircle } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ImageLightbox } from "@/components/shared/image-lightbox";
@@ -67,7 +67,7 @@ function MessageMediaContent({
   msg: Record<string, any>;
   onImageClick: (url: string) => void;
 }) {
-  const blobUrl = useMediaBlobUrl(msg.has_media ? msg.media_download_url : null);
+  const { blobUrl, error: mediaError, loading: mediaLoading } = useMediaBlobUrl(msg.has_media ? msg.media_download_url : null);
 
   if (!msg.has_media) return null;
 
@@ -80,11 +80,20 @@ function MessageMediaContent({
     );
   }
 
-  if (!blobUrl) {
+  if (mediaLoading) {
     return (
       <div className="flex items-center gap-2 text-xs mt-1.5 p-3 bg-black/10 dark:bg-white/10 rounded-xl animate-pulse">
         <Loader2 className="w-4 h-4 animate-spin shrink-0 text-[#8774e1]" />
         <span className="text-muted-foreground">Cargando media...</span>
+      </div>
+    );
+  }
+
+  if (mediaError || !blobUrl) {
+    return (
+      <div className="flex items-center gap-2 text-xs mt-1.5 p-3 bg-black/10 dark:bg-white/10 rounded-xl">
+        <AlertCircle className="w-4 h-4 shrink-0 text-destructive" />
+        <span className="text-muted-foreground">Error al cargar media</span>
       </div>
     );
   }
