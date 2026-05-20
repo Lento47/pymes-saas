@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ArrowDown } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -38,6 +39,19 @@ export function MessageTimeline({
     estimateSize: () => 60,
     overscan: 5,
   });
+
+  const scrollToBottomViaVirtualizer = () => {
+    virtualizer.scrollToIndex(messages.length - 1, { align: "end", behavior: "auto" });
+  };
+
+  // Auto-scroll to bottom on initial load and when new messages arrive
+  useEffect(() => {
+    if (isLoading || messages.length === 0) return;
+    const timer = setTimeout(() => {
+      virtualizer.scrollToIndex(messages.length - 1, { align: "end", behavior: "instant" });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [isLoading, messages.length]);
 
   if (isLoading) {
     return <EmptyConversationState isLoading />;
@@ -94,14 +108,17 @@ export function MessageTimeline({
               </div>
             );
           })}
-          <div ref={bottomRef} />
         </div>
+        <div ref={bottomRef} />
       </div>
 
       {!nearBottom && messages.length > 0 && (
         <div className="absolute bottom-3 left-0 right-0 flex justify-center z-10 pointer-events-none">
           <button
-            onClick={onScrollToBottom}
+            onClick={() => {
+              scrollToBottomViaVirtualizer();
+              onScrollToBottom();
+            }}
             aria-label="Ir al final de la conversación"
             className="pointer-events-auto px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-medium shadow-lg hover:bg-primary/90 transition-all duration-200 hover:scale-105 active:scale-95"
           >
