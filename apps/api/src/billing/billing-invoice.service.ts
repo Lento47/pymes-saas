@@ -32,7 +32,7 @@ export class BillingInvoiceService {
     const currency = params.currency || 'USD';
     const subtotal = params.subtotal ?? params.amount;
     const taxRate = params.taxRate ?? (currency === 'CRC' ? 13 : 0);
-    const taxAmount = params.taxAmount ?? Math.round(subtotal * (taxRate / 100) * 100) / 100;
+    const taxAmount = params.taxAmount ?? Math.round(subtotal * taxRate) / 100;
     const total = Math.round((subtotal + taxAmount) * 100) / 100;
 
     const lineItems = [{

@@ -122,9 +122,7 @@ export class InvoicesController {
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('id', ValidateUUIDPipe) id: string,
   ) {
-    void this.invoicesService.submitToHacienda(workspaceId, id)
-      .catch(err => this.logger.error(`Hacienda submit failed for invoice ${id}: ${(err as Error).message}`));
-    return this.invoicesService.findOne(workspaceId, id);
+    return this.invoicesService.submitToHacienda(workspaceId, id);
   }
 
   @Get(':id/hacienda-status')

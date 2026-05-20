@@ -283,7 +283,11 @@ export class PaddleSdkService {
     const paddle = this.requireClient();
 
     if (subscriptionId) {
-      return this.syncExistingSubscription(workspaceId, workspaceId, subscriptionId, true);
+      const existing = await this.prisma.workspaceSubscription.findFirst({
+        where: { workspace_id: workspaceId },
+        select: { id: true },
+      });
+      return this.syncExistingSubscription(existing?.id || workspaceId, workspaceId, subscriptionId, true);
     }
 
     if (customerId) {
