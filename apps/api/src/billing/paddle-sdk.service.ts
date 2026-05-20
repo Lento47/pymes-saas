@@ -283,7 +283,11 @@ export class PaddleSdkService {
     const paddle = this.requireClient();
 
     if (subscriptionId) {
-      return this.syncExistingSubscription(workspaceId, workspaceId, subscriptionId, true);
+      const existing = await this.prisma.workspaceSubscription.findFirst({
+        where: { workspace_id: workspaceId },
+        select: { id: true },
+      });
+      return this.syncExistingSubscription(existing?.id || workspaceId, workspaceId, subscriptionId, true);
     }
 
     if (customerId) {
@@ -1086,12 +1090,11 @@ export class PaddleSdkService {
     addonKey?: string,
   ): Promise<{ transactionId: string; checkoutUrl: string | null }> {
     const paddle = this.requireClient();
-    const appUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
+    const appUrl = this.configService.get<string>('PUBLIC_URL') || 'https://pymeshub.lat';
 
-    const customData: Record<string, unknown> = { workspaceSlug: async () => {
-      const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { slug: true } });
-      return ws.slug;
-    }};
+    const customData: Record<string, unknown> = {};
+    const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { slug: true } });
+    customData.workspaceSlug = ws.slug;
     if (addonKey) customData.addon = addonKey;
 
     const transaction = await paddle.transactions.create({
@@ -1123,12 +1126,12 @@ export class PaddleSdkService {
     if (!priceId) return 'FREE';
 
     const priceVars: Record<string, 'FREE' | 'STARTER' | 'GROWTH' | 'ENTERPRISE'> = {};
-    const starterMonthly = process.env.PADDLE_PRICE_STARTER_MONTHLY;
-    const starterAnnual = process.env.PADDLE_PRICE_STARTER_ANNUAL;
-    const growthMonthly = process.env.PADDLE_PRICE_GROWTH_MONTHLY;
-    const growthAnnual = process.env.PADDLE_PRICE_GROWTH_ANNUAL;
-    const enterpriseMonthly = process.env.PADDLE_PRICE_ENTERPRISE_MONTHLY;
-    const enterpriseAnnual = process.env.PADDLE_PRICE_ENTERPRISE_ANNUAL;
+    const starterMonthly = this.configService.get<string>('PADDLE_PRICE_STARTER_MONTHLY');
+    const starterAnnual = this.configService.get<string>('PADDLE_PRICE_STARTER_ANNUAL');
+    const growthMonthly = this.configService.get<string>('PADDLE_PRICE_GROWTH_MONTHLY');
+    const growthAnnual = this.configService.get<string>('PADDLE_PRICE_GROWTH_ANNUAL');
+    const enterpriseMonthly = this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_MONTHLY');
+    const enterpriseAnnual = this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_ANNUAL');
 
     if (starterMonthly) priceVars[starterMonthly] = 'STARTER';
     if (starterAnnual) priceVars[starterAnnual] = 'STARTER';

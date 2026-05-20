@@ -338,34 +338,42 @@ export class InvoicesService {
       throw new BadRequestException('No se pueden registrar pagos para una factura cancelada.');
     }
 
-    const balanceDue = this.getBalanceDue(invoice);
-    const amount = Number(dto.amount ?? 0);
-
-    this.logger.error(`[DIAG] registerPayment: invoice.amount=${JSON.stringify(invoice.amount)}, parsed=${this.parseAmount(invoice.amount)}, payments=${JSON.stringify(invoice.payments?.length)}, amountPaid=${this.getAmountPaid(invoice)}, balance=${balanceDue}`);
-
-    if (amount <= 0) {
-      throw new BadRequestException('El monto del pago debe ser mayor a cero.');
-    }
-
-    if (balanceDue <= 0) {
-      throw new BadRequestException('La factura no tiene saldo pendiente.');
-    }
-
-    if (amount > balanceDue) {
-      throw new BadRequestException(`El pago excede el saldo pendiente de ${balanceDue.toFixed(2)}.`);
-    }
-
-    const paidAt = dto.paid_at ? new Date(dto.paid_at) : new Date();
-    const paymentCurrency = dto.currency ?? invoice.currency;
-
-    // Reject payments with mismatched currency to prevent silent exchange rate issues
-    if (dto.currency && dto.currency !== invoice.currency) {
-      throw new BadRequestException(
-        `La moneda del pago (${dto.currency}) no coincide con la moneda de la factura (${invoice.currency}).`,
-      );
-    }
-
     const result = await this.prisma.$transaction(async (tx) => {
+      // Balance check INSIDE transaction to prevent race conditions
+      const invoice = await tx.invoice.findUniqueOrThrow({
+        where: { id: invoiceId },
+        include: this.invoiceInclude(),
+      });
+
+      if (invoice.status === InvoiceStatus.CANCELLED) {
+        throw new BadRequestException('No se pueden registrar pagos para una factura cancelada.');
+      }
+
+      const balanceDue = this.getBalanceDue(invoice);
+      const amount = Number(dto.amount ?? 0);
+
+      if (amount <= 0) {
+        throw new BadRequestException('El monto del pago debe ser mayor a cero.');
+      }
+
+      if (balanceDue <= 0) {
+        throw new BadRequestException('La factura no tiene saldo pendiente.');
+      }
+
+      if (amount > balanceDue) {
+        throw new BadRequestException(`El pago excede el saldo pendiente de ${balanceDue.toFixed(2)}.`);
+      }
+
+      const paidAt = dto.paid_at ? new Date(dto.paid_at) : new Date();
+      const paymentCurrency = dto.currency ?? invoice.currency;
+
+      // Reject payments with mismatched currency
+      if (dto.currency && dto.currency !== invoice.currency) {
+        throw new BadRequestException(
+          `La moneda del pago (${dto.currency}) no coincide con la moneda de la factura (${invoice.currency}).`,
+        );
+      }
+
       const payment = await tx.invoicePayment.create({
         data: {
           workspace_id: workspaceId,
@@ -877,8 +885,8 @@ export class InvoicesService {
       const discountAmount = Number(line.discount_amount ?? 0);
       const taxRate = Number(line.tax_rate ?? 0);
       const subtotal = quantity * unitPrice - discountAmount;
-      const taxAmount = subtotal * (taxRate / 100);
-      const totalLineAmount = subtotal + taxAmount;
+      const taxAmount = Math.round(subtotal * taxRate) / 100;
+      const totalLineAmount = Math.round((subtotal + taxAmount) * 100) / 100;
 
       return {
         line_number: line.line_number ?? index + 1,

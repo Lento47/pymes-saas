@@ -14,6 +14,7 @@ export class ErrorReportsController {
   constructor(private readonly service: ErrorReportsService) {}
 
   @Post('client')
+  @UseGuards(JwtAuthGuard)
   reportClientError(@Body() dto: CreateErrorReportDto) {
     return this.service.createClientReport(dto);
   }

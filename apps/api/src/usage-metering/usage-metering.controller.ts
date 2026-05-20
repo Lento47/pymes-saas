@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UsageMeteringService } from './usage-metering.service';
 
 @Controller('usage')
@@ -9,21 +10,21 @@ import { UsageMeteringService } from './usage-metering.service';
 export class UsageMeteringController {
   constructor(private readonly usageMetering: UsageMeteringService) {}
 
-  @Get(':workspaceId')
+  @Get()
   @Roles('OWNER', 'ADMIN')
-  async getCurrentUsage(@Param('workspaceId') workspaceId: string) {
+  async getCurrentUsage(@CurrentUser('workspace_id') workspaceId: string) {
     return this.usageMetering.getCurrentUsage(workspaceId);
   }
 
-  @Post(':workspaceId/snapshot')
+  @Post('snapshot')
   @Roles('OWNER', 'ADMIN')
-  async createSnapshot(@Param('workspaceId') workspaceId: string) {
+  async createSnapshot(@CurrentUser('workspace_id') workspaceId: string) {
     return this.usageMetering.createSnapshot(workspaceId);
   }
 
-  @Get(':workspaceId/history')
+  @Get('history')
   @Roles('OWNER', 'ADMIN')
-  async getHistory(@Param('workspaceId') workspaceId: string) {
+  async getHistory(@CurrentUser('workspace_id') workspaceId: string) {
     return this.usageMetering.getUsageHistory(workspaceId);
   }
 }

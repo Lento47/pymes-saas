@@ -1,14 +1,30 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import { Body, Controller, Post, Res, BadRequestException, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AgentService } from './agent.service';
+
+// ── Rate limit: 5 requests per 60s per IP for the public agent endpoint ──
+// This prevents OpenAI API key abuse while allowing genuine landing-page
+// visitors a reasonable experience (up to 5 questions/minute).
 
 @Controller('agent')
 export class PublicAgentController {
   constructor(private readonly agentService: AgentService) {}
 
   @Post('public')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async stream(@Body() body: { input: string }, @Res() res: Response) {
-    const result = await this.agentService.streamPublic(body.input);
+    // Input validation — prevent empty/injection payloads and limit length
+    const input = body?.input;
+    if (!input || typeof input !== 'string' || input.trim().length === 0) {
+      throw new BadRequestException('input es requerido y debe ser texto no vacío');
+    }
+    if (input.length > 500) {
+      throw new BadRequestException('input máximo 500 caracteres');
+    }
+
+    const result = await this.agentService.streamPublic(input.trim());
 
     if ('error' in result) {
       res.status(400).json({ error: result.error });

@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
-import { Request } from 'express';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { FeatureFlagGuard, RequireFeature } from '../feature-flags/feature-flags.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthUser } from '../auth/strategies/jwt.strategy';
 import { MessageTemplatesService } from './message-templates.service';
 import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 
@@ -11,36 +12,36 @@ import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
 export class MessageTemplatesController {
   constructor(private readonly templates: MessageTemplatesService) {}
 
-  @Get(':workspaceId')
-  async list(@Param('workspaceId') workspaceId: string, @Query('channel') channel?: string) {
+  @Get()
+  async list(@CurrentUser('workspace_id') workspaceId: string, @Query('channel') channel?: string) {
     return this.templates.list(workspaceId, channel);
   }
 
-  @Get(':workspaceId/approved')
-  async getApproved(@Param('workspaceId') workspaceId: string, @Query('channel') channel?: string) {
+  @Get('approved')
+  async getApproved(@CurrentUser('workspace_id') workspaceId: string, @Query('channel') channel?: string) {
     return this.templates.getApprovedForChannel(workspaceId, channel ?? 'WHATSAPP');
   }
 
-  @Get(':workspaceId/:id')
-  async getById(@Param('workspaceId') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string) {
+  @Get(':id')
+  async getById(@CurrentUser('workspace_id') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string) {
     return this.templates.getById(workspaceId, id);
   }
 
-  @Post(':workspaceId')
+  @Post()
   @RequireFeature('message_templates')
-  async create(@Param('workspaceId') workspaceId: string, @Body() data: Record<string, any>, @Req() req: Request) {
-    return this.templates.create(workspaceId, (req as any).user?.sub, data);
+  async create(@CurrentUser() user: AuthUser, @Body() data: Record<string, any>) {
+    return this.templates.create(user.workspace_id, user.id, data);
   }
 
-  @Put(':workspaceId/:id')
+  @Put(':id')
   @RequireFeature('message_templates')
-  async update(@Param('workspaceId') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string, @Body() data: Record<string, any>) {
+  async update(@CurrentUser('workspace_id') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string, @Body() data: Record<string, any>) {
     return this.templates.update(workspaceId, id, data);
   }
 
-  @Delete(':workspaceId/:id')
+  @Delete(':id')
   @RequireFeature('message_templates')
-  async delete(@Param('workspaceId') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string) {
+  async delete(@CurrentUser('workspace_id') workspaceId: string, @Param('id', ValidateUUIDPipe) id: string) {
     return this.templates.delete(workspaceId, id);
   }
 }

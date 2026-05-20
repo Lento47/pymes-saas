@@ -128,35 +128,37 @@ export class InventoryService {
   }
 
   async adjustStock(workspaceId: string, productId: string, userId: string, quantity: number, reason: string) {
-    const product = await this.prisma.product.findFirst({
-      where: { id: productId, workspace_id: workspaceId },
-    });
-    if (!product) throw new NotFoundException('Producto no encontrado');
-    if (!product.track_inventory || product.type === 'SERVICE') {
-      throw new BadRequestException('Este producto no tiene control de inventario');
-    }
+    return this.prisma.$transaction(async (tx) => {
+      const product = await tx.product.findFirst({
+        where: { id: productId, workspace_id: workspaceId },
+      });
+      if (!product) throw new NotFoundException('Producto no encontrado');
+      if (!product.track_inventory || product.type === 'SERVICE') {
+        throw new BadRequestException('Este producto no tiene control de inventario');
+      }
 
-    const previousStock = product.current_stock;
-    const newStock = previousStock + quantity;
-    if (newStock < 0) throw new BadRequestException('El stock no puede ser negativo');
+      const previousStock = product.current_stock;
+      const newStock = previousStock + quantity;
+      if (newStock < 0) throw new BadRequestException('El stock no puede ser negativo');
 
-    await this.prisma.product.update({
-      where: { id: productId },
-      data: { current_stock: newStock },
-    });
+      await tx.product.update({
+        where: { id: productId },
+        data: { current_stock: newStock },
+      });
 
-    return this.prisma.stockMovement.create({
-      data: {
-        workspace_id: workspaceId,
-        product_id: productId,
-        type: quantity > 0 ? 'IN' : 'OUT',
-        quantity: Math.abs(quantity),
-        previous_stock: previousStock,
-        new_stock: newStock,
-        reason: reason || 'Ajuste manual',
-        reference_type: 'manual',
-        user_id: userId,
-      },
+      return tx.stockMovement.create({
+        data: {
+          workspace_id: workspaceId,
+          product_id: productId,
+          type: quantity > 0 ? 'IN' : 'OUT',
+          quantity: Math.abs(quantity),
+          previous_stock: previousStock,
+          new_stock: newStock,
+          reason: reason || 'Ajuste manual',
+          reference_type: 'manual',
+          user_id: userId,
+        },
+      });
     });
   }
 

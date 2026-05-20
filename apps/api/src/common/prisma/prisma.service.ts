@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
@@ -9,17 +9,26 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   [key: string]: any;
+  private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      max: 30,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
-      ssl: process.env.NODE_ENV === 'production'
-        ? { rejectUnauthorized: false }
-        : false,
+      max: 10,
+      idleTimeoutMillis: 60000,
+      connectionTimeoutMillis: 15000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 30000,
+      ssl: isProduction ? { rejectUnauthorized: false } : false,
     });
+
+    // Log pool errors and let pg-pool handle reconnection automatically
+    pool.on('error', (err) => {
+      this.logger.warn(`PG pool error: ${err.message}`);
+    });
+
     const adapter = new PrismaPg(pool);
     super({
       adapter,
@@ -28,7 +37,12 @@ export class PrismaService
   }
 
   async onModuleInit() {
-    await this.$connect();
+    try {
+      await this.$connect();
+      this.logger.log('Prisma connected to database');
+    } catch (err) {
+      this.logger.warn(`Prisma connection deferred — DB not ready: ${(err as Error).message}`);
+    }
   }
 
   async onModuleDestroy() {

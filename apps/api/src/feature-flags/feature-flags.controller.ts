@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards } from '@nes
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { FeatureFlagsService } from './feature-flags.service';
 
 @Controller('feature-flags')
@@ -9,8 +10,8 @@ import { FeatureFlagsService } from './feature-flags.service';
 export class FeatureFlagsController {
   constructor(private readonly featureFlags: FeatureFlagsService) {}
 
-  @Get('check/:workspaceId')
-  async getAll(@Param('workspaceId') workspaceId: string) {
+  @Get('check')
+  async getAll(@CurrentUser('workspace_id') workspaceId: string) {
     return this.featureFlags.getAll(workspaceId);
   }
 

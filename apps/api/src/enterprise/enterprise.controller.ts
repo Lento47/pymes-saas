@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { EnterpriseService } from './enterprise.service';
 
 @Controller('enterprise')
@@ -11,21 +12,21 @@ export class EnterpriseController {
 
   // ─── Workspace enterprise config ─────────────────────────────────────
 
-  @Get('config/:workspaceId')
+  @Get('config')
   @Roles('OWNER', 'ADMIN')
-  async getConfig(@Param('workspaceId') workspaceId: string) {
+  async getConfig(@CurrentUser('workspace_id') workspaceId: string) {
     return this.enterprise.getConfig(workspaceId);
   }
 
-  @Put('config/:workspaceId')
+  @Put('config')
   @Roles('OWNER', 'ADMIN')
-  async upsertConfig(@Param('workspaceId') workspaceId: string, @Body() data: Record<string, any>) {
+  async upsertConfig(@CurrentUser('workspace_id') workspaceId: string, @Body() data: Record<string, any>) {
     return this.enterprise.upsertConfig(workspaceId, data);
   }
 
-  @Delete('config/:workspaceId')
+  @Delete('config')
   @Roles('OWNER')
-  async deleteConfig(@Param('workspaceId') workspaceId: string) {
+  async deleteConfig(@CurrentUser('workspace_id') workspaceId: string) {
     await this.enterprise.deleteConfig(workspaceId);
     return { deleted: true };
   }

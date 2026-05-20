@@ -249,8 +249,10 @@ export class DocumentsService {
 
   async remove(workspaceId: string, id: string) {
     const doc = await this.findOne(workspaceId, id);
-    await this.storage.delete(doc.storage_key);
     await this.prisma.document.delete({ where: { id } });
+    // Delete from S3 after DB — if S3 fails, the DB record was already
+    // removed and the orphaned file can be cleaned up by a lifecycle policy.
+    await this.storage.delete(doc.storage_key);
     return { message: 'Documento eliminado.' };
   }
 }
