@@ -1,7 +1,6 @@
-import { Loader2, Mic, Paperclip, Send, Smile, Sparkles } from "lucide-react";
+import { Loader2, Paperclip, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ComposerAttachmentPreview } from "./ComposerAttachmentPreview";
 
 interface MessageComposerProps {
@@ -32,7 +31,11 @@ export function MessageComposer({
   className,
 }: MessageComposerProps) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!canSend) return;
+      onSend();
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,64 +46,53 @@ export function MessageComposer({
     }
   };
 
+  const handleInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
+    const target = e.currentTarget;
+    target.style.height = "auto";
+    target.style.height = Math.min(target.scrollHeight, 100) + "px";
+  };
+
   const canSend = !(!value.trim() && !attachment) && !isPending && !uploading;
 
   return (
-    <div className={className}>
+    <div className={`shrink-0 border-t border-border bg-background/95 backdrop-blur-sm px-3 py-2 ${className ?? ""}`}>
       <ComposerAttachmentPreview
         attachment={attachment}
         uploading={uploading}
         onRemove={onRemoveAttachment}
       />
-      <div className="flex items-end gap-0 rounded-xl border border-border bg-background overflow-hidden focus-within:border-primary/40 transition-colors">
-        <label className="cursor-pointer flex items-center justify-center p-2.5 text-muted-foreground hover:text-foreground transition-colors shrink-0">
+      <div className="flex items-end gap-0 rounded-xl border border-border bg-background overflow-hidden focus-within:border-primary/40 focus-within:shadow-sm focus-within:shadow-primary/5 transition-all duration-200">
+        <label className="cursor-pointer flex items-center justify-center p-2.5 text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-colors shrink-0" aria-label="Adjuntar archivo">
           <Paperclip className="w-4 h-4" />
           <input
             type="file"
-            className="hidden"
+            className="sr-only"
             accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/ogg,audio/wav,.pdf,.docx,.xlsx"
             onChange={handleFileChange}
           />
         </label>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" className="p-2.5 text-muted-foreground/40 hover:text-muted-foreground/60 shrink-0">
-              <Smile className="w-4 h-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Emojis (próximamente)</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" className="p-2.5 text-muted-foreground/40 hover:text-muted-foreground/60 shrink-0">
-              <Sparkles className="w-4 h-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Plantillas (próximamente)</TooltipContent>
-        </Tooltip>
         <Textarea
           className="flex-1 border-0 bg-transparent min-h-[40px] max-h-[100px] py-2.5 px-0 text-sm resize-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onInput={handleInput}
           onKeyDown={handleKeyDown}
           placeholder="Escribe un mensaje..."
           rows={1}
           disabled={disabled}
+          aria-label="Escribe un mensaje"
         />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" className="p-2.5 text-muted-foreground/40 hover:text-muted-foreground/60 shrink-0">
-              <Mic className="w-4 h-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Nota de voz (próximamente)</TooltipContent>
-        </Tooltip>
         <Button
           type="button"
           size="sm"
-          className="m-1.5 h-8 w-8 p-0 rounded-lg shrink-0"
+          className={`m-1.5 h-8 w-8 p-0 rounded-lg shrink-0 ${
+            canSend
+              ? "bg-primary hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 scale-100 hover:scale-105 active:scale-95"
+              : "bg-muted text-muted-foreground/40 cursor-not-allowed"
+          }`}
           onClick={onSend}
           disabled={!canSend}
+          aria-label={canSend ? "Enviar mensaje" : "No hay mensaje para enviar"}
         >
           {isPending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -109,10 +101,11 @@ export function MessageComposer({
           )}
         </Button>
       </div>
-      <p className="text-[10px] text-muted-foreground/40 mt-1.5 ml-1">
-        {channelLabel && `Enviando por ${channelLabel} · `}
-        ↑ Enter para enviar · Shift+Enter nueva línea
-      </p>
+      {channelLabel && (
+        <p className="text-[10px] text-muted-foreground/50 mt-1.5 ml-1 select-none">
+          Enviando por {channelLabel}
+        </p>
+      )}
     </div>
   );
 }

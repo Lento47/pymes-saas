@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,30 +12,33 @@ import { Loader2, Plus, X, Send } from "lucide-react";
 interface InvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  invoiceList: Array<{ id: string; number?: string; amount?: number; balance_due?: number; currency?: string; status?: string; lines?: Array<{ product?: { name?: string }; description?: string }> }>;
-  canSendInvoice: boolean;
+  conversationId: string;
   contactId?: string;
-  channelId?: string;
-  onCreateInvoice: (form: { number: string; currency: string; due_date: string; description: string }, lines: Array<{ product_id?: string; name: string; description: string; quantity: number; unit_price: number; tax_rate: number }>) => void;
-  onSendInvoice: (invoice: { id: string }) => void;
-  createPending: boolean;
-  sendPending: boolean;
+  canSendInvoice: boolean;
+  createInvMut: { mutate: (payload: { form: Record<string, any>; lines: Array<Record<string, any>> }) => void; isPending: boolean };
+  sendInvMut: { mutate: (invoice: { id: string }) => void; isPending: boolean };
 }
 
 export function InvoiceDialog({
   open,
   onOpenChange,
-  invoiceList,
-  canSendInvoice,
+  conversationId,
   contactId,
-  onCreateInvoice,
-  onSendInvoice,
-  createPending,
-  sendPending,
+  canSendInvoice,
+  createInvMut,
+  sendInvMut,
 }: InvoiceDialogProps) {
   const [invoiceForm, setInvoiceForm] = useState({ number: "", currency: "USD", due_date: "", description: "" });
   const [lines, setLines] = useState<Array<{ product_id?: string; name: string; description: string; quantity: number; unit_price: number; tax_rate: number }>>([]);
   const [showProductPicker, setShowProductPicker] = useState(false);
+
+  const { data: invoicesData } = useQuery({
+    queryKey: ["conversation-invoices", conversationId],
+    queryFn: () => api.getInvoices({ conversation_id: conversationId, limit: "10" }),
+    enabled: open && !!conversationId,
+    staleTime: 30_000,
+  });
+  const invoiceList: Array<{ id: string; number?: string; amount?: number; balance_due?: number; currency?: string; status?: string; lines?: Array<{ product?: { name?: string }; description?: string }> }> = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data || [];
 
   const lineSubtotals = useMemo(() => lines.map(l => l.quantity * l.unit_price), [lines]);
   const lineTaxes = useMemo(() => lines.map((l, i) => lineSubtotals[i] * (l.tax_rate / 100)), [lines, lineSubtotals]);
@@ -63,8 +68,8 @@ export function InvoiceDialog({
                     )}
                   </div>
                   {canSendInvoice && (
-                    <Button size="sm" className="h-7 text-[11px] gap-1" onClick={() => onSendInvoice(inv)} disabled={sendPending}>
-                      {sendPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                    <Button size="sm" className="h-7 text-[11px] gap-1" onClick={() => sendInvMut.mutate(inv)} disabled={sendInvMut.isPending}>
+                      {sendInvMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                       {Number(inv.balance_due ?? 0) > 0 ? "Enviar" : "Reenviar"}
                     </Button>
                   )}
@@ -180,9 +185,9 @@ export function InvoiceDialog({
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => onOpenChange(false)}>Cancelar</Button>
           {contactId && (
             <Button size="sm" className="h-8 text-xs"
-              onClick={() => onCreateInvoice(invoiceForm, lines)}
-              disabled={!invoiceForm.number.trim() || totalAmount <= 0 || !invoiceForm.due_date || createPending}>
-              {createPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null}
+              onClick={() => createInvMut.mutate({ form: { number: invoiceForm.number, currency: invoiceForm.currency, due_date: invoiceForm.due_date, description: invoiceForm.description }, lines })}
+              disabled={!invoiceForm.number.trim() || totalAmount <= 0 || !invoiceForm.due_date || createInvMut.isPending}>
+              {createInvMut.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null}
               Guardar factura
             </Button>
           )}

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { SensitiveText } from "@/components/shared/sensitive-text";
 import type { UiMessage } from "@/features/inbox/message-types";
 import { MessageMeta } from "./MessageMeta";
@@ -30,8 +31,8 @@ function renderTextWithLinks(text: string) {
           key={i}
           href={part}
           target="_blank"
-          rel="noreferrer"
-          className="text-blue-400 hover:underline break-all"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline break-all"
         >
           {part}
         </a>
@@ -41,7 +42,12 @@ function renderTextWithLinks(text: string) {
   });
 }
 
-export function MessageBubble({
+function getInitials(name: string) {
+  if (!name) return "?";
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
+}
+
+export const MessageBubble = function MessageBubble({
   message,
   isConsecutive,
   showSenderName,
@@ -50,36 +56,90 @@ export function MessageBubble({
   className,
 }: MessageBubbleProps) {
   const isOutbound = message.direction === "OUTBOUND";
+  const hasMedia = !!message.mediaType && message.mediaType !== "text";
+  const isShort = message.bodyText?.length < 100;
 
-  const bubbleClasses = isOutbound
-    ? "bg-primary/[0.08] border border-primary/[0.12] rounded-br-sm"
-    : "bg-card border border-border/50 rounded-bl-sm shadow-[0_1px_2px_0_rgb(0,0,0,0.04)]";
+  const timeString = useMemo(() => {
+    return message.sentAt ? new Date(message.sentAt).toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" }) : "";
+  }, [message.sentAt]);
 
-  const spacingClass = isConsecutive ? "mt-0.5 pt-1" : "mt-2";
+  const senderLabel = isOutbound ? "Tú" : (contactName || "Contacto");
+
+  const bubbleClasses = useMemo(() => {
+    const base = "max-w-[75%]";
+    const spacing = isConsecutive ? "mt-0.5" : "mt-2";
+
+    if (message.mediaType === "sticker") {
+      return `${base} ${spacing} bg-transparent border-0 shadow-none rounded-none px-0 py-0`;
+    }
+
+    if (message.mediaType === "image" || message.mediaType === "video") {
+      const radius = isConsecutive
+        ? isOutbound ? "rounded-tr-sm rounded-bl-lg rounded-br-lg" : "rounded-tl-sm rounded-bl-lg rounded-br-lg"
+        : "rounded-2xl";
+      const bg = isOutbound
+        ? "bg-primary/[0.06] border border-primary/[0.10]"
+        : "bg-card border border-border/40 shadow-sm";
+      return `${base} ${spacing} ${bg} ${radius} px-1 py-1`;
+    }
+
+    if (message.mediaType === "audio") {
+      const radius = isConsecutive
+        ? isOutbound ? "rounded-tr-sm rounded-bl-lg rounded-br-lg" : "rounded-tl-sm rounded-bl-lg rounded-br-lg"
+        : "rounded-2xl";
+      const bg = isOutbound
+        ? "bg-primary/[0.06] border border-primary/[0.10]"
+        : "bg-card border border-border/40 shadow-sm";
+      return `${base} ${spacing} ${bg} ${radius} px-2 py-1.5`;
+    }
+
+    if (message.mediaType === "document" || message.mediaType === "location" || message.mediaType === "contact") {
+      const radius = isConsecutive
+        ? isOutbound ? "rounded-tr-sm rounded-bl-lg rounded-br-lg" : "rounded-tl-sm rounded-bl-lg rounded-br-lg"
+        : "rounded-2xl";
+      const bg = isOutbound
+        ? "bg-primary/[0.06] border border-primary/[0.10]"
+        : "bg-card border border-border/40 shadow-sm";
+      return `${base} ${spacing} ${bg} ${radius} px-2 py-2`;
+    }
+
+    const radius = isConsecutive
+      ? isOutbound ? "rounded-tr-md rounded-bl-2xl rounded-br-2xl" : "rounded-tl-md rounded-bl-2xl rounded-br-2xl"
+      : "rounded-2xl";
+    const bg = isOutbound
+      ? "bg-primary/[0.08] border border-primary/[0.12]"
+      : "bg-card border border-border/50 shadow-sm";
+    const padding = isShort ? "px-3 py-2" : "px-3.5 py-2.5";
+    return `${base} ${spacing} ${bg} ${radius} ${padding}`;
+  }, [message.mediaType, isConsecutive, isOutbound, isShort]);
 
   const renderContent = () => {
     switch (message.mediaType) {
       case "image":
         return <ImageAttachment messageId={message.id} caption={message.mediaCaption} mimeType={message.mediaMimeType} />;
       case "sticker":
-        return <StickerAttachment messageId={message.id} />;
-      case "audio":
-        return <AudioAttachment messageId={message.id} caption={message.mediaCaption} durationMs={message.attachments[0]?.durationMs} />;
+        return <StickerAttachment messageId={message.id} caption={message.mediaCaption} />;
+      case "audio": {
+        const audio = message.attachments.find(a => a.type === "audio");
+        return <AudioAttachment messageId={message.id} caption={message.mediaCaption} durationMs={audio?.durationMs} />;
+      }
       case "video":
-        return <VideoAttachment messageId={message.id} caption={message.mediaCaption} />;
-      case "document":
-        return <DocumentAttachment messageId={message.id} fileName={message.mediaFilename} mimeType={message.mediaMimeType} sizeBytes={message.attachments[0]?.sizeBytes} caption={message.mediaCaption} />;
+        return <VideoAttachment messageId={message.id} caption={message.mediaCaption} mimeType={message.mediaMimeType} />;
+      case "document": {
+        const doc = message.attachments.find(a => a.type === "document");
+        return <DocumentAttachment messageId={message.id} fileName={message.mediaFilename} mimeType={message.mediaMimeType} sizeBytes={doc?.sizeBytes} caption={message.mediaCaption} />;
+      }
       case "location": {
-        const loc = message.attachments[0];
+        const loc = message.attachments.find(a => a.type === "location");
         return <LocationAttachment latitude={loc?.latitude} longitude={loc?.longitude} address={loc?.address} legacyText={message.bodyText} />;
       }
       case "contact": {
-        const c = message.attachments[0];
+        const c = message.attachments.find(a => a.type === "contact");
         return <ContactAttachment displayName={c?.displayName} phone={c?.phone} email={c?.email} />;
       }
       default:
         return (
-          <div className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+          <div className={`text-sm ${isShort ? "leading-snug" : "leading-relaxed"} text-foreground whitespace-pre-wrap break-words`}>
             {renderTextWithLinks(message.bodyText)}
           </div>
         );
@@ -87,15 +147,18 @@ export function MessageBubble({
   };
 
   return (
-    <div className={`flex gap-2 ${isOutbound ? "justify-end" : ""} ${className ?? ""}`}>
+    <div className={`flex gap-2 ${isOutbound ? "justify-end" : ""} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
       {!isOutbound && !isConsecutive && (
-        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-auto">
-          <span className="text-[9px] font-semibold text-muted-foreground">
-            {contactAvatarInitials || "?"}
+        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-auto ring-1 ring-border/50" aria-label={`Avatar de ${senderLabel}`}>
+          <span className="text-[10px] font-semibold text-muted-foreground">
+            {contactAvatarInitials || getInitials(contactName || "")}
           </span>
         </div>
       )}
-      <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${bubbleClasses} ${spacingClass}`}>
+      {!isOutbound && isConsecutive && (
+        <div className="w-6 shrink-0" aria-hidden="true" />
+      )}
+      <div className={bubbleClasses}>
         {renderContent()}
         <MessageMeta
           message={message}
@@ -105,4 +168,4 @@ export function MessageBubble({
       </div>
     </div>
   );
-}
+};
