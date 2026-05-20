@@ -338,23 +338,30 @@ export class InvoicesService {
       throw new BadRequestException('No se pueden registrar pagos para una factura cancelada.');
     }
 
+    const amount = Number(dto.amount ?? 0);
+    if (amount <= 0) {
+      throw new BadRequestException('El monto del pago debe ser mayor a cero.');
+    }
+
+    // Reject payments with mismatched currency
+    if (dto.currency && dto.currency !== invoice.currency) {
+      throw new BadRequestException(
+        `La moneda del pago (${dto.currency}) no coincide con la moneda de la factura (${invoice.currency}).`,
+      );
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       // Balance check INSIDE transaction to prevent race conditions
-      const invoice = await tx.invoice.findUniqueOrThrow({
+      const freshInvoice = await tx.invoice.findUniqueOrThrow({
         where: { id: invoiceId },
         include: this.invoiceInclude(),
       });
 
-      if (invoice.status === InvoiceStatus.CANCELLED) {
+      if (freshInvoice.status === InvoiceStatus.CANCELLED) {
         throw new BadRequestException('No se pueden registrar pagos para una factura cancelada.');
       }
 
-      const balanceDue = this.getBalanceDue(invoice);
-      const amount = Number(dto.amount ?? 0);
-
-      if (amount <= 0) {
-        throw new BadRequestException('El monto del pago debe ser mayor a cero.');
-      }
+      const balanceDue = this.getBalanceDue(freshInvoice);
 
       if (balanceDue <= 0) {
         throw new BadRequestException('La factura no tiene saldo pendiente.');
@@ -365,14 +372,7 @@ export class InvoicesService {
       }
 
       const paidAt = dto.paid_at ? new Date(dto.paid_at) : new Date();
-      const paymentCurrency = dto.currency ?? invoice.currency;
-
-      // Reject payments with mismatched currency
-      if (dto.currency && dto.currency !== invoice.currency) {
-        throw new BadRequestException(
-          `La moneda del pago (${dto.currency}) no coincide con la moneda de la factura (${invoice.currency}).`,
-        );
-      }
+      const paymentCurrency = dto.currency ?? freshInvoice.currency;
 
       const payment = await tx.invoicePayment.create({
         data: {
