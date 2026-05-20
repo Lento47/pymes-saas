@@ -40,7 +40,7 @@ const BRAND = {
   danger: '#000000',
 };
 
-const LOGO_URL = 'https://raw.githubusercontent.com/Lento47/PymesHub-invoice/refs/heads/master/PymesHubic.png';
+const LOGO_URL = process.env.INVOICE_LOGO_URL || 'https://raw.githubusercontent.com/Lento47/PymesHub-invoice/refs/heads/master/PymesHubic.png';
 
 let logoBuffer: Buffer | null = null;
 
