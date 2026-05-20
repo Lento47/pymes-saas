@@ -3,6 +3,8 @@ import { PrismaService } from '../common/prisma/prisma.service';
 
 @Injectable()
 export class SearchService {
+  private readonly ALLOWED_TYPES = ['contacts', 'conversations', 'tasks', 'documents'];
+
   constructor(private readonly prisma: PrismaService) {}
 
   async search(
@@ -11,10 +13,12 @@ export class SearchService {
     types: string[],
     limit: number,
   ) {
+    // Filter out unknown types to prevent Prisma errors
+    const validTypes = types.filter(t => this.ALLOWED_TYPES.includes(t));
     const searches: Promise<any>[] = [];
     const keys: string[] = [];
 
-    if (types.includes('contacts')) {
+    if (validTypes.includes('contacts')) {
       keys.push('contacts');
       searches.push(
         this.prisma.contact.findMany({
@@ -31,7 +35,7 @@ export class SearchService {
       );
     }
 
-    if (types.includes('conversations')) {
+    if (validTypes.includes('conversations')) {
       keys.push('conversations');
       searches.push(
         this.prisma.conversation.findMany({
@@ -47,7 +51,7 @@ export class SearchService {
       );
     }
 
-    if (types.includes('tasks')) {
+    if (validTypes.includes('tasks')) {
       keys.push('tasks');
       searches.push(
         this.prisma.task.findMany({
@@ -63,7 +67,7 @@ export class SearchService {
       );
     }
 
-    if (types.includes('documents')) {
+    if (validTypes.includes('documents')) {
       keys.push('documents');
       searches.push(
         this.prisma.document.findMany({

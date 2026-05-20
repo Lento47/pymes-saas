@@ -34,7 +34,7 @@ export class UsageMeteringService {
       contacts,
       invoicesThisMonth: invoices,
       automations,
-      storageUsedMb: ((storageAgg._sum.file_size ?? 0) / (1024 * 1024)).toFixed(1),
+      storageUsedMb: Number(((storageAgg._sum.file_size ?? 0) / (1024 * 1024)).toFixed(1)),
       users,
       messagesThisMonth: messages,
       whatsappMessagesThisMonth: whatsappMsgs,

@@ -43,6 +43,9 @@ export class ConversationsService {
     if (department_id)    where.department_id    = department_id;
 
     // AGENTs only see conversations belonging to their department(s)
+    // TODO(perf): This runs a separate query for department memberships on every
+    // findAll call. Consider caching the agent's department_ids in the JWT or
+    // prefetching them in a guard/middleware to avoid the extra round-trip.
     if (caller && caller.role === 'AGENT') {
       const memberships = await this.prisma.departmentMember.findMany({
         where: { user_id: caller.id, workspace_id: workspaceId },

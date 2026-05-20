@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 
 @Injectable()
@@ -83,7 +83,7 @@ export class OnboardingService {
       where: { workspace_id: workspaceId },
       select: { checklist: true },
     });
-    if (!project) throw new Error('Onboarding project not found');
+    if (!project) throw new NotFoundException('Proyecto de onboarding no encontrado.');
 
     const checklist = (project.checklist as any[]) ?? [];
     if (checklist[categoryIndex]?.items?.[itemIndex]) {

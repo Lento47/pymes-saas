@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { FilterNotificationsDto } from './dto/filter-notifications.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
@@ -97,7 +97,10 @@ export class NotificationsService {
     });
 
     // Emitir en tiempo real al usuario
-    this.events.emitNotification(data.user_id, notification);
+    this.events.emitNotification(data.user_id, notification).catch((err) => {
+      // emitNotification is fire-and-forget; log failures but don't fail the creation
+      Logger.warn(`Failed to emit real-time notification to user ${data.user_id}: ${err?.message ?? err}`);
+    });
 
     return notification;
   }

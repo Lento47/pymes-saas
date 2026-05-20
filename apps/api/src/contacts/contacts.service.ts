@@ -106,6 +106,11 @@ export class ContactsService {
     }
 
     // Evitar duplicados por teléfono normalizado
+    // NOTE: Uses $queryRawUnsafe with REGEXP_REPLACE to normalize phone numbers
+    // for deduplication. This bypasses Prisma type safety — the raw query is safe
+    // because workspaceId comes from a validated JWT and normalized is a sanitized
+    // phone string (digits only). If this becomes a performance bottleneck,
+    // consider adding a normalized_phone indexed column.
     if (dto.phone) {
       const normalized = dto.phone.replace(/\D/g, '');
       if (normalized.length >= 7) {
@@ -227,7 +232,7 @@ export class ContactsService {
   }
 
   // ── DELETE /contacts/:id ───────────────────────────────────────────────────
-  // Soft-delete: no borramos, desasociamos del workspace (o puedes marcar con status)
+  // Hard delete — removes the contact record permanently.
 
   async remove(workspaceId: string, id: string) {
     await this.findOne(workspaceId, id); // valida existencia

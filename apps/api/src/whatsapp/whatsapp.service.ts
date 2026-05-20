@@ -76,6 +76,9 @@ export class WhatsAppService {
     return { message_id: data.messages?.[0]?.id ?? 'unknown' };
   }
 
+  // TODO(refactor): sendMedia is ~110 lines long and mixes file download logic,
+  // MIME resolution, multipart form-data construction, and Meta API calls. Consider
+  // extracting into: (1) resolveMediaSource(), (2) buildMultipartBody(), (3) uploadToMeta().
   async sendMedia(
     channel: Record<string, any>,
     to: string,
@@ -405,6 +408,11 @@ export class WhatsAppService {
       const providerMessageId = msg.id;
       const whatsappMedia = extractWhatsAppMediaFromMessage(msg);
 
+      // NOTE: receiveProviderInbound runs inside an interactive transaction
+      // (upsert contact + find-or-create conversation + insert message). This
+      // keeps the critical path durable but may hold a DB connection longer
+      // than desired. Consider breaking into non-transactional steps if latency
+      // becomes a concern.
       const result = await this.messages.receiveProviderInbound({
         provider: 'whatsapp',
         workspaceId,

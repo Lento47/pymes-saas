@@ -12,6 +12,9 @@ import {
 import { timingSafeEqual } from 'crypto';
 import { MessagesService } from './messages.service';
 
+// Simple UUID v4 regex for header validation
+const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function safeEqual(a: string, b: string): boolean {
   if (!a || !b) return false;
   const ab = Buffer.from(a, 'utf8');
@@ -58,6 +61,10 @@ export class InboundController {
     }
     if (!workspaceId) {
       return { ok: false, reason: 'Missing X-Workspace-Id header' };
+    }
+    // Validate workspaceId is a UUID to prevent injection and DB lookup anomalies
+    if (!UUID_V4_RE.test(workspaceId)) {
+      return { ok: false, reason: 'Invalid X-Workspace-Id header (expected UUID v4)' };
     }
     return this.messagesService.receiveInbound(provider, workspaceId, payload);
   }
