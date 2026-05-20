@@ -555,6 +555,8 @@ export class TelegramService {
     const fileInfo = await bot.telegram.getFile(attachment.file_id);
     if (!fileInfo.file_path) return;
 
+    // WARNING: bot token is embedded in the download URL (Telegram API requirement).
+    // Ensure this URL is NOT logged — token leak would compromise the bot.
     const downloadUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.file_path}`;
     const res = await fetch(downloadUrl, { signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error(`Telegram file fetch failed: ${res.status}`);
