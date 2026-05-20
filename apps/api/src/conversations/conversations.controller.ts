@@ -257,8 +257,10 @@ export class ConversationsController {
   async getMessageMedia(
     @CurrentUser('workspace_id') workspaceId: string,
     @Param('messageId', ValidateUUIDPipe) messageId: string,
-    @Res() res: Response,
+    @Res({ passthrough: false }) res: Response,
   ) {
+    // NOTE: Uses passthrough:false (manual response mode) because this endpoint
+    // serves raw binary media (buffers) — NestJS cannot auto-serialize Buffer.
     try {
       // 1) Proxy from MinIO storage (HTTPS — no redirect, avoids mixed-content)
       const media = await this.messagesService.getMediaContent(messageId, workspaceId);

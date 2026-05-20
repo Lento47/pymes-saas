@@ -51,6 +51,9 @@ export class SlaService {
     const data: Record<string, any> = { resolved_at: new Date() };
 
     if (conv.created_at && conv.sla_target_hours) {
+      // NOTE: sla_target_hours may be null if trackFirstResponse() was never
+      // called (e.g., the conversation was resolved before any agent response).
+      // The guard above prevents NaN from null * 3600_000.
       const slaDeadline = new Date(conv.created_at.getTime() + conv.sla_target_hours * 3600_000);
       if (new Date() > slaDeadline) {
         data.sla_breached = true;

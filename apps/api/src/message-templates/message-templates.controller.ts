@@ -18,6 +18,9 @@ export class MessageTemplatesController {
   }
 
   @Get('approved')
+  // NOTE: NestJS resolves static routes ('approved') before parameterized ones
+  // (':id'), so this does NOT conflict with getById below. Keep this route
+  // before :id in file order as a defensive practice.
   async getApproved(@CurrentUser('workspace_id') workspaceId: string, @Query('channel') channel?: string) {
     return this.templates.getApprovedForChannel(workspaceId, channel ?? 'WHATSAPP');
   }

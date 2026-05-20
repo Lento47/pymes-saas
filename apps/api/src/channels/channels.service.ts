@@ -266,6 +266,9 @@ export class ChannelsService {
 
   // ── Privados ───────────────────────────────────────────────────────────────
 
+  // NOTE: config_json may be a string (legacy JSON.stringify) or a parsed object.
+  // parseJsonValue handles both cases, so the Record<string,any> annotation on
+  // the channel param is imprecise but safe.
   private sanitise(channel: Record<string, any>) {
     const { config_json, ...rest } = channel;
     const safeConfig: Record<string, unknown> = {};

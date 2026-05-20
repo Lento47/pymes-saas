@@ -23,6 +23,9 @@ export class MessageTemplatesService {
     });
   }
 
+  // TODO(types): create() accepts Record<string,any> instead of a typed DTO.
+  // This means unknown keys will be silently ignored or passed to Prisma.
+  // Add a CreateMessageTemplateDto with explicit validation.
   async create(workspaceId: string, userId: string, data: Record<string, any>) {
     return this.prisma.messageTemplate.create({
       data: {
