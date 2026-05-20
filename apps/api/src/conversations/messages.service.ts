@@ -107,7 +107,16 @@ export class MessagesService {
                   ? dto.media_url.split('/api/storage/file/').pop()!
                   : dto.media_url,
                 type: dto.media_type ?? 'document',
-                mimeType: null,
+                mimeType: (() => {
+                  const ext = dto.media_url?.split('.').pop()?.toLowerCase() ?? '';
+                  const MIME: Record<string, string> = {
+                    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+                    webp: 'image/webp', svg: 'image/svg+xml', mp4: 'video/mp4', mp3: 'audio/mpeg',
+                    ogg: 'audio/ogg', wav: 'audio/wav', pdf: 'application/pdf',
+                    doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                  };
+                  return MIME[ext] ?? null;
+                })(),
                 filename: dto.media_url.split('/').pop() || null,
                 caption: dto.body_text || null,
               },
@@ -506,7 +515,7 @@ export class MessagesService {
 
     try {
       const message = await this.prisma.message.findUnique({
-        where: { id: messageId },
+        where: { id: messageId, workspace_id: workspaceId },
         include: {
           sender_user: { select: { id: true, name: true, avatar_url: true } },
         },
@@ -640,8 +649,9 @@ export class MessagesService {
       }
     }
 
-    // 2) WhatsApp media
-    if (wm) {
+    // 2) WhatsApp media — skip if attachments_json already has a storage-backed entry
+    const hasStorageBacked = attachmentsList.some(a => a.status === 'available');
+    if (wm && !hasStorageBacked) {
       attachmentsList.push({
         id: msg.id,
         type: wm.mediaType ?? 'document',
@@ -705,7 +715,9 @@ export class MessagesService {
       media_filename: wm?.filename ?? attachmentEntry?.filename ?? null,
       media_caption: wm?.caption ?? attachmentEntry?.caption ?? null,
       media_download_url: downloadUrl,
-      media_status: attachmentEntry?.storageKey ? 'available' : hasMedia ? 'processing' : 'none',
+      media_status: attachmentsList.length > 0
+        ? (attachmentsList.some(a => a.status === 'available') ? 'available' : 'processing')
+        : (hasMedia ? 'processing' : 'none'),
       attachments: attachmentsList,
     };
   }
