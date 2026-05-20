@@ -3,7 +3,7 @@ import { X, Send, Loader2, Sparkles } from 'lucide-react';
 
 type Message = { id: string; role: 'user' | 'agent'; content: string };
 
-const API_BASE = import.meta.env.VITE_PymesHub_API_URL ?? import.meta.env.VITE_API_URL ?? '';
+const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? import.meta.env.API_URL ?? '';
 
 function PetSvg({ small }: { small?: boolean }) {
   const [blinking, setBlinking] = useState(false);

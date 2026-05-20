@@ -28,7 +28,7 @@ export function getSocket(): Socket | null {
 // ───────────────────────────────────────────────────────────────────────────
 const WS_URL = import.meta.env.DEV
   ? `${window.location.protocol}//${window.location.hostname}:4000`
-  : (import.meta.env.VITE_API_URL as string | undefined) ?? window.location.origin;
+  : (import.meta.env.VITE_API_URL as string | undefined) ?? (import.meta.env.API_URL as string | undefined) ?? window.location.origin;
 
 export function connectSocket() {
   if (_socket?.connected) return _socket;
