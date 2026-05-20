@@ -19,6 +19,12 @@ export class AutomationsService {
   ) {}
 
   async findAll(workspaceId: string, filters: FilterAutomationsDto) {
+    const automationRuleDelegate = this.prisma.automationRule;
+
+    if (!automationRuleDelegate?.findMany) {
+      return { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } };
+    }
+
     const page = Number(filters.page) || 1;
     const limit = Number(filters.limit) || 20;
     const skip = (page - 1) * limit;
@@ -34,7 +40,7 @@ export class AutomationsService {
     }
 
     const [data, total] = await Promise.all([
-      this.prisma.automationRule.findMany({
+      automationRuleDelegate.findMany({
         where,
         skip,
         take: limit,
@@ -45,7 +51,7 @@ export class AutomationsService {
           },
         },
       }),
-      this.prisma.automationRule.count({ where }),
+      automationRuleDelegate.count({ where }),
     ]);
 
     return {
@@ -69,7 +75,12 @@ export class AutomationsService {
   ) {
     await this.planLimits.checkAutomationLimit(workspaceId);
 
-    return this.prisma.automationRule.create({
+    const automationRuleDelegate = this.prisma.automationRule;
+    if (!automationRuleDelegate?.create) {
+      throw new NotFoundException('Automation rules are not available');
+    }
+
+    return automationRuleDelegate.create({
       data: {
         workspace_id: workspaceId,
         created_by_user_id: userId,
@@ -85,7 +96,12 @@ export class AutomationsService {
   }
 
   async findOne(workspaceId: string, id: string) {
-    const rule = await this.prisma.automationRule.findFirst({
+    const automationRuleDelegate = this.prisma.automationRule;
+    if (!automationRuleDelegate?.findFirst) {
+      throw new NotFoundException(`Automation rule ${id} not found`);
+    }
+
+    const rule = await automationRuleDelegate.findFirst({
       where: { id, workspace_id: workspaceId },
       include: {
         executions: {
@@ -109,7 +125,12 @@ export class AutomationsService {
   ) {
     await this.findOne(workspaceId, id);
 
-    return this.prisma.automationRule.update({
+    const automationRuleDelegate = this.prisma.automationRule;
+    if (!automationRuleDelegate?.update) {
+      throw new NotFoundException('Automation rules are not available');
+    }
+
+    return automationRuleDelegate.update({
       where: { id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
@@ -132,7 +153,12 @@ export class AutomationsService {
   async toggle(workspaceId: string, id: string) {
     const rule = await this.findOne(workspaceId, id);
 
-    return this.prisma.automationRule.update({
+    const automationRuleDelegate = this.prisma.automationRule;
+    if (!automationRuleDelegate?.update) {
+      throw new NotFoundException('Automation rules are not available');
+    }
+
+    return automationRuleDelegate.update({
       where: { id },
       data: { enabled: !rule.enabled },
     });
@@ -146,18 +172,23 @@ export class AutomationsService {
   ) {
     await this.findOne(workspaceId, ruleId);
 
+    const automationExecutionDelegate = this.prisma.automationExecution;
+    if (!automationExecutionDelegate?.findMany) {
+      return { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } };
+    }
+
     const _page = Number(page) || 1;
     const _limit = Number(limit) || 20;
     const skip = (_page - 1) * _limit;
 
     const [data, total] = await Promise.all([
-      this.prisma.automationExecution.findMany({
+      automationExecutionDelegate.findMany({
         where: { rule_id: ruleId },
         skip,
         take: _limit,
         orderBy: { created_at: 'desc' },
       }),
-      this.prisma.automationExecution.count({
+      automationExecutionDelegate.count({
         where: { rule_id: ruleId },
       }),
     ]);
@@ -179,7 +210,13 @@ export class AutomationsService {
     triggerEntityType: string,
     triggerEntityId: string,
   ) {
-    const rules = await this.prisma.automationRule.findMany({
+    const automationRuleDelegate = this.prisma.automationRule;
+
+    if (!automationRuleDelegate?.findMany) {
+      return { queued: 0 };
+    }
+
+    const rules = await automationRuleDelegate.findMany({
       where: {
         workspace_id: workspaceId,
         trigger_type: triggerType,
@@ -204,6 +241,10 @@ export class AutomationsService {
 
   async remove(workspaceId: string, id: string) {
     await this.findOne(workspaceId, id);
-    return this.prisma.automationRule.delete({ where: { id } });
+    const automationRuleDelegate = this.prisma.automationRule;
+    if (!automationRuleDelegate?.delete) {
+      throw new NotFoundException('Automation rules are not available');
+    }
+    return automationRuleDelegate.delete({ where: { id } });
   }
 }
