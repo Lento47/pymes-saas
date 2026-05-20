@@ -227,7 +227,7 @@ export class ContactsService {
   }
 
   // ── DELETE /contacts/:id ───────────────────────────────────────────────────
-  // Soft-delete: no borramos, desasociamos del workspace (o puedes marcar con status)
+  // Hard delete — removes the contact record permanently.
 
   async remove(workspaceId: string, id: string) {
     await this.findOne(workspaceId, id); // valida existencia

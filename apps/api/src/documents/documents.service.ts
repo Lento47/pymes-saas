@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { StorageService } from '../common/storage/storage.service';
 import { UpdateDocumentDto } from './dto/update-document.dto';
@@ -109,42 +110,38 @@ export class DocumentsService {
       if (!t) throw new NotFoundException('Tarea no encontrada.');
     }
 
-    // Crear registro en DB con status UPLOADED
+    // Subir a S3/MinIO primero. Si falla, no creamos registro huérfano.
+    const fileId = randomUUID();
+    const key = this.storage.buildKey(workspaceId, fileId, file.originalname);
+    await this.storage.upload(key, file.buffer, file.mimetype);
+
+    // Crear registro en DB (después de S3 exitoso)
     const doc = await this.prisma.document.create({
       data: {
+        id:                fileId,
         workspace_id:        workspaceId,
         contact_id:          metadata.contact_id,
         conversation_id:     metadata.conversation_id,
         file_name:           file.originalname,
         mime_type:           file.mimetype,
-        storage_key:         'pending', // se actualiza después del upload a S3
+        storage_key:         key,
         file_size:           file.size,
         status:              'UPLOADED',
         uploaded_by_user_id: user.id,
       },
     });
 
-    // Subir a S3/MinIO
-    const key = this.storage.buildKey(workspaceId, doc.id, file.originalname);
-    await this.storage.upload(key, file.buffer, file.mimetype);
-
-    // Actualizar storage_key en DB
-    const updated = await this.prisma.document.update({
-      where: { id: doc.id },
-      data:  { storage_key: key, status: 'UPLOADED' },
-    });
-
     // Enqueue document for AI-powered OCR processing
-    await this.queueService.enqueueDocument(updated.id, workspaceId);
+    await this.queueService.enqueueDocument(doc.id, workspaceId);
 
     await this.automationsService.triggerRules(
       workspaceId,
       'DOCUMENT_UPLOADED',
       'document',
-      updated.id,
+      doc.id,
     );
 
-    return updated;
+    return doc;
   }
 
   // ── Upload attachment (lightweight, no Document record) ──────────────────

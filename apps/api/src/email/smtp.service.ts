@@ -22,14 +22,22 @@ export interface SmtpMail {
 export class SmtpService {
   private readonly logger = new Logger(SmtpService.name);
 
+  private transporters = new Map<string, Transporter>();
+
   async send(config: SmtpConfig, mail: SmtpMail): Promise<{ id: string }> {
-    const transporter: Transporter = nodemailer.createTransport({
-      host: config.host,
-      port: config.port,
-      secure: config.port === 465,
-      auth: { user: config.user, pass: config.password },
-      ...(config.port !== 465 ? { requireTLS: true } : {}),
-    });
+    const cacheKey = `${config.host}:${config.port}:${config.user}`;
+    let transporter = this.transporters.get(cacheKey);
+
+    if (!transporter) {
+      transporter = nodemailer.createTransport({
+        host: config.host,
+        port: config.port,
+        secure: config.port === 465,
+        auth: { user: config.user, pass: config.password },
+        ...(config.port !== 465 ? { requireTLS: true } : {}),
+      });
+      this.transporters.set(cacheKey, transporter);
+    }
 
     try {
       const info = await transporter.sendMail({
@@ -42,8 +50,6 @@ export class SmtpService {
 
       this.logger.log(`Email sent via SMTP — messageId: ${info.messageId}`);
       return { id: info.messageId };
-    } finally {
-      transporter.close();
     }
   }
 }
