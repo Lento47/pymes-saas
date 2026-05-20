@@ -5,3 +5,5 @@ dist/
 .DS_Store
 .enterprise-runtime-release/
 .enterprise-runtime-bundle/
+.codex-worktrees/
+apps/android/

@@ -1,11 +1,12 @@
 import {
-  Controller, Post, Param, Body, UseGuards, UseInterceptors,
+  Controller, Post, Body, UseGuards, UseInterceptors,
   UploadedFile, BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CsvImportService } from './csv-import.service';
 
 @Controller('import')
@@ -13,10 +14,10 @@ import { CsvImportService } from './csv-import.service';
 export class CsvImportController {
   constructor(private readonly csvImport: CsvImportService) {}
 
-  @Post('contacts/parse/:workspaceId')
+  @Post('contacts/parse')
   @Roles('ADMIN', 'OWNER')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
-  async parseContactsCsv(@UploadedFile() file: Express.Multer.File, @Param('workspaceId') workspaceId: string) {
+  async parseContactsCsv(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Archivo CSV requerido');
     const { headers, rows } = this.csvImport.parseCsv(file.buffer);
 
@@ -39,10 +40,10 @@ export class CsvImportController {
     };
   }
 
-  @Post('contacts/confirm/:workspaceId')
+  @Post('contacts/confirm')
   @Roles('ADMIN', 'OWNER')
   async confirmContactsImport(
-    @Param('workspaceId') workspaceId: string,
+    @CurrentUser('workspace_id') workspaceId: string,
     @Body() data: { mapping: Record<string, string>; rows: Record<string, string>[] },
   ) {
     if (!data.mapping || !data.rows?.length) throw new BadRequestException('Mapping y rows requeridos');
@@ -51,10 +52,10 @@ export class CsvImportController {
 
   // ─── Invoice CSV Import ───────────────────────────────────────────
 
-  @Post('invoices/parse/:workspaceId')
+  @Post('invoices/parse')
   @Roles('ADMIN', 'OWNER')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
-  async parseInvoicesCsv(@UploadedFile() file: Express.Multer.File, @Param('workspaceId') workspaceId: string) {
+  async parseInvoicesCsv(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Archivo CSV requerido');
     const { headers, rows } = this.csvImport.parseCsv(file.buffer);
 
@@ -72,10 +73,10 @@ export class CsvImportController {
     return { headers, suggestedMapping, rows: rows.slice(0, 8), totalRows: rows.length };
   }
 
-  @Post('invoices/confirm/:workspaceId')
+  @Post('invoices/confirm')
   @Roles('ADMIN', 'OWNER')
   async confirmInvoicesImport(
-    @Param('workspaceId') workspaceId: string,
+    @CurrentUser('workspace_id') workspaceId: string,
     @Body() data: { mapping: Record<string, string>; rows: Record<string, string>[] },
   ) {
     if (!data.mapping || !data.rows?.length) throw new BadRequestException('Mapping y rows requeridos');
@@ -84,10 +85,10 @@ export class CsvImportController {
 
   // ─── Product CSV Import ──────────────────────────────────────────
 
-  @Post('products/parse/:workspaceId')
+  @Post('products/parse')
   @Roles('ADMIN', 'OWNER')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
-  async parseProductsCsv(@UploadedFile() file: Express.Multer.File, @Param('workspaceId') workspaceId: string) {
+  async parseProductsCsv(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Archivo CSV requerido');
     const { headers, rows } = this.csvImport.parseCsv(file.buffer);
 
@@ -108,10 +109,10 @@ export class CsvImportController {
     return { headers, suggestedMapping, rows: rows.slice(0, 8), totalRows: rows.length };
   }
 
-  @Post('products/confirm/:workspaceId')
+  @Post('products/confirm')
   @Roles('ADMIN', 'OWNER')
   async confirmProductsImport(
-    @Param('workspaceId') workspaceId: string,
+    @CurrentUser('workspace_id') workspaceId: string,
     @Body() data: { mapping: Record<string, string>; rows: Record<string, string>[] },
   ) {
     if (!data.mapping || !data.rows?.length) throw new BadRequestException('Mapping y rows requeridos');

@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Body, UseGuards } from '@nestjs/common';
+import { WorkspaceUserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -16,25 +17,25 @@ export class OnboardingController {
   }
 
   @Get()
-  @Roles('OWNER', 'ADMIN')
+  @Roles(WorkspaceUserRole.OWNER, WorkspaceUserRole.ADMIN)
   async getProject(@CurrentUser('workspace_id') workspaceId: string) {
     return this.onboarding.getProject(workspaceId);
   }
 
   @Post()
-  @Roles('OWNER', 'ADMIN')
+  @Roles(WorkspaceUserRole.OWNER, WorkspaceUserRole.ADMIN)
   async saveProject(@CurrentUser('workspace_id') workspaceId: string, @Body() data: Record<string, any>) {
     return this.onboarding.saveProject(workspaceId, data);
   }
 
   @Put()
-  @Roles('OWNER', 'ADMIN')
+  @Roles(WorkspaceUserRole.OWNER, WorkspaceUserRole.ADMIN)
   async updateProject(@CurrentUser('workspace_id') workspaceId: string, @Body() data: Record<string, any>) {
     return this.onboarding.updateProject(workspaceId, data);
   }
 
   @Put('checklist')
-  @Roles('OWNER', 'ADMIN')
+  @Roles(WorkspaceUserRole.OWNER, WorkspaceUserRole.ADMIN)
   async updateChecklistItem(
     @CurrentUser('workspace_id') workspaceId: string,
     @Body() data: { categoryIndex: number; itemIndex: number; completed: boolean; notes?: string },

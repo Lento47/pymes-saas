@@ -1088,10 +1088,9 @@ export class PaddleSdkService {
     const paddle = this.requireClient();
     const appUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
 
-    const customData: Record<string, unknown> = { workspaceSlug: async () => {
-      const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { slug: true } });
-      return ws.slug;
-    }};
+    const customData: Record<string, unknown> = {};
+    const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { slug: true } });
+    customData.workspaceSlug = ws.slug;
     if (addonKey) customData.addon = addonKey;
 
     const transaction = await paddle.transactions.create({

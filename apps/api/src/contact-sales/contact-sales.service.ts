@@ -134,17 +134,17 @@ export class ContactSalesService {
     }
   }
 
-  async getInquiries(status?: string) {
+  async getInquiries(workspaceId: string, status?: string) {
     return this.prisma.contactSalesInquiry.findMany({
-      where: status ? { status } : undefined,
+      where: { workspace_id: workspaceId, ...(status ? { status } : {}) },
       orderBy: { created_at: 'desc' },
       take: 100,
     });
   }
 
-  async updateInquiryStatus(id: string, status: string) {
-    return this.prisma.contactSalesInquiry.update({
-      where: { id },
+  async updateInquiryStatus(workspaceId: string, id: string, status: string) {
+    return this.prisma.contactSalesInquiry.updateMany({
+      where: { id, workspace_id: workspaceId },
       data: { status },
     });
   }

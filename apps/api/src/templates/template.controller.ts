@@ -2,6 +2,7 @@ import { Controller, Get, Post, Param, Body, Query, UseGuards } from '@nestjs/co
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { TemplateService } from './template.service';
 
 @Controller('templates')
@@ -21,21 +22,21 @@ export class TemplateController {
     return this.templates.getSystemTemplate(id);
   }
 
-  @Post('system/:id/instantiate/automation/:workspaceId')
+  @Post('system/:id/instantiate/automation')
   @Roles('ADMIN', 'OWNER')
   async instantiateAutomation(
     @Param('id') id: string,
-    @Param('workspaceId') workspaceId: string,
+    @CurrentUser('workspace_id') workspaceId: string,
     @Body() overrides?: Record<string, any>,
   ) {
     return this.templates.instantiateAutomationTemplate(workspaceId, id, overrides);
   }
 
-  @Post('system/:id/instantiate/message/:workspaceId')
+  @Post('system/:id/instantiate/message')
   @Roles('ADMIN', 'OWNER')
   async instantiateMessage(
     @Param('id') id: string,
-    @Param('workspaceId') workspaceId: string,
+    @CurrentUser('workspace_id') workspaceId: string,
     @Body() overrides?: Record<string, any>,
   ) {
     return this.templates.instantiateMessageTemplate(workspaceId, id, overrides);
@@ -48,11 +49,11 @@ export class TemplateController {
     return this.templates.listWorkspaceTemplates(industry);
   }
 
-  @Post('workspace/:key/apply/:workspaceId')
+  @Post('workspace/:key/apply')
   @Roles('OWNER')
   async applyWorkspaceTemplate(
     @Param('key') key: string,
-    @Param('workspaceId') workspaceId: string,
+    @CurrentUser('workspace_id') workspaceId: string,
   ) {
     return this.templates.applyWorkspaceTemplate(workspaceId, key);
   }
