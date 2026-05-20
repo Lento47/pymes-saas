@@ -16,19 +16,16 @@ export function getSocket(): Socket | null {
 // ───────────────────────────────────────────────────────────────────────────
 // IMPORTANTE — URL DEL WEBSOCKET
 //
-// DEV: EL HOOK ASUME QUE EL BACKEND NESTJS CORRE EN `:4000` EN EL MISMO HOST
-//      DEL FRONTEND (CONFIGURACION DEFAULT DE `pnpm dev`). SI ALGUIEN CORRE
-//      EL BACKEND EN OTRO PUERTO, ESTO ROMPE — AGREGAR `VITE_WS_URL` SI HACE
-//      FALTA SER FLEXIBLE.
+// DEV: backend NestJS corre en :4000 en el mismo host.
 //
-// PROD: USA `API_URL` (ej. `https://api.pymeshub.lat`) PARA QUE EL WS
-//       VAYA A RAILWAY, NO A CLOUDFLARE PAGES (QUE ES SOLO ESTATICO).
-//       CAE A `VITE_API_URL` Y LUEGO A `window.location.origin`.
+// PROD: `VITE_WS_URL` apunta directo a Railway (ej. wss://api.pymeshub.lat)
+//       para que el WS evite el Worker de Cloudflare (que es solo estático).
+//       Si no está seteada, cae a `window.location.origin` y el Worker
+//       proxea /socket.io a Railway.
 // ───────────────────────────────────────────────────────────────────────────
 const WS_URL = import.meta.env.DEV
   ? `${window.location.protocol}//${window.location.hostname}:4000`
-  : (import.meta.env.API_URL as string | undefined)
-    ?? (import.meta.env.VITE_API_URL as string | undefined)
+  : (import.meta.env.VITE_WS_URL as string | undefined)
     ?? window.location.origin;
 
 export function connectSocket() {
