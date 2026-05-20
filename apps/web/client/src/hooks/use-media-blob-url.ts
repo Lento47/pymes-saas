@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAuthToken, getWorkspaceSlug } from '@/lib/api';
 
-const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? '';
+const API_BASE = import.meta.env.VITE_PymesHub_API_URL ?? import.meta.env.VITE_API_URL ?? '';
 
 // Module-level cache: avoids re-fetching the same media URL across renders / re-mounts
 const blobCache = new Map<string, string>(); // mediaUrl -> objectURL

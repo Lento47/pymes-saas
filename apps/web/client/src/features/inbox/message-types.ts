@@ -16,7 +16,7 @@ export interface MessageAttachment {
   phone?: string | null;
   email?: string | null;
   width?: number | null;
-  height?: string | null;
+  height?: number | null;
   durationMs?: number | null;
   thumbnailUrl?: string | null;
 }

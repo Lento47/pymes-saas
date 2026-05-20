@@ -30,17 +30,18 @@ export function classifyMediaType(mimeType?: string | null, filename?: string | 
     if (["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv", "zip", "rar"].includes(ext ?? "")) return "document";
   }
 
-  return "text";
+  return "document";
 }
 
 export function isStickerType(mimeType?: string | null, filename?: string | null, messageType?: string | null): boolean {
   if (messageType === "sticker") return true;
-  if (mimeType?.includes("webp")) return true;
+  if (mimeType === "image/webp") return true;
   if (filename?.endsWith(".webp")) return true;
   return false;
 }
 
 export function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return "0 B";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -48,7 +49,7 @@ export function formatFileSize(bytes: number): string {
 
 export function formatMessageTime(date: Date | null): string {
   if (!date) return "";
-  return format(date, "h:mm a");
+  return format(date, "HH:mm");
 }
 
 export function formatMessageDate(date: Date): string {
@@ -57,6 +58,6 @@ export function formatMessageDate(date: Date): string {
 
 export function safeFileName(filename?: string | null): string {
   if (!filename) return "Archivo";
-  const sanitized = filename.replace(/[/\\]/g, "").replace(/\.\./g, "").trim();
+  const sanitized = filename.replace(/[<>:"/\\|?*\x00]/g, "").replace(/\.\./g, "").trim();
   return sanitized || "Archivo";
 }

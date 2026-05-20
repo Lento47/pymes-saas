@@ -1,3 +1,4 @@
+import { ArrowDown } from "lucide-react";
 import { isSameDay } from "date-fns";
 import type { UiMessage } from "@/features/inbox/message-types";
 import { isConsecutiveMessage } from "@/features/inbox/message-adapters";
@@ -49,7 +50,7 @@ export function MessageTimeline({
           const prev = idx > 0 ? messages[idx - 1] : null;
           const showDateSeparator = !prev || !msg.sentAt || !prev.sentAt || !isSameDay(msg.sentAt, prev.sentAt);
           const isConsecutive = isConsecutiveMessage(msg, prev);
-          const showSenderName = !isConsecutive && msg.direction === "INBOUND" && (!prev || prev.direction !== "INBOUND");
+          const showSenderName = !isConsecutive && msg.direction === "INBOUND";
 
           return (
             <div key={msg.id}>
@@ -73,7 +74,7 @@ export function MessageTimeline({
             onClick={onScrollToBottom}
             className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-medium shadow-lg hover:bg-primary/90 transition-colors"
           >
-            ↓ Nuevos mensajes
+            <ArrowDown className="w-3 h-3 inline mr-1" /> Nuevos mensajes
           </button>
         </div>
       )}

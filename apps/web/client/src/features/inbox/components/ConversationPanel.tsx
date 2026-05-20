@@ -20,7 +20,7 @@ import { Loader2, Plus, X, Send } from "lucide-react";
 import { ConversationHeader } from "./conversation/ConversationHeader";
 import { MessageTimeline } from "./conversation/MessageTimeline";
 import { MessageComposer } from "./conversation/MessageComposer";
-import { normalizeMessage, groupMessagesByDate } from "@/features/inbox/message-adapters";
+import { normalizeMessage } from "@/features/inbox/message-adapters";
 import type { UiMessage } from "@/features/inbox/message-types";
 
 interface Invoice {
@@ -94,7 +94,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     mutationFn: (data: Record<string, any>) => api.sendMessage(id, data),
     onSuccess: (response: any) => {
       qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
-      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["/api/conversations"] });
       setMessage("");
       setAttachment(null);
       if (response?.delivery_status === "dispatch_failed") {
@@ -111,7 +111,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const deleteMut = useMutation({
     mutationFn: () => api.deleteConversation(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["/api/conversations"] });
       toast({ title: "Conversación eliminada" });
       if (onBack) onBack();
     },

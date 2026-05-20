@@ -19,12 +19,12 @@ interface MessageBubbleProps {
 }
 
 const URL_REGEX = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
+const URL_PATTERN = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/;
 
 function renderTextWithLinks(text: string) {
   const parts = text.split(URL_REGEX);
   return parts.map((part, i) => {
-    if (URL_REGEX.test(part)) {
-      URL_REGEX.lastIndex = 0;
+    if (URL_PATTERN.test(part)) {
       return (
         <a
           key={i}
@@ -96,15 +96,7 @@ export function MessageBubble({
         </div>
       )}
       <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${bubbleClasses} ${spacingClass}`}>
-        {!isOutbound && showSenderName && message.senderName && (
-          <div className="text-[10px] font-medium text-muted-foreground/70 mb-1">
-            {message.senderName}
-          </div>
-        )}
         {renderContent()}
-        {message.hasMedia && message.mediaCaption && message.mediaType && (
-          <p className="text-[11px] text-muted-foreground/80 mt-1.5">{message.mediaCaption}</p>
-        )}
         <MessageMeta
           message={message}
           isOutbound={isOutbound}

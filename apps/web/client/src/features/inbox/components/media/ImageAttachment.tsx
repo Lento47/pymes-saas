@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
-import { getMediaProxyUrl, safeFileName, formatFileSize } from "@/features/inbox/media-utils";
+import { getMediaProxyUrl, safeFileName } from "@/features/inbox/media-utils";
 import { cn } from "@/lib/utils";
 import { FileText, Download, Loader2, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,7 +40,7 @@ export function ImageAttachment({ messageId, caption, mimeType, className }: Ima
     <div className={cn("flex flex-col", className)}>
       <img
         src={blobUrl}
-        alt={caption ?? safeFileName(mimeType ?? "image")}
+        alt={caption ?? "Imagen adjunta"}
         className="max-h-64 max-w-full rounded-lg object-contain"
         onLoad={() => setLoading(false)}
         onError={() => {

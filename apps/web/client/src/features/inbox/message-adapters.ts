@@ -1,6 +1,11 @@
-import { format, isSameDay } from "date-fns";
-import { es } from "date-fns/locale";
+import { isSameDay } from "date-fns";
 import type { MessageDirection, MediaType, MediaStatus, UiMessage, MessageAttachment, MessageGroup } from "./message-types";
+
+function safeDate(val: unknown): Date | null {
+  if (!val) return null;
+  const d = new Date(val as string | number | Date);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 function extractDirection(raw: Record<string, any>): MessageDirection {
   const dir = raw.direction;
@@ -72,10 +77,14 @@ function extractMediaStatus(raw: Record<string, any>): MediaStatus {
 }
 
 function buildAttachments(raw: Record<string, any>): MessageAttachment[] {
-  const json = raw.attachments_json;
+  let json = raw.attachments_json;
+  if (typeof json === 'string') {
+    try { json = JSON.parse(json); } catch { return []; }
+  }
   if (!Array.isArray(json) || json.length === 0) return [];
 
   return json.map((a: Record<string, any>) => {
+    if (!a) return null;
     const attachment: MessageAttachment = {
       type: a.type ?? "document",
       mimeType: a.mimeType ?? null,
@@ -103,7 +112,7 @@ function buildAttachments(raw: Record<string, any>): MessageAttachment[] {
     attachment.thumbnailUrl = a.thumbnailUrl ?? null;
 
     return attachment;
-  });
+  }).filter(Boolean) as MessageAttachment[];
 }
 
 export function normalizeMessage(raw: Record<string, any>): UiMessage {
@@ -118,7 +127,7 @@ export function normalizeMessage(raw: Record<string, any>): UiMessage {
     senderRef: sender.ref,
     senderAvatarUrl: sender.avatarUrl,
     bodyText,
-    sentAt: raw.sent_at ? new Date(raw.sent_at) : raw.created_at ? new Date(raw.created_at) : null,
+    sentAt: safeDate(raw.sent_at) ?? safeDate(raw.created_at),
     hasMedia: Boolean(raw.has_media),
     mediaType,
     mediaStatus: extractMediaStatus(raw),
@@ -139,15 +148,20 @@ export function normalizeMessage(raw: Record<string, any>): UiMessage {
 
 export function groupMessagesByDate(messages: UiMessage[]): MessageGroup[] {
   const sorted = [...messages].sort((a, b) => {
+    if (!a.sentAt && !b.sentAt) return 0;
     if (!a.sentAt) return 1;
     if (!b.sentAt) return -1;
     return a.sentAt.getTime() - b.sentAt.getTime();
   });
 
   const groups: MessageGroup[] = [];
+  const noDateMessages: UiMessage[] = [];
 
   for (const msg of sorted) {
-    if (!msg.sentAt) continue;
+    if (!msg.sentAt) {
+      noDateMessages.push(msg);
+      continue;
+    }
 
     const lastGroup = groups[groups.length - 1];
     if (lastGroup && isSameDay(lastGroup.date, msg.sentAt)) {
@@ -155,6 +169,10 @@ export function groupMessagesByDate(messages: UiMessage[]): MessageGroup[] {
     } else {
       groups.push({ date: msg.sentAt, messages: [msg] });
     }
+  }
+
+  if (noDateMessages.length > 0) {
+    groups.push({ date: new Date(0), messages: noDateMessages });
   }
 
   return groups;
@@ -170,6 +188,7 @@ export function isConsecutiveMessage(current: UiMessage, previous: UiMessage | n
 
   const currentSender = current.senderRef ?? current.senderName;
   const previousSender = previous.senderRef ?? previous.senderName;
+  if (!currentSender || !previousSender) return false;
   if (currentSender !== previousSender) return false;
 
   return true;
