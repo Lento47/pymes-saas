@@ -1,4 +1,5 @@
 import { Controller, Post, Param, Body, Get, Headers, UnauthorizedException, UseGuards, HttpCode, Logger } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { TelegramService } from './telegram.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -28,19 +29,21 @@ export class TelegramController {
    */
   @Post('webhook/:channelId')
   @HttpCode(200)
+  @Throttle({ webhook: { limit: 30, ttl: 60_000 } })
   async webhook(
     @Param('channelId') channelId: string,
     @Headers('x-telegram-bot-api-secret-token') secretHeader: string | undefined,
     @Body() update: Record<string, any>,
   ) {
     // Verify Telegram-supplied secret token before accepting the update.
-    // Without this, anyone who knows the channelId can inject fake updates.
     const ok = await this.telegramService.verifyWebhookSecret(channelId, secretHeader);
     if (!ok) {
       throw new UnauthorizedException('Invalid Telegram webhook signature');
     }
 
-    // Process update asynchronously to respond quickly
+    // Process update asynchronously to respond quickly.
+    // NOTE: setImmediate can silently lose messages if the process crashes
+    // between 200 OK and processing. Consider migrating to BullMQ like WhatsApp.
     setImmediate(() => {
       this.telegramService.processUpdate(channelId, update).catch((err) => {
         this.logger.error(`Async error processing update: ${err.message}`);

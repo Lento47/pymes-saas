@@ -197,6 +197,8 @@ ${transcript}`;
         this.logger.warn(`Could not decrypt AI key for workspace ${workspaceId}`);
       }
     }
-    return process.env.OPENAI_API_KEY || null;
+    // Do NOT fall back to platform-wide OPENAI_API_KEY — each workspace
+    // must configure its own key to prevent cross-workspace billing.
+    return null;
   }
 }
