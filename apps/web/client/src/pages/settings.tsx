@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { openExternal } from "@/lib/platform";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, useRequireAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -2025,6 +2025,7 @@ function AiTab() {
 }
 
 export default function Settings() {
+  useRequireAuth();
   const { user } = useAuth();
   const isPlatformAdmin = user?.is_platform_admin === true;
 

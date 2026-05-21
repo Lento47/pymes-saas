@@ -120,7 +120,7 @@ export default function DashboardPage() {
           <MetricCard
             label="Ingresos este mes"
             value={todayStats?.monthly_revenue || 0}
-            currency="€"
+            currency="₡"
             trend={18.6}
             trendLabel="vs. mes anterior"
             icon={TrendingUp}
@@ -130,7 +130,7 @@ export default function DashboardPage() {
           <MetricCard
             label="Por cobrar"
             value={overdueAmount}
-            currency="€"
+            currency="₡"
             loading={invoicesLoading}
             color="orange"
           />
@@ -151,7 +151,7 @@ export default function DashboardPage() {
           <MetricCard
             label="Negocios en pipeline"
             value={12}
-            currency="€"
+            currency="₡"
             trendLabel="en valor"
             loading={statsLoading}
             color="green"

@@ -71,10 +71,10 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const res = await api.register({ email, name, password: pass });
-      // store tokens exactly like the login flow
-      localStorage.setItem("access_token", res.access_token);
-      localStorage.setItem("refresh_token", res.refresh_token);
-      localStorage.setItem("workspace_slug", res.workspace.slug);
+      // store tokens using the same keys as lib/api.ts (setAuthState)
+      localStorage.setItem("pymes_token", res.access_token);
+      localStorage.setItem("pymes_refresh_token", res.refresh_token);
+      localStorage.setItem("pymes_slug", res.workspace.slug);
       await refreshUser();
       window.location.hash = "#/onboarding";
     } catch (err) {
