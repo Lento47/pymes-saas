@@ -358,6 +358,19 @@ export class WorkspacesService {
       _sum: { file_size: true },
     });
 
+    // Monthly revenue: sum of non-draft/non-cancelled invoices issued this month
+    const startOfMonth = new Date();
+    startOfMonth.setUTCDate(1);
+    startOfMonth.setUTCHours(0, 0, 0, 0);
+    const monthlyRevenue = await this.prisma.invoice.aggregate({
+      where: {
+        workspace_id: workspaceId,
+        status: { notIn: ['DRAFT', 'CANCELLED', 'REJECTED'] },
+        issue_date: { gte: startOfMonth },
+      },
+      _sum: { amount: true },
+    });
+
     return {
       contacts,
       conversations,
@@ -368,6 +381,7 @@ export class WorkspacesService {
       documentStorageBytes: totalDocumentSize._sum.file_size ?? 0,
       automations,
       members,
+      monthly_revenue: monthlyRevenue._sum.amount ?? 0,
     };
   }
 

@@ -16,7 +16,6 @@ export class PipelineController {
   constructor(private readonly pipelineService: PipelineService) {}
 
   @Get('stages')
-  @Roles('AGENT' as any)
   getStages(@CurrentUser('workspace_id') workspaceId: string) {
     return this.pipelineService.getStages(workspaceId);
   }
@@ -50,7 +49,6 @@ export class PipelineController {
   }
 
   @Get('deals')
-  @Roles('AGENT' as any)
   getDeals(@CurrentUser('workspace_id') workspaceId: string) {
     return this.pipelineService.getStages(workspaceId);
   }
