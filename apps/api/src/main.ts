@@ -3,7 +3,6 @@ import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import helmet from "helmet";
-import * as express from "express";
 import { AppModule } from "./app.module";
 import { ApiExceptionFilter } from "./common/telemetry/api-exception.filter";
 import { PrismaExceptionFilter } from "./common/prisma/prisma-exception.filter";
@@ -24,10 +23,6 @@ process.on("unhandledRejection", (reason) => {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
-
-  // ✅ SECURITY: Limit request body size to prevent memory exhaustion attacks
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
   // ✅ SECURITY: Add Helmet.js for HTTP security headers
   app.use(
