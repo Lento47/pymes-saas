@@ -46,14 +46,14 @@ export function ConversationHeader({
   className,
 }: ConversationHeaderProps) {
   return (
-    <div className={`flex items-center gap-2.5 border-b border-border px-3 sm:px-4 py-2.5 shrink-0 ${className ?? ""}`}>
+    <div className={`flex items-center gap-2.5 border-b border-border bg-background/95 px-3 py-2.5 backdrop-blur-sm sm:px-4 shrink-0 ${className ?? ""}`}>
       {onBack && (
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onBack} aria-label="Volver">
           <ArrowLeft className="w-4 h-4" />
         </Button>
       )}
 
-      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 ring-1 ring-border/50 overflow-hidden" aria-hidden="true">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border/50" aria-hidden="true">
         {contactAvatarUrl ? (
           <img src={contactAvatarUrl} alt="" className="w-full h-full object-cover" />
         ) : (
@@ -62,7 +62,7 @@ export function ConversationHeader({
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-medium text-foreground truncate leading-tight">
+        <div className="truncate text-[13px] font-semibold leading-tight text-foreground">
           <SensitiveText text={contactName} />
         </div>
         <div className="flex items-center gap-1 mt-px flex-wrap">
@@ -80,14 +80,15 @@ export function ConversationHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 shrink-0 border-l border-border/50 pl-1.5 ml-0.5">
+      <div className="flex shrink-0 items-center gap-1 border-l border-border/50 pl-1.5 ml-0.5">
         {members && onAssign && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Select onValueChange={onAssign}>
-                  <SelectTrigger className="h-9 w-9 p-0 border-0 bg-transparent hover:bg-accent rounded-md" aria-label="Asignar conversación">
-                    <UserPlus className="w-4 h-4 text-muted-foreground" />
+                  <SelectTrigger className="h-9 w-9 border-0 bg-transparent p-0 hover:bg-accent sm:w-auto sm:gap-1.5 sm:px-2.5" aria-label="Asignar conversación">
+                    <UserPlus className="h-4 w-4 text-muted-foreground" />
+                    <span className="hidden text-xs font-medium text-muted-foreground sm:inline">Asignar</span>
                   </SelectTrigger>
                   <SelectContent>
                     {members.map((m) => {
@@ -106,8 +107,9 @@ export function ConversationHeader({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-md" disabled={!canResolve} onClick={onResolve} aria-label="Marcar como resuelta">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <Button variant="ghost" size="sm" className="h-9 w-9 rounded-md p-0 text-emerald-500 hover:text-emerald-500 sm:w-auto sm:gap-1.5 sm:px-2.5" disabled={!canResolve} onClick={onResolve} aria-label="Marcar como resuelta">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span className="hidden text-xs font-medium sm:inline">Resolver</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom"><p className="text-xs">Resolver</p></TooltipContent>

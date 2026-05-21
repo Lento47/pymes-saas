@@ -37,6 +37,156 @@ function extractBodyText(raw: Record<string, any>): string {
   return "";
 }
 
+function parseJsonValue(value: unknown): any {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return value;
+}
+
+function getRawPayload(raw: Record<string, any>): Record<string, any> | null {
+  const payload = parseJsonValue(raw.raw_payload_json);
+  return payload && typeof payload === "object" ? payload : null;
+}
+
+function getWhatsAppMessage(rawPayload: Record<string, any> | null): Record<string, any> | null {
+  if (!rawPayload) return null;
+  if (rawPayload.messages?.[0]) return rawPayload.messages[0];
+
+  const entryMessage = rawPayload.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  if (entryMessage) return entryMessage;
+
+  return null;
+}
+
+function isGenericInteractiveText(text: string): boolean {
+  return /mensaje de tipo interactive/i.test(text);
+}
+
+type InteractiveAttachmentData = Pick<
+  MessageAttachment,
+  "type" | "interactiveType" | "title" | "body" | "description" | "footer" | "actionLabel" | "buttons" | "sections"
+>;
+
+function extractInteractiveAttachment(raw: Record<string, any>, bodyText: string): InteractiveAttachmentData | null {
+  const payload = parseJsonValue(raw.button_payload_json);
+  const rawPayload = getRawPayload(raw);
+  const whatsAppMessage = getWhatsAppMessage(rawPayload);
+  const whatsAppInteractive = whatsAppMessage?.interactive;
+  const dbInteractiveType = raw.interactive_type ? String(raw.interactive_type) : null;
+  const payloadType = payload?.type ? String(payload.type) : null;
+  const whatsAppType = whatsAppInteractive?.type ? String(whatsAppInteractive.type) : null;
+  const interactiveType = dbInteractiveType ?? payloadType ?? whatsAppType ?? (isGenericInteractiveText(bodyText) ? "interactive" : null);
+
+  if (!interactiveType && !payload && !whatsAppInteractive && !whatsAppMessage?.button) return null;
+
+  if (whatsAppMessage?.button) {
+    return {
+      type: "interactive",
+      interactiveType: "button_reply",
+      title: whatsAppMessage.button.text ?? bodyText ?? null,
+      body: "Respuesta seleccionada",
+    };
+  }
+
+  if (whatsAppInteractive?.button_reply) {
+    return {
+      type: "interactive",
+      interactiveType: "button_reply",
+      title: whatsAppInteractive.button_reply.title ?? bodyText ?? null,
+      body: "Respuesta seleccionada",
+    };
+  }
+
+  if (whatsAppInteractive?.list_reply) {
+    return {
+      type: "interactive",
+      interactiveType: "list_reply",
+      title: whatsAppInteractive.list_reply.title ?? bodyText ?? null,
+      description: whatsAppInteractive.list_reply.description ?? null,
+      body: "Opción seleccionada",
+    };
+  }
+
+  if (interactiveType === "button_reply" || interactiveType === "list_reply") {
+    return {
+      type: "interactive",
+      interactiveType,
+      title: bodyText && !isGenericInteractiveText(bodyText) ? bodyText : payload?.title ?? null,
+      body: interactiveType === "list_reply" ? "Opción seleccionada" : "Respuesta seleccionada",
+      description: payload?.description ?? null,
+    };
+  }
+
+  if (payloadType === "button" || interactiveType === "button") {
+    const buttons = Array.isArray(payload?.buttons)
+      ? payload.buttons
+          .map((button: Record<string, any>) => ({ title: String(button.title ?? button.text ?? "") }))
+          .filter((button: { title: string }) => button.title.length > 0)
+      : [];
+
+    return {
+      type: "interactive",
+      interactiveType: "button",
+      body: payload?.body ?? (bodyText && !isGenericInteractiveText(bodyText) ? bodyText : null),
+      footer: payload?.footer ?? null,
+      buttons,
+    };
+  }
+
+  if (payloadType === "list" || interactiveType === "list") {
+    const sections = Array.isArray(payload?.sections)
+      ? payload.sections
+          .map((section: Record<string, any>) => ({
+            title: section.title ?? null,
+            rows: Array.isArray(section.rows)
+              ? section.rows
+                  .map((row: Record<string, any>) => ({
+                    title: String(row.title ?? ""),
+                    description: row.description ?? null,
+                  }))
+                  .filter((row: { title: string }) => row.title.length > 0)
+              : [],
+          }))
+          .filter((section: { rows: Array<{ title: string }> }) => section.rows.length > 0)
+      : [];
+
+    return {
+      type: "interactive",
+      interactiveType: "list",
+      body: payload?.body ?? (bodyText && !isGenericInteractiveText(bodyText) ? bodyText : null),
+      footer: payload?.footer ?? null,
+      actionLabel: payload?.buttonText ?? payload?.button_text ?? "Ver opciones",
+      sections,
+    };
+  }
+
+  if (
+    payloadType === "location_request" ||
+    interactiveType === "location_request" ||
+    interactiveType === "location_request_message" ||
+    whatsAppType === "location_request_message"
+  ) {
+    return {
+      type: "interactive",
+      interactiveType: "location_request",
+      body: payload?.body ?? whatsAppInteractive?.body?.text ?? (bodyText && !isGenericInteractiveText(bodyText) ? bodyText : "Comparte tu ubicación"),
+      actionLabel: "Enviar ubicación",
+    };
+  }
+
+  return {
+    type: "interactive",
+    interactiveType: interactiveType ?? "interactive",
+    body: bodyText && !isGenericInteractiveText(bodyText) ? bodyText : "Mensaje interactivo de WhatsApp",
+  };
+}
+
 /**
  * Priority: DB message_type → msg.media_type → inferred from body
  */
@@ -48,16 +198,18 @@ function detectMediaType(raw: Record<string, any>, bodyText: string): MediaType 
   if (dbType) {
     const t = String(dbType).toLowerCase();
     if (t === "image" || t === "video" || t === "audio" || t === "document" ||
-        t === "sticker" || t === "location" || t === "contact") {
+        t === "sticker" || t === "location" || t === "contact" || t === "interactive") {
       return t as MediaType;
     }
   }
 
   if (mediaType === "image" || mediaType === "video" || mediaType === "audio" ||
       mediaType === "document" || mediaType === "sticker" || mediaType === "location" ||
-      mediaType === "contact") {
+      mediaType === "contact" || mediaType === "interactive") {
     return mediaType;
   }
+
+  if (extractInteractiveAttachment(raw, bodyText)) return "interactive";
 
   // Detect from bodyText patterns
   if (bodyText.startsWith("\ud83d\udccd ")) return "location";
@@ -126,13 +278,15 @@ function parseAttachments(raw: Record<string, any>): { type: string; url: string
 }
 
 function buildAttachments(raw: Record<string, any>): MessageAttachment[] {
-  let json = raw.attachments_json;
+  const bodyText = extractBodyText(raw);
+  const interactive = extractInteractiveAttachment(raw, bodyText);
+  let json = raw.attachments_json ?? raw.attachments;
   if (typeof json === 'string') {
-    try { json = JSON.parse(json); } catch { return []; }
+    try { json = JSON.parse(json); } catch { return interactive ? [interactive] : []; }
   }
-  if (!Array.isArray(json) || json.length === 0) return [];
+  if (!Array.isArray(json) || json.length === 0) return interactive ? [interactive] : [];
 
-  return json.map((a: Record<string, any>) => {
+  const attachments = json.map((a: Record<string, any>) => {
     if (!a) return null;
     const attachment: MessageAttachment = {
       type: a.type ?? "document",
@@ -162,6 +316,8 @@ function buildAttachments(raw: Record<string, any>): MessageAttachment[] {
 
     return attachment;
   }).filter(Boolean) as MessageAttachment[];
+
+  return interactive ? [interactive, ...attachments] : attachments;
 }
 
 export function normalizeMessage(raw: Record<string, any>): UiMessage {

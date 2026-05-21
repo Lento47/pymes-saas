@@ -62,7 +62,7 @@ export function getInitialsAvatarDataUri(name: string, size = 40): string {
     .toUpperCase()
     .slice(0, 2) || "?";
 
-  const hue = [...name].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 360;
+  const hue = name.split("").reduce((sum, c) => sum + c.charCodeAt(0), 0) % 360;
   const bg = `hsl(${hue}, 55%, 45%)`;
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
