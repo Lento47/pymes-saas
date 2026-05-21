@@ -111,9 +111,10 @@ export class HealthController {
       this.config.get<string>("UPSTASH_REDIS_REST_URL")
     );
 
+    // Redis is optional — degrade gracefully instead of failing readiness.
     checks.redis = {
-      status: hasRedis ? "ok" : "error",
-      detail: hasRedis ? undefined : "Missing REDIS_URL/REDIS_HOST. Queueing, throttling, and workers may fail.",
+      status: "ok",
+      detail: hasRedis ? "configured" : "Not configured. Queueing, throttling, and workers may be unavailable.",
     };
   }
 
