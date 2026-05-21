@@ -328,6 +328,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const [nearBottom, setNearBottom] = useState(true);
   const [initialLoaded, setInitialLoaded] = useState(false);
   const prevMsgCountRef = useRef(0);
+  const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [animatingMsgId, setAnimatingMsgId] = useState<string | null>(null);
 
   const handleScroll = useCallback(() => {
@@ -349,6 +350,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     if (!initialLoaded) {
       const timer = setTimeout(() => {
         scrollToBottom(false);
+        prevMsgCountRef.current = msgList.length;
         setInitialLoaded(true);
       }, 300);
       return () => clearTimeout(timer);
@@ -359,10 +361,15 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
     if (newMessages > 0) {
       const lastNew = msgList[msgList.length - 1];
-      // Trigger slide-up animation on the new message
       if (lastNew?.id) {
+        if (animationTimerRef.current) {
+          clearTimeout(animationTimerRef.current);
+        }
         setAnimatingMsgId(lastNew.id);
-        setTimeout(() => setAnimatingMsgId(null), 500);
+        animationTimerRef.current = setTimeout(() => {
+          setAnimatingMsgId(null);
+          animationTimerRef.current = null;
+        }, 520);
       }
       // Always scroll for outbound (user sent it), or if already near bottom
       if (lastNew?.direction === "OUTBOUND" || nearBottom) {
@@ -370,6 +377,14 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       }
     }
   }, [msgsLoading, msgList.length, initialLoaded, nearBottom, scrollToBottom]);
+
+  useEffect(() => {
+    return () => {
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+      }
+    };
+  }, []);
 
   const uiMessages = useMemo(() => msgList.map(normalizeMessage), [msgList]);
 

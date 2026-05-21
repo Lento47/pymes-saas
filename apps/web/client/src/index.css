@@ -292,16 +292,70 @@ html.light .dash-card {
 }
 
 /* ── WhatsApp-style message entry animation ── */
-@keyframes slide-up-in {
+@keyframes message-entry-inbound {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.97);
+    transform: translate3d(-8px, 10px, 0) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
+
+@keyframes message-entry-outbound {
+  from {
+    opacity: 0;
+    transform: translate3d(8px, 10px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes message-entry-system {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
 .animate-slide-up-in {
-  animation: slide-up-in 0.35s cubic-bezier(0.21, 1.02, 0.58, 1) forwards;
+  animation: message-entry-system 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.message-entry-inbound,
+.message-entry-outbound,
+.message-entry-system {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.message-entry-inbound {
+  animation: message-entry-inbound 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: left bottom;
+}
+
+.message-entry-outbound {
+  animation: message-entry-outbound 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: right bottom;
+}
+
+.message-entry-system {
+  animation: message-entry-system 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: center bottom;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up-in,
+  .message-entry-inbound,
+  .message-entry-outbound,
+  .message-entry-system {
+    animation: none;
+  }
 }
