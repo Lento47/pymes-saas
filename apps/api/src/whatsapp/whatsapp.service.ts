@@ -856,6 +856,134 @@ export class WhatsAppService {
     return { message_id: data.messages?.[0]?.id ?? 'unknown' };
   }
 
+  // ── Read receipt — marcar mensaje como leído en Meta ──────────────────────
+
+  /**
+   * Send a read receipt to Meta. This also marks all prior messages in the
+   * conversation as read on the WhatsApp client side.
+   *
+   * @param channel WhatsApp channel with config_json containing phone_number_id
+   * @param messageId WhatsApp message ID (wamid.xxx) from an inbound webhook
+   */
+  async markAsRead(channel: any, messageId: string): Promise<void> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        status: 'read',
+        message_id: messageId,
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      // Error code 131009 = invalid message_id — not critical, just log
+      this.logger.warn(
+        `Meta markAsRead failed (non-fatal): ${data?.error?.message ?? res.status}`,
+      );
+      return;
+    }
+
+    this.logger.log(`Marked WhatsApp message as read: ${messageId}`);
+  }
+
+  // ── Procesar status webhooks (delivery receipts) ───────────────────────────
+
+  /**
+   * Process WhatsApp status webhooks: sent, delivered, read, failed.
+   * Updates message delivery_status and delivery_error in the database.
+   */
+  async processStatuses(
+    workspaceId: string,
+    statuses: Array<{
+      id: string;         // wamid.xxx of the original outbound message
+      status: string;     // sent | delivered | read | failed
+      timestamp: string;
+      recipient_id: string;
+      conversation?: { id: string };
+      errors?: Array<{ code: number; title: string }>;
+    }>,
+  ): Promise<void> {
+    for (const status of statuses) {
+      const messageId = status.id;
+      const waStatus = status.status.toLowerCase();
+
+      let deliveryStatus: string;
+      let deliveryError: string | null = null;
+
+      switch (waStatus) {
+        case 'sent':
+          deliveryStatus = 'SENT';
+          break;
+        case 'delivered':
+          deliveryStatus = 'DELIVERED';
+          break;
+        case 'read':
+          deliveryStatus = 'READ';
+          break;
+        case 'failed':
+          deliveryStatus = 'FAILED';
+          deliveryError = status.errors?.[0]?.title ?? 'Unknown error';
+          break;
+        default:
+          this.logger.debug(`Unknown WhatsApp status: ${waStatus} for ${messageId}`);
+          continue;
+      }
+
+      try {
+        // Find the message by its external_message_id (provider_message_id)
+        const message = await this.prisma.message.findFirst({
+          where: {
+            workspace_id: workspaceId,
+            provider_message_id: messageId,
+          },
+          select: { id: true, delivery_status: true },
+        });
+
+        if (!message) {
+          this.logger.debug(
+            `Status webhook for unknown message: ${messageId} (status: ${waStatus})`,
+          );
+          continue;
+        }
+
+        // Update delivery status (only forward progression: SENT → DELIVERED → READ)
+        const currentStatus = (message.delivery_status ?? '').toUpperCase();
+        const statusOrder = ['', 'PENDING', 'SENT', 'DELIVERED', 'READ'];
+        const newIdx = statusOrder.indexOf(deliveryStatus);
+        const curIdx = statusOrder.indexOf(currentStatus);
+
+        if (newIdx <= curIdx) {
+          // Don't downgrade status
+          continue;
+        }
+
+        await this.prisma.message.update({
+          where: { id: message.id },
+          data: {
+            delivery_status: deliveryStatus,
+            ...(deliveryError ? { delivery_error: deliveryError } : {}),
+          },
+        });
+
+        this.logger.debug(
+          `Message ${messageId}: ${currentStatus || 'PENDING'} → ${deliveryStatus}`,
+        );
+      } catch (err: any) {
+        this.logger.error(`Error updating delivery status for ${messageId}: ${err?.message}`);
+      }
+    }
+  }
+
   // ── Procesar webhook entrante ──────────────────────────────────────────────
 
   /**
@@ -950,10 +1078,17 @@ export class WhatsAppService {
       throw new Error(`No workspace configured for phone_number_id: ${phoneNumberId}`);
     }
 
-    if (!value?.messages?.length) {
-      // Status update or delivery receipt — nothing to persist as message
-      return;
-    }
+      // Process status updates (delivery receipts: sent, delivered, read, failed)
+      if (value?.statuses?.length) {
+        await this.processStatuses(workspaceId, value.statuses);
+        return;
+      }
+
+      // Process incoming messages
+      if (!value?.messages?.length) {
+        this.logger.debug('Webhook without messages or statuses — ignored');
+        return;
+      }
 
     for (const msg of value.messages) {
       const from = msg.from;
