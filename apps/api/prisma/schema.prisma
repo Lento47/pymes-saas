@@ -580,7 +580,6 @@ model Conversation {
   requires_template_for_outbound Boolean   @default(false)
 
   // ── WhatsApp-specific ──
-  service_window_expires_at DateTime?
   unread_count              Int       @default(0)
   external_contact_id       String?   // wa_id
   external_conversation_key String?   // tenant + phoneNumberId + wa_id dedup
@@ -624,11 +623,9 @@ model Message {
   body_html              String?          @db.Text
   raw_payload_json      Json?             @db.JsonB
   ai_classification_json Json?            @db.JsonB
-  attachments_json       Json?             @db.JsonB
   sent_at                DateTime?
 
   // WhatsApp / Telegram cost tracking
-  message_type  String? // text | image | file | audio | template | system
   cost_category String? // service | utility | marketing | authentication | free | unknown
   cost_estimate Float?  @default(0)
   cost_currency String? @default("CRC")
@@ -638,10 +635,7 @@ model Message {
   telegram_user_id    String?
   telegram_message_id String?
 
-  provider              String?
   provider_message_id   String?
-  delivery_status       String?
-  delivery_error        String?            @db.Text
 
   // ── Media & Rich Content ──
   provider              String?           // whatsapp, email, telegram, form, manual
