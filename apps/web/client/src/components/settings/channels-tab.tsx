@@ -171,12 +171,16 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: Record<string, any
   const { toast } = useToast();
   const qc = useQueryClient();
   const [accessToken, setAccessToken] = useState("");
+  const [appSecret, setAppSecret] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState(channel?.config?.phone_number_id ?? "");
   const [wabaId, setWabaId] = useState(channel?.config?.waba_id ?? "");
 
   const save = useMutation({
     mutationFn: () => api.configureWhatsApp(channel.id, {
-      access_token: accessToken, phone_number_id: phoneNumberId, waba_id: wabaId,
+      access_token: accessToken || undefined,
+      app_secret: appSecret || undefined,
+      phone_number_id: phoneNumberId,
+      waba_id: wabaId,
     }),
     onSuccess: () => {
       toast({ title: "Canal WhatsApp guardado y activado" });
@@ -224,6 +228,14 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: Record<string, any
         <Label>WhatsApp Business Account ID</Label>
         <Input value={wabaId} onChange={e => setWabaId(e.target.value)}
           placeholder="987654321098765" className="mt-1 bg-[hsl(var(--elevated))] border-border font-mono text-xs" />
+      </div>
+
+      <div>
+        <Label>App Secret {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener el actual)</span>}</Label>
+        <p className="text-[10px] text-muted-foreground/60 mb-1">Meta Developers → Tu App → Settings → Basic → App Secret</p>
+        <div className="mt-1">
+          <SecretInput value={appSecret} onChange={setAppSecret} placeholder={isEdit ? "••••••••••••••••••••" : "abcdef123456..."} />
+        </div>
       </div>
 
       <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs text-muted-foreground space-y-1">
