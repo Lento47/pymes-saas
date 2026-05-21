@@ -232,7 +232,7 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: Record<string, any
 
       <div>
         <Label>App Secret {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener el actual)</span>}</Label>
-        <p className="text-[10px] text-muted-foreground/60 mb-1">Meta Developers → Tu App → Settings → Basic → App Secret</p>
+        <p className="text-[10px] text-muted-foreground/60 mb-1">Meta Developers → Tu App → Settings → Basic → App Secret (opcional, para verificar webhooks)</p>
         <div className="mt-1">
           <SecretInput value={appSecret} onChange={setAppSecret} placeholder={isEdit ? "••••••••••••••••••••" : "abcdef123456..."} />
         </div>
