@@ -18,6 +18,14 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class SummariesController {
   constructor(private readonly summariesService: SummariesService) {}
 
+  @Get('daily/today')
+  findToday(@CurrentUser() user: any) {
+    return this.summariesService.findByDate(
+      user.workspace_id,
+      new Date().toISOString().split('T')[0],
+    );
+  }
+
   @Get('daily')
   @Roles('AGENT', 'ADMIN', 'OWNER')
   findAll(
@@ -37,7 +45,6 @@ export class SummariesController {
   }
 
   @Post('generate')
-  @Roles('ADMIN', 'OWNER')
   generate(@CurrentUser() user: any) {
     return this.summariesService.generate(user.workspace_id);
   }

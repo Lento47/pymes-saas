@@ -3,7 +3,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { CryptoService } from '../common/crypto/crypto.service';
 import { parseJsonValue } from '../common/prisma/json';
 
-export type AiProvider = 'openai' | 'anthropic' | 'gemini' | 'moonshot';
+export type AiProvider = 'openai' | 'anthropic' | 'gemini' | 'moonshot' | 'cloudflare';
 
 export interface AiProviderConfig {
   provider: AiProvider;
@@ -30,6 +30,7 @@ const DEFAULT_MODELS: Record<AiProvider, string> = {
   anthropic: 'claude-haiku-4-5-20251001',
   gemini:    'gemini-2.0-flash',
   moonshot:  'moonshot-v1-8k',
+  cloudflare: '@cf/meta/llama-4-scout-17b-16k-instruct',
 };
 
 @Injectable()
@@ -80,6 +81,11 @@ export class AiService {
       return { provider: 'openai', api_key: process.env.OPENAI_API_KEY, model: 'gpt-4o-mini' };
     }
 
+    // Fallback: env var Cloudflare Workers AI
+    if (process.env.CLOUDFLARE_AI_TOKEN) {
+      return { provider: 'cloudflare', api_key: process.env.CLOUDFLARE_AI_TOKEN, model: DEFAULT_MODELS.cloudflare };
+    }
+
     return null;
   }
 
@@ -95,7 +101,10 @@ export class AiService {
     switch (config.provider) {
       case 'openai':
       case 'moonshot':
-        return this.chatOpenAICompat(config, system, user, maxTokens, temperature);
+        return this.chatOpenAICompat(config, system, user, maxTokens, temperature, undefined);
+      case 'cloudflare':
+        return this.chatOpenAICompat(config, system, user, maxTokens, temperature,
+          process.env.CLOUDFLARE_AI_CHAT_URL || 'https://api.cloudflare.com/client/v4');
       case 'anthropic':
         return this.chatAnthropic(config, system, user, maxTokens, temperature);
       case 'gemini':
@@ -103,19 +112,21 @@ export class AiService {
     }
   }
 
-  // OpenAI + Moonshot (same wire format)
+  // OpenAI + Moonshot + Cloudflare (same wire format)
   private async chatOpenAICompat(
     config: AiProviderConfig,
     system: string,
     user: string,
     maxTokens: number,
     temperature: number,
+    baseUrlOverride?: string,
   ) {
-    const base = config.provider === 'moonshot'
-      ? 'https://api.moonshot.cn/v1'
-      : 'https://api.openai.com/v1';
+    const base = baseUrlOverride
+      || (config.provider === 'moonshot' ? 'https://api.moonshot.cn/v1' : 'https://api.openai.com/v1');
 
-    const res = await fetch(`${base}/chat/completions`, {
+    const url = baseUrlOverride ? base : `${base}/chat/completions`;
+
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.api_key}` },
       body: JSON.stringify({
