@@ -23,15 +23,15 @@ export function PageTemplate({
   actions,
 }: PageTemplateProps) {
   return (
-    <div className="min-h-full bg-gray-50">
+    <div className="min-h-full bg-background">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div className="bg-card border-b border-border sticky top-0 z-50">
         <div className="px-3 md:px-6 py-4 max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+              <h1 className="text-2xl font-bold text-foreground">{title}</h1>
               {description && (
-                <p className="text-sm text-gray-600 mt-1">{description}</p>
+                <p className="text-sm text-muted-foreground mt-1">{description}</p>
               )}
             </div>
 
@@ -95,15 +95,15 @@ export function SectionCard({
   className = "",
 }: SectionCardProps) {
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden ${className}`}>
+    <div className={`bg-card rounded-xl border border-border overflow-hidden ${className}`}>
       {title && (
-        <div className="flex items-center justify-between px-3 md:px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-3 md:px-6 py-4 border-b border-border">
           <div>
-            <h3 className="font-semibold text-gray-900">{title}</h3>
-            {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
+            <h3 className="font-semibold text-foreground">{title}</h3>
+            {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
           </div>
           {linkTo && (
-            <Link href={linkTo} className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 flex-shrink-0">
+            <Link href={linkTo} className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 flex-shrink-0">
               {linkLabel} <ArrowRight className="w-4 h-4" />
             </Link>
           )}
@@ -113,12 +113,12 @@ export function SectionCard({
       {loading ? (
         <div className="px-3 md:px-6 py-4 space-y-3">
           {[0, 1, 2].map(i => (
-            <div key={i} className="h-4 bg-gray-200 rounded animate-pulse" />
+            <div key={i} className="h-4 bg-muted rounded animate-pulse" />
           ))}
         </div>
       ) : empty ? (
         <div className="px-3 md:px-6 py-12 text-center">
-          <p className="text-sm text-gray-500">Sin datos aún</p>
+          <p className="text-sm text-muted-foreground">Sin datos aún</p>
         </div>
       ) : (
         <div>{children}</div>
@@ -149,38 +149,38 @@ export function MetricCard({
   color = "blue",
 }: MetricCardProps) {
   const colorMap = {
-    blue: "text-blue-500",
+    blue: "text-primary",
     orange: "text-orange-500",
-    red: "text-red-500",
+    red: "text-destructive",
     purple: "text-purple-500",
-    green: "text-green-500",
+    green: "text-emerald-500",
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+    <div className="bg-card rounded-xl border border-border p-6 hover:shadow-lg transition-shadow">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <p className="text-sm font-medium text-gray-600">{label}</p>
+          <p className="text-sm font-medium text-muted-foreground">{label}</p>
         </div>
         {Icon && <Icon className={`w-5 h-5 ${colorMap[color]}`} />}
       </div>
 
       {loading ? (
-        <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
+        <div className="h-8 w-24 bg-muted rounded animate-pulse" />
       ) : (
         <>
           <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold text-gray-900">
+            <p className="text-3xl font-bold text-foreground">
               {currency}{typeof value === "number" ? value.toLocaleString("es-ES") : value}
             </p>
           </div>
           {trend !== undefined && (
             <p
               className={`text-sm mt-2 flex items-center gap-1 ${
-                trend >= 0 ? "text-green-600" : "text-red-600"
+                trend >= 0 ? "text-emerald-500" : "text-destructive"
               }`}
             >
-              <span className={trend >= 0 ? "text-green-500" : "text-red-500"}>
+              <span className={trend >= 0 ? "text-emerald-500" : "text-destructive"}>
                 {trend >= 0 ? "↑" : "↓"}
               </span>
               {Math.abs(trend)}% {trendLabel || "vs. mes anterior"}
@@ -203,7 +203,7 @@ export function TableRow({ children, onClick, href, className = "" }: TableRowPr
   const content = (
     <div
       onClick={onClick}
-      className={`flex items-center gap-3 px-3 md:px-6 py-3 hover:bg-gray-50 transition cursor-pointer ${className}`}
+      className={`flex items-center gap-3 px-3 md:px-6 py-3 hover:bg-muted transition cursor-pointer ${className}`}
     >
       {children}
     </div>
