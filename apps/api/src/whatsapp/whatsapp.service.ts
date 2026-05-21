@@ -1,4 +1,5 @@
-import { BadGatewayException, Inject, Injectable, Logger, forwardRef } from "@nestjs/common";
+import { BadGatewayException, Inject, Injectable, Logger, NotFoundException, forwardRef } from "@nestjs/common";
+import * as crypto from "node:crypto";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CryptoService } from "../common/crypto/crypto.service";
 import { StorageService } from "../common/storage/storage.service";
@@ -10,6 +11,16 @@ import { EventsGateway } from "../gateways/events.gateway";
 import * as path from "path";
 
 const META_API_BASE = "https://graph.facebook.com/v19.0";
+
+interface SendMediaParams {
+  channel: any;
+  to: string;
+  type: 'image' | 'video' | 'audio' | 'document';
+  mediaUrl: string;
+  caption?: string;
+  filename?: string;
+  mimeType?: string;
+}
 
 @Injectable()
 export class WhatsAppService {
@@ -26,7 +37,7 @@ export class WhatsAppService {
     private readonly events: EventsGateway,
   ) {}
 
-  // ── Enviar mensaje outbound ────────────────────────────────────────────────
+  // ── Enviar mensaje text outbound ───────────────────────────────────────────
 
   async sendMessage(
     channel: Record<string, any>,
@@ -300,7 +311,551 @@ export class WhatsAppService {
     return { persisted: true, duplicate: result.duplicate };
   }
 
-  // ── Procesamiento asíncrono desde webhook_events ───────────────────────────
+  // ── Send reaction ──────────────────────────────────────────────────────────
+
+  async sendReaction(
+    channel: any,
+    to: string,
+    targetMessageId: string,
+    emoji: string,
+  ): Promise<{ message_id: string }> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'reaction',
+        reaction: {
+          message_id: targetMessageId,
+          emoji,
+        },
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta reaction API error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando reacción por WhatsApp',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  // ── Send contextual reply ──────────────────────────────────────────────────
+
+  async sendReply(
+    channel: any,
+    to: string,
+    bodyText: string,
+    replyToMessageId: string,
+  ): Promise<{ message_id: string }> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'text',
+        text: { body: bodyText },
+        context: { message_id: replyToMessageId },
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta reply API error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando respuesta contextual por WhatsApp',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  // ── Mark message as read ───────────────────────────────────────────────────
+
+  async markAsRead(
+    channel: any,
+    messageId: string,
+  ): Promise<void> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        status: 'read',
+        message_id: messageId,
+      }),
+    });
+
+    if (!res.ok) {
+      const data: any = await res.json().catch(() => null);
+      this.logger.warn(`Mark as read failed for ${messageId}:`, data?.error?.message);
+      // Don't throw — read receipts are best-effort
+    }
+  }
+
+  // ── Typing indicator ───────────────────────────────────────────────────────
+
+  async sendTypingIndicator(
+    channel: any,
+    to: string,
+    action: 'typing_on' | 'typing_off',
+  ): Promise<void> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: action,
+      }),
+    });
+
+    if (!res.ok) {
+      // Typing indicators are best-effort — don't throw
+      this.logger.debug(`Typing indicator ${action} failed silently`);
+    }
+  }
+
+  // ── Interactive: Reply buttons ─────────────────────────────────────────────
+
+  async sendReplyButtons(
+    channel: any,
+    to: string,
+    body: string,
+    buttons: Array<{ id: string; title: string }>,
+    footer?: string,
+  ): Promise<{ message_id: string }> {
+    if (buttons.length < 1 || buttons.length > 3) {
+      throw new BadGatewayException('Reply buttons: 1–3 buttons required');
+    }
+
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: { text: body },
+          ...(footer ? { footer: { text: footer } } : {}),
+          action: {
+            buttons: buttons.map(b => ({
+              type: 'reply',
+              reply: { id: b.id, title: b.title },
+            })),
+          },
+        },
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta interactive buttons error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando botones por WhatsApp',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  // ── Interactive: List message ──────────────────────────────────────────────
+
+  async sendListMessage(
+    channel: any,
+    to: string,
+    body: string,
+    buttonText: string,
+    sections: Array<{
+      title?: string;
+      rows: Array<{ id: string; title: string; description?: string }>;
+    }>,
+    footer?: string,
+  ): Promise<{ message_id: string }> {
+    const rowCount = sections.reduce((c, s) => c + s.rows.length, 0);
+    if (sections.length > 10 || rowCount > 10) {
+      throw new BadGatewayException('List message: max 10 sections, max 10 rows total');
+    }
+
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'list',
+          body: { text: body },
+          ...(footer ? { footer: { text: footer } } : {}),
+          action: {
+            button: buttonText,
+            sections,
+          },
+        },
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta list message error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando lista por WhatsApp',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  // ── Interactive: Location request ──────────────────────────────────────────
+
+  async sendLocationRequest(
+    channel: any,
+    to: string,
+    body: string,
+  ): Promise<{ message_id: string }> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'location_request_message',
+          body: { text: body },
+          action: { name: 'send_location' },
+        },
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta location request error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando solicitud de ubicación',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  // ── Send template message ──────────────────────────────────────────────────
+
+  async sendTemplate(
+    channel: any,
+    to: string,
+    templateName: string,
+    languageCode: string,
+    components?: Array<Record<string, any>>,
+  ): Promise<{ message_id: string }> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: languageCode },
+          ...(components?.length ? { components } : {}),
+        },
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta template error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando template por WhatsApp',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  // ── Commerce: Catalog message ──────────────────────────────────────────────
+
+  async sendCatalogMessage(
+    channel: any,
+    to: string,
+    body: string,
+    footer?: string,
+    catalogId?: string,
+  ): Promise<{ message_id: string }> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'catalog_message',
+          body: { text: body },
+          ...(footer ? { footer: { text: footer } } : {}),
+          action: {
+            name: 'catalog_message',
+            ...(catalogId ? { parameters: { catalog_id: catalogId } } : {}),
+          },
+        },
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta catalog message error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando mensaje de catálogo',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  // ── Commerce: Single product message ───────────────────────────────────────
+
+  async sendProductMessage(
+    channel: any,
+    to: string,
+    body: string,
+    catalogId: string,
+    productRetailerId: string,
+    footer?: string,
+  ): Promise<{ message_id: string }> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'product',
+          body: { text: body },
+          ...(footer ? { footer: { text: footer } } : {}),
+          action: {
+            catalog_id: catalogId,
+            product_retailer_id: productRetailerId,
+          },
+        },
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta product message error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando producto',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  // ── Commerce: Multi-product message ────────────────────────────────────────
+
+  async sendProductListMessage(
+    channel: any,
+    to: string,
+    header: string,
+    body: string,
+    catalogId: string,
+    sections: Array<{
+      title?: string;
+      productRetailerIds: string[];
+    }>,
+    footer?: string,
+  ): Promise<{ message_id: string }> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'product_list',
+          header: { type: 'text', text: header },
+          body: { text: body },
+          ...(footer ? { footer: { text: footer } } : {}),
+          action: {
+            catalog_id: catalogId,
+            sections: sections.map(s => ({
+              title: s.title,
+              product_items: s.productRetailerIds.map(id => ({
+                product_retailer_id: id,
+              })),
+            })),
+          },
+        },
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta product list error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando lista de productos',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  // ── Commerce: Flow message ─────────────────────────────────────────────────
+
+  async sendFlowMessage(
+    channel: any,
+    to: string,
+    flowId: string,
+    flowToken: string,
+    body: string,
+    header?: string,
+    footer?: string,
+    screenId?: string,
+    dataPayload?: Record<string, any>,
+  ): Promise<{ message_id: string }> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'flow',
+          ...(header ? { header: { type: 'text', text: header } } : {}),
+          body: { text: body },
+          ...(footer ? { footer: { text: footer } } : {}),
+          action: {
+            name: 'flow',
+            parameters: {
+              flow_message_version: '3',
+              flow_token: flowToken,
+              flow_id: flowId,
+              flow_cta: body,
+              ...(screenId ? { flow_action: 'navigate', flow_action_payload: { screen: screenId, data: dataPayload ?? {} } } : {}),
+            },
+          },
+        },
+      }),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta flow message error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando flow',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
+  // ── Procesar webhook entrante ──────────────────────────────────────────────
 
   /**
    * Resolve workspace from WhatsApp phone_number_id instead of trusting client headers
@@ -636,7 +1191,240 @@ export class WhatsAppService {
     return ".bin";
   }
 
+  /**
+   * Process a single incoming WhatsApp message of any type
+   */
+  private async processIncomingMessage(
+    workspaceId: string,
+    msg: any,
+    value: any,
+  ): Promise<void> {
+    const from = msg.from;
+    const senderName = value.contacts?.[0]?.profile?.name ?? from;
+
+    // Determine message type and extract content
+    let bodyText = '';
+    let messageType = 'TEXT';
+    let mediaUrl: string | null = null;
+    let mediaMimeType: string | null = null;
+    let mediaFilename: string | null = null;
+    let mediaCaption: string | null = null;
+    let hasMedia = false;
+    let replyToMessageId: string | null = null;
+    let interactiveType: string | null = null;
+    let buttonPayload: any = null;
+
+    // ── Text ──
+    if (msg.text) {
+      bodyText = msg.text.body ?? '';
+      messageType = 'TEXT';
+    }
+
+    // ── Image ──
+    if (msg.image) {
+      messageType = 'IMAGE';
+      hasMedia = true;
+      mediaMimeType = msg.image.mime_type ?? null;
+      mediaCaption = msg.image.caption ?? null;
+      // Store the Meta media ID — real download URL via /media endpoint later
+      mediaUrl = msg.image.id ?? null;
+    }
+
+    // ── Video ──
+    if (msg.video) {
+      messageType = 'VIDEO';
+      hasMedia = true;
+      mediaMimeType = msg.video.mime_type ?? null;
+      mediaCaption = msg.video.caption ?? null;
+      mediaUrl = msg.video.id ?? null;
+    }
+
+    // ── Audio ──
+    if (msg.audio) {
+      messageType = 'AUDIO';
+      hasMedia = true;
+      mediaMimeType = msg.audio.mime_type ?? null;
+      mediaUrl = msg.audio.id ?? null;
+    }
+
+    // ── Document ──
+    if (msg.document) {
+      messageType = 'DOCUMENT';
+      hasMedia = true;
+      mediaMimeType = msg.document.mime_type ?? null;
+      mediaFilename = msg.document.filename ?? null;
+      mediaCaption = msg.document.caption ?? null;
+      mediaUrl = msg.document.id ?? null;
+    }
+
+    // ── Sticker ──
+    if (msg.sticker) {
+      messageType = 'STICKER';
+      hasMedia = true;
+      mediaMimeType = msg.sticker.mime_type ?? 'image/webp';
+      mediaUrl = msg.sticker.id ?? null;
+    }
+
+    // ── Location ──
+    if (msg.location) {
+      messageType = 'LOCATION';
+      bodyText = JSON.stringify({
+        lat: msg.location.latitude,
+        lng: msg.location.longitude,
+        name: msg.location.name ?? '',
+        address: msg.location.address ?? '',
+      });
+    }
+
+    // ── Contact ──
+    if (msg.contacts?.length) {
+      messageType = 'CONTACT';
+      const contact = msg.contacts[0];
+      bodyText = JSON.stringify({
+        name: contact.name?.formatted_name ?? '',
+        phones: contact.phones?.map((p: any) => p.phone) ?? [],
+      });
+    }
+
+    // ── Reaction ──
+    if (msg.reaction) {
+      messageType = 'REACTION';
+      bodyText = msg.reaction.emoji ?? '';
+      replyToMessageId = msg.reaction.message_id ?? null;
+    }
+
+    // ── Reply context (attached to any message type) ──
+    if (msg.context?.id) {
+      replyToMessageId = replyToMessageId ?? msg.context.id;
+    }
+
+    // ── Button reply ──
+    if (msg.button) {
+      interactiveType = 'button_reply';
+      bodyText = msg.button.text ?? '';
+      buttonPayload = { payload: msg.button.payload, id: msg.button.id };
+    }
+
+    // ── List reply ──
+    if (msg.interactive?.list_reply) {
+      interactiveType = 'list_reply';
+      bodyText = msg.interactive.list_reply.title ?? '';
+      buttonPayload = { id: msg.interactive.list_reply.id, description: msg.interactive.list_reply.description };
+    }
+
+    // ── Order ──
+    if (msg.order) {
+      messageType = 'ORDER';
+      bodyText = JSON.stringify({
+        catalog_id: msg.order.catalog_id,
+        items: msg.order.product_items,
+        text: msg.order.text ?? '',
+      });
+    }
+
+    const normalizedPayload = {
+      from,
+      name: senderName,
+      text: bodyText,
+      message_type: messageType,
+      media_url: mediaUrl,
+      media_mime_type: mediaMimeType,
+      media_filename: mediaFilename,
+      media_caption: mediaCaption,
+      has_media: hasMedia,
+      reply_to_message_id: replyToMessageId,
+      interactive_type: interactiveType,
+      button_payload: buttonPayload,
+      external_id: msg.id, // wamid.xxx
+      raw: payload,
+    };
+
+    await this.messages.receiveInbound('whatsapp', workspaceId, normalizedPayload);
+  }
+
+  /**
+   * Process delivery status webhook updates from Meta
+   */
+  private async processStatuses(workspaceId: string, statuses: any[]): Promise<void> {
+    for (const status of statuses) {
+      const wamid = status.id; // the external message ID
+      const deliveryStatus = this.mapMetaStatus(status.status);
+
+      if (!wamid) continue;
+
+      try {
+        const updated = await this.prisma.message.updateMany({
+          where: {
+            workspace_id: workspaceId,
+            external_message_id: wamid,
+          },
+          data: {
+            delivery_status: deliveryStatus,
+            ...(status.errors?.length
+              ? {
+                  delivery_error: status.errors
+                    .map((e: any) => `${e.code}: ${e.title ?? e.message}`)
+                    .join('; '),
+                  delivery_status: 'FAILED',
+                }
+              : {}),
+          },
+        });
+
+        if (updated.count > 0) {
+          this.logger.debug(
+            `Updated message ${wamid} status → ${deliveryStatus} (${updated.count} rows)`,
+          );
+        }
+      } catch (err: any) {
+        this.logger.error(`Error updating status for ${wamid}: ${err?.message}`);
+      }
+    }
+  }
+
+  /**
+   * Map Meta status string to our enum
+   */
+  private mapMetaStatus(metaStatus: string): string {
+    switch (metaStatus) {
+      case 'sent':      return 'SENT';
+      case 'delivered': return 'DELIVERED';
+      case 'read':      return 'READ';
+      case 'failed':    return 'FAILED';
+      default:          return 'SENT';
+    }
+  }
+
   // ── Verificar webhook de Meta ──────────────────────────────────────────────
+
+  /**
+   * Verify the X-Hub-Signature-256 header using the app secret
+   */
+  verifySignature(
+    rawBody: string | Buffer,
+    appSecret: string,
+    signatureHeader: string,
+  ): boolean {
+    if (!signatureHeader || !signatureHeader.startsWith('sha256=')) {
+      return false;
+    }
+
+    const expected =
+      'sha256=' +
+      crypto
+        .createHmac('sha256', appSecret)
+        .update(rawBody)
+        .digest('hex');
+
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(expected),
+        Buffer.from(signatureHeader),
+      );
+    } catch {
+      return false;
+    }
+  }
 
   verifyWebhook(mode: string, token: string, challenge: string): string | null {
     const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;

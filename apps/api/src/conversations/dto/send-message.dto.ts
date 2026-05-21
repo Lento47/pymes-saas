@@ -1,4 +1,4 @@
-import { IsEnum, IsObject, IsOptional, IsString } from "class-validator";
+import { IsEnum, IsOptional, IsString, IsBoolean, IsInt, IsArray, IsObject } from "class-validator";
 import { MessageDirection } from "@prisma/client";
 
 export class SendMessageDto {
@@ -22,6 +22,7 @@ export class SendMessageDto {
   @IsObject()
   template_variables?: Record<string, string>;
 
+  // ── Media fields ──
   @IsOptional()
   @IsString()
   media_url?: string;
@@ -29,4 +30,39 @@ export class SendMessageDto {
   @IsOptional()
   @IsString()
   media_type?: string;
+
+  @IsOptional()
+  @IsString()
+  media_mime_type?: string;
+
+  @IsOptional()
+  @IsString()
+  media_filename?: string;
+
+  @IsOptional()
+  @IsString()
+  media_caption?: string;
+
+  @IsOptional()
+  @IsInt()
+  media_size_bytes?: number;
+
+  @IsOptional()
+  @IsArray()
+  attachments?: Record<string, any>[];
+
+  // ── Provider ──
+  @IsOptional()
+  @IsString()
+  provider?: string;
+
+  // ── Reply context ──
+  @IsOptional()
+  @IsString()
+  reply_to_message_id?: string;
+
+  // ── Interactive ──
+  @IsOptional()
+  @IsObject()
+  interactive?: Record<string, any>;
 }

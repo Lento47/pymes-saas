@@ -179,12 +179,133 @@ export class ConversationsController {
       sendDto,
     );
 
+    // 2. Despachar al canal externo
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: user.workspace_id },
       include: { contact: true, channel: true },
     });
 
-    if (conv?.channel?.type === "EMAIL" && (conv.contact as any)?.email) {
+    // Guard: channel and contact must exist
+    if (!conv?.channel || !conv?.contact) {
+      return message;
+    }
+
+    // ── Email dispatch ──
+    if (conv.channel.type === "EMAIL" && (conv.contact as any)?.email) {
+      try {
+        await this.emailService.sendOutbound(
+          conv.channel,
+          (conv.contact as any).email,
+          (conv as any).subject ?? "Nuevo mensaje",
+          bodyHtml || bodyText,
+          bodyText,
+        );
+      } catch (err) {
+        this.logger.error(`Email dispatch failed: ${err?.message}`);
+        throw new BadGatewayException(err?.message ?? "No se pudo enviar el email.");
+      }
+    }
+
+    // ── WhatsApp dispatch ──
+    if (conv.channel.type === 'WHATSAPP' && (conv.contact as any)?.phone) {
+      try {
+        const phoneStr = (conv.contact as any).phone as string;
+        const to = phoneStr ? phoneStr.replace(/\D/g, '') : '';
+        if (!to) return message;
+
+        // Rate limit check
+        const cfg = conv.channel.config_json as any;
+        const phoneNumberId = cfg?.phone_number_id;
+        if (phoneNumberId && !this.whatsAppRateLimiter.canSend(phoneNumberId)) {
+          this.logger.warn(`WhatsApp rate limit reached for ${phoneNumberId}`);
+          await this.whatsAppRateLimiter.waitForSlot(phoneNumberId);
+        }
+
+        let externalId: string | null = null;
+
+        // Check message content type and dispatch accordingly
+        const interactive = dto.interactive as Record<string, any> | undefined;
+        const iType = interactive?.type as string | undefined;
+
+        if (iType === 'button' && Array.isArray(interactive?.buttons)) {
+          externalId = (await this.whatsAppService.sendReplyButtons(
+            conv.channel, to,
+            interactive.body ?? dto.body_text ?? '',
+            interactive.buttons,
+            interactive.footer,
+          )).message_id;
+        } else if (iType === 'list' && Array.isArray(interactive?.sections)) {
+          externalId = (await this.whatsAppService.sendListMessage(
+            conv.channel, to,
+            interactive.body ?? dto.body_text ?? '',
+            interactive.buttonText ?? 'Ver opciones',
+            interactive.sections,
+            interactive.footer,
+          )).message_id;
+        } else if (iType === 'location_request') {
+          externalId = (await this.whatsAppService.sendLocationRequest(
+            conv.channel, to,
+            interactive.body ?? dto.body_text ?? 'Comparte tu ubicación',
+          )).message_id;
+        } else if (dto.media_url && dto.media_type) {
+          // Dispatch media message
+          const validMediaTypes = ['image', 'video', 'audio', 'document'];
+          if (validMediaTypes.includes(dto.media_type.toLowerCase())) {
+            externalId = (await this.whatsAppService.sendMedia({
+              channel: conv.channel,
+              to,
+              type: dto.media_type.toLowerCase() as any,
+              mediaUrl: dto.media_url,
+              caption: dto.media_caption ?? dto.body_text ?? undefined,
+              filename: dto.media_filename ?? undefined,
+              mimeType: dto.media_mime_type ?? undefined,
+            })).message_id;
+          } else {
+            externalId = (await this.whatsAppService.sendMessage(
+              conv.channel, to,
+              dto.body_text || dto.media_caption || '📎 Archivo adjunto',
+            )).message_id;
+          }
+        } else if (dto.body_text) {
+          // Dispatch text message (with optional reply context)
+          const hasReply = !!dto.reply_to_message_id;
+          externalId = hasReply
+            ? (await this.whatsAppService.sendReply(
+                conv.channel, to,
+                dto.body_text,
+                dto.reply_to_message_id!,
+              )).message_id
+            : (await this.whatsAppService.sendMessage(
+                conv.channel, to,
+                dto.body_text,
+              )).message_id;
+        }
+
+        // Update with external message ID for status tracking
+        if (externalId) {
+          await this.prisma.message.update({
+            where: { id: message.id },
+            data: {
+              external_message_id: externalId,
+              delivery_status: 'SENT',
+            },
+          });
+        }
+      } catch (err: any) {
+        this.logger.error(`WhatsApp dispatch failed: ${err?.message}`);
+        // Update message delivery status to failed
+        await this.prisma.message.update({
+          where: { id: message.id },
+          data: {
+            delivery_status: 'DISPATCH_FAILED',
+            delivery_error: err?.message?.slice(0, 500) ?? 'Unknown dispatch error',
+          },
+        });
+      }
+    }
+
+    // ── Email dispatch ──
+    if (conv.channel.type === 'EMAIL' && (conv.contact as any)?.email) {
       try {
         await this.emailService.sendOutbound(
           conv.channel,
@@ -302,5 +423,80 @@ export class ConversationsController {
       res.setHeader("Cache-Control", "public, max-age=5");
       res.status(404).json({ statusCode: 404, message: err.message || "Media no disponible" });
     }
+    return message;
+  }
+
+  // ── WhatsApp-specific actions ─────────────────────────────────────────────
+
+  /**
+   * POST /conversations/:id/read-receipt
+   * Mark last inbound WhatsApp message as read on Meta
+   */
+  @Post(':id/read-receipt')
+  @Roles('AGENT' as any)
+  async markAsRead(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') conversationId: string,
+  ) {
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, workspace_id: workspaceId },
+      include: { channel: true },
+    });
+
+    if (conv?.channel?.type !== 'WHATSAPP') {
+      return { ok: false, reason: 'not_whatsapp_channel' };
+    }
+
+    // Find last inbound message with external_message_id
+    const lastInbound = await this.prisma.message.findFirst({
+      where: {
+        conversation_id: conversationId,
+        direction: 'INBOUND',
+        external_message_id: { not: null },
+      },
+      orderBy: { sent_at: 'desc' },
+      select: { external_message_id: true },
+    });
+
+    if (lastInbound?.external_message_id && conv.channel) {
+      await this.whatsAppService.markAsRead(
+        conv.channel,
+        lastInbound.external_message_id,
+      );
+    }
+
+    return { ok: true };
+  }
+
+  /**
+   * POST /conversations/:id/typing
+   * Send typing indicator to WhatsApp user
+   */
+  @Post(':id/typing')
+  @Roles('AGENT' as any)
+  async typingIndicator(
+    @CurrentUser('workspace_id') workspaceId: string,
+    @Param('id') conversationId: string,
+    @Body('action') action: 'typing_on' | 'typing_off',
+  ) {
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, workspace_id: workspaceId },
+      include: { contact: true, channel: true },
+    });
+
+    if (conv?.channel?.type !== 'WHATSAPP') {
+      return { ok: false, reason: 'not_whatsapp_channel' };
+    }
+
+    const to = (conv.contact as any)?.phone?.replace(/\D/g, '');
+    if (to && conv.channel) {
+      await this.whatsAppService.sendTypingIndicator(
+        conv.channel,
+        to,
+        action ?? 'typing_on',
+      );
+    }
+
+    return { ok: true };
   }
 }

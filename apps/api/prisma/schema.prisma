@@ -126,6 +126,44 @@ enum MessageDirection {
   INTERNAL
 }
 
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  STICKER
+  LOCATION
+  CONTACT
+  REACTION
+  REPLY
+  BUTTON
+  LIST
+  TEMPLATE
+  CATALOG
+  PRODUCT
+  FLOW
+  ORDER
+  INTERACTIVE
+  UNKNOWN
+}
+
+enum MediaStatus {
+  NONE
+  PROCESSING
+  AVAILABLE
+  ERROR
+}
+
+enum MessageDeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  DISPATCH_FAILED
+}
+
 enum DocumentStatus {
   UPLOADED
   PROCESSING
@@ -541,6 +579,12 @@ model Conversation {
   is_service_window_open         Boolean   @default(false)
   requires_template_for_outbound Boolean   @default(false)
 
+  // ── WhatsApp-specific ──
+  service_window_expires_at DateTime?
+  unread_count              Int       @default(0)
+  external_contact_id       String?   // wa_id
+  external_conversation_key String?   // tenant + phoneNumberId + wa_id dedup
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -564,6 +608,7 @@ model Conversation {
   @@index([workspace_id, contact_id])
   @@index([workspace_id, channel_id])
   @@index([workspace_id, last_message_at(sort: Desc)])
+  @@unique([workspace_id, external_conversation_key])
   @@map("conversations")
 }
 
@@ -598,6 +643,30 @@ model Message {
   delivery_status       String?
   delivery_error        String?            @db.Text
 
+  // ── Media & Rich Content ──
+  provider              String?           // whatsapp, email, telegram, form, manual
+  message_type          MessageType?      @default(TEXT)
+  has_media             Boolean           @default(false)
+  media_url             String?
+  media_mime_type       String?
+  media_filename        String?
+  media_caption         String?
+  media_thumbnail_url   String?
+  media_size_bytes      Int?
+  media_status          MediaStatus       @default(NONE)
+  attachments_json      Json?             @db.JsonB  // multiple attachments array
+
+  // ── Delivery & Status ──
+  delivery_status       MessageDeliveryStatus @default(PENDING)
+  delivery_error        String?
+  external_message_id   String?           // Meta message ID (wamid.xxx) for status tracking
+
+  // ── Interactive / Reply context ──
+  reply_to_message_id   String?           // contextual reply
+  reply_to_sender_ref   String?
+  button_payload_json   Json?             @db.JsonB
+  interactive_type      String?           // button_reply, list_reply, etc.
+
   created_at DateTime @default(now())
 
   workspace    Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
@@ -611,6 +680,8 @@ model Message {
   @@index([sent_at(sort: Desc)])
   @@index([conversation_id, sent_at(sort: Desc)])
   @@index([conversation_id, workspace_id, sent_at])
+  @@index([external_message_id])
+  @@index([workspace_id, delivery_status])
   @@map("messages")
 }
 

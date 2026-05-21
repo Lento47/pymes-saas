@@ -85,6 +85,12 @@ export class MessagesService {
     });
     if (!conv) throw new NotFoundException("Conversación no encontrada.");
 
+    // Resolve message_type from media_type or default to TEXT
+    const messageType = dto.media_type
+      ? (dto.media_type.toUpperCase() as any)
+      : 'TEXT';
+    const hasMedia = !!dto.media_url || !!dto.media_type;
+
     const message = await this.prisma.message.create({
       data: {
         workspace_id: workspaceId,
@@ -128,6 +134,30 @@ export class MessagesService {
               },
             ]
           : undefined,
+
+        // ── Media fields ──
+        provider: dto.provider ?? null,
+        message_type: messageType,
+        has_media: hasMedia,
+        media_url: dto.media_url ?? null,
+        media_mime_type: dto.media_mime_type ?? null,
+        media_filename: dto.media_filename ?? null,
+        media_caption: dto.media_caption ?? null,
+        media_status: hasMedia ? 'AVAILABLE' : 'NONE',
+        attachments_json: dto.attachments?.length
+          ? stringifyJson(dto.attachments)
+          : undefined,
+
+        // ── Reply context ──
+        reply_to_message_id: dto.reply_to_message_id ?? null,
+
+        // ── Interactive ──
+        button_payload_json: dto.interactive
+          ? stringifyJson(dto.interactive)
+          : undefined,
+
+        // ── Delivery ──
+        delivery_status: 'PENDING',
       },
       include: {
         sender_user: { select: { id: true, name: true, avatar_url: true } },
@@ -297,6 +327,9 @@ export class MessagesService {
       });
       conversation = updated;
     }
+    // Extract rich fields from payload (set by WhatsAppService.processIncomingMessage)
+    const messageType = (payload.message_type ?? 'TEXT').toUpperCase();
+    const hasMedia = payload.has_media === true || payload.media_url != null;
 
     const message = await this.prisma.message.create({
       data: {
@@ -308,6 +341,29 @@ export class MessagesService {
         body_text: bodyText,
         body_html: payload.body_html ?? payload.html ?? null,
         raw_payload_json: payload,
+        raw_payload_json: stringifyJson(payload.raw ?? payload),
+
+        // ── Media fields ──
+        provider: provider,
+        message_type: messageType as any,
+        has_media: hasMedia,
+        media_url: payload.media_url ?? null,
+        media_mime_type: payload.media_mime_type ?? null,
+        media_filename: payload.media_filename ?? null,
+        media_caption: payload.media_caption ?? null,
+        media_status: hasMedia ? 'AVAILABLE' : 'NONE',
+
+        // ── Delivery ──
+        delivery_status: 'SENT',
+        external_message_id: payload.external_id ?? null,
+
+        // ── Reply / Interactive ──
+        reply_to_message_id: payload.reply_to_message_id ?? null,
+        interactive_type: payload.interactive_type ?? null,
+        button_payload_json: payload.button_payload
+          ? stringifyJson(payload.button_payload)
+          : undefined,
+
         sent_at: new Date(),
       },
     });
