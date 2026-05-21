@@ -36,16 +36,18 @@ export function connectSocket() {
     reconnectionDelay: 1000,
   });
 
+  const isDev = (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV) || false;
+
   _socket.on('connect', () => {
-    console.log('[WS] Conectado:', _socket?.id);
+    if (isDev) console.log('[WS] Conectado:', _socket?.id);
   });
 
   _socket.on('disconnect', (reason) => {
-    console.log('[WS] Desconectado:', reason);
+    if (isDev) console.log('[WS] Desconectado:', reason);
   });
 
   _socket.on('connect_error', (err) => {
-    console.warn('[WS] Error de conexión:', err.message);
+    if (isDev) console.warn('[WS] Error de conexión:', err.message);
   });
 
   return _socket;

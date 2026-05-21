@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppErrorBoundary } from "@/components/shared/app-error-boundary";
+import { ThemeProvider } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
 
 import Landing from "@/pages/landing";
@@ -117,9 +118,11 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
-          <Router hook={useHashLocation}>
-            <AppRouter />
-          </Router>
+          <ThemeProvider>
+            <Router hook={useHashLocation}>
+              <AppRouter />
+            </Router>
+          </ThemeProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </AppErrorBoundary>
