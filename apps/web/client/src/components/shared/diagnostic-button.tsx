@@ -51,7 +51,7 @@ const MODULE_GUIDANCE: Record<string, { icon: React.ReactNode; tips: string[] }>
 const CATEGORY_BADGE: Record<string, { bg: string; text: string; icon: React.ReactNode; label: string }> = {
   USER_GUIDANCE: { bg: "bg-blue-500/10", text: "text-blue-300", icon: <LifeBuoy className="h-3 w-3" />, label: "Guía de uso" },
   PERMISSION_ISSUE: { bg: "bg-amber-500/10", text: "text-amber-300", icon: <ShieldCheck className="h-3 w-3" />, label: "Permisos" },
-  WORKSPACE_CONFIGURATION: { bg: "bg-violet-500/10", text: "text-violet-300", icon: <Wrench className="h-3 w-3" />, label: "Configuración" },
+  WORKSPACE_CONFIGURATION: { bg: "bg-muted/40", text: "text-muted-foreground", icon: <Wrench className="h-3 w-3" />, label: "Configuración" },
   INTEGRATION_ISSUE: { bg: "bg-orange-500/10", text: "text-orange-300", icon: <AlertTriangle className="h-3 w-3" />, label: "Integración" },
   PRODUCT_BUG: { bg: "bg-red-500/10", text: "text-red-300", icon: <XCircle className="h-3 w-3" />, label: "Bug" },
   BILLING_OR_PLAN: { bg: "bg-yellow-500/10", text: "text-yellow-300", icon: <AlertTriangle className="h-3 w-3" />, label: "Plan/Facturación" },

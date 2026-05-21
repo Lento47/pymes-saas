@@ -19,14 +19,14 @@ const TYPE_BADGE: Record<string, { label: string; bg: string; color: string; ico
   task_completed: { label: "Tarea completada", bg: "bg-emerald-500/10", color: "text-emerald-400", icon: CheckSquare },
   task_overdue: { label: "Tarea vencida", bg: "bg-red-500/10", color: "text-red-400", icon: AlertTriangle },
   new_message: { label: "Nuevo mensaje", bg: "bg-blue-500/10", color: "text-blue-400", icon: MessageCircle },
-  AI_TASK_CREATED: { label: "Tarea IA", bg: "bg-violet-500/10", color: "text-violet-400", icon: Bot },
+  AI_TASK_CREATED: { label: "Tarea sugerida", bg: "bg-muted/40", color: "text-muted-foreground", icon: Bot },
   deal_created: { label: "Negocio creado", bg: "bg-amber-500/10", color: "text-amber-400", icon: KanbanSquare },
   deal_stage_changed: { label: "Etapa cambiada", bg: "bg-sky-500/10", color: "text-sky-400", icon: KanbanSquare },
   deal_won: { label: "Negocio ganado", bg: "bg-emerald-500/10", color: "text-emerald-400", icon: KanbanSquare },
   invoice_paid: { label: "Factura pagada", bg: "bg-emerald-500/10", color: "text-emerald-400", icon: Receipt },
   payment_received: { label: "Pago recibido", bg: "bg-emerald-500/10", color: "text-emerald-400", icon: Receipt },
   invoice_overdue: { label: "Factura vencida", bg: "bg-red-500/10", color: "text-red-400", icon: Receipt },
-  automation: { label: "Automatización", bg: "bg-violet-500/10", color: "text-violet-400", icon: Zap },
+  automation: { label: "Automatización", bg: "bg-muted/40", color: "text-muted-foreground", icon: Zap },
   conversation_no_reply: { label: "Sin respuesta", bg: "bg-amber-500/10", color: "text-amber-400", icon: MessageCircle },
 };
 
@@ -87,13 +87,13 @@ export default function NotificationsPage() {
           )}
           <div className="flex rounded-md border border-border overflow-hidden">
             <button
-              className={`px-3 py-1 text-[11px] font-medium transition-colors ${filter === "all" ? "bg-accent/20 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-3 py-1 text-[11px] font-medium transition-colors ${filter === "all" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               onClick={() => setFilter("all")}
             >
               Todas
             </button>
             <button
-              className={`px-3 py-1 text-[11px] font-medium transition-colors ${filter === "unread" ? "bg-accent/20 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-3 py-1 text-[11px] font-medium transition-colors ${filter === "unread" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               onClick={() => setFilter("unread")}
             >
               Sin leer {unreadCount > 0 && `(${unreadCount})`}
@@ -124,7 +124,7 @@ export default function NotificationsPage() {
               return (
                 <div
                   key={n.id}
-                  className={`rounded-lg border p-4 transition-colors ${isUnread ? "bg-accent/5 border-accent/20" : "bg-card/40 border-border/60"}`}
+                  className={`rounded-lg border p-4 transition-colors ${isUnread ? "border-border bg-card" : "border-border/60 bg-card/40"}`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${cfg.bg} border border-border/60`}>
@@ -137,7 +137,7 @@ export default function NotificationsPage() {
                           {cfg.label}
                         </Badge>
                         {isUnread && (
-                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "hsl(var(--accent))" }} />
+                          <span className="w-2 h-2 rounded-full bg-foreground/55 flex-shrink-0" />
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">{n.body}</p>

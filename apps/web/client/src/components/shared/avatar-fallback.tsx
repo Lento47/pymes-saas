@@ -27,7 +27,7 @@ export function AvatarFallback({
 
   return (
     <div
-      className={`${dims} shrink-0 rounded-full bg-gradient-to-br from-brand-indigo to-brand-violet flex items-center justify-center font-semibold text-white overflow-hidden`}
+      className={`${dims} flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted font-semibold text-muted-foreground`}
     >
       {resolvedUrl ? (
         <img src={resolvedUrl} alt="" className="w-full h-full object-cover" />
