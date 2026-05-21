@@ -1,5 +1,5 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Injectable, NestMiddleware } from "@nestjs/common";
+import { Request, Response } from "express";
 
 @Injectable()
 export class TelemetryMiddleware implements NestMiddleware {
@@ -7,15 +7,15 @@ export class TelemetryMiddleware implements NestMiddleware {
     const start = Date.now();
     const { method, path } = req;
 
-    res.on('finish', () => {
+    res.on("finish", () => {
       const log = {
         timestamp: new Date().toISOString(),
-        level: res.statusCode >= 400 ? 'error' : 'info',
+        level: res.statusCode >= 400 ? "error" : "info",
         method,
         path,
         statusCode: res.statusCode,
         duration_ms: Date.now() - start,
-        workspace_id: req.headers['x-workspace-slug'] ?? null,
+        workspace_id: req.headers["x-workspace-slug"] ?? null,
       };
       console.log(JSON.stringify(log));
     });

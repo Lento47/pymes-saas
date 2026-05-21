@@ -1,9 +1,9 @@
-import { IsOptional, IsIn } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsIn } from "class-validator";
+import { Type } from "class-transformer";
 
 export class FilterNotificationsDto {
   @IsOptional()
-  @IsIn(['true', 'false'])
+  @IsIn(["true", "false"])
   read?: string;
 
   @IsOptional()

@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { FilterSummariesDto } from './dto/filter-summaries.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { FilterSummariesDto } from "./dto/filter-summaries.dto";
 
 @Injectable()
 export class SummariesService {
@@ -28,7 +28,7 @@ export class SummariesService {
         where,
         skip,
         take: limit,
-        orderBy: { summary_date: 'desc' },
+        orderBy: { summary_date: "desc" },
       }),
       this.prisma.dailySummary.count({ where }),
     ]);
@@ -55,9 +55,7 @@ export class SummariesService {
     });
 
     if (!summary) {
-      throw new NotFoundException(
-        `No summary found for date ${date} in this workspace`,
-      );
+      throw new NotFoundException(`No summary found for date ${date} in this workspace`);
     }
 
     return summary;
@@ -65,15 +63,7 @@ export class SummariesService {
 
   async generate(workspaceId: string) {
     const today = new Date();
-    const startOfDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-      0,
-      0,
-      0,
-      0,
-    );
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
     const endOfDay = new Date(
       today.getFullYear(),
       today.getMonth(),
@@ -90,46 +80,39 @@ export class SummariesService {
     };
 
     // Gather real metrics from the DB
-    const [
-      newConversations,
-      receivedMessages,
-      createdTasks,
-      uploadedDocuments,
-    ] = await Promise.all([
-      this.prisma.conversation.count({
-        where: {
-          workspace_id: workspaceId,
-          created_at: dateRange,
-        },
-      }),
-      this.prisma.message.count({
-        where: {
-          workspace_id: workspaceId,
-          created_at: dateRange,
-          direction: 'INBOUND',
-        },
-      }),
-      this.prisma.task.count({
-        where: {
-          workspace_id: workspaceId,
-          created_at: dateRange,
-        },
-      }),
-      this.prisma.document.count({
-        where: {
-          workspace_id: workspaceId,
-          created_at: dateRange,
-        },
-      }),
-    ]);
-
-    const summaryDate = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
+    const [newConversations, receivedMessages, createdTasks, uploadedDocuments] = await Promise.all(
+      [
+        this.prisma.conversation.count({
+          where: {
+            workspace_id: workspaceId,
+            created_at: dateRange,
+          },
+        }),
+        this.prisma.message.count({
+          where: {
+            workspace_id: workspaceId,
+            created_at: dateRange,
+            direction: "INBOUND",
+          },
+        }),
+        this.prisma.task.count({
+          where: {
+            workspace_id: workspaceId,
+            created_at: dateRange,
+          },
+        }),
+        this.prisma.document.count({
+          where: {
+            workspace_id: workspaceId,
+            created_at: dateRange,
+          },
+        }),
+      ],
     );
 
-    const dateLabel = summaryDate.toISOString().split('T')[0];
+    const summaryDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    const dateLabel = summaryDate.toISOString().split("T")[0];
 
     const generated_text = [
       `Daily Summary for ${dateLabel}`,
@@ -138,7 +121,7 @@ export class SummariesService {
       `Messages: ${receivedMessages} inbound message(s) received today.`,
       `Tasks: ${createdTasks} task(s) created today.`,
       `Documents: ${uploadedDocuments} document(s) uploaded today.`,
-    ].join('\n');
+    ].join("\n");
 
     const metrics_json = {
       new_conversations: newConversations,

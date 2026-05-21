@@ -10,79 +10,79 @@ import {
   UseGuards,
   UseInterceptors,
   BadRequestException,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
-import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
-import { UsersService } from './users.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { Response } from "express";
+import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
+import { UsersService } from "./users.service";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { AuthUser } from "../auth/strategies/jwt.strategy";
+import { UpdateUserDto } from "./dto/update-user.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 
-@Controller('users')
+@Controller("users")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
   constructor(private readonly service: UsersService) {}
 
   /** GET /users — todos los miembros del workspace */
   @Get()
-  findAll(@CurrentUser('workspace_id') workspaceId: string) {
+  findAll(@CurrentUser("workspace_id") workspaceId: string) {
     return this.service.findAll(workspaceId);
   }
 
   /** GET /users/me — perfil propio */
-  @Get('me')
+  @Get("me")
   getMe(@CurrentUser() user: AuthUser) {
     return this.service.findOne(user.workspace_id, user.id);
   }
 
   /** PATCH /users/me — editar perfil propio */
-  @Patch('me')
+  @Patch("me")
   updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateUserDto) {
     return this.service.updateMe(user, dto);
   }
 
   /** GET /users/:id — perfil de cualquier miembro del workspace */
-  @Get(':id')
+  @Get(":id")
   findOne(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id', ValidateUUIDPipe) id: string,
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
   }
 
   /** PATCH /users/:id — ADMIN/OWNER pueden editar a otros */
-  @Patch(':id')
+  @Patch(":id")
   updateById(
     @CurrentUser() user: AuthUser,
-    @Param('id', ValidateUUIDPipe) targetId: string,
+    @Param("id", ValidateUUIDPipe) targetId: string,
     @Body() dto: UpdateUserDto,
   ) {
     return this.service.updateById(user.workspace_id, user, targetId, dto);
   }
 
   /** PATCH /users/me/password — cambiar contraseña */
-  @Patch('me/password')
+  @Patch("me/password")
   changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
     return this.service.changePassword(user.id, dto);
   }
 
   /** POST /users/me/avatar — subir foto de perfil */
-  @Post('me/avatar')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
+  @Post("me/avatar")
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 2 * 1024 * 1024 } }))
   uploadAvatar(@CurrentUser() user: AuthUser, @UploadedFile() file: Express.Multer.File) {
-    if (!file) throw new BadRequestException('Archivo requerido.');
+    if (!file) throw new BadRequestException("Archivo requerido.");
     return this.service.uploadAvatar(user.id, file);
   }
 
   /** GET /users/:id/avatar — mostrar foto de perfil */
-  @Get(':id/avatar')
-  async getAvatar(@Param('id', ValidateUUIDPipe) id: string, @Res() res: Response) {
+  @Get(":id/avatar")
+  async getAvatar(@Param("id", ValidateUUIDPipe) id: string, @Res() res: Response) {
     const { data, contentType } = await this.service.getAvatar(id);
-    res.set({ 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400' });
+    res.set({ "Content-Type": contentType, "Cache-Control": "public, max-age=86400" });
     res.send(data);
   }
 }

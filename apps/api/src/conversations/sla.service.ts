@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
 
 const DEFAULT_SLA_HOURS: Record<string, number> = {
   FREE: 24,
@@ -78,7 +78,7 @@ export class SlaService {
     const breached = await this.prisma.conversation.updateMany({
       where: {
         workspace_id: workspaceId,
-        status: { in: ['NEW', 'OPEN', 'PENDING'] },
+        status: { in: ["NEW", "OPEN", "PENDING"] },
         sla_breached: false,
         created_at: { lt: deadline },
       },
@@ -99,7 +99,7 @@ export class SlaService {
     return {
       total,
       breached,
-      breachRate: total > 0 ? ((breached / total) * 100).toFixed(1) + '%' : '0%',
+      breachRate: total > 0 ? ((breached / total) * 100).toFixed(1) + "%" : "0%",
       slaTargets: DEFAULT_SLA_HOURS,
     };
   }

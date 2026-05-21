@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { FilterNotificationsDto } from './dto/filter-notifications.dto';
-import { MarkReadDto } from './dto/mark-read.dto';
-import { EventsGateway } from '../gateways/events.gateway';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { FilterNotificationsDto } from "./dto/filter-notifications.dto";
+import { MarkReadDto } from "./dto/mark-read.dto";
+import { EventsGateway } from "../gateways/events.gateway";
 
 export interface CreateNotificationData {
   user_id: string;
@@ -18,7 +18,7 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventsGateway,
-  ) { }
+  ) {}
 
   async findAll(workspaceId: string, userId: string, filters: FilterNotificationsDto) {
     const page = Number(filters.page) || 1;
@@ -28,7 +28,7 @@ export class NotificationsService {
     const where: Record<string, any> = { workspace_id: workspaceId, user_id: userId };
 
     if (filters.read !== undefined) {
-      where.read_at = filters.read === 'true' ? { not: null } : null;
+      where.read_at = filters.read === "true" ? { not: null } : null;
     }
 
     const [data, total] = await Promise.all([
@@ -36,7 +36,7 @@ export class NotificationsService {
         where,
         skip,
         take: limit,
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
       }),
       this.prisma.notification.count({ where }),
     ]);
@@ -80,7 +80,7 @@ export class NotificationsService {
       data: { read_at: new Date() },
     });
 
-    return { message: 'Marked all unread notifications as read', count: result.count };
+    return { message: "Marked all unread notifications as read", count: result.count };
   }
 
   async create(workspaceId: string, data: CreateNotificationData) {
@@ -100,7 +100,9 @@ export class NotificationsService {
     try {
       this.events.emitNotification(data.user_id, notification);
     } catch (err) {
-      Logger.warn(`Failed to emit real-time notification to user ${data.user_id}: ${(err as Error)?.message ?? err}`);
+      Logger.warn(
+        `Failed to emit real-time notification to user ${data.user_id}: ${(err as Error)?.message ?? err}`,
+      );
     }
 
     return notification;

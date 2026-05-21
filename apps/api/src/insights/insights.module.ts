@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { InsightsService } from './insights.service';
-import { InsightsController } from './insights.controller';
+import { Module } from "@nestjs/common";
+import { InsightsService } from "./insights.service";
+import { InsightsController } from "./insights.controller";
 
 @Module({
   controllers: [InsightsController],

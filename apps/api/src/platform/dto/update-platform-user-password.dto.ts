@@ -1,10 +1,11 @@
-import { IsString, Matches, MinLength } from 'class-validator';
+import { IsString, Matches, MinLength } from "class-validator";
 
 export class UpdatePlatformUserPasswordDto {
   @IsString()
   @MinLength(8)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/, {
-    message: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.',
+    message:
+      "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.",
   })
   password: string;
 }

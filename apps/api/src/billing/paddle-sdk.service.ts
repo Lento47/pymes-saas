@@ -1,11 +1,18 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Prisma, WorkspacePlan, WorkspaceSubscriptionStatus } from '@prisma/client';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { Paddle, Environment, LogLevel, type EventEntity } from '@paddle/paddle-node-sdk';
-import { BillingInvoiceService } from './billing-invoice.service';
-import { PLAN_ORDER } from '../common/plan-limits/plan-limits.service';
-import { Resend } from 'resend';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Prisma, WorkspacePlan, WorkspaceSubscriptionStatus } from "@prisma/client";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { Paddle, Environment, LogLevel, type EventEntity } from "@paddle/paddle-node-sdk";
+import { BillingInvoiceService } from "./billing-invoice.service";
+import { PLAN_ORDER } from "../common/plan-limits/plan-limits.service";
+import { Resend } from "resend";
 
 // ───────────────────────────────────────────────────────────────────────────
 // IMPORTANTE — CONFIGURACION DE PADDLE
@@ -34,21 +41,23 @@ export class PaddleSdkService {
     private readonly prisma: PrismaService,
     private readonly billingInvoice: BillingInvoiceService,
   ) {
-    const apiKey = this.configService.get<string>('PADDLE_API_KEY');
-    const environment = this.configService.get<string>('PADDLE_ENVIRONMENT', 'sandbox');
+    const apiKey = this.configService.get<string>("PADDLE_API_KEY");
+    const environment = this.configService.get<string>("PADDLE_ENVIRONMENT", "sandbox");
 
     if (apiKey) {
       this.paddle = new Paddle(apiKey, {
-        environment: environment === 'production' ? Environment.production : Environment.sandbox,
-        logLevel: environment === 'production' ? LogLevel.warn : LogLevel.verbose,
+        environment: environment === "production" ? Environment.production : Environment.sandbox,
+        logLevel: environment === "production" ? LogLevel.warn : LogLevel.verbose,
       });
       this.logger.log(`Paddle initialized in ${environment} mode`);
     } else {
-      const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
-      if (nodeEnv === 'production') {
-        this.logger.error('PADDLE_API_KEY is required in production — billing disabled, startup may be impacted');
+      const nodeEnv = this.configService.get<string>("NODE_ENV", "development");
+      if (nodeEnv === "production") {
+        this.logger.error(
+          "PADDLE_API_KEY is required in production — billing disabled, startup may be impacted",
+        );
       } else {
-        this.logger.warn('PADDLE_API_KEY not set — billing disabled (non-production environment)');
+        this.logger.warn("PADDLE_API_KEY not set — billing disabled (non-production environment)");
       }
     }
   }
@@ -84,7 +93,9 @@ export class PaddleSdkService {
         customerId = customer.id;
       }
     } catch (err) {
-      this.logger.error(`Error creating/getting customer: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(
+        `Error creating/getting customer: ${err instanceof Error ? err.message : String(err)}`,
+      );
       throw err;
     }
 
@@ -98,9 +109,9 @@ export class PaddleSdkService {
         data: {
           workspace_id: workspaceId,
           provider_customer_id: customerId,
-          provider: 'PADDLE',
-          status: 'MANUAL',
-          plan: 'FREE',
+          provider: "PADDLE",
+          status: "MANUAL",
+          plan: "FREE",
         },
       });
     }
@@ -124,9 +135,7 @@ export class PaddleSdkService {
       throw new NotFoundException(`No Paddle customer found for workspace`);
     }
 
-    const subscriptionIds = sub.provider_subscription_id
-      ? [sub.provider_subscription_id]
-      : [];
+    const subscriptionIds = sub.provider_subscription_id ? [sub.provider_subscription_id] : [];
 
     const session = await paddle.customerPortalSessions.create(
       sub.provider_customer_id,
@@ -173,14 +182,16 @@ export class PaddleSdkService {
     });
 
     if (!sub?.provider_subscription_id) {
-      throw new NotFoundException(`No active Paddle subscription. Use /billing/checkout for first-time purchase.`);
+      throw new NotFoundException(
+        `No active Paddle subscription. Use /billing/checkout for first-time purchase.`,
+      );
     }
 
     // CONSULTA EL ITEM_ID ACTUAL EN PADDLE (NECESARIO PARA EL UPDATE).
     const paddleSub = await paddle.subscriptions.get(sub.provider_subscription_id);
     const currentItem = paddleSub.items?.[0];
     if (!currentItem?.price?.id) {
-      throw new InternalServerErrorException('Could not read current Paddle subscription items');
+      throw new InternalServerErrorException("Could not read current Paddle subscription items");
     }
 
     // SI ES EL MISMO PRICE — NO HACER NADA.
@@ -191,8 +202,8 @@ export class PaddleSdkService {
     // CLASIFICAR UPGRADE VS DOWNGRADE COMPARANDO PLANES INTERNOS.
     // PLAN_ORDER (FUENTE UNICA EN plan-limits) INCLUYE BUSINESS Y BUSINESS_PLUS.
     const newPlan = this.mapPaddlePriceToPlan(newPriceId);
-    const newRank = PLAN_ORDER.indexOf(newPlan as typeof PLAN_ORDER[number]);
-    const currentRank = PLAN_ORDER.indexOf(sub.plan as typeof PLAN_ORDER[number]);
+    const newRank = PLAN_ORDER.indexOf(newPlan as (typeof PLAN_ORDER)[number]);
+    const currentRank = PLAN_ORDER.indexOf(sub.plan as (typeof PLAN_ORDER)[number]);
     // NOTE: same-rank (e.g. monthly→annual STARTER) is treated as downgrade.
     // This avoids charging the user immediately when they switch billing intervals.
     const isDowngrade = newRank <= currentRank;
@@ -201,7 +212,7 @@ export class PaddleSdkService {
     // ESTA EN TRIAL. EN ESE CASO SIEMPRE HAY QUE USAR 'do_not_bill'.
     // EL CAMBIO DE PLAN EN TRIAL ENTRA EN VIGOR SIN CARGO; EL COBRO OCURRE
     // CUANDO EL TRIAL TERMINA (PADDLE LO MANEJA AUTOMATICAMENTE).
-    const isTrialing = paddleSub.status === 'trialing';
+    const isTrialing = paddleSub.status === "trialing";
 
     // IMPORTANTE — DOWNGRADE NO COBRA HOY:
     //   prorationBillingMode='do_not_bill' EVITA EL CARGO INMEDIATO,
@@ -209,12 +220,14 @@ export class PaddleSdkService {
     //   SIGUIENTE. EL USUARIO DISFRUTA EL PLAN ACTUAL (CARO) HASTA QUE
     //   TERMINE EL PERIODO YA PAGADO.
     // UPGRADE (FUERA DE TRIAL) COBRA INMEDIATAMENTE LA DIFERENCIA PRORRATEADA.
-    const prorationBillingMode = (isDowngrade || isTrialing) ? 'do_not_bill' : 'prorated_immediately';
+    const prorationBillingMode = isDowngrade || isTrialing ? "do_not_bill" : "prorated_immediately";
 
     const updated = await paddle.subscriptions.update(sub.provider_subscription_id, {
       items: [{ priceId: newPriceId, quantity: 1 }],
       prorationBillingMode,
-      ...(isDowngrade && !isTrialing ? { scheduledChange: { action: 'change', effectiveAt: 'next_billing_period' } } : {}),
+      ...(isDowngrade && !isTrialing
+        ? { scheduledChange: { action: "change", effectiveAt: "next_billing_period" } }
+        : {}),
     } as unknown as Parameters<typeof paddle.subscriptions.update>[1]);
 
     // ACTUALIZA NUESTRO REGISTRO LOCAL. EL WEBHOOK `subscription.updated`
@@ -239,9 +252,13 @@ export class PaddleSdkService {
           data: { plan: newPlan },
         }),
       ]);
-      this.logger.log(`Plan changed immediately: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
+      this.logger.log(
+        `Plan changed immediately: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`,
+      );
     } else {
-      this.logger.log(`Downgrade scheduled for end of period: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`);
+      this.logger.log(
+        `Downgrade scheduled for end of period: workspace=${workspaceId}, ${sub.plan} -> ${newPlan}`,
+      );
     }
 
     return {
@@ -250,7 +267,7 @@ export class PaddleSdkService {
       scheduled_plan: !shouldUpdateNow ? newPlan : null,
       status,
       prorated: !isDowngrade && !isTrialing,
-      effective: shouldUpdateNow ? 'immediate' : 'next_billing_period',
+      effective: shouldUpdateNow ? "immediate" : "next_billing_period",
     };
   }
 
@@ -267,14 +284,14 @@ export class PaddleSdkService {
     }
 
     const result = await paddle.subscriptions.cancel(sub.provider_subscription_id, {
-      effectiveFrom: 'next_billing_period',
+      effectiveFrom: "next_billing_period",
     });
 
     await this.prisma.workspaceSubscription.update({
       where: { id: sub.id },
       data: {
         cancel_at_period_end: true,
-        status: 'ACTIVE', // stays active until period end
+        status: "ACTIVE", // stays active until period end
       },
     });
 
@@ -289,7 +306,12 @@ export class PaddleSdkService {
         where: { workspace_id: workspaceId },
         select: { id: true },
       });
-      return this.syncExistingSubscription(existing?.id || workspaceId, workspaceId, subscriptionId, true);
+      return this.syncExistingSubscription(
+        existing?.id || workspaceId,
+        workspaceId,
+        subscriptionId,
+        true,
+      );
     }
 
     if (customerId) {
@@ -298,21 +320,26 @@ export class PaddleSdkService {
 
     // Always try email lookup first to get the latest subscription from Paddle
     const info = await this.getWorkspaceInfo(workspaceId);
-    this.logger.log(`Auto-sync: looking up Paddle customer for email=${info.email}, workspace=${info.name}`);
+    this.logger.log(
+      `Auto-sync: looking up Paddle customer for email=${info.email}, workspace=${info.name}`,
+    );
     if (info.email) {
       try {
-        const paddleApiKey = this.configService.get<string>('PADDLE_API_KEY');
-        const env = this.configService.get<string>('PADDLE_ENVIRONMENT', 'sandbox');
-        const baseUrl = env === 'production' ? 'https://api.paddle.com' : 'https://sandbox-api.paddle.com';
+        const paddleApiKey = this.configService.get<string>("PADDLE_API_KEY");
+        const env = this.configService.get<string>("PADDLE_ENVIRONMENT", "sandbox");
+        const baseUrl =
+          env === "production" ? "https://api.paddle.com" : "https://sandbox-api.paddle.com";
         const url = `${baseUrl}/customers?email=${encodeURIComponent(info.email)}`;
         const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${paddleApiKey}`, 'Content-Type': 'application/json' },
+          headers: { Authorization: `Bearer ${paddleApiKey}`, "Content-Type": "application/json" },
           signal: AbortSignal.timeout(10_000),
         });
         if (res.ok) {
-          const body = await res.json() as Record<string, unknown>;
+          const body = (await res.json()) as Record<string, unknown>;
           const customers = (body?.data ?? []) as Array<Record<string, unknown>>;
-          this.logger.log(`Auto-sync: Paddle API returned ${customers.length} customer(s) for email ${info.email}`);
+          this.logger.log(
+            `Auto-sync: Paddle API returned ${customers.length} customer(s) for email ${info.email}`,
+          );
           if (customers.length > 0) {
             return this.syncByCustomerId(workspaceId, customers[0].id as string);
           }
@@ -334,7 +361,7 @@ export class PaddleSdkService {
       return this.syncExistingSubscription(sub.id, workspaceId, sub.provider_subscription_id);
     }
 
-    return { synced: false, reason: 'No subscription found. Provide a Paddle customer ID.' };
+    return { synced: false, reason: "No subscription found. Provide a Paddle customer ID." };
   }
 
   private async syncByCustomerId(workspaceId: string, customerId: string) {
@@ -349,17 +376,13 @@ export class PaddleSdkService {
       const subsCollection = paddle.subscriptions.list({ customerId: [customerId] });
       const subsPage = await subsCollection.next();
       const subsList = subsPage || [];
-      const activeSub = subsList.find((s) =>
-        ['active', 'trialing'].includes(s.status ?? ''),
-      );
+      const activeSub = subsList.find((s) => ["active", "trialing"].includes(s.status ?? ""));
 
       if (!activeSub) {
-        return { synced: false, reason: 'No active/trialing subscription found' };
+        return { synced: false, reason: "No active/trialing subscription found" };
       }
 
-      const plan = this.mapPaddlePriceToPlan(
-        activeSub.items?.[0]?.price?.id || '',
-      );
+      const plan = this.mapPaddlePriceToPlan(activeSub.items?.[0]?.price?.id || "");
       const status = this.mapPaddleStatus(activeSub.status);
 
       const existing = await this.prisma.workspaceSubscription.findFirst({
@@ -369,7 +392,7 @@ export class PaddleSdkService {
       const subData = {
         provider_customer_id: customerId,
         provider_subscription_id: activeSub.id,
-        provider: 'PADDLE' as const,
+        provider: "PADDLE" as const,
         plan,
         status,
         current_period_start: activeSub.currentBillingPeriod?.startsAt
@@ -410,14 +433,16 @@ export class PaddleSdkService {
           clientName: info.name,
           clientEmail: info.email,
           planName: plan,
-          planInterval: 'MONTHLY',
+          planInterval: "MONTHLY",
           seats: 1,
           amount: 0,
-          currency: 'CRC',
+          currency: "CRC",
           notes: `Suscripción sincronizada — ${plan} (${status})`,
         });
       } catch (err) {
-        this.logger.warn(`Failed to generate invoice for synced sub: ${err instanceof Error ? err.message : String(err)}`);
+        this.logger.warn(
+          `Failed to generate invoice for synced sub: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
 
       await this.prisma.workspace.update({
@@ -425,11 +450,16 @@ export class PaddleSdkService {
         data: { plan },
       });
 
-      this.logger.log(`Synced (by customerId ${customerId}) workspace ${workspaceId}: plan=${plan}`);
+      this.logger.log(
+        `Synced (by customerId ${customerId}) workspace ${workspaceId}: plan=${plan}`,
+      );
       return { synced: true, plan, status, customerId };
     } catch (err) {
       this.logger.error(`syncByCustomerId failed for ${customerId}:`, err);
-      return { synced: false, reason: `Paddle API error: ${err instanceof Error ? err.message : String(err)}` };
+      return {
+        synced: false,
+        reason: `Paddle API error: ${err instanceof Error ? err.message : String(err)}`,
+      };
     }
   }
 
@@ -443,9 +473,7 @@ export class PaddleSdkService {
 
     try {
       const paddleSub = await paddle.subscriptions.get(providerSubscriptionId);
-      const plan = this.mapPaddlePriceToPlan(
-        paddleSub.items?.[0]?.price?.id || '',
-      );
+      const plan = this.mapPaddlePriceToPlan(paddleSub.items?.[0]?.price?.id || "");
       const status = this.mapPaddleStatus(paddleSub.status);
 
       const existing = await this.prisma.workspaceSubscription.findFirst({
@@ -455,7 +483,7 @@ export class PaddleSdkService {
       const subData = {
         provider_subscription_id: providerSubscriptionId,
         provider_customer_id: paddleSub.customerId,
-        provider: 'PADDLE' as const,
+        provider: "PADDLE" as const,
         plan,
         status,
         current_period_start: paddleSub.currentBillingPeriod?.startsAt
@@ -497,14 +525,16 @@ export class PaddleSdkService {
           clientName: info.name,
           clientEmail: info.email,
           planName: plan,
-          planInterval: 'MONTHLY',
+          planInterval: "MONTHLY",
           seats: 1,
           amount: 0,
-          currency: 'CRC',
+          currency: "CRC",
           notes: `Suscripción sincronizada — ${plan} (${status})`,
         });
       } catch (err) {
-        this.logger.warn(`Failed to generate invoice: ${err instanceof Error ? err.message : String(err)}`);
+        this.logger.warn(
+          `Failed to generate invoice: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
 
       await this.prisma.workspace.update({
@@ -516,17 +546,16 @@ export class PaddleSdkService {
       return { synced: true, plan, status };
     } catch (err) {
       this.logger.error(`syncExistingSubscription failed for ${providerSubscriptionId}:`, err);
-      return { synced: false, reason: `Paddle API error: ${err instanceof Error ? err.message : String(err)}` };
+      return {
+        synced: false,
+        reason: `Paddle API error: ${err instanceof Error ? err.message : String(err)}`,
+      };
     }
   }
 
   // ── Webhooks ─────────────────────────────────────────────────────────────
 
-  async verifyWebhookSignature(
-    body: string,
-    secret: string,
-    signatureHeader: string,
-  ) {
+  async verifyWebhookSignature(body: string, secret: string, signatureHeader: string) {
     const paddle = this.requireClient();
     return paddle.webhooks.unmarshal(body, secret, signatureHeader);
   }
@@ -547,19 +576,19 @@ export class PaddleSdkService {
     try {
       const eventDataAsRecord = event.data as unknown as Record<string, unknown>;
       switch (eventType) {
-        case 'subscription.created':
-        case 'subscription.activated':
-        case 'subscription.updated':
+        case "subscription.created":
+        case "subscription.activated":
+        case "subscription.updated":
           await this.handleSubscriptionEvent(eventDataAsRecord);
           break;
-        case 'subscription.canceled':
+        case "subscription.canceled":
           await this.handleSubscriptionCanceled(eventDataAsRecord);
           break;
-        case 'transaction.completed':
-        case 'transaction.paid':
+        case "transaction.completed":
+        case "transaction.paid":
           await this.handleTransactionCompleted(eventDataAsRecord);
           break;
-        case 'transaction.payment_failed':
+        case "transaction.payment_failed":
           this.logger.warn(`Payment failed for event ${eventId}`);
           {
             const subId = eventDataAsRecord?.subscriptionId as string | undefined;
@@ -569,11 +598,12 @@ export class PaddleSdkService {
                 select: { workspace_id: true, workspace: { select: { name: true } } },
               });
               if (sub) {
-                await this.createDiagnosticCase(sub.workspace_id,
+                await this.createDiagnosticCase(
+                  sub.workspace_id,
                   `Pago fallido para ${sub.workspace.name}`,
-                  'PADDLE_PAYMENT_FAILED',
+                  "PADDLE_PAYMENT_FAILED",
                   `Un pago de Paddle falló. El usuario necesita actualizar su método de pago.`,
-                  'high',
+                  "high",
                 );
               }
             }
@@ -606,11 +636,12 @@ export class PaddleSdkService {
           select: { workspace_id: true, workspace: { select: { name: true } } },
         });
         if (sub) {
-          await this.createDiagnosticCase(sub.workspace_id,
+          await this.createDiagnosticCase(
+            sub.workspace_id,
             `Error procesando webhook de Paddle: ${eventType}`,
-            'PADDLE_WEBHOOK_ERROR',
+            "PADDLE_WEBHOOK_ERROR",
             `Evento ${eventId} falló: ${error instanceof Error ? error.message : String(error)}`,
-            'critical',
+            "critical",
           );
         }
       }
@@ -633,12 +664,16 @@ export class PaddleSdkService {
   // ── Private event handlers ───────────────────────────────────────────────
 
   private async handleSubscriptionEvent(data: Record<string, unknown>): Promise<void> {
-    this.logger.log(`[DIAG] Subscription event raw keys: ${Object.keys(data).join(', ')}`);
+    this.logger.log(`[DIAG] Subscription event raw keys: ${Object.keys(data).join(", ")}`);
 
     const customerRecord = data.customer as Record<string, unknown> | undefined;
-    const customerId = (data.customerId ?? data.customer_id ?? customerRecord?.id) as string | undefined;
+    const customerId = (data.customerId ?? data.customer_id ?? customerRecord?.id) as
+      | string
+      | undefined;
     if (!customerId) {
-      this.logger.warn(`[DIAG] No customerId found in subscription event. Keys: ${Object.keys(data).join(', ')}, customer: ${JSON.stringify(data.customer)}`);
+      this.logger.warn(
+        `[DIAG] No customerId found in subscription event. Keys: ${Object.keys(data).join(", ")}, customer: ${JSON.stringify(data.customer)}`,
+      );
       return;
     }
 
@@ -646,25 +681,35 @@ export class PaddleSdkService {
     const firstItem = items?.[0];
     const firstItemPrice = firstItem?.price as Record<string, unknown> | undefined;
     const plan = this.mapPaddlePriceToPlan(
-      (firstItemPrice?.id ?? firstItem?.priceId ?? '') as string,
+      (firstItemPrice?.id ?? firstItem?.priceId ?? "") as string,
     );
 
     const status = this.mapPaddleStatus(data.status as string);
     const customData = (data.customData ?? data.custom_data ?? {}) as Record<string, unknown>;
-    const workspaceSlug = (customData?.workspaceSlug ?? customData?.workspace_slug) as string | undefined;
+    const workspaceSlug = (customData?.workspaceSlug ?? customData?.workspace_slug) as
+      | string
+      | undefined;
 
-    this.logger.log(`[DIAG] customData keys: ${Object.keys(customData).join(', ')}, workspaceSlug=${workspaceSlug}, plan=${customData?.plan}`);
+    this.logger.log(
+      `[DIAG] customData keys: ${Object.keys(customData).join(", ")}, workspaceSlug=${workspaceSlug}, plan=${customData?.plan}`,
+    );
 
-    this.logger.log(`Subscription event: customer=${customerId}, plan=${plan}, status=${status}, slug=${workspaceSlug}`);
+    this.logger.log(
+      `Subscription event: customer=${customerId}, plan=${plan}, status=${status}, slug=${workspaceSlug}`,
+    );
 
-    if (status === 'PAST_DUE' && workspaceSlug) {
-      const ws = await this.prisma.workspace.findUnique({ where: { slug: workspaceSlug }, select: { id: true, name: true } });
+    if (status === "PAST_DUE" && workspaceSlug) {
+      const ws = await this.prisma.workspace.findUnique({
+        where: { slug: workspaceSlug },
+        select: { id: true, name: true },
+      });
       if (ws) {
-        await this.createDiagnosticCase(ws.id,
+        await this.createDiagnosticCase(
+          ws.id,
           `Suscripción en mora para ${ws.name}`,
-          'SUBSCRIPTION_PAST_DUE',
+          "SUBSCRIPTION_PAST_DUE",
           `La suscripción de ${ws.name} está en estado PAST_DUE. El pago no se ha podido procesar.`,
-          'high',
+          "high",
         );
       }
     }
@@ -674,13 +719,15 @@ export class PaddleSdkService {
       select: { id: true, workspace_id: true },
     });
 
-    this.logger.log(`Existing subscription: ${existing ? `id=${existing.id}, ws=${existing.workspace_id}` : 'none'}`);
+    this.logger.log(
+      `Existing subscription: ${existing ? `id=${existing.id}, ws=${existing.workspace_id}` : "none"}`,
+    );
 
     const billingPeriod = data.currentBillingPeriod as Record<string, unknown> | undefined;
     const subData = {
       provider_subscription_id: data.id as string | undefined,
       provider_customer_id: customerId,
-      provider: 'PADDLE' as const,
+      provider: "PADDLE" as const,
       status: status as WorkspaceSubscriptionStatus,
       plan: plan as WorkspacePlan,
       current_period_start: billingPeriod?.startsAt
@@ -714,7 +761,13 @@ export class PaddleSdkService {
 
     if (workspaceId) {
       const addonKey = (customData?.addon ?? customData?.addon_key) as string | undefined;
-      const validAddons = ['ai_assistant', 'whatsapp_premium', 'extra_user', 'advanced_inventory', 'approvals_signature'];
+      const validAddons = [
+        "ai_assistant",
+        "whatsapp_premium",
+        "extra_user",
+        "advanced_inventory",
+        "approvals_signature",
+      ];
       if (addonKey && validAddons.includes(addonKey)) {
         this.logger.log(`Activating addon ${addonKey} for workspace ${workspaceId}`);
         const workspace = await this.prisma.workspace.findUnique({
@@ -722,7 +775,8 @@ export class PaddleSdkService {
           select: { settings_json: true },
         });
         // settings_json is a dynamic JSON blob — Record<string, any> is appropriate per rule 4
-        const settings: Record<string, unknown> = (workspace?.settings_json as Record<string, unknown>) ?? {};
+        const settings: Record<string, unknown> =
+          (workspace?.settings_json as Record<string, unknown>) ?? {};
         settings[`${addonKey}_active`] = true;
         settings[`${addonKey}_activated_at`] = new Date().toISOString();
         await this.prisma.workspace.update({
@@ -737,19 +791,21 @@ export class PaddleSdkService {
           data: { plan },
         });
         this.logger.log(`Workspace ${workspaceId} plan updated to ${plan}`);
-        await this.resolveBillingCases(workspaceId, 'SUBSCRIPTION_WORKSPACE_MISMATCH');
+        await this.resolveBillingCases(workspaceId, "SUBSCRIPTION_WORKSPACE_MISMATCH");
       }
     } else {
       this.logger.warn(`No workspaceId resolved for customer ${customerId}, slug=${workspaceSlug}`);
 
       if (workspaceSlug) {
         const ws = await this.prisma.workspace.findUnique({
-          where: { slug: workspaceSlug }, select: { id: true, name: true },
+          where: { slug: workspaceSlug },
+          select: { id: true, name: true },
         });
         if (ws) {
-          await this.createDiagnosticCase(ws.id,
+          await this.createDiagnosticCase(
+            ws.id,
             `Webhook no pudo vincular suscripción para ${ws.name}`,
-            'SUBSCRIPTION_WORKSPACE_MISMATCH',
+            "SUBSCRIPTION_WORKSPACE_MISMATCH",
             `customer=${customerId}, slug=${workspaceSlug}, plan=${plan}. Posiblemente el customer_id no coincide con ningún registro existente.`,
           );
         }
@@ -772,17 +828,18 @@ export class PaddleSdkService {
         select: { id: true, name: true },
       });
       if (ws) {
-        await this.createDiagnosticCase(ws.id,
+        await this.createDiagnosticCase(
+          ws.id,
           `Suscripción cancelada para ${ws.name}`,
-          'SUBSCRIPTION_CANCELED',
+          "SUBSCRIPTION_CANCELED",
           `El cliente canceló su suscripción. Plan revertido a FREE.`,
-          'medium',
+          "medium",
         );
       }
 
       await this.prisma.workspaceSubscription.update({
         where: { id: sub.id },
-        data: { status: 'CANCELLED', plan: 'FREE' },
+        data: { status: "CANCELLED", plan: "FREE" },
       });
 
       const wss = await this.prisma.workspace.findUnique({
@@ -790,25 +847,36 @@ export class PaddleSdkService {
         select: { settings_json: true },
       });
       // settings_json is a dynamic JSON blob — using Record<string, unknown> per rule 4 variant
-      const settings: Record<string, unknown> = (wss?.settings_json as Record<string, unknown>) ?? {};
+      const settings: Record<string, unknown> =
+        (wss?.settings_json as Record<string, unknown>) ?? {};
       let modified = false;
-      const addonKeys = ['ai_assistant_active', 'ai_assistant_activated_at',
-        'whatsapp_premium_active', 'whatsapp_premium_activated_at',
-        'extra_user_active', 'extra_user_activated_at',
-        'advanced_inventory_active', 'advanced_inventory_activated_at',
-        'approvals_signature_active', 'approvals_signature_activated_at'];
+      const addonKeys = [
+        "ai_assistant_active",
+        "ai_assistant_activated_at",
+        "whatsapp_premium_active",
+        "whatsapp_premium_activated_at",
+        "extra_user_active",
+        "extra_user_activated_at",
+        "advanced_inventory_active",
+        "advanced_inventory_activated_at",
+        "approvals_signature_active",
+        "approvals_signature_activated_at",
+      ];
       for (const key of addonKeys) {
-        if (key in settings) { delete settings[key]; modified = true; }
+        if (key in settings) {
+          delete settings[key];
+          modified = true;
+        }
       }
       if (modified) {
         await this.prisma.workspace.update({
           where: { id: sub.workspace_id },
-          data: { plan: 'FREE', settings_json: settings as Prisma.InputJsonValue },
+          data: { plan: "FREE", settings_json: settings as Prisma.InputJsonValue },
         });
       } else {
         await this.prisma.workspace.update({
           where: { id: sub.workspace_id },
-          data: { plan: 'FREE' },
+          data: { plan: "FREE" },
         });
       }
     }
@@ -816,10 +884,18 @@ export class PaddleSdkService {
 
   // Currencies that do NOT use 2-decimal minor units (Paddle still sends in minor units,
   // but the divisor is 1, not 100). Add more as needed.
-  private static readonly ZERO_DECIMAL_CURRENCIES = new Set(['JPY', 'KRW', 'CLP', 'ISK', 'VND', 'XAF', 'XOF']);
+  private static readonly ZERO_DECIMAL_CURRENCIES = new Set([
+    "JPY",
+    "KRW",
+    "CLP",
+    "ISK",
+    "VND",
+    "XAF",
+    "XOF",
+  ]);
 
   private parsePaddleAmount(raw: unknown, currency: string): number {
-    const minor = parseInt(String(raw ?? '0'), 10);
+    const minor = parseInt(String(raw ?? "0"), 10);
     if (Number.isNaN(minor)) return 0;
     const divisor = PaddleSdkService.ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase()) ? 1 : 100;
     return Math.round((minor / divisor) * 100) / 100;
@@ -850,14 +926,18 @@ export class PaddleSdkService {
       // transaction's customData so we still upgrade the plan AND so the
       // invoice-generation block below has a `sub` to run against.
       const customData = (data.customData ?? data.custom_data ?? {}) as Record<string, unknown>;
-      const wsSlug = (customData?.workspaceSlug ?? customData?.workspace_slug) as string | undefined;
+      const wsSlug = (customData?.workspaceSlug ?? customData?.workspace_slug) as
+        | string
+        | undefined;
       const txItems = data.items as Array<Record<string, unknown>> | undefined;
-      const txFirstItemPrice = (txItems?.[0]?.price as Record<string, unknown> | undefined);
-      const plan = this.mapPaddlePriceToPlan((txFirstItemPrice?.id ?? '') as string);
+      const txFirstItemPrice = txItems?.[0]?.price as Record<string, unknown> | undefined;
+      const plan = this.mapPaddlePriceToPlan((txFirstItemPrice?.id ?? "") as string);
       const customerId = (data.customerId ?? data.customer_id) as string | undefined;
 
-      if (!wsSlug || plan === 'FREE') {
-        this.logger.warn(`Transaction completed but no subscription found for ${subscriptionId} (and could not create from customData: slug=${wsSlug}, plan=${plan})`);
+      if (!wsSlug || plan === "FREE") {
+        this.logger.warn(
+          `Transaction completed but no subscription found for ${subscriptionId} (and could not create from customData: slug=${wsSlug}, plan=${plan})`,
+        );
         return;
       }
 
@@ -866,7 +946,9 @@ export class PaddleSdkService {
         select: { id: true, name: true, slug: true },
       });
       if (!ws) {
-        this.logger.warn(`Transaction completed but workspace ${wsSlug} not found for sub ${subscriptionId}`);
+        this.logger.warn(
+          `Transaction completed but workspace ${wsSlug} not found for sub ${subscriptionId}`,
+        );
         return;
       }
 
@@ -876,13 +958,15 @@ export class PaddleSdkService {
           workspace_id: ws.id,
           provider_subscription_id: subscriptionId,
           provider_customer_id: customerId,
-          provider: 'PADDLE',
-          status: 'ACTIVE',
+          provider: "PADDLE",
+          status: "ACTIVE",
           plan,
           current_period_start: billingPeriod?.startsAt
-            ? new Date(billingPeriod.startsAt as string) : new Date(),
+            ? new Date(billingPeriod.startsAt as string)
+            : new Date(),
           current_period_end: billingPeriod?.endsAt
-            ? new Date(billingPeriod.endsAt as string) : undefined,
+            ? new Date(billingPeriod.endsAt as string)
+            : undefined,
         },
         select: { id: true },
       });
@@ -890,8 +974,10 @@ export class PaddleSdkService {
         where: { id: ws.id },
         data: { plan },
       });
-      this.logger.log(`Created subscription from transaction: ws=${ws.id}, plan=${plan}, sub=${subscriptionId}`);
-      await this.resolveBillingCases(ws.id, 'SUBSCRIPTION_WORKSPACE_MISMATCH');
+      this.logger.log(
+        `Created subscription from transaction: ws=${ws.id}, plan=${plan}, sub=${subscriptionId}`,
+      );
+      await this.resolveBillingCases(ws.id, "SUBSCRIPTION_WORKSPACE_MISMATCH");
 
       // Fall through to the invoice-generation block with the freshly
       // created subscription. Previously this branch returned early and
@@ -900,15 +986,17 @@ export class PaddleSdkService {
         id: created.id,
         workspace_id: ws.id,
         plan,
-        status: 'ACTIVE',
+        status: "ACTIVE",
         workspace: { name: ws.name, slug: ws.slug },
       };
     } else {
-      this.logger.log(`Transaction handler: ws=${sub.workspace_id}, current plan=${sub.plan}, sub status=${sub.status}`);
+      this.logger.log(
+        `Transaction handler: ws=${sub.workspace_id}, current plan=${sub.plan}, sub status=${sub.status}`,
+      );
 
       await this.prisma.workspaceSubscription.update({
         where: { id: sub.id },
-        data: { status: 'ACTIVE', plan: sub.plan },
+        data: { status: "ACTIVE", plan: sub.plan },
       });
 
       this.logger.log(`Updating workspace ${sub.workspace_id} plan to ${sub.plan}`);
@@ -929,13 +1017,15 @@ export class PaddleSdkService {
         select: { id: true, number: true },
       });
       if (dup) {
-        this.logger.log(`Invoice already exists for tx=${transactionId} (invoice ${dup.number}), skipping`);
+        this.logger.log(
+          `Invoice already exists for tx=${transactionId} (invoice ${dup.number}), skipping`,
+        );
         return;
       }
     }
 
     // PADDLE MANDA TOTALES EN MINOR UNITS COMO STRING ("5000" = $50.00).
-    const currency = ((data.currencyCode ?? data.currency_code ?? 'USD') as string).toUpperCase();
+    const currency = ((data.currencyCode ?? data.currency_code ?? "USD") as string).toUpperCase();
     const detailsRecord = data.details as Record<string, unknown> | undefined;
     const totalsRecord = (detailsRecord?.totals ?? data.totals ?? {}) as Record<string, unknown>;
     const subtotal = this.parsePaddleAmount(totalsRecord.subtotal, currency);
@@ -944,54 +1034,56 @@ export class PaddleSdkService {
     const fallbackAmount = this.parsePaddleAmount(data.amount, currency);
     const txBillingPeriod = data.billingPeriod as Record<string, unknown> | undefined;
     const txBillingPeriodLegacy = data.billing_period as Record<string, unknown> | undefined;
-    const interval = (txBillingPeriod?.interval ?? txBillingPeriodLegacy?.interval ?? 'MONTHLY') as string;
-    const planInterval: 'MONTHLY' | 'ANNUAL' =
-      interval === 'month' ? 'MONTHLY' : interval === 'year' ? 'ANNUAL' : 'MONTHLY';
+    const interval = (txBillingPeriod?.interval ??
+      txBillingPeriodLegacy?.interval ??
+      "MONTHLY") as string;
+    const planInterval: "MONTHLY" | "ANNUAL" =
+      interval === "month" ? "MONTHLY" : interval === "year" ? "ANNUAL" : "MONTHLY";
 
     // Owner para el cliente y el email
     const owner = await this.prisma.workspaceUser.findFirst({
       where: { workspace_id: sub.workspace_id, is_owner: true },
       select: { user: { select: { email: true, name: true } } },
     });
-    const clientName = owner?.user?.name || sub.workspace?.name || 'Cliente';
-    const clientEmail = owner?.user?.email || '';
+    const clientName = owner?.user?.name || sub.workspace?.name || "Cliente";
+    const clientEmail = owner?.user?.email || "";
 
     let invoiceId: string | null = null;
     try {
-      const invoice = await this.billingInvoice.generateForSubscription(
-        sub.workspace_id,
-        sub.id,
-        {
-          clientName,
-          clientEmail,
-          planName: sub.plan,
-          planInterval,
-          seats: 1,
-          // Si Paddle no mando subtotal explicito, usa total (sin IVA recalculado).
-          amount: subtotal || total || fallbackAmount,
-          subtotal: subtotal || total || fallbackAmount,
-          taxAmount: subtotal ? taxAmount : 0,
-          taxRate: subtotal && taxAmount ? Math.round((taxAmount / subtotal) * 10000) / 100 : 0,
-          currency,
-          notes: txMarker ? `Pago procesado · ${txMarker}` : 'Pago procesado',
-        },
-      );
+      const invoice = await this.billingInvoice.generateForSubscription(sub.workspace_id, sub.id, {
+        clientName,
+        clientEmail,
+        planName: sub.plan,
+        planInterval,
+        seats: 1,
+        // Si Paddle no mando subtotal explicito, usa total (sin IVA recalculado).
+        amount: subtotal || total || fallbackAmount,
+        subtotal: subtotal || total || fallbackAmount,
+        taxAmount: subtotal ? taxAmount : 0,
+        taxRate: subtotal && taxAmount ? Math.round((taxAmount / subtotal) * 10000) / 100 : 0,
+        currency,
+        notes: txMarker ? `Pago procesado · ${txMarker}` : "Pago procesado",
+      });
       invoiceId = invoice.id;
     } catch (err) {
-      this.logger.error(`Failed to create billing invoice for workspace ${sub.workspace_id}: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(
+        `Failed to create billing invoice for workspace ${sub.workspace_id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return;
     }
 
     // Email con PDF adjunto — fire-and-forget, no bloquea el webhook.
     this.sendInvoiceEmail(invoiceId, clientEmail, owner?.user?.name ?? null).catch((err: unknown) =>
-      this.logger.warn(`Invoice email failed for invoice ${invoiceId}: ${err instanceof Error ? err.message : String(err)}`),
+      this.logger.warn(
+        `Invoice email failed for invoice ${invoiceId}: ${err instanceof Error ? err.message : String(err)}`,
+      ),
     );
   }
 
   private async sendInvoiceEmail(invoiceId: string, to: string, recipientName: string | null) {
-    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    const apiKey = this.configService.get<string>("RESEND_API_KEY");
     if (!apiKey) {
-      this.logger.warn('RESEND_API_KEY not configured, skipping invoice email');
+      this.logger.warn("RESEND_API_KEY not configured, skipping invoice email");
       return;
     }
     if (!to) {
@@ -1006,20 +1098,21 @@ export class PaddleSdkService {
       select: { number: true, plan_name: true, total: true, currency: true, issued_at: true },
     });
 
-    const formattedTotal = inv.currency === 'CRC'
-      ? `₡${inv.total.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : `$${inv.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const monthName = inv.issued_at.toLocaleString('es-CR', { month: 'long', year: 'numeric' });
+    const formattedTotal =
+      inv.currency === "CRC"
+        ? `₡${inv.total.toLocaleString("es-CR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : `$${inv.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const monthName = inv.issued_at.toLocaleString("es-CR", { month: "long", year: "numeric" });
 
     const resend = new Resend(apiKey);
     try {
       await resend.emails.send({
-        from: 'PymesHub <billing@pymeshub.lat>',
+        from: "PymesHub <billing@pymeshub.lat>",
         to,
         subject: `Factura ${inv.number} — ${inv.plan_name} (${monthName})`,
         html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111827">
           <h2 style="color:#1a56db;margin:0 0 16px">PymesHub</h2>
-          <p>Hola${recipientName ? ` ${recipientName.replace(/[<>&"']/g, (c: string) => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]!))}` : ''},</p>
+          <p>Hola${recipientName ? ` ${recipientName.replace(/[<>&"']/g, (c: string) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" })[c]!)}` : ""},</p>
           <p>Tu pago de <strong>${formattedTotal}</strong> por el plan <strong>${inv.plan_name}</strong> fue procesado correctamente.</p>
           <p style="background:#f8fafc;padding:12px 16px;border-radius:6px;margin:16px 0">
             <span style="color:#6b7280;font-size:12px;display:block">Numero de factura</span>
@@ -1036,9 +1129,13 @@ export class PaddleSdkService {
           },
         ],
       });
-      this.logger.log(`Invoice email sent to ${to} (invoice ${inv.number}, ${buffer.length} bytes PDF)`);
+      this.logger.log(
+        `Invoice email sent to ${to} (invoice ${inv.number}, ${buffer.length} bytes PDF)`,
+      );
     } catch (err) {
-      this.logger.error(`Failed to send invoice email for ${inv.number}: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(
+        `Failed to send invoice email for ${inv.number}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
@@ -1046,40 +1143,81 @@ export class PaddleSdkService {
 
   getAvailablePrices(): Record<string, string | null> {
     return {
-      starter_monthly: this.configService.get<string>('PADDLE_PRICE_STARTER_MONTHLY') ?? null,
-      starter_annual: this.configService.get<string>('PADDLE_PRICE_STARTER_ANNUAL') ?? null,
-      growth_monthly: this.configService.get<string>('PADDLE_PRICE_GROWTH_MONTHLY') ?? null,
-      growth_annual: this.configService.get<string>('PADDLE_PRICE_GROWTH_ANNUAL') ?? null,
-      enterprise_monthly: this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_MONTHLY') ?? null,
-      enterprise_annual: this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_ANNUAL') ?? null,
+      starter_monthly: this.configService.get<string>("PADDLE_PRICE_STARTER_MONTHLY") ?? null,
+      starter_annual: this.configService.get<string>("PADDLE_PRICE_STARTER_ANNUAL") ?? null,
+      growth_monthly: this.configService.get<string>("PADDLE_PRICE_GROWTH_MONTHLY") ?? null,
+      growth_annual: this.configService.get<string>("PADDLE_PRICE_GROWTH_ANNUAL") ?? null,
+      enterprise_monthly: this.configService.get<string>("PADDLE_PRICE_ENTERPRISE_MONTHLY") ?? null,
+      enterprise_annual: this.configService.get<string>("PADDLE_PRICE_ENTERPRISE_ANNUAL") ?? null,
     };
   }
 
   // ── Add-on prices ──────────────────────────────────────────────────────────
 
   addons = {
-    extra_user:        { label: 'Usuario extra',           description: 'Agrega otro compañero sin cambiar de plan.',  priceUSD: 8 },
-    whatsapp_premium:  { label: 'WhatsApp + Analíticas',   description: 'Reportes de conversaciones, tiempos de respuesta, métricas de canal y estadísticas avanzadas de WhatsApp.', priceUSD: 19 },
-    advanced_inventory:{ label: 'Inventario avanzado',     description: 'Gestión completa de inventario y seguimiento.', priceUSD: 29 },
-    ai_assistant:      { label: 'Asistente IA',            description: 'Sugerencias y automatizaciones con inteligencia artificial.', priceUSD: 29 },
-    approvals_signature:{ label: 'Aprobaciones y firma digital', description: 'Flujos de aprobación y firma digital integrada.', priceUSD: 25 },
+    extra_user: {
+      label: "Usuario extra",
+      description: "Agrega otro compañero sin cambiar de plan.",
+      priceUSD: 8,
+    },
+    whatsapp_premium: {
+      label: "WhatsApp + Analíticas",
+      description:
+        "Reportes de conversaciones, tiempos de respuesta, métricas de canal y estadísticas avanzadas de WhatsApp.",
+      priceUSD: 19,
+    },
+    advanced_inventory: {
+      label: "Inventario avanzado",
+      description: "Gestión completa de inventario y seguimiento.",
+      priceUSD: 29,
+    },
+    ai_assistant: {
+      label: "Asistente IA",
+      description: "Sugerencias y automatizaciones con inteligencia artificial.",
+      priceUSD: 29,
+    },
+    approvals_signature: {
+      label: "Aprobaciones y firma digital",
+      description: "Flujos de aprobación y firma digital integrada.",
+      priceUSD: 25,
+    },
   };
 
-  getAvailableAddonPrices(): Record<string, { priceId: string | null; label: string; description: string; priceUSD: number }> {
-    const result: Record<string, { priceId: string | null; label: string; description: string; priceUSD: number }> = {};
+  getAvailableAddonPrices(): Record<
+    string,
+    { priceId: string | null; label: string; description: string; priceUSD: number }
+  > {
+    const result: Record<
+      string,
+      { priceId: string | null; label: string; description: string; priceUSD: number }
+    > = {};
     for (const [key, info] of Object.entries(this.addons)) {
-      const priceId = this.configService.get<string>(`PADDLE_PRICE_ADDON_${key.toUpperCase()}`) ?? null;
-      result[key] = { priceId, label: info.label, description: info.description, priceUSD: info.priceUSD };
+      const priceId =
+        this.configService.get<string>(`PADDLE_PRICE_ADDON_${key.toUpperCase()}`) ?? null;
+      result[key] = {
+        priceId,
+        label: info.label,
+        description: info.description,
+        priceUSD: info.priceUSD,
+      };
     }
     return result;
   }
 
-  async createAddonTransaction(workspaceId: string, customerId: string, email: string, addonKey: string): Promise<{ transactionId: string; checkoutUrl: string | null }> {
+  async createAddonTransaction(
+    workspaceId: string,
+    customerId: string,
+    email: string,
+    addonKey: string,
+  ): Promise<{ transactionId: string; checkoutUrl: string | null }> {
     const info = this.addons[addonKey as keyof typeof this.addons];
     if (!info) throw new BadRequestException(`Add-on desconocido: ${addonKey}`);
 
     const priceId = this.configService.get<string>(`PADDLE_PRICE_ADDON_${addonKey.toUpperCase()}`);
-    if (!priceId) throw new BadRequestException(`Add-on "${addonKey}" no está configurado (falta PADDLE_PRICE_ADDON_${addonKey.toUpperCase()})`);
+    if (!priceId)
+      throw new BadRequestException(
+        `Add-on "${addonKey}" no está configurado (falta PADDLE_PRICE_ADDON_${addonKey.toUpperCase()})`,
+      );
 
     return this.createTransaction(workspaceId, customerId, priceId, email, addonKey);
   }
@@ -1092,10 +1230,13 @@ export class PaddleSdkService {
     addonKey?: string,
   ): Promise<{ transactionId: string; checkoutUrl: string | null }> {
     const paddle = this.requireClient();
-    const appUrl = this.configService.get<string>('PUBLIC_URL') || 'https://pymeshub.lat';
+    const appUrl = this.configService.get<string>("PUBLIC_URL") || "https://pymeshub.lat";
 
     const customData: Record<string, unknown> = {};
-    const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { slug: true } });
+    const ws = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { slug: true },
+    });
     customData.workspaceSlug = ws.slug;
     if (addonKey) customData.addon = addonKey;
 
@@ -1106,7 +1247,9 @@ export class PaddleSdkService {
       checkout: { url: `${appUrl}/settings/billing?paddle=success` },
     });
 
-    this.logger.log(`Transaction created: ${transaction.id}, priceId=${priceId}, addon=${addonKey || 'N/A'}`);
+    this.logger.log(
+      `Transaction created: ${transaction.id}, priceId=${priceId}, addon=${addonKey || "N/A"}`,
+    );
     return { transactionId: transaction.id, checkoutUrl: transaction.checkout?.url ?? null };
   }
 
@@ -1114,37 +1257,39 @@ export class PaddleSdkService {
 
   private mapPaddleStatus(status: string): string {
     const map: Record<string, string> = {
-      active: 'ACTIVE',
-      trialing: 'TRIALING',
-      past_due: 'PAST_DUE',
-      unpaid: 'UNPAID',
-      canceled: 'CANCELLED',
-      paused: 'CANCELLED',
+      active: "ACTIVE",
+      trialing: "TRIALING",
+      past_due: "PAST_DUE",
+      unpaid: "UNPAID",
+      canceled: "CANCELLED",
+      paused: "CANCELLED",
     };
-    return map[status] ?? 'MANUAL';
+    return map[status] ?? "MANUAL";
   }
 
-  private mapPaddlePriceToPlan(priceId: string): 'FREE' | 'STARTER' | 'GROWTH' | 'ENTERPRISE' {
-    if (!priceId) return 'FREE';
+  private mapPaddlePriceToPlan(priceId: string): "FREE" | "STARTER" | "GROWTH" | "ENTERPRISE" {
+    if (!priceId) return "FREE";
 
-    const priceVars: Record<string, 'FREE' | 'STARTER' | 'GROWTH' | 'ENTERPRISE'> = {};
-    const starterMonthly = this.configService.get<string>('PADDLE_PRICE_STARTER_MONTHLY');
-    const starterAnnual = this.configService.get<string>('PADDLE_PRICE_STARTER_ANNUAL');
-    const growthMonthly = this.configService.get<string>('PADDLE_PRICE_GROWTH_MONTHLY');
-    const growthAnnual = this.configService.get<string>('PADDLE_PRICE_GROWTH_ANNUAL');
-    const enterpriseMonthly = this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_MONTHLY');
-    const enterpriseAnnual = this.configService.get<string>('PADDLE_PRICE_ENTERPRISE_ANNUAL');
+    const priceVars: Record<string, "FREE" | "STARTER" | "GROWTH" | "ENTERPRISE"> = {};
+    const starterMonthly = this.configService.get<string>("PADDLE_PRICE_STARTER_MONTHLY");
+    const starterAnnual = this.configService.get<string>("PADDLE_PRICE_STARTER_ANNUAL");
+    const growthMonthly = this.configService.get<string>("PADDLE_PRICE_GROWTH_MONTHLY");
+    const growthAnnual = this.configService.get<string>("PADDLE_PRICE_GROWTH_ANNUAL");
+    const enterpriseMonthly = this.configService.get<string>("PADDLE_PRICE_ENTERPRISE_MONTHLY");
+    const enterpriseAnnual = this.configService.get<string>("PADDLE_PRICE_ENTERPRISE_ANNUAL");
 
-    if (starterMonthly) priceVars[starterMonthly] = 'STARTER';
-    if (starterAnnual) priceVars[starterAnnual] = 'STARTER';
-    if (growthMonthly) priceVars[growthMonthly] = 'GROWTH';
-    if (growthAnnual) priceVars[growthAnnual] = 'GROWTH';
-    if (enterpriseMonthly) priceVars[enterpriseMonthly] = 'ENTERPRISE';
-    if (enterpriseAnnual) priceVars[enterpriseAnnual] = 'ENTERPRISE';
+    if (starterMonthly) priceVars[starterMonthly] = "STARTER";
+    if (starterAnnual) priceVars[starterAnnual] = "STARTER";
+    if (growthMonthly) priceVars[growthMonthly] = "GROWTH";
+    if (growthAnnual) priceVars[growthAnnual] = "GROWTH";
+    if (enterpriseMonthly) priceVars[enterpriseMonthly] = "ENTERPRISE";
+    if (enterpriseAnnual) priceVars[enterpriseAnnual] = "ENTERPRISE";
 
-    const result = priceVars[priceId] ?? 'FREE';
-    if (result === 'FREE' && priceId) {
-      this.logger.warn(`mapPaddlePriceToPlan: unmapped Paddle price ID "${priceId}" — falling back to FREE. Check env vars PADDLE_PRICE_*_MONTHLY/ANNUAL.`);
+    const result = priceVars[priceId] ?? "FREE";
+    if (result === "FREE" && priceId) {
+      this.logger.warn(
+        `mapPaddlePriceToPlan: unmapped Paddle price ID "${priceId}" — falling back to FREE. Check env vars PADDLE_PRICE_*_MONTHLY/ANNUAL.`,
+      );
     }
     return result;
   }
@@ -1156,13 +1301,13 @@ export class PaddleSdkService {
     });
 
     const owner = await this.prisma.workspaceUser.findFirst({
-      where: { workspace_id: workspaceId, role: 'OWNER' },
+      where: { workspace_id: workspaceId, role: "OWNER" },
       select: { user: { select: { email: true } } },
     });
 
     return {
-      name: workspace?.name || 'Cliente',
-      email: owner?.user?.email || '',
+      name: workspace?.name || "Cliente",
+      email: owner?.user?.email || "",
     };
   }
 
@@ -1171,40 +1316,52 @@ export class PaddleSdkService {
     title: string,
     errorCode: string,
     errorDetail: string,
-    riskLevel: string = 'high',
+    riskLevel: string = "high",
   ) {
     try {
       await this.prisma.supportDiagnosticCase.create({
         data: {
           workspace_id: workspaceId,
-          module: 'billing',
+          module: "billing",
           error_code: errorCode,
-          category: 'BILLING_OR_PLAN',
+          category: "BILLING_OR_PLAN",
           risk_level: riskLevel,
-          status: 'OPEN',
+          status: "OPEN",
           title,
           user_description: errorDetail,
-          safe_summary: 'Revisar logs de Railway para más detalles. Verificar configuración de Paddle.',
-          evidence_json: { error_code: errorCode, detail: errorDetail, timestamp: new Date().toISOString() },
+          safe_summary:
+            "Revisar logs de Railway para más detalles. Verificar configuración de Paddle.",
+          evidence_json: {
+            error_code: errorCode,
+            detail: errorDetail,
+            timestamp: new Date().toISOString(),
+          },
         },
       });
       this.logger.log(`Billing diagnostic case created: ${title}`);
     } catch (err) {
-      this.logger.error(`Failed to create billing diagnostic case: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(
+        `Failed to create billing diagnostic case: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
   async resolveBillingCases(workspaceId: string, errorCode: string) {
     try {
       const updated = await this.prisma.supportDiagnosticCase.updateMany({
-        where: { workspace_id: workspaceId, error_code: errorCode, status: 'OPEN' },
-        data: { status: 'RESOLVED', resolution_json: { resolved_at: new Date().toISOString(), auto: true } },
+        where: { workspace_id: workspaceId, error_code: errorCode, status: "OPEN" },
+        data: {
+          status: "RESOLVED",
+          resolution_json: { resolved_at: new Date().toISOString(), auto: true },
+        },
       });
       if (updated.count > 0) {
         this.logger.log(`Auto-resolved ${updated.count} billing case(s) for ${errorCode}`);
       }
     } catch (err) {
-      this.logger.error(`Failed to auto-resolve billing cases: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(
+        `Failed to auto-resolve billing cases: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 }

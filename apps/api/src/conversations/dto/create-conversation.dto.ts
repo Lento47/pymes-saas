@@ -1,10 +1,5 @@
-import {
-  IsEnum,
-  IsOptional,
-  IsString,
-  Length,
-} from 'class-validator';
-import { Priority } from '@prisma/client';
+import { IsEnum, IsOptional, IsString, Length } from "class-validator";
+import { Priority } from "@prisma/client";
 
 export class CreateConversationDto {
   @IsString()

@@ -1,5 +1,5 @@
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min, IsIn } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min, IsIn } from "class-validator";
+import { Type } from "class-transformer";
 
 export class CreateProductDto {
   @IsOptional()
@@ -17,7 +17,7 @@ export class CreateProductDto {
   description?: string;
 
   @IsOptional()
-  @IsIn(['PRODUCT', 'SERVICE'])
+  @IsIn(["PRODUCT", "SERVICE"])
   type?: string;
 
   @Type(() => Number)

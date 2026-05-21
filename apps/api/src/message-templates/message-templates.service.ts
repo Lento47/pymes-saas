@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
 
 @Injectable()
 export class MessageTemplatesService {
@@ -13,7 +13,7 @@ export class MessageTemplatesService {
         workspace_id: workspaceId,
         ...(channel ? { channel } : {}),
       },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
   }
 
@@ -30,13 +30,13 @@ export class MessageTemplatesService {
     return this.prisma.messageTemplate.create({
       data: {
         workspace: { connect: { id: workspaceId } },
-        channel: data.channel ?? 'WHATSAPP',
+        channel: data.channel ?? "WHATSAPP",
         name: data.name,
         external_template_id: data.external_template_id,
         category: data.category,
         language: data.language,
         body: data.body,
-        status: data.status ?? 'DRAFT',
+        status: data.status ?? "DRAFT",
         variables: data.variables ?? undefined,
         created_by: data.user_id ? { connect: { id: data.user_id } } : undefined,
       },
@@ -68,9 +68,9 @@ export class MessageTemplatesService {
       where: {
         workspace_id: workspaceId,
         channel,
-        status: 'APPROVED',
+        status: "APPROVED",
       },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
   }
 }

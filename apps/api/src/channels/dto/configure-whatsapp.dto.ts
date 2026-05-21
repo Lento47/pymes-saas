@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, MinLength } from "class-validator";
 
 export class ConfigureWhatsAppDto {
   /** Meta System User or Permanent Token — optional on edit (omit to keep existing) */

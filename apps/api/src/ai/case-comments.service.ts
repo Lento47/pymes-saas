@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
 
 @Injectable()
 export class CaseCommentsService {
@@ -10,11 +10,11 @@ export class CaseCommentsService {
       where: { id: caseId },
       select: { id: true },
     });
-    if (!diagnosticCase) throw new NotFoundException('Diagnostic case not found');
+    if (!diagnosticCase) throw new NotFoundException("Diagnostic case not found");
 
     return this.prisma.supportCaseComment.findMany({
       where: { case_id: caseId },
-      orderBy: { created_at: 'asc' },
+      orderBy: { created_at: "asc" },
       select: {
         id: true,
         body: true,
@@ -26,19 +26,14 @@ export class CaseCommentsService {
     });
   }
 
-  async create(
-    caseId: string,
-    workspaceId: string,
-    userId: string,
-    body: string,
-  ) {
+  async create(caseId: string, workspaceId: string, userId: string, body: string) {
     const diagnosticCase = await this.prisma.supportDiagnosticCase.findUnique({
       where: { id: caseId },
       select: { id: true, workspace_id: true },
     });
-    if (!diagnosticCase) throw new NotFoundException('Diagnostic case not found');
+    if (!diagnosticCase) throw new NotFoundException("Diagnostic case not found");
     if (diagnosticCase.workspace_id !== workspaceId) {
-      throw new NotFoundException('Diagnostic case not found');
+      throw new NotFoundException("Diagnostic case not found");
     }
 
     return this.prisma.supportCaseComment.create({

@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
 
 /**
  * Phase 4 — turns resolved diagnostic cases into knowledge-base
@@ -54,12 +54,12 @@ export class KnowledgeBaseService {
     // Filter 2: extract resolution body and require a minimum length
     // so we don't promote one-line shrugs into the catalog.
     const resolutionRaw = dCase.resolution_json;
-    const resolution = (resolutionRaw !== null && typeof resolutionRaw === 'object' && !Array.isArray(resolutionRaw))
-      ? (resolutionRaw as Record<string, unknown>)
-      : {} as Record<string, unknown>;
-    const body: string =
-      String(resolution.resolution || resolution.summary || '');
-    const workaround: string = String(resolution.workaround || '');
+    const resolution =
+      resolutionRaw !== null && typeof resolutionRaw === "object" && !Array.isArray(resolutionRaw)
+        ? (resolutionRaw as Record<string, unknown>)
+        : ({} as Record<string, unknown>);
+    const body: string = String(resolution.resolution || resolution.summary || "");
+    const workaround: string = String(resolution.workaround || "");
     const longestField = body.length >= workaround.length ? body : workaround;
     if (longestField.length < 50) {
       return;
@@ -88,11 +88,12 @@ export class KnowledgeBaseService {
       }
 
       await this.prisma.supportKnownIssue
-        .update({ where: { error_code: dCase.error_code }, data: data as import('@prisma/client').Prisma.SupportKnownIssueUpdateInput })
+        .update({
+          where: { error_code: dCase.error_code },
+          data: data as import("@prisma/client").Prisma.SupportKnownIssueUpdateInput,
+        })
         .catch((err) => {
-          this.logger.warn(
-            `Failed to refresh known-issue ${dCase.error_code}: ${err?.message}`,
-          );
+          this.logger.warn(`Failed to refresh known-issue ${dCase.error_code}: ${err?.message}`);
         });
 
       this.logger.log(
@@ -112,7 +113,7 @@ export class KnowledgeBaseService {
           severity: dCase.risk_level,
           description: body || dCase.safe_summary || dCase.title,
           workaround: workaround || null,
-          fix_status: 'WORKAROUND_AVAILABLE',
+          fix_status: "WORKAROUND_AVAILABLE",
           is_active: true,
           auto_learned: true,
           seen_count: 1,
@@ -126,8 +127,6 @@ export class KnowledgeBaseService {
         );
       });
 
-    this.logger.log(
-      `Auto-learned new known-issue ${dCase.error_code} from case ${dCase.id}`,
-    );
+    this.logger.log(`Auto-learned new known-issue ${dCase.error_code} from case ${dCase.id}`);
   }
 }

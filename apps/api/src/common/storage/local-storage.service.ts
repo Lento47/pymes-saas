@@ -1,7 +1,7 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Injectable, InternalServerErrorException, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as fs from "fs";
+import * as path from "path";
 
 @Injectable()
 export class LocalStorageService {
@@ -9,14 +9,19 @@ export class LocalStorageService {
   private readonly basePath: string;
 
   constructor(private readonly config: ConfigService) {
-    this.basePath = this.config.get<string>('STORAGE_LOCAL_PATH') ?? path.join(process.cwd(), 'uploads');
+    this.basePath =
+      this.config.get<string>("STORAGE_LOCAL_PATH") ?? path.join(process.cwd(), "uploads");
     if (!fs.existsSync(this.basePath)) {
       fs.mkdirSync(this.basePath, { recursive: true });
       this.logger.log(`Created local storage directory: ${this.basePath}`);
     }
   }
 
-  async upload(key: string, buffer: Buffer, _mimeType: string): Promise<{ key: string; size: number }> {
+  async upload(
+    key: string,
+    buffer: Buffer,
+    _mimeType: string,
+  ): Promise<{ key: string; size: number }> {
     const filePath = path.join(this.basePath, key);
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
@@ -27,7 +32,7 @@ export class LocalStorageService {
       return { key, size: buffer.length };
     } catch (err) {
       this.logger.error(`Error writing file ${key}:`, err);
-      throw new InternalServerErrorException('Error al guardar el archivo en storage local.');
+      throw new InternalServerErrorException("Error al guardar el archivo en storage local.");
     }
   }
 
@@ -40,11 +45,11 @@ export class LocalStorageService {
     try {
       return await fs.promises.readFile(filePath);
     } catch (err) {
-      if (err?.code === 'ENOENT') {
-        throw new InternalServerErrorException('Archivo no encontrado en storage local.');
+      if (err?.code === "ENOENT") {
+        throw new InternalServerErrorException("Archivo no encontrado en storage local.");
       }
       this.logger.error(`Error reading file ${key}:`, err);
-      throw new InternalServerErrorException('Error al leer el archivo del storage local.');
+      throw new InternalServerErrorException("Error al leer el archivo del storage local.");
     }
   }
 
@@ -60,7 +65,7 @@ export class LocalStorageService {
   }
 
   buildKey(workspaceId: string, documentId: string, filename: string): string {
-    const safe = filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const safe = filename.replace(/[^a-zA-Z0-9.\-_]/g, "_");
     return `${workspaceId}/documents/${documentId}/${safe}`;
   }
 }

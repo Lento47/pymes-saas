@@ -1,7 +1,7 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { ROLES_KEY } from './api-roles.decorator';
-import { ApiRole } from './api-token.guard';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { ROLES_KEY } from "./api-roles.decorator";
+import { ApiRole } from "./api-token.guard";
 
 @Injectable()
 export class ApiRolesGuard implements CanActivate {
@@ -26,7 +26,7 @@ export class ApiRolesGuard implements CanActivate {
         return true;
       }
       throw new ForbiddenException(
-        `Requires one of roles: ${requiredRoles.join(', ')}. Current: ${request.api_role}`
+        `Requires one of roles: ${requiredRoles.join(", ")}. Current: ${request.api_role}`,
       );
     }
 
@@ -38,7 +38,7 @@ export class ApiRolesGuard implements CanActivate {
 
     // Founder endpoints require founder role
     if (requiredRoles.includes(ApiRole.FOUNDER)) {
-      throw new ForbiddenException('Founder role required for this operation');
+      throw new ForbiddenException("Founder role required for this operation");
     }
 
     // If no JWT user and no API token, default allow (base auth guard handles)

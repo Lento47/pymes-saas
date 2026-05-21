@@ -1,9 +1,9 @@
-import { IsOptional, IsEnum, IsNumberString } from 'class-validator';
-import { TriggerType } from '@prisma/client';
+import { IsOptional, IsEnum, IsNumberString } from "class-validator";
+import { TriggerType } from "@prisma/client";
 
 export class FilterAutomationsDto {
   @IsOptional()
-  @IsEnum(['true', 'false'])
+  @IsEnum(["true", "false"])
   enabled?: string;
 
   @IsOptional()

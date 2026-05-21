@@ -1,11 +1,6 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 
 @Injectable()
 export class InviteCodesService {
@@ -19,16 +14,20 @@ export class InviteCodesService {
   async list(workspaceId: string) {
     return this.prisma.invitationCode.findMany({
       where: { workspace_id: workspaceId },
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
     });
   }
 
-  async generate(workspaceId: string, dto: { role: string; max_uses?: number; expires_in_days?: number }, userId: string) {
+  async generate(
+    workspaceId: string,
+    dto: { role: string; max_uses?: number; expires_in_days?: number },
+    userId: string,
+  ) {
     await this.planLimits.checkInviteCodeLimit(workspaceId);
 
-    const role = dto.role || 'AGENT';
-    if (!['ADMIN', 'AGENT', 'VIEWER'].includes(role)) {
-      throw new BadRequestException('Rol inválido. Usá ADMIN, AGENT o VIEWER.');
+    const role = dto.role || "AGENT";
+    if (!["ADMIN", "AGENT", "VIEWER"].includes(role)) {
+      throw new BadRequestException("Rol inválido. Usá ADMIN, AGENT o VIEWER.");
     }
 
     const maxUses = Math.min(dto.max_uses ?? 5, 100);
@@ -55,7 +54,7 @@ export class InviteCodesService {
     const record = await this.prisma.invitationCode.findFirst({
       where: { id, workspace_id: workspaceId },
     });
-    if (!record) throw new NotFoundException('Código no encontrado.');
+    if (!record) throw new NotFoundException("Código no encontrado.");
 
     return this.prisma.invitationCode.update({
       where: { id },
@@ -70,13 +69,13 @@ export class InviteCodesService {
     });
 
     if (!record || !record.is_active) {
-      throw new BadRequestException('Código inválido o expirado.');
+      throw new BadRequestException("Código inválido o expirado.");
     }
     if (new Date() > record.expires_at) {
-      throw new BadRequestException('Este código ya expiró.');
+      throw new BadRequestException("Este código ya expiró.");
     }
     if (record.used_count >= record.max_uses) {
-      throw new BadRequestException('Este código ya alcanzó el límite de usos.');
+      throw new BadRequestException("Este código ya alcanzó el límite de usos.");
     }
 
     return {
@@ -97,8 +96,8 @@ export class InviteCodesService {
   }
 
   private generateCode(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
     for (let i = 0; i < 6; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }

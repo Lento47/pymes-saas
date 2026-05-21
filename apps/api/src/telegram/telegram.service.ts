@@ -1,13 +1,13 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { randomBytes, timingSafeEqual } from 'crypto';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CryptoService } from '../common/crypto/crypto.service';
-import { MessagesService } from '../conversations/messages.service';
-import { StorageService } from '../common/storage/storage.service';
-import { EventsGateway } from '../gateways/events.gateway';
-import { Telegraf } from 'telegraf';
-import type { Prisma } from '@prisma/client';
+import { Injectable, Logger, BadRequestException, NotFoundException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { randomBytes, timingSafeEqual } from "crypto";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CryptoService } from "../common/crypto/crypto.service";
+import { MessagesService } from "../conversations/messages.service";
+import { StorageService } from "../common/storage/storage.service";
+import { EventsGateway } from "../gateways/events.gateway";
+import { Telegraf } from "telegraf";
+import type { Prisma } from "@prisma/client";
 
 interface TelegramWebhookInfo {
   url: string;
@@ -42,16 +42,14 @@ export class TelegramService {
    */
   private async getBotToken(channelId: string): Promise<string | null> {
     const channel = await this.prisma.channel.findFirst({
-      where: { id: channelId, type: 'TELEGRAM', status: 'ACTIVE' },
+      where: { id: channelId, type: "TELEGRAM", status: "ACTIVE" },
       select: { config_json: true },
     });
 
     if (!channel?.config_json) return null;
 
     const cfg = channel.config_json as any;
-    return cfg.bot_token_encrypted
-      ? this.crypto.decrypt(cfg.bot_token_encrypted)
-      : cfg.bot_token;
+    return cfg.bot_token_encrypted ? this.crypto.decrypt(cfg.bot_token_encrypted) : cfg.bot_token;
   }
 
   /**
@@ -75,7 +73,7 @@ export class TelegramService {
    */
   async registerWebhook(workspaceId: string, channelId: string): Promise<void> {
     const channel = await this.prisma.channel.findFirst({
-      where: { id: channelId, workspace_id: workspaceId, type: 'TELEGRAM' },
+      where: { id: channelId, workspace_id: workspaceId, type: "TELEGRAM" },
       select: { config_json: true, id: true, workspace_id: true },
     });
 
@@ -85,31 +83,32 @@ export class TelegramService {
 
     const token = await this.getBotToken(channelId);
     if (!token) {
-      throw new BadRequestException('No bot token configured for this channel');
+      throw new BadRequestException("No bot token configured for this channel");
     }
 
     // Validate token before registering webhook
     const isValid = await this.validateToken(token);
     if (!isValid) {
-      throw new BadRequestException('Invalid or expired Telegram bot token');
+      throw new BadRequestException("Invalid or expired Telegram bot token");
     }
 
     const bot = new Telegraf(token);
-    const rawBaseUrl = this.config.get<string>('TELEGRAM_WEBHOOK_BASE_URL')
-      ?? this.config.get<string>('APP_URL')
-      ?? process.env.PUBLIC_URL
-      ?? 'https://api.pymeshub.lat';
-    const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+    const rawBaseUrl =
+      this.config.get<string>("TELEGRAM_WEBHOOK_BASE_URL") ??
+      this.config.get<string>("APP_URL") ??
+      process.env.PUBLIC_URL ??
+      "https://api.pymeshub.lat";
+    const baseUrl = rawBaseUrl.replace(/\/+$/, "");
     const webhookUrl = `${baseUrl}/api/inbound/telegram/webhook/${channelId}`;
 
     this.logger.log(`Registering webhook for channel ${channelId}: ${webhookUrl}`);
 
     // Generate a per-channel webhook secret so we can verify inbound updates
-    const webhookSecret = randomBytes(32).toString('hex');
+    const webhookSecret = randomBytes(32).toString("hex");
 
     try {
       await bot.telegram.setWebhook(webhookUrl, {
-        allowed_updates: ['message', 'edited_message', 'callback_query'],
+        allowed_updates: ["message", "edited_message", "callback_query"],
         max_connections: 40,
         secret_token: webhookSecret,
       });
@@ -132,8 +131,12 @@ export class TelegramService {
 
       this.logger.log(`Telegram webhook registered: channel=${channelId}, url=${webhookUrl}`);
     } catch (err) {
-      this.logger.error(`Failed to register webhook for channel ${channelId}: url=${webhookUrl} error=${(err as Error).message}`);
-      throw new BadRequestException(`Token válido pero no se pudo registrar el webhook en ${baseUrl}: ${(err as Error).message}`);
+      this.logger.error(
+        `Failed to register webhook for channel ${channelId}: url=${webhookUrl} error=${(err as Error).message}`,
+      );
+      throw new BadRequestException(
+        `Token válido pero no se pudo registrar el webhook en ${baseUrl}: ${(err as Error).message}`,
+      );
     }
   }
 
@@ -141,16 +144,19 @@ export class TelegramService {
    * Validate the X-Telegram-Bot-Api-Secret-Token header for an inbound webhook.
    * Returns true if the header matches the per-channel stored secret.
    */
-  async verifyWebhookSecret(channelId: string, suppliedSecret: string | undefined): Promise<boolean> {
+  async verifyWebhookSecret(
+    channelId: string,
+    suppliedSecret: string | undefined,
+  ): Promise<boolean> {
     if (!suppliedSecret) return false;
     const channel = await this.prisma.channel.findFirst({
-      where: { id: channelId, type: 'TELEGRAM' },
+      where: { id: channelId, type: "TELEGRAM" },
       select: { config_json: true },
     });
     const expected = (channel?.config_json as any)?.webhook_secret as string | undefined;
     if (!expected) return false;
-    const a = Buffer.from(suppliedSecret, 'utf8');
-    const b = Buffer.from(expected, 'utf8');
+    const a = Buffer.from(suppliedSecret, "utf8");
+    const b = Buffer.from(expected, "utf8");
     if (a.length !== b.length) return false;
     try {
       return timingSafeEqual(a, b);
@@ -162,15 +168,18 @@ export class TelegramService {
   /**
    * Process incoming Telegram update with deduplication and metadata storage
    */
-  async processUpdate(channelId: string, update: Record<string, any>): Promise<{ processed: boolean; duplicate?: boolean }> {
+  async processUpdate(
+    channelId: string,
+    update: Record<string, any>,
+  ): Promise<{ processed: boolean; duplicate?: boolean }> {
     // Validate payload structure
-    if (!update || typeof update !== 'object') {
+    if (!update || typeof update !== "object") {
       return { processed: false };
     }
 
     try {
       const channel = await this.prisma.channel.findFirst({
-        where: { id: channelId, type: 'TELEGRAM', status: 'ACTIVE' },
+        where: { id: channelId, type: "TELEGRAM", status: "ACTIVE" },
         select: { id: true, workspace_id: true, config_json: true },
       });
 
@@ -182,7 +191,15 @@ export class TelegramService {
       const message = update?.message || update?.edited_message;
       if (!message) return { processed: false };
 
-      const hasContent = !!(message.text || message.caption || message.photo || message.document || message.video || message.audio || message.voice);
+      const hasContent = !!(
+        message.text ||
+        message.caption ||
+        message.photo ||
+        message.document ||
+        message.video ||
+        message.audio ||
+        message.voice
+      );
       if (!hasContent) return { processed: false };
 
       const from = message.from;
@@ -204,10 +221,10 @@ export class TelegramService {
         return { processed: true, duplicate: true };
       }
 
-      const text = message.text || message.caption || '';
+      const text = message.text || message.caption || "";
       const senderName = from.first_name
-        ? `${from.first_name}${from.last_name ? ' ' + from.last_name : ''}`
-        : (from.username || `Telegram User ${from.id}`);
+        ? `${from.first_name}${from.last_name ? " " + from.last_name : ""}`
+        : from.username || `Telegram User ${from.id}`;
 
       const senderRef = `tg:${from.id}`;
       const conversationRef = `tg:${chat.id}`;
@@ -215,46 +232,57 @@ export class TelegramService {
       // Extract attachments
       const attachments: Record<string, any>[] = [];
       if (message.photo?.length) {
-        attachments.push({ type: 'photo', file_id: message.photo[message.photo.length - 1].file_id });
+        attachments.push({
+          type: "photo",
+          file_id: message.photo[message.photo.length - 1].file_id,
+        });
       }
       if (message.document) {
-        attachments.push({ type: 'document', file_id: message.document.file_id, file_name: message.document.file_name });
+        attachments.push({
+          type: "document",
+          file_id: message.document.file_id,
+          file_name: message.document.file_name,
+        });
       }
       if (message.video) {
-        attachments.push({ type: 'video', file_id: message.video.file_id });
+        attachments.push({ type: "video", file_id: message.video.file_id });
       }
       if (message.audio) {
-        attachments.push({ type: 'audio', file_id: message.audio.file_id });
+        attachments.push({ type: "audio", file_id: message.audio.file_id });
       }
       if (message.voice) {
-        attachments.push({ type: 'voice', file_id: message.voice.file_id });
+        attachments.push({ type: "voice", file_id: message.voice.file_id });
       }
 
-      const result = await this.messagesService.receiveInbound(
-        'telegram',
-        channel.workspace_id,
-        {
-          channel_id: channel.id,
-          body_text: text,
-          sender_name: senderName,
-          sender_ref: senderRef,
-          external_id: tgMessageId,
-          conversation_ref: conversationRef,
-          raw_payload: update,
-          // Telegram metadata for storage
-          telegram_chat_id: String(chat.id),
-          telegram_user_id: from.id ? String(from.id) : undefined,
-          telegram_message_id: tgMessageId,
-          message_type: message.photo ? 'image' : message.document ? 'file' : message.video ? 'video' : message.audio ? 'audio' : 'text',
-          attachments: attachments.length > 0 ? attachments : undefined,
-          metadata: {
-            telegram_user_id: from.id,
-            telegram_chat_id: chat.id,
-            telegram_chat_type: chat.type,
-            is_edited: !!update.edited_message,
-          },
+      const result = await this.messagesService.receiveInbound("telegram", channel.workspace_id, {
+        channel_id: channel.id,
+        body_text: text,
+        sender_name: senderName,
+        sender_ref: senderRef,
+        external_id: tgMessageId,
+        conversation_ref: conversationRef,
+        raw_payload: update,
+        // Telegram metadata for storage
+        telegram_chat_id: String(chat.id),
+        telegram_user_id: from.id ? String(from.id) : undefined,
+        telegram_message_id: tgMessageId,
+        message_type: message.photo
+          ? "image"
+          : message.document
+            ? "file"
+            : message.video
+              ? "video"
+              : message.audio
+                ? "audio"
+                : "text",
+        attachments: attachments.length > 0 ? attachments : undefined,
+        metadata: {
+          telegram_user_id: from.id,
+          telegram_chat_id: chat.id,
+          telegram_chat_type: chat.type,
+          is_edited: !!update.edited_message,
         },
-      );
+      });
 
       // Launch media download fire-and-forget after message is persisted
       if (result.ok && result.message_id && result.conversation_id && attachments.length > 0) {
@@ -265,11 +293,15 @@ export class TelegramService {
           result.message_id,
           attachments[0] as { type: string; file_id: string; file_name?: string },
         ).catch((err: unknown) =>
-          this.logger.error(`Telegram media download failed: ${err instanceof Error ? err.message : String(err)}`),
+          this.logger.error(
+            `Telegram media download failed: ${err instanceof Error ? err.message : String(err)}`,
+          ),
         );
       }
 
-      this.logger.debug(`Telegram message ${tgMessageId} from ${senderRef} → workspace ${channel.workspace_id}`);
+      this.logger.debug(
+        `Telegram message ${tgMessageId} from ${senderRef} → workspace ${channel.workspace_id}`,
+      );
       return { processed: true };
     } catch (err) {
       this.logger.error(`Telegram inbound error: ${(err as Error).message}`);
@@ -300,12 +332,12 @@ export class TelegramService {
    */
   async sendMessage(channelId: string, chatId: string, text: string): Promise<any> {
     if (!text || !chatId) {
-      throw new BadRequestException('Missing text or chatId');
+      throw new BadRequestException("Missing text or chatId");
     }
 
     const token = await this.getBotToken(channelId);
     if (!token) {
-      throw new NotFoundException('No bot token configured');
+      throw new NotFoundException("No bot token configured");
     }
 
     try {
@@ -313,7 +345,7 @@ export class TelegramService {
       const bot = this.bots.get(channelId) || new Telegraf(token);
       if (!this.bots.has(channelId)) this.bots.set(channelId, bot);
       const result = await bot.telegram.sendMessage(chatId, text, {
-        parse_mode: 'HTML',
+        parse_mode: "HTML",
       });
       this.logger.log(`Message sent to chat ${chatId} in channel ${channelId}`);
       return result;
@@ -331,25 +363,25 @@ export class TelegramService {
    */
   private async resolveFileInput(mediaUrl: string): Promise<{ source: Buffer; filename: string }> {
     const trimmed = mediaUrl.trim();
-    const storageProxyMarker = '/api/storage/file/';
+    const storageProxyMarker = "/api/storage/file/";
     const storageProxyIndex = trimmed.indexOf(storageProxyMarker);
 
     if (storageProxyIndex >= 0) {
       const key = decodeURIComponent(trimmed.slice(storageProxyIndex + storageProxyMarker.length));
       const buffer = await this.storage.download(key);
-      return { source: buffer, filename: key.split('/').pop() || 'file' };
+      return { source: buffer, filename: key.split("/").pop() || "file" };
     }
 
-    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
       const buffer = await this.storage.download(trimmed);
-      return { source: buffer, filename: trimmed.split('/').pop() || 'file' };
+      return { source: buffer, filename: trimmed.split("/").pop() || "file" };
     }
 
     const res = await fetch(trimmed, { signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error(`Failed to fetch media URL: ${res.status}`);
     const buffer = Buffer.from(await res.arrayBuffer());
     const urlPath = new URL(trimmed).pathname;
-    return { source: buffer, filename: urlPath.split('/').pop() || 'file' };
+    return { source: buffer, filename: urlPath.split("/").pop() || "file" };
   }
 
   /**
@@ -363,14 +395,14 @@ export class TelegramService {
     caption?: string,
   ): Promise<any> {
     const token = await this.getBotToken(channelId);
-    if (!token) throw new NotFoundException('No bot token configured');
+    if (!token) throw new NotFoundException("No bot token configured");
 
     try {
       const bot = new Telegraf(token);
       const { source } = await this.resolveFileInput(mediaUrl);
       const result = await bot.telegram.sendPhoto(chatId, { source } as any, {
         caption,
-        parse_mode: 'HTML',
+        parse_mode: "HTML",
       });
       this.logger.log(`Photo sent to chat ${chatId} in channel ${channelId}`);
       return result;
@@ -391,14 +423,14 @@ export class TelegramService {
     caption?: string,
   ): Promise<any> {
     const token = await this.getBotToken(channelId);
-    if (!token) throw new NotFoundException('No bot token configured');
+    if (!token) throw new NotFoundException("No bot token configured");
 
     try {
       const bot = new Telegraf(token);
       const { source } = await this.resolveFileInput(mediaUrl);
       const result = await bot.telegram.sendVideo(chatId, { source } as any, {
         caption,
-        parse_mode: 'HTML',
+        parse_mode: "HTML",
       });
       this.logger.log(`Video sent to chat ${chatId} in channel ${channelId}`);
       return result;
@@ -419,14 +451,14 @@ export class TelegramService {
     caption?: string,
   ): Promise<any> {
     const token = await this.getBotToken(channelId);
-    if (!token) throw new NotFoundException('No bot token configured');
+    if (!token) throw new NotFoundException("No bot token configured");
 
     try {
       const bot = new Telegraf(token);
       const { source } = await this.resolveFileInput(mediaUrl);
       const result = await bot.telegram.sendAudio(chatId, { source } as any, {
         caption,
-        parse_mode: 'HTML',
+        parse_mode: "HTML",
       });
       this.logger.log(`Audio sent to chat ${chatId} in channel ${channelId}`);
       return result;
@@ -446,14 +478,14 @@ export class TelegramService {
     caption?: string,
   ): Promise<any> {
     const token = await this.getBotToken(channelId);
-    if (!token) throw new NotFoundException('No bot token configured');
+    if (!token) throw new NotFoundException("No bot token configured");
 
     try {
       const bot = new Telegraf(token);
       const { source } = await this.resolveFileInput(mediaUrl);
       const result = await bot.telegram.sendDocument(chatId, { source } as any, {
         caption,
-        parse_mode: 'HTML',
+        parse_mode: "HTML",
       });
       this.logger.log(`Document sent to chat ${chatId} in channel ${channelId}`);
       return result;
@@ -475,11 +507,11 @@ export class TelegramService {
     caption?: string,
   ): Promise<any> {
     switch (mediaType) {
-      case 'image':
+      case "image":
         return this.sendPhoto(channelId, chatId, mediaUrl, caption);
-      case 'video':
+      case "video":
         return this.sendVideo(channelId, chatId, mediaUrl, caption);
-      case 'audio':
+      case "audio":
         return this.sendAudio(channelId, chatId, mediaUrl, caption);
       default:
         return this.sendDocument(channelId, chatId, mediaUrl, caption);
@@ -562,7 +594,7 @@ export class TelegramService {
     if (!res.ok) throw new Error(`Telegram file fetch failed: ${res.status}`);
 
     const buffer = Buffer.from(await res.arrayBuffer());
-    const ext = fileInfo.file_path.split('.').pop() ?? '';
+    const ext = fileInfo.file_path.split(".").pop() ?? "";
     const storageKey = `telegram-media/${workspaceId}/${messageId}.${ext}`;
     const mimeType = this.guessMimeFromExt(ext, attachment.type);
 
@@ -573,7 +605,7 @@ export class TelegramService {
       data: {
         attachments_json: [
           {
-            provider: 'telegram',
+            provider: "telegram",
             mediaId: attachment.file_id,
             storageKey,
             mimeType,
@@ -590,7 +622,7 @@ export class TelegramService {
       message_id: messageId,
       conversation_id: conversationId,
       media_type: attachment.type,
-      media_status: 'available',
+      media_status: "available",
       media_download_url: `/api/conversations/messages/${messageId}/media`,
       media_mime_type: mimeType,
       media_filename: attachment.file_name ?? null,
@@ -602,16 +634,24 @@ export class TelegramService {
 
   private guessMimeFromExt(ext: string, mediaType: string): string {
     const map: Record<string, string> = {
-      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
-      webp: 'image/webp', mp4: 'video/mp4', mov: 'video/quicktime',
-      mp3: 'audio/mpeg', ogg: 'audio/ogg', oga: 'audio/ogg',
-      pdf: 'application/pdf', doc: 'application/msword',
-      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      webp: "image/webp",
+      mp4: "video/mp4",
+      mov: "video/quicktime",
+      mp3: "audio/mpeg",
+      ogg: "audio/ogg",
+      oga: "audio/ogg",
+      pdf: "application/pdf",
+      doc: "application/msword",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     };
     if (map[ext]) return map[ext];
-    if (mediaType === 'photo') return 'image/jpeg';
-    if (mediaType === 'audio' || mediaType === 'voice') return 'audio/ogg';
-    if (mediaType === 'video') return 'video/mp4';
-    return 'application/octet-stream';
+    if (mediaType === "photo") return "image/jpeg";
+    if (mediaType === "audio" || mediaType === "voice") return "audio/ogg";
+    if (mediaType === "video") return "video/mp4";
+    return "application/octet-stream";
   }
 }

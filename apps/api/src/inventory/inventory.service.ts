@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
-import { ProductType } from '@prisma/client';
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { CreateProductDto } from "./dto/create-product.dto";
+import { UpdateProductDto } from "./dto/update-product.dto";
+import { ProductType } from "@prisma/client";
 
 @Injectable()
 export class InventoryService {
@@ -14,18 +14,27 @@ export class InventoryService {
     private readonly planLimits: PlanLimitsService,
   ) {}
 
-  async listProducts(workspaceId: string, filters: { search?: string; category_id?: string; low_stock?: boolean; page?: number; limit?: number }) {
+  async listProducts(
+    workspaceId: string,
+    filters: {
+      search?: string;
+      category_id?: string;
+      low_stock?: boolean;
+      page?: number;
+      limit?: number;
+    },
+  ) {
     const where: Record<string, unknown> = { workspace_id: workspaceId };
     if (filters.search) {
       where.OR = [
-        { name: { contains: filters.search, mode: 'insensitive' } },
-        { sku: { contains: filters.search, mode: 'insensitive' } },
+        { name: { contains: filters.search, mode: "insensitive" } },
+        { sku: { contains: filters.search, mode: "insensitive" } },
       ];
     }
     if (filters.category_id) where.category_id = filters.category_id;
     if (filters.low_stock) {
       where.track_inventory = true;
-      where.type = 'PRODUCT';
+      where.type = "PRODUCT";
       where.current_stock = { lte: this.prisma.product.fields.min_stock };
     }
 
@@ -37,7 +46,7 @@ export class InventoryService {
       this.prisma.product.findMany({
         where,
         include: { category: { select: { id: true, name: true, color: true } } },
-        orderBy: { name: 'asc' },
+        orderBy: { name: "asc" },
         skip,
         take: limit,
       }),
@@ -52,7 +61,7 @@ export class InventoryService {
       where: { id, workspace_id: workspaceId },
       include: { category: { select: { id: true, name: true, color: true } } },
     });
-    if (!product) throw new NotFoundException('Producto no encontrado');
+    if (!product) throw new NotFoundException("Producto no encontrado");
     return product;
   }
 
@@ -62,7 +71,7 @@ export class InventoryService {
     const existing = await this.prisma.product.findFirst({
       where: { workspace_id: workspaceId, sku: dto.sku },
     });
-    if (existing) throw new BadRequestException('Ya existe un producto con ese SKU');
+    if (existing) throw new BadRequestException("Ya existe un producto con ese SKU");
 
     return this.prisma.product.create({
       data: {
@@ -88,13 +97,13 @@ export class InventoryService {
     const product = await this.prisma.product.findFirst({
       where: { id, workspace_id: workspaceId },
     });
-    if (!product) throw new NotFoundException('Producto no encontrado');
+    if (!product) throw new NotFoundException("Producto no encontrado");
 
     if (dto.sku && dto.sku !== product.sku) {
       const existing = await this.prisma.product.findFirst({
         where: { workspace_id: workspaceId, sku: dto.sku, NOT: { id } },
       });
-      if (existing) throw new BadRequestException('Ya existe otro producto con ese SKU');
+      if (existing) throw new BadRequestException("Ya existe otro producto con ese SKU");
     }
 
     return this.prisma.product.update({
@@ -120,26 +129,32 @@ export class InventoryService {
     const product = await this.prisma.product.findFirst({
       where: { id, workspace_id: workspaceId },
     });
-    if (!product) throw new NotFoundException('Producto no encontrado');
+    if (!product) throw new NotFoundException("Producto no encontrado");
     return this.prisma.product.update({
       where: { id },
       data: { is_active: false },
     });
   }
 
-  async adjustStock(workspaceId: string, productId: string, userId: string, quantity: number, reason: string) {
+  async adjustStock(
+    workspaceId: string,
+    productId: string,
+    userId: string,
+    quantity: number,
+    reason: string,
+  ) {
     return this.prisma.$transaction(async (tx) => {
       const product = await tx.product.findFirst({
         where: { id: productId, workspace_id: workspaceId },
       });
-      if (!product) throw new NotFoundException('Producto no encontrado');
-      if (!product.track_inventory || product.type === 'SERVICE') {
-        throw new BadRequestException('Este producto no tiene control de inventario');
+      if (!product) throw new NotFoundException("Producto no encontrado");
+      if (!product.track_inventory || product.type === "SERVICE") {
+        throw new BadRequestException("Este producto no tiene control de inventario");
       }
 
       const previousStock = product.current_stock;
       const newStock = previousStock + quantity;
-      if (newStock < 0) throw new BadRequestException('El stock no puede ser negativo');
+      if (newStock < 0) throw new BadRequestException("El stock no puede ser negativo");
 
       await tx.product.update({
         where: { id: productId },
@@ -150,12 +165,12 @@ export class InventoryService {
         data: {
           workspace_id: workspaceId,
           product_id: productId,
-          type: quantity > 0 ? 'IN' : 'OUT',
+          type: quantity > 0 ? "IN" : "OUT",
           quantity: Math.abs(quantity),
           previous_stock: previousStock,
           new_stock: newStock,
-          reason: reason || 'Ajuste manual',
-          reference_type: 'manual',
+          reason: reason || "Ajuste manual",
+          reference_type: "manual",
           user_id: userId,
         },
       });
@@ -171,7 +186,7 @@ export class InventoryService {
       this.prisma.stockMovement.findMany({
         where,
         include: { product: { select: { id: true, name: true, sku: true } } },
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
         skip,
         take: limit,
       }),
@@ -184,18 +199,30 @@ export class InventoryService {
   async listCategories(workspaceId: string) {
     return this.prisma.productCategory.findMany({
       where: { workspace_id: workspaceId },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
   }
 
-  async createCategory(workspaceId: string, data: { name: string; description?: string; color?: string }) {
+  async createCategory(
+    workspaceId: string,
+    data: { name: string; description?: string; color?: string },
+  ) {
     await this.planLimits.enforceCategoryCount(workspaceId);
     return this.prisma.productCategory.create({
-      data: { workspace_id: workspaceId, name: data.name, description: data.description, color: data.color },
+      data: {
+        workspace_id: workspaceId,
+        name: data.name,
+        description: data.description,
+        color: data.color,
+      },
     });
   }
 
-  async updateCategory(workspaceId: string, id: string, data: { name?: string; description?: string; color?: string }) {
+  async updateCategory(
+    workspaceId: string,
+    id: string,
+    data: { name?: string; description?: string; color?: string },
+  ) {
     return this.prisma.productCategory.update({
       where: { id },
       data: { ...data },
@@ -206,7 +233,8 @@ export class InventoryService {
     const count = await this.prisma.product.count({
       where: { category_id: id, workspace_id: workspaceId },
     });
-    if (count > 0) throw new BadRequestException('No se puede eliminar una categoría con productos');
+    if (count > 0)
+      throw new BadRequestException("No se puede eliminar una categoría con productos");
     return this.prisma.productCategory.delete({ where: { id } });
   }
 
@@ -215,13 +243,20 @@ export class InventoryService {
       where: {
         workspace_id: workspaceId,
         track_inventory: true,
-        type: 'PRODUCT',
+        type: "PRODUCT",
         is_active: true,
         current_stock: { lte: this.prisma.product.fields.min_stock },
       },
-      orderBy: { current_stock: 'asc' },
+      orderBy: { current_stock: "asc" },
       take: 5,
-      select: { id: true, name: true, sku: true, current_stock: true, min_stock: true, unit_of_measure: true },
+      select: {
+        id: true,
+        name: true,
+        sku: true,
+        current_stock: true,
+        min_stock: true,
+        unit_of_measure: true,
+      },
     });
   }
 }

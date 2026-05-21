@@ -1,9 +1,9 @@
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CryptoService } from '../common/crypto/crypto.service';
-import { parseJsonValue } from '../common/prisma/json';
-import * as crypto from 'crypto';
+import { Injectable, Logger, ForbiddenException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CryptoService } from "../common/crypto/crypto.service";
+import { parseJsonValue } from "../common/prisma/json";
+import * as crypto from "crypto";
 
 export interface ApiToken {
   id: string;
@@ -27,16 +27,19 @@ export class ApiTokensService {
     return tokens;
   }
 
-  async createToken(workspaceId: string, name: string): Promise<{ token: string; record: ApiToken }> {
+  async createToken(
+    workspaceId: string,
+    name: string,
+  ): Promise<{ token: string; record: ApiToken }> {
     // Enforce ENTERPRISE plan
     const ws = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { plan: true, settings_json: true },
     });
 
-    const allowedPlans = ['ENTERPRISE', 'BUSINESS_PLUS'];
-    if (!allowedPlans.includes(ws?.plan ?? '')) {
-      throw new ForbiddenException('API tokens require Enterprise or Business+ plan.');
+    const allowedPlans = ["ENTERPRISE", "BUSINESS_PLUS"];
+    if (!allowedPlans.includes(ws?.plan ?? "")) {
+      throw new ForbiddenException("API tokens require Enterprise or Business+ plan.");
     }
 
     const settings = parseJsonValue<Record<string, any>>(ws.settings_json, {});
@@ -44,7 +47,7 @@ export class ApiTokensService {
     const secrets: Record<string, string> = settings.api_token_secrets || {};
 
     const id = crypto.randomUUID();
-    const rawToken = `pym_${crypto.randomBytes(24).toString('hex')}`;
+    const rawToken = `pym_${crypto.randomBytes(24).toString("hex")}`;
     const encrypted = this.cryptoService.encrypt(rawToken);
     const record: ApiToken = {
       id,
@@ -56,7 +59,11 @@ export class ApiTokensService {
     tokens.push(record);
     secrets[id] = encrypted;
 
-    await this.saveSettings(workspaceId, { ...settings, api_tokens: tokens, api_token_secrets: secrets });
+    await this.saveSettings(workspaceId, {
+      ...settings,
+      api_tokens: tokens,
+      api_token_secrets: secrets,
+    });
 
     this.logger.log(`API token "${name}" created for workspace ${workspaceId}`);
 
@@ -70,19 +77,25 @@ export class ApiTokensService {
     });
 
     const settings = parseJsonValue<Record<string, any>>(ws?.settings_json, {});
-    const tokens: ApiToken[] = (settings.api_tokens || []).filter((t: ApiToken) => t.id !== tokenId);
+    const tokens: ApiToken[] = (settings.api_tokens || []).filter(
+      (t: ApiToken) => t.id !== tokenId,
+    );
     const secrets: Record<string, string> = settings.api_token_secrets || {};
     delete secrets[tokenId];
 
-    await this.saveSettings(workspaceId, { ...settings, api_tokens: tokens, api_token_secrets: secrets });
+    await this.saveSettings(workspaceId, {
+      ...settings,
+      api_tokens: tokens,
+      api_token_secrets: secrets,
+    });
   }
 
   async validateToken(rawToken: string): Promise<{ workspaceId: string } | null> {
-    if (!rawToken.startsWith('pym_')) return null;
+    if (!rawToken.startsWith("pym_")) return null;
 
     // Find the workspace that has this token
     const allWorkspaces = await this.prisma.workspace.findMany({
-      where: { plan: { in: ['ENTERPRISE', 'BUSINESS_PLUS'] } },
+      where: { plan: { in: ["ENTERPRISE", "BUSINESS_PLUS"] } },
       select: { id: true, settings_json: true },
     });
 
@@ -110,7 +123,9 @@ export class ApiTokensService {
     return null;
   }
 
-  private async loadSettings(workspaceId: string): Promise<{ tokens: ApiToken[]; tokenSecrets: Record<string, string> }> {
+  private async loadSettings(
+    workspaceId: string,
+  ): Promise<{ tokens: ApiToken[]; tokenSecrets: Record<string, string> }> {
     const ws = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { settings_json: true },

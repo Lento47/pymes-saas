@@ -1,25 +1,20 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
 
 @Injectable()
 export class SearchService {
-  private readonly ALLOWED_TYPES = ['contacts', 'conversations', 'tasks', 'documents'];
+  private readonly ALLOWED_TYPES = ["contacts", "conversations", "tasks", "documents"];
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async search(
-    workspaceId: string,
-    q: string,
-    types: string[],
-    limit: number,
-  ) {
+  async search(workspaceId: string, q: string, types: string[], limit: number) {
     // Filter out unknown types to prevent Prisma errors
-    const validTypes = types.filter(t => this.ALLOWED_TYPES.includes(t));
+    const validTypes = types.filter((t) => this.ALLOWED_TYPES.includes(t));
     const searches: Promise<any>[] = [];
     const keys: string[] = [];
 
-    if (validTypes.includes('contacts')) {
-      keys.push('contacts');
+    if (validTypes.includes("contacts")) {
+      keys.push("contacts");
       searches.push(
         this.prisma.contact.findMany({
           take: limit,
@@ -35,48 +30,40 @@ export class SearchService {
       );
     }
 
-    if (validTypes.includes('conversations')) {
-      keys.push('conversations');
+    if (validTypes.includes("conversations")) {
+      keys.push("conversations");
       searches.push(
         this.prisma.conversation.findMany({
           take: limit,
           where: {
             workspace_id: workspaceId,
-            OR: [
-              { subject: { contains: q } },
-              { category: { contains: q } },
-            ],
+            OR: [{ subject: { contains: q } }, { category: { contains: q } }],
           },
         }),
       );
     }
 
-    if (validTypes.includes('tasks')) {
-      keys.push('tasks');
+    if (validTypes.includes("tasks")) {
+      keys.push("tasks");
       searches.push(
         this.prisma.task.findMany({
           take: limit,
           where: {
             workspace_id: workspaceId,
-            OR: [
-              { title: { contains: q } },
-              { description: { contains: q } },
-            ],
+            OR: [{ title: { contains: q } }, { description: { contains: q } }],
           },
         }),
       );
     }
 
-    if (validTypes.includes('documents')) {
-      keys.push('documents');
+    if (validTypes.includes("documents")) {
+      keys.push("documents");
       searches.push(
         this.prisma.document.findMany({
           take: limit,
           where: {
             workspace_id: workspaceId,
-            OR: [
-              { file_name: { contains: q } },
-            ],
+            OR: [{ file_name: { contains: q } }],
           },
         }),
       );

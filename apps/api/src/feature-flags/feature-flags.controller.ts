@@ -1,40 +1,40 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { FeatureFlagsService } from './feature-flags.service';
+import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { FeatureFlagsService } from "./feature-flags.service";
 
-@Controller('feature-flags')
+@Controller("feature-flags")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class FeatureFlagsController {
   constructor(private readonly featureFlags: FeatureFlagsService) {}
 
-  @Get('check')
-  async getAll(@CurrentUser('workspace_id') workspaceId: string) {
+  @Get("check")
+  async getAll(@CurrentUser("workspace_id") workspaceId: string) {
     return this.featureFlags.getAll(workspaceId);
   }
 
-  @Get('public')
+  @Get("public")
   async getPublic() {
     return this.featureFlags.getPublicFlags();
   }
 
   @Post()
-  @Roles('OWNER', 'ADMIN')
+  @Roles("OWNER", "ADMIN")
   async createFlag(@Body() data: Record<string, any>) {
     return this.featureFlags.upsertFlag(undefined, data);
   }
 
-  @Put(':id')
-  @Roles('OWNER', 'ADMIN')
-  async updateFlag(@Param('id') id: string, @Body() data: Record<string, any>) {
+  @Put(":id")
+  @Roles("OWNER", "ADMIN")
+  async updateFlag(@Param("id") id: string, @Body() data: Record<string, any>) {
     return this.featureFlags.upsertFlag(id, data);
   }
 
-  @Delete(':id')
-  @Roles('OWNER')
-  async deleteFlag(@Param('id') id: string) {
+  @Delete(":id")
+  @Roles("OWNER")
+  async deleteFlag(@Param("id") id: string) {
     return this.featureFlags.deleteFlag(id);
   }
 }

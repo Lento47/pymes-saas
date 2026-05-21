@@ -1,5 +1,5 @@
-import { IsEmail, IsEnum, IsOptional } from 'class-validator';
-import { WorkspaceUserRole } from '@prisma/client';
+import { IsEmail, IsEnum, IsOptional } from "class-validator";
+import { WorkspaceUserRole } from "@prisma/client";
 
 export class AssignMemberDto {
   @IsEmail()

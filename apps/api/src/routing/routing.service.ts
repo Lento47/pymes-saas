@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { Priority } from '@prisma/client';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { Priority } from "@prisma/client";
 
 export interface RoutingResult {
   department_id: string;
@@ -47,7 +47,7 @@ export class RoutingService {
           is_active: true,
           OR: [{ channel_id: channelId }, { channel_id: null }],
         },
-        orderBy: [{ priority: 'desc' }, { created_at: 'asc' }],
+        orderBy: [{ priority: "desc" }, { created_at: "asc" }],
       });
 
       // Sort so channel-specific rules come before workspace-wide ones
@@ -60,10 +60,18 @@ export class RoutingService {
 
       for (const rule of sorted) {
         const pattern = rule.pattern.trim().toLowerCase();
-        if (rule.match_type === 'MENU_REPLY') {
-          if (text === pattern) return { department_id: rule.department_id, set_priority: rule.set_priority as Priority | null | undefined };
+        if (rule.match_type === "MENU_REPLY") {
+          if (text === pattern)
+            return {
+              department_id: rule.department_id,
+              set_priority: rule.set_priority as Priority | null | undefined,
+            };
         } else {
-          if (text.includes(pattern)) return { department_id: rule.department_id, set_priority: rule.set_priority as Priority | null | undefined };
+          if (text.includes(pattern))
+            return {
+              department_id: rule.department_id,
+              set_priority: rule.set_priority as Priority | null | undefined,
+            };
         }
       }
 

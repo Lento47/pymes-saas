@@ -1,5 +1,5 @@
-import { IsEmail, IsEnum } from 'class-validator';
-import { WorkspaceUserRole } from '@prisma/client';
+import { IsEmail, IsEnum } from "class-validator";
+import { WorkspaceUserRole } from "@prisma/client";
 
 export class InviteUserDto {
   @IsEmail()

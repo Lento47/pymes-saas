@@ -24,7 +24,8 @@ export const INVOICE_TEMPLATES: InvoiceTemplate[] = [
     currency: "CRC",
     sample_line_description: "Honorarios profesionales por servicios prestados",
     common_cabys: ["6201000000100"],
-    notes: "Plantilla para servicios profesionales (abogados, contadores, ingenieros, etc.). Actividad: Actividades jurídicas.",
+    notes:
+      "Plantilla para servicios profesionales (abogados, contadores, ingenieros, etc.). Actividad: Actividades jurídicas.",
   },
   {
     industry: "comercio_minorista",
@@ -37,7 +38,8 @@ export const INVOICE_TEMPLATES: InvoiceTemplate[] = [
     currency: "CRC",
     sample_line_description: "Venta de mercadería según detalle",
     common_cabys: ["4711000000100"],
-    notes: "Plantilla para comercio minorista (tiendas, supermercados, misceláneas). Actividad: Venta al por menor en comercios no especializados.",
+    notes:
+      "Plantilla para comercio minorista (tiendas, supermercados, misceláneas). Actividad: Venta al por menor en comercios no especializados.",
   },
   {
     industry: "construccion",
@@ -50,7 +52,8 @@ export const INVOICE_TEMPLATES: InvoiceTemplate[] = [
     currency: "CRC",
     sample_line_description: "Servicios de construcción según contrato",
     common_cabys: ["4100020000100"],
-    notes: "Plantilla para empresas de construcción, ingeniería civil e inmobiliarias. Actividad: Construcción de edificios.",
+    notes:
+      "Plantilla para empresas de construcción, ingeniería civil e inmobiliarias. Actividad: Construcción de edificios.",
   },
   {
     industry: "consultoria",
@@ -63,7 +66,8 @@ export const INVOICE_TEMPLATES: InvoiceTemplate[] = [
     currency: "CRC",
     sample_line_description: "Servicios de consultoría empresarial",
     common_cabys: ["7020000000100"],
-    notes: "Plantilla para consultoría empresarial, TI, marketing y afines. Actividad: Actividades de consultoría de gestión.",
+    notes:
+      "Plantilla para consultoría empresarial, TI, marketing y afines. Actividad: Actividades de consultoría de gestión.",
   },
   {
     industry: "restaurante",
@@ -76,7 +80,8 @@ export const INVOICE_TEMPLATES: InvoiceTemplate[] = [
     currency: "CRC",
     sample_line_description: "Consumo de alimentos y bebidas",
     common_cabys: ["5610010000100"],
-    notes: "Plantilla para restaurantes, sodas y servicios de comida. Actividad: Actividades de restaurantes y servicio de comidas.",
+    notes:
+      "Plantilla para restaurantes, sodas y servicios de comida. Actividad: Actividades de restaurantes y servicio de comidas.",
   },
   {
     industry: "alquiler",
@@ -89,11 +94,12 @@ export const INVOICE_TEMPLATES: InvoiceTemplate[] = [
     currency: "CRC",
     sample_line_description: "Alquiler mensual de inmueble",
     common_cabys: ["6810000000100"],
-    notes: "Plantilla para arrendamiento de bienes inmuebles. Actividad: Actividades inmobiliarias realizadas con bienes propios o arrendados.",
+    notes:
+      "Plantilla para arrendamiento de bienes inmuebles. Actividad: Actividades inmobiliarias realizadas con bienes propios o arrendados.",
   },
 ];
 
 export function getTemplatesByIndustry(industry?: string): InvoiceTemplate[] {
   if (!industry) return INVOICE_TEMPLATES;
-  return INVOICE_TEMPLATES.filter(t => t.industry === industry);
+  return INVOICE_TEMPLATES.filter((t) => t.industry === industry);
 }

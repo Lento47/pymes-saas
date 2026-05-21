@@ -1,17 +1,12 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import { ChannelType, ConversationStatus, InvoiceStatus, WorkspaceUserRole } from '@prisma/client';
-import { AiService } from '../ai/ai.service';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
-import { ConversationsService } from '../conversations/conversations.service';
-import { MessagesService } from '../conversations/messages.service';
-import { SendReminderDto } from './dto/send-reminder.dto';
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ChannelType, ConversationStatus, InvoiceStatus, WorkspaceUserRole } from "@prisma/client";
+import { AiService } from "../ai/ai.service";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { AuthUser } from "../auth/strategies/jwt.strategy";
+import { ConversationsService } from "../conversations/conversations.service";
+import { MessagesService } from "../conversations/messages.service";
+import { SendReminderDto } from "./dto/send-reminder.dto";
 
 @Injectable()
 export class RemindersService {
@@ -46,16 +41,21 @@ export class RemindersService {
       for (const admin of admins) {
         if (notified.has(admin.user_id)) continue;
         notified.add(admin.user_id);
-        this.notificationsService.create(workspaceId, {
-          user_id: admin.user_id,
-          type: 'invoice_overdue',
-          title: 'Facturas vencidas detectadas',
-          body: `${updated.count} factura(s) fueron marcadas como vencidas. Revisa el módulo de facturación.`,
-          related_entity_type: 'invoice',
-          related_entity_id: null as any,
-        }).catch((err) =>
-          this.logger.warn(`Failed to notify admin about overdue invoices in workspace ${workspaceId}`, err),
-        );
+        this.notificationsService
+          .create(workspaceId, {
+            user_id: admin.user_id,
+            type: "invoice_overdue",
+            title: "Facturas vencidas detectadas",
+            body: `${updated.count} factura(s) fueron marcadas como vencidas. Revisa el módulo de facturación.`,
+            related_entity_type: "invoice",
+            related_entity_id: null as any,
+          })
+          .catch((err) =>
+            this.logger.warn(
+              `Failed to notify admin about overdue invoices in workspace ${workspaceId}`,
+              err,
+            ),
+          );
       }
     }
 
@@ -78,11 +78,11 @@ export class RemindersService {
           take: 10,
         },
         reminders: {
-          orderBy: { created_at: 'desc' },
+          orderBy: { created_at: "desc" },
           take: 1,
         },
       },
-      orderBy: { due_date: 'asc' },
+      orderBy: { due_date: "asc" },
     });
   }
 
@@ -105,9 +105,9 @@ export class RemindersService {
       },
     });
 
-    if (!invoice) throw new NotFoundException('Factura no encontrada.');
+    if (!invoice) throw new NotFoundException("Factura no encontrada.");
     if (invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.CANCELLED) {
-      throw new BadRequestException('Solo se puede enviar una factura que tenga saldo pendiente.');
+      throw new BadRequestException("Solo se puede enviar una factura que tenga saldo pendiente.");
     }
 
     const existing = await this.prisma.paymentReminder.findFirst({
@@ -119,7 +119,7 @@ export class RemindersService {
           gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
         },
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
     });
 
     if (existing) return existing;
@@ -130,14 +130,11 @@ export class RemindersService {
     );
     const balanceDue = Math.max(0, Number(invoice.amount) - amountPaid);
     if (balanceDue <= 0) {
-      throw new BadRequestException('La factura no tiene saldo pendiente para enviar.');
+      throw new BadRequestException("La factura no tiene saldo pendiente para enviar.");
     }
 
     const daysOverdue = invoice.due_date
-      ? Math.max(
-          0,
-          Math.floor((Date.now() - invoice.due_date.getTime()) / (1000 * 60 * 60 * 24)),
-        )
+      ? Math.max(0, Math.floor((Date.now() - invoice.due_date.getTime()) / (1000 * 60 * 60 * 24)))
       : 0;
 
     const aiResult = await this.aiService.generatePaymentReminderDraft({
@@ -151,9 +148,12 @@ export class RemindersService {
 
     let draftText = aiResult.draft_text;
     if (invoice.lines?.length > 0) {
-      const items = invoice.lines.map(l =>
-        `- ${l.quantity}x ${(l as any).product?.name || l.description} — ${new Intl.NumberFormat('es-CR', { style: 'currency', currency: invoice.currency }).format(Number(l.total_line_amount))}`
-      ).join('\n');
+      const items = invoice.lines
+        .map(
+          (l) =>
+            `- ${l.quantity}x ${(l as any).product?.name || l.description} — ${new Intl.NumberFormat("es-CR", { style: "currency", currency: invoice.currency }).format(Number(l.total_line_amount))}`,
+        )
+        .join("\n");
       draftText += `\n\n📦 Productos:\n${items}`;
     }
 
@@ -167,12 +167,7 @@ export class RemindersService {
     });
   }
 
-  async sendReminder(
-    workspaceId: string,
-    invoiceId: string,
-    dto: SendReminderDto,
-    user: AuthUser,
-  ) {
+  async sendReminder(workspaceId: string, invoiceId: string, dto: SendReminderDto, user: AuthUser) {
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: invoiceId, workspace_id: workspaceId },
       include: {
@@ -187,7 +182,7 @@ export class RemindersService {
       },
     });
 
-    if (!invoice) throw new NotFoundException('Factura no encontrada.');
+    if (!invoice) throw new NotFoundException("Factura no encontrada.");
 
     const reminder = await this.prisma.paymentReminder.findFirst({
       where: {
@@ -195,29 +190,29 @@ export class RemindersService {
         invoice_id: invoiceId,
         sent_at: null,
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
     });
 
     if (!reminder) {
-      throw new BadRequestException('No existe un borrador pendiente para esta factura.');
+      throw new BadRequestException("No existe un borrador pendiente para esta factura.");
     }
 
     const channel = await this.prisma.channel.findFirst({
       where: {
         id: dto.channel_id,
         workspace_id: workspaceId,
-        status: 'ACTIVE',
+        status: "ACTIVE",
       },
     });
 
-    if (!channel) throw new NotFoundException('Canal no encontrado o inactivo.');
+    if (!channel) throw new NotFoundException("Canal no encontrado o inactivo.");
 
     if (channel.type === ChannelType.EMAIL && !invoice.contact.email) {
-      throw new BadRequestException('El contacto no tiene email para enviar el recordatorio.');
+      throw new BadRequestException("El contacto no tiene email para enviar el recordatorio.");
     }
 
     if (channel.type === ChannelType.WHATSAPP && !invoice.contact.phone) {
-      throw new BadRequestException('El contacto no tiene teléfono para enviar el recordatorio.');
+      throw new BadRequestException("El contacto no tiene teléfono para enviar el recordatorio.");
     }
 
     const conversation = await this.findOrCreateConversation(
@@ -229,15 +224,10 @@ export class RemindersService {
 
     const finalDraft = dto.draft_text?.trim() || reminder.draft_text;
 
-    const message = await this.messagesService.send(
-      workspaceId,
-      conversation.id,
-      user,
-      {
-        direction: 'OUTBOUND',
-        body_text: finalDraft,
-      },
-    );
+    const message = await this.messagesService.send(workspaceId, conversation.id, user, {
+      direction: "OUTBOUND",
+      body_text: finalDraft,
+    });
 
     const updatedReminder = await this.prisma.paymentReminder.update({
       where: { id: reminder.id },
@@ -267,9 +257,11 @@ export class RemindersService {
         workspace_id: workspaceId,
         contact_id: contactId,
         channel_id: channelId,
-        status: { in: [ConversationStatus.NEW, ConversationStatus.OPEN, ConversationStatus.PENDING] },
+        status: {
+          in: [ConversationStatus.NEW, ConversationStatus.OPEN, ConversationStatus.PENDING],
+        },
       },
-      orderBy: { last_message_at: 'desc' },
+      orderBy: { last_message_at: "desc" },
     });
 
     if (existing) return existing;

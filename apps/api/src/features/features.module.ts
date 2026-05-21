@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { FeaturesService } from './features.service';
+import { Module } from "@nestjs/common";
+import { FeaturesService } from "./features.service";
 
 @Module({
   providers: [FeaturesService],

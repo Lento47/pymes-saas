@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
 
 interface MetricEvent {
-  event: string;           // e.g. "page_view", "conversation_created", "invoice_sent"
-  category?: string;       // e.g. "inbox", "billing", "dashboard"
+  event: string; // e.g. "page_view", "conversation_created", "invoice_sent"
+  category?: string; // e.g. "inbox", "billing", "dashboard"
   workspace_plan?: string; // anonymized plan tier
-  value?: number;          // optional numeric value
+  value?: number; // optional numeric value
   metadata?: Record<string, string>; // extra context (never PII)
 }
 
@@ -25,9 +25,9 @@ export class ProductMetricsService {
       // We use the existing table to avoid a migration just for metrics
       await this.prisma.errorReport.create({
         data: {
-          source: 'product_metric',
+          source: "product_metric",
           category: event.category ?? event.event,
-          severity: 'INFO',
+          severity: "INFO",
           title: event.event,
           message: event.metadata ? JSON.stringify(event.metadata) : null,
           status_code: event.value ?? null,
@@ -48,19 +48,19 @@ export class ProductMetricsService {
 
     const [total, byEvent, byDay] = await Promise.all([
       this.prisma.errorReport.count({
-        where: { source: 'product_metric', occurred_at: { gte: since } },
+        where: { source: "product_metric", occurred_at: { gte: since } },
       }),
       this.prisma.errorReport.groupBy({
-        by: ['title'],
-        where: { source: 'product_metric', occurred_at: { gte: since } },
+        by: ["title"],
+        where: { source: "product_metric", occurred_at: { gte: since } },
         _count: { title: true },
-        orderBy: { _count: { title: 'desc' } },
+        orderBy: { _count: { title: "desc" } },
         take: 20,
       }),
       this.prisma.errorReport.findMany({
-        where: { source: 'product_metric', occurred_at: { gte: since } },
+        where: { source: "product_metric", occurred_at: { gte: since } },
         select: { occurred_at: true, title: true },
-        orderBy: { occurred_at: 'desc' },
+        orderBy: { occurred_at: "desc" },
         take: 100,
       }),
     ]);
@@ -82,16 +82,16 @@ export class ProductMetricsService {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     const [totalWorkspaces, active30d, byPlan] = await Promise.all([
-      this.prisma.workspace.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.workspace.count({ where: { status: "ACTIVE" } }),
       this.prisma.workspace.count({
         where: {
-          status: 'ACTIVE',
+          status: "ACTIVE",
           updated_at: { gte: thirtyDaysAgo },
         },
       }),
       this.prisma.workspace.groupBy({
-        by: ['plan'],
-        where: { status: 'ACTIVE' },
+        by: ["plan"],
+        where: { status: "ACTIVE" },
         _count: { plan: true },
       }),
     ]);

@@ -1,8 +1,8 @@
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from "class-validator";
 
 export class TestAiConnectionDto {
   @IsOptional()
-  @IsIn(['openai', 'anthropic', 'gemini', 'moonshot'])
+  @IsIn(["openai", "anthropic", "gemini", "moonshot"])
   ai_provider?: string;
 
   @IsOptional()

@@ -1,6 +1,6 @@
-import { Injectable, Logger, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CryptoService } from '../common/crypto/crypto.service';
+import { Injectable, Logger, ForbiddenException, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CryptoService } from "../common/crypto/crypto.service";
 
 @Injectable()
 export class EnterpriseService {
@@ -27,8 +27,12 @@ export class EnterpriseService {
           where: { workspace_id: workspaceId },
           data: {
             contract_type: data.contract_type,
-            contract_start_date: data.contract_start_date ? new Date(data.contract_start_date) : undefined,
-            contract_end_date: data.contract_end_date ? new Date(data.contract_end_date) : undefined,
+            contract_start_date: data.contract_start_date
+              ? new Date(data.contract_start_date)
+              : undefined,
+            contract_end_date: data.contract_end_date
+              ? new Date(data.contract_end_date)
+              : undefined,
             custom_monthly_price: data.custom_monthly_price,
             custom_annual_price: data.custom_annual_price,
             currency: data.currency,
@@ -46,11 +50,13 @@ export class EnterpriseService {
           data: {
             workspace: { connect: { id: workspaceId } },
             contract_type: data.contract_type,
-            contract_start_date: data.contract_start_date ? new Date(data.contract_start_date) : null,
+            contract_start_date: data.contract_start_date
+              ? new Date(data.contract_start_date)
+              : null,
             contract_end_date: data.contract_end_date ? new Date(data.contract_end_date) : null,
             custom_monthly_price: data.custom_monthly_price,
             custom_annual_price: data.custom_annual_price,
-            currency: data.currency ?? 'CRC',
+            currency: data.currency ?? "CRC",
             custom_limits: data.custom_limits ?? undefined,
             enabled_capabilities: data.enabled_capabilities ?? [],
             sla_tier: data.sla_tier,
@@ -62,7 +68,9 @@ export class EnterpriseService {
           },
         });
 
-    this.logger.log(`Enterprise config ${existing ? 'updated' : 'created'} for workspace ${workspaceId}`);
+    this.logger.log(
+      `Enterprise config ${existing ? "updated" : "created"} for workspace ${workspaceId}`,
+    );
     return config;
   }
 
@@ -87,7 +95,7 @@ export class EnterpriseService {
 
   async getCapabilities() {
     return this.prisma.businessPlusCapability.findMany({
-      orderBy: { key: 'asc' },
+      orderBy: { key: "asc" },
     });
   }
 
@@ -113,7 +121,7 @@ export class EnterpriseService {
         key: data.key,
         name: data.name,
         description: data.description,
-        status: data.status ?? 'ROADMAP',
+        status: data.status ?? "ROADMAP",
         visible_on_pricing: data.visible_on_pricing ?? false,
         visible_in_admin: data.visible_in_admin ?? true,
         requires_sales_approval: data.requires_sales_approval ?? false,

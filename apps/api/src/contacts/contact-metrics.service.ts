@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CryptoService } from '../common/crypto/crypto.service';
-import { parseJsonValue } from '../common/prisma/json';
-import OpenAI from 'openai';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CryptoService } from "../common/crypto/crypto.service";
+import { parseJsonValue } from "../common/prisma/json";
+import OpenAI from "openai";
 
 export interface ExtractedData {
   location?: string;
@@ -38,55 +38,48 @@ export class ContactMetricsService {
   ) {}
 
   async getMetrics(workspaceId: string, contactId: string): Promise<ContactMetrics> {
-    const [
-      conversationCount,
-      messageCount,
-      firstMsg,
-      lastMsg,
-      invoiceAgg,
-      dealAgg,
-      contact,
-    ] = await Promise.all([
-      this.prisma.conversation.count({
-        where: { workspace_id: workspaceId, contact_id: contactId },
-      }),
-      this.prisma.message.count({
-        where: {
-          workspace_id: workspaceId,
-          conversation: { contact_id: contactId },
-        },
-      }),
-      this.prisma.message.findFirst({
-        where: {
-          workspace_id: workspaceId,
-          conversation: { contact_id: contactId },
-        },
-        orderBy: { sent_at: 'asc' },
-        select: { sent_at: true },
-      }),
-      this.prisma.message.findFirst({
-        where: {
-          workspace_id: workspaceId,
-          conversation: { contact_id: contactId },
-        },
-        orderBy: { sent_at: 'desc' },
-        select: { sent_at: true },
-      }),
-      this.prisma.invoice.aggregate({
-        where: { workspace_id: workspaceId, contact_id: contactId },
-        _count: { id: true },
-        _sum: { amount: true },
-      }),
-      this.prisma.deal.aggregate({
-        where: { workspace_id: workspaceId, contact_id: contactId },
-        _count: { id: true },
-        _sum: { value: true },
-      }),
-      this.prisma.contact.findFirst({
-        where: { id: contactId, workspace_id: workspaceId },
-        select: { extracted_data_json: true },
-      }),
-    ]);
+    const [conversationCount, messageCount, firstMsg, lastMsg, invoiceAgg, dealAgg, contact] =
+      await Promise.all([
+        this.prisma.conversation.count({
+          where: { workspace_id: workspaceId, contact_id: contactId },
+        }),
+        this.prisma.message.count({
+          where: {
+            workspace_id: workspaceId,
+            conversation: { contact_id: contactId },
+          },
+        }),
+        this.prisma.message.findFirst({
+          where: {
+            workspace_id: workspaceId,
+            conversation: { contact_id: contactId },
+          },
+          orderBy: { sent_at: "asc" },
+          select: { sent_at: true },
+        }),
+        this.prisma.message.findFirst({
+          where: {
+            workspace_id: workspaceId,
+            conversation: { contact_id: contactId },
+          },
+          orderBy: { sent_at: "desc" },
+          select: { sent_at: true },
+        }),
+        this.prisma.invoice.aggregate({
+          where: { workspace_id: workspaceId, contact_id: contactId },
+          _count: { id: true },
+          _sum: { amount: true },
+        }),
+        this.prisma.deal.aggregate({
+          where: { workspace_id: workspaceId, contact_id: contactId },
+          _count: { id: true },
+          _sum: { value: true },
+        }),
+        this.prisma.contact.findFirst({
+          where: { id: contactId, workspace_id: workspaceId },
+          select: { extracted_data_json: true },
+        }),
+      ]);
 
     return {
       conversation_count: conversationCount,
@@ -106,7 +99,7 @@ export class ContactMetricsService {
       where: { id: contactId, workspace_id: workspaceId },
       select: { full_name: true, phone: true, email: true, company_name: true },
     });
-    if (!contact) throw new Error('Contact not found');
+    if (!contact) throw new Error("Contact not found");
 
     const messages = await this.prisma.message.findMany({
       where: {
@@ -115,22 +108,25 @@ export class ContactMetricsService {
         body_text: { not: null },
       },
       select: { body_text: true, direction: true, sender_name: true, sent_at: true },
-      orderBy: { sent_at: 'asc' },
+      orderBy: { sent_at: "asc" },
       take: 100,
     });
 
     if (messages.length === 0) {
-      return { notes: 'No hay mensajes para analizar.' };
+      return { notes: "No hay mensajes para analizar." };
     }
 
     const transcript = messages
-      .map((m) => `[${m.direction === 'INBOUND' ? 'Cliente' : 'Equipo'}] ${m.sent_at?.toISOString()}: ${m.body_text}`)
-      .join('\n');
+      .map(
+        (m) =>
+          `[${m.direction === "INBOUND" ? "Cliente" : "Equipo"}] ${m.sent_at?.toISOString()}: ${m.body_text}`,
+      )
+      .join("\n");
 
     const apiKey = await this.getApiKey(workspaceId);
     if (!apiKey) {
       this.logger.warn(`No OpenAI API key for workspace ${workspaceId}`);
-      return { notes: 'API Key de OpenAI no configurada.' };
+      return { notes: "API Key de OpenAI no configurada." };
     }
 
     const client = new OpenAI({ apiKey });
@@ -154,14 +150,14 @@ ${transcript}`;
 
     try {
       const response = await client.chat.completions.create({
-        model: 'gpt-4.1-mini',
-        messages: [{ role: 'user', content: prompt }],
+        model: "gpt-4.1-mini",
+        messages: [{ role: "user", content: prompt }],
         temperature: 0.1,
         max_tokens: 800,
-        response_format: { type: 'json_object' },
+        response_format: { type: "json_object" },
       });
 
-      const raw = response.choices[0]?.message?.content || '{}';
+      const raw = response.choices[0]?.message?.content || "{}";
       let extracted: ExtractedData;
       try {
         extracted = JSON.parse(raw);
@@ -176,7 +172,9 @@ ${transcript}`;
         data: { extracted_data_json: extracted as any },
       });
 
-      this.logger.log(`Extracted data for contact ${contactId}: ${Object.keys(extracted).join(', ')}`);
+      this.logger.log(
+        `Extracted data for contact ${contactId}: ${Object.keys(extracted).join(", ")}`,
+      );
       return extracted;
     } catch (err) {
       this.logger.error(`Extraction failed for contact ${contactId}: ${err.message}`);
@@ -190,7 +188,7 @@ ${transcript}`;
       select: { settings_json: true },
     });
     const s = parseJsonValue<Record<string, any>>(ws?.settings_json, {});
-    if (s.ai_provider === 'openai' && s.ai_api_key_enc) {
+    if (s.ai_provider === "openai" && s.ai_api_key_enc) {
       try {
         return this.crypto.decrypt(s.ai_api_key_enc);
       } catch {

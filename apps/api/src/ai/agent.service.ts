@@ -1,15 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CryptoService } from '../common/crypto/crypto.service';
-import { parseJsonValue } from '../common/prisma/json';
-import { InsightsService } from '../insights/insights.service';
-import { SearchService } from '../search/search.service';
-import { DocsService } from '../docs/docs.service';
-import { SupportRouterService, AgentType } from './support-router.service';
-import { DiagnosticService } from './diagnostic.service';
-import { EngineeringFixService } from './engineering-fix.service';
-import { Agent, tool, run as agentRun, Runner } from '@openai/agents';
-import { z } from 'zod';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CryptoService } from "../common/crypto/crypto.service";
+import { parseJsonValue } from "../common/prisma/json";
+import { InsightsService } from "../insights/insights.service";
+import { SearchService } from "../search/search.service";
+import { DocsService } from "../docs/docs.service";
+import { SupportRouterService, AgentType } from "./support-router.service";
+import { DiagnosticService } from "./diagnostic.service";
+import { EngineeringFixService } from "./engineering-fix.service";
+import { Agent, tool, run as agentRun, Runner } from "@openai/agents";
+import { z } from "zod";
 
 @Injectable()
 export class AgentService {
@@ -17,9 +17,15 @@ export class AgentService {
   private currentSessionId: string | null = null;
 
   private static readonly WRITE_TOOLS = new Set([
-    'create_contact', 'update_contact', 'create_task', 'update_task',
-    'create_deal', 'move_deal', 'reply_conversation',
-    'create_automation', 'toggle_automation',
+    "create_contact",
+    "update_contact",
+    "create_task",
+    "update_task",
+    "create_deal",
+    "move_deal",
+    "reply_conversation",
+    "create_automation",
+    "toggle_automation",
   ]);
 
   constructor(
@@ -47,8 +53,8 @@ export class AgentService {
           session_id: this.currentSessionId,
           agent_type: agentType,
           tool_name: toolName,
-          input_json: input as import('@prisma/client').Prisma.InputJsonValue,
-          output_json: output as import('@prisma/client').Prisma.InputJsonValue,
+          input_json: input as import("@prisma/client").Prisma.InputJsonValue,
+          output_json: output as import("@prisma/client").Prisma.InputJsonValue,
           risk_level: riskLevel,
           allowed: true,
         },
@@ -64,9 +70,12 @@ export class AgentService {
       select: { settings_json: true },
     });
     const s = parseJsonValue<Record<string, any>>(ws?.settings_json, {});
-    if (s.ai_provider === 'openai' && s.ai_api_key_enc) {
-      try { return this.crypto.decrypt(s.ai_api_key_enc); }
-      catch { this.logger.warn(`No se pudo desencriptar API key del workspace ${workspaceId}`); }
+    if (s.ai_provider === "openai" && s.ai_api_key_enc) {
+      try {
+        return this.crypto.decrypt(s.ai_api_key_enc);
+      } catch {
+        this.logger.warn(`No se pudo desencriptar API key del workspace ${workspaceId}`);
+      }
     }
     // Do NOT fall back to platform-wide OPENAI_API_KEY — each workspace
     // must configure its own key to prevent cross-workspace billing.
@@ -77,7 +86,7 @@ export class AgentService {
     return this.router.classifyIntent(input);
   }
 
-  private createTools(workspaceId: string, agentType: AgentType = 'hubby') {
+  private createTools(workspaceId: string, agentType: AgentType = "hubby") {
     const allowedTools = new Set(this.router.getToolSet(agentType));
     const prisma = this.prisma;
     const insights = this.insights;
@@ -87,63 +96,171 @@ export class AgentService {
     return [
       // ── Workspace ──
       tool({
-        name: 'get_workspace', description: 'Get current PymesHub workspace info (name, plan, status)',
+        name: "get_workspace",
+        description: "Get current PymesHub workspace info (name, plan, status)",
         parameters: z.object({}),
-        execute: async () => ({ workspace: await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { id: true, name: true, slug: true, plan: true, status: true, created_at: true } }) }),
+        execute: async () => ({
+          workspace: await prisma.workspace.findUnique({
+            where: { id: workspaceId },
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              plan: true,
+              status: true,
+              created_at: true,
+            },
+          }),
+        }),
       }),
       tool({
-        name: 'get_stats', description: 'Get workspace statistics: counts of contacts, tasks, invoices, conversations',
+        name: "get_stats",
+        description: "Get workspace statistics: counts of contacts, tasks, invoices, conversations",
         parameters: z.object({}),
         execute: async () => {
           const [sub, ws] = await Promise.all([
-            prisma.workspaceSubscription.findFirst({ where: { workspace_id: workspaceId }, select: { plan: true, status: true, provider: true, current_period_start: true, current_period_end: true } }),
+            prisma.workspaceSubscription.findFirst({
+              where: { workspace_id: workspaceId },
+              select: {
+                plan: true,
+                status: true,
+                provider: true,
+                current_period_start: true,
+                current_period_end: true,
+              },
+            }),
             prisma.workspace.findUnique({ where: { id: workspaceId }, select: { plan: true } }),
           ]);
           return { subscription: sub, workspace_plan: ws?.plan };
         },
       }),
       tool({
-        name: 'get_billing_invoices', description: 'Get billing history (READ-ONLY)',
+        name: "get_billing_invoices",
+        description: "Get billing history (READ-ONLY)",
         parameters: z.object({}),
-        execute: async () => ({ billing_invoices: await prisma.billingInvoice.findMany({ where: { workspace_id: workspaceId }, select: { id: true, number: true, plan_name: true, total: true, currency: true, status: true, issued_at: true }, take: 50, orderBy: { issued_at: 'desc' } }) }),
+        execute: async () => ({
+          billing_invoices: await prisma.billingInvoice.findMany({
+            where: { workspace_id: workspaceId },
+            select: {
+              id: true,
+              number: true,
+              plan_name: true,
+              total: true,
+              currency: true,
+              status: true,
+              issued_at: true,
+            },
+            take: 50,
+            orderBy: { issued_at: "desc" },
+          }),
+        }),
       }),
 
       // ── Pipeline ──
       tool({
-        name: 'list_pipeline_deals', description: 'List all sales pipeline deals with stages, values, and statuses',
+        name: "list_pipeline_deals",
+        description: "List all sales pipeline deals with stages, values, and statuses",
         parameters: z.object({}),
-        execute: async () => ({ deals: await prisma.deal.findMany({ where: { workspace_id: workspaceId }, select: { id: true, title: true, stage_id: true, value: true, status: true }, take: 50, orderBy: { created_at: 'desc' } }) }),
+        execute: async () => ({
+          deals: await prisma.deal.findMany({
+            where: { workspace_id: workspaceId },
+            select: { id: true, title: true, stage_id: true, value: true, status: true },
+            take: 50,
+            orderBy: { created_at: "desc" },
+          }),
+        }),
       }),
       tool({
-        name: 'create_deal', description: 'Create a new sales pipeline deal',
-        parameters: z.object({ title: z.string(), stage_id: z.string(), value: z.number().optional().nullable().default(0), contact_id: z.string().optional().nullable() }),
-        execute: async (args) => ({ deal: await prisma.deal.create({ data: { workspace_id: workspaceId, title: args.title, stage_id: args.stage_id, value: args.value || 0, contact_id: args.contact_id, status: 'OPEN' } }) }),
+        name: "create_deal",
+        description: "Create a new sales pipeline deal",
+        parameters: z.object({
+          title: z.string(),
+          stage_id: z.string(),
+          value: z.number().optional().nullable().default(0),
+          contact_id: z.string().optional().nullable(),
+        }),
+        execute: async (args) => ({
+          deal: await prisma.deal.create({
+            data: {
+              workspace_id: workspaceId,
+              title: args.title,
+              stage_id: args.stage_id,
+              value: args.value || 0,
+              contact_id: args.contact_id,
+              status: "OPEN",
+            },
+          }),
+        }),
       }),
       tool({
-        name: 'move_deal', description: 'Move a deal to a different pipeline stage',
+        name: "move_deal",
+        description: "Move a deal to a different pipeline stage",
         parameters: z.object({ id: z.string(), stage_id: z.string() }),
-        execute: async ({ id, stage_id }) => ({ deal: await prisma.deal.update({ where: { id, workspace_id: workspaceId }, data: { stage_id } }) }),
+        execute: async ({ id, stage_id }) => ({
+          deal: await prisma.deal.update({
+            where: { id, workspace_id: workspaceId },
+            data: { stage_id },
+          }),
+        }),
       }),
 
       // ── Documents ──
       tool({
-        name: 'list_documents', description: 'List uploaded documents/files with extracted text for insights',
+        name: "list_documents",
+        description: "List uploaded documents/files with extracted text for insights",
         parameters: z.object({ search: z.string().optional().nullable() }),
         execute: async ({ search }) => {
-          const where: { workspace_id: string; file_name?: { contains: string; mode: 'insensitive' } } = { workspace_id: workspaceId };
-          if (search) where.file_name = { contains: search, mode: 'insensitive' };
-          return { documents: await prisma.document.findMany({ where, select: { id: true, file_name: true, mime_type: true, file_size: true, ocr_text: true, created_at: true }, take: 50, orderBy: { created_at: 'desc' } }) };
+          const where: {
+            workspace_id: string;
+            file_name?: { contains: string; mode: "insensitive" };
+          } = { workspace_id: workspaceId };
+          if (search) where.file_name = { contains: search, mode: "insensitive" };
+          return {
+            documents: await prisma.document.findMany({
+              where,
+              select: {
+                id: true,
+                file_name: true,
+                mime_type: true,
+                file_size: true,
+                ocr_text: true,
+                created_at: true,
+              },
+              take: 50,
+              orderBy: { created_at: "desc" },
+            }),
+          };
         },
       }),
 
       // ── Settings ──
       tool({
-        name: 'get_settings', description: 'Get workspace settings, members, and roles',
+        name: "get_settings",
+        description: "Get workspace settings, members, and roles",
         parameters: z.object({}),
         execute: async () => {
           const [ws, members] = await Promise.all([
-            prisma.workspace.findUnique({ where: { id: workspaceId }, select: { id: true, name: true, slug: true, plan: true, status: true, locale: true, timezone: true } }),
-            prisma.workspaceUser.findMany({ where: { workspace_id: workspaceId }, select: { id: true, role: true, user: { select: { id: true, name: true, email: true } } }, take: 20 }),
+            prisma.workspace.findUnique({
+              where: { id: workspaceId },
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                plan: true,
+                status: true,
+                locale: true,
+                timezone: true,
+              },
+            }),
+            prisma.workspaceUser.findMany({
+              where: { workspace_id: workspaceId },
+              select: {
+                id: true,
+                role: true,
+                user: { select: { id: true, name: true, email: true } },
+              },
+              take: 20,
+            }),
           ]);
           return { workspace: ws, members };
         },
@@ -151,15 +268,30 @@ export class AgentService {
 
       // ── Errors ──
       tool({
-        name: 'get_errors',
-        description: 'Get recent errors from this workspace for diagnostics. Returns error messages, status codes, routes, and timestamps.',
-        parameters: z.object({ limit: z.number().optional().describe('Max errors to return (default 10, max 50)') }),
+        name: "get_errors",
+        description:
+          "Get recent errors from this workspace for diagnostics. Returns error messages, status codes, routes, and timestamps.",
+        parameters: z.object({
+          limit: z.number().optional().describe("Max errors to return (default 10, max 50)"),
+        }),
         execute: async ({ limit }: { limit?: number }) => {
           const take = Math.min(limit || 10, 50);
           const errors = await prisma.errorReport.findMany({
             where: { workspace_id: workspaceId },
-            select: { id: true, source: true, category: true, severity: true, title: true, message: true, route: true, method: true, status_code: true, occurred_at: true, context_json: true },
-            orderBy: { occurred_at: 'desc' },
+            select: {
+              id: true,
+              source: true,
+              category: true,
+              severity: true,
+              title: true,
+              message: true,
+              route: true,
+              method: true,
+              status_code: true,
+              occurred_at: true,
+              context_json: true,
+            },
+            orderBy: { occurred_at: "desc" },
             take,
           });
           return { errors, count: errors.length };
@@ -168,9 +300,12 @@ export class AgentService {
 
       // ── Support / Diagnostics ──
       tool({
-        name: 'diagnose',
-        description: 'Diagnose a reported error or issue. Returns matched known issues, risk level, category, and fix recommendations.',
-        parameters: z.object({ description: z.string().describe('Description of the error or issue to diagnose') }),
+        name: "diagnose",
+        description:
+          "Diagnose a reported error or issue. Returns matched known issues, risk level, category, and fix recommendations.",
+        parameters: z.object({
+          description: z.string().describe("Description of the error or issue to diagnose"),
+        }),
         execute: async ({ description }: { description: string }) => {
           const service = this.diagnostic;
           const result = await service.diagnose({ workspaceId, user_description: description });
@@ -178,8 +313,8 @@ export class AgentService {
         },
       }),
       tool({
-        name: 'list_diagnostic_cases',
-        description: 'List open diagnostic cases for this workspace with statuses and risk levels.',
+        name: "list_diagnostic_cases",
+        description: "List open diagnostic cases for this workspace with statuses and risk levels.",
         parameters: z.object({}),
         execute: async () => {
           const cases = await this.diagnostic.listCases(workspaceId);
@@ -187,8 +322,9 @@ export class AgentService {
         },
       }),
       tool({
-        name: 'list_fix_cases',
-        description: 'List engineering fix cases with their status (PENDING, FIX_READY, PENDING_APPROVAL, etc.).',
+        name: "list_fix_cases",
+        description:
+          "List engineering fix cases with their status (PENDING, FIX_READY, PENDING_APPROVAL, etc.).",
         parameters: z.object({}),
         execute: async () => {
           const cases = await this.fixService.listFixCases(workspaceId);
@@ -196,27 +332,40 @@ export class AgentService {
         },
       }),
       tool({
-        name: 'approve_fix',
-        description: 'Approve a fix case (requires ADMIN role). Changes status from FIX_READY/PENDING_APPROVAL to PR_OPENED.',
-        parameters: z.object({ fix_case_id: z.string().describe('The ID of the fix case to approve') }),
+        name: "approve_fix",
+        description:
+          "Approve a fix case (requires ADMIN role). Changes status from FIX_READY/PENDING_APPROVAL to PR_OPENED.",
+        parameters: z.object({
+          fix_case_id: z.string().describe("The ID of the fix case to approve"),
+        }),
         execute: async ({ fix_case_id }: { fix_case_id: string }) => {
           return this.fixService.approveFix(fix_case_id, { workspaceId, isPlatformAdmin: false });
         },
       }),
       tool({
-        name: 'reject_fix',
-        description: 'Reject a fix case with a reason (requires ADMIN role). Resets to PENDING status.',
-        parameters: z.object({ fix_case_id: z.string().describe('The ID of the fix case to reject'), reason: z.string().optional().describe('Why the fix was rejected') }),
+        name: "reject_fix",
+        description:
+          "Reject a fix case with a reason (requires ADMIN role). Resets to PENDING status.",
+        parameters: z.object({
+          fix_case_id: z.string().describe("The ID of the fix case to reject"),
+          reason: z.string().optional().describe("Why the fix was rejected"),
+        }),
         execute: async ({ fix_case_id, reason }: { fix_case_id: string; reason?: string }) => {
-          return this.fixService.rejectFix(fix_case_id, reason || '', { workspaceId, isPlatformAdmin: false });
+          return this.fixService.rejectFix(fix_case_id, reason || "", {
+            workspaceId,
+            isPlatformAdmin: false,
+          });
         },
       }),
 
       // ── Docs ──
       tool({
-        name: 'search_PymesHub_docs',
-        description: 'Search official PymesHub documentation for help articles, guides, policies, and product information. Use this when the user asks how something works or needs documentation.',
-        parameters: z.object({ query: z.string().describe('Search query for PymesHub documentation') }),
+        name: "search_PymesHub_docs",
+        description:
+          "Search official PymesHub documentation for help articles, guides, policies, and product information. Use this when the user asks how something works or needs documentation.",
+        parameters: z.object({
+          query: z.string().describe("Search query for PymesHub documentation"),
+        }),
         execute: async ({ query }: { query: string }) => {
           const results = docsSvc.search(query);
           return { query, results, total: results.length };
@@ -229,14 +378,14 @@ export class AgentService {
     workspaceId: string,
     input: string,
     conversationId?: string,
-    agentType: AgentType = 'hubby',
+    agentType: AgentType = "hubby",
   ): Promise<{ stream: ReadableStream; model: string; agent_type: string } | { error: string }> {
     const apiKey = await this.getAgentApiKey(workspaceId);
     if (!apiKey) {
-      return { error: 'API Key de OpenAI no configurada. Configúrala en Ajustes → IA.' };
+      return { error: "API Key de OpenAI no configurada. Configúrala en Ajustes → IA." };
     }
 
-    const model = process.env.OPENAI_AGENT_MODEL || 'gpt-4.1';
+    const model = process.env.OPENAI_AGENT_MODEL || "gpt-4.1";
 
     // Build context from workspace data
     let inputWithContext = input;
@@ -250,15 +399,36 @@ export class AgentService {
 
       if (agentEnabled) {
         const [tasks, invoices, contacts] = await Promise.all([
-          this.prisma.task.findMany({ where: { workspace_id: workspaceId, status: { in: ['TODO', 'IN_PROGRESS'] } }, select: { title: true, priority: true, status: true, due_at: true }, take: 10, orderBy: { created_at: 'desc' } }),
-          this.prisma.invoice.findMany({ where: { workspace_id: workspaceId }, select: { number: true, amount: true, subtotal: true, tax_rate: true, tax_amount: true, status: true, due_date: true }, take: 5, orderBy: { due_date: 'desc' } }),
+          this.prisma.task.findMany({
+            where: { workspace_id: workspaceId, status: { in: ["TODO", "IN_PROGRESS"] } },
+            select: { title: true, priority: true, status: true, due_at: true },
+            take: 10,
+            orderBy: { created_at: "desc" },
+          }),
+          this.prisma.invoice.findMany({
+            where: { workspace_id: workspaceId },
+            select: {
+              number: true,
+              amount: true,
+              subtotal: true,
+              tax_rate: true,
+              tax_amount: true,
+              status: true,
+              due_date: true,
+            },
+            take: 5,
+            orderBy: { due_date: "desc" },
+          }),
           this.prisma.contact.count({ where: { workspace_id: workspaceId } }),
         ]);
         const ctx: string[] = [`Workspace: ${ws?.name} (Plan: ${ws?.plan})`];
-        if (tasks.length) ctx.push(`Tareas pendientes: ${tasks.map((t) => t.title).join(', ')}`);
-          if (invoices.length) ctx.push(`Facturas: ${invoices.map((i) => `${i.number} (${i.status}) total:${i.amount} subtotal:${i.subtotal ?? i.amount} iva:${i.tax_rate ?? 0}%`).join(', ')}`);
+        if (tasks.length) ctx.push(`Tareas pendientes: ${tasks.map((t) => t.title).join(", ")}`);
+        if (invoices.length)
+          ctx.push(
+            `Facturas: ${invoices.map((i) => `${i.number} (${i.status}) total:${i.amount} subtotal:${i.subtotal ?? i.amount} iva:${i.tax_rate ?? 0}%`).join(", ")}`,
+          );
         if (contacts) ctx.push(`Contactos totales: ${contacts}`);
-        inputWithContext = `Contexto:\n${ctx.join('\n')}\n\nPregunta: ${input}`;
+        inputWithContext = `Contexto:\n${ctx.join("\n")}\n\nPregunta: ${input}`;
       }
     } catch (err) {
       this.logger.warn(`Error building agent context: ${(err as Error).message}`);
@@ -268,12 +438,12 @@ export class AgentService {
 
     // Create agent session for audit trail
     const session = await this.prisma.agentSession.create({
-      data: { workspace_id: workspaceId, agent_type: agentType, status: 'ACTIVE' },
+      data: { workspace_id: workspaceId, agent_type: agentType, status: "ACTIVE" },
     });
     this.currentSessionId = session.id;
 
     const agent = new Agent({
-      name: 'HubbyAgent',
+      name: "HubbyAgent",
       instructions: `Eres HubbyAgent de PymesHub. Si el usuario pide CREAR, ACTUALIZAR, ELIMINAR o CONSULTAR datos, usás tus herramientas. Si solo saluda o conversa, respondés normal.
 
 HERRAMIENTAS DE DATOS (solo para operaciones CRUD):
@@ -307,38 +477,57 @@ REGLAS:
       modelSettings: { temperature: 0.2, maxTokens: 1024 },
     });
 
-    const history: { role: string; content: string }[] = [{ role: 'user', content: inputWithContext }];
+    const history: { role: string; content: string }[] = [
+      { role: "user", content: inputWithContext },
+    ];
 
     try {
       const runner = new Runner();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const result = await runner.run(agent, history as unknown as string, { maxTurns: 3 });
 
       // Extract text from result
       const rawResult = result as unknown as Record<string, unknown>;
       const finalOutput: string = (() => {
         const fo = rawResult.finalOutput;
-        if (typeof fo === 'string') return fo;
-        if (fo && typeof fo === 'object' && typeof (fo as Record<string, unknown>).text === 'string') return (fo as Record<string, unknown>).text as string;
+        if (typeof fo === "string") return fo;
+        if (
+          fo &&
+          typeof fo === "object" &&
+          typeof (fo as Record<string, unknown>).text === "string"
+        )
+          return (fo as Record<string, unknown>).text as string;
         if (fo) return JSON.stringify(fo);
         const out = rawResult.output;
-        if (typeof out === 'string') return out;
-        return '';
+        if (typeof out === "string") return out;
+        return "";
       })();
 
-      this.logger.log(`Agent response length: ${finalOutput.length}, preview: ${finalOutput.slice(0, 100)}`);
+      this.logger.log(
+        `Agent response length: ${finalOutput.length}, preview: ${finalOutput.slice(0, 100)}`,
+      );
 
       // Log tool calls from agent result
       try {
-        const rawItems = (rawResult.rawResponses ?? rawResult.newItems ?? []) as Record<string, unknown>[];
+        const rawItems = (rawResult.rawResponses ?? rawResult.newItems ?? []) as Record<
+          string,
+          unknown
+        >[];
         for (const item of rawItems) {
-          if (item.type === 'function_call' || item.type === 'function_call_output') {
-            const toolName = String(item.name || item.function_name || 'unknown');
+          if (item.type === "function_call" || item.type === "function_call_output") {
+            const toolName = String(item.name || item.function_name || "unknown");
             const isWrite = AgentService.WRITE_TOOLS.has(toolName);
-            await this.logToolCall('hubby', toolName,
-              item.arguments ? JSON.parse(typeof item.arguments === 'string' ? item.arguments : '{}') as Record<string, unknown> : {},
+            await this.logToolCall(
+              "hubby",
+              toolName,
+              item.arguments
+                ? (JSON.parse(typeof item.arguments === "string" ? item.arguments : "{}") as Record<
+                    string,
+                    unknown
+                  >)
+                : {},
               (item.output || item.return_value || {}) as Record<string, unknown>,
-              isWrite ? 'medium' : 'low',
+              isWrite ? "medium" : "low",
             );
           }
         }
@@ -350,12 +539,25 @@ REGLAS:
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            const output = finalOutput || '¡Hola! Soy Hubby, tu asistente de PymesHub. ¿En qué puedo ayudarte?';
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: output })}\n\n`));
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: output } })}\n\n`));
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            const output =
+              finalOutput || "¡Hola! Soy Hubby, tu asistente de PymesHub. ¿En qué puedo ayudarte?";
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: "response.output_text.delta", delta: output })}\n\n`,
+              ),
+            );
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: "response.completed", response: { output_text: output } })}\n\n`,
+              ),
+            );
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           } catch (err: unknown) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err instanceof Error ? err.message : String(err) } })}\n\n`));
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: "error", error: { message: err instanceof Error ? err.message : String(err) } })}\n\n`,
+              ),
+            );
           } finally {
             controller.close();
           }
@@ -374,11 +576,11 @@ REGLAS:
   ): Promise<{ stream: ReadableStream; model: string; agent_type: string } | { error: string }> {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return { error: 'OpenAI API key not configured on server.' };
+      return { error: "OpenAI API key not configured on server." };
     }
 
     const agent = new Agent({
-      name: 'HubbyLanding',
+      name: "HubbyLanding",
       instructions: `Eres Hubby 🐾, el asistente virtual de PymesHub (PymesHub.lat), la plataforma todo-en-uno para PYMEs.
 
 Tu trabajo es ayudar a visitantes a entender qué es PymesHub y convencerlos de probarla.
@@ -406,16 +608,16 @@ REGLAS:
 5. Siempre cerrá invitando a registrarse gratis en PymesHub.lat.
 6. No inventes features que no existan.
 7. No des soporte técnico — para eso deben crear una cuenta.`,
-      model: process.env.OPENAI_AGENT_MODEL || 'gpt-4.1-mini',
+      model: process.env.OPENAI_AGENT_MODEL || "gpt-4.1-mini",
       tools: [],
       modelSettings: { temperature: 0.4, maxTokens: 200 },
     });
 
-    const history: { role: string; content: string }[] = [{ role: 'user', content: input }];
+    const history: { role: string; content: string }[] = [{ role: "user", content: input }];
 
     try {
       const runner = new Runner();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const result = await runner.run(agent, history as unknown as string, { maxTurns: 1 });
       const rawPublicResult = result as unknown as Record<string, unknown>;
 
@@ -424,19 +626,31 @@ REGLAS:
         async start(controller) {
           try {
             const final = rawPublicResult.finalOutput ?? rawPublicResult.output;
-            const text = typeof final === 'string' ? final : JSON.stringify(final || '');
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: text })}\n\n`));
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'response.completed', response: { output_text: text } })}\n\n`));
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            const text = typeof final === "string" ? final : JSON.stringify(final || "");
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: "response.output_text.delta", delta: text })}\n\n`,
+              ),
+            );
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: "response.completed", response: { output_text: text } })}\n\n`,
+              ),
+            );
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           } catch (err: unknown) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: { message: err instanceof Error ? err.message : String(err) } })}\n\n`));
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: "error", error: { message: err instanceof Error ? err.message : String(err) } })}\n\n`,
+              ),
+            );
           } finally {
             controller.close();
           }
         },
       });
 
-      return { stream, model: 'gpt-4.1-mini', agent_type: 'hubby' };
+      return { stream, model: "gpt-4.1-mini", agent_type: "hubby" };
     } catch (err: unknown) {
       this.logger.error(`Public agent error: ${err instanceof Error ? err.message : String(err)}`);
       return { error: `Error: ${err instanceof Error ? err.message : String(err)}` };

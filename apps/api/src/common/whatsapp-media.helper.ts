@@ -1,4 +1,4 @@
-export type WhatsAppMediaKind = 'image' | 'video' | 'audio' | 'document' | 'sticker';
+export type WhatsAppMediaKind = "image" | "video" | "audio" | "document" | "sticker";
 
 export interface ExtractedWhatsAppMedia {
   whatsappMediaId: string;
@@ -12,22 +12,24 @@ export interface ExtractedWhatsAppMedia {
   rawMedia: Record<string, unknown>;
 }
 
-export function extractWhatsAppMediaFromMessage(msg: Record<string, any>): ExtractedWhatsAppMedia | null {
-  if (!msg || typeof msg !== 'object') return null;
+export function extractWhatsAppMediaFromMessage(
+  msg: Record<string, any>,
+): ExtractedWhatsAppMedia | null {
+  if (!msg || typeof msg !== "object") return null;
 
   const type = msg.type as WhatsAppMediaKind | undefined;
   if (!type) return null;
 
-  const supportedMediaTypes: WhatsAppMediaKind[] = ['image', 'video', 'audio', 'document', 'sticker'];
+  const supportedMediaTypes: WhatsAppMediaKind[] = [
+    "image",
+    "video",
+    "audio",
+    "document",
+    "sticker",
+  ];
   if (!supportedMediaTypes.includes(type)) return null;
 
-  const mediaObj =
-    msg.image ??
-    msg.video ??
-    msg.audio ??
-    msg.document ??
-    msg.sticker ??
-    null;
+  const mediaObj = msg.image ?? msg.video ?? msg.audio ?? msg.document ?? msg.sticker ?? null;
 
   if (!mediaObj?.id) return null;
 

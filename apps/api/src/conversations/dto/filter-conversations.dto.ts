@@ -1,6 +1,6 @@
-import { IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
-import { ChannelType, ConversationStatus, Priority } from '@prisma/client';
+import { IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import { Transform, Type } from "class-transformer";
+import { ChannelType, ConversationStatus, Priority } from "@prisma/client";
 
 export class FilterConversationsDto {
   @IsOptional()
@@ -53,12 +53,12 @@ export class FilterConversationsDto {
   channel_type?: ChannelType;
 
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @Transform(({ value }) => value === "true" || value === true)
   @IsBoolean()
   unassigned?: boolean;
 
   /** Orden (el servicio puede usarlo en orderBy; si no, se ignora) */
   @IsOptional()
-  @IsIn(['asc', 'desc'])
+  @IsIn(["asc", "desc"])
   sort?: string;
 }

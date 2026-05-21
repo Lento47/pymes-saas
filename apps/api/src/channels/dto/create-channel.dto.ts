@@ -1,5 +1,5 @@
-import { IsEnum, IsObject, IsOptional, IsString, Length } from 'class-validator';
-import { ChannelType } from '@prisma/client';
+import { IsEnum, IsObject, IsOptional, IsString, Length } from "class-validator";
+import { ChannelType } from "@prisma/client";
 
 export class CreateChannelDto {
   @IsEnum(ChannelType)

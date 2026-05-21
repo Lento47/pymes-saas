@@ -1,15 +1,18 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { RefreshTokenService } from './refresh-token.service';
-import { JwtPayload } from './strategies/jwt.strategy';
-import * as crypto from 'crypto';
+import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { RefreshTokenService } from "./refresh-token.service";
+import { JwtPayload } from "./strategies/jwt.strategy";
+import * as crypto from "crypto";
 
-const AUTH0_DOMAIN = (process.env.AUTH0_DOMAIN ?? '').trim();
-const AUTH0_CLIENT_ID = (process.env.AUTH0_CLIENT_ID ?? '').trim();
-const AUTH0_CLIENT_SECRET = (process.env.AUTH0_CLIENT_SECRET ?? '').trim();
-const ADMIN_DOMAINS = (process.env.AUTH0_ADMIN_DOMAINS ?? '').split(',').map(d => d.trim()).filter(Boolean);
-const PUBLIC_URL = (process.env.PUBLIC_URL ?? 'https://pymeshub.lat').trim();
+const AUTH0_DOMAIN = (process.env.AUTH0_DOMAIN ?? "").trim();
+const AUTH0_CLIENT_ID = (process.env.AUTH0_CLIENT_ID ?? "").trim();
+const AUTH0_CLIENT_SECRET = (process.env.AUTH0_CLIENT_SECRET ?? "").trim();
+const ADMIN_DOMAINS = (process.env.AUTH0_ADMIN_DOMAINS ?? "")
+  .split(",")
+  .map((d) => d.trim())
+  .filter(Boolean);
+const PUBLIC_URL = (process.env.PUBLIC_URL ?? "https://pymeshub.lat").trim();
 
 @Injectable()
 export class AdminAuthService {
@@ -22,34 +25,46 @@ export class AdminAuthService {
   ) {}
 
   buildAuthUrl(): string {
-    const state = crypto.randomBytes(16).toString('hex');
-    const nonce = crypto.randomBytes(16).toString('hex');
+    const state = crypto.randomBytes(16).toString("hex");
+    const nonce = crypto.randomBytes(16).toString("hex");
     const params = new URLSearchParams({
       client_id: AUTH0_CLIENT_ID,
-      response_type: 'code',
+      response_type: "code",
       redirect_uri: `${PUBLIC_URL}/api/auth/admin/callback`,
-      scope: 'openid email profile',
+      scope: "openid email profile",
       state: `${state}|/admin`,
       nonce,
     });
     return `https://${AUTH0_DOMAIN}/authorize?${params.toString()}`;
   }
 
-  async handleCallback(code: string, stateRaw: string): Promise<{
+  async handleCallback(
+    code: string,
+    stateRaw: string,
+  ): Promise<{
     access_token: string;
     refresh_token: string;
-    user: { id: string; email: string; name: string; avatar_url: string | null; role: string; is_owner: boolean; is_platform_admin: boolean; workspace: { id: string; name: string; slug: string; plan: string } };
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      avatar_url: string | null;
+      role: string;
+      is_owner: boolean;
+      is_platform_admin: boolean;
+      workspace: { id: string; name: string; slug: string; plan: string };
+    };
   }> {
-    const [state] = (stateRaw ?? '').split('|');
+    const [state] = (stateRaw ?? "").split("|");
     if (!state || state.length < 16) {
-      throw new UnauthorizedException('Invalid state parameter');
+      throw new UnauthorizedException("Invalid state parameter");
     }
 
     const tokenRes = await fetch(`https://${AUTH0_DOMAIN}/oauth/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        grant_type: 'authorization_code',
+        grant_type: "authorization_code",
         client_id: AUTH0_CLIENT_ID,
         client_secret: AUTH0_CLIENT_SECRET,
         code,
@@ -59,13 +74,13 @@ export class AdminAuthService {
 
     if (!tokenRes.ok) {
       this.logger.error(`Auth0 token exchange failed: ${tokenRes.status}`);
-      throw new UnauthorizedException('Authentication failed');
+      throw new UnauthorizedException("Authentication failed");
     }
 
-    const tokens = await tokenRes.json() as { access_token?: string };
+    const tokens = (await tokenRes.json()) as { access_token?: string };
     const accessToken = tokens.access_token;
     if (!accessToken) {
-      throw new UnauthorizedException('No access token from Auth0');
+      throw new UnauthorizedException("No access token from Auth0");
     }
 
     const userRes = await fetch(`https://${AUTH0_DOMAIN}/userinfo`, {
@@ -73,21 +88,21 @@ export class AdminAuthService {
     });
 
     if (!userRes.ok) {
-      throw new UnauthorizedException('Failed to get user info');
+      throw new UnauthorizedException("Failed to get user info");
     }
 
-    const profile = await userRes.json() as { email?: string; name?: string; nickname?: string };
-    const email: string = (profile.email ?? '').toLowerCase();
-    const name: string = profile.name ?? profile.nickname ?? email.split('@')[0];
+    const profile = (await userRes.json()) as { email?: string; name?: string; nickname?: string };
+    const email: string = (profile.email ?? "").toLowerCase();
+    const name: string = profile.name ?? profile.nickname ?? email.split("@")[0];
 
     if (!email) {
-      throw new UnauthorizedException('No email in Auth0 profile');
+      throw new UnauthorizedException("No email in Auth0 profile");
     }
 
-    const domainOk = ADMIN_DOMAINS.some(d => email.endsWith(`@${d}`));
+    const domainOk = ADMIN_DOMAINS.some((d) => email.endsWith(`@${d}`));
     if (!domainOk) {
       this.logger.warn(`Admin login rejected: ${email} not in whitelist`);
-      throw new UnauthorizedException('Este correo no tiene acceso de administrador.');
+      throw new UnauthorizedException("Este correo no tiene acceso de administrador.");
     }
 
     let user = await this.prisma.user.findUnique({
@@ -95,7 +110,7 @@ export class AdminAuthService {
       include: {
         workspace_users: {
           include: { workspace: true },
-          orderBy: { created_at: 'asc' },
+          orderBy: { created_at: "asc" },
           take: 1,
         },
       },
@@ -105,8 +120,8 @@ export class AdminAuthService {
       user = await this.prisma.user.create({
         data: {
           email,
-          name: name || email.split('@')[0],
-          status: 'ACTIVE',
+          name: name || email.split("@")[0],
+          status: "ACTIVE",
           is_platform_admin: true,
         },
         include: {
@@ -126,9 +141,9 @@ export class AdminAuthService {
     if (!membership) {
       const workspace = await this.prisma.workspace.create({
         data: {
-          name: `Admin Hub — ${name || email.split('@')[0]}`,
-          slug: `admin-${crypto.randomBytes(4).toString('hex')}`,
-          plan: 'BUSINESS_PLUS',
+          name: `Admin Hub — ${name || email.split("@")[0]}`,
+          slug: `admin-${crypto.randomBytes(4).toString("hex")}`,
+          plan: "BUSINESS_PLUS",
         },
       });
 
@@ -136,7 +151,7 @@ export class AdminAuthService {
         data: {
           workspace_id: workspace.id,
           user_id: user.id,
-          role: 'OWNER',
+          role: "OWNER",
           is_owner: true,
         },
         include: { workspace: true },

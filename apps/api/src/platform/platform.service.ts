@@ -3,13 +3,13 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { AssignMemberDto } from './dto/assign-member.dto';
-import { CreatePlatformUserDto } from './dto/create-platform-user.dto';
-import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
-import { UpdateWorkspaceBillingDto } from './dto/update-workspace-billing.dto';
-import { UpdateWorkspaceFeaturesDto } from './dto/update-workspace-features.dto';
+} from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { AssignMemberDto } from "./dto/assign-member.dto";
+import { CreatePlatformUserDto } from "./dto/create-platform-user.dto";
+import { UpdateMemberRoleDto } from "./dto/update-member-role.dto";
+import { UpdateWorkspaceBillingDto } from "./dto/update-workspace-billing.dto";
+import { UpdateWorkspaceFeaturesDto } from "./dto/update-workspace-features.dto";
 import {
   BillingEvent,
   BillingInterval,
@@ -18,13 +18,13 @@ import {
   WorkspacePlan,
   WorkspaceSubscription,
   WorkspaceSubscriptionStatus,
-} from '@prisma/client';
-import { FeaturesService } from '../features/features.service';
-import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
-import { AuditService } from '../audit/audit.service';
-import { stringifyJson } from '../common/prisma/json';
-import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
+} from "@prisma/client";
+import { FeaturesService } from "../features/features.service";
+import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { AuditService } from "../audit/audit.service";
+import { stringifyJson } from "../common/prisma/json";
+import * as bcrypt from "bcrypt";
+import { randomBytes } from "crypto";
 
 @Injectable()
 export class PlatformService {
@@ -96,7 +96,7 @@ export class PlatformService {
         _count: { select: { workspace_users: true } },
         business_profile: { select: { categories: true, team_size: true } },
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
     });
 
     return workspaces.map((w) => ({
@@ -109,17 +109,24 @@ export class PlatformService {
 
   async listMembers(slug: string) {
     const workspace = await this.prisma.workspace.findUnique({ where: { slug } });
-    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+    if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
-    const members = await (this.prisma.workspaceUser as any).findMany({
+    const members = (await (this.prisma.workspaceUser as any).findMany({
       where: { workspace_id: workspace.id },
       include: {
         user: {
-          select: { id: true, email: true, name: true, avatar_url: true, status: true, is_platform_admin: true },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            avatar_url: true,
+            status: true,
+            is_platform_admin: true,
+          },
         },
       },
-      orderBy: { created_at: 'asc' },
-    }) as any[];
+      orderBy: { created_at: "asc" },
+    })) as any[];
 
     return members.map((m) => ({
       id: m.id,
@@ -137,16 +144,16 @@ export class PlatformService {
       where: { slug },
       select: { id: true, name: true, slug: true, plan: true, status: true },
     });
-    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+    if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
     const [subscription, events] = await Promise.all([
       this.prisma.workspaceSubscription.findFirst({
         where: { workspace_id: workspace.id },
-        orderBy: [{ updated_at: 'desc' }, { created_at: 'desc' }],
+        orderBy: [{ updated_at: "desc" }, { created_at: "desc" }],
       }),
       this.prisma.billingEvent.findMany({
         where: { workspace_id: workspace.id },
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
         take: 10,
       }),
     ]);
@@ -165,40 +172,46 @@ export class PlatformService {
 
   async assignMember(slug: string, dto: AssignMemberDto) {
     const workspace = await this.prisma.workspace.findUnique({ where: { slug } });
-    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+    if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
-    let user = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (!user) throw new NotFoundException(`Usuario con email ${dto.email} no existe. Debe registrarse primero.`);
+    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (!user)
+      throw new NotFoundException(
+        `Usuario con email ${dto.email} no existe. Debe registrarse primero.`,
+      );
 
     const existing = await this.prisma.workspaceUser.findUnique({
       where: {
         workspace_id_user_id: { workspace_id: workspace.id, user_id: user.id },
       },
     });
-    if (existing) throw new ConflictException('El usuario ya es miembro de este workspace.');
+    if (existing) throw new ConflictException("El usuario ya es miembro de este workspace.");
 
     const membership = await this.prisma.workspaceUser.create({
       data: {
         workspace_id: workspace.id,
         user_id: user.id,
-        role: dto.role ?? 'AGENT',
+        role: dto.role ?? "AGENT",
         is_owner: false,
       },
     });
 
-    return { message: `${dto.email} agregado al workspace ${workspace.name}.`, membership_id: membership.id };
+    return {
+      message: `${dto.email} agregado al workspace ${workspace.name}.`,
+      membership_id: membership.id,
+    };
   }
 
   // ── PATCH /platform/workspaces/:slug/members/:userId/role ─────────────────
 
   async updateMemberRole(slug: string, userId: string, dto: UpdateMemberRoleDto) {
     const workspace = await this.prisma.workspace.findUnique({ where: { slug } });
-    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+    if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
     const membership = await this.prisma.workspaceUser.findUnique({
       where: { workspace_id_user_id: { workspace_id: workspace.id, user_id: userId } },
     });
-    if (!membership) throw new NotFoundException('Membresía no encontrada.');
+    if (!membership) throw new NotFoundException("Membresía no encontrada.");
 
     return this.prisma.workspaceUser.update({
       where: { workspace_id_user_id: { workspace_id: workspace.id, user_id: userId } },
@@ -210,37 +223,34 @@ export class PlatformService {
 
   async removeMember(slug: string, userId: string) {
     const workspace = await this.prisma.workspace.findUnique({ where: { slug } });
-    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+    if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
     const membership = await this.prisma.workspaceUser.findUnique({
       where: { workspace_id_user_id: { workspace_id: workspace.id, user_id: userId } },
     });
-    if (!membership) throw new NotFoundException('Membresía no encontrada.');
-    if (membership.is_owner) throw new ConflictException('No se puede remover al owner del workspace.');
+    if (!membership) throw new NotFoundException("Membresía no encontrada.");
+    if (membership.is_owner)
+      throw new ConflictException("No se puede remover al owner del workspace.");
 
     await this.prisma.workspaceUser.delete({
       where: { workspace_id_user_id: { workspace_id: workspace.id, user_id: userId } },
     });
 
-    return { message: 'Acceso revocado.' };
+    return { message: "Acceso revocado." };
   }
 
   // ── PATCH /platform/workspaces/:slug/billing ─────────────────────────────
 
-  async updateWorkspaceBilling(
-    slug: string,
-    actorUserId: string,
-    dto: UpdateWorkspaceBillingDto,
-  ) {
+  async updateWorkspaceBilling(slug: string, actorUserId: string, dto: UpdateWorkspaceBillingDto) {
     const workspace = await this.prisma.workspace.findUnique({
       where: { slug },
       select: { id: true, name: true, slug: true, plan: true, status: true },
     });
-    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+    if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
     const currentSubscription = await this.prisma.workspaceSubscription.findFirst({
       where: { workspace_id: workspace.id },
-      orderBy: [{ updated_at: 'desc' }, { created_at: 'desc' }],
+      orderBy: [{ updated_at: "desc" }, { created_at: "desc" }],
     });
 
     const effectivePlan = dto.plan ?? currentSubscription?.plan ?? workspace.plan;
@@ -260,24 +270,23 @@ export class PlatformService {
         dto.provider_customer_id ?? currentSubscription?.provider_customer_id ?? null,
       provider_subscription_id:
         dto.provider_subscription_id ?? currentSubscription?.provider_subscription_id ?? null,
-      external_reference:
-        dto.external_reference ?? currentSubscription?.external_reference ?? null,
+      external_reference: dto.external_reference ?? currentSubscription?.external_reference ?? null,
       current_period_start: dto.current_period_start
         ? new Date(dto.current_period_start)
-        : currentSubscription?.current_period_start ?? null,
+        : (currentSubscription?.current_period_start ?? null),
       current_period_end: dto.current_period_end
         ? new Date(dto.current_period_end)
-        : currentSubscription?.current_period_end ?? null,
+        : (currentSubscription?.current_period_end ?? null),
       trial_ends_at: dto.trial_ends_at
         ? new Date(dto.trial_ends_at)
-        : currentSubscription?.trial_ends_at ?? null,
+        : (currentSubscription?.trial_ends_at ?? null),
       cancel_at_period_end:
         dto.cancel_at_period_end ?? currentSubscription?.cancel_at_period_end ?? false,
       notes: dto.notes ?? currentSubscription?.notes ?? null,
       metadata_json:
         dto.metadata_json !== undefined
           ? stringifyJson(dto.metadata_json)
-          : currentSubscription?.metadata_json ?? null,
+          : (currentSubscription?.metadata_json ?? null),
     };
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -305,8 +314,8 @@ export class PlatformService {
           workspace_id: workspace.id,
           subscription_id: subscription.id,
           provider: effectiveProvider,
-          source: dto.provider ? 'BILLING_UPDATE' : 'MANUAL',
-          event_type: dto.event_type ?? 'MANUAL_PLAN_UPDATE',
+          source: dto.provider ? "BILLING_UPDATE" : "MANUAL",
+          event_type: dto.event_type ?? "MANUAL_PLAN_UPDATE",
           actor_user_id: actorUserId,
           applied_plan: effectivePlan,
           payload_json:
@@ -326,7 +335,7 @@ export class PlatformService {
       });
       const events = await tx.billingEvent.findMany({
         where: { workspace_id: workspace.id },
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
         take: 10,
       });
 
@@ -347,7 +356,7 @@ export class PlatformService {
 
   async searchUsers(email?: string) {
     return (this.prisma.user as any).findMany({
-      where: email ? { email: { contains: email, mode: 'insensitive' } } : undefined,
+      where: email ? { email: { contains: email, mode: "insensitive" } } : undefined,
       select: {
         id: true,
         email: true,
@@ -363,13 +372,13 @@ export class PlatformService {
         },
       },
       take: 50,
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
     });
   }
 
   async createUser(dto: CreatePlatformUserDto) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (existing) throw new ConflictException('El email ya está registrado.');
+    if (existing) throw new ConflictException("El email ya está registrado.");
 
     const password_hash = await bcrypt.hash(dto.password, 12);
     return this.prisma.user.create({
@@ -405,7 +414,7 @@ export class PlatformService {
       data: { password_hash, status: UserStatus.ACTIVE },
     });
     await this.prisma.refreshToken.deleteMany({ where: { user_id: userId } });
-    return { message: 'Contraseña actualizada y sesiones revocadas.' };
+    return { message: "Contraseña actualizada y sesiones revocadas." };
   }
 
   async resetUserPassword(userId: string) {
@@ -426,7 +435,7 @@ export class PlatformService {
 
   async updateUserStatus(userId: string, actorUserId: string, status: UserStatus) {
     if (userId === actorUserId && status !== UserStatus.ACTIVE) {
-      throw new BadRequestException('No podés bloquear o desactivar tu propio usuario.');
+      throw new BadRequestException("No podés bloquear o desactivar tu propio usuario.");
     }
 
     await this.ensureUserExists(userId);
@@ -461,7 +470,7 @@ export class PlatformService {
       where: { id: userId },
       select: { id: true, is_platform_admin: true },
     });
-    if (!user) throw new NotFoundException('Usuario no encontrado.');
+    if (!user) throw new NotFoundException("Usuario no encontrado.");
 
     return this.prisma.user.update({
       where: { id: userId },
@@ -485,7 +494,7 @@ export class PlatformService {
 
   async deleteUser(userId: string, actorUserId: string) {
     if (userId === actorUserId) {
-      throw new BadRequestException('No podés eliminar tu propio usuario.');
+      throw new BadRequestException("No podés eliminar tu propio usuario.");
     }
 
     const user = await this.ensureUserExists(userId);
@@ -539,11 +548,11 @@ export class PlatformService {
       where: { slug },
       select: { id: true, name: true, status: true },
     });
-    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+    if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
     await this.prisma.workspace.update({
       where: { id: workspace.id },
-      data: { status: 'DELETED', slug: `${slug}-deleted-${Date.now()}` },
+      data: { status: "DELETED", slug: `${slug}-deleted-${Date.now()}` },
     });
 
     return { message: `Workspace "${workspace.name}" marcado como eliminado.` };
@@ -556,7 +565,7 @@ export class PlatformService {
       where: { slug },
       select: { id: true, plan: true, beta_profile: true, features_json: true, limits_json: true },
     });
-    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+    if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
     const effective = await this.features.getEffectiveFeatures(workspace.id);
     return {
@@ -574,12 +583,16 @@ export class PlatformService {
 
   // ── PATCH /platform/workspaces/:slug/features ────────────────────────────
 
-  async updateWorkspaceFeatures(slug: string, actorUserId: string, dto: UpdateWorkspaceFeaturesDto) {
+  async updateWorkspaceFeatures(
+    slug: string,
+    actorUserId: string,
+    dto: UpdateWorkspaceFeaturesDto,
+  ) {
     const workspace = await this.prisma.workspace.findUnique({
       where: { slug },
       select: { id: true, plan: true, beta_profile: true, features_json: true, limits_json: true },
     });
-    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+    if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
     const before = {
       plan: workspace.plan,
@@ -602,8 +615,8 @@ export class PlatformService {
 
     await this.audit.log(workspace.id, {
       user_id: actorUserId,
-      action: 'workspace.features.updated',
-      entity_type: 'workspace',
+      action: "workspace.features.updated",
+      entity_type: "workspace",
       entity_id: workspace.id,
       before,
       after: {
@@ -662,17 +675,22 @@ export class PlatformService {
       allProfiles,
       workspacesLast12Months,
     ] = await Promise.all([
-      this.prisma.workspace.count({ where: { status: 'ACTIVE' } }),
-      this.prisma.user.count({ where: { status: 'ACTIVE' } }),
-      this.prisma.user.count({ where: { status: 'ACTIVE', updated_at: { gte: thirtyDaysAgo } } }),
+      this.prisma.workspace.count({ where: { status: "ACTIVE" } }),
+      this.prisma.user.count({ where: { status: "ACTIVE" } }),
+      this.prisma.user.count({ where: { status: "ACTIVE", updated_at: { gte: thirtyDaysAgo } } }),
       this.prisma.conversation.count(),
       this.prisma.invoice.count(),
       this.prisma.workspaceBusinessProfile.count(),
-      this.prisma.workspaceBusinessProfile.findMany({ select: { categories: true, team_size: true } }),
+      this.prisma.workspaceBusinessProfile.findMany({
+        select: { categories: true, team_size: true },
+      }),
       this.prisma.workspace.findMany({
-        where: { status: 'ACTIVE', created_at: { gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) } },
+        where: {
+          status: "ACTIVE",
+          created_at: { gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) },
+        },
         select: { created_at: true },
-        orderBy: { created_at: 'asc' },
+        orderBy: { created_at: "asc" },
       }),
     ]);
 
@@ -692,8 +710,10 @@ export class PlatformService {
     for (const p of allProfiles) {
       teamSizeMap[p.team_size] = (teamSizeMap[p.team_size] ?? 0) + 1;
     }
-    const teamSizeDistribution = Object.entries(teamSizeMap)
-      .map(([team_size, count]) => ({ team_size, count }));
+    const teamSizeDistribution = Object.entries(teamSizeMap).map(([team_size, count]) => ({
+      team_size,
+      count,
+    }));
 
     // Registrations by month (last 12 months)
     const monthMap: Record<string, number> = {};
@@ -712,7 +732,7 @@ export class PlatformService {
         workspace: {
           select: {
             usage_snapshots: {
-              orderBy: { period_start: 'desc' },
+              orderBy: { period_start: "desc" },
               take: 1,
               select: { contacts_count: true, invoices_count: true },
             },
@@ -722,21 +742,26 @@ export class PlatformService {
       },
     });
 
-    const categoryUsage: Record<string, { contacts: number[]; conversations: number[]; invoices: number[] }> = {};
+    const categoryUsage: Record<
+      string,
+      { contacts: number[]; conversations: number[]; invoices: number[] }
+    > = {};
     for (const p of profilesWithSnapshots) {
       const snap = p.workspace.usage_snapshots[0];
       const contacts = snap?.contacts_count ?? 0;
       const conversations = p.workspace._count.conversations;
       const invoices = snap?.invoices_count ?? 0;
       for (const cat of p.categories) {
-        if (!categoryUsage[cat]) categoryUsage[cat] = { contacts: [], conversations: [], invoices: [] };
+        if (!categoryUsage[cat])
+          categoryUsage[cat] = { contacts: [], conversations: [], invoices: [] };
         categoryUsage[cat].contacts.push(contacts);
         categoryUsage[cat].conversations.push(conversations);
         categoryUsage[cat].invoices.push(invoices);
       }
     }
 
-    const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((s, n) => s + n, 0) / arr.length) : 0;
+    const avg = (arr: number[]) =>
+      arr.length ? Math.round(arr.reduce((s, n) => s + n, 0) / arr.length) : 0;
     const usageByCategory = Object.entries(categoryUsage).map(([category, data]) => ({
       category,
       avg_contacts: avg(data.contacts),
@@ -764,12 +789,18 @@ export class PlatformService {
     const workspace = await this.prisma.workspace.findUnique({
       where: { slug },
       select: {
-        id: true, name: true, slug: true, plan: true, status: true,
-        timezone: true, locale: true, created_at: true,
+        id: true,
+        name: true,
+        slug: true,
+        plan: true,
+        status: true,
+        timezone: true,
+        locale: true,
+        created_at: true,
         _count: { select: { workspace_users: true, conversations: true, invoices: true } },
       },
     });
-    if (!workspace) throw new NotFoundException('Workspace no encontrado.');
+    if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
     return {
       ...workspace,
@@ -784,12 +815,11 @@ export class PlatformService {
       where: { id: userId },
       select: { id: true, email: true },
     });
-    if (!user) throw new NotFoundException('Usuario no encontrado.');
+    if (!user) throw new NotFoundException("Usuario no encontrado.");
     return user;
   }
 
   private generateTemporaryPassword() {
-    return `${randomBytes(9).toString('base64url')}aA1!`;
+    return `${randomBytes(9).toString("base64url")}aA1!`;
   }
 }
-

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MaxLength, IsHexColor } from 'class-validator';
+import { IsString, IsOptional, MaxLength, IsHexColor } from "class-validator";
 
 export class CreateDepartmentDto {
   @IsString()

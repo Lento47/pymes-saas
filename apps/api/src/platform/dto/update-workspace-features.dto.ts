@@ -1,4 +1,4 @@
-import { IsObject, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsObject, IsOptional, IsString, MinLength } from "class-validator";
 
 export class UpdateWorkspaceFeaturesDto {
   @IsOptional()

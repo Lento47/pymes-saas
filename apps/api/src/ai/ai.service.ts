@@ -1,9 +1,14 @@
-import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CryptoService } from '../common/crypto/crypto.service';
-import { parseJsonValue } from '../common/prisma/json';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  InternalServerErrorException,
+} from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CryptoService } from "../common/crypto/crypto.service";
+import { parseJsonValue } from "../common/prisma/json";
 
-export type AiProvider = 'openai' | 'anthropic' | 'gemini' | 'moonshot';
+export type AiProvider = "openai" | "anthropic" | "gemini" | "moonshot";
 
 export interface AiProviderConfig {
   provider: AiProvider;
@@ -12,7 +17,7 @@ export interface AiProviderConfig {
 }
 
 export interface AiAnalysisResult {
-  urgency: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  urgency: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   summary: string;
   category: string;
   task_title: string | null;
@@ -26,10 +31,10 @@ export interface PaymentReminderDraftResult {
 
 // Default models per provider
 const DEFAULT_MODELS: Record<AiProvider, string> = {
-  openai:    'gpt-4o-mini',
-  anthropic: 'claude-haiku-4-5-20251001',
-  gemini:    'gemini-2.0-flash',
-  moonshot:  'moonshot-v1-8k',
+  openai: "gpt-4o-mini",
+  anthropic: "claude-haiku-4-5-20251001",
+  gemini: "gemini-2.0-flash",
+  moonshot: "moonshot-v1-8k",
 };
 
 @Injectable()
@@ -101,12 +106,12 @@ export class AiService {
     temperature = 0.3,
   ): Promise<{ text: string; tokens: number }> {
     switch (config.provider) {
-      case 'openai':
-      case 'moonshot':
+      case "openai":
+      case "moonshot":
         return this.chatOpenAICompat(config, system, user, maxTokens, temperature);
-      case 'anthropic':
+      case "anthropic":
         return this.chatAnthropic(config, system, user, maxTokens, temperature);
-      case 'gemini':
+      case "gemini":
         return this.chatGemini(config, system, user, maxTokens, temperature);
     }
   }
@@ -119,16 +124,18 @@ export class AiService {
     maxTokens: number,
     temperature: number,
   ) {
-    const base = config.provider === 'moonshot'
-      ? 'https://api.moonshot.cn/v1'
-      : 'https://api.openai.com/v1';
+    const base =
+      config.provider === "moonshot" ? "https://api.moonshot.cn/v1" : "https://api.openai.com/v1";
 
     const res = await fetch(`${base}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.api_key}` },
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.api_key}` },
       body: JSON.stringify({
         model: config.model,
-        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
         temperature,
         max_tokens: maxTokens,
       }),
@@ -137,10 +144,10 @@ export class AiService {
     if (!res.ok) {
       const errorText = await res.text();
       this.logger.error(`${config.provider} API error ${res.status}:`, errorText);
-      throw new InternalServerErrorException('Failed to process with AI. Please try again later.');
+      throw new InternalServerErrorException("Failed to process with AI. Please try again later.");
     }
-    const d = await res.json() as any;
-    return { text: d.choices[0].message.content?.trim() ?? '', tokens: d.usage?.total_tokens ?? 0 };
+    const d = (await res.json()) as any;
+    return { text: d.choices[0].message.content?.trim() ?? "", tokens: d.usage?.total_tokens ?? 0 };
   }
 
   // Anthropic
@@ -151,17 +158,17 @@ export class AiService {
     maxTokens: number,
     temperature: number,
   ) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': config.api_key,
-        'anthropic-version': '2023-06-01',
+        "Content-Type": "application/json",
+        "x-api-key": config.api_key,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
         model: config.model,
         system,
-        messages: [{ role: 'user', content: user }],
+        messages: [{ role: "user", content: user }],
         max_tokens: maxTokens,
       }),
     });
@@ -169,11 +176,11 @@ export class AiService {
     if (!res.ok) {
       const errorText = await res.text();
       this.logger.error(`Anthropic API error ${res.status}:`, errorText);
-      throw new InternalServerErrorException('Failed to process with AI. Please try again later.');
+      throw new InternalServerErrorException("Failed to process with AI. Please try again later.");
     }
-    const d = await res.json() as any;
+    const d = (await res.json()) as any;
     return {
-      text: d.content?.[0]?.text?.trim() ?? '',
+      text: d.content?.[0]?.text?.trim() ?? "",
       tokens: (d.usage?.input_tokens ?? 0) + (d.usage?.output_tokens ?? 0),
     };
   }
@@ -189,14 +196,14 @@ export class AiService {
     // SECURITY: Use header for API key instead of URL query parameter to avoid logging
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent`;
     const res = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': config.api_key,
+        "Content-Type": "application/json",
+        "x-api-key": config.api_key,
       },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: system }] },
-        contents: [{ role: 'user', parts: [{ text: user }] }],
+        contents: [{ role: "user", parts: [{ text: user }] }],
         generationConfig: { temperature, maxOutputTokens: maxTokens },
       }),
     });
@@ -204,12 +211,12 @@ export class AiService {
     if (!res.ok) {
       const errorText = await res.text();
       this.logger.error(`Gemini API error ${res.status}:`, errorText);
-      throw new InternalServerErrorException('Failed to process with AI. Please try again later.');
+      throw new InternalServerErrorException("Failed to process with AI. Please try again later.");
     }
-    const d = await res.json() as any;
+    const d = (await res.json()) as any;
     return {
-      text: d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '',
-      tokens: (d.usageMetadata?.totalTokenCount ?? 0),
+      text: d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "",
+      tokens: d.usageMetadata?.totalTokenCount ?? 0,
     };
   }
 
@@ -225,8 +232,8 @@ export class AiService {
     const startedAt = Date.now();
     const { text, tokens } = await this.chat(
       config,
-      'Responde con una confirmacion breve en espanol para validar conectividad de API.',
-      'Devuelve exactamente una frase corta confirmando que la conexion funciona.',
+      "Responde con una confirmacion breve en espanol para validar conectividad de API.",
+      "Devuelve exactamente una frase corta confirmando que la conexion funciona.",
       60,
       0,
     );
@@ -243,18 +250,26 @@ export class AiService {
   async analyzeConversation(
     workspaceId: string,
     conversationId: string,
-    messages: Array<{ direction: string; sender_name: string; body_text: string | null; sent_at: Date }>,
+    messages: Array<{
+      direction: string;
+      sender_name: string;
+      body_text: string | null;
+      sent_at: Date;
+    }>,
   ): Promise<AiAnalysisResult | null> {
     const config = await this.getConfig(workspaceId);
     if (!config) {
-      this.logger.warn('Sin configuración de IA — omitiendo análisis');
+      this.logger.warn("Sin configuración de IA — omitiendo análisis");
       return null;
     }
     if (!messages?.length) return null;
 
     const conversationText = messages
-      .map(m => `[${m.direction === 'INBOUND' ? 'Cliente' : 'Agente'}] ${m.sender_name}: ${m.body_text ?? ''}`)
-      .join('\n');
+      .map(
+        (m) =>
+          `[${m.direction === "INBOUND" ? "Cliente" : "Agente"}] ${m.sender_name}: ${m.body_text ?? ""}`,
+      )
+      .join("\n");
 
     const system = `Eres un asistente de IA para servicio al cliente. Analiza la conversación y devuelve JSON puro (sin markdown):
 {
@@ -267,12 +282,17 @@ export class AiService {
 
     try {
       const { text } = await this.chat(config, system, conversationText, 500, 0.3);
-      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const clean = text
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
       const parsed: AiAnalysisResult = JSON.parse(clean);
       if (!parsed.urgency || !parsed.summary || !parsed.category) return null;
       return parsed;
     } catch (err) {
-      this.logger.error(`Error analizando conversación ${conversationId}: ${(err as Error).message}`);
+      this.logger.error(
+        `Error analizando conversación ${conversationId}: ${(err as Error).message}`,
+      );
       return null;
     }
   }
@@ -286,37 +306,45 @@ export class AiService {
     daysOverdue: number;
   }): Promise<PaymentReminderDraftResult> {
     const config = await this.getConfig(input.workspaceId);
-    if (!config) throw new BadRequestException('No hay API key de IA configurada. Configúrala en Ajustes → Inteligencia Artificial.');
+    if (!config)
+      throw new BadRequestException(
+        "No hay API key de IA configurada. Configúrala en Ajustes → Inteligencia Artificial.",
+      );
 
     const isOverdue = input.daysOverdue > 0;
     const system = isOverdue
-      ? 'Eres un asistente de cobros profesional. Redacta mensajes de recordatorio de pago en español.'
-      : 'Eres un asistente de facturación y cobro profesional. Redacta mensajes breves para enviar una factura o solicitar confirmación de pago en español.';
+      ? "Eres un asistente de cobros profesional. Redacta mensajes de recordatorio de pago en español."
+      : "Eres un asistente de facturación y cobro profesional. Redacta mensajes breves para enviar una factura o solicitar confirmación de pago en español.";
     const user = [
       `Cliente: ${input.customerName}`,
       `Monto adeudado: ${input.currency} ${input.amount}`,
       `Factura: ${input.invoiceNumber}`,
-      `Estado temporal: ${isOverdue ? `vencida por ${input.daysOverdue} día(s)` : 'no vencida'}`,
+      `Estado temporal: ${isOverdue ? `vencida por ${input.daysOverdue} día(s)` : "no vencida"}`,
       ``,
       isOverdue
         ? `Redacta un recordatorio de pago en español. Tono: profesional, directo y amigable.`
         : `Redacta un mensaje de envío de factura o cobro inicial en español. Tono: profesional, claro y amigable.`,
       `Máximo 3 oraciones. Sin saludos genéricos ni firmas. Solo el cuerpo del mensaje.`,
-    ].join('\n');
+    ].join("\n");
 
     const { text, tokens } = await this.chat(config, system, user, 200, 0.4);
-    if (!text) throw new BadRequestException('La IA devolvió un borrador vacío.');
+    if (!text) throw new BadRequestException("La IA devolvió un borrador vacío.");
     return { draft_text: text, tokens_used: tokens };
   }
 
   async analyzeDocument(
     workspaceId: string,
     meta: { fileName: string; mimeType: string; fileSize: number; ocrText?: string },
-  ): Promise<{ extractedText: string; summary: string; extractedData: Record<string, any> } | null> {
+  ): Promise<{
+    extractedText: string;
+    summary: string;
+    extractedData: Record<string, any>;
+  } | null> {
     const config = await this.getConfig(workspaceId);
     if (!config) return null;
 
-    const hasRealOcr = meta.ocrText && meta.ocrText.length > 50 && !meta.ocrText.startsWith(meta.fileName);
+    const hasRealOcr =
+      meta.ocrText && meta.ocrText.length > 50 && !meta.ocrText.startsWith(meta.fileName);
 
     if (!hasRealOcr) {
       return null; // skip AI — no meaningful text to analyze
@@ -329,7 +357,10 @@ Responde en formato JSON puro: { "extractedText": "<texto original>", "summary":
 
     try {
       const { text } = await this.chat(config, system, user, 500, 0.3);
-      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const clean = text
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
       return JSON.parse(clean);
     } catch {
       return null;
@@ -355,7 +386,10 @@ Responde con JSON puro (sin markdown):
 
     try {
       const { text } = await this.chat(config, system, user, 400, 0.3);
-      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const clean = text
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
       return JSON.parse(clean);
     } catch (err) {
       this.logger.error(`Error explicando error de Hacienda: ${(err as Error).message}`);
@@ -377,7 +411,11 @@ Responde con JSON puro (sin markdown):
       amount?: string;
       contact_name?: string;
     },
-  ): Promise<{ valid: boolean; issues: Array<{ field: string; severity: 'error' | 'warning'; message: string }>; ai_review: string } | null> {
+  ): Promise<{
+    valid: boolean;
+    issues: Array<{ field: string; severity: "error" | "warning"; message: string }>;
+    ai_review: string;
+  } | null> {
     const config = await this.getConfig(workspaceId);
     if (!config) return null;
 
@@ -403,7 +441,10 @@ Responde con JSON puro (sin markdown):
 
     try {
       const { text } = await this.chat(config, system, user, 500, 0.3);
-      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const clean = text
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
       return JSON.parse(clean);
     } catch (err) {
       this.logger.error(`Error revisando factura para Hacienda: ${(err as Error).message}`);
@@ -432,7 +473,10 @@ Responde con JSON puro (sin markdown):
 
     try {
       const { text } = await this.chat(config, system, user, 600, 0.3);
-      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const clean = text
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
       return JSON.parse(clean);
     } catch (err) {
       this.logger.error(`Error explicando XML de factura: ${(err as Error).message}`);
@@ -442,18 +486,25 @@ Responde con JSON puro (sin markdown):
 
   // ── Generate fix proposal from diagnostic case ──────────────────────────────
 
-  async generateFixProposal(workspaceId: string, diagnosticCase: {
-    module: string;
-    error_code: string | null;
-    title: string;
-    user_description: string | null;
-    safe_summary: string | null;
-  }, errorReport?: {
-    message: string;
-    stack: string | null;
-    route: string | null;
-    method: string | null;
-  } | null): Promise<{ fix_summary: string; files_changed_json: { file: string; reason: string; diff_suggestion: string }[] } | null> {
+  async generateFixProposal(
+    workspaceId: string,
+    diagnosticCase: {
+      module: string;
+      error_code: string | null;
+      title: string;
+      user_description: string | null;
+      safe_summary: string | null;
+    },
+    errorReport?: {
+      message: string;
+      stack: string | null;
+      route: string | null;
+      method: string | null;
+    } | null,
+  ): Promise<{
+    fix_summary: string;
+    files_changed_json: { file: string; reason: string; diff_suggestion: string }[];
+  } | null> {
     const config = await this.getConfig(workspaceId);
     if (!config) return null;
 
@@ -474,17 +525,20 @@ Reglas:
 - Sé conservador y seguro — no sugieras cambios destructivos`;
 
     const user = `Error en módulo "${diagnosticCase.module}":
-Código: ${diagnosticCase.error_code || 'N/A'}
+Código: ${diagnosticCase.error_code || "N/A"}
 Título: ${diagnosticCase.title}
-Descripción del usuario: ${diagnosticCase.user_description || 'N/A'}
-Resumen: ${diagnosticCase.safe_summary || 'N/A'}
-${errorReport ? `Mensaje de error: ${errorReport.message}\nRuta: ${errorReport.method || '?'} ${errorReport.route || '?'}\n${errorReport.stack ? `Stack: ${errorReport.stack.slice(0, 800)}` : ''}` : ''}
+Descripción del usuario: ${diagnosticCase.user_description || "N/A"}
+Resumen: ${diagnosticCase.safe_summary || "N/A"}
+${errorReport ? `Mensaje de error: ${errorReport.message}\nRuta: ${errorReport.method || "?"} ${errorReport.route || "?"}\n${errorReport.stack ? `Stack: ${errorReport.stack.slice(0, 800)}` : ""}` : ""}
 
 Propone un fix concreto y seguro.`;
 
     try {
       const { text } = await this.chat(config, system, user, 1200, 0.3);
-      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const clean = text
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
       return JSON.parse(clean);
     } catch (err) {
       this.logger.error(`Error generando fix proposal: ${(err as Error).message}`);

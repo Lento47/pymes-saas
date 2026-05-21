@@ -1,7 +1,7 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { createHash } from 'crypto';
-import { SAML, Profile } from '@node-saml/node-saml';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { createHash } from "crypto";
+import { SAML, Profile } from "@node-saml/node-saml";
 
 export interface SamlIdpConfig {
   entityId: string;
@@ -44,7 +44,10 @@ export class SamlService {
     return true;
   }
 
-  private createSaml(spConfig: { entityId: string; acsUrl: string }, idpConfig: SamlIdpConfig): SAML {
+  private createSaml(
+    spConfig: { entityId: string; acsUrl: string },
+    idpConfig: SamlIdpConfig,
+  ): SAML {
     return new SAML({
       issuer: spConfig.entityId,
       callbackUrl: spConfig.acsUrl,
@@ -56,18 +59,15 @@ export class SamlService {
     });
   }
 
-  async getLoginUrl(
-    workspaceSlug: string,
-    idpConfig: SamlIdpConfig,
-  ): Promise<string> {
-    const baseUrl = this.config.get<string>('APP_URL') || 'https://pymeshub.lat';
+  async getLoginUrl(workspaceSlug: string, idpConfig: SamlIdpConfig): Promise<string> {
+    const baseUrl = this.config.get<string>("APP_URL") || "https://pymeshub.lat";
     const sp = {
       entityId: `${baseUrl}/saml/${workspaceSlug}/metadata`,
       acsUrl: `${baseUrl}/api/auth/saml/${workspaceSlug}/callback`,
     };
 
     const saml = this.createSaml(sp, idpConfig);
-    return saml.getAuthorizeUrlAsync('', sp.acsUrl, {});
+    return saml.getAuthorizeUrlAsync("", sp.acsUrl, {});
   }
 
   async validateResponse(
@@ -75,7 +75,7 @@ export class SamlService {
     idpConfig: SamlIdpConfig,
     samlResponse: string,
   ): Promise<{ email: string; nameId: string; attributes: Record<string, string> }> {
-    const baseUrl = this.config.get<string>('APP_URL') || 'https://pymeshub.lat';
+    const baseUrl = this.config.get<string>("APP_URL") || "https://pymeshub.lat";
     const sp = {
       entityId: `${baseUrl}/saml/${workspaceSlug}/metadata`,
       acsUrl: `${baseUrl}/api/auth/saml/${workspaceSlug}/callback`,
@@ -85,10 +85,10 @@ export class SamlService {
     // audience, and NotOnOrAfter, but does not cache assertion IDs. Hash
     // the full base64 response and reject if we've seen it within the
     // 10-minute TTL window (well past clock skew).
-    const responseHash = createHash('sha256').update(samlResponse).digest('hex');
+    const responseHash = createHash("sha256").update(samlResponse).digest("hex");
     if (this.isReplay(responseHash)) {
       this.logger.warn(`SAML replay detected for workspace ${workspaceSlug}`);
-      throw new UnauthorizedException('SAML response already consumed.');
+      throw new UnauthorizedException("SAML response already consumed.");
     }
 
     const saml = this.createSaml(sp, idpConfig);
@@ -99,12 +99,12 @@ export class SamlService {
     this.rememberAssertion(responseHash, Date.now() + 10 * 60 * 1000);
 
     const profile: Profile | null = result.profile ?? null;
-    const email = (
-      (profile?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] as string | undefined) ||
+    const email = ((profile?.[
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
+    ] as string | undefined) ||
       profile?.email ||
       profile?.mail ||
-      profile?.nameID
-    ) as string;
+      profile?.nameID) as string;
 
     const nameId = profile?.nameID || email;
 
@@ -116,14 +116,12 @@ export class SamlService {
     return {
       email: String(email).toLowerCase(),
       nameId: String(nameId),
-      attributes: Object.fromEntries(
-        Object.entries(profile || {}).map(([k, v]) => [k, String(v)]),
-      ),
+      attributes: Object.fromEntries(Object.entries(profile || {}).map(([k, v]) => [k, String(v)])),
     };
   }
 
   generateMetadata(workspaceSlug: string): string {
-    const baseUrl = this.config.get<string>('APP_URL') || 'https://pymeshub.lat';
+    const baseUrl = this.config.get<string>("APP_URL") || "https://pymeshub.lat";
     const entityId = `${baseUrl}/saml/${workspaceSlug}/metadata`;
     const acsUrl = `${baseUrl}/api/auth/saml/${workspaceSlug}/callback`;
 

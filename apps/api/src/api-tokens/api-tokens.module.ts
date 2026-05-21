@@ -1,9 +1,9 @@
-import { Module, Global } from '@nestjs/common';
-import { ApiTokensService } from './api-tokens.service';
-import { ApiTokensController } from './api-tokens.controller';
-import { ApiTokenGuard } from './api-token.guard';
-import { ApiRolesGuard } from './api-roles.guard';
-import { McpController } from './mcp.controller';
+import { Module, Global } from "@nestjs/common";
+import { ApiTokensService } from "./api-tokens.service";
+import { ApiTokensController } from "./api-tokens.controller";
+import { ApiTokenGuard } from "./api-token.guard";
+import { ApiRolesGuard } from "./api-roles.guard";
+import { McpController } from "./mcp.controller";
 
 @Global()
 @Module({

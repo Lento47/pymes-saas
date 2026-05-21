@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsNumber, IsEnum } from 'class-validator';
-import { Priority } from '@prisma/client';
+import { IsString, IsOptional, IsNumber, IsEnum } from "class-validator";
+import { Priority } from "@prisma/client";
 
 export class CreateDealDto {
   @IsString()

@@ -1,7 +1,7 @@
-import { Injectable, ExecutionContext } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { ThrottlerGuard } from '@nestjs/throttler';
-import { PrismaService } from '../prisma/prisma.service';
+import { Injectable, ExecutionContext } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { ThrottlerGuard } from "@nestjs/throttler";
+import { PrismaService } from "../prisma/prisma.service";
 
 const PLAN_RATE_LIMITS: Record<string, number> = {
   FREE: 60,
@@ -14,7 +14,12 @@ const PLAN_RATE_LIMITS: Record<string, number> = {
 
 @Injectable()
 export class PlanThrottlerGuard extends ThrottlerGuard {
-  constructor(options: Record<string, any>, storageService: Record<string, any>, reflector: Reflector, private readonly prisma: PrismaService) {
+  constructor(
+    options: Record<string, any>,
+    storageService: Record<string, any>,
+    reflector: Reflector,
+    private readonly prisma: PrismaService,
+  ) {
     super(options as any, storageService as any, reflector);
   }
 
@@ -30,22 +35,22 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
     const req = context.switchToHttp().getRequest();
     const user = (req as any).user;
 
-    let plan = 'FREE';
+    let plan = "FREE";
     if (user?.workspace_id) {
       try {
         const ws = await this.prisma.workspace.findUnique({
           where: { id: user.workspace_id },
           select: { plan: true },
         });
-        plan = ws?.plan || 'FREE';
+        plan = ws?.plan || "FREE";
         // Normalize legacy ENTERPRISE → BUSINESS for rate limits
-        if (plan === 'ENTERPRISE') plan = 'BUSINESS';
+        if (plan === "ENTERPRISE") plan = "BUSINESS";
       } catch {
         // Fallback to FREE on DB error
       }
     }
 
-    const planLimit = PLAN_RATE_LIMITS[plan] ?? PLAN_RATE_LIMITS['FREE'];
+    const planLimit = PLAN_RATE_LIMITS[plan] ?? PLAN_RATE_LIMITS["FREE"];
 
     // Temporarily override the throttler limit for this request
     const throttlers = (this as any).throttlers;

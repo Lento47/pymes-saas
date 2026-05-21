@@ -1,14 +1,11 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { TriggerType } from '@prisma/client';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CreateAutomationDto } from './dto/create-automation.dto';
-import { UpdateAutomationDto } from './dto/update-automation.dto';
-import { FilterAutomationsDto } from './dto/filter-automations.dto';
-import { QueueService } from '../workers/queue.service';
-import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { TriggerType } from "@prisma/client";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CreateAutomationDto } from "./dto/create-automation.dto";
+import { UpdateAutomationDto } from "./dto/update-automation.dto";
+import { FilterAutomationsDto } from "./dto/filter-automations.dto";
+import { QueueService } from "../workers/queue.service";
+import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 
 @Injectable()
 export class AutomationsService {
@@ -32,7 +29,7 @@ export class AutomationsService {
     const where: Record<string, any> = { workspace_id: workspaceId };
 
     if (filters.enabled !== undefined) {
-      where.enabled = filters.enabled === 'true';
+      where.enabled = filters.enabled === "true";
     }
 
     if (filters.trigger_type) {
@@ -44,7 +41,7 @@ export class AutomationsService {
         where,
         skip,
         take: limit,
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
         include: {
           _count: {
             select: { executions: true },
@@ -68,16 +65,12 @@ export class AutomationsService {
     };
   }
 
-  async create(
-    workspaceId: string,
-    userId: string,
-    dto: CreateAutomationDto,
-  ) {
+  async create(workspaceId: string, userId: string, dto: CreateAutomationDto) {
     await this.planLimits.checkAutomationLimit(workspaceId);
 
     const automationRuleDelegate = this.prisma.automationRule;
     if (!automationRuleDelegate?.create) {
-      throw new NotFoundException('Automation rules are not available');
+      throw new NotFoundException("Automation rules are not available");
     }
 
     return automationRuleDelegate.create({
@@ -105,7 +98,7 @@ export class AutomationsService {
       where: { id, workspace_id: workspaceId },
       include: {
         executions: {
-          orderBy: { created_at: 'desc' },
+          orderBy: { created_at: "desc" },
           take: 5,
         },
       },
@@ -118,16 +111,12 @@ export class AutomationsService {
     return rule;
   }
 
-  async update(
-    workspaceId: string,
-    id: string,
-    dto: UpdateAutomationDto,
-  ) {
+  async update(workspaceId: string, id: string, dto: UpdateAutomationDto) {
     await this.findOne(workspaceId, id);
 
     const automationRuleDelegate = this.prisma.automationRule;
     if (!automationRuleDelegate?.update) {
-      throw new NotFoundException('Automation rules are not available');
+      throw new NotFoundException("Automation rules are not available");
     }
 
     return automationRuleDelegate.update({
@@ -155,7 +144,7 @@ export class AutomationsService {
 
     const automationRuleDelegate = this.prisma.automationRule;
     if (!automationRuleDelegate?.update) {
-      throw new NotFoundException('Automation rules are not available');
+      throw new NotFoundException("Automation rules are not available");
     }
 
     return automationRuleDelegate.update({
@@ -164,12 +153,7 @@ export class AutomationsService {
     });
   }
 
-  async getExecutions(
-    workspaceId: string,
-    ruleId: string,
-    page: number,
-    limit: number,
-  ) {
+  async getExecutions(workspaceId: string, ruleId: string, page: number, limit: number) {
     await this.findOne(workspaceId, ruleId);
 
     const automationExecutionDelegate = this.prisma.automationExecution;
@@ -186,7 +170,7 @@ export class AutomationsService {
         where: { rule_id: ruleId },
         skip,
         take: _limit,
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
       }),
       automationExecutionDelegate.count({
         where: { rule_id: ruleId },
@@ -243,7 +227,7 @@ export class AutomationsService {
     await this.findOne(workspaceId, id);
     const automationRuleDelegate = this.prisma.automationRule;
     if (!automationRuleDelegate?.delete) {
-      throw new NotFoundException('Automation rules are not available');
+      throw new NotFoundException("Automation rules are not available");
     }
     return automationRuleDelegate.delete({ where: { id } });
   }

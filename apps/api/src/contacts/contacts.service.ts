@@ -1,14 +1,10 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { parseJsonValue, stringifyJson } from '../common/prisma/json';
-import { CreateContactDto } from './dto/create-contact.dto';
-import { UpdateContactDto } from './dto/update-contact.dto';
-import { FilterContactsDto } from './dto/filter-contacts.dto';
-import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { parseJsonValue, stringifyJson } from "../common/prisma/json";
+import { CreateContactDto } from "./dto/create-contact.dto";
+import { UpdateContactDto } from "./dto/update-contact.dto";
+import { FilterContactsDto } from "./dto/filter-contacts.dto";
+import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 
 @Injectable()
 export class ContactsService {
@@ -46,7 +42,7 @@ export class ContactsService {
         where,
         skip,
         take: limit,
-        orderBy: { last_interaction_at: 'desc' },
+        orderBy: { last_interaction_at: "desc" },
         select: {
           id: true,
           type: true,
@@ -112,7 +108,7 @@ export class ContactsService {
     // phone string (digits only). If this becomes a performance bottleneck,
     // consider adding a normalized_phone indexed column.
     if (dto.phone) {
-      const normalized = dto.phone.replace(/\D/g, '');
+      const normalized = dto.phone.replace(/\D/g, "");
       if (normalized.length >= 7) {
         const rows: Record<string, any>[] = await (this.prisma as any).$queryRawUnsafe(
           `SELECT id FROM "contacts"
@@ -120,7 +116,8 @@ export class ContactsService {
              AND phone IS NOT NULL
              AND REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = $2
            LIMIT 1`,
-          workspaceId, normalized,
+          workspaceId,
+          normalized,
         );
         if (rows.length > 0) {
           throw new ConflictException(
@@ -130,40 +127,51 @@ export class ContactsService {
       }
     }
 
-    return this.prisma.contact.create({
-      data: {
-        workspace_id:  workspaceId,
-        type:          dto.type ?? 'CUSTOMER',
-        full_name:     dto.full_name,
-        company_name:  dto.company_name,
-        email:         dto.email,
-        phone:         dto.phone,
-        identification_type: dto.identification_type,
-        identification_number: dto.identification_number,
-        tax_email: dto.tax_email,
-        province: dto.province,
-        canton: dto.canton,
-        district: dto.district,
-        address_detail: dto.address_detail,
-        foreign_identification: dto.foreign_identification,
-        external_ref:  dto.external_ref,
-        tags_json:     stringifyJson(dto.tags ?? []),
-      },
-    }).then(contact => {
-      this.trackQuickStart(workspaceId, 'contacts_added');
-      return contact;
-    });
+    return this.prisma.contact
+      .create({
+        data: {
+          workspace_id: workspaceId,
+          type: dto.type ?? "CUSTOMER",
+          full_name: dto.full_name,
+          company_name: dto.company_name,
+          email: dto.email,
+          phone: dto.phone,
+          identification_type: dto.identification_type,
+          identification_number: dto.identification_number,
+          tax_email: dto.tax_email,
+          province: dto.province,
+          canton: dto.canton,
+          district: dto.district,
+          address_detail: dto.address_detail,
+          foreign_identification: dto.foreign_identification,
+          external_ref: dto.external_ref,
+          tags_json: stringifyJson(dto.tags ?? []),
+        },
+      })
+      .then((contact) => {
+        this.trackQuickStart(workspaceId, "contacts_added");
+        return contact;
+      });
   }
 
   private async trackQuickStart(workspaceId: string, step: string) {
     try {
-      const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
-      const s: Record<string, any> = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const ws = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { settings_json: true },
+      });
+      const s: Record<string, any> =
+        ws?.settings_json && typeof ws.settings_json === "object" ? ws.settings_json : {};
       const progress = s.quick_start_progress || {};
       if (progress[step]) return;
       s.quick_start_progress = { ...progress, [step]: true };
-      await this.prisma.workspace.update({ where: { id: workspaceId }, data: { settings_json: s } });
-    } catch { /* fire-and-forget */ }
+      await this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { settings_json: s },
+      });
+    } catch {
+      /* fire-and-forget */
+    }
   }
 
   // ── GET /contacts/:id ──────────────────────────────────────────────────────
@@ -174,32 +182,42 @@ export class ContactsService {
       include: {
         conversations: {
           select: {
-            id: true, subject: true, status: true,
-            priority: true, last_message_at: true,
+            id: true,
+            subject: true,
+            status: true,
+            priority: true,
+            last_message_at: true,
           },
-          orderBy: { last_message_at: 'desc' },
+          orderBy: { last_message_at: "desc" },
           take: 10,
         },
         tasks: {
           select: {
-            id: true, title: true, status: true, priority: true, due_at: true,
+            id: true,
+            title: true,
+            status: true,
+            priority: true,
+            due_at: true,
           },
-          where: { status: { not: 'ARCHIVED' } },
-          orderBy: { due_at: 'asc' },
+          where: { status: { not: "ARCHIVED" } },
+          orderBy: { due_at: "asc" },
           take: 10,
         },
         documents: {
           select: {
-            id: true, file_name: true, mime_type: true,
-            status: true, created_at: true,
+            id: true,
+            file_name: true,
+            mime_type: true,
+            status: true,
+            created_at: true,
           },
-          orderBy: { created_at: 'desc' },
+          orderBy: { created_at: "desc" },
           take: 10,
         },
       },
     });
 
-    if (!contact) throw new NotFoundException('Contacto no encontrado.');
+    if (!contact) throw new NotFoundException("Contacto no encontrado.");
     return contact;
   }
 
@@ -211,21 +229,27 @@ export class ContactsService {
     return this.prisma.contact.update({
       where: { id },
       data: {
-        ...(dto.type         && { type: dto.type }),
-        ...(dto.full_name    && { full_name: dto.full_name }),
+        ...(dto.type && { type: dto.type }),
+        ...(dto.full_name && { full_name: dto.full_name }),
         ...(dto.company_name !== undefined && { company_name: dto.company_name }),
-        ...(dto.email        !== undefined && { email: dto.email }),
-        ...(dto.phone        !== undefined && { phone: dto.phone }),
-        ...(dto.identification_type !== undefined && { identification_type: dto.identification_type }),
-        ...(dto.identification_number !== undefined && { identification_number: dto.identification_number }),
+        ...(dto.email !== undefined && { email: dto.email }),
+        ...(dto.phone !== undefined && { phone: dto.phone }),
+        ...(dto.identification_type !== undefined && {
+          identification_type: dto.identification_type,
+        }),
+        ...(dto.identification_number !== undefined && {
+          identification_number: dto.identification_number,
+        }),
         ...(dto.tax_email !== undefined && { tax_email: dto.tax_email }),
         ...(dto.province !== undefined && { province: dto.province }),
         ...(dto.canton !== undefined && { canton: dto.canton }),
         ...(dto.district !== undefined && { district: dto.district }),
         ...(dto.address_detail !== undefined && { address_detail: dto.address_detail }),
-        ...(dto.foreign_identification !== undefined && { foreign_identification: dto.foreign_identification }),
+        ...(dto.foreign_identification !== undefined && {
+          foreign_identification: dto.foreign_identification,
+        }),
         ...(dto.external_ref !== undefined && { external_ref: dto.external_ref }),
-        ...(dto.tags         !== undefined && { tags_json: stringifyJson(dto.tags) }),
+        ...(dto.tags !== undefined && { tags_json: stringifyJson(dto.tags) }),
         updated_at: new Date(),
       },
     });
@@ -237,7 +261,7 @@ export class ContactsService {
   async remove(workspaceId: string, id: string) {
     await this.findOne(workspaceId, id); // valida existencia
     await this.prisma.contact.delete({ where: { id } });
-    return { message: 'Contacto eliminado.' };
+    return { message: "Contacto eliminado." };
   }
 
   // ── Helper interno — actualizar last_interaction_at ────────────────────────

@@ -1,29 +1,29 @@
-import { Module, Logger } from '@nestjs/common';
-import { BullModule } from '@nestjs/bullmq';
-import { ConfigService } from '@nestjs/config';
-import IORedis from 'ioredis';
+import { Module, Logger } from "@nestjs/common";
+import { BullModule } from "@nestjs/bullmq";
+import { ConfigService } from "@nestjs/config";
+import IORedis from "ioredis";
 
-import { NotificationsModule } from '../notifications/notifications.module';
-import { AiModule } from '../ai/ai.module';
-import { HaciendaModule } from '../hacienda/hacienda.module';
-import { StorageService } from '../common/storage/storage.service';
-import { OcrService } from '../documents/ocr.service';
-import { QUEUE_NAMES } from './queues.constants';
-import { QueueService } from './queue.service';
-import { ClassifierProcessor } from './processors/classifier.processor';
-import { DocumentProcessor } from './processors/document.processor';
-import { AutomationProcessor } from './processors/automation.processor';
-import { FollowupProcessor } from './processors/followup.processor';
-import { SummaryProcessor } from './processors/summary.processor';
-import { HaciendaProcessor } from './processors/hacienda.processor';
+import { NotificationsModule } from "../notifications/notifications.module";
+import { AiModule } from "../ai/ai.module";
+import { HaciendaModule } from "../hacienda/hacienda.module";
+import { StorageService } from "../common/storage/storage.service";
+import { OcrService } from "../documents/ocr.service";
+import { QUEUE_NAMES } from "./queues.constants";
+import { QueueService } from "./queue.service";
+import { ClassifierProcessor } from "./processors/classifier.processor";
+import { DocumentProcessor } from "./processors/document.processor";
+import { AutomationProcessor } from "./processors/automation.processor";
+import { FollowupProcessor } from "./processors/followup.processor";
+import { SummaryProcessor } from "./processors/summary.processor";
+import { HaciendaProcessor } from "./processors/hacienda.processor";
 
-const logger = new Logger('WorkersModule');
+const logger = new Logger("WorkersModule");
 let redisWarned = false;
 
 function createRedisConnection(config: ConfigService) {
-  const host = config.get<string>('REDIS_HOST', 'localhost');
-  const port = config.get<number>('REDIS_PORT', 6379);
-  const password = config.get<string>('REDIS_PASSWORD');
+  const host = config.get<string>("REDIS_HOST", "localhost");
+  const port = config.get<number>("REDIS_PORT", 6379);
+  const password = config.get<string>("REDIS_PASSWORD");
 
   const redis = new IORedis({
     host,
@@ -39,10 +39,10 @@ function createRedisConnection(config: ConfigService) {
     reconnectOnError: () => false,
   });
 
-  redis.on('error', (err: unknown) => {
-    if ((err as NodeJS.ErrnoException)?.code === 'ECONNREFUSED') {
+  redis.on("error", (err: unknown) => {
+    if ((err as NodeJS.ErrnoException)?.code === "ECONNREFUSED") {
       if (!redisWarned) {
-        logger.warn('Redis not available — background jobs disabled, using fallback rate limiting');
+        logger.warn("Redis not available — background jobs disabled, using fallback rate limiting");
         redisWarned = true;
       }
     } else {

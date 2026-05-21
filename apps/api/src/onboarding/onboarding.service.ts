@@ -1,5 +1,5 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
 
 @Injectable()
 export class OnboardingService {
@@ -37,7 +37,9 @@ export class OnboardingService {
   // TODO(types): saveProject and updateProject accept Record<string,any> instead
   // of a typed DTO. Add CreateOnboardingProjectDto with explicit validation.
   async saveProject(workspaceId: string, data: Record<string, any>) {
-    const existing = await this.prisma.onboardingProject.findUnique({ where: { workspace_id: workspaceId } });
+    const existing = await this.prisma.onboardingProject.findUnique({
+      where: { workspace_id: workspaceId },
+    });
     if (existing) {
       return this.prisma.onboardingProject.update({
         where: { workspace_id: workspaceId },
@@ -46,16 +48,18 @@ export class OnboardingService {
           checklist: data.checklist ?? existing.checklist,
           notes: data.notes ?? existing.notes,
           success_criteria: data.success_criteria ?? existing.success_criteria,
-          target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : existing.target_go_live_date,
+          target_go_live_date: data.target_go_live_date
+            ? new Date(data.target_go_live_date)
+            : existing.target_go_live_date,
         },
       });
     }
     return this.prisma.onboardingProject.create({
       data: {
         workspace: { connect: { id: workspaceId } },
-        plan_key: data.plan_key ?? 'BUSINESS_PLUS',
+        plan_key: data.plan_key ?? "BUSINESS_PLUS",
         checklist: data.checklist ?? [],
-        status: data.status ?? 'IN_PROGRESS',
+        status: data.status ?? "IN_PROGRESS",
         notes: data.notes,
         success_criteria: data.success_criteria,
         target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : null,
@@ -66,12 +70,14 @@ export class OnboardingService {
   async updateProject(workspaceId: string, data: Record<string, any>) {
     const updateData: Record<string, any> = {
       status: data.status,
-      target_go_live_date: data.target_go_live_date ? new Date(data.target_go_live_date) : undefined,
+      target_go_live_date: data.target_go_live_date
+        ? new Date(data.target_go_live_date)
+        : undefined,
       checklist: data.checklist ?? undefined,
       notes: data.notes,
       success_criteria: data.success_criteria,
     };
-    if (typeof data.owner_user_id === 'string') {
+    if (typeof data.owner_user_id === "string") {
       updateData.owner_user_id = data.owner_user_id;
     }
     return this.prisma.onboardingProject.update({
@@ -80,12 +86,18 @@ export class OnboardingService {
     });
   }
 
-  async updateChecklistItem(workspaceId: string, categoryIndex: number, itemIndex: number, completed: boolean, notes?: string) {
+  async updateChecklistItem(
+    workspaceId: string,
+    categoryIndex: number,
+    itemIndex: number,
+    completed: boolean,
+    notes?: string,
+  ) {
     const project = await this.prisma.onboardingProject.findUnique({
       where: { workspace_id: workspaceId },
       select: { checklist: true },
     });
-    if (!project) throw new NotFoundException('Proyecto de onboarding no encontrado.');
+    if (!project) throw new NotFoundException("Proyecto de onboarding no encontrado.");
 
     const checklist = (project.checklist as any[]) ?? [];
     if (checklist[categoryIndex]?.items?.[itemIndex]) {

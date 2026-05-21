@@ -1,18 +1,18 @@
-import { Injectable, Inject, Logger, NotFoundException, forwardRef } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { SendMessageDto } from './dto/send-message.dto';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
-import { ConversationsService } from './conversations.service';
-import { EventsGateway } from '../gateways/events.gateway';
-import { AiService } from '../ai/ai.service';
-import { TasksService } from '../tasks/tasks.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { Contact, Priority } from '@prisma/client';
-import { AutomationsService } from '../automations/automations.service';
-import { RoutingService } from '../routing/routing.service';
-import { WhatsAppService } from '../whatsapp/whatsapp.service';
-import { StorageService } from '../common/storage/storage.service';
-import { parseJsonValue } from '../common/prisma/json';
+import { Injectable, Inject, Logger, NotFoundException, forwardRef } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { SendMessageDto } from "./dto/send-message.dto";
+import { AuthUser } from "../auth/strategies/jwt.strategy";
+import { ConversationsService } from "./conversations.service";
+import { EventsGateway } from "../gateways/events.gateway";
+import { AiService } from "../ai/ai.service";
+import { TasksService } from "../tasks/tasks.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { Contact, Priority } from "@prisma/client";
+import { AutomationsService } from "../automations/automations.service";
+import { RoutingService } from "../routing/routing.service";
+import { WhatsAppService } from "../whatsapp/whatsapp.service";
+import { StorageService } from "../common/storage/storage.service";
+import { parseJsonValue } from "../common/prisma/json";
 
 /** Shape of a single attachment entry stored in Message.attachments_json */
 interface AttachmentEntry {
@@ -40,14 +40,14 @@ export class MessagesService {
     @Inject(forwardRef(() => WhatsAppService))
     private readonly whatsappService: WhatsAppService,
     private readonly storage: StorageService,
-  ) { }
+  ) {}
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 100) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
       select: { id: true },
     });
-    if (!conv) throw new NotFoundException('Conversación no encontrada.');
+    if (!conv) throw new NotFoundException("Conversación no encontrada.");
 
     const skip = (page - 1) * limit;
 
@@ -56,7 +56,7 @@ export class MessagesService {
         where: { conversation_id: conversationId, workspace_id: workspaceId },
         skip,
         take: limit,
-        orderBy: { sent_at: 'asc' },
+        orderBy: { sent_at: "asc" },
         include: {
           sender_user: { select: { id: true, name: true, avatar_url: true } },
         },
@@ -68,7 +68,9 @@ export class MessagesService {
 
     const enriched = data.map((msg) => this.serializeMessageForClient(msg));
 
-    this.logger.log(`findAll messages: conv=${conversationId}, count=${total}, returned=${enriched.length}`);
+    this.logger.log(
+      `findAll messages: conv=${conversationId}, count=${total}, returned=${enriched.length}`,
+    );
 
     return {
       data: enriched,
@@ -76,23 +78,18 @@ export class MessagesService {
     };
   }
 
-  async send(
-    workspaceId: string,
-    conversationId: string,
-    user: AuthUser,
-    dto: SendMessageDto,
-  ) {
+  async send(workspaceId: string, conversationId: string, user: AuthUser, dto: SendMessageDto) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
       select: { id: true },
     });
-    if (!conv) throw new NotFoundException('Conversación no encontrada.');
+    if (!conv) throw new NotFoundException("Conversación no encontrada.");
 
     const message = await this.prisma.message.create({
       data: {
         workspace_id: workspaceId,
         conversation_id: conversationId,
-        direction: dto.direction ?? 'OUTBOUND',
+        direction: dto.direction ?? "OUTBOUND",
         sender_user_id: user.id,
         sender_name: user.name,
         sender_ref: user.email,
@@ -103,21 +100,30 @@ export class MessagesService {
         attachments_json: dto.media_url
           ? [
               {
-                storageKey: dto.media_url.includes('/api/storage/file/')
-                  ? dto.media_url.split('/api/storage/file/').pop()!
+                storageKey: dto.media_url.includes("/api/storage/file/")
+                  ? dto.media_url.split("/api/storage/file/").pop()!
                   : dto.media_url,
-                type: dto.media_type ?? 'document',
+                type: dto.media_type ?? "document",
                 mimeType: (() => {
-                  const ext = dto.media_url?.split('.').pop()?.toLowerCase() ?? '';
+                  const ext = dto.media_url?.split(".").pop()?.toLowerCase() ?? "";
                   const MIME: Record<string, string> = {
-                    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
-                    webp: 'image/webp', svg: 'image/svg+xml', mp4: 'video/mp4', mp3: 'audio/mpeg',
-                    ogg: 'audio/ogg', wav: 'audio/wav', pdf: 'application/pdf',
-                    doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    png: "image/png",
+                    jpg: "image/jpeg",
+                    jpeg: "image/jpeg",
+                    gif: "image/gif",
+                    webp: "image/webp",
+                    svg: "image/svg+xml",
+                    mp4: "video/mp4",
+                    mp3: "audio/mpeg",
+                    ogg: "audio/ogg",
+                    wav: "audio/wav",
+                    pdf: "application/pdf",
+                    doc: "application/msword",
+                    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                   };
                   return MIME[ext] ?? null;
                 })(),
-                filename: dto.media_url.split('/').pop() || null,
+                filename: dto.media_url.split("/").pop() || null,
                 caption: dto.body_text || null,
               },
             ]
@@ -136,29 +142,26 @@ export class MessagesService {
     return serialized;
   }
 
-  async receiveInbound(
-    provider: string,
-    workspaceId: string,
-    payload: Record<string, any>,
-  ) {
-    const explicitChannelId = typeof payload.channel_id === 'string' ? payload.channel_id : undefined;
+  async receiveInbound(provider: string, workspaceId: string, payload: Record<string, any>) {
+    const explicitChannelId =
+      typeof payload.channel_id === "string" ? payload.channel_id : undefined;
     const channel = explicitChannelId
       ? await this.prisma.channel.findFirst({
-          where: { id: explicitChannelId, workspace_id: workspaceId, status: 'ACTIVE' },
+          where: { id: explicitChannelId, workspace_id: workspaceId, status: "ACTIVE" },
         })
       : await this.prisma.channel.findFirst({
-          where: { workspace_id: workspaceId, provider, status: 'ACTIVE' },
+          where: { workspace_id: workspaceId, provider, status: "ACTIVE" },
         });
     if (!channel) {
-      return { ok: false, reason: 'No active channel for provider' };
+      return { ok: false, reason: "No active channel for provider" };
     }
 
-    const senderRef = payload.sender_ref ?? payload.from ?? payload.sender ?? 'unknown';
+    const senderRef = payload.sender_ref ?? payload.from ?? payload.sender ?? "unknown";
     const senderName = payload.sender_name ?? payload.name ?? senderRef;
-    const bodyText = payload.body_text ?? payload.text ?? payload.body ?? payload.content ?? '';
+    const bodyText = payload.body_text ?? payload.text ?? payload.body ?? payload.content ?? "";
     const subject = payload.subject ?? null;
-    const isEmail = senderRef.includes('@');
-    const normalizedPhone = !isEmail ? senderRef.replace(/\D/g, '') : null;
+    const isEmail = senderRef.includes("@");
+    const normalizedPhone = !isEmail ? senderRef.replace(/\D/g, "") : null;
 
     // ── Find or create contact (normalize phone to prevent duplicates) ─────────
     let contact = null;
@@ -172,7 +175,9 @@ export class MessagesService {
          WHERE workspace_id = $1
            AND (phone = $2 OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = $3)
          LIMIT 1`,
-        workspaceId, senderRef, normalizedPhone,
+        workspaceId,
+        senderRef,
+        normalizedPhone,
       );
       if (contactRows.length > 0) contact = contactRows[0];
     }
@@ -180,7 +185,7 @@ export class MessagesService {
     if (contact) {
       // Auto-update name for LEAD contacts created from incoming messages
       const contactUpdates: Record<string, any> = {};
-      if (contact.type === 'LEAD' && contact.full_name !== senderName) {
+      if (contact.type === "LEAD" && contact.full_name !== senderName) {
         contactUpdates.full_name = senderName;
       }
       // Store Telegram chat_id if not already set
@@ -201,7 +206,7 @@ export class MessagesService {
       contact = await this.prisma.contact.create({
         data: {
           workspace_id: workspaceId,
-          type: 'LEAD',
+          type: "LEAD",
           full_name: senderName,
           email: isEmail ? senderRef : undefined,
           phone: !isEmail ? senderRef : undefined,
@@ -217,22 +222,27 @@ export class MessagesService {
         contact_id: contact.id,
         channel_id: channel.id,
       },
-      orderBy: { last_message_at: 'desc' },
+      orderBy: { last_message_at: "desc" },
       select: {
-        id: true, assigned_user_id: true, subject: true,
-        contact_id: true, first_response_at: true, status: true,
-        workspace_id: true, channel_id: true,
+        id: true,
+        assigned_user_id: true,
+        subject: true,
+        contact_id: true,
+        first_response_at: true,
+        status: true,
+        workspace_id: true,
+        channel_id: true,
       },
     });
 
     if (conversation) {
       // If the conversation was previously resolved, reopen it
-      if (!['NEW', 'OPEN', 'PENDING'].includes(conversation.status)) {
+      if (!["NEW", "OPEN", "PENDING"].includes(conversation.status)) {
         await this.prisma.conversation.update({
           where: { id: conversation.id },
-          data: { status: 'NEW', updated_at: new Date() },
+          data: { status: "NEW", updated_at: new Date() },
         });
-        conversation.status = 'NEW';
+        conversation.status = "NEW";
       }
     } else {
       conversation = await this.prisma.conversation.create({
@@ -241,13 +251,18 @@ export class MessagesService {
           channel_id: channel.id,
           contact_id: contact.id,
           subject: subject ?? `Mensaje de ${senderName}`,
-          status: 'NEW',
-          priority: 'MEDIUM',
+          status: "NEW",
+          priority: "MEDIUM",
         },
         select: {
-          id: true, assigned_user_id: true, subject: true,
-          contact_id: true, first_response_at: true,
-          workspace_id: true, channel_id: true, status: true,
+          id: true,
+          assigned_user_id: true,
+          subject: true,
+          contact_id: true,
+          first_response_at: true,
+          workspace_id: true,
+          channel_id: true,
+          status: true,
         },
       });
     }
@@ -257,7 +272,7 @@ export class MessagesService {
     if (route) {
       const member = await this.prisma.departmentMember.findFirst({
         where: { department_id: route.department_id, workspace_id: workspaceId },
-        orderBy: { is_lead: 'desc' },
+        orderBy: { is_lead: "desc" },
         select: { user_id: true },
       });
       const updateData: Record<string, any> = {
@@ -269,9 +284,14 @@ export class MessagesService {
         where: { id: conversation.id },
         data: updateData,
         select: {
-          id: true, assigned_user_id: true, subject: true,
-          contact_id: true, first_response_at: true,
-          workspace_id: true, channel_id: true, status: true,
+          id: true,
+          assigned_user_id: true,
+          subject: true,
+          contact_id: true,
+          first_response_at: true,
+          workspace_id: true,
+          channel_id: true,
+          status: true,
           priority: true,
         },
       });
@@ -282,7 +302,7 @@ export class MessagesService {
       data: {
         workspace_id: workspaceId,
         conversation_id: conversation.id,
-        direction: 'INBOUND',
+        direction: "INBOUND",
         sender_name: senderName,
         sender_ref: senderRef,
         body_text: bodyText,
@@ -292,66 +312,74 @@ export class MessagesService {
       },
     });
 
-    await this.prisma.conversation.update({
-      where: { id: conversation.id },
-      data: {
-        last_message_at: new Date(),
-        updated_at: new Date(),
-        // WhatsApp 24h service window tracking (safe if columns exist, skipped otherwise)
-        ...(channel.type === 'WHATSAPP'
-          ? {
-              last_customer_message_at: new Date(),
-              service_window_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
-              is_service_window_open: true,
-              requires_template_for_outbound: false,
-            }
-          : {}),
-        // Set first_response_at on first agent outbound reply
-        ...(message.direction === 'OUTBOUND' && !conversation.first_response_at
-          ? { first_response_at: new Date() }
-          : {}),
-      },
-      select: { id: true },
-    }).catch((err) => {
-      // Silently skip if columns don't exist yet (migration pending)
-      if (err?.code === 'P2025' || err?.message?.includes('column')) {
-        // Fallback: update only existing columns
-        return this.prisma.conversation.update({
-          where: { id: conversation.id },
-          data: { last_message_at: new Date(), updated_at: new Date() },
-          select: { id: true },
-        });
-      }
-      throw err;
-    });
+    await this.prisma.conversation
+      .update({
+        where: { id: conversation.id },
+        data: {
+          last_message_at: new Date(),
+          updated_at: new Date(),
+          // WhatsApp 24h service window tracking (safe if columns exist, skipped otherwise)
+          ...(channel.type === "WHATSAPP"
+            ? {
+                last_customer_message_at: new Date(),
+                service_window_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+                is_service_window_open: true,
+                requires_template_for_outbound: false,
+              }
+            : {}),
+          // Set first_response_at on first agent outbound reply
+          ...(message.direction === "OUTBOUND" && !conversation.first_response_at
+            ? { first_response_at: new Date() }
+            : {}),
+        },
+        select: { id: true },
+      })
+      .catch((err) => {
+        // Silently skip if columns don't exist yet (migration pending)
+        if (err?.code === "P2025" || err?.message?.includes("column")) {
+          // Fallback: update only existing columns
+          return this.prisma.conversation.update({
+            where: { id: conversation.id },
+            data: { last_message_at: new Date(), updated_at: new Date() },
+            select: { id: true },
+          });
+        }
+        throw err;
+      });
 
     // Emitir en tiempo real (serializado para que el frontend tenga has_media, media_type, etc.)
-    this.events.emitNewMessage(conversation.id, workspaceId, this.serializeMessageForClient(message));
+    this.events.emitNewMessage(
+      conversation.id,
+      workspaceId,
+      this.serializeMessageForClient(message),
+    );
 
     // Notificar a miembros del workspace sobre nuevo mensaje entrante
     const members = await this.prisma.workspaceMember.findMany({
       where: {
         workspace_id: workspaceId,
-        role: { in: ['OWNER', 'ADMIN', 'AGENT'] },
+        role: { in: ["OWNER", "ADMIN", "AGENT"] },
         user: { is_active: true },
       },
       select: { user_id: true },
     });
     for (const member of members) {
-      this.notificationsService.create(workspaceId, {
-        user_id: member.user_id,
-        type: 'new_message',
-        title: '📩 Nuevo mensaje recibido',
-        body: `Nuevo mensaje de ${senderName}${conversation.subject ? ' en "' + conversation.subject + '"' : ''}: "${bodyText.slice(0, 100)}${bodyText.length > 100 ? '...' : ''}"`,
-        related_entity_type: 'conversation',
-        related_entity_id: conversation.id,
-      }).catch((err) => this.logger.error('Error al crear notificación', err));
+      this.notificationsService
+        .create(workspaceId, {
+          user_id: member.user_id,
+          type: "new_message",
+          title: "📩 Nuevo mensaje recibido",
+          body: `Nuevo mensaje de ${senderName}${conversation.subject ? ' en "' + conversation.subject + '"' : ""}: "${bodyText.slice(0, 100)}${bodyText.length > 100 ? "..." : ""}"`,
+          related_entity_type: "conversation",
+          related_entity_id: conversation.id,
+        })
+        .catch((err) => this.logger.error("Error al crear notificación", err));
     }
 
     await this.automationsService.triggerRules(
       workspaceId,
-      'MESSAGE_RECEIVED',
-      'message',
+      "MESSAGE_RECEIVED",
+      "message",
       message.id,
     );
 
@@ -359,8 +387,8 @@ export class MessagesService {
     const conversationId = conversation.id;
     const contactId = conversation.contact_id;
 
-    this.triggerAiAnalysis(workspaceId, conversationId, contactId).catch(
-      (err) => this.logger.error('Error en análisis de IA', err?.stack ?? err),
+    this.triggerAiAnalysis(workspaceId, conversationId, contactId).catch((err) =>
+      this.logger.error("Error en análisis de IA", err?.stack ?? err),
     );
 
     return { ok: true, message_id: message.id, conversation_id: conversation.id };
@@ -380,7 +408,7 @@ export class MessagesService {
     rawPayload?: Record<string, any>;
     whatsappMedia?: Record<string, any> | null;
   }): Promise<{
-    status: 'created' | 'duplicate';
+    status: "created" | "duplicate";
     messageId?: string;
     conversationId?: string;
     contactId?: string | null;
@@ -402,7 +430,8 @@ export class MessagesService {
           where: { id: existingMessage.id },
           select: { raw_payload_json: true },
         });
-        const existingPayload = (existing?.raw_payload_json as Record<string, unknown> | null) ?? {};
+        const existingPayload =
+          (existing?.raw_payload_json as Record<string, unknown> | null) ?? {};
         const existingWm = existingPayload.whatsapp_media as { id?: string } | undefined;
         if (!existingWm?.id || existingWm.id !== params.whatsappMedia.id) {
           await this.prisma.message.update({
@@ -417,7 +446,7 @@ export class MessagesService {
         }
       }
       return {
-        status: 'duplicate',
+        status: "duplicate",
         messageId: existingMessage.id,
         conversationId: existingMessage.conversation_id,
       };
@@ -429,7 +458,9 @@ export class MessagesService {
     );
 
     if (!channel) {
-      throw new Error(`No active WhatsApp channel for phone_number_id: ${params.channelPhoneNumberId}`);
+      throw new Error(
+        `No active WhatsApp channel for phone_number_id: ${params.channelPhoneNumberId}`,
+      );
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -444,7 +475,7 @@ export class MessagesService {
         contact = await tx.contact.create({
           data: {
             workspace_id: workspaceId,
-            type: 'LEAD',
+            type: "LEAD",
             full_name: senderName,
             phone: from,
           },
@@ -456,9 +487,9 @@ export class MessagesService {
           workspace_id: workspaceId,
           channel_id: channel.id,
           contact_id: contact.id,
-          status: { in: ['NEW', 'OPEN', 'PENDING'] },
+          status: { in: ["NEW", "OPEN", "PENDING"] },
         },
-        orderBy: { last_message_at: 'desc' },
+        orderBy: { last_message_at: "desc" },
       });
 
       if (!conversation) {
@@ -468,8 +499,8 @@ export class MessagesService {
             channel_id: channel.id,
             contact_id: contact.id,
             subject: `Mensaje de ${senderName}`,
-            status: 'NEW',
-            priority: 'MEDIUM',
+            status: "NEW",
+            priority: "MEDIUM",
           },
         });
       }
@@ -478,12 +509,12 @@ export class MessagesService {
         data: {
           workspace_id: workspaceId,
           conversation_id: conversation.id,
-          direction: 'INBOUND',
+          direction: "INBOUND",
           sender_name: senderName,
           sender_ref: from,
           body_text: bodyText,
           raw_payload_json: {
-            ...(typeof params.rawPayload === 'object' ? params.rawPayload : {}),
+            ...(typeof params.rawPayload === "object" ? params.rawPayload : {}),
             ...(params.whatsappMedia ? { whatsapp_media: params.whatsappMedia } : {}),
           },
           sent_at: params.timestamp ? new Date(Number(params.timestamp) * 1000) : new Date(),
@@ -500,7 +531,7 @@ export class MessagesService {
       return { messageId: message.id, conversationId: conversation.id, contactId: contact.id };
     });
 
-    return { status: 'created', ...result };
+    return { status: "created", ...result };
   }
 
   async emitAndNotify(params: {
@@ -521,10 +552,16 @@ export class MessagesService {
         },
       });
       if (message) {
-        this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessageForClient(message));
+        this.events.emitNewMessage(
+          conversationId,
+          workspaceId,
+          this.serializeMessageForClient(message),
+        );
       }
     } catch (err: unknown) {
-      this.logger.error(`Realtime emit failed: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(
+        `Realtime emit failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
 
     let conversation: { subject: string | null; assigned_user_id: string | null } | null = null;
@@ -534,30 +571,30 @@ export class MessagesService {
         select: { subject: true, assigned_user_id: true },
       });
     } catch (err: unknown) {
-      this.logger.error(`Failed to fetch conversation for notification: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(
+        `Failed to fetch conversation for notification: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
 
     if (conversation?.assigned_user_id) {
       this.notificationsService
         .create(workspaceId, {
           user_id: conversation.assigned_user_id,
-          type: 'new_message',
-          title: 'Nuevo mensaje recibido',
-          body: `Nuevo mensaje de ${senderName} en "${conversation.subject || 'Sin asunto'}": "${bodyText.slice(0, 100)}${bodyText.length > 100 ? '...' : ''}"`,
-          related_entity_type: 'conversation',
+          type: "new_message",
+          title: "Nuevo mensaje recibido",
+          body: `Nuevo mensaje de ${senderName} en "${conversation.subject || "Sin asunto"}": "${bodyText.slice(0, 100)}${bodyText.length > 100 ? "..." : ""}"`,
+          related_entity_type: "conversation",
           related_entity_id: conversationId,
         })
-        .catch((err) =>
-          this.logger.error('Error al crear notificación de nuevo mensaje', err),
-        );
+        .catch((err) => this.logger.error("Error al crear notificación de nuevo mensaje", err));
     }
 
     this.automationsService
-      .triggerRules(workspaceId, 'MESSAGE_RECEIVED', 'message', messageId)
-      .catch((err) => this.logger.error('Error triggering automation rules', err));
+      .triggerRules(workspaceId, "MESSAGE_RECEIVED", "message", messageId)
+      .catch((err) => this.logger.error("Error triggering automation rules", err));
 
-    this.triggerAiAnalysis(workspaceId, conversationId, contactId).catch(
-      (err) => this.logger.error('Error en análisis de IA', err?.stack ?? err),
+    this.triggerAiAnalysis(workspaceId, conversationId, contactId).catch((err) =>
+      this.logger.error("Error en análisis de IA", err?.stack ?? err),
     );
   }
 
@@ -586,10 +623,16 @@ export class MessagesService {
     // 2) Legacy fallback: search in raw webhook payload
     if (!wm && payload) {
       const rawPayloadBody = payload?.raw_payload ?? payload;
-      const innerMsg = rawPayloadBody?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
-        ?? (Array.isArray(rawPayloadBody?.messages) ? rawPayloadBody.messages[0] : null);
+      const innerMsg =
+        rawPayloadBody?.entry?.[0]?.changes?.[0]?.value?.messages?.[0] ??
+        (Array.isArray(rawPayloadBody?.messages) ? rawPayloadBody.messages[0] : null);
       if (innerMsg) {
-        const mediaObj = innerMsg?.image ?? innerMsg?.document ?? innerMsg?.audio ?? innerMsg?.video ?? innerMsg?.sticker;
+        const mediaObj =
+          innerMsg?.image ??
+          innerMsg?.document ??
+          innerMsg?.audio ??
+          innerMsg?.video ??
+          innerMsg?.sticker;
         if (mediaObj?.id) {
           wm = {
             whatsappMediaId: mediaObj.id,
@@ -607,12 +650,14 @@ export class MessagesService {
     const attachmentEntry = attachments?.[0] ?? null;
 
     // 4) Telegram pending: raw payload contains attachments[] but MinIO download not done yet
-    const tgAtts = (!attachmentEntry && !wm)
-      ? (payload?.attachments as Array<{ type: string; file_id: string }> | undefined)
-      : undefined;
+    const tgAtts =
+      !attachmentEntry && !wm
+        ? (payload?.attachments as Array<{ type: string; file_id: string }> | undefined)
+        : undefined;
     const tgPending = tgAtts?.[0] ?? null;
 
-    const mediaType = wm?.mediaType ?? wm?.kind ?? attachmentEntry?.type ?? msg.message_type ?? null;
+    const mediaType =
+      wm?.mediaType ?? wm?.kind ?? attachmentEntry?.type ?? msg.message_type ?? null;
     const mediaId = wm?.whatsappMediaId ?? wm?.id ?? attachmentEntry?.mediaId ?? null;
     const hasMedia = !!mediaId || !!tgPending;
 
@@ -632,7 +677,7 @@ export class MessagesService {
       for (const entry of attachments) {
         attachmentsList.push({
           id: msg.id,
-          type: entry.type ?? 'document',
+          type: entry.type ?? "document",
           mimeType: entry.mimeType ?? null,
           fileName: entry.filename ?? null,
           sizeBytes: null,
@@ -644,17 +689,17 @@ export class MessagesService {
           latitude: null,
           longitude: null,
           displayName: null,
-          status: entry.storageKey ? 'available' : 'processing',
+          status: entry.storageKey ? "available" : "processing",
         });
       }
     }
 
     // 2) WhatsApp media — skip if attachments_json already has a storage-backed entry
-    const hasStorageBacked = attachmentsList.some(a => a.status === 'available');
+    const hasStorageBacked = attachmentsList.some((a) => a.status === "available");
     if (wm && !hasStorageBacked) {
       attachmentsList.push({
         id: msg.id,
-        type: wm.mediaType ?? 'document',
+        type: wm.mediaType ?? "document",
         mimeType: wm.mimeType ?? null,
         fileName: wm.filename ?? null,
         sizeBytes: null,
@@ -666,7 +711,7 @@ export class MessagesService {
         latitude: null,
         longitude: null,
         displayName: null,
-        status: 'available',
+        status: "available",
       });
     }
 
@@ -674,7 +719,7 @@ export class MessagesService {
     if (tgPending) {
       attachmentsList.push({
         id: msg.id,
-        type: tgPending.type ?? 'document',
+        type: tgPending.type ?? "document",
         mimeType: null,
         fileName: null,
         sizeBytes: null,
@@ -686,7 +731,7 @@ export class MessagesService {
         latitude: null,
         longitude: null,
         displayName: null,
-        status: 'processing',
+        status: "processing",
       });
     }
 
@@ -715,9 +760,14 @@ export class MessagesService {
       media_filename: wm?.filename ?? attachmentEntry?.filename ?? null,
       media_caption: wm?.caption ?? attachmentEntry?.caption ?? null,
       media_download_url: downloadUrl,
-      media_status: attachmentsList.length > 0
-        ? (attachmentsList.some(a => a.status === 'available') ? 'available' : 'processing')
-        : (hasMedia ? 'processing' : 'none'),
+      media_status:
+        attachmentsList.length > 0
+          ? attachmentsList.some((a) => a.status === "available")
+            ? "available"
+            : "processing"
+          : hasMedia
+            ? "processing"
+            : "none",
       attachments: attachmentsList,
     };
   }
@@ -751,24 +801,38 @@ export class MessagesService {
     try {
       const buffer = await this.storage.download(entry.storageKey);
       let contentType = entry.mimeType ?? null;
-    if (!contentType) {
-      const ext = `.${entry.storageKey.split('.').pop()?.toLowerCase() ?? ''}`;
-      const MIME_MAP: Record<string, string> = {
-        '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-        '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
-        '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg',
-        '.ogg': 'audio/ogg', '.wav': 'audio/wav',
-        '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        '.ppt': 'application/vnd.ms-powerpoint', '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        '.csv': 'text/csv', '.txt': 'text/plain', '.zip': 'application/zip',
-      };
-      contentType = MIME_MAP[ext] ?? 'application/octet-stream';
-    }
+      if (!contentType) {
+        const ext = `.${entry.storageKey.split(".").pop()?.toLowerCase() ?? ""}`;
+        const MIME_MAP: Record<string, string> = {
+          ".png": "image/png",
+          ".jpg": "image/jpeg",
+          ".jpeg": "image/jpeg",
+          ".gif": "image/gif",
+          ".webp": "image/webp",
+          ".svg": "image/svg+xml",
+          ".pdf": "application/pdf",
+          ".mp4": "video/mp4",
+          ".mp3": "audio/mpeg",
+          ".ogg": "audio/ogg",
+          ".wav": "audio/wav",
+          ".doc": "application/msword",
+          ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          ".xls": "application/vnd.ms-excel",
+          ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          ".ppt": "application/vnd.ms-powerpoint",
+          ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          ".csv": "text/csv",
+          ".txt": "text/plain",
+          ".zip": "application/zip",
+        };
+        contentType = MIME_MAP[ext] ?? "application/octet-stream";
+      }
 
-    return { buffer, contentType };
+      return { buffer, contentType };
     } catch (err) {
-      this.logger.warn(`Storage download failed for key=${entry.storageKey}, falling through to WhatsApp fallback: ${(err as Error).message}`);
+      this.logger.warn(
+        `Storage download failed for key=${entry.storageKey}, falling through to WhatsApp fallback: ${(err as Error).message}`,
+      );
       return null;
     }
   }
@@ -783,7 +847,7 @@ export class MessagesService {
     // Fetch last 10 messages of the conversation
     const recentMessages = await this.prisma.message.findMany({
       where: { conversation_id: conversationId, workspace_id: workspaceId },
-      orderBy: { sent_at: 'desc' },
+      orderBy: { sent_at: "desc" },
       take: 10,
       select: {
         direction: true,
@@ -821,14 +885,10 @@ export class MessagesService {
     });
 
     // Create task for HIGH or CRITICAL urgency if task_title is provided
-    if (
-      (result.urgency === 'HIGH' || result.urgency === 'CRITICAL') &&
-      result.task_title
-    ) {
+    if ((result.urgency === "HIGH" || result.urgency === "CRITICAL") && result.task_title) {
       // Map urgency to Priority enum:
       // HIGH -> MEDIUM, CRITICAL -> HIGH
-      const priority: Priority =
-        result.urgency === 'CRITICAL' ? Priority.HIGH : Priority.MEDIUM;
+      const priority: Priority = result.urgency === "CRITICAL" ? Priority.HIGH : Priority.MEDIUM;
 
       // Resolve workspace owner to use as the system user for task creation
       const ownerWorkspaceUser = await this.prisma.workspaceUser.findFirst({
@@ -847,11 +907,11 @@ export class MessagesService {
             is_platform_admin: false,
           }
         : {
-            id: 'system',
-            email: 'system@PymesHub.ai',
-            name: 'Sistema IA',
+            id: "system",
+            email: "system@PymesHub.ai",
+            name: "Sistema IA",
             workspace_id: workspaceId,
-            role: 'OWNER',
+            role: "OWNER",
             is_owner: true,
             is_platform_admin: false,
           };
@@ -860,7 +920,7 @@ export class MessagesService {
         title: result.task_title,
         description: result.task_description ?? undefined,
         priority,
-        source: 'AUTOMATION',
+        source: "AUTOMATION",
         conversation_id: conversationId,
         contact_id: contactId ?? undefined,
       });
@@ -874,10 +934,10 @@ export class MessagesService {
       if (targetUserId) {
         await this.notificationsService.create(workspaceId, {
           user_id: targetUserId,
-          type: 'AI_TASK_CREATED',
+          type: "AI_TASK_CREATED",
           title: `Tarea creada por IA: ${result.task_title}`,
-          body: `Urgencia ${result.urgency} detectada en conversación "${conv.subject || 'Sin asunto'}". Se creó la tarea automáticamente.`,
-          related_entity_type: 'CONVERSATION',
+          body: `Urgencia ${result.urgency} detectada en conversación "${conv.subject || "Sin asunto"}". Se creó la tarea automáticamente.`,
+          related_entity_type: "CONVERSATION",
           related_entity_id: conversationId,
         });
       } else {
@@ -885,10 +945,10 @@ export class MessagesService {
         if (ownerWorkspaceUser) {
           await this.notificationsService.create(workspaceId, {
             user_id: ownerWorkspaceUser.user.id,
-            type: 'AI_TASK_CREATED',
+            type: "AI_TASK_CREATED",
             title: `Tarea creada por IA: ${result.task_title}`,
-            body: `Urgencia ${result.urgency} detectada en conversación "${conv?.subject || 'Sin asunto'}". Se creó la tarea automáticamente.`,
-            related_entity_type: 'CONVERSATION',
+            body: `Urgencia ${result.urgency} detectada en conversación "${conv?.subject || "Sin asunto"}". Se creó la tarea automáticamente.`,
+            related_entity_type: "CONVERSATION",
             related_entity_id: conversationId,
           });
         }

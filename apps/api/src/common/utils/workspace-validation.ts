@@ -1,5 +1,5 @@
-import { NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { NotFoundException } from "@nestjs/common";
+import type { PrismaService } from "../prisma/prisma.service";
 
 export async function validateWorkspaceResource(
   prisma: PrismaService,
@@ -12,7 +12,7 @@ export async function validateWorkspaceResource(
   });
 
   if (!resource) {
-    throw new NotFoundException('Resource not found');
+    throw new NotFoundException("Resource not found");
   }
 
   return resource;

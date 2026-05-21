@@ -1,37 +1,45 @@
-import { Body, Controller, Post, Req, UnauthorizedException, BadRequestException } from '@nestjs/common';
-import { Request } from 'express';
-import { timingSafeEqual } from 'crypto';
-import { AgentToolsService } from './agent-tools.service';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { AgentToolDto } from './agent-tools.dto';
+import {
+  Body,
+  Controller,
+  Post,
+  Req,
+  UnauthorizedException,
+  BadRequestException,
+} from "@nestjs/common";
+import { Request } from "express";
+import { timingSafeEqual } from "crypto";
+import { AgentToolsService } from "./agent-tools.service";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { AgentToolDto } from "./agent-tools.dto";
 
 function safeEqual(a: string, b: string): boolean {
   if (!a || !b) return false;
-  const ab = Buffer.from(a, 'utf8');
-  const bb = Buffer.from(b, 'utf8');
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
   if (ab.length !== bb.length) return false;
   return timingSafeEqual(ab, bb);
 }
 
-@Controller('agent')
+@Controller("agent")
 export class AgentToolsController {
   constructor(
     private readonly toolsService: AgentToolsService,
     private readonly prisma: PrismaService,
   ) {}
 
-  @Post('tool')
+  @Post("tool")
   async execute(@Body() dto: AgentToolDto, @Req() req: Request) {
-    const authHeader = req.headers?.authorization || req.headers?.['PymesHub_founder_api_key'] || '';
-    const auth = Array.isArray(authHeader) ? (authHeader[0] ?? '') : authHeader;
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : auth;
+    const authHeader =
+      req.headers?.authorization || req.headers?.["PymesHub_founder_api_key"] || "";
+    const auth = Array.isArray(authHeader) ? (authHeader[0] ?? "") : authHeader;
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
 
     if (!process.env.PymesHub_FOUNDER_API_KEY) {
-      throw new BadRequestException('PymesHub_FOUNDER_API_KEY not configured on server');
+      throw new BadRequestException("PymesHub_FOUNDER_API_KEY not configured on server");
     }
 
     if (!safeEqual(token, process.env.PymesHub_FOUNDER_API_KEY)) {
-      throw new UnauthorizedException('Invalid API token');
+      throw new UnauthorizedException("Invalid API token");
     }
 
     let workspaceId: string | null = null;
@@ -44,7 +52,7 @@ export class AgentToolsController {
       if (!ws) throw new BadRequestException(`Workspace "${dto.workspace_slug}" not found`);
       workspaceId = ws.id;
     } else {
-      const slug = req.headers?.['x-workspace-slug'] as string;
+      const slug = req.headers?.["x-workspace-slug"] as string;
       if (slug) {
         const ws = await this.prisma.workspace.findUnique({
           where: { slug },
@@ -55,7 +63,9 @@ export class AgentToolsController {
     }
 
     if (!workspaceId) {
-      throw new BadRequestException('workspace_slug is required. Pass it in the body or x-workspace-slug header.');
+      throw new BadRequestException(
+        "workspace_slug is required. Pass it in the body or x-workspace-slug header.",
+      );
     }
 
     const result = await this.toolsService.execute(workspaceId, dto.tool, dto.arguments || {});
