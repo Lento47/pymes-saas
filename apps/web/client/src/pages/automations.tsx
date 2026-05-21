@@ -90,15 +90,15 @@ export default function AutomationsPage() {
       {/* Header */}
       <header className="shrink-0 flex items-center justify-between px-6 py-3 border-b border-border">
         <div className="flex items-center gap-3">
-          <Zap className="w-4 h-4 text-violet-500" />
+          <Zap className="w-4 h-4 text-muted-foreground" />
           <h1 className="text-[15px] font-semibold text-foreground">Automatizaciones</h1>
           <span className="text-[11px] text-muted-foreground">{automations.filter((a: any) => a.enabled).length} activas</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setTemplateOpen(true)} className="gap-1.5 rounded-xl text-[12px]">
+          <Button variant="outline" size="sm" onClick={() => setTemplateOpen(true)} className="gap-1.5 rounded-md text-[12px]">
             <LayoutTemplate className="w-[13px] h-[13px]" />Plantillas
           </Button>
-          <Button onClick={() => { setEditingAuto(null); setCreateOpen(true); }} size="sm" className="gap-1.5 rounded-xl text-[12px]">
+          <Button onClick={() => { setEditingAuto(null); setCreateOpen(true); }} size="sm" className="gap-1.5 rounded-md text-[12px]">
             <Plus className="w-[13px] h-[13px]" />Nueva
           </Button>
         </div>
@@ -148,27 +148,27 @@ export default function AutomationsPage() {
         <div className="flex-1 overflow-y-auto p-4 pb-16 lg:pb-4 space-y-3">
           {filteredAutomations.map((auto: any) => (
             <div key={auto.id}
-              className="rounded-2xl p-4 transition-all duration-200 bg-card/40 border border-border hover:bg-card/60 hover:border-border/80"
+              className="rounded-lg border border-border bg-card/40 p-4 transition-colors hover:bg-card/60 hover:border-border/80"
             >
               <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
                 <div className="flex items-center gap-2 shrink-0 pt-1">
                   <div className="flex flex-col items-center gap-1">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-violet-500/10 border border-violet-500/20">
-                      <Zap className="w-3.5 h-3.5 text-violet-400" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30">
+                      <Zap className="w-3.5 h-3.5 text-muted-foreground" />
                     </div>
                     <span className="text-[10px] text-muted-foreground">{triggerLabel(auto.trigger_type)}</span>
                   </div>
                   <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/55" />
                   <div className="flex flex-col items-center gap-1">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted/30 border border-border/40">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border/40 bg-muted/30">
                       <GitBranch className="w-3.5 h-3.5 text-muted-foreground" />
                     </div>
                     <span className="text-[10px] text-muted-foreground/60">Condiciones</span>
                   </div>
                   <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/55" />
                   <div className="flex flex-col items-center gap-1">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/30">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-muted-foreground" />
                     </div>
                     <span className="text-[10px] text-muted-foreground">{auto.action_type ? auto.action_type.replace(/_/g,' ') : 'Acción'}</span>
                   </div>

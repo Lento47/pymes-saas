@@ -18,7 +18,6 @@ import {
   Receipt,
   Search,
   Send,
-  Sparkles,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -803,8 +802,8 @@ export default function InvoicesPage() {
                             >
                               {generateReminderMutation.isPending && selectedInvoice?.id === invoice.id
                                 ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
-                              Redactar IA
+                                : <Pencil className="w-3.5 h-3.5 mr-1.5" />}
+                              Redactar
                             </Button>
                           )}
                           {!["PAID", "CANCELLED"].includes(invoice.status) && (

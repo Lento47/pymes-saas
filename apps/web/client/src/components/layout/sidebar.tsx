@@ -200,10 +200,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="auth-ui flex h-screen overflow-hidden bg-background">
       {isMobile && sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/45 transition-opacity duration-200 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -217,12 +217,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         )}
       >
         {isMobile && (
-          <div className="shrink-0 flex justify-end px-3 py-3 border-b border-border/40 pt-safe">
+          <div className="shrink-0 flex justify-end px-3 py-3 border-b border-border pt-safe">
             <button
               onClick={() => setSidebarOpen(false)}
               className={cn(
-                "p-2 rounded-lg transition-all duration-200",
-                "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+                "p-2 rounded-md transition-colors",
+                "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
               )}
             >
               <X className="w-5 h-5" />
@@ -234,16 +234,16 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <div ref={wsMenuRef} className="relative">
             <button
               className={cn(
-                "group w-full flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                "group w-full flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors",
                 wsMenuOpen
-                  ? "border-primary/25 bg-sidebar-accent/45"
-                  : "border-border/70 bg-sidebar-accent/20 hover:bg-sidebar-accent/35"
+                  ? "border-border bg-sidebar-accent/55"
+                  : "border-border/70 bg-background/25 hover:bg-sidebar-accent/30"
               )}
               onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
               style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
               aria-expanded={multipleWorkspaces ? wsMenuOpen : undefined}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/35 text-xs font-semibold text-foreground">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/55 text-xs font-semibold text-foreground">
                 {workspaceInitial}
               </div>
               <div className="min-w-0 flex-1">
@@ -263,7 +263,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </button>
 
             {wsMenuOpen && multipleWorkspaces && (
-              <div className="absolute top-full left-0 right-0 mt-2 rounded-lg border border-border bg-sidebar shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute top-full left-0 right-0 z-50 mt-2 overflow-hidden rounded-lg border border-border bg-popover shadow-lg animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="p-1.5 max-h-[280px] overflow-y-auto minimal-scrollbar">
                   {(myWorkspaces as any[]).map((m) => {
                     const isCurrent = m.workspace.id === user?.workspace?.id;
@@ -273,7 +273,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                         className={cn(
                           "group w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-left",
                           isCurrent
-                            ? "bg-primary/10 text-foreground"
+                            ? "bg-sidebar-accent/55 text-foreground"
                             : "text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground"
                         )}
                         onClick={() => {
@@ -286,7 +286,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                         </div>
                         <span className="flex-1 text-sm truncate font-medium">{m.workspace.name}</span>
                         {isCurrent && (
-                          <Check className="w-4 h-4 text-primary shrink-0" />
+                          <Check className="w-4 h-4 text-muted-foreground shrink-0" />
                         )}
                       </button>
                     );
@@ -304,13 +304,13 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5 minimal-scrollbar">
           {ws.startsWith("Admin Hub —") && (myWorkspaces as any[])?.length > 1 && (
-            <div className="mx-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300/90 leading-relaxed">
+            <div className="mx-2 rounded-md border border-border bg-sidebar-accent/25 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
               {copy.adminHint}
             </div>
           )}
           {NAV_GROUPS.map((group) => (
             <div key={group.key} className="space-y-1.5">
-              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/65 flex items-center gap-2">
+              <div className="flex items-center gap-2 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/65">
                 <div className="h-px w-3 bg-border" />
                 <span>{(copy.groups as any)[group.key]}</span>
               </div>
@@ -329,13 +329,13 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                         )}
                       >
                         {active && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full bg-primary" />
+                          <div className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-foreground/70" />
                         )}
 
                         <Icon
                           className={cn(
                             "w-4 h-4 shrink-0 transition-colors",
-                            active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                            active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                           )}
                           strokeWidth={active ? 2.2 : 1.8}
                         />
@@ -347,8 +347,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                             className={cn(
                               "text-[11px] font-semibold px-1.5 py-0.5 rounded-md leading-none transition-colors",
                               bk === "overdue"
-                                ? "bg-destructive/10 text-destructive"
-                                : "bg-sidebar-accent text-foreground"
+                                ? "border border-destructive/25 bg-transparent text-destructive"
+                                : "border border-border bg-transparent text-muted-foreground"
                             )}
                           >
                             {b}
@@ -363,9 +363,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           ))}
 
           {user?.is_platform_admin && (
-            <div className="space-y-1.5 pt-2 border-t border-border/40">
-              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-500/80 flex items-center gap-2">
-                <div className="h-px w-3 bg-amber-500/30" />
+            <div className="space-y-1.5 border-t border-border/60 pt-2">
+              <div className="flex items-center gap-2 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/65">
+                <div className="h-px w-3 bg-border" />
                 <span>{copy.admin}</span>
               </div>
               <div className="space-y-1">
@@ -377,7 +377,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                       className={cn(
                         "flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
                         active
-                          ? "bg-amber-500/10 text-foreground font-medium"
+                          ? "bg-sidebar-accent/55 text-foreground font-medium"
                           : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
                       )}
                     >
@@ -400,7 +400,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
-        <div className="shrink-0 border-t border-border px-3 py-3 pb-safe space-y-2 bg-sidebar-accent/10">
+        <div className="shrink-0 space-y-2 border-t border-border bg-sidebar px-3 py-3 pb-safe">
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={toggle}
@@ -422,7 +422,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-md border border-border/60 bg-background/20 px-2.5 py-2">
+          <div className="flex items-center gap-3 rounded-md border border-border/60 bg-background/35 px-2.5 py-2">
             <div className="w-7 h-7 rounded-md border border-border/60 bg-sidebar-accent/45 flex items-center justify-center shrink-0 text-xs font-semibold text-foreground">
               {initials}
             </div>
@@ -445,7 +445,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="shrink-0 flex items-center gap-3 px-3 lg:px-5 py-2.5 border-b border-border bg-background/95 relative z-40 pt-safe">
+        <header className="relative z-40 flex shrink-0 items-center gap-3 border-b border-border bg-background px-3 py-2.5 pt-safe lg:px-5">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
@@ -463,7 +463,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           <button
             onClick={() => setSearchOpen(true)}
-            className="hidden md:flex h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+            className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground md:flex"
             title="Buscar (Ctrl+K)"
           >
             <Search className="w-3.5 h-3.5" />
@@ -486,7 +486,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           <NotificationBell />
 
-          <span className="hidden sm:inline-block text-xs font-medium text-muted-foreground/70 px-2.5 py-1 rounded-md border border-border bg-card">
+          <span className="hidden rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground/70 sm:inline-block">
             {user?.role}
           </span>
         </header>

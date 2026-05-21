@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Check, ChevronRight, X } from "lucide-react";
+import { Check, ChevronRight, ClipboardList, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChecklistItem {
@@ -54,7 +54,7 @@ export default function QuickStartChecklist({ progress, plan, onDismiss }: Props
   if (allDone) return null;
 
   return (
-    <div className="relative rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.04] to-card/40 p-5 animate-in fade-in slide-in-from-top-4 duration-500">
+    <div className="relative rounded-lg border border-border bg-card p-4 animate-in fade-in slide-in-from-top-2 duration-200">
       <button
         onClick={() => setDismissed(true)}
         className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
@@ -62,8 +62,10 @@ export default function QuickStartChecklist({ progress, plan, onDismiss }: Props
         <X className="w-3.5 h-3.5" />
       </button>
 
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-lg">🚀</span>
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/35 text-muted-foreground">
+          <ClipboardList className="h-4 w-4" />
+        </div>
         <div>
           <h3 className="text-sm font-semibold text-foreground">Configuración inicial</h3>
           <p className="text-xs text-muted-foreground">{doneCount} de {items.length} completados</p>
@@ -75,7 +77,7 @@ export default function QuickStartChecklist({ progress, plan, onDismiss }: Props
         <div
           className={cn(
             "h-full rounded-full transition-all duration-500",
-            doneCount >= 5 ? "bg-emerald-500" : "bg-primary",
+            doneCount >= 5 ? "bg-emerald-500" : "bg-muted-foreground",
           )}
           style={{ width: `${(doneCount / items.length) * 100}%` }}
         />
@@ -90,7 +92,7 @@ export default function QuickStartChecklist({ progress, plan, onDismiss }: Props
                 "flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors cursor-pointer group",
                 item.done
                   ? "text-muted-foreground/60"
-                  : "hover:bg-primary/5 text-muted-foreground hover:text-foreground",
+                  : "text-muted-foreground hover:bg-muted/35 hover:text-foreground",
               )}
             >
               <div

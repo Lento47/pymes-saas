@@ -175,7 +175,7 @@ export default function AdminWorkspaceDetail() {
         {/* ── SSO / SAML ── */}
         <TabsContent value="sso" className="space-y-4">
           <div className="rounded-xl border border-border/60 bg-card/40 p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Shield className="w-4 h-4 text-violet-400" />SAML SSO</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Shield className="w-4 h-4 text-muted-foreground" />SAML SSO</h3>
             {samlQ.data ? (
               <div className="space-y-3 text-xs">
                 <div className="flex items-center gap-2">

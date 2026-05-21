@@ -93,15 +93,15 @@ export default function OnboardingTour() {
         <div
           className={cn(
             "relative max-w-md w-full mx-4",
-            "rounded-2xl border border-primary/30",
-            "bg-card/95 backdrop-blur-xl shadow-2xl",
+            "rounded-lg border border-border",
+            "bg-card shadow-lg",
             "animate-in fade-in zoom-in-95 duration-300",
           )}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 pt-5 pb-2">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-amber-600 flex items-center justify-center text-sm font-bold text-primary-foreground">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted text-sm font-bold text-foreground">
                 {step + 1}
               </div>
               <span className="text-xs text-foreground/60">
