@@ -1,5 +1,5 @@
 export type MessageDirection = "INBOUND" | "OUTBOUND" | "INTERNAL";
-export type MediaType = "image" | "video" | "audio" | "document" | "sticker" | "location" | "contact" | "text";
+export type MediaType = "image" | "video" | "audio" | "document" | "sticker" | "location" | "contact" | "interactive" | "text";
 export type MediaStatus = "none" | "processing" | "available" | "error";
 
 export interface MessageAttachment {
@@ -19,6 +19,14 @@ export interface MessageAttachment {
   height?: number | null;
   durationMs?: number | null;
   thumbnailUrl?: string | null;
+  interactiveType?: string | null;
+  title?: string | null;
+  body?: string | null;
+  description?: string | null;
+  footer?: string | null;
+  actionLabel?: string | null;
+  buttons?: Array<{ title: string }>;
+  sections?: Array<{ title?: string | null; rows: Array<{ title: string; description?: string | null }> }>;
 }
 
 export interface UiMessage {

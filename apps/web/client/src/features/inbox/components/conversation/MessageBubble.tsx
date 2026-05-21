@@ -9,6 +9,7 @@ import { VideoAttachment } from "../media/VideoAttachment";
 import { DocumentAttachment } from "../media/DocumentAttachment";
 import { LocationAttachment } from "../media/LocationAttachment";
 import { ContactAttachment } from "../media/ContactAttachment";
+import { InteractiveAttachment } from "../media/InteractiveAttachment";
 
 interface MessageBubbleProps {
   message: UiMessage;
@@ -31,6 +32,7 @@ type BubbleVariant =
   | "document"
   | "location"
   | "contact"
+  | "interactive"
   | "system";
 
 function renderTextWithLinks(text: string) {
@@ -73,6 +75,8 @@ function getBubbleVariant(message: UiMessage): BubbleVariant {
       return "location";
     case "contact":
       return "contact";
+    case "interactive":
+      return "interactive";
     case "text":
     case null:
     case undefined:
@@ -124,6 +128,7 @@ export const MessageBubble = function MessageBubble({
       case "document":
       case "location":
       case "contact":
+      case "interactive":
         return `max-w-[82%] sm:max-w-[360px] ${spacing} bg-transparent border-0 shadow-none p-0`;
       case "system":
         return `max-w-[82%] ${spacing} rounded-full bg-muted/45 border border-border/40 px-3 py-1.5`;
@@ -157,6 +162,22 @@ export const MessageBubble = function MessageBubble({
         const c = message.attachments.find(a => a.type === "contact");
         return <ContactAttachment displayName={c?.displayName} phone={c?.phone} email={c?.email} />;
       }
+      case "interactive": {
+        const interactive = message.attachments.find(a => a.type === "interactive");
+        return (
+          <InteractiveAttachment
+            interactiveType={interactive?.interactiveType}
+            title={interactive?.title}
+            body={interactive?.body}
+            description={interactive?.description}
+            footer={interactive?.footer}
+            actionLabel={interactive?.actionLabel}
+            buttons={interactive?.buttons}
+            sections={interactive?.sections}
+            fallbackText={message.bodyText}
+          />
+        );
+      }
       default:
         return (
           <div className={`text-sm ${isShort ? "leading-snug" : "leading-relaxed"} text-foreground whitespace-pre-wrap break-words overflow-hidden`}>
@@ -188,7 +209,7 @@ export const MessageBubble = function MessageBubble({
           message={message}
           isOutbound={isOutbound}
           showSenderName={showSenderName}
-          compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact"}
+          compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact" || variant === "interactive"}
           overlay={variant === "media"}
         />
       </div>
