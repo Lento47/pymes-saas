@@ -27,6 +27,7 @@ interface MessageTimelineProps {
   messages: UiMessage[];
   isLoading: boolean;
   isUserTyping?: boolean;
+  animatingMsgId?: string | null;
   contactName?: string;
   contactAvatarInitials?: string;
   contactAvatarUrl?: string | null;
@@ -42,6 +43,7 @@ export function MessageTimeline({
   messages,
   isLoading,
   isUserTyping = false,
+  animatingMsgId = null,
   contactName,
   contactAvatarInitials,
   contactAvatarUrl,
@@ -97,6 +99,7 @@ export function MessageTimeline({
             const showDateSeparator = !prev || !msg.sentAt || !prev.sentAt || !isSameDay(msg.sentAt, prev.sentAt);
             const isConsecutive = isConsecutiveMessage(msg, prev);
             const showSenderName = !isConsecutive && msg.direction === "INBOUND";
+            const isNew = msg.id === animatingMsgId;
 
             return (
               <div
@@ -116,6 +119,7 @@ export function MessageTimeline({
                   message={msg}
                   isConsecutive={isConsecutive}
                   showSenderName={showSenderName}
+                  isNew={isNew}
                   contactName={contactName}
                   contactAvatarInitials={contactAvatarInitials}
                   contactAvatarUrl={contactAvatarUrl}

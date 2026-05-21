@@ -326,6 +326,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
   const [nearBottom, setNearBottom] = useState(true);
   const [initialLoaded, setInitialLoaded] = useState(false);
+  const prevMsgCountRef = useRef(0);
+  const [animatingMsgId, setAnimatingMsgId] = useState<string | null>(null);
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
@@ -333,9 +335,11 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     setNearBottom(scrollHeight - scrollTop - clientHeight < 150);
   }, []);
 
-  const scrollToBottom = useCallback(() => {
+  const scrollToBottom = useCallback((smooth = true) => {
     setNearBottom(true);
-    if (bottomRef.current) bottomRef.current.scrollIntoView({ block: "end", behavior: "smooth" });
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ block: "end", behavior: smooth ? "smooth" : "instant" });
+    }
   }, []);
 
   useEffect(() => {
@@ -343,17 +347,28 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
     if (!initialLoaded) {
       const timer = setTimeout(() => {
-        bottomRef.current?.scrollIntoView({ block: "end", behavior: "instant" });
-        setNearBottom(true);
+        scrollToBottom(false);
         setInitialLoaded(true);
       }, 300);
       return () => clearTimeout(timer);
     }
 
-    if (nearBottom) {
-      bottomRef.current.scrollIntoView({ block: "end", behavior: "instant" });
+    const newMessages = msgList.length - prevMsgCountRef.current;
+    prevMsgCountRef.current = msgList.length;
+
+    if (newMessages > 0) {
+      const lastNew = msgList[msgList.length - 1];
+      // Trigger slide-up animation on the new message
+      if (lastNew?.id) {
+        setAnimatingMsgId(lastNew.id);
+        setTimeout(() => setAnimatingMsgId(null), 500);
+      }
+      // Always scroll for outbound (user sent it), or if already near bottom
+      if (lastNew?.direction === "OUTBOUND" || nearBottom) {
+        scrollToBottom(true);
+      }
     }
-  }, [msgsLoading, msgList.length, initialLoaded, nearBottom]);
+  }, [msgsLoading, msgList.length, initialLoaded, nearBottom, scrollToBottom]);
 
   const uiMessages = useMemo(() => msgList.map(normalizeMessage), [msgList]);
 
@@ -400,6 +415,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         bottomRef={bottomRef}
         nearBottom={nearBottom}
         isUserTyping={isUserTyping}
+        animatingMsgId={animatingMsgId}
         onScrollToBottom={scrollToBottom}
         onScroll={handleScroll}
       />

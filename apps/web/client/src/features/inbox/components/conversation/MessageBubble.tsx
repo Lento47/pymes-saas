@@ -15,6 +15,7 @@ interface MessageBubbleProps {
   message: UiMessage;
   isConsecutive: boolean;
   showSenderName: boolean;
+  isNew?: boolean;
   contactName?: string;
   contactAvatarInitials?: string;
   contactAvatarUrl?: string | null;
@@ -97,6 +98,7 @@ export const MessageBubble = function MessageBubble({
   message,
   isConsecutive,
   showSenderName,
+  isNew = false,
   contactName,
   contactAvatarInitials,
   contactAvatarUrl,
@@ -188,7 +190,7 @@ export const MessageBubble = function MessageBubble({
   };
 
   return (
-    <div className={`flex gap-2 px-1 ${isOutbound ? "justify-end" : ""} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
+    <div className={`flex gap-2 px-1 ${isOutbound ? "justify-end" : ""} ${isNew ? "animate-slide-up-in" : ""} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
       {!isOutbound && !isConsecutive && (
         <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-auto ring-1 ring-border/50 overflow-hidden" aria-label={`Avatar de ${senderLabel}`}>
           {contactAvatarUrl ? (
