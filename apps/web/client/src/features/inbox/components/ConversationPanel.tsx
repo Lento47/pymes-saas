@@ -12,6 +12,7 @@ import { DeleteConversationAlert } from "./conversation/DeleteConversationAlert"
 import { useAvatarUrl } from "@/hooks/use-avatar-url";
 import { normalizeMessage } from "@/features/inbox/message-adapters";
 import type { UiMessage } from "@/features/inbox/message-types";
+import type { InteractiveState } from "./composer/InteractiveToolbar";
 
 const CHANNEL_LABELS: Record<string, string> = {
   WHATSAPP: "WhatsApp", EMAIL: "Email", TELEGRAM: "Telegram",
@@ -171,14 +172,45 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     onError: (e) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
   });
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback((interactive?: InteractiveState) => {
     if (sendMut.isPending || uploading) return;
-    if (!message.trim() && !attachment) return;
-    if (attachment) {
-      sendMut.mutate({ body_text: message, direction: "OUTBOUND", media_url: attachment.url, media_type: attachment.type });
+    if (!message.trim() && !attachment && !interactive) return;
+
+    const basePayload: Record<string, any> = { direction: "OUTBOUND" };
+
+    if (interactive) {
+      basePayload.body_text = message;
+
+      if (interactive.type === "buttons") {
+        basePayload.interactive = {
+          type: "button",
+          body: interactive.body ?? message,
+          footer: interactive.footer,
+          buttons: interactive.buttons ?? [],
+        };
+      } else if (interactive.type === "list") {
+        basePayload.interactive = {
+          type: "list",
+          body: interactive.body ?? message,
+          footer: interactive.footer,
+          buttonText: interactive.listButtonText ?? "Ver opciones",
+          sections: interactive.sections ?? [],
+        };
+      } else if (interactive.type === "location_request") {
+        basePayload.interactive = {
+          type: "location_request",
+          body: interactive.locationBody ?? message,
+        };
+      }
+    } else if (attachment) {
+      basePayload.body_text = message;
+      basePayload.media_url = attachment.url;
+      basePayload.media_type = attachment.type;
     } else {
-      sendMut.mutate({ body_text: message, direction: "OUTBOUND" });
+      basePayload.body_text = message;
     }
+
+    sendMut.mutate(basePayload);
   }, [message, attachment, sendMut, uploading]);
 
   const handleAttach = useCallback(async (file: File) => {
@@ -213,6 +245,11 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const contactIdentity = contact?.email ?? contact?.phone ?? contact?.id ?? contactName;
   const contactAvatarUrl = useAvatarUrl(contactIdentity);
   const channelType = conversation?.channel?.type || "";
+
+  // Compute service window status
+  const isServiceWindowOpen = conversation?.service_window_expires_at
+    ? new Date(conversation.service_window_expires_at).getTime() > Date.now()
+    : true; // default to open for non-WhatsApp or when field is null
   const canSendInvoice = ["EMAIL", "WHATSAPP", "TELEGRAM"].includes(channelType?.toUpperCase() ?? "");
 
   const [nearBottom, setNearBottom] = useState(true);
@@ -304,6 +341,9 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         uploading={uploading}
         isPending={sendMut.isPending}
         channelLabel={channelLabel}
+        channelType={channelType}
+        isServiceWindowOpen={isServiceWindowOpen}
+        onSelectTemplate={() => toast({ title: "Plantillas", description: "Selector de plantillas próximamente" })}
         disabled={!id}
       />
 
