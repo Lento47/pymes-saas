@@ -57,6 +57,93 @@ export class WhatsAppService {
     return { message_id: data.messages?.[0]?.id ?? 'unknown' };
   }
 
+  // ── Enviar template de factura electrónica ──────────────────────────────────
+
+  /**
+   * Envía la factura usando el template WhatsApp "factura_electronica" (UTILITY).
+   * 6 variables de body + 2 botones URL opcionales (pago y PDF).
+   */
+  async sendInvoiceTemplate(
+    channel: any,
+    to: string,
+    params: {
+      customerName: string;    // {{1}} — nombre del cliente
+      invoiceNumber: string;   // {{2}} — número de factura
+      amountFormatted: string; // {{3}} — monto con moneda
+      dueDateFormatted: string;// {{4}} — fecha de vencimiento
+      productsSummary: string; // {{5}} — resumen de productos
+      companyName: string;     // {{6}} — nombre de la pyme
+      paymentUrl?: string;     // button[0] — URL de pago
+      pdfUrl?: string;         // button[1] — PDF Hacienda
+    },
+  ): Promise<{ message_id: string }> {
+    const cfg = channel.config_json as any;
+    const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
+    const phoneNumberId = cfg.phone_number_id;
+
+    const components: any[] = [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: params.customerName },
+          { type: 'text', text: params.invoiceNumber },
+          { type: 'text', text: params.amountFormatted },
+          { type: 'text', text: params.dueDateFormatted },
+          { type: 'text', text: params.productsSummary },
+          { type: 'text', text: params.companyName },
+        ],
+      },
+    ];
+
+    // URL buttons — index shifts depending on which are present
+    if (params.paymentUrl) {
+      components.push({
+        type: 'button',
+        sub_type: 'url',
+        index: '0',
+        parameters: [{ type: 'text', text: params.paymentUrl }],
+      });
+    }
+    if (params.pdfUrl) {
+      components.push({
+        type: 'button',
+        sub_type: 'url',
+        index: params.paymentUrl ? '1' : '0',
+        parameters: [{ type: 'text', text: params.pdfUrl }],
+      });
+    }
+
+    const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: {
+          name: 'factura_electronica',
+          language: { code: 'es' },
+          components,
+        },
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      this.logger.error('Meta invoice template error:', JSON.stringify(data));
+      throw new BadGatewayException(
+        data?.error?.message ?? 'Error enviando factura por WhatsApp',
+      );
+    }
+
+    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+  }
+
   // ── Procesar webhook entrante ──────────────────────────────────────────────
 
   /**
