@@ -20,16 +20,22 @@ import { PrismaService } from "../common/prisma/prisma.service";
 // task:updated         → tarea actualizada
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Resolve WebSocket CORS origins, defaulting to '*' in production since JWT auth is required. */
+function resolveCorsOrigins(): string | string[] {
+  const env = process.env.CORS_ORIGIN;
+  if (env) return env.split(",").map((o) => o.trim()).filter(Boolean);
+  if (process.env.NODE_ENV === "production") return "*";
+  return [
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+  ];
+}
+
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(",")
-      .map((o) => o.trim())
-      .filter(Boolean) ?? [
-      "http://localhost:5000",
-      "http://127.0.0.1:5000",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-    ],
+    origin: resolveCorsOrigins(),
     credentials: true,
   },
   namespace: "/ws",
