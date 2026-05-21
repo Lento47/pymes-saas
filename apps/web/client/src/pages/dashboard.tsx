@@ -7,9 +7,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Sparkles, Loader2, MessageCircle, FileText, ArrowUpRight } from "lucide-react";
-
-// ── Types ────────────────────────────────────────────────────────────────────
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Bot,
+  CheckCircle2,
+  CheckSquare,
+  Clock3,
+  Loader2,
+  MessageCircle,
+  Receipt,
+} from "lucide-react";
 
 interface StageDeal {
   id: string;
@@ -27,7 +35,9 @@ interface PipelineStage {
   deals: StageDeal[];
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+type Tone = "neutral" | "danger" | "warning" | "success";
+
+const ACTIVE_STAGES = ["Ganado", "Perdido"];
 
 function crc(n: number): string {
   return n >= 1_000_000
@@ -35,142 +45,215 @@ function crc(n: number): string {
     : `₡${n.toLocaleString("es-CR")}`;
 }
 
-const urgency = (inv: any): "overdue" | "soon" | "ok" => {
+function invoiceUrgency(inv: any): "overdue" | "soon" | "ok" {
+  if (!inv?.due_date) return "ok";
   const days = Math.ceil((new Date(inv.due_date).getTime() - Date.now()) / 86400000);
   if (days < 0) return "overdue";
   if (days <= 3) return "soon";
   return "ok";
-};
+}
 
-// ── KPI Strip ────────────────────────────────────────────────────────────────
+function dueText(date: string | null | undefined, overdue = false): string {
+  if (!date) return "Sin vencimiento";
+  const relative = formatDistanceToNow(new Date(date), { addSuffix: true, locale: es });
+  return overdue ? `Vencida ${relative}` : `Vence ${relative}`;
+}
 
-function KpiStrip({
-  items,
-}: {
-  items: { label: string; value: string; sub?: string; urgent?: boolean }[];
-}) {
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Buenos días";
+  if (h < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
+function toneClasses(tone: Tone) {
+  switch (tone) {
+    case "danger":
+      return {
+        dot: "bg-red-500",
+        text: "text-red-600",
+        bg: "bg-red-500/5",
+        border: "border-red-500/20",
+      };
+    case "warning":
+      return {
+        dot: "bg-amber-500",
+        text: "text-amber-700",
+        bg: "bg-amber-500/5",
+        border: "border-amber-500/20",
+      };
+    case "success":
+      return {
+        dot: "bg-emerald-500",
+        text: "text-emerald-700",
+        bg: "bg-emerald-500/5",
+        border: "border-emerald-500/20",
+      };
+    default:
+      return {
+        dot: "bg-muted-foreground/45",
+        text: "text-muted-foreground",
+        bg: "bg-transparent",
+        border: "border-border",
+      };
+  }
+}
+
+function StatusPill({ label, tone = "neutral" }: { label: string; tone?: Tone }) {
+  const t = toneClasses(tone);
   return (
-    <div className="rounded-lg border border-border bg-card dash-card">
-      <div className="flex divide-x divide-border">
-        {items.map((item, i) => (
-          <div key={i} className="flex-1 text-center py-2.5 px-3">
-            <div className="flex items-center justify-center gap-1.5">
-              {item.urgent && <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
-              <div className="text-lg font-semibold text-foreground tabular-nums leading-none">
-                {item.value}
-              </div>
-            </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">{item.label}</div>
-            {item.sub && (
-              <div className="text-[10px] text-muted-foreground/70 mt-0.5">{item.sub}</div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
+    <span className={`inline-flex h-5 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium ${t.bg} ${t.border} ${t.text}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />
+      {label}
+    </span>
   );
 }
 
-// ── Pipeline Strip ───────────────────────────────────────────────────────────
-
-function PipelineStrip({ stages }: { stages: PipelineStage[] }) {
-  if (stages.length === 0) return null;
-  const maxDeals = Math.max(...stages.map((s) => s.deals.length), 1);
-
-  return (
-    <div className="flex gap-1.5">
-      {stages.map((stage) => {
-        const count = stage.deals.length;
-        const value = stage.deals.reduce((s, d) => s + (Number(d.value) || 0), 0);
-        return (
-          <Link key={stage.id} href="/pipeline" className="flex-1 min-w-0">
-            <div className="rounded-md border border-border bg-card dash-card px-3 py-2.5 hover:border-primary/30 transition-colors cursor-pointer h-full">
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
-                <span className="text-[11px] font-medium text-foreground truncate">{stage.name}</span>
-              </div>
-              <div className="text-lg font-semibold text-foreground tabular-nums leading-none">{count}</div>
-              <div className="flex items-baseline gap-2 mt-1">
-                <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${(count / maxDeals) * 100}%`, backgroundColor: stage.color, opacity: count > 0 ? 0.7 : 0.15 }}
-                  />
-                </div>
-                <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{crc(value)}</span>
-              </div>
-            </div>
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Section header ───────────────────────────────────────────────────────────
-
-function SectionHeader({
+function DashboardSection({
   title,
   count,
   linkTo,
+  children,
+  className = "",
 }: {
   title: string;
   count?: number;
   linkTo?: string;
+  children: React.ReactNode;
+  className?: string;
 }) {
-  const inner = (
-    <div className="flex items-center justify-between">
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">
-        {title}
-        {count != null && (
-          <span className="ml-2 text-[10px] font-normal text-muted-foreground/60">
-            {count}
-          </span>
-        )}
-      </h2>
-      {linkTo && (
-        <ArrowUpRight className="w-3 h-3 text-muted-foreground/40" />
-      )}
+  const header = (
+    <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+      <div className="min-w-0">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {title}
+          {count != null && <span className="ml-2 font-normal text-muted-foreground/60">{count}</span>}
+        </h2>
+      </div>
+      {linkTo && <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/45" />}
     </div>
   );
-  return linkTo ? (
-    <Link href={linkTo} className="block px-4 py-2.5 border-b border-border hover:bg-muted/30 transition-colors">
-      {inner}
-    </Link>
-  ) : (
-    <div className="px-4 py-2.5 border-b border-border">{inner}</div>
-  );
-}
 
-// ── Empty state ──────────────────────────────────────────────────────────────
-
-function EmptyRow({ icon: Icon, text, cta, href }: { icon: any; text: string; cta?: string; href?: string }) {
   return (
-    <div className="px-4 py-5 flex flex-col items-center gap-2 text-center">
-      <Icon className="w-4 h-4 text-muted-foreground/40" />
-      <span className="text-xs text-muted-foreground">{text}</span>
-      {cta && href && (
-        <Link href={href} className="text-[11px] text-primary hover:underline">
-          {cta}
+    <section className={`overflow-hidden rounded-lg border border-border bg-card ${className}`}>
+      {linkTo ? (
+        <Link href={linkTo} className="block transition-colors hover:bg-muted/25">
+          {header}
         </Link>
+      ) : (
+        header
       )}
+      {children}
+    </section>
+  );
+}
+
+function OperationalMetric({
+  label,
+  value,
+  detail,
+  tone = "neutral",
+  loading,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  tone?: Tone;
+  loading?: boolean;
+}) {
+  const t = toneClasses(tone);
+
+  return (
+    <div className={`rounded-lg border bg-card px-4 py-3 ${t.border}`}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          {label}
+        </span>
+        <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />
+      </div>
+      {loading ? (
+        <Skeleton className="h-7 w-24" />
+      ) : (
+        <div className="text-2xl font-semibold leading-none tracking-[-0.02em] text-foreground tabular-nums">
+          {value}
+        </div>
+      )}
+      {detail && <p className="mt-2 truncate text-xs text-muted-foreground">{detail}</p>}
     </div>
   );
 }
 
-// ── Status dot ───────────────────────────────────────────────────────────────
+function AttentionList({
+  children,
+  emptyIcon: Icon,
+  emptyText,
+  emptyCta,
+  emptyHref,
+  isEmpty,
+}: {
+  children: React.ReactNode;
+  emptyIcon: React.ElementType;
+  emptyText: string;
+  emptyCta?: string;
+  emptyHref?: string;
+  isEmpty: boolean;
+}) {
+  if (isEmpty) {
+    return (
+      <div className="flex min-h-[120px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
+        <Icon className="h-4 w-4 text-muted-foreground/45" />
+        <span className="text-sm text-muted-foreground">{emptyText}</span>
+        {emptyCta && emptyHref && (
+          <Link href={emptyHref} className="text-xs font-medium text-primary hover:text-primary/80">
+            {emptyCta}
+          </Link>
+        )}
+      </div>
+    );
+  }
 
-function StatusDot({ status }: { status: string }) {
-  const color =
-    status === "NEW" || status === "OPEN"
-      ? "bg-emerald-500"
-      : status === "PENDING"
-      ? "bg-amber-500"
-      : "bg-border";
-  return <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${color}`} />;
+  return <div className="divide-y divide-border">{children}</div>;
 }
 
-// ── Conversation status badge ────────────────────────────────────────────────
+function RowStatus({ tone }: { tone: Tone }) {
+  return <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${toneClasses(tone).dot}`} />;
+}
+
+function PipelineBand({ stages }: { stages: PipelineStage[] }) {
+  if (stages.length === 0) return null;
+
+  const maxDeals = Math.max(...stages.map((stage) => stage.deals.length), 1);
+
+  return (
+    <DashboardSection title="Pipeline abierto" count={stages.reduce((sum, stage) => sum + stage.deals.length, 0)} linkTo="/pipeline">
+      <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+        {stages.slice(0, 4).map((stage) => {
+          const count = stage.deals.length;
+          const value = stage.deals.reduce((sum, deal) => sum + (Number(deal.value) || 0), 0);
+          const width = `${Math.max(8, (count / maxDeals) * 100)}%`;
+
+          return (
+            <Link key={stage.id} href="/pipeline" className="bg-card px-4 py-3 transition-colors hover:bg-muted/25">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} />
+                    <span className="truncate text-sm font-medium text-foreground">{stage.name}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{crc(value)}</p>
+                </div>
+                <span className="text-xl font-semibold tabular-nums text-foreground">{count}</span>
+              </div>
+              <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-foreground/45" style={{ width }} />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </DashboardSection>
+  );
+}
 
 const CONV_STATUS: Record<string, string> = {
   NEW: "Nuevo",
@@ -178,10 +261,6 @@ const CONV_STATUS: Record<string, string> = {
   PENDING: "Pendiente",
   RESOLVED: "Resuelto",
 };
-
-// ── Main Dashboard ───────────────────────────────────────────────────────────
-
-const ACTIVE_STAGES = ["Ganado", "Perdido"];
 
 export default function DashboardPage() {
   useRequireAuth();
@@ -235,12 +314,9 @@ export default function DashboardPage() {
     refetchInterval: 120000,
   });
 
-  // ── Parse ──────────────────────────────────────────────────────────────────
-
-  const s = (stats as any) ?? {};
   const t = (todayStats as any) ?? {};
   const pipelineStages: PipelineStage[] = Array.isArray(pipeline) ? pipeline : [];
-  const activeStages = pipelineStages.filter((s) => !ACTIVE_STAGES.includes(s.name));
+  const activeStages = pipelineStages.filter((stage) => !ACTIVE_STAGES.includes(stage.name));
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
   const allInvoices: any[] = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data ?? [];
@@ -248,224 +324,232 @@ export default function DashboardPage() {
     ["SENT", "PARTIALLY_PAID", "OVERDUE"].includes(inv.status ?? inv.collection_state)
   );
   const upcomingInvoices = [...outstandingInvoices].sort(
-    (a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    (a: any, b: any) => new Date(a.due_date ?? 0).getTime() - new Date(b.due_date ?? 0).getTime()
   );
 
-  const pipelineTotalDeals = activeStages.reduce((s, st) => s + st.deals.length, 0);
-  const pipelineTotalValue = activeStages.reduce((s, st) => s + st.deals.reduce((ss, d) => ss + (Number(d.value) || 0), 0), 0);
-  const totalOutstanding = outstandingInvoices.reduce((s: number, inv: any) => s + (Number(inv.balance_due ?? inv.amount) || 0), 0);
-  const urgentTasks = taskList.filter((t: any) => t.priority === "HIGH").length;
-  const hasOverdueInvoices = upcomingInvoices.some((inv: any) => urgency(inv) === "overdue");
-  const unreadCount = t.received_messages || 0;
-
-  const greeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return "Buenos días";
-    if (h < 19) return "Buenas tardes";
-    return "Buenas noches";
-  };
-
-  const isLoading = statsLoading;
+  const overdueInvoices = upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "overdue");
+  const soonInvoices = upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "soon");
+  const priorityInvoices = [...overdueInvoices, ...soonInvoices, ...upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "ok")];
+  const urgentTasks = taskList.filter((task: any) => task.priority === "HIGH");
+  const attentionTasks = [
+    ...urgentTasks,
+    ...taskList.filter((task: any) => task.priority !== "HIGH"),
+  ];
+  const pipelineTotalDeals = activeStages.reduce((sum, stage) => sum + stage.deals.length, 0);
+  const pipelineTotalValue = activeStages.reduce(
+    (sum, stage) => sum + stage.deals.reduce((stageSum, deal) => stageSum + (Number(deal.value) || 0), 0),
+    0,
+  );
+  const totalOutstanding = outstandingInvoices.reduce((sum: number, inv: any) => sum + (Number(inv.balance_due ?? inv.amount) || 0), 0);
+  const unreadCount = Number(t.unread_conversations ?? t.open_conversations ?? t.received_messages ?? 0);
+  const operatingTone: Tone = overdueInvoices.length > 0 || urgentTasks.length > 0 ? "danger" : soonInvoices.length > 0 ? "warning" : "success";
 
   return (
     <div className="min-h-full bg-background">
-      <div className="px-5 py-5 max-w-6xl mx-auto space-y-5">
-        {/* ── Header ─────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-normal text-foreground tracking-[-0.3px]">
-              {greeting()},{" "}
-              <span className="font-medium">{user?.name?.split(" ")[0] || "Usuario"}</span>
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 md:px-6 lg:px-8">
+        <header className="flex flex-col gap-4 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground md:text-2xl">
+                {greeting()}, {user?.name?.split(" ")[0] || "Usuario"}
+              </h1>
+              <StatusPill
+                label={
+                  operatingTone === "danger"
+                    ? "Requiere atención"
+                    : operatingTone === "warning"
+                      ? "Vigilar hoy"
+                      : "Operación estable"
+                }
+                tone={operatingTone}
+              />
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
               {format(new Date(), "EEEE d 'de' MMMM", { locale: es })}
             </p>
           </div>
+
           <Button
             variant="outline"
             size="sm"
-            className="h-7 text-xs gap-1.5"
+            className="h-8 w-fit gap-2 text-xs text-muted-foreground"
             onClick={() => void generateMutation.mutate()}
             disabled={generateMutation.isPending}
           >
             {generateMutation.isPending ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Sparkles className="w-3 h-3" />
+              <Bot className="h-3.5 w-3.5" />
             )}
             Resumen IA
           </Button>
-        </div>
+        </header>
 
-        {/* ── AI Brief ────────────────────────────────────────────────── */}
-        {summaryLoading || isLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-          </div>
-        ) : todaySummary?.generated_text ? (
-          <div className="rounded-lg border border-border bg-card dash-card p-4">
-            <p className="text-[13px] leading-relaxed text-foreground/90">
-              {todaySummary.generated_text}
-            </p>
-          </div>
-        ) : generateMutation.isPending ? (
-          <div className="rounded-lg border border-border bg-card dash-card p-4 flex items-center gap-3">
-            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            <span className="text-[13px] text-muted-foreground">Generando resumen...</span>
-          </div>
-        ) : null}
+        {(summaryLoading || statsLoading || todaySummary?.generated_text || generateMutation.isPending) && (
+          <section className="rounded-lg border border-border bg-card px-4 py-3">
+            {summaryLoading || statsLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-3.5 w-full" />
+                <Skeleton className="h-3.5 w-2/3" />
+              </div>
+            ) : todaySummary?.generated_text ? (
+              <div className="flex gap-3">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <p className="text-sm leading-relaxed text-foreground/90">{todaySummary.generated_text}</p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generando resumen operativo...
+              </div>
+            )}
+          </section>
+        )}
 
-        {/* ── KPI Strip ───────────────────────────────────────────────── */}
-        {!isLoading && (
-          <KpiStrip
-            items={[
-              {
-                label: "Ingresos del mes",
-                value: crc(s.monthly_revenue || 0),
-                sub: s.monthly_revenue > 0 ? undefined : "Sin ingresos",
-              },
-              {
-                label: "Por cobrar",
-                value: crc(totalOutstanding),
-                sub: `${outstandingInvoices.length} facturas`,
-                urgent: hasOverdueInvoices,
-              },
-              {
-                label: "Pipeline",
-                value: String(pipelineTotalDeals),
-                sub: pipelineTotalDeals > 0 ? crc(pipelineTotalValue) : "Sin negocios",
-              },
-              {
-                label: "Mensajes hoy",
-                value: String(unreadCount),
-                sub: urgentTasks > 0 ? `${urgentTasks} urgentes` : undefined,
-              },
-            ]}
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <OperationalMetric
+            label="Por cobrar"
+            value={crc(totalOutstanding)}
+            detail={`${outstandingInvoices.length} facturas abiertas`}
+            tone={overdueInvoices.length > 0 ? "danger" : totalOutstanding > 0 ? "warning" : "success"}
+            loading={statsLoading}
           />
-        )}
+          <OperationalMetric
+            label="Vencidas"
+            value={String(overdueInvoices.length)}
+            detail={overdueInvoices.length > 0 ? `${crc(overdueInvoices.reduce((sum: number, inv: any) => sum + (Number(inv.balance_due ?? inv.amount) || 0), 0))} atrasado` : "Sin atraso"}
+            tone={overdueInvoices.length > 0 ? "danger" : "success"}
+            loading={statsLoading}
+          />
+          <OperationalMetric
+            label="Pipeline abierto"
+            value={String(pipelineTotalDeals)}
+            detail={pipelineTotalDeals > 0 ? crc(pipelineTotalValue) : "Sin negocios activos"}
+            tone="neutral"
+            loading={pipelineLoading}
+          />
+          <OperationalMetric
+            label="Mensajes sin atender"
+            value={String(unreadCount)}
+            detail={urgentTasks.length > 0 ? `${urgentTasks.length} tareas urgentes` : "Sin alerta crítica"}
+            tone={unreadCount > 0 ? "warning" : "success"}
+            loading={statsLoading}
+          />
+        </section>
 
-        {/* ── Pipeline Strip ──────────────────────────────────────────── */}
-        {!pipelineLoading && activeStages.length > 0 && (
-          <div>
-            <SectionHeader title="Pipeline" count={pipelineTotalDeals} linkTo="/pipeline" />
-            <div className="mt-2.5">
-              <PipelineStrip stages={activeStages} />
-            </div>
-          </div>
-        )}
+        {!pipelineLoading && activeStages.length > 0 && <PipelineBand stages={activeStages} />}
 
-        {/* ── Tasks + Invoices ────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Tasks */}
-          <div className="rounded-lg border border-border bg-card dash-card">
-            <SectionHeader title="Tareas" count={taskList.length} linkTo="/tasks" />
-            {taskList.length === 0 ? (
-              <EmptyRow
-                icon={FileText}
-                text="No tenés tareas pendientes"
-                cta="Crear primera tarea"
-                href="/tasks"
-              />
-            ) : (
-              taskList.slice(0, 8).map((task: any) => (
-                <Link key={task.id} href={`/tasks`}>
-                  <div className="flex items-center gap-2.5 px-4 py-2 border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                    <StatusDot status={task.priority === "HIGH" ? "NEW" : task.priority === "MEDIUM" ? "PENDING" : "RESOLVED"} />
-                    <span className="text-[13px] text-foreground truncate flex-1">{task.title}</span>
-                    {task.due_date && (
-                      <span className="text-[11px] text-muted-foreground shrink-0">
-                        {formatDistanceToNow(new Date(task.due_date), { addSuffix: true, locale: es })}
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-
-          {/* Invoices */}
-          <div className="rounded-lg border border-border bg-card dash-card">
-            <SectionHeader title="Por cobrar" count={upcomingInvoices.length} linkTo="/invoices" />
-            {upcomingInvoices.length === 0 ? (
-              <EmptyRow
-                icon={FileText}
-                text="No tenés facturas por cobrar"
-                cta="Ir a facturación"
-                href="/invoices"
-              />
-            ) : (
-              upcomingInvoices.slice(0, 8).map((inv: any) => {
-                const state = urgency(inv);
-                return (
-                  <Link key={inv.id} href={`/invoices`}>
-                    <div className="flex items-center gap-2.5 px-4 py-2 border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                      <StatusDot
-                        status={state === "overdue" ? "NEW" : state === "soon" ? "PENDING" : "RESOLVED"}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] text-foreground truncate">
-                          {inv.client_name || `#${inv.id?.slice(0, 8)}`}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {state === "overdue"
-                            ? `Vencida ${formatDistanceToNow(new Date(inv.due_date), { addSuffix: true, locale: es })}`
-                            : `Vence ${formatDistanceToNow(new Date(inv.due_date), { addSuffix: true, locale: es })}`}
-                        </p>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.85fr)]">
+          <div className="space-y-5">
+            <DashboardSection title="Actividad reciente" count={convList.length} linkTo="/inbox">
+              <AttentionList
+                isEmpty={convList.length === 0}
+                emptyIcon={MessageCircle}
+                emptyText="Sin actividad reciente"
+                emptyCta="Conectar un canal"
+                emptyHref="/settings?tab=channels"
+              >
+                {convList.slice(0, 7).map((conv: any) => {
+                  const statusTone: Tone = conv.status === "NEW" || conv.status === "OPEN" ? "warning" : conv.status === "PENDING" ? "neutral" : "success";
+                  return (
+                    <Link key={conv.id} href={`/inbox/${conv.id}`} className="block transition-colors hover:bg-muted/25">
+                      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
+                        <RowStatus tone={statusTone} />
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {conv.contact?.full_name || "Sin nombre"}
+                            </p>
+                            <span className="shrink-0 text-[11px] text-muted-foreground/70">
+                              {CONV_STATUS[conv.status] || conv.status}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {conv.subject || conv.last_message_preview || "Sin asunto"}
+                          </p>
+                        </div>
+                        {conv.updated_at && (
+                          <span className="hidden text-xs text-muted-foreground sm:block">
+                            {formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true, locale: es })}
+                          </span>
+                        )}
                       </div>
-                      <span className="text-[13px] font-medium text-foreground tabular-nums shrink-0">
-                        {crc(Number(inv.balance_due ?? inv.amount) || 0)}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })
-            )}
+                    </Link>
+                  );
+                })}
+              </AttentionList>
+            </DashboardSection>
           </div>
-        </div>
 
-        {/* ── Activity ────────────────────────────────────────────────── */}
-        <div className="rounded-lg border border-border bg-card dash-card">
-          <SectionHeader title="Actividad reciente" linkTo="/inbox" />
-          {convList.length === 0 ? (
-            <EmptyRow
-              icon={MessageCircle}
-              text="Sin actividad reciente"
-              cta="Conectar un canal"
-              href="/settings?tab=channels"
-            />
-          ) : (
-            convList.slice(0, 5).map((conv: any) => (
-              <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                <div className="flex items-center gap-3 px-4 py-2 border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                  <StatusDot status={conv.status} />
-                  <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-medium text-muted-foreground shrink-0">
-                    {conv.contact?.full_name?.charAt(0) || "?"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-[13px] text-foreground truncate">
-                        {conv.contact?.full_name || "Sin nombre"}
-                      </p>
-                      <span className="text-[10px] text-muted-foreground/60 shrink-0">
-                        {CONV_STATUS[conv.status] || conv.status}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {conv.subject || conv.last_message_preview || "Sin asunto"}
-                    </p>
-                  </div>
-                  {conv.updated_at && (
-                    <span className="text-[11px] text-muted-foreground shrink-0">
-                      {formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true, locale: es })}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            ))
-          )}
+          <aside className="space-y-5">
+            <DashboardSection title="Cobranza crítica" count={priorityInvoices.length} linkTo="/invoices">
+              <AttentionList
+                isEmpty={priorityInvoices.length === 0}
+                emptyIcon={Receipt}
+                emptyText="No tenés facturas por cobrar"
+                emptyCta="Ir a facturación"
+                emptyHref="/invoices"
+              >
+                {priorityInvoices.slice(0, 6).map((inv: any) => {
+                  const state = invoiceUrgency(inv);
+                  const tone: Tone = state === "overdue" ? "danger" : state === "soon" ? "warning" : "neutral";
+                  return (
+                    <Link key={inv.id} href="/invoices" className="block transition-colors hover:bg-muted/25">
+                      <div className="flex items-start gap-3 px-4 py-3">
+                        <RowStatus tone={tone} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {inv.client_name || `#${inv.id?.slice(0, 8)}`}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {dueText(inv.due_date, state === "overdue")}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                          {crc(Number(inv.balance_due ?? inv.amount) || 0)}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </AttentionList>
+            </DashboardSection>
+
+            <DashboardSection title={urgentTasks.length > 0 ? "Tareas urgentes" : "Tareas pendientes"} count={urgentTasks.length || taskList.length} linkTo="/tasks">
+              <AttentionList
+                isEmpty={attentionTasks.length === 0}
+                emptyIcon={CheckSquare}
+                emptyText="No tenés tareas pendientes"
+                emptyCta="Crear primera tarea"
+                emptyHref="/tasks"
+              >
+                {attentionTasks.slice(0, 7).map((task: any) => {
+                  const tone: Tone = task.priority === "HIGH" ? "danger" : task.priority === "MEDIUM" ? "warning" : "neutral";
+                  return (
+                    <Link key={task.id} href="/tasks" className="block transition-colors hover:bg-muted/25">
+                      <div className="flex items-start gap-3 px-4 py-3">
+                        <RowStatus tone={tone} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-foreground">{task.title}</p>
+                          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock3 className="h-3 w-3" />
+                            <span className="truncate">
+                              {task.due_date
+                                ? formatDistanceToNow(new Date(task.due_date), { addSuffix: true, locale: es })
+                                : "Sin fecha"}
+                            </span>
+                          </div>
+                        </div>
+                        {task.priority === "HIGH" && <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </AttentionList>
+            </DashboardSection>
+          </aside>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
