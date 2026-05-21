@@ -1,6 +1,6 @@
 <div align="center">
 
-# PymeHub
+# PymesHub
 
 **La plataforma de operaciones todo-en-uno para pequeñas y medianas empresas.**  
 Gestiona conversaciones, tareas, documentos y clientes — con Insights Automáticos que te dicen exactamente qué está pasando en tu negocio.
@@ -15,9 +15,9 @@ Gestiona conversaciones, tareas, documentos y clientes — con Insights Automát
 
 ---
 
-## ¿Qué es PymeHub?
+## ¿Qué es PymesHub?
 
-PymeHub es un SaaS multi-tenant diseñado para que los dueños de PyMEs tengan **un solo lugar** donde ver todo lo que pasa en su negocio: conversaciones con clientes, tareas del equipo, documentos, automatizaciones — y encima de todo eso, **Insights Automáticos** que analizan tus datos mes a mes y te dicen directamente qué ajustar.
+PymesHub es un SaaS multi-tenant diseñado para que los dueños de PyMEs tengan **un solo lugar** donde ver todo lo que pasa en su negocio: conversaciones con clientes, tareas del equipo, documentos, automatizaciones — y encima de todo eso, **Insights Automáticos** que analizan tus datos mes a mes y te dicen directamente qué ajustar.
 
 No es solo un software de gestión. Es el socio inteligente que le dice al dueño de la tienda:
 
@@ -86,7 +86,7 @@ El motor de análisis compara el mes actual contra el anterior y genera alertas 
 
 ## Arquitectura
 
-PymeHub es un **monorepo pnpm** con un backend canónico (NestJS + PostgreSQL) y múltiples clientes que lo consumen:
+PymesHub es un **monorepo pnpm** con un backend canónico (NestJS + PostgreSQL) y múltiples clientes que lo consumen:
 
 ```
 pymes-saas/
@@ -256,7 +256,7 @@ Abre [http://localhost:5000](http://localhost:5000) y regístrate con tu workspa
 
 ## App Desktop (Windows)
 
-PymeHub tiene una app nativa para Windows basada en [Tauri 2](https://tauri.app). Consume el mismo API de NestJS — no tiene base de datos propia.
+PymesHub tiene una app nativa para Windows basada en [Tauri 2](https://tauri.app). Consume el mismo API de NestJS — no tiene base de datos propia.
 
 ### Prerrequisitos adicionales
 
