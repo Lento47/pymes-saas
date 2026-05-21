@@ -1,12 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
-import { Plus, TrendingUp, TrendingDown } from "lucide-react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import { AlertTriangle } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,105 +25,152 @@ interface PipelineStage {
   deals: StageDeal[];
 }
 
-// ── KPI Card ─────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-function KpiCard({
-  label,
-  value,
-  sub,
-  trend,
-  loading,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  trend?: { direction: "up" | "down"; pct: number };
-  loading?: boolean;
-  accent?: boolean;
+function crc(n: number): string {
+  return `₡${n.toLocaleString("es-CR")}`;
+}
+
+function plural(n: number, singular: string, plural: string): string {
+  return `${n} ${n === 1 ? singular : plural}`;
+}
+
+// ── Brief composer — builds narrative from real data ─────────────────────────
+
+function composeBrief(data: {
+  revenue: number;
+  outstanding: number;
+  outstandingCount: number;
+  pipelineDeals: number;
+  pipelineValue: number;
+  pipelineTopStage: string;
+  messagesToday: number;
+  urgentTasks: number;
+  upcomingInvoices: any[];
+  conversations: any[];
 }) {
+  const lines: string[] = [];
+
+  // Revenue line
+  if (data.revenue > 0) {
+    lines.push(
+      `Este mes llevás ${crc(data.revenue)} en ingresos.`
+    );
+  } else {
+    lines.push("Aún no registrás ingresos este mes.");
+  }
+
+  // Outstanding
+  if (data.outstanding > 0) {
+    lines.push(
+      `Tenés ${plural(data.outstandingCount, "factura", "facturas")} por cobrar (${crc(data.outstanding)}).`
+    );
+  }
+
+  // Pipeline
+  if (data.pipelineDeals > 0) {
+    lines.push(
+      `El pipeline está activo con ${plural(data.pipelineDeals, "negocio", "negocios")} por ${crc(data.pipelineValue)}${data.pipelineTopStage ? ` — la mayoría en ${data.pipelineTopStage.toLowerCase()}` : "."}`
+    );
+  } else {
+    lines.push("No hay negocios en el pipeline.");
+  }
+
+  // Messages
+  if (data.messagesToday > 0) {
+    lines.push(
+      `Hoy entraron ${plural(data.messagesToday, "mensaje nuevo", "mensajes nuevos")}.`
+    );
+  }
+
+  // Urgent items
+  const alerts: string[] = [];
+
+  // Upcoming invoices (< 5 days)
+  const soon = data.upcomingInvoices.filter((inv: any) => {
+    const due = new Date(inv.due_date);
+    const days = Math.ceil((due.getTime() - Date.now()) / 86400000);
+    return days >= 0 && days <= 5;
+  });
+  if (soon.length > 0) {
+    const names = soon
+      .slice(0, 3)
+      .map((inv: any) => inv.client_name || `Factura #${inv.id?.slice(0, 6)}`)
+      .join(", ");
+    alerts.push(
+      `${plural(soon.length, "factura vence pronto", "facturas vencen pronto")}: ${names}`
+    );
+  }
+
+  // Overdue invoices
+  const overdue = data.upcomingInvoices.filter((inv: any) => {
+    const due = new Date(inv.due_date);
+    return due.getTime() < Date.now();
+  });
+  if (overdue.length > 0) {
+    alerts.push(
+      `${plural(overdue.length, "factura vencida", "facturas vencidas")} (${crc(overdue.reduce((s: number, i: any) => s + (Number(i.balance_due ?? i.amount) || 0), 0))})`
+    );
+  }
+
+  if (data.urgentTasks > 0) {
+    alerts.push(
+      `${plural(data.urgentTasks, "tarea urgente pendiente", "tareas urgentes pendientes")}`
+    );
+  }
+
+  return { body: lines.join(" "), alerts };
+}
+
+// ── Pipeline strip ───────────────────────────────────────────────────────────
+
+function PipelineStrip({ stages }: { stages: PipelineStage[] }) {
+  if (stages.length === 0) return null;
+  const maxDeals = Math.max(...stages.map((s) => s.deals.length), 1);
+
   return (
-    <div
-      className={`rounded-lg border dash-card ${
-        accent
-          ? "border-amber-500/20 bg-amber-500/[0.06]"
-          : "border-border bg-card"
-      }`}
-    >
-      <div className="px-3.5 py-3">
-        <div className="text-[10px] font-medium uppercase tracking-[1px] text-muted-foreground mb-1">
-          {label}
-        </div>
-        {loading ? (
-          <Skeleton className="h-7 w-20" />
-        ) : (
-          <>
-            <div
-              className={`text-[26px] font-semibold leading-none tracking-[-0.5px] ${
-                accent ? "text-amber-500" : "text-foreground"
-              }`}
-            >
-              {value}
+    <div className="flex gap-1.5">
+      {stages.map((stage) => {
+        const count = stage.deals.length;
+        const value = stage.deals.reduce(
+          (s, d) => s + (Number(d.value) || 0),
+          0
+        );
+        return (
+          <div
+            key={stage.id}
+            className="flex-1 min-w-0 rounded-md border border-border bg-card dash-card px-3 py-2.5"
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <div
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: stage.color }}
+              />
+              <span className="text-[11px] font-medium text-foreground truncate">
+                {stage.name}
+              </span>
             </div>
-            {(sub || trend) && (
-              <div className="flex items-center gap-2 mt-1">
-                {trend && (
-                  <span
-                    className={`inline-flex items-center gap-0.5 text-[11px] font-medium ${
-                      trend.direction === "up"
-                        ? "text-emerald-500"
-                        : "text-red-500"
-                    }`}
-                  >
-                    {trend.direction === "up" ? (
-                      <TrendingUp className="w-3 h-3" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3" />
-                    )}
-                    {trend.pct}%
-                  </span>
-                )}
-                {sub && (
-                  <span className="text-[11px] text-muted-foreground">
-                    {sub}
-                  </span>
-                )}
+            <div className="text-lg font-semibold text-foreground tabular-nums leading-none">
+              {count}
+            </div>
+            <div className="flex items-baseline gap-2 mt-1">
+              <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${(count / maxDeals) * 100}%`,
+                    backgroundColor: stage.color,
+                    opacity: count > 0 ? 0.7 : 0.15,
+                  }}
+                />
               </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Section Card ─────────────────────────────────────────────────────────────
-
-function SectionCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card dash-card">
-      <div className="px-4 py-2.5 border-b border-border">
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">
-          {title}
-        </h3>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-// ── Row item (conversation, task, invoice) ───────────────────────────────────
-
-function RowItem({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-2 hover:bg-muted/50 transition-colors border-b border-border last:border-0">
-      {children}
+              <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                {crc(value)}
+              </span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -160,46 +206,70 @@ export default function DashboardPage() {
     queryFn: () => api.getConversations({ limit: "5" }),
   });
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery({
+  const { data: tasks } = useQuery({
     queryKey: ["/api/tasks", "dash"],
-    queryFn: () => api.getTasks({ limit: "5" }),
+    queryFn: () => api.getTasks({ limit: "10" }),
   });
 
-  const { data: overdueInvoices, isLoading: invoicesLoading } = useQuery({
-    queryKey: ["/api/invoices", "overdue-widget"],
-    queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }),
+  const { data: invoicesData } = useQuery({
+    queryKey: ["/api/invoices", "dash"],
+    queryFn: () => api.getInvoices({ limit: "50" }),
     refetchInterval: 120000,
   });
 
   // Parse
   const s = (stats as any) ?? {};
   const t = (todayStats as any) ?? {};
-  const pipelineStages: PipelineStage[] = Array.isArray(pipeline) ? pipeline : [];
+  const pipelineStages: PipelineStage[] = Array.isArray(pipeline)
+    ? pipeline
+    : [];
   const activeStages = pipelineStages.filter(
     (s) => !ACTIVE_STAGES.includes(s.name)
-  );
-  const pipelineTotalValue = activeStages.reduce(
-    (sum, stage) =>
-      sum + stage.deals.reduce((s, d) => s + (Number(d.value) || 0), 0),
-    0
-  );
-  const pipelineTotalDeals = activeStages.reduce(
-    (sum, stage) => sum + stage.deals.length,
-    0
   );
 
   const convList = Array.isArray(conversations)
     ? conversations
     : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
-  const overdueList = Array.isArray(overdueInvoices)
-    ? overdueInvoices
-    : overdueInvoices?.data ?? [];
+  const allInvoices: any[] = Array.isArray(invoicesData)
+    ? invoicesData
+    : invoicesData?.data ?? [];
+  const outstandingInvoices = allInvoices.filter((inv: any) =>
+    ["SENT", "PARTIALLY_PAID", "OVERDUE"].includes(
+      inv.status ?? inv.collection_state
+    )
+  );
+  const upcomingInvoices = [...outstandingInvoices].sort(
+    (a: any, b: any) =>
+      new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+  );
 
-  const highPriorityTasks = taskList.filter(
-    (t: any) => t.priority === "HIGH"
-  ).length;
+  // Find top pipeline stage by deal count
+  const topStage = [...activeStages].sort(
+    (a, b) => b.deals.length - a.deals.length
+  )[0];
 
+  const brief = composeBrief({
+    revenue: s.monthly_revenue || 0,
+    outstanding: outstandingInvoices.reduce(
+      (sum: number, inv: any) =>
+        sum + (Number(inv.balance_due ?? inv.amount) || 0),
+      0
+    ),
+    outstandingCount: outstandingInvoices.length,
+    pipelineDeals: activeStages.reduce((s, st) => s + st.deals.length, 0),
+    pipelineValue: activeStages.reduce(
+      (s, st) => s + st.deals.reduce((ss, d) => ss + (Number(d.value) || 0), 0),
+      0
+    ),
+    pipelineTopStage: topStage?.name ?? "",
+    messagesToday: t.received_messages || 0,
+    urgentTasks: taskList.filter((t: any) => t.priority === "HIGH").length,
+    upcomingInvoices,
+    conversations: convList,
+  });
+
+  // Greeting
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return "Buenos días";
@@ -211,239 +281,194 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-full bg-background">
-      {/* Welcome Bar */}
-      <div className="border-b border-border bg-card">
-        <div className="px-5 py-3.5 max-w-7xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-normal text-foreground tracking-[-0.3px]">
-              {greeting()},{" "}
-              <span className="font-medium">
-                {user?.name?.split(" ")[0] || "Usuario"}
-              </span>
-            </h1>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {format(new Date(), "EEEE d 'de' MMMM", { locale: es })}
+      <div className="px-5 py-5 max-w-4xl mx-auto space-y-5">
+        {/* Greeting */}
+        <div>
+          <h1 className="text-xl font-normal text-foreground tracking-[-0.3px]">
+            {greeting()},{" "}
+            <span className="font-medium">
+              {user?.name?.split(" ")[0] || "Usuario"}
+            </span>
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {format(new Date(), "EEEE d 'de' MMMM", { locale: es })}
+          </p>
+        </div>
+
+        {/* Brief */}
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+        ) : (
+          <div className="rounded-lg border border-border bg-card dash-card p-4">
+            <p className="text-sm leading-relaxed text-foreground">
+              {brief.body}
             </p>
-          </div>
-          <Button variant="outline" size="sm" className="h-7 text-xs">
-            <Plus className="w-3 h-3 mr-1" />
-            Nuevo
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="px-5 py-4 max-w-7xl mx-auto space-y-4">
-        {/* KPI Row */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
-          <KpiCard
-            label="Ingresos del mes"
-            value={`₡${(s.monthly_revenue || 0).toLocaleString("es-CR")}`}
-            sub={
-              s.monthly_revenue > 0
-                ? `${(s.monthly_revenue / 1000).toFixed(0)}k este mes`
-                : "Sin ingresos aún"
-            }
-            loading={isLoading}
-          />
-          <KpiCard
-            label="Por cobrar"
-            value={`₡${overdueList
-              .reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0)
-              .toLocaleString("es-CR")}`}
-            sub={`${overdueList.length} facturas`}
-            loading={invoicesLoading}
-          />
-          <KpiCard
-            label="Conversaciones"
-            value={s.activeConversations ?? 0}
-            sub={`${t.received_messages || 0} mensajes hoy`}
-            loading={isLoading}
-          />
-          <KpiCard
-            label="Pipeline activo"
-            value={`₡${pipelineTotalValue.toLocaleString("es-CR")}`}
-            sub={`${pipelineTotalDeals} negocios`}
-            loading={pipelineLoading || isLoading}
-            accent
-          />
-          <KpiCard
-            label="Tareas urgentes"
-            value={highPriorityTasks}
-            sub={`${taskList.length} pendientes`}
-            loading={tasksLoading}
-          />
-        </div>
-
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Left */}
-          <div className="space-y-4">
-            <SectionCard title="Conversaciones recientes">
-              {convList.length === 0 ? (
-                <div className="px-4 py-5 text-center text-xs text-muted-foreground">
-                  No hay conversaciones activas
-                </div>
-              ) : (
-                convList.slice(0, 5).map((conv: any) => (
-                  <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                    <RowItem>
-                      <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-medium text-muted-foreground shrink-0">
-                        {conv.contact?.full_name?.charAt(0) || "?"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] text-foreground truncate">
-                          {conv.contact?.full_name || "Sin nombre"}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground truncate">
-                          {conv.subject || "Sin asunto"}
-                        </p>
-                      </div>
-                      {conv.updated_at && (
-                        <span className="text-[11px] text-muted-foreground shrink-0">
-                          {format(new Date(conv.updated_at), "HH:mm", {
-                            locale: es,
-                          })}
-                        </span>
-                      )}
-                    </RowItem>
-                  </Link>
-                ))
-              )}
-            </SectionCard>
-
-            <SectionCard title="Tareas pendientes">
-              {taskList.length === 0 ? (
-                <div className="px-4 py-5 text-center text-xs text-muted-foreground">
-                  No hay tareas pendientes
-                </div>
-              ) : (
-                taskList.slice(0, 5).map((task: any) => (
-                  <RowItem key={task.id}>
-                    <div
-                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                        task.priority === "HIGH"
-                          ? "bg-red-500"
-                          : task.priority === "MEDIUM"
-                          ? "bg-amber-500"
-                          : "bg-border"
-                      }`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] text-foreground truncate">
-                        {task.title}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {task.department_name}
-                      </p>
-                    </div>
-                    {task.due_date && (
-                      <span className="text-[11px] text-muted-foreground shrink-0">
-                        {format(new Date(task.due_date), "dd MMM", {
-                          locale: es,
-                        })}
-                      </span>
-                    )}
-                  </RowItem>
-                ))
-              )}
-            </SectionCard>
-          </div>
-
-          {/* Right */}
-          <div className="space-y-4">
-            <SectionCard title="Pipeline de ventas">
-              {activeStages.length === 0 ? (
-                <div className="px-4 py-5 text-center text-xs text-muted-foreground">
-                  Sin pipeline configurado.{" "}
-                  <Link
-                    href="/pipeline"
-                    className="text-primary hover:underline"
+            {brief.alerts.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                {brief.alerts.map((alert, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 text-[13px] text-amber-600 dark:text-amber-400"
                   >
-                    Crear etapas
-                  </Link>
-                </div>
-              ) : (
-                activeStages.map((stage) => {
-                  const dealCount = stage.deals.length;
-                  const stageValue = stage.deals.reduce(
-                    (sum, d) => sum + (Number(d.value) || 0),
-                    0
-                  );
-                  const maxDeals = Math.max(
-                    ...activeStages.map((s) => s.deals.length),
-                    1
-                  );
-                  const barWidth = (dealCount / maxDeals) * 100;
-                  return (
-                    <div key={stage.id} className="px-4 py-2.5 border-b border-border last:border-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{ backgroundColor: stage.color }}
-                          />
-                          <span className="text-[13px] font-medium text-foreground">
-                            {stage.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[11px] text-muted-foreground">
-                            {dealCount}{" "}
-                            {dealCount === 1 ? "negocio" : "negocios"}
-                          </span>
-                          <span className="text-[13px] font-medium text-foreground tabular-nums">
-                            ₡{stageValue.toLocaleString("es-CR")}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="w-full h-1 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${barWidth}%`,
-                            backgroundColor: stage.color,
-                            opacity: dealCount > 0 ? 0.7 : 0.15,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </SectionCard>
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{alert}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-            <SectionCard title="Facturas por vencer">
-              {overdueList.length === 0 ? (
-                <div className="px-4 py-5 text-center text-xs text-muted-foreground">
-                  Sin facturas pendientes
+        {/* Pipeline strip */}
+        {!pipelineLoading && activeStages.length > 0 && (
+          <div>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground mb-2.5">
+              Pipeline
+            </h2>
+            <PipelineStrip stages={activeStages} />
+          </div>
+        )}
+
+        {/* Two-column: Tasks + Invoices */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Tasks */}
+          <div className="rounded-lg border border-border bg-card dash-card">
+            <div className="px-4 py-2.5 border-b border-border">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">
+                Tareas pendientes
+              </h2>
+            </div>
+            {taskList.length === 0 ? (
+              <div className="px-4 py-4 text-center text-xs text-muted-foreground">
+                Todo al día
+              </div>
+            ) : (
+              taskList.slice(0, 8).map((task: any) => (
+                <div
+                  key={task.id}
+                  className="flex items-center gap-2.5 px-4 py-2 border-b border-border last:border-0"
+                >
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                      task.priority === "HIGH"
+                        ? "bg-red-500"
+                        : task.priority === "MEDIUM"
+                        ? "bg-amber-500"
+                        : "bg-border"
+                    }`}
+                  />
+                  <span className="text-[13px] text-foreground truncate flex-1">
+                    {task.title}
+                  </span>
+                  {task.due_date && (
+                    <span className="text-[11px] text-muted-foreground shrink-0">
+                      {formatDistanceToNow(new Date(task.due_date), {
+                        addSuffix: true,
+                        locale: es,
+                      })}
+                    </span>
+                  )}
                 </div>
-              ) : (
-                overdueList.slice(0, 5).map((inv: any) => (
-                  <RowItem key={inv.id}>
+              ))
+            )}
+          </div>
+
+          {/* Invoices */}
+          <div className="rounded-lg border border-border bg-card dash-card">
+            <div className="px-4 py-2.5 border-b border-border">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">
+                Facturas por cobrar
+              </h2>
+            </div>
+            {upcomingInvoices.length === 0 ? (
+              <div className="px-4 py-4 text-center text-xs text-muted-foreground">
+                Sin facturas pendientes
+              </div>
+            ) : (
+              upcomingInvoices.slice(0, 8).map((inv: any) => {
+                const due = new Date(inv.due_date);
+                const days = Math.ceil((due.getTime() - Date.now()) / 86400000);
+                const isOverdue = days < 0;
+                const isSoon = days >= 0 && days <= 3;
+                return (
+                  <div
+                    key={inv.id}
+                    className="flex items-center gap-2.5 px-4 py-2 border-b border-border last:border-0"
+                  >
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] text-foreground truncate">
                         {inv.client_name ||
                           `Factura #${inv.id?.slice(0, 8)}`}
                       </p>
-                      {inv.due_date && (
-                        <p className="text-[11px] text-muted-foreground">
-                          Vence{" "}
-                          {format(new Date(inv.due_date), "dd MMM", {
-                            locale: es,
-                          })}
-                        </p>
-                      )}
+                      <p
+                        className={`text-[11px] ${
+                          isOverdue
+                            ? "text-red-500"
+                            : isSoon
+                            ? "text-amber-500"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {isOverdue
+                          ? `Vencida ${formatDistanceToNow(due, {
+                              addSuffix: true,
+                              locale: es,
+                            })}`
+                          : `Vence ${formatDistanceToNow(due, {
+                              addSuffix: true,
+                              locale: es,
+                            })}`}
+                      </p>
                     </div>
                     <span className="text-[13px] font-medium text-foreground tabular-nums shrink-0">
-                      ₡{inv.amount?.toLocaleString("es-CR")}
+                      {crc(Number(inv.balance_due ?? inv.amount) || 0)}
                     </span>
-                  </RowItem>
-                ))
-              )}
-            </SectionCard>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
+
+        {/* Recent activity */}
+        {convList.length > 0 && (
+          <div className="rounded-lg border border-border bg-card dash-card">
+            <div className="px-4 py-2.5 border-b border-border">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">
+                Actividad reciente
+              </h2>
+            </div>
+            {convList.slice(0, 5).map((conv: any) => (
+              <Link key={conv.id} href={`/inbox/${conv.id}`}>
+                <div className="flex items-center gap-3 px-4 py-2 border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer">
+                  <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-medium text-muted-foreground shrink-0">
+                    {conv.contact?.full_name?.charAt(0) || "?"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] text-foreground">
+                      {conv.contact?.full_name || "Sin nombre"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {conv.subject || "Sin asunto"}
+                    </p>
+                  </div>
+                  {conv.updated_at && (
+                    <span className="text-[11px] text-muted-foreground shrink-0">
+                      {formatDistanceToNow(new Date(conv.updated_at), {
+                        addSuffix: true,
+                        locale: es,
+                      })}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
