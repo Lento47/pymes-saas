@@ -1,5 +1,5 @@
 import { useLocation } from 'wouter';
-import { PricingTier } from '@/data/pricing.data';
+import type { PricingTier } from '@/data/pricing.data';
 import { Check, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePaddle } from '@/hooks/use-paddle';

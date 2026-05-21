@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { FAQ } from '@/data/pricing.data';
+import type { FAQ } from '@/data/pricing.data';
 
 interface FAQSectionProps {
   faqs: FAQ[];

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 import { getAuthToken } from '@/lib/api';
 
 // Socket singleton — una sola conexión para toda la app
@@ -12,6 +12,9 @@ export function getSocket(): Socket | null {
 /**
  * Inicializa la conexión WebSocket con el token JWT actual.
  * Llamar una sola vez al hacer login (en App.tsx o en el hook useAuth).
+ *
+ * Seguro para llamar múltiples veces: si el socket está healthy lo reusa,
+ * si está desconectado/reconectando lo reemplaza por uno nuevo.
  */
 // ───────────────────────────────────────────────────────────────────────────
 // IMPORTANTE — URL DEL WEBSOCKET
@@ -29,7 +32,15 @@ const WS_URL = import.meta.env.DEV
     ?? window.location.origin;
 
 export function connectSocket() {
-  if (_socket?.connected) return _socket;
+  // If socket exists and is healthy (connected or actively reconnecting), reuse it
+  if (_socket?.connected || _socket?.active) return _socket;
+
+  // If socket exists but is dead, clean it up first
+  if (_socket) {
+    _socket.removeAllListeners();
+    _socket.disconnect();
+    _socket = null;
+  }
 
   const token = getAuthToken();
   if (!token) return null;
@@ -68,6 +79,7 @@ export function connectSocket() {
  * Desconectar y limpiar el socket (llamar al hacer logout).
  */
 export function disconnectSocket() {
+  _socket?.removeAllListeners();
   _socket?.disconnect();
   _socket = null;
 }

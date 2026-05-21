@@ -1,4 +1,4 @@
-import { AddOn } from '@/data/pricing.data';
+import type { AddOn } from '@/data/pricing.data';
 import { Button } from '@/components/ui/button';
 
 interface AddOnsSectionProps {

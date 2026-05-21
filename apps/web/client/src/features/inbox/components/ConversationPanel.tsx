@@ -219,6 +219,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     }
   }, [msgsLoading, msgList.length, initialLoaded, nearBottom]);
 
+  const uiMessages = useMemo(() => msgList.map(normalizeMessage), [msgList]);
+
   if (!id) return null;
 
   const channelLabel = CHANNEL_LABELS[channelType] || channelType;
@@ -230,8 +232,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       ? "bg-amber-400"
       : "bg-blue-400/50";
   const statusDotSize = "w-1.5 h-1.5 rounded-full";
-
-  const uiMessages = useMemo(() => msgList.map(normalizeMessage), [msgList]);
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-background">
