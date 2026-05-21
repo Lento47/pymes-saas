@@ -71,22 +71,22 @@ function toneClasses(tone: Tone) {
     case "danger":
       return {
         dot: "bg-red-500",
-        text: "text-red-600",
-        bg: "bg-red-500/5",
-        border: "border-red-500/20",
+        text: "text-red-600 dark:text-red-400",
+        bg: "bg-transparent",
+        border: "border-red-500/25",
       };
     case "warning":
       return {
         dot: "bg-amber-500",
-        text: "text-amber-700",
-        bg: "bg-amber-500/5",
-        border: "border-amber-500/20",
+        text: "text-amber-700 dark:text-amber-400",
+        bg: "bg-transparent",
+        border: "border-amber-500/25",
       };
     case "success":
       return {
-        dot: "bg-emerald-500",
-        text: "text-emerald-700",
-        bg: "bg-emerald-500/5",
+        dot: "bg-muted-foreground/35",
+        text: "text-muted-foreground",
+        bg: "bg-transparent",
         border: "border-emerald-500/20",
       };
     default:
@@ -101,8 +101,9 @@ function toneClasses(tone: Tone) {
 
 function StatusPill({ label, tone = "neutral" }: { label: string; tone?: Tone }) {
   const t = toneClasses(tone);
+  const borderClass = tone === "success" ? "border-border" : t.border;
   return (
-    <span className={`inline-flex h-5 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium ${t.bg} ${t.border} ${t.text}`}>
+    <span className={`inline-flex h-5 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium ${t.bg} ${borderClass} ${t.text}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />
       {label}
     </span>
@@ -162,14 +163,15 @@ function OperationalMetric({
   loading?: boolean;
 }) {
   const t = toneClasses(tone);
+  const showStatusDot = tone === "danger" || tone === "warning";
 
   return (
-    <div className={`rounded-lg border bg-card px-4 py-3 ${t.border}`}>
+    <div className="rounded-lg border border-border bg-card px-4 py-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           {label}
         </span>
-        <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />
+        {showStatusDot && <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />}
       </div>
       {loading ? (
         <Skeleton className="h-7 w-24" />
@@ -237,7 +239,7 @@ function PipelineBand({ stages }: { stages: PipelineStage[] }) {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} />
+                    <span className="h-2 w-2 shrink-0 rounded-full border border-border bg-muted-foreground/30" />
                     <span className="truncate text-sm font-medium text-foreground">{stage.name}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{crc(value)}</p>
@@ -356,10 +358,10 @@ export default function DashboardPage() {
               <StatusPill
                 label={
                   operatingTone === "danger"
-                    ? "Requiere atención"
+                    ? "Atención requerida"
                     : operatingTone === "warning"
-                      ? "Vigilar hoy"
-                      : "Operación estable"
+                      ? "Revisar hoy"
+                      : "Sin pendientes críticos"
                 }
                 tone={operatingTone}
               />
@@ -411,14 +413,14 @@ export default function DashboardPage() {
             label="Por cobrar"
             value={crc(totalOutstanding)}
             detail={`${outstandingInvoices.length} facturas abiertas`}
-            tone={overdueInvoices.length > 0 ? "danger" : totalOutstanding > 0 ? "warning" : "success"}
+            tone={overdueInvoices.length > 0 ? "danger" : "neutral"}
             loading={statsLoading}
           />
           <OperationalMetric
             label="Vencidas"
             value={String(overdueInvoices.length)}
             detail={overdueInvoices.length > 0 ? `${crc(overdueInvoices.reduce((sum: number, inv: any) => sum + (Number(inv.balance_due ?? inv.amount) || 0), 0))} atrasado` : "Sin atraso"}
-            tone={overdueInvoices.length > 0 ? "danger" : "success"}
+            tone={overdueInvoices.length > 0 ? "danger" : "neutral"}
             loading={statsLoading}
           />
           <OperationalMetric
@@ -431,8 +433,8 @@ export default function DashboardPage() {
           <OperationalMetric
             label="Mensajes sin atender"
             value={String(unreadCount)}
-            detail={urgentTasks.length > 0 ? `${urgentTasks.length} tareas urgentes` : "Sin alerta crítica"}
-            tone={unreadCount > 0 ? "warning" : "success"}
+            detail={urgentTasks.length > 0 ? `${urgentTasks.length} tareas urgentes` : "Sin conversaciones pendientes"}
+            tone={unreadCount > 0 ? "warning" : "neutral"}
             loading={statsLoading}
           />
         </section>
