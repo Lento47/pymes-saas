@@ -6,6 +6,7 @@ import { useTheme } from "@/components/providers/theme-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { SearchDialog } from "@/components/shared/search-dialog";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
@@ -36,27 +37,6 @@ function navLabel(copy: Record<string, any>, key: NavKey, isBeta?: boolean): str
   if (key === "settings") return copy.settings;
   if (key === "help") return copy.help;
   return copy.nav[key] ?? key;
-}
-
-function getWorkspaceGradient(name: string): { gradient: string; text: string } {
-  const gradients = [
-    { gradient: "linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)", text: "text-white" },
-    { gradient: "linear-gradient(135deg, #a855f7 0%, #6d28d9 100%)", text: "text-white" },
-    { gradient: "linear-gradient(135deg, #ec4899 0%, #be185d 100%)", text: "text-white" },
-    { gradient: "linear-gradient(135deg, #f43f5e 0%, #be123c 100%)", text: "text-white" },
-    { gradient: "linear-gradient(135deg, #f97316 0%, #c2410c 100%)", text: "text-white" },
-    { gradient: "linear-gradient(135deg, #eab308 0%, #854d0e 100%)", text: "text-white" },
-    { gradient: "linear-gradient(135deg, #10b981 0%, #065f46 100%)", text: "text-white" },
-    { gradient: "linear-gradient(135deg, #14b8a6 0%, #0d4f4a 100%)", text: "text-white" },
-    { gradient: "linear-gradient(135deg, #06b6d4 0%, #084e62 100%)", text: "text-white" },
-    { gradient: "linear-gradient(135deg, #6366f1 0%, #3730a3 100%)", text: "text-white" },
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = ((hash << 5) - hash) + name.charCodeAt(i);
-    hash = hash & hash;
-  }
-  return gradients[Math.abs(hash) % gradients.length];
 }
 
 interface NavGroup {
@@ -144,6 +124,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     const fk = map[key] || key;
     return features?.features?.[fk] !== false;
   };
+  const canShowNavItem = (key: string): boolean => {
+    const minPlan = PLAN_MIN[key];
+    if (minPlan) {
+      const plan = user?.workspace?.plan ?? 'FREE';
+      const order = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
+      if (order.indexOf(plan) < order.indexOf(minPlan)) return false;
+    }
+    return isFeatureEnabled(key);
+  };
   const { data: overdueData } = useQuery({
     queryKey: ["/api/tasks/overdue"], queryFn: api.getOverdueTasks, refetchInterval: 60000,
   });
@@ -153,6 +142,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const ws = user?.workspace?.name ?? copy.workspaceFallback;
   const name = user?.name ?? user?.email ?? "—";
   const initials = name.slice(0, 2).toUpperCase();
+  const workspaceInitial = ws.trim().charAt(0).toUpperCase() || "P";
   const multipleWorkspaces = Array.isArray(myWorkspaces) && myWorkspaces.length > 1;
   const isActive = (p: string) => p === "/" ? location === "/" : location.startsWith(p);
   const badgeVal = (bk?: string) => bk === "unread" ? unreadCount : bk === "overdue" ? overdueCount : 0;
@@ -220,9 +210,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
       <aside
         className={cn(
-          "flex flex-col shrink-0 transition-all duration-300 ease-out overflow-hidden bg-sidebar/95 backdrop-blur-xl border-r border-border/60",
+          "flex flex-col shrink-0 transition-all duration-200 ease-out overflow-hidden bg-sidebar border-r border-border",
           sidebarOpen ? "w-[260px]" : "w-0 border-r-0",
-          isMobile && "fixed left-0 top-0 z-50 shadow-lg h-[100dvh]",
+          isMobile && "fixed left-0 top-0 z-50 shadow-xl h-[100dvh]",
           isMobile && sidebarOpen && "w-[260px] border-r",
         )}
       >
@@ -240,55 +230,48 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border/40">
+        <div className="shrink-0 px-3 pt-3 pb-3 border-b border-border">
           <div ref={wsMenuRef} className="relative">
             <button
               className={cn(
-                "group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
-                "active:scale-95 relative overflow-hidden",
-                !wsMenuOpen && "hover:shadow-lg hover:shadow-black/20"
+                "group w-full flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                wsMenuOpen
+                  ? "border-primary/25 bg-sidebar-accent/45"
+                  : "border-border/70 bg-sidebar-accent/20 hover:bg-sidebar-accent/35"
               )}
               onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
-              style={{
-                background: wsMenuOpen ? "hsl(var(--sidebar-accent) / 0.4)" : getWorkspaceGradient(ws).gradient,
-                cursor: multipleWorkspaces ? "pointer" : "default",
-                boxShadow: wsMenuOpen ? "0 0 0 1px hsl(var(--primary) / 0.3)" : "0 4px 12px rgba(0, 0, 0, 0.15)"
-              }}
+              style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
+              aria-expanded={multipleWorkspaces ? wsMenuOpen : undefined}
             >
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300" style={{ background: "radial-gradient(circle at top-right, rgba(255,255,255,0.3))" }}></div>
-
-              <div className="flex-1 min-w-0 relative z-10">
-                <p className="text-sm font-bold text-white truncate leading-tight drop-shadow-sm">{ws}</p>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/35 text-xs font-semibold text-foreground">
+                {workspaceInitial}
               </div>
-
-              <div className="flex flex-col items-center justify-center shrink-0 gap-0.5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold leading-tight text-foreground">{ws}</p>
+                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                  {multipleWorkspaces ? copy.wsAvailable(myWorkspaces?.length ?? 0) : user?.workspace?.plan ?? user?.role}
+                </p>
+              </div>
+              {multipleWorkspaces && (
                 <ChevronDown
                   className={cn(
-                    "w-3.5 h-3.5 text-muted-foreground/80 transition-transform duration-300 rotate-180",
-                    multipleWorkspaces && wsMenuOpen && "text-primary/70",
-                    !multipleWorkspaces && "opacity-30 cursor-default"
+                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                    wsMenuOpen && "rotate-180 text-foreground"
                   )}
                 />
-                <ChevronDown
-                  className={cn(
-                    "w-3.5 h-3.5 text-muted-foreground/80 transition-transform duration-300",
-                    multipleWorkspaces && wsMenuOpen && "text-primary/70",
-                    !multipleWorkspaces && "opacity-30 cursor-default"
-                  )}
-                />
-              </div>
+              )}
             </button>
 
             {wsMenuOpen && multipleWorkspaces && (
-              <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/60 bg-sidebar shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="p-2 max-h-[280px] overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-2 rounded-lg border border-border bg-sidebar shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="p-1.5 max-h-[280px] overflow-y-auto minimal-scrollbar">
                   {(myWorkspaces as any[]).map((m) => {
                     const isCurrent = m.workspace.id === user?.workspace?.id;
                     return (
                       <button
                         key={m.workspace.id}
                         className={cn(
-                          "group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-left",
+                          "group w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-left",
                           isCurrent
                             ? "bg-primary/10 text-foreground"
                             : "text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground"
@@ -298,7 +281,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                           if (!isCurrent) switchWorkspace(m.workspace.slug);
                         }}
                       >
-                        <div className="w-6 h-6 rounded-md bg-sidebar-accent/60 flex items-center justify-center shrink-0 text-xs font-semibold">
+                        <div className="w-6 h-6 rounded-md border border-border/60 bg-sidebar-accent/40 flex items-center justify-center shrink-0 text-xs font-semibold">
                           {m.workspace.name.charAt(0).toUpperCase()}
                         </div>
                         <span className="flex-1 text-sm truncate font-medium">{m.workspace.name}</span>
@@ -310,7 +293,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   })}
                 </div>
                 {multipleWorkspaces && (
-                  <div className="border-t border-border/40 px-3 py-2 bg-sidebar-accent/20">
+                  <div className="border-t border-border px-3 py-2 bg-sidebar-accent/15">
                     <p className="text-xs text-muted-foreground/80">{copy.wsAvailable(myWorkspaces?.length ?? 0)}</p>
                   </div>
                 )}
@@ -319,7 +302,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sidebar-accent/20 hover:scrollbar-thumb-sidebar-accent/30">
+        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5 minimal-scrollbar">
           {ws.startsWith("Admin Hub —") && (myWorkspaces as any[])?.length > 1 && (
             <div className="mx-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300/90 leading-relaxed">
               {copy.adminHint}
@@ -327,42 +310,34 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           )}
           {NAV_GROUPS.map((group) => (
             <div key={group.key} className="space-y-1.5">
-              <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-2">
-                <div className="w-1 h-1 rounded-full bg-primary/40" />
+              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/65 flex items-center gap-2">
+                <div className="h-px w-3 bg-border" />
                 <span>{(copy.groups as any)[group.key]}</span>
               </div>
               <div className="space-y-1">
-                {group.items.filter(({ key }) => {
-                  const minPlan = PLAN_MIN[key];
-                  if (minPlan) {
-                    const plan = user?.workspace?.plan ?? 'FREE';
-                    const order = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
-                    if (order.indexOf(plan) < order.indexOf(minPlan)) return false;
-                  }
-                  return isFeatureEnabled(key);
-                }).map(({ path, icon: Icon, key, badge: bk }) => {
+                {group.items.filter(({ key }) => canShowNavItem(key)).map(({ path, icon: Icon, key, badge: bk }) => {
                   const active = isActive(path);
                   const b = badgeVal(bk);
                   return (
                     <Link key={path} href={path}>
                       <div
                         className={cn(
-                          "group relative flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
+                          "group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
                           active
-                            ? "bg-primary/10 text-primary font-medium shadow-sm"
-                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+                            ? "bg-sidebar-accent/55 text-foreground font-medium"
+                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
                         )}
                       >
                         {active && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-primary transition-all duration-300" />
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full bg-primary" />
                         )}
 
                         <Icon
                           className={cn(
-                            "w-4 h-4 shrink-0 transition-all duration-200",
-                            active && "scale-110"
+                            "w-4 h-4 shrink-0 transition-colors",
+                            active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                           )}
-                          strokeWidth={active ? 2.5 : 1.8}
+                          strokeWidth={active ? 2.2 : 1.8}
                         />
 
                         <span className="flex-1 text-sm">{navLabel(copy, key, isBeta)}</span>
@@ -370,10 +345,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                         {b > 0 && (
                           <span
                             className={cn(
-                              "text-xs font-bold px-2 py-0.5 rounded-full leading-none transition-all duration-200",
+                              "text-[11px] font-semibold px-1.5 py-0.5 rounded-md leading-none transition-colors",
                               bk === "overdue"
-                                ? "bg-destructive/20 text-destructive"
-                                : "bg-primary/20 text-primary"
+                                ? "bg-destructive/10 text-destructive"
+                                : "bg-sidebar-accent text-foreground"
                             )}
                           >
                             {b}
@@ -389,8 +364,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           {user?.is_platform_admin && (
             <div className="space-y-1.5 pt-2 border-t border-border/40">
-              <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-amber-400/80 flex items-center gap-2">
-                <div className="w-1 h-1 rounded-full bg-amber-400/30" />
+              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-500/80 flex items-center gap-2">
+                <div className="h-px w-3 bg-amber-500/30" />
                 <span>{copy.admin}</span>
               </div>
               <div className="space-y-1">
@@ -400,10 +375,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   return (
                     <Link key={href} to={href}
                       className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200",
+                        "flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
                         active
-                          ? "bg-amber-500/10 text-amber-400 font-medium"
-                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+                          ? "bg-amber-500/10 text-foreground font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
                       )}
                     >
                       <Icon className="w-4 h-4 shrink-0" strokeWidth={active ? 2.5 : 1.8} />
@@ -418,20 +393,20 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
         <div className="shrink-0 px-3 pb-2">
           <Link to="/settings"
-            className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+            className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
           >
             <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
             <span className="flex-1 text-sm text-left">{copy.settingsButton}</span>
           </Link>
         </div>
 
-        <div className="shrink-0 border-t border-border/40 px-3 py-3 pb-safe space-y-3 bg-sidebar-accent/20">
-          <div className="flex items-center gap-1 px-2">
+        <div className="shrink-0 border-t border-border px-3 py-3 pb-safe space-y-2 bg-sidebar-accent/10">
+          <div className="grid grid-cols-2 gap-2">
             <button
               onClick={toggle}
               className={cn(
-                "p-2 rounded-lg transition-all duration-200 flex-1 flex items-center justify-center",
-                "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+                "h-8 rounded-md transition-colors flex items-center justify-center",
+                "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
               )}
               aria-label={theme === "dark" ? copy.lightMode : copy.darkMode}
               title={theme === "dark" ? copy.lightMode : copy.darkMode}
@@ -442,13 +417,13 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 <Moon className="w-4 h-4" />
               )}
             </button>
-            <div className="flex-1">
+            <div className="h-8">
               <LanguageSwitcher />
             </div>
           </div>
 
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sidebar-accent/30 hover:bg-sidebar-accent/50 transition-all duration-200">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0 text-xs font-bold text-primary-foreground shadow-sm">
+          <div className="flex items-center gap-3 rounded-md border border-border/60 bg-background/20 px-2.5 py-2">
+            <div className="w-7 h-7 rounded-md border border-border/60 bg-sidebar-accent/45 flex items-center justify-center shrink-0 text-xs font-semibold text-foreground">
               {initials}
             </div>
             <div className="flex-1 min-w-0">
@@ -470,12 +445,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="shrink-0 flex items-center gap-3 px-3 lg:px-6 py-2.5 border-b border-border/40 bg-background/80 backdrop-blur-sm relative z-40 pt-safe">
+        <header className="shrink-0 flex items-center gap-3 px-3 lg:px-5 py-2.5 border-b border-border bg-background/95 relative z-40 pt-safe">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
-              "p-2 rounded-lg transition-all duration-200 shrink-0",
-              "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+              "p-2 rounded-md transition-colors shrink-0",
+              "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             )}
             title={sidebarOpen ? copy.closeMenu : copy.openMenu}
           >
@@ -486,13 +461,23 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             )}
           </button>
 
-          <div className="flex-1" />
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="hidden md:flex h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+            title="Buscar (Ctrl+K)"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span className="flex-1">{copy.searchPlaceholder}</span>
+            <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">Ctrl K</kbd>
+          </button>
+
+          <div className="flex-1 md:hidden" />
 
           <button
             onClick={() => setSearchOpen(true)}
             className={cn(
-              "p-2 rounded-lg transition-all duration-200",
-              "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
+              "p-2 rounded-md transition-colors md:hidden",
+              "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             )}
             title="Buscar (Ctrl+K)"
           >
@@ -501,17 +486,19 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           <NotificationBell />
 
-          <span className="hidden sm:inline-block text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-3 py-1.5 rounded-lg bg-sidebar-accent/20">
+          <span className="hidden sm:inline-block text-xs font-medium text-muted-foreground/70 px-2.5 py-1 rounded-md border border-border bg-card">
             {user?.role}
           </span>
         </header>
 
         <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto minimal-scrollbar pb-16 lg:pb-0">
           {children}
         </div>
       </main>
+
+      <MobileBottomNav onMenuClick={() => setSidebarOpen(true)} isItemVisible={canShowNavItem} />
 
     </div>
   );

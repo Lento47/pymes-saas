@@ -253,6 +253,43 @@ html.light .dash-card {
 /* Safe area insets for notched phones */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* Minimal scrollbars for app shell surfaces */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--fg-3) / 0.28) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--fg-3) / 0.22);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--fg-3) / 0.42);
+}
+
+.minimal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--fg-3) / 0.22) transparent;
+}
+
+.minimal-scrollbar::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
 
 /* ── WhatsApp-style message entry animation ── */
 @keyframes slide-up-in {
