@@ -13,8 +13,8 @@ import { api } from "@/lib/api";
 import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
   Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot,
-  Sun, Moon, Search, Menu, X, ChevronRight, Building2,
-  CreditCard, Layers, Plug, PlugZap, Shuffle, BrainCircuit, ShieldCheck, UserCircle, LifeBuoy, LayoutTemplate,
+  Sun, Moon, Search, Menu, X,
+  ShieldCheck, LayoutTemplate,
 } from "lucide-react";
 
 type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "notifications" | "settings" | "help";
@@ -119,10 +119,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 1024,
   );
-  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
-  const [dropdownPos, setDropdownPos] = useState({ left: 0, top: 0 });
   const wsMenuRef = useRef<HTMLDivElement>(null);
-  const settingsMenuRef = useRef<HTMLDivElement>(null);
   const copy = messages.sidebar;
 
   useNotificationsSocket();
@@ -172,7 +169,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
-    setSettingsMenuOpen(false);
   }, [location, isMobile]);
 
   // Lock body scroll when mobile sidebar is open
@@ -184,10 +180,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     }
     return () => { document.body.style.overflow = ''; };
   }, [isMobile, sidebarOpen]);
-
-  useEffect(() => {
-    if (!sidebarOpen) setSettingsMenuOpen(false);
-  }, [sidebarOpen]);
 
   // Close workspace menu on outside click
   useEffect(() => {
@@ -424,19 +416,13 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
-        <div className="shrink-0 px-3 pb-2" ref={settingsMenuRef}>
-          <button
-            onClick={() => {
-              const rect = settingsMenuRef.current?.getBoundingClientRect();
-              if (rect) setDropdownPos({ left: rect.right + 8, top: Math.min(rect.top + 4, window.innerHeight - 460) });
-              setSettingsMenuOpen(o => !o);
-            }}
+        <div className="shrink-0 px-3 pb-2">
+          <Link to="/settings"
             className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40"
           >
             <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
             <span className="flex-1 text-sm text-left">{copy.settingsButton}</span>
-            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", settingsMenuOpen && "rotate-180")} />
-          </button>
+          </Link>
         </div>
 
         <div className="shrink-0 border-t border-border/40 px-3 py-3 pb-safe space-y-3 bg-sidebar-accent/20">
@@ -527,62 +513,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      {/* ── Settings Flyout with organized sections ── */}
-      {settingsMenuOpen && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setSettingsMenuOpen(false)} />
-          <div
-            className="fixed z-50 rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden animate-in fade-in slide-in-from-left-2 duration-150"
-            style={{ left: dropdownPos.left, top: dropdownPos.top, width: 240, maxHeight: 460 }}
-          >
-            <div className="p-2 max-h-[440px] overflow-y-auto space-y-3">
-              {[
-                { label: copy.settingsFlyout.general, items: [
-                  { icon: UserCircle, label: copy.settingsFlyout.profile, href: "/settings?tab=profile" },
-                  { icon: Building2, label: copy.settingsFlyout.workspace, href: "/settings?tab=workspace" },
-                  { icon: UserCircle, label: copy.settingsFlyout.onboarding, href: "/onboarding" },
-                  { icon: LifeBuoy, label: copy.settingsFlyout.support, href: "/support" },
-                ]},
-                { label: copy.settingsFlyout.peopleAndTeam, items: [
-                  { icon: Users, label: copy.settingsFlyout.members, href: "/settings?tab=members" },
-                  { icon: Layers, label: copy.settingsFlyout.departments, href: "/settings?tab=departments" },
-                ]},
-                { label: copy.settingsFlyout.channelsAndFlows, items: [
-                  { icon: PlugZap, label: copy.settingsFlyout.channels, href: "/settings?tab=channels" },
-                  { icon: Shuffle, label: copy.settingsFlyout.routing, href: "/settings?tab=routing" },
-                ]},
-                { label: copy.settingsFlyout.authentication, items: [
-                  { icon: Shield, label: copy.settingsFlyout.samlSso, href: "/settings?tab=saml" },
-                ]},
-                { label: copy.settingsFlyout.ai, items: [
-                  { icon: BrainCircuit, label: copy.settingsFlyout.artificialIntelligence, href: "/settings?tab=ai" },
-                ]},
-                { label: copy.settingsFlyout.financeAndPlatform, items: [
-                  { icon: CreditCard, label: copy.settingsFlyout.billing, href: "/settings?tab=billing" },
-                  { icon: ShieldCheck, label: copy.settingsFlyout.platform, href: "/settings?tab=platform" },
-                ]},
-              ].map((group) => (
-                <div key={group.label} className="space-y-1 pb-3 border-b border-border/40 last:border-b-0 last:pb-0">
-                  <div className="px-3 pt-1 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
-                    {group.label}
-                  </div>
-                  {group.items.map((item) => {
-                    return (
-                      <Link key={item.href} to={item.href}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground transition-all"
-                        onClick={() => setSettingsMenuOpen(false)}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0" />
-                        <span>{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }
