@@ -269,7 +269,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-full bg-background">
-      <div className="px-5 py-5 max-w-4xl mx-auto space-y-5">
+      <div className="px-5 py-5 max-w-6xl mx-auto space-y-5">
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between">
           <div>
