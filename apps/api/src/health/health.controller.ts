@@ -1,4 +1,4 @@
-import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
+import { Controller, Get, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../common/prisma/prisma.service";
 
@@ -11,6 +11,8 @@ interface HealthCheck {
 
 @Controller("health")
 export class HealthController {
+  private readonly logger = new Logger(HealthController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
@@ -35,7 +37,9 @@ export class HealthController {
     };
   }
 
-  /** Readiness: checks all dependencies. Returns 503 if anything is broken (K8s readiness probe). */
+  /** Readiness: checks all dependencies. Always returns 200 so Railway's
+   *  health monitoring doesn't flag false negatives. The `healthy` boolean
+   *  and per-check status tell you what's actually broken. */
   @Get("ready")
   async ready() {
     const checks: Record<string, HealthCheck> = {};
@@ -46,21 +50,25 @@ export class HealthController {
     this.checkRedisConfig(checks);
     this.checkMemory(checks);
 
-    const ready = Object.values(checks).every((check) => check.status === "ok");
-    const response = {
-      status: ready ? "ok" : "error",
+    const healthy = Object.values(checks).every((check) => check.status === "ok");
+
+    if (!healthy) {
+      const failures = Object.entries(checks)
+        .filter(([, c]) => c.status === "error")
+        .map(([name, c]) => `${name}: ${c.detail}`)
+        .join("; ");
+      this.logger.warn(`Health check degraded: ${failures}`);
+    }
+
+    return {
+      status: healthy ? "ok" : "degraded",
+      healthy,
       service: "pymes-api",
       uptime_seconds: Math.floor(process.uptime()),
       checks,
       timestamp: new Date().toISOString(),
       version: process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? null,
     };
-
-    if (!ready) {
-      throw new ServiceUnavailableException(response);
-    }
-
-    return response;
   }
 
   // ── Private checkers ──
