@@ -189,8 +189,16 @@ export const MessageBubble = function MessageBubble({
     }
   };
 
+  const entryClass = isNew
+    ? message.direction === "INTERNAL"
+      ? "message-entry-system"
+      : isOutbound
+        ? "message-entry-outbound"
+        : "message-entry-inbound"
+    : "";
+
   return (
-    <div className={`flex gap-2 px-1 ${isOutbound ? "justify-end" : ""} ${isNew ? "animate-slide-up-in" : ""} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
+    <div className={`flex gap-2 px-1 ${isOutbound ? "justify-end" : ""} ${entryClass} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
       {!isOutbound && !isConsecutive && (
         <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-auto ring-1 ring-border/50 overflow-hidden" aria-label={`Avatar de ${senderLabel}`}>
           {contactAvatarUrl ? (
