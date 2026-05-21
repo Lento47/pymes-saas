@@ -3,11 +3,11 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CreateDepartmentDto } from './dto/create-department.dto';
-import { UpdateDepartmentDto } from './dto/update-department.dto';
-import { AddMemberDto } from './dto/add-member.dto';
+} from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CreateDepartmentDto } from "./dto/create-department.dto";
+import { UpdateDepartmentDto } from "./dto/update-department.dto";
+import { AddMemberDto } from "./dto/add-member.dto";
 
 @Injectable()
 export class DepartmentsService {
@@ -18,7 +18,7 @@ export class DepartmentsService {
   async findAll(workspaceId: string) {
     return this.prisma.department.findMany({
       where: { workspace_id: workspaceId },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
       include: {
         members: {
           include: {
@@ -43,7 +43,7 @@ export class DepartmentsService {
         _count: { select: { conversations: true } },
       },
     });
-    if (!dept) throw new NotFoundException('Departamento no encontrado.');
+    if (!dept) throw new NotFoundException("Departamento no encontrado.");
     return dept;
   }
 
@@ -53,7 +53,7 @@ export class DepartmentsService {
     const exists = await this.prisma.department.findFirst({
       where: { workspace_id: workspaceId, name: dto.name },
     });
-    if (exists) throw new ConflictException('Ya existe un departamento con ese nombre.');
+    if (exists) throw new ConflictException("Ya existe un departamento con ese nombre.");
 
     return this.prisma.department.create({
       data: {
@@ -74,7 +74,7 @@ export class DepartmentsService {
       const conflict = await this.prisma.department.findFirst({
         where: { workspace_id: workspaceId, name: dto.name, NOT: { id } },
       });
-      if (conflict) throw new ConflictException('Nombre de departamento duplicado.');
+      if (conflict) throw new ConflictException("Nombre de departamento duplicado.");
     }
 
     return this.prisma.department.update({
@@ -116,12 +116,12 @@ export class DepartmentsService {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: dto.user_id },
       },
     });
-    if (!membership) throw new BadRequestException('El usuario no pertenece a este workspace.');
+    if (!membership) throw new BadRequestException("El usuario no pertenece a este workspace.");
 
     const existing = await this.prisma.departmentMember.findUnique({
       where: { department_id_user_id: { department_id: deptId, user_id: dto.user_id } },
     });
-    if (existing) throw new ConflictException('El usuario ya es miembro del departamento.');
+    if (existing) throw new ConflictException("El usuario ya es miembro del departamento.");
 
     return this.prisma.departmentMember.create({
       data: {
@@ -141,7 +141,7 @@ export class DepartmentsService {
     const member = await this.prisma.departmentMember.findUnique({
       where: { department_id_user_id: { department_id: deptId, user_id: userId } },
     });
-    if (!member) throw new NotFoundException('Miembro no encontrado.');
+    if (!member) throw new NotFoundException("Miembro no encontrado.");
     await this.prisma.departmentMember.delete({
       where: { department_id_user_id: { department_id: deptId, user_id: userId } },
     });

@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import { QUEUE_NAMES } from './queues.constants';
+import { Injectable } from "@nestjs/common";
+import { InjectQueue } from "@nestjs/bullmq";
+import { Queue } from "bullmq";
+import { QUEUE_NAMES } from "./queues.constants";
 
 @Injectable()
 export class QueueService {
@@ -27,17 +27,17 @@ export class QueueService {
 
   async enqueueClassifier(messageId: string, workspaceId: string): Promise<void> {
     await this.classifierQueue.add(
-      'classify-message',
+      "classify-message",
       { messageId, workspaceId },
-      { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
+      { attempts: 3, backoff: { type: "exponential", delay: 1000 } },
     );
   }
 
   async enqueueDocument(documentId: string, workspaceId: string): Promise<void> {
     await this.documentQueue.add(
-      'process-document',
+      "process-document",
       { documentId, workspaceId },
-      { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
+      { attempts: 3, backoff: { type: "exponential", delay: 1000 } },
     );
   }
 
@@ -48,9 +48,9 @@ export class QueueService {
     triggerEntityId: string,
   ): Promise<void> {
     await this.automationQueue.add(
-      'run-automation',
+      "run-automation",
       { ruleId, workspaceId, triggerEntityType, triggerEntityId },
-      { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
+      { attempts: 3, backoff: { type: "exponential", delay: 1000 } },
     );
   }
 
@@ -61,12 +61,12 @@ export class QueueService {
    */
   async enqueueHaciendaSubmit(invoiceId: string, workspaceId: string): Promise<void> {
     await this.haciendaQueue.add(
-      'submit-invoice',
+      "submit-invoice",
       { invoiceId, workspaceId },
       {
         jobId: invoiceId,
         attempts: 3,
-        backoff: { type: 'exponential', delay: 5_000 },
+        backoff: { type: "exponential", delay: 5_000 },
         removeOnComplete: 100,
         removeOnFail: 200,
       },

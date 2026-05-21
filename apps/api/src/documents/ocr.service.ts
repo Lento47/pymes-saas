@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Readable } from 'stream';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Readable } from "stream";
 
 /**
  * OCR / text extraction service.
@@ -20,16 +20,14 @@ export class OcrService {
   constructor(private readonly config: ConfigService) {}
 
   isEnabled(): boolean {
-    const v = this.config.get<string>('DOCUMENT_OCR_ENABLED');
-    return v === '1' || v === 'true';
+    const v = this.config.get<string>("DOCUMENT_OCR_ENABLED");
+    return v === "1" || v === "true";
   }
 
   private maxBytes(): number {
-    const raw = this.config.get<string | number>('DOCUMENT_OCR_MAX_BYTES');
-    const n = typeof raw === 'string' ? parseInt(raw, 10) : raw;
-    return Number.isFinite(n as number) && (n as number) > 0
-      ? (n as number)
-      : 10 * 1024 * 1024;
+    const raw = this.config.get<string | number>("DOCUMENT_OCR_MAX_BYTES");
+    const n = typeof raw === "string" ? parseInt(raw, 10) : raw;
+    return Number.isFinite(n as number) && (n as number) > 0 ? (n as number) : 10 * 1024 * 1024;
   }
 
   async streamToBuffer(stream: Readable): Promise<Buffer> {
@@ -44,14 +42,14 @@ export class OcrService {
   async extractFromPdf(buffer: Buffer): Promise<string | null> {
     try {
       // @ts-ignore — pdf-parse is an optional dep; missing at build time is intentional
-      const mod: Record<string, any> = await import('pdf-parse').catch(() => null);
+      const mod: Record<string, any> = await import("pdf-parse").catch(() => null);
       if (!mod) {
-        this.logger.warn('pdf-parse not installed; skipping PDF text extraction.');
+        this.logger.warn("pdf-parse not installed; skipping PDF text extraction.");
         return null;
       }
       const pdfParse = mod.default ?? mod;
       const data = await pdfParse(buffer);
-      return (data?.text ?? '').trim() || null;
+      return (data?.text ?? "").trim() || null;
     } catch (err) {
       this.logger.warn(`PDF extraction failed: ${(err as Error).message}`);
       return null;
@@ -76,7 +74,7 @@ export class OcrService {
     }
 
     const mime = mimeType.toLowerCase();
-    if (mime === 'application/pdf') {
+    if (mime === "application/pdf") {
       const buf = await loadBuffer();
       return this.extractFromPdf(buf);
     }

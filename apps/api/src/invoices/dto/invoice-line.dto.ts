@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsInt,
@@ -8,7 +8,7 @@ import {
   IsString,
   Length,
   Min,
-} from 'class-validator';
+} from "class-validator";
 
 export class InvoiceLineDto {
   @Type(() => Number)

@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PrismaModule } from '../common/prisma/prisma.module';
-import { EventsGateway } from './events.gateway';
+import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { PrismaModule } from "../common/prisma/prisma.module";
+import { EventsGateway } from "./events.gateway";
 
 @Module({
   imports: [
@@ -13,4 +13,4 @@ import { EventsGateway } from './events.gateway';
   providers: [EventsGateway],
   exports: [EventsGateway],
 })
-export class EventsModule { }
+export class EventsModule {}

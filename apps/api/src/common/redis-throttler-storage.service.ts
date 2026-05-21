@@ -1,6 +1,6 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { ThrottlerStorage } from '@nestjs/throttler';
-import Redis from 'ioredis';
+import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { ThrottlerStorage } from "@nestjs/throttler";
+import Redis from "ioredis";
 
 @Injectable()
 export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy {
@@ -15,8 +15,8 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
     // SI NO SE PUEDE CONECTAR, EL THROTTLER CAE A IN-MEMORY (PER-INSTANCE),
     // QUE NO SIRVE EN MULTI-REPLICA — EL RATE LIMIT SE FRAGMENTA POR REPLICA.
     // ────────────────────────────────────────────────────────────────────
-    const host = process.env.REDIS_HOST || 'localhost';
-    const port = parseInt(process.env.REDIS_PORT || '6379', 10);
+    const host = process.env.REDIS_HOST || "localhost";
+    const port = parseInt(process.env.REDIS_PORT || "6379", 10);
     const password = process.env.REDIS_PASSWORD || undefined;
     const username = process.env.REDIS_USERNAME || undefined;
 
@@ -29,7 +29,7 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
         lazyConnect: true,
         retryStrategy: (times) => Math.min(times * 100, 3000),
       });
-      this.redis.on('error', () => {
+      this.redis.on("error", () => {
         // Silently suppress — fallback to in-memory below
       });
       this.redis.connect().catch(() => {
@@ -42,9 +42,9 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
 
   async onModuleDestroy() {
     if (this.redis) {
-      await this.redis.quit().catch((err) =>
-        this.logger.warn('Redis quit failed during shutdown', err),
-      );
+      await this.redis
+        .quit()
+        .catch((err) => this.logger.warn("Redis quit failed during shutdown", err));
     }
   }
 
@@ -54,7 +54,12 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
     _limit: number,
     _blockDuration: number,
     _throttlerName: string,
-  ): Promise<{ totalHits: number; timeToExpire: number; isBlocked: boolean; timeToBlockExpire: number }> {
+  ): Promise<{
+    totalHits: number;
+    timeToExpire: number;
+    isBlocked: boolean;
+    timeToBlockExpire: number;
+  }> {
     if (!this.redis) {
       // Fallback in-memory
       const store = (this as any)._memoryStore || ((this as any)._memoryStore = new Map());

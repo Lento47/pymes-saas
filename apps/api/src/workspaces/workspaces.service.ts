@@ -5,19 +5,19 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CryptoService } from '../common/crypto/crypto.service';
-import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
-import { InviteUserDto } from './dto/invite-user.dto';
-import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
-import { AiProvider, AiService } from '../ai/ai.service';
-import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
-import { EmailService } from '../email/email.service';
-import { EventsGateway } from '../gateways/events.gateway';
-import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CryptoService } from "../common/crypto/crypto.service";
+import { UpdateWorkspaceDto } from "./dto/update-workspace.dto";
+import { InviteUserDto } from "./dto/invite-user.dto";
+import { ChangeMemberRoleDto } from "./dto/change-member-role.dto";
+import { AuthUser } from "../auth/strategies/jwt.strategy";
+import { AiProvider, AiService } from "../ai/ai.service";
+import { TestAiConnectionDto } from "./dto/test-ai-connection.dto";
+import { EmailService } from "../email/email.service";
+import { EventsGateway } from "../gateways/events.gateway";
+import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 
 @Injectable()
 export class WorkspacesService {
@@ -33,9 +33,11 @@ export class WorkspacesService {
     private readonly planLimits: PlanLimitsService,
   ) {}
 
-  private serializeWorkspace<T extends { settings_json?: Record<string, any> | null }>(workspace: T) {
+  private serializeWorkspace<T extends { settings_json?: Record<string, any> | null }>(
+    workspace: T,
+  ) {
     const settings =
-      workspace.settings_json && typeof workspace.settings_json === 'object'
+      workspace.settings_json && typeof workspace.settings_json === "object"
         ? (workspace.settings_json as Record<string, any>)
         : {};
     const taxProfile = (workspace as any).workspace_tax_profile ?? null;
@@ -44,7 +46,7 @@ export class WorkspacesService {
       ...workspace,
       workspace_tax_profile: taxProfile,
       settings: {
-        quick_start_progress: settings.quick_start_progress ?? {} as Record<string, boolean>,
+        quick_start_progress: settings.quick_start_progress ?? ({} as Record<string, boolean>),
       },
       ai_message_finance_opt_in: settings.ai_message_finance_opt_in === true,
       ai_provider: settings.ai_provider ?? null,
@@ -52,15 +54,19 @@ export class WorkspacesService {
       // IMPORTANTE — DEFAULT A `staging` PARA DEV. EN PROD, CADA WORKSPACE
       // DEBE FIJAR EXPLICITAMENTE `hacienda_environment='production'` EN
       // SUS SETTINGS, SINO LAS FACTURAS VAN AL AMBIENTE STAGING DE HACIENDA.
-      hacienda_environment: settings.hacienda_environment ?? 'staging',
+      hacienda_environment: settings.hacienda_environment ?? "staging",
       hacienda_callback_url: settings.hacienda_callback_url ?? null,
-      hacienda_username_set: !!(settings.hacienda_username),
+      hacienda_username_set: !!settings.hacienda_username,
       hacienda_password_set: !!(settings.hacienda_password_enc || settings.hacienda_password),
-      hacienda_client_id_set: !!(settings.hacienda_client_id),
-      hacienda_token_url_set: !!(settings.hacienda_token_url),
-      hacienda_access_token_set: !!(settings.hacienda_access_token_enc || settings.hacienda_access_token),
-      hacienda_certificate_path_set: !!(settings.hacienda_certificate_path),
-      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin_enc || settings.hacienda_certificate_pin),
+      hacienda_client_id_set: !!settings.hacienda_client_id,
+      hacienda_token_url_set: !!settings.hacienda_token_url,
+      hacienda_access_token_set: !!(
+        settings.hacienda_access_token_enc || settings.hacienda_access_token
+      ),
+      hacienda_certificate_path_set: !!settings.hacienda_certificate_path,
+      hacienda_certificate_pin_set: !!(
+        settings.hacienda_certificate_pin_enc || settings.hacienda_certificate_pin
+      ),
       hacienda_signing_enabled: settings.hacienda_signing_enabled === true,
     };
   }
@@ -160,26 +166,26 @@ export class WorkspacesService {
     });
 
     const currentSettings =
-      currentWorkspace.settings_json &&
-      typeof currentWorkspace.settings_json === 'object'
+      currentWorkspace.settings_json && typeof currentWorkspace.settings_json === "object"
         ? (currentWorkspace.settings_json as Record<string, any>)
         : {};
 
     const nextSettings = { ...currentSettings };
 
-    if (ai_message_finance_opt_in !== undefined) nextSettings.ai_message_finance_opt_in = ai_message_finance_opt_in;
+    if (ai_message_finance_opt_in !== undefined)
+      nextSettings.ai_message_finance_opt_in = ai_message_finance_opt_in;
     if (ai_provider !== undefined) nextSettings.ai_provider = ai_provider;
     if (ai_model !== undefined) nextSettings.ai_model = ai_model;
     if (ai_api_key) nextSettings.ai_api_key_enc = this.crypto.encrypt(ai_api_key);
 
     // Merge raw settings_json overrides (used by SAML config, etc.)
-    if (settings_json && typeof settings_json === 'object') {
+    if (settings_json && typeof settings_json === "object") {
       Object.assign(nextSettings, settings_json);
     }
 
     const setOrUnset = (key: string, value: string | undefined) => {
       if (value === undefined) return;
-      if (value === '') {
+      if (value === "") {
         delete nextSettings[key];
       } else {
         nextSettings[key] = value;
@@ -189,7 +195,7 @@ export class WorkspacesService {
     // Encrypt sensitive fields; non-sensitive fields stored as plain text.
     const setOrUnsetEnc = (plainKey: string, encKey: string, value: string | undefined) => {
       if (value === undefined) return;
-      if (value === '') {
+      if (value === "") {
         delete nextSettings[plainKey];
         delete nextSettings[encKey];
       } else {
@@ -198,18 +204,22 @@ export class WorkspacesService {
       }
     };
 
-    setOrUnset('hacienda_environment', hacienda_environment);
-    setOrUnset('hacienda_username', hacienda_username);
-    setOrUnsetEnc('hacienda_password', 'hacienda_password_enc', hacienda_password);
-    setOrUnset('hacienda_client_id', hacienda_client_id);
-    setOrUnset('hacienda_token_url', hacienda_token_url);
-    setOrUnsetEnc('hacienda_access_token', 'hacienda_access_token_enc', hacienda_access_token);
-    setOrUnset('hacienda_callback_url', hacienda_callback_url);
-    setOrUnset('hacienda_certificate_path', hacienda_certificate_path);
-    setOrUnsetEnc('hacienda_certificate_pin', 'hacienda_certificate_pin_enc', hacienda_certificate_pin);
+    setOrUnset("hacienda_environment", hacienda_environment);
+    setOrUnset("hacienda_username", hacienda_username);
+    setOrUnsetEnc("hacienda_password", "hacienda_password_enc", hacienda_password);
+    setOrUnset("hacienda_client_id", hacienda_client_id);
+    setOrUnset("hacienda_token_url", hacienda_token_url);
+    setOrUnsetEnc("hacienda_access_token", "hacienda_access_token_enc", hacienda_access_token);
+    setOrUnset("hacienda_callback_url", hacienda_callback_url);
+    setOrUnset("hacienda_certificate_path", hacienda_certificate_path);
+    setOrUnsetEnc(
+      "hacienda_certificate_pin",
+      "hacienda_certificate_pin_enc",
+      hacienda_certificate_pin,
+    );
 
     if (hacienda_signing_enabled !== undefined) {
-      nextSettings.hacienda_signing_enabled = hacienda_signing_enabled === 'true';
+      nextSettings.hacienda_signing_enabled = hacienda_signing_enabled === "true";
     }
 
     const settingsChanged =
@@ -252,29 +262,39 @@ export class WorkspacesService {
     });
 
     if (tax_profile) {
-      const hasAnyTaxProfileValue = Object.values(tax_profile).some((value) => value !== undefined && value !== '');
+      const hasAnyTaxProfileValue = Object.values(tax_profile).some(
+        (value) => value !== undefined && value !== "",
+      );
       if (hasAnyTaxProfileValue) {
         await this.prisma.workspaceTaxProfile.upsert({
           where: { workspace_id: workspaceId },
           update: {
-            ...(tax_profile.identification_type !== undefined && { identification_type: tax_profile.identification_type }),
-            ...(tax_profile.identification_number !== undefined && { identification_number: tax_profile.identification_number }),
+            ...(tax_profile.identification_type !== undefined && {
+              identification_type: tax_profile.identification_type,
+            }),
+            ...(tax_profile.identification_number !== undefined && {
+              identification_number: tax_profile.identification_number,
+            }),
             ...(tax_profile.legal_name !== undefined && { legal_name: tax_profile.legal_name }),
             ...(tax_profile.trade_name !== undefined && { trade_name: tax_profile.trade_name }),
-            ...(tax_profile.activity_code !== undefined && { activity_code: tax_profile.activity_code }),
+            ...(tax_profile.activity_code !== undefined && {
+              activity_code: tax_profile.activity_code,
+            }),
             ...(tax_profile.province !== undefined && { province: tax_profile.province }),
             ...(tax_profile.canton !== undefined && { canton: tax_profile.canton }),
             ...(tax_profile.district !== undefined && { district: tax_profile.district }),
-            ...(tax_profile.address_detail !== undefined && { address_detail: tax_profile.address_detail }),
+            ...(tax_profile.address_detail !== undefined && {
+              address_detail: tax_profile.address_detail,
+            }),
             ...(tax_profile.tax_email !== undefined && { tax_email: tax_profile.tax_email }),
             ...(tax_profile.phone !== undefined && { phone: tax_profile.phone }),
           },
           create: {
             workspace_id: workspaceId,
-            identification_type: tax_profile.identification_type ?? '',
-            identification_number: tax_profile.identification_number ?? '',
-            legal_name: tax_profile.legal_name ?? '',
-            activity_code: tax_profile.activity_code ?? '',
+            identification_type: tax_profile.identification_type ?? "",
+            identification_number: tax_profile.identification_number ?? "",
+            legal_name: tax_profile.legal_name ?? "",
+            activity_code: tax_profile.activity_code ?? "",
             trade_name: tax_profile.trade_name,
             province: tax_profile.province,
             canton: tax_profile.canton,
@@ -310,9 +330,9 @@ export class WorkspacesService {
 
     if (settingsChanged) {
       if (hacienda_username || hacienda_client_id || hacienda_token_url)
-        this.markQuickStartStep(workspaceId, 'hacienda_configured');
+        this.markQuickStartStep(workspaceId, "hacienda_configured");
       if (ai_provider || ai_api_key || ai_message_finance_opt_in !== undefined)
-        this.markQuickStartStep(workspaceId, 'invoicing_configured');
+        this.markQuickStartStep(workspaceId, "invoicing_configured");
     }
 
     return serialized;
@@ -325,7 +345,7 @@ export class WorkspacesService {
     });
 
     const settings =
-      workspace.settings_json && typeof workspace.settings_json === 'object'
+      workspace.settings_json && typeof workspace.settings_json === "object"
         ? (workspace.settings_json as Record<string, any>)
         : {};
 
@@ -337,13 +357,15 @@ export class WorkspacesService {
     const provider = (dto.ai_provider ?? savedConfig?.provider) as AiProvider | undefined;
 
     if (!provider) {
-      throw new BadRequestException('Selecciona un proveedor de IA antes de probar la conexion.');
+      throw new BadRequestException("Selecciona un proveedor de IA antes de probar la conexion.");
     }
 
     const canReuseSavedKey = savedConfig?.provider === provider;
     const apiKey = dto.ai_api_key || (canReuseSavedKey ? savedConfig?.api_key : undefined);
     if (!apiKey) {
-      throw new BadRequestException('Ingresa una API key o guarda una clave valida para este proveedor antes de probar la conexion.');
+      throw new BadRequestException(
+        "Ingresa una API key o guarda una clave valida para este proveedor antes de probar la conexion.",
+      );
     }
 
     const model =
@@ -356,16 +378,18 @@ export class WorkspacesService {
         provider,
         model,
         api_key: apiKey,
-    });
+      });
 
-    this.markQuickStartStep(workspaceId, 'team_invited');
+      this.markQuickStartStep(workspaceId, "team_invited");
 
-    return {
+      return {
         ok: true,
         ...result,
       };
     } catch (error) {
-      throw new BadRequestException((error as Error).message || 'No se pudo validar la conexion con el proveedor de IA.');
+      throw new BadRequestException(
+        (error as Error).message || "No se pudo validar la conexion con el proveedor de IA.",
+      );
     }
   }
 
@@ -378,24 +402,30 @@ export class WorkspacesService {
     });
 
     const settings =
-      workspace.settings_json && typeof workspace.settings_json === 'object'
+      workspace.settings_json && typeof workspace.settings_json === "object"
         ? (workspace.settings_json as Record<string, any>)
         : {};
 
     return {
-      openai_api_key_set: !!(settings.openai_api_key && settings.openai_api_key !== ''),
-      resend_api_key_set: !!(settings.resend_api_key && settings.resend_api_key !== ''),
-      anthropic_api_key_set: !!(settings.anthropic_api_key && settings.anthropic_api_key !== ''),
-      gemini_api_key_set: !!(settings.gemini_api_key && settings.gemini_api_key !== ''),
-      grok_api_key_set: !!(settings.grok_api_key && settings.grok_api_key !== ''),
-      kimi_api_key_set: !!(settings.kimi_api_key && settings.kimi_api_key !== ''),
-      hacienda_username_set: !!(settings.hacienda_username && settings.hacienda_username !== ''),
-      hacienda_password_set: !!(settings.hacienda_password && settings.hacienda_password !== ''),
-      hacienda_client_id_set: !!(settings.hacienda_client_id && settings.hacienda_client_id !== ''),
-      hacienda_token_url_set: !!(settings.hacienda_token_url && settings.hacienda_token_url !== ''),
-      hacienda_access_token_set: !!(settings.hacienda_access_token && settings.hacienda_access_token !== ''),
-      hacienda_certificate_path_set: !!(settings.hacienda_certificate_path && settings.hacienda_certificate_path !== ''),
-      hacienda_certificate_pin_set: !!(settings.hacienda_certificate_pin && settings.hacienda_certificate_pin !== ''),
+      openai_api_key_set: !!(settings.openai_api_key && settings.openai_api_key !== ""),
+      resend_api_key_set: !!(settings.resend_api_key && settings.resend_api_key !== ""),
+      anthropic_api_key_set: !!(settings.anthropic_api_key && settings.anthropic_api_key !== ""),
+      gemini_api_key_set: !!(settings.gemini_api_key && settings.gemini_api_key !== ""),
+      grok_api_key_set: !!(settings.grok_api_key && settings.grok_api_key !== ""),
+      kimi_api_key_set: !!(settings.kimi_api_key && settings.kimi_api_key !== ""),
+      hacienda_username_set: !!(settings.hacienda_username && settings.hacienda_username !== ""),
+      hacienda_password_set: !!(settings.hacienda_password && settings.hacienda_password !== ""),
+      hacienda_client_id_set: !!(settings.hacienda_client_id && settings.hacienda_client_id !== ""),
+      hacienda_token_url_set: !!(settings.hacienda_token_url && settings.hacienda_token_url !== ""),
+      hacienda_access_token_set: !!(
+        settings.hacienda_access_token && settings.hacienda_access_token !== ""
+      ),
+      hacienda_certificate_path_set: !!(
+        settings.hacienda_certificate_path && settings.hacienda_certificate_path !== ""
+      ),
+      hacienda_certificate_pin_set: !!(
+        settings.hacienda_certificate_pin && settings.hacienda_certificate_pin !== ""
+      ),
     };
   }
 
@@ -442,9 +472,12 @@ export class WorkspacesService {
 
     const revenueThisMonth = Number(row.monthly_revenue ?? 0);
     const revenuePrevMonth = Number(row.prev_month_revenue ?? 0);
-    const revenueChange = revenuePrevMonth > 0
-      ? Math.round(((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth * 100))
-      : (revenueThisMonth > 0 ? 100 : 0);
+    const revenueChange =
+      revenuePrevMonth > 0
+        ? Math.round(((revenueThisMonth - revenuePrevMonth) / revenuePrevMonth) * 100)
+        : revenueThisMonth > 0
+          ? 100
+          : 0;
 
     return {
       contacts: Number(row.contacts ?? 0),
@@ -468,24 +501,25 @@ export class WorkspacesService {
     const startOfToday = new Date();
     startOfToday.setUTCHours(0, 0, 0, 0);
 
-    const [new_conversations, received_messages, created_tasks, uploaded_documents] = await Promise.all([
-      this.prisma.conversation.count({
-        where: { workspace_id: workspaceId, created_at: { gte: startOfToday } },
-      }),
-      this.prisma.message.count({
-        where: {
-          workspace_id: workspaceId,
-          direction: 'INBOUND',
-          created_at: { gte: startOfToday },
-        },
-      }),
-      this.prisma.task.count({
-        where: { workspace_id: workspaceId, created_at: { gte: startOfToday } },
-      }),
-      this.prisma.document.count({
-        where: { workspace_id: workspaceId, created_at: { gte: startOfToday } },
-      }),
-    ]);
+    const [new_conversations, received_messages, created_tasks, uploaded_documents] =
+      await Promise.all([
+        this.prisma.conversation.count({
+          where: { workspace_id: workspaceId, created_at: { gte: startOfToday } },
+        }),
+        this.prisma.message.count({
+          where: {
+            workspace_id: workspaceId,
+            direction: "INBOUND",
+            created_at: { gte: startOfToday },
+          },
+        }),
+        this.prisma.task.count({
+          where: { workspace_id: workspaceId, created_at: { gte: startOfToday } },
+        }),
+        this.prisma.document.count({
+          where: { workspace_id: workspaceId, created_at: { gte: startOfToday } },
+        }),
+      ]);
 
     return { new_conversations, received_messages, created_tasks, uploaded_documents };
   }
@@ -493,25 +527,47 @@ export class WorkspacesService {
   // ── GET /workspaces/current/export ────────────────────────────────────────
 
   async exportData(workspaceId: string, type: string) {
-    if (type === 'contacts') {
+    if (type === "contacts") {
       return this.prisma.contact.findMany({
         where: { workspace_id: workspaceId },
-        select: { id: true, full_name: true, email: true, phone: true, type: true, company_name: true, created_at: true },
-        orderBy: { created_at: 'desc' },
+        select: {
+          id: true,
+          full_name: true,
+          email: true,
+          phone: true,
+          type: true,
+          company_name: true,
+          created_at: true,
+        },
+        orderBy: { created_at: "desc" },
       });
     }
-    if (type === 'tasks') {
+    if (type === "tasks") {
       return this.prisma.task.findMany({
         where: { workspace_id: workspaceId },
-        select: { id: true, title: true, status: true, priority: true, due_at: true, created_at: true },
-        orderBy: { created_at: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          priority: true,
+          due_at: true,
+          created_at: true,
+        },
+        orderBy: { created_at: "desc" },
       });
     }
-    if (type === 'conversations') {
+    if (type === "conversations") {
       return this.prisma.conversation.findMany({
         where: { workspace_id: workspaceId },
-        select: { id: true, subject: true, status: true, priority: true, category: true, created_at: true },
-        orderBy: { created_at: 'desc' },
+        select: {
+          id: true,
+          subject: true,
+          status: true,
+          priority: true,
+          category: true,
+          created_at: true,
+        },
+        orderBy: { created_at: "desc" },
       });
     }
     throw new BadRequestException(`Invalid export type. Use: contacts | tasks | conversations`);
@@ -533,7 +589,7 @@ export class WorkspacesService {
           },
         },
       },
-      orderBy: { created_at: 'asc' },
+      orderBy: { created_at: "asc" },
     });
 
     return members.map((m) => ({
@@ -549,20 +605,16 @@ export class WorkspacesService {
   // Flujo simplificado: si el email ya existe en users, se agrega directo.
   // En producción: enviar email con token firmado y redirigir a /auth/accept-invite.
 
-  async inviteUser(
-    workspaceId: string,
-    requestingUser: AuthUser,
-    dto: InviteUserDto,
-  ) {
+  async inviteUser(workspaceId: string, requestingUser: AuthUser, dto: InviteUserDto) {
     // Solo ADMIN u OWNER pueden invitar
-    if (!['ADMIN', 'OWNER'].includes(requestingUser.role)) {
-      throw new ForbiddenException('Solo ADMIN u OWNER pueden invitar usuarios.');
+    if (!["ADMIN", "OWNER"].includes(requestingUser.role)) {
+      throw new ForbiddenException("Solo ADMIN u OWNER pueden invitar usuarios.");
     }
 
     // No se puede invitar OWNERs adicionales
-    if (dto.role === 'OWNER') {
+    if (dto.role === "OWNER") {
       throw new BadRequestException(
-        'No se puede invitar con rol OWNER. Transfiere la propiedad explícitamente.',
+        "No se puede invitar con rol OWNER. Transfiere la propiedad explícitamente.",
       );
     }
 
@@ -577,8 +629,8 @@ export class WorkspacesService {
       user = await this.prisma.user.create({
         data: {
           email: dto.email,
-          name: dto.email.split('@')[0],
-          status: 'INVITED',
+          name: dto.email.split("@")[0],
+          status: "INVITED",
         },
       });
     }
@@ -589,7 +641,7 @@ export class WorkspacesService {
       },
     });
     if (existing) {
-      throw new ConflictException('El usuario ya es miembro de este workspace.');
+      throw new ConflictException("El usuario ya es miembro de este workspace.");
     }
 
     const membership = await this.prisma.workspaceUser.create({
@@ -608,12 +660,12 @@ export class WorkspacesService {
 
     const inviteToken = this.jwtService.sign(
       {
-        type: 'workspace-invite',
+        type: "workspace-invite",
         email: user.email,
         workspace_id: workspace.id,
         workspace_slug: workspace.slug,
       },
-      { expiresIn: '7d' },
+      { expiresIn: "7d" },
     );
 
     const desktopUrl = `PymesHub://accept-invite?token=${encodeURIComponent(inviteToken)}`;
@@ -649,8 +701,8 @@ export class WorkspacesService {
     const channel = await this.prisma.channel.findFirst({
       where: {
         workspace_id: params.workspaceId,
-        type: 'EMAIL',
-        status: 'ACTIVE',
+        type: "EMAIL",
+        status: "ACTIVE",
       },
     });
 
@@ -678,8 +730,8 @@ export class WorkspacesService {
       `Rol: ${params.role}`,
       `Abrir en la app: ${params.desktopUrl}`,
       `Abrir en navegador: ${params.browserUrl}`,
-      'Este enlace vence en 7 días.',
-    ].join('\n');
+      "Este enlace vence en 7 días.",
+    ].join("\n");
 
     await this.emailService.sendOutbound(channel, params.to, subject, bodyHtml, bodyText);
   }
@@ -692,8 +744,8 @@ export class WorkspacesService {
     targetUserId: string,
     dto: ChangeMemberRoleDto,
   ) {
-    if (!['ADMIN', 'OWNER'].includes(requestingUser.role)) {
-      throw new ForbiddenException('Sin permisos para cambiar roles.');
+    if (!["ADMIN", "OWNER"].includes(requestingUser.role)) {
+      throw new ForbiddenException("Sin permisos para cambiar roles.");
     }
 
     const membership = await this.prisma.workspaceUser.findUnique({
@@ -701,16 +753,16 @@ export class WorkspacesService {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
       },
     });
-    if (!membership) throw new NotFoundException('Miembro no encontrado.');
+    if (!membership) throw new NotFoundException("Miembro no encontrado.");
 
     if (membership.is_owner) {
       throw new ForbiddenException(
-        'No se puede cambiar el rol del owner. Transfiere la propiedad primero.',
+        "No se puede cambiar el rol del owner. Transfiere la propiedad primero.",
       );
     }
 
-    if (dto.role === 'OWNER') {
-      throw new BadRequestException('Usa la ruta de transferencia de propiedad.');
+    if (dto.role === "OWNER") {
+      throw new BadRequestException("Usa la ruta de transferencia de propiedad.");
     }
 
     return this.prisma.workspaceUser.update({
@@ -723,17 +775,13 @@ export class WorkspacesService {
 
   // ── DELETE /workspaces/current/members/:userId ────────────────────────────
 
-  async removeMember(
-    workspaceId: string,
-    requestingUser: AuthUser,
-    targetUserId: string,
-  ) {
+  async removeMember(workspaceId: string, requestingUser: AuthUser, targetUserId: string) {
     if (targetUserId === requestingUser.id) {
-      throw new BadRequestException('No puedes removerte a ti mismo.');
+      throw new BadRequestException("No puedes removerte a ti mismo.");
     }
 
-    if (!['ADMIN', 'OWNER'].includes(requestingUser.role)) {
-      throw new ForbiddenException('Sin permisos para remover miembros.');
+    if (!["ADMIN", "OWNER"].includes(requestingUser.role)) {
+      throw new ForbiddenException("Sin permisos para remover miembros.");
     }
 
     const membership = await this.prisma.workspaceUser.findUnique({
@@ -741,9 +789,9 @@ export class WorkspacesService {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
       },
     });
-    if (!membership) throw new NotFoundException('Miembro no encontrado.');
+    if (!membership) throw new NotFoundException("Miembro no encontrado.");
     if (membership.is_owner) {
-      throw new ForbiddenException('No se puede remover al owner.');
+      throw new ForbiddenException("No se puede remover al owner.");
     }
 
     await this.prisma.workspaceUser.delete({
@@ -752,7 +800,7 @@ export class WorkspacesService {
       },
     });
 
-    return { message: 'Miembro removido del workspace.' };
+    return { message: "Miembro removido del workspace." };
   }
 
   // ── Quick Start progress tracking ─────────────────────────────────────────
@@ -769,7 +817,7 @@ export class WorkspacesService {
     if (!ws) return;
 
     const settings: Record<string, any> =
-      ws.settings_json && typeof ws.settings_json === 'object'
+      ws.settings_json && typeof ws.settings_json === "object"
         ? (ws.settings_json as Record<string, any>)
         : {};
 

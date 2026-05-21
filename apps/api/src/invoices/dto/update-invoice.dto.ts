@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsEnum,
@@ -8,14 +8,14 @@ import {
   Min,
   ValidateNested,
   Length,
-} from 'class-validator';
+} from "class-validator";
 import {
   HaciendaStatus,
   InvoiceDocumentType,
   InvoiceIssuanceMode,
   InvoiceStatus,
-} from '@prisma/client';
-import { InvoiceLineDto } from './invoice-line.dto';
+} from "@prisma/client";
+import { InvoiceLineDto } from "./invoice-line.dto";
 
 export class UpdateInvoiceDto {
   @IsOptional()

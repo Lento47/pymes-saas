@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 
-type Locale = 'en' | 'es';
+type Locale = "en" | "es";
 
 type TranslationValue = string | ((params: Record<string, any>) => string);
 interface TranslationSet {
@@ -10,71 +10,71 @@ interface TranslationSet {
 const MESSAGES: Record<Locale, TranslationSet> = {
   en: {
     errors: {
-      notFound: 'Not found',
-      unauthorized: 'Unauthorized',
-      forbidden: 'Forbidden',
+      notFound: "Not found",
+      unauthorized: "Unauthorized",
+      forbidden: "Forbidden",
       planLimit: (p: Record<string, any>) =>
         `Your ${p.plan} plan allows up to ${p.limit} ${p.resource}. Upgrade to add more.`,
-      workspaceNotFound: 'Workspace not found',
-      userNotFound: 'User not found',
-      invalidCredentials: 'Invalid credentials',
-      quotaExceeded: 'Quota exceeded',
+      workspaceNotFound: "Workspace not found",
+      userNotFound: "User not found",
+      invalidCredentials: "Invalid credentials",
+      quotaExceeded: "Quota exceeded",
       planTierRequired: (p: Record<string, any>) =>
         `${p.feature} requires ${p.plan} plan or higher.`,
     },
     notifications: {
-      taskOverdue: 'Task overdue',
-      conversationUnanswered: 'Unanswered conversation',
-      dailySummary: 'Daily Summary',
+      taskOverdue: "Task overdue",
+      conversationUnanswered: "Unanswered conversation",
+      dailySummary: "Daily Summary",
     },
   },
   es: {
     errors: {
-      notFound: 'No encontrado',
-      unauthorized: 'No autorizado',
-      forbidden: 'Prohibido',
+      notFound: "No encontrado",
+      unauthorized: "No autorizado",
+      forbidden: "Prohibido",
       planLimit: (p: Record<string, any>) =>
         `Tu plan ${p.plan} permite un máximo de ${p.limit} ${p.resource}. Actualizá para agregar más.`,
-      workspaceNotFound: 'Workspace no encontrado',
-      userNotFound: 'Usuario no encontrado',
-      invalidCredentials: 'Credenciales inválidas',
-      quotaExceeded: 'Cuota excedida',
+      workspaceNotFound: "Workspace no encontrado",
+      userNotFound: "Usuario no encontrado",
+      invalidCredentials: "Credenciales inválidas",
+      quotaExceeded: "Cuota excedida",
       planTierRequired: (p: Record<string, any>) =>
         `${p.feature} requiere plan ${p.plan} o superior.`,
     },
     notifications: {
-      taskOverdue: 'Tarea vencida',
-      conversationUnanswered: 'Conversación sin respuesta',
-      dailySummary: 'Resumen del día',
+      taskOverdue: "Tarea vencida",
+      conversationUnanswered: "Conversación sin respuesta",
+      dailySummary: "Resumen del día",
     },
   },
 };
 
 @Injectable()
 export class I18nService {
-  private locale: Locale = 'es';
+  private locale: Locale = "es";
 
   setLocale(locale: string) {
-    const normalized = locale?.toLowerCase().startsWith('en') ? 'en' : 'es';
+    const normalized = locale?.toLowerCase().startsWith("en") ? "en" : "es";
     this.locale = normalized;
   }
 
   t(key: string, params?: Record<string, any>): string {
     const value = this.resolve(key);
-    if (typeof value === 'function') {
+    if (typeof value === "function") {
       return value(params || {});
     }
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       return value;
     }
     return key;
   }
 
   private resolve(key: string): TranslationValue | TranslationSet | undefined {
-    const parts = key.split('.');
+    const parts = key.split(".");
     let current: Record<string, any> = MESSAGES[this.locale];
     for (const part of parts) {
-      if (!current || typeof current !== 'object') return undefined;
+      if (!current || typeof current !== "object") return undefined;
       current = current[part];
     }
     return current;

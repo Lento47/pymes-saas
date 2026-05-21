@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
 
 @Injectable()
 export class SlaService {
@@ -8,7 +8,7 @@ export class SlaService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getPolicies() {
-    return this.prisma.slaPolicy.findMany({ orderBy: { key: 'asc' } });
+    return this.prisma.slaPolicy.findMany({ orderBy: { key: "asc" } });
   }
 
   async getPolicyByKey(key: string) {
@@ -40,7 +40,7 @@ export class SlaService {
         first_response_target_minutes: data.first_response_target_minutes,
         resolution_target_hours: data.resolution_target_hours,
         uptime_target_percent: data.uptime_target_percent,
-        applies_to_plan: data.applies_to_plan ?? 'BUSINESS_PLUS',
+        applies_to_plan: data.applies_to_plan ?? "BUSINESS_PLUS",
         requires_contract: data.requires_contract ?? false,
         description: data.description,
       },
@@ -51,7 +51,7 @@ export class SlaService {
     return this.prisma.workspaceSlaAssignment.findFirst({
       where: { workspace_id: workspaceId },
       include: { sla_policy: true },
-      orderBy: { effective_from: 'desc' },
+      orderBy: { effective_from: "desc" },
     });
   }
 

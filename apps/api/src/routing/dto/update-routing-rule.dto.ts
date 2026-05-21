@@ -1,12 +1,5 @@
-import { RoutingMatchType, Priority } from '@prisma/client';
-import {
-  IsBoolean,
-  IsEnum,
-  IsInt,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { RoutingMatchType, Priority } from "@prisma/client";
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min } from "class-validator";
 
 export class UpdateRoutingRuleDto {
   @IsOptional()

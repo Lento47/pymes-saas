@@ -1,12 +1,7 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CryptoService } from '../common/crypto/crypto.service';
-import { FiscalEnvironment } from '@prisma/client';
+import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CryptoService } from "../common/crypto/crypto.service";
+import { FiscalEnvironment } from "@prisma/client";
 
 // Refresh the token this many seconds before actual expiry to avoid last-second failures
 const TOKEN_EXPIRY_BUFFER_SECS = 60;
@@ -21,9 +16,17 @@ export class HaciendaAuthService {
   ) {}
 
   /** Decrypt a sensitive setting; falls back to plaintext for legacy data. */
-  private decryptSetting(settings: Record<string, any>, encKey: string, plainKey: string): string | undefined {
+  private decryptSetting(
+    settings: Record<string, any>,
+    encKey: string,
+    plainKey: string,
+  ): string | undefined {
     if (settings[encKey]) {
-      try { return this.crypto.decrypt(settings[encKey]); } catch { /* fall through */ }
+      try {
+        return this.crypto.decrypt(settings[encKey]);
+      } catch {
+        /* fall through */
+      }
     }
     return settings[plainKey] ?? undefined;
   }
@@ -34,14 +37,15 @@ export class HaciendaAuthService {
       select: { settings_json: true },
     });
     if (!workspace) {
-      throw new NotFoundException('Workspace no encontrado.');
+      throw new NotFoundException("Workspace no encontrado.");
     }
 
     const settings = this.readSettings(workspace.settings_json);
 
     // Determine environment from workspace settings
-    const envStr = (settings.hacienda_environment ?? 'staging').toUpperCase();
-    const environment = envStr === 'PRODUCTION' ? FiscalEnvironment.PRODUCTION : FiscalEnvironment.STAGING;
+    const envStr = (settings.hacienda_environment ?? "staging").toUpperCase();
+    const environment =
+      envStr === "PRODUCTION" ? FiscalEnvironment.PRODUCTION : FiscalEnvironment.STAGING;
 
     // Check the token cache before hitting Hacienda OIDC
     const cached = await this.prisma.haciendaTokenCache.findUnique({
@@ -57,15 +61,15 @@ export class HaciendaAuthService {
     }
 
     // Fetch a new token from Hacienda OIDC
-    const password = this.decryptSetting(settings, 'hacienda_password_enc', 'hacienda_password');
+    const password = this.decryptSetting(settings, "hacienda_password_enc", "hacienda_password");
     if (!settings.hacienda_token_url || !settings.hacienda_username || !password) {
       throw new ServiceUnavailableException(
-        'Falta configuración de autenticación Hacienda en el workspace.',
+        "Falta configuración de autenticación Hacienda en el workspace.",
       );
     }
 
     const body = new URLSearchParams();
-    body.set('grant_type', 'password');
+    body.set("grant_type", "password");
     // ────────────────────────────────────────────────────────────────────
     // IMPORTANTE — `api-stag` ES EL CLIENT ID DE STAGING DE HACIENDA.
     // EN PRODUCCION CADA WORKSPACE DEBE TENER `hacienda_client_id` SETEADO
@@ -73,15 +77,15 @@ export class HaciendaAuthService {
     // ES SOLO PARA DEV/SANDBOX. SI ESTA CAYENDO ACA EN PROD, EL WORKSPACE
     // NO TERMINO DE CONFIGURAR FACTURACION ELECTRONICA.
     // ────────────────────────────────────────────────────────────────────
-    body.set('client_id', settings.hacienda_client_id ?? 'api-stag');
-    body.set('username', settings.hacienda_username);
-    body.set('password', password);
+    body.set("client_id", settings.hacienda_client_id ?? "api-stag");
+    body.set("username", settings.hacienda_username);
+    body.set("password", password);
 
     const response = await fetch(settings.hacienda_token_url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: body.toString(),
       signal: AbortSignal.timeout(10_000),
@@ -94,13 +98,13 @@ export class HaciendaAuthService {
       );
     }
 
-    const data = await response.json() as {
+    const data = (await response.json()) as {
       access_token?: string;
       expires_in?: number;
       refresh_token?: string;
     };
     if (!data.access_token) {
-      throw new ServiceUnavailableException('Respuesta de token Hacienda sin access_token.');
+      throw new ServiceUnavailableException("Respuesta de token Hacienda sin access_token.");
     }
 
     // Persist to cache (best-effort; don't fail the request if cache write fails)
@@ -131,7 +135,7 @@ export class HaciendaAuthService {
   }
 
   private readSettings(settingsJson: unknown): Record<string, any> {
-    return settingsJson && typeof settingsJson === 'object'
+    return settingsJson && typeof settingsJson === "object"
       ? (settingsJson as Record<string, any>)
       : {};
   }

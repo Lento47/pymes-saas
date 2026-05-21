@@ -1,9 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
-import { PrismaService } from '../../common/prisma/prisma.service';
-import { stringifyJson } from '../../common/prisma/json';
-import { QUEUE_NAMES } from '../queues.constants';
+import { Injectable, Logger } from "@nestjs/common";
+import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { Job } from "bullmq";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import { stringifyJson } from "../../common/prisma/json";
+import { QUEUE_NAMES } from "../queues.constants";
 
 interface ClassifierJobData {
   messageId: string;
@@ -36,16 +36,21 @@ export class ClassifierProcessor extends WorkerHost {
     }
 
     // 3. Clasificar con lógica simple
-    const urgentKeywords = ['urgente', 'urgent', 'asap', 'inmediatamente', 'emergencia', 'critical'];
-    const isUrgent = urgentKeywords.some((k) =>
-      message.body_text?.toLowerCase().includes(k),
-    );
+    const urgentKeywords = [
+      "urgente",
+      "urgent",
+      "asap",
+      "inmediatamente",
+      "emergencia",
+      "critical",
+    ];
+    const isUrgent = urgentKeywords.some((k) => message.body_text?.toLowerCase().includes(k));
 
     const dateRegex = /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}-\d{2}-\d{2})\b/;
-    const hasDate = dateRegex.test(message.body_text ?? '');
+    const hasDate = dateRegex.test(message.body_text ?? "");
 
-    const category = isUrgent ? 'urgente' : 'general';
-    const sentiment = isUrgent ? 'negative' : 'neutral';
+    const category = isUrgent ? "urgente" : "general";
+    const sentiment = isUrgent ? "negative" : "neutral";
 
     // 4. Actualizar mensaje con clasificación
     await this.prisma.message.update({
@@ -65,7 +70,7 @@ export class ClassifierProcessor extends WorkerHost {
     if (isUrgent) {
       await this.prisma.conversation.update({
         where: { id: message.conversation_id },
-        data: { priority: 'URGENT' },
+        data: { priority: "URGENT" },
       });
       this.logger.log(
         `Conversation ${message.conversation_id} marked as URGENT due to urgent message ${messageId}`,

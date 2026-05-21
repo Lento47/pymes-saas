@@ -1,13 +1,6 @@
-import {
-  IsArray,
-  IsEmail,
-  IsEnum,
-  IsOptional,
-  IsString,
-  Length,
-} from 'class-validator';
-import { Transform } from 'class-transformer';
-import { ContactType } from '@prisma/client';
+import { IsArray, IsEmail, IsEnum, IsOptional, IsString, Length } from "class-validator";
+import { Transform } from "class-transformer";
+import { ContactType } from "@prisma/client";
 
 export class CreateContactDto {
   @IsEnum(ContactType)
@@ -28,7 +21,7 @@ export class CreateContactDto {
 
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/\D/g, '') : value))
+  @Transform(({ value }) => (typeof value === "string" ? value.replace(/\D/g, "") : value))
   phone?: string;
 
   @IsOptional()

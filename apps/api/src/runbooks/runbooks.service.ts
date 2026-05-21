@@ -1,10 +1,7 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { RUNBOOK_REGISTRY, RUNBOOK_DESCRIPTORS } from './runbooks.registry';
-import type {
-  RunbookDescriptor,
-  RunbookExecutionContext,
-} from './runbooks.types';
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { RUNBOOK_REGISTRY, RUNBOOK_DESCRIPTORS } from "./runbooks.registry";
+import type { RunbookDescriptor, RunbookExecutionContext } from "./runbooks.types";
 
 interface ExecuteRunbookInput {
   runbookName: string;
@@ -50,7 +47,7 @@ export class RunbooksService {
       .filter((p) => !input.params[p.key] || !String(input.params[p.key]).trim());
     if (missing.length > 0) {
       throw new BadRequestException(
-        `Missing required parameter(s): ${missing.map((p) => p.key).join(', ')}`,
+        `Missing required parameter(s): ${missing.map((p) => p.key).join(", ")}`,
       );
     }
 
@@ -69,7 +66,7 @@ export class RunbooksService {
         runbook_name: input.runbookName,
         parameters_json: input.params as any,
         executed_by_user_id: input.executedByUserId,
-        status: 'RUNNING',
+        status: "RUNNING",
       },
     });
 
@@ -89,7 +86,7 @@ export class RunbooksService {
       const finished = await (this.prisma as any).runbookExecution.update({
         where: { id: execution.id },
         data: {
-          status: 'SUCCESS',
+          status: "SUCCESS",
           result_json: result as any,
           duration_ms: durationMs,
           completed_at: new Date(),
@@ -104,8 +101,8 @@ export class RunbooksService {
           data: {
             workspace_id: input.workspaceId,
             user_id: input.executedByUserId,
-            action: 'runbook.executed',
-            entity_type: 'runbook_execution',
+            action: "runbook.executed",
+            entity_type: "runbook_execution",
             entity_id: finished.id,
             after_json: {
               runbook_name: input.runbookName,
@@ -116,7 +113,9 @@ export class RunbooksService {
           },
         })
         .catch((err) => {
-          this.logger.warn(`AuditLog write failed for runbook ${input.runbookName}: ${err?.message}`);
+          this.logger.warn(
+            `AuditLog write failed for runbook ${input.runbookName}: ${err?.message}`,
+          );
         });
 
       this.logger.log(
@@ -137,7 +136,7 @@ export class RunbooksService {
       await (this.prisma as any).runbookExecution.update({
         where: { id: execution.id },
         data: {
-          status: 'FAILURE',
+          status: "FAILURE",
           error_log: errorLog,
           duration_ms: durationMs,
           completed_at: new Date(),
@@ -156,7 +155,7 @@ export class RunbooksService {
   async listExecutions(workspaceId?: string, limit = 50) {
     return (this.prisma as any).runbookExecution.findMany({
       where: workspaceId ? { workspace_id: workspaceId } : undefined,
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
       take: Math.min(limit, 200),
       select: {
         id: true,

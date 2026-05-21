@@ -1,7 +1,7 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../common/prisma/prisma.service';
-import * as crypto from 'crypto';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { PrismaService } from "../common/prisma/prisma.service";
+import * as crypto from "crypto";
 
 @Injectable()
 export class RefreshTokenService {
@@ -12,8 +12,8 @@ export class RefreshTokenService {
 
   /** Issue a new opaque refresh token; stores SHA-256 hash. Returns raw token. */
   async create(userId: string, workspaceId: string, family?: string): Promise<string> {
-    const rawToken = crypto.randomUUID() + '-' + crypto.randomUUID();
-    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const rawToken = crypto.randomUUID() + "-" + crypto.randomUUID();
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
     const tokenFamily = family ?? crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
@@ -37,27 +37,35 @@ export class RefreshTokenService {
   async rotate(rawToken: string): Promise<{
     accessToken: string;
     refreshToken: string;
-    user?: { id: string; email: string; name: string; role: string; is_owner: boolean; is_platform_admin: boolean; workspace: { id: string; name: string; slug: string; plan: string } };
+    user?: {
+      id: string;
+      email: string;
+      name: string;
+      role: string;
+      is_owner: boolean;
+      is_platform_admin: boolean;
+      workspace: { id: string; name: string; slug: string; plan: string };
+    };
   }> {
-    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
 
     const stored = await this.prisma.refreshToken.findUnique({
       where: { token_hash: tokenHash },
       include: { user: true },
     });
 
-    if (!stored) throw new UnauthorizedException('Token de refresco inválido.');
+    if (!stored) throw new UnauthorizedException("Token de refresco inválido.");
 
     if (stored.revoked_at) {
       await this.prisma.refreshToken.updateMany({
         where: { family: stored.family, revoked_at: null },
         data: { revoked_at: new Date() },
       });
-      throw new UnauthorizedException('Token reutilizado — todas las sesiones han sido revocadas.');
+      throw new UnauthorizedException("Token reutilizado — todas las sesiones han sido revocadas.");
     }
 
     if (stored.expires_at < new Date()) {
-      throw new UnauthorizedException('Token de refresco expirado.');
+      throw new UnauthorizedException("Token de refresco expirado.");
     }
 
     const [membership, workspace] = await Promise.all([
@@ -74,7 +82,7 @@ export class RefreshTokenService {
         select: { id: true, name: true, slug: true, plan: true },
       }),
     ]);
-    if (!membership) throw new UnauthorizedException('Sin acceso al workspace.');
+    if (!membership) throw new UnauthorizedException("Sin acceso al workspace.");
 
     // Atomic revoke — only succeed if token is still unrevoked.
     // If count === 0, a concurrent request already revoked it → treat as reuse.
@@ -87,18 +95,20 @@ export class RefreshTokenService {
         where: { family: stored.family, revoked_at: null },
         data: { revoked_at: new Date() },
       });
-      throw new UnauthorizedException('Token reutilizado — todas las sesiones han sido revocadas.');
+      throw new UnauthorizedException("Token reutilizado — todas las sesiones han sido revocadas.");
     }
 
     const [newRefreshToken, accessToken] = await Promise.all([
       this.create(stored.user_id, stored.workspace_id, stored.family),
-      Promise.resolve(this.jwtService.sign({
-        sub: stored.user_id,
-        email: stored.user.email,
-        workspace_id: stored.workspace_id,
-        role: membership.role,
-        is_platform_admin: stored.user.is_platform_admin,
-      })),
+      Promise.resolve(
+        this.jwtService.sign({
+          sub: stored.user_id,
+          email: stored.user.email,
+          workspace_id: stored.workspace_id,
+          role: membership.role,
+          is_platform_admin: stored.user.is_platform_admin,
+        }),
+      ),
     ]);
 
     return {
@@ -111,7 +121,9 @@ export class RefreshTokenService {
         role: membership.role,
         is_owner: membership.is_owner,
         is_platform_admin: stored.user.is_platform_admin,
-        workspace: workspace ? { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan } : { id: stored.workspace_id, name: '', slug: '', plan: 'FREE' },
+        workspace: workspace
+          ? { id: workspace.id, name: workspace.name, slug: workspace.slug, plan: workspace.plan }
+          : { id: stored.workspace_id, name: "", slug: "", plan: "FREE" },
       },
     };
   }

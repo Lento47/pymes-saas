@@ -1,19 +1,11 @@
-import { Transform, Type } from 'class-transformer';
-import {
-  IsBoolean,
-  IsEnum,
-  IsInt,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
+import { Transform, Type } from "class-transformer";
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 import {
   HaciendaStatus,
   InvoiceDocumentType,
   InvoiceIssuanceMode,
   InvoiceStatus,
-} from '@prisma/client';
+} from "@prisma/client";
 
 export class FilterInvoicesDto {
   @IsOptional()
@@ -41,7 +33,7 @@ export class FilterInvoicesDto {
   conversation_id?: string;
 
   @IsOptional()
-  @Transform(({ value }) => value === true || value === 'true')
+  @Transform(({ value }) => value === true || value === "true")
   @IsBoolean()
   overdue_only?: boolean;
 

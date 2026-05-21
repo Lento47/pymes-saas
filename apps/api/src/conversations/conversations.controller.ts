@@ -1,4 +1,4 @@
-import { WorkspaceUserRole } from '@prisma/client';
+import { WorkspaceUserRole } from "@prisma/client";
 import {
   BadGatewayException,
   Body,
@@ -13,28 +13,28 @@ import {
   Req,
   Res,
   UseGuards,
-} from '@nestjs/common';
-import { Request, Response } from 'express';
-import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { ConversationsService } from './conversations.service';
-import { MessagesService } from './messages.service';
-import { SlaService } from './sla.service';
-import { EmailService } from '../email/email.service';
-import { WhatsAppService } from '../whatsapp/whatsapp.service';
-import { TelegramService } from '../telegram/telegram.service';
-import { MessageTemplatesService } from '../message-templates/message-templates.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
-import { CreateConversationDto } from './dto/create-conversation.dto';
-import { UpdateConversationDto } from './dto/update-conversation.dto';
-import { FilterConversationsDto } from './dto/filter-conversations.dto';
-import { SendMessageDto } from './dto/send-message.dto';
+} from "@nestjs/common";
+import { Request, Response } from "express";
+import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { ConversationsService } from "./conversations.service";
+import { MessagesService } from "./messages.service";
+import { SlaService } from "./sla.service";
+import { EmailService } from "../email/email.service";
+import { WhatsAppService } from "../whatsapp/whatsapp.service";
+import { TelegramService } from "../telegram/telegram.service";
+import { MessageTemplatesService } from "../message-templates/message-templates.service";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { AuthUser } from "../auth/strategies/jwt.strategy";
+import { CreateConversationDto } from "./dto/create-conversation.dto";
+import { UpdateConversationDto } from "./dto/update-conversation.dto";
+import { FilterConversationsDto } from "./dto/filter-conversations.dto";
+import { SendMessageDto } from "./dto/send-message.dto";
 
-@Controller('conversations')
+@Controller("conversations")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ConversationsController {
   private readonly logger = new Logger(ConversationsController.name);
@@ -52,113 +52,122 @@ export class ConversationsController {
 
   // ── Conversations ──────────────────────────────────────────────────────────
 
-  @Get('sla/stats')
+  @Get("sla/stats")
   @Roles(WorkspaceUserRole.AGENT)
-  getSlaStats(@CurrentUser('workspace_id') workspaceId: string) {
+  getSlaStats(@CurrentUser("workspace_id") workspaceId: string) {
     return this.slaService.getSlaStats(workspaceId);
   }
 
-  @Post('sla/check')
+  @Post("sla/check")
   @Roles(WorkspaceUserRole.ADMIN)
-  async checkSla(@CurrentUser('workspace_id') workspaceId: string) {
+  async checkSla(@CurrentUser("workspace_id") workspaceId: string) {
     await this.slaService.checkSlaBreaches(workspaceId);
     return { ok: true };
   }
 
   @Get()
-  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
-  findAll(
-    @CurrentUser() user: AuthUser,
-    @Query() filters: FilterConversationsDto,
-  ) {
+  @Roles(
+    WorkspaceUserRole.VIEWER,
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
+  findAll(@CurrentUser() user: AuthUser, @Query() filters: FilterConversationsDto) {
     return this.service.findAll(user.workspace_id, filters, { id: user.id, role: user.role });
   }
 
   @Post()
   @Roles(WorkspaceUserRole.AGENT)
-  create(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Body() dto: CreateConversationDto,
-  ) {
+  create(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: CreateConversationDto) {
     return this.service.create(workspaceId, dto);
   }
 
-  @Get(':id')
-  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @Get(":id")
+  @Roles(
+    WorkspaceUserRole.VIEWER,
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
   findOne(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id', ValidateUUIDPipe) id: string,
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
   ) {
     return this.service.findOne(workspaceId, id);
   }
 
-  @Patch(':id')
+  @Patch(":id")
   @Roles(WorkspaceUserRole.AGENT)
   update(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id', ValidateUUIDPipe) id: string,
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
     @Body() dto: UpdateConversationDto,
   ) {
     return this.service.update(workspaceId, id, dto);
   }
 
-  @Post(':id/assign')
+  @Post(":id/assign")
   @Roles(WorkspaceUserRole.AGENT)
   assign(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id', ValidateUUIDPipe) id: string,
-    @Body('user_id') userId: string,
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
+    @Body("user_id") userId: string,
   ) {
     return this.service.assign(workspaceId, id, userId);
   }
 
-  @Post(':id/resolve')
+  @Post(":id/resolve")
   @Roles(WorkspaceUserRole.AGENT)
   resolve(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id', ValidateUUIDPipe) id: string,
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
   ) {
     return this.service.resolve(workspaceId, id);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @Roles(WorkspaceUserRole.ADMIN)
   remove(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id', ValidateUUIDPipe) id: string,
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
   ) {
     return this.service.remove(workspaceId, id);
   }
 
   // ── Messages ───────────────────────────────────────────────────────────────
 
-  @Get(':id/messages')
-  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @Get(":id/messages")
+  @Roles(
+    WorkspaceUserRole.VIEWER,
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
   getMessages(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id', ValidateUUIDPipe) conversationId: string,
-    @Query('page') page = 1,
-    @Query('limit') limit = 50,
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) conversationId: string,
+    @Query("page") page = 1,
+    @Query("limit") limit = 50,
   ) {
     return this.messagesService.findAll(workspaceId, conversationId, +page, +limit);
   }
 
-  @Post(':id/messages')
+  @Post(":id/messages")
   @Roles(WorkspaceUserRole.AGENT)
   async sendMessage(
     @CurrentUser() user: AuthUser,
-    @Param('id', ValidateUUIDPipe) conversationId: string,
+    @Param("id", ValidateUUIDPipe) conversationId: string,
     @Body() dto: SendMessageDto,
   ) {
-    let bodyText = dto.body_text ?? '';
-    let bodyHtml = dto.body_html ?? '';
+    let bodyText = dto.body_text ?? "";
+    let bodyHtml = dto.body_html ?? "";
     let template: Record<string, any> | null = null;
 
     if (dto.template_id) {
       template = await this.templatesService.getById(user.workspace_id, dto.template_id);
       if (template) {
         bodyText = this.resolveTemplate(template.body, dto.template_variables ?? {});
-        bodyHtml = bodyText.replace(/\n/g, '<br>');
+        bodyHtml = bodyText.replace(/\n/g, "<br>");
       }
     }
 
@@ -175,36 +184,44 @@ export class ConversationsController {
       include: { contact: true, channel: true },
     });
 
-    if (conv?.channel?.type === 'EMAIL' && (conv.contact as any)?.email) {
+    if (conv?.channel?.type === "EMAIL" && (conv.contact as any)?.email) {
       try {
         await this.emailService.sendOutbound(
           conv.channel,
           (conv.contact as any).email,
-          (conv as any).subject ?? 'Nuevo mensaje',
+          (conv as any).subject ?? "Nuevo mensaje",
           bodyHtml || bodyText,
           bodyText,
         );
       } catch (err) {
         this.logger.error(`Email dispatch failed: ${err?.message}`);
-        throw new BadGatewayException(err?.message ?? 'No se pudo enviar el email.');
+        throw new BadGatewayException(err?.message ?? "No se pudo enviar el email.");
       }
     }
 
-    if (conv?.channel?.type === 'WHATSAPP' && (conv.contact as any)?.phone) {
+    if (conv?.channel?.type === "WHATSAPP" && (conv.contact as any)?.phone) {
       try {
-        const to = ((conv.contact as any).phone as string).replace(/\D/g, '');
-        this.logger.log(`[DIAG] WhatsApp dispatch: conv=${conversationId}, channel=${conv.channel.id}, phone=${to}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? 'none'}`);
+        const to = ((conv.contact as any).phone as string).replace(/\D/g, "");
+        this.logger.log(
+          `[DIAG] WhatsApp dispatch: conv=${conversationId}, channel=${conv.channel.id}, phone=${to}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? "none"}`,
+        );
         if (dto.media_url && dto.media_type) {
-          const waType = ['image', 'video', 'audio', 'document', 'sticker'].includes(dto.media_type)
-            ? dto.media_type as 'image' | 'video' | 'audio' | 'document' | 'sticker'
-            : 'document';
-          await this.whatsAppService.sendMedia(conv.channel, to, dto.media_url, waType, bodyText || undefined);
+          const waType = ["image", "video", "audio", "document", "sticker"].includes(dto.media_type)
+            ? (dto.media_type as "image" | "video" | "audio" | "document" | "sticker")
+            : "document";
+          await this.whatsAppService.sendMedia(
+            conv.channel,
+            to,
+            dto.media_url,
+            waType,
+            bodyText || undefined,
+          );
         } else if (template?.external_template_id) {
           await this.whatsAppService.sendTemplateMessage(
             conv.channel,
             to,
             template.external_template_id,
-            template.language ?? 'es',
+            template.language ?? "es",
             dto.template_variables ?? {},
           );
         } else {
@@ -212,14 +229,16 @@ export class ConversationsController {
         }
       } catch (err) {
         this.logger.error(`WhatsApp dispatch failed: ${err?.message}`);
-        throw new BadGatewayException(err?.message ?? 'No se pudo enviar el mensaje por WhatsApp.');
+        throw new BadGatewayException(err?.message ?? "No se pudo enviar el mensaje por WhatsApp.");
       }
     }
 
-    if (conv?.channel?.type === 'TELEGRAM' && (conv.contact as any)?.telegram_chat_id) {
+    if (conv?.channel?.type === "TELEGRAM" && (conv.contact as any)?.telegram_chat_id) {
       try {
         const chatId = (conv.contact as any).telegram_chat_id;
-        this.logger.log(`[DIAG] Telegram dispatch: conv=${conversationId}, channel=${conv.channel.id}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? 'none'}`);
+        this.logger.log(
+          `[DIAG] Telegram dispatch: conv=${conversationId}, channel=${conv.channel.id}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? "none"}`,
+        );
         if (dto.media_url && dto.media_type) {
           await this.telegramService.sendMedia(
             conv.channel.id,
@@ -229,15 +248,11 @@ export class ConversationsController {
             bodyText || undefined,
           );
         } else {
-          await this.telegramService.sendMessage(
-            conv.channel.id,
-            chatId,
-            bodyText,
-          );
+          await this.telegramService.sendMessage(conv.channel.id, chatId, bodyText);
         }
       } catch (err) {
         this.logger.error(`Telegram dispatch failed: ${err?.message}`);
-        throw new BadGatewayException(err?.message ?? 'No se pudo enviar el mensaje por Telegram.');
+        throw new BadGatewayException(err?.message ?? "No se pudo enviar el mensaje por Telegram.");
       }
     }
 
@@ -247,16 +262,21 @@ export class ConversationsController {
   private resolveTemplate(body: string, vars: Record<string, string>): string {
     let resolved = body;
     for (const [key, value] of Object.entries(vars)) {
-      resolved = resolved.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+      resolved = resolved.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
     }
     return resolved;
   }
 
-  @Get('messages/:messageId/media')
-  @Roles(WorkspaceUserRole.VIEWER, WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  @Get("messages/:messageId/media")
+  @Roles(
+    WorkspaceUserRole.VIEWER,
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
   async getMessageMedia(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('messageId', ValidateUUIDPipe) messageId: string,
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("messageId", ValidateUUIDPipe) messageId: string,
     @Res({ passthrough: false }) res: Response,
   ) {
     // NOTE: Uses passthrough:false (manual response mode) because this endpoint
@@ -265,19 +285,22 @@ export class ConversationsController {
       // 1) Proxy from MinIO storage (HTTPS — no redirect, avoids mixed-content)
       const media = await this.messagesService.getMediaContent(messageId, workspaceId);
       if (media) {
-        res.setHeader('Content-Type', media.contentType);
-        res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+        res.setHeader("Content-Type", media.contentType);
+        res.setHeader("Cache-Control", "public, max-age=86400, immutable");
         return res.send(media.buffer);
       }
 
       // 2) Fallback: buffer proxy (Meta API — no storage yet)
-      const { buffer, contentType } = await this.whatsAppService.downloadMedia(messageId, workspaceId);
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+      const { buffer, contentType } = await this.whatsAppService.downloadMedia(
+        messageId,
+        workspaceId,
+      );
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400, immutable");
       res.send(buffer);
     } catch (err) {
-      res.setHeader('Cache-Control', 'public, max-age=5');
-      res.status(404).json({ statusCode: 404, message: err.message || 'Media no disponible' });
+      res.setHeader("Cache-Control", "public, max-age=5");
+      res.status(404).json({ statusCode: 404, message: err.message || "Media no disponible" });
     }
   }
 }

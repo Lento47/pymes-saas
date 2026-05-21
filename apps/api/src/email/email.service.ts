@@ -5,13 +5,13 @@ import {
   Logger,
   NotFoundException,
   forwardRef,
-} from '@nestjs/common';
-import { Resend } from 'resend';
-import { CryptoService } from '../common/crypto/crypto.service';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { MessagesService } from '../conversations/messages.service';
-import { parseJsonValue } from '../common/prisma/json';
-import { SmtpService } from './smtp.service';
+} from "@nestjs/common";
+import { Resend } from "resend";
+import { CryptoService } from "../common/crypto/crypto.service";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { MessagesService } from "../conversations/messages.service";
+import { parseJsonValue } from "../common/prisma/json";
+import { SmtpService } from "./smtp.service";
 
 /**
  * Shape of config_json stored in the EMAIL channel.
@@ -77,10 +77,13 @@ export class EmailService {
     bodyHtml: string,
     bodyText?: string,
   ): Promise<{ id: string }> {
-    const config = parseJsonValue<EmailChannelConfig>(channel.config_json, {} as EmailChannelConfig);
+    const config = parseJsonValue<EmailChannelConfig>(
+      channel.config_json,
+      {} as EmailChannelConfig,
+    );
 
     if (!config?.from_email) {
-      throw new BadGatewayException('Email channel is not configured — from_email is missing.');
+      throw new BadGatewayException("Email channel is not configured — from_email is missing.");
     }
 
     const from = `${config.from_name} <${config.from_email}>`;
@@ -91,7 +94,9 @@ export class EmailService {
       try {
         pass = this.crypto.decrypt(config.smtp_pass_encrypted);
       } catch {
-        throw new BadGatewayException('Failed to decrypt SMTP password. Check ENCRYPTION_KEY in .env.');
+        throw new BadGatewayException(
+          "Failed to decrypt SMTP password. Check ENCRYPTION_KEY in .env.",
+        );
       }
 
       return this.smtp.send(
@@ -109,7 +114,7 @@ export class EmailService {
     // Fallback to Resend
     if (!config?.api_key_encrypted) {
       throw new BadGatewayException(
-        'Email channel is not configured — neither SMTP nor Resend API key found.',
+        "Email channel is not configured — neither SMTP nor Resend API key found.",
       );
     }
 
@@ -118,7 +123,7 @@ export class EmailService {
       apiKey = this.crypto.decrypt(config.api_key_encrypted);
     } catch {
       throw new BadGatewayException(
-        'Failed to decrypt the Resend API key. Check ENCRYPTION_KEY in .env.',
+        "Failed to decrypt the Resend API key. Check ENCRYPTION_KEY in .env.",
       );
     }
 
@@ -138,11 +143,11 @@ export class EmailService {
       }
 
       this.logger.log(`Email sent via Resend — id: ${response.data?.id}`);
-      return { id: response.data?.id ?? '' };
+      return { id: response.data?.id ?? "" };
     } catch (err) {
-      this.logger.error('Resend SDK error', err?.message ?? err);
+      this.logger.error("Resend SDK error", err?.message ?? err);
       throw new BadGatewayException(
-        `Resend failed to send email: ${err?.message ?? 'Unknown error'}`,
+        `Resend failed to send email: ${err?.message ?? "Unknown error"}`,
       );
     }
   }
@@ -151,7 +156,15 @@ export class EmailService {
   // INBOUND (webhook)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  async testSmtpConnection(smtpConfig: { host: string; port: number; user: string; password: string; tls: boolean; from_email: string; from_name: string }): Promise<{ success: boolean; message: string }> {
+  async testSmtpConnection(smtpConfig: {
+    host: string;
+    port: number;
+    user: string;
+    password: string;
+    tls: boolean;
+    from_email: string;
+    from_name: string;
+  }): Promise<{ success: boolean; message: string }> {
     try {
       const result = await this.smtp.send(
         {
@@ -164,14 +177,14 @@ export class EmailService {
         {
           from: `${smtpConfig.from_name} <${smtpConfig.from_email}>`,
           to: smtpConfig.from_email,
-          subject: 'PymesHub — Prueba de conexión SMTP',
-          html: '<p>Si recibiste este correo, tu configuración SMTP funciona correctamente.</p>',
+          subject: "PymesHub — Prueba de conexión SMTP",
+          html: "<p>Si recibiste este correo, tu configuración SMTP funciona correctamente.</p>",
         },
       );
       return { success: true, message: `Conexión exitosa — Message ID: ${result.id}` };
     } catch (err) {
       this.logger.warn(`SMTP test failed: ${err?.message ?? err}`);
-      return { success: false, message: err?.message ?? 'Error de conexión SMTP' };
+      return { success: false, message: err?.message ?? "Error de conexión SMTP" };
     }
   }
 
@@ -203,12 +216,12 @@ export class EmailService {
 
     // Normalise the Resend inbound event payload
     const normalised: NormalisedInbound = {
-      from: this.extractEmailAddress(payload.from ?? ''),
+      from: this.extractEmailAddress(payload.from ?? ""),
       to: this.extractPrimaryRecipient(payload.to),
-      subject: payload.subject ?? '(no subject)',
+      subject: payload.subject ?? "(no subject)",
       body_html: payload.html ?? null,
       body_text: payload.text ?? null,
-      sender_name: this.extractSenderName(payload.from ?? ''),
+      sender_name: this.extractSenderName(payload.from ?? ""),
       channel_id: channel.id,
       raw: payload,
     };
@@ -216,7 +229,7 @@ export class EmailService {
     this.logger.log(
       `Inbound email from ${normalised.from} to ${normalised.to} — workspace ${workspaceId}`,
     );
-    await this.messagesService.receiveInbound(channel.provider ?? 'email', workspaceId, normalised);
+    await this.messagesService.receiveInbound(channel.provider ?? "email", workspaceId, normalised);
   }
 
   /**
@@ -235,13 +248,13 @@ export class EmailService {
 
     // Match by inbound_email or from_email via JSON path query — lets DB do the filtering
     // Fallback to fetch-all+loop if JSON path isn't supported
-    let channel = await this.prisma.channel.findFirst({
+    const channel = await this.prisma.channel.findFirst({
       where: {
-        type: 'EMAIL',
-        status: 'ACTIVE',
+        type: "EMAIL",
+        status: "ACTIVE",
         OR: [
-          { config_json: { path: ['inbound_email'], equals: toAddress } },
-          { config_json: { path: ['from_email'], equals: toAddress } },
+          { config_json: { path: ["inbound_email"], equals: toAddress } },
+          { config_json: { path: ["from_email"], equals: toAddress } },
         ],
       },
     });
@@ -249,7 +262,7 @@ export class EmailService {
 
     // Fallback: scan all email channels (legacy, for unmigrated config_json)
     const allChannels = await this.prisma.channel.findMany({
-      where: { type: 'EMAIL', status: 'ACTIVE' },
+      where: { type: "EMAIL", status: "ACTIVE" },
     });
     for (const ch of allChannels) {
       const config = parseJsonValue<EmailChannelConfig>(ch.config_json, {} as EmailChannelConfig);
@@ -263,20 +276,20 @@ export class EmailService {
 
   private extractPrimaryRecipient(value: unknown): string {
     if (Array.isArray(value)) {
-      return this.extractEmailAddress(value[0] ?? '');
+      return this.extractEmailAddress(value[0] ?? "");
     }
-    return this.extractEmailAddress(value ?? '');
+    return this.extractEmailAddress(value ?? "");
   }
 
   private extractEmailAddress(value: unknown): string {
-    const raw = String(value ?? '').trim();
+    const raw = String(value ?? "").trim();
     const match = raw.match(/<([^>]+)>/);
     return (match?.[1] ?? raw).trim().toLowerCase();
   }
 
   private extractSenderName(value: unknown): string {
-    const raw = String(value ?? '').trim();
+    const raw = String(value ?? "").trim();
     const match = raw.match(/^(.+?)\s*<[^>]+>$/);
-    return (match?.[1] ?? this.extractEmailAddress(raw) ?? raw).replace(/^"|"$/g, '').trim();
+    return (match?.[1] ?? this.extractEmailAddress(raw) ?? raw).replace(/^"|"$/g, "").trim();
   }
 }

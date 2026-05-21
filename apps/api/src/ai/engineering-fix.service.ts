@@ -1,11 +1,6 @@
-import {
-  ForbiddenException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { AiService } from './ai.service';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { AiService } from "./ai.service";
 
 interface RbacActor {
   workspaceId: string;
@@ -31,12 +26,9 @@ export class EngineeringFixService {
       where: { id: fixCaseId },
       include: { diagnosticCase: { select: { workspace_id: true } } },
     });
-    if (!fixCase) throw new NotFoundException('Fix case not found');
-    if (
-      !actor.isPlatformAdmin &&
-      fixCase.diagnosticCase?.workspace_id !== actor.workspaceId
-    ) {
-      throw new ForbiddenException('Fix case belongs to another workspace');
+    if (!fixCase) throw new NotFoundException("Fix case not found");
+    if (!actor.isPlatformAdmin && fixCase.diagnosticCase?.workspace_id !== actor.workspaceId) {
+      throw new ForbiddenException("Fix case belongs to another workspace");
     }
     return fixCase;
   }
@@ -44,10 +36,7 @@ export class EngineeringFixService {
   /**
    * Same idea, for diagnostic-case lookups before mutating fix flow.
    */
-  private async assertDiagnosticAccessible(
-    diagnosticCaseId: string,
-    actor: RbacActor,
-  ) {
+  private async assertDiagnosticAccessible(diagnosticCaseId: string, actor: RbacActor) {
     const diagnostic = await this.prisma.supportDiagnosticCase.findUnique({
       where: { id: diagnosticCaseId },
       select: {
@@ -63,13 +52,8 @@ export class EngineeringFixService {
     if (!diagnostic) {
       throw new NotFoundException(`Diagnostic case ${diagnosticCaseId} not found`);
     }
-    if (
-      !actor.isPlatformAdmin &&
-      diagnostic.workspace_id !== actor.workspaceId
-    ) {
-      throw new ForbiddenException(
-        'Diagnostic case belongs to another workspace',
-      );
+    if (!actor.isPlatformAdmin && diagnostic.workspace_id !== actor.workspaceId) {
+      throw new ForbiddenException("Diagnostic case belongs to another workspace");
     }
     return diagnostic;
   }
@@ -77,25 +61,33 @@ export class EngineeringFixService {
   async createFixCase(diagnosticCaseId: string, actor: RbacActor) {
     const diagnostic = await this.assertDiagnosticAccessible(diagnosticCaseId, actor);
 
-    const branchName = `fix/${diagnostic.module}-${diagnostic.error_code || diagnostic.id.slice(0, 8)}-${diagnostic.id.slice(0, 6)}`.toLowerCase().replace(/[^a-z0-9/-]/g, '-');
+    const branchName =
+      `fix/${diagnostic.module}-${diagnostic.error_code || diagnostic.id.slice(0, 8)}-${diagnostic.id.slice(0, 6)}`
+        .toLowerCase()
+        .replace(/[^a-z0-9/-]/g, "-");
 
     const fixCase = await this.prisma.engineeringFixCase.create({
       data: {
         diagnostic_case_id: diagnosticCaseId,
         branch_name: branchName,
-        status: 'PENDING',
+        status: "PENDING",
       },
     });
 
     await this.prisma.supportDiagnosticCase.update({
       where: { id: diagnosticCaseId },
-      data: { status: 'INVESTIGATING' },
+      data: { status: "INVESTIGATING" },
     });
 
     this.logger.log(`Engineering fix case created: ${fixCase.id}, branch: ${branchName}`);
 
     // Auto-generate fix proposal via AI (fire-and-forget)
-    this.proposeFixAndUpdate(fixCase.id, diagnostic, diagnosticCaseId, diagnostic.workspace_id).catch(err => {
+    this.proposeFixAndUpdate(
+      fixCase.id,
+      diagnostic,
+      diagnosticCaseId,
+      diagnostic.workspace_id,
+    ).catch((err) => {
       this.logger.error(`Auto fix proposal failed for ${fixCase.id}: ${err?.message}`);
     });
 
@@ -104,18 +96,28 @@ export class EngineeringFixService {
 
   private async proposeFixAndUpdate(
     fixCaseId: string,
-    diagnostic: { workspace_id: string; module: string; error_code: string | null; title: string; user_description: string | null; safe_summary: string | null },
+    diagnostic: {
+      workspace_id: string;
+      module: string;
+      error_code: string | null;
+      title: string;
+      user_description: string | null;
+      safe_summary: string | null;
+    },
     diagnosticCaseId: string,
     workspaceId: string,
   ) {
     const proposal = await this.aiService.generateFixProposal(workspaceId, diagnostic);
     if (!proposal) {
-      await this.updateFixStatus(fixCaseId, { status: 'INVESTIGATING', error_log: 'AI fix proposal generation failed' });
+      await this.updateFixStatus(fixCaseId, {
+        status: "INVESTIGATING",
+        error_log: "AI fix proposal generation failed",
+      });
       return;
     }
 
     await this.updateFixStatus(fixCaseId, {
-      status: 'FIX_READY',
+      status: "FIX_READY",
       fix_summary: proposal.fix_summary,
       files_changed: proposal.files_changed_json,
     });
@@ -130,17 +132,17 @@ export class EngineeringFixService {
 
   async approveFix(fixCaseId: string, actor: RbacActor) {
     const fixCase = await this.assertFixCaseAccessible(fixCaseId, actor);
-    if (fixCase.status !== 'FIX_READY' && fixCase.status !== 'PENDING_APPROVAL') {
-      throw new Error('Fix case must be in FIX_READY or PENDING_APPROVAL status to approve');
+    if (fixCase.status !== "FIX_READY" && fixCase.status !== "PENDING_APPROVAL") {
+      throw new Error("Fix case must be in FIX_READY or PENDING_APPROVAL status to approve");
     }
-    return this.updateFixStatus(fixCaseId, { status: 'PR_OPENED' });
+    return this.updateFixStatus(fixCaseId, { status: "PR_OPENED" });
   }
 
   async rejectFix(fixCaseId: string, reason: string, actor: RbacActor) {
     await this.assertFixCaseAccessible(fixCaseId, actor);
     return this.updateFixStatus(fixCaseId, {
-      status: 'PENDING',
-      error_log: reason || 'Rejected by admin',
+      status: "PENDING",
+      error_log: reason || "Rejected by admin",
     });
   }
 
@@ -150,9 +152,11 @@ export class EngineeringFixService {
         diagnosticCase: { workspace_id: workspaceId },
       },
       include: {
-        diagnosticCase: { select: { title: true, module: true, error_code: true, category: true, risk_level: true } },
+        diagnosticCase: {
+          select: { title: true, module: true, error_code: true, category: true, risk_level: true },
+        },
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
       take: 50,
     });
   }
@@ -161,15 +165,25 @@ export class EngineeringFixService {
     const fixCase = await (this.prisma as any).engineeringFixCase.findUnique({
       where: { id: fixCaseId },
       include: {
-        diagnosticCase: { select: { id: true, workspace_id: true, title: true, module: true, error_code: true, category: true, risk_level: true, user_description: true, safe_summary: true, evidence_json: true } },
+        diagnosticCase: {
+          select: {
+            id: true,
+            workspace_id: true,
+            title: true,
+            module: true,
+            error_code: true,
+            category: true,
+            risk_level: true,
+            user_description: true,
+            safe_summary: true,
+            evidence_json: true,
+          },
+        },
       },
     });
-    if (!fixCase) throw new NotFoundException('Fix case not found');
-    if (
-      !actor.isPlatformAdmin &&
-      fixCase.diagnosticCase?.workspace_id !== actor.workspaceId
-    ) {
-      throw new ForbiddenException('Fix case belongs to another workspace');
+    if (!fixCase) throw new NotFoundException("Fix case not found");
+    if (!actor.isPlatformAdmin && fixCase.diagnosticCase?.workspace_id !== actor.workspaceId) {
+      throw new ForbiddenException("Fix case belongs to another workspace");
     }
     return fixCase;
   }

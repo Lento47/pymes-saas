@@ -1,5 +1,5 @@
-import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString, Length } from 'class-validator';
+import { Type } from "class-transformer";
+import { IsNumber, IsOptional, IsString, Length } from "class-validator";
 
 export class CreateInvoicePaymentDto {
   @Type(() => Number)

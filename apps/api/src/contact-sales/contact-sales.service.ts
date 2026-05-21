@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { EmailService } from '../email/email.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { EmailService } from "../email/email.service";
 
 @Injectable()
 export class ContactSalesService {
@@ -32,7 +32,9 @@ export class ContactSalesService {
         sla_needed: data.sla_needed ?? false,
         dedicated_onboarding_needed: data.dedicated_onboarding_needed ?? false,
         custom_workflows_needed: data.custom_workflows_needed ?? false,
-        preferred_onboarding_date: data.preferred_onboarding_date ? new Date(data.preferred_onboarding_date) : null,
+        preferred_onboarding_date: data.preferred_onboarding_date
+          ? new Date(data.preferred_onboarding_date)
+          : null,
         message: data.message,
       },
     });
@@ -48,7 +50,7 @@ export class ContactSalesService {
         await this.prisma.contact.create({
           data: {
             workspace_id: data.workspace_id,
-            type: 'LEAD',
+            type: "LEAD",
             full_name: data.contact_name,
             company_name: data.business_name,
             email: data.email,
@@ -64,33 +66,35 @@ export class ContactSalesService {
   }
 
   private async sendNotifications(data: Record<string, any>, inquiryId: string) {
-    const salesEmail = process.env.CONTACT_SALES_EMAIL || 'ventas@pymeshub.lat';
-    const from = 'PymesHub <no-reply@pymeshub.lat>';
+    const salesEmail = process.env.CONTACT_SALES_EMAIL || "ventas@pymeshub.lat";
+    const from = "PymesHub <no-reply@pymeshub.lat>";
 
     const features = [];
-    if (data.channels_needed?.length) features.push(`Canales: ${data.channels_needed.join(', ')}`);
-    if (data.migration_needed) features.push('Migración de datos');
-    if (data.sso_needed) features.push('SSO/SAML');
-    if (data.sla_needed) features.push('SLA empresarial');
-    if (data.dedicated_onboarding_needed) features.push('Onboarding dedicado');
-    if (data.custom_workflows_needed) features.push('Workflows personalizados');
+    if (data.channels_needed?.length) features.push(`Canales: ${data.channels_needed.join(", ")}`);
+    if (data.migration_needed) features.push("Migración de datos");
+    if (data.sso_needed) features.push("SSO/SAML");
+    if (data.sla_needed) features.push("SLA empresarial");
+    if (data.dedicated_onboarding_needed) features.push("Onboarding dedicado");
+    if (data.custom_workflows_needed) features.push("Workflows personalizados");
 
     const details = [
       `Empresa: ${data.business_name}`,
       `Contacto: ${data.contact_name}`,
       `Email: ${data.email}`,
-      `Teléfono: ${data.phone || '—'}`,
-      `Industria: ${data.industry || '—'}`,
-      `Empleados: ${data.employee_count || '—'}`,
-      `Usuarios: ${data.users_needed || '—'}`,
-      `Sucursales: ${data.locations_count || '—'}`,
-      `Facturas/mes: ${data.monthly_invoices_estimate || '—'}`,
-      `Contactos: ${data.contacts_estimate || '—'}`,
-      `Herramientas actuales: ${data.current_tools || '—'}`,
-      features.length ? `Servicios: ${features.join(' | ')}` : null,
+      `Teléfono: ${data.phone || "—"}`,
+      `Industria: ${data.industry || "—"}`,
+      `Empleados: ${data.employee_count || "—"}`,
+      `Usuarios: ${data.users_needed || "—"}`,
+      `Sucursales: ${data.locations_count || "—"}`,
+      `Facturas/mes: ${data.monthly_invoices_estimate || "—"}`,
+      `Contactos: ${data.contacts_estimate || "—"}`,
+      `Herramientas actuales: ${data.current_tools || "—"}`,
+      features.length ? `Servicios: ${features.join(" | ")}` : null,
       data.preferred_onboarding_date ? `Fecha preferida: ${data.preferred_onboarding_date}` : null,
       data.message ? `Mensaje: ${data.message}` : null,
-    ].filter(Boolean).join('\n');
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const bodyHtml = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
       <h2 style="color:#5771ff">Nueva solicitud Business+</h2>
@@ -103,7 +107,7 @@ export class ContactSalesService {
       // TODO(types): sendOutbound channel param uses `as any` cast — define a minimal
       // ChannelLike interface with config_json and type to avoid unsafe casts.
       await this.emailService.sendOutbound(
-        { config_json: {}, type: 'EMAIL' } as any,
+        { config_json: {}, type: "EMAIL" } as any,
         salesEmail,
         `[PymesHub] Nueva solicitud Business+ — ${data.business_name}`,
         bodyHtml,
@@ -123,12 +127,12 @@ export class ContactSalesService {
       </div>`;
 
       try {
-      // TODO(types): sendOutbound channel param uses `as any` cast — define a minimal
-      // ChannelLike interface with config_json and type to avoid unsafe casts.
-      await this.emailService.sendOutbound(
-        { config_json: {}, type: 'EMAIL' } as any,
+        // TODO(types): sendOutbound channel param uses `as any` cast — define a minimal
+        // ChannelLike interface with config_json and type to avoid unsafe casts.
+        await this.emailService.sendOutbound(
+          { config_json: {}, type: "EMAIL" } as any,
           data.email,
-          'Hemos recibido tu solicitud — PymesHub Business+',
+          "Hemos recibido tu solicitud — PymesHub Business+",
           confirmHtml,
           `Gracias ${data.contact_name}. Recibimos tu solicitud. Te contactaremos pronto.`,
         );
@@ -141,7 +145,7 @@ export class ContactSalesService {
   async getInquiries(workspaceId: string, status?: string) {
     return this.prisma.contactSalesInquiry.findMany({
       where: { workspace_id: workspaceId, ...(status ? { status } : {}) },
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
       take: 100,
     });
   }

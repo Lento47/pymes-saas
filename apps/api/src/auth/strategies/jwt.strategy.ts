@@ -1,11 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { PrismaService } from '../../common/prisma/prisma.service';
-import { validateJwtSecret } from '../../common/validation/env.validation';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, Strategy } from "passport-jwt";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import { validateJwtSecret } from "../../common/validation/env.validation";
 
 export interface JwtPayload {
-  sub: string;         // user.id
+  sub: string; // user.id
   email: string;
   workspace_id: string;
   role: string;
@@ -32,7 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: validateJwtSecret(),
-      algorithms: ['HS256'],
+      algorithms: ["HS256"],
     });
   }
 
@@ -47,7 +47,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       include: { user: true },
     });
 
-    if (!workspaceUser || workspaceUser.user.status !== 'ACTIVE') {
+    if (!workspaceUser || workspaceUser.user.status !== "ACTIVE") {
       throw new UnauthorizedException();
     }
 

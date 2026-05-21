@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
-import { ConversationStatus, Priority } from '@prisma/client';
-import { PrismaService } from '../../common/prisma/prisma.service';
-import { NotificationsService } from '../../notifications/notifications.service';
-import { stringifyJson } from '../../common/prisma/json';
-import { QUEUE_NAMES } from '../queues.constants';
+import { Injectable, Logger } from "@nestjs/common";
+import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { Job } from "bullmq";
+import { ConversationStatus, Priority } from "@prisma/client";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import { NotificationsService } from "../../notifications/notifications.service";
+import { stringifyJson } from "../../common/prisma/json";
+import { QUEUE_NAMES } from "../queues.constants";
 
 interface AutomationJobData {
   ruleId: string;
@@ -15,7 +15,7 @@ interface AutomationJobData {
 }
 
 interface AutomationAction {
-  type: 'set_priority' | 'set_status' | 'assign' | 'create_task' | 'notify' | 'notify_in_app';
+  type: "set_priority" | "set_status" | "assign" | "create_task" | "notify" | "notify_in_app";
   priority?: string;
   status?: string;
   user_id?: string;
@@ -62,7 +62,7 @@ export class AutomationProcessor extends WorkerHost {
         rule_id: ruleId,
         trigger_entity_type: triggerEntityType,
         trigger_entity_id: triggerEntityId,
-        status: 'RUNNING',
+        status: "RUNNING",
         input_json: stringifyJson({ ruleId, triggerEntityType, triggerEntityId }),
         started_at: new Date(),
       },
@@ -70,7 +70,10 @@ export class AutomationProcessor extends WorkerHost {
 
     try {
       // 4. Evaluar condiciones
-      const conditionConfig = rule.condition_config_json as Record<string, unknown> | Array<Record<string, unknown>> | null;
+      const conditionConfig = rule.condition_config_json as
+        | Record<string, unknown>
+        | Array<Record<string, unknown>>
+        | null;
       let conditionMet = true;
 
       const conditions = Array.isArray(conditionConfig)
@@ -84,7 +87,10 @@ export class AutomationProcessor extends WorkerHost {
           const entity = await this.loadEntity(triggerEntityType, triggerEntityId);
           if (entity) {
             conditionMet = conditions.every((condition) =>
-              this.evaluateCondition(entity, condition as { field: string; operator: string; value: unknown }),
+              this.evaluateCondition(
+                entity,
+                condition as { field: string; operator: string; value: unknown },
+              ),
             );
           }
         } catch {
@@ -97,29 +103,38 @@ export class AutomationProcessor extends WorkerHost {
       if (!conditionMet) {
         await this.prisma.automationExecution.update({
           where: { id: execution.id },
-          data: { status: 'SKIPPED', finished_at: new Date() },
+          data: { status: "SKIPPED", finished_at: new Date() },
         });
         this.logger.log(`Automation execution ${execution.id} skipped (condition not met)`);
         return { skipped: true, executionId: execution.id };
       }
 
       // 6. Ejecutar acciones
-      const rawActions = rule.action_config_json as unknown as AutomationAction | AutomationAction[] | null;
+      const rawActions = rule.action_config_json as unknown as
+        | AutomationAction
+        | AutomationAction[]
+        | null;
       const actions: AutomationAction[] = Array.isArray(rawActions)
         ? (rawActions as AutomationAction[])
-        : rawActions && typeof rawActions === 'object'
+        : rawActions && typeof rawActions === "object"
           ? [rawActions as AutomationAction]
           : [];
 
       for (const action of actions) {
-        await this.executeAction(action, triggerEntityType, triggerEntityId, workspaceId, rule.name);
+        await this.executeAction(
+          action,
+          triggerEntityType,
+          triggerEntityId,
+          workspaceId,
+          rule.name,
+        );
       }
 
       // 7. Actualizar execution SUCCESS
       await this.prisma.automationExecution.update({
         where: { id: execution.id },
         data: {
-          status: 'SUCCESS',
+          status: "SUCCESS",
           finished_at: new Date(),
           output_json: stringifyJson({ actions_executed: actions.length }),
         },
@@ -135,9 +150,9 @@ export class AutomationProcessor extends WorkerHost {
       await this.prisma.automationExecution.update({
         where: { id: execution.id },
         data: {
-          status: 'FAILED',
+          status: "FAILED",
           finished_at: new Date(),
-          error_message: (error as Error)?.message ?? 'Unknown error',
+          error_message: (error as Error)?.message ?? "Unknown error",
         },
       });
 
@@ -150,15 +165,18 @@ export class AutomationProcessor extends WorkerHost {
     }
   }
 
-  private async loadEntity(entityType: string, entityId: string): Promise<Record<string, unknown> | null> {
+  private async loadEntity(
+    entityType: string,
+    entityId: string,
+  ): Promise<Record<string, unknown> | null> {
     switch (entityType) {
-      case 'conversation':
+      case "conversation":
         return this.prisma.conversation.findUnique({ where: { id: entityId } });
-      case 'task':
+      case "task":
         return this.prisma.task.findUnique({ where: { id: entityId } });
-      case 'message':
+      case "message":
         return this.prisma.message.findUnique({ where: { id: entityId } });
-      case 'document':
+      case "document":
         return this.prisma.document.findUnique({ where: { id: entityId } });
       default:
         return null;
@@ -173,26 +191,30 @@ export class AutomationProcessor extends WorkerHost {
     const entityValue = entity[field];
 
     switch (operator) {
-      case 'eq':
+      case "eq":
         return entityValue === value;
-      case 'neq':
+      case "neq":
         return entityValue !== value;
-      case 'contains':
-        return String(entityValue ?? '').toLowerCase().includes(String(value ?? '').toLowerCase());
-      case 'not_contains':
-        return !String(entityValue ?? '').toLowerCase().includes(String(value ?? '').toLowerCase());
-      case 'gt':
+      case "contains":
+        return String(entityValue ?? "")
+          .toLowerCase()
+          .includes(String(value ?? "").toLowerCase());
+      case "not_contains":
+        return !String(entityValue ?? "")
+          .toLowerCase()
+          .includes(String(value ?? "").toLowerCase());
+      case "gt":
         return Number(entityValue) > Number(value);
-      case 'gte':
+      case "gte":
         return Number(entityValue) >= Number(value);
-      case 'lt':
+      case "lt":
         return Number(entityValue) < Number(value);
-      case 'lte':
+      case "lte":
         return Number(entityValue) <= Number(value);
-      case 'exists':
+      case "exists":
         return value === true
-          ? entityValue !== undefined && entityValue !== null && entityValue !== ''
-          : entityValue === undefined || entityValue === null || entityValue === '';
+          ? entityValue !== undefined && entityValue !== null && entityValue !== ""
+          : entityValue === undefined || entityValue === null || entityValue === "";
       default:
         // Operador desconocido → condición pasa
         return true;
@@ -212,7 +234,7 @@ export class AutomationProcessor extends WorkerHost {
     );
 
     switch (action.type) {
-      case 'notify_in_app':
+      case "notify_in_app":
         {
           const recipientId = await this.resolveNotificationRecipient(
             workspaceId,
@@ -224,17 +246,17 @@ export class AutomationProcessor extends WorkerHost {
             const actionDesc = this.describeAction(action);
             await this.notificationsService.create(workspaceId, {
               user_id: recipientId,
-              type: 'automation',
+              type: "automation",
               title: action.title ?? ruleName,
               body: action.body ?? `${ruleName}: ${actionDesc}`,
-              related_entity_type: conversationTargetId ? 'conversation' : triggerEntityType,
+              related_entity_type: conversationTargetId ? "conversation" : triggerEntityType,
               related_entity_id: conversationTargetId ?? triggerEntityId,
             });
           }
         }
         break;
 
-      case 'set_priority':
+      case "set_priority":
         if (conversationTargetId) {
           await this.prisma.conversation.update({
             where: { id: conversationTargetId },
@@ -243,7 +265,7 @@ export class AutomationProcessor extends WorkerHost {
         }
         break;
 
-      case 'set_status':
+      case "set_status":
         if (conversationTargetId) {
           await this.prisma.conversation.update({
             where: { id: conversationTargetId },
@@ -252,7 +274,7 @@ export class AutomationProcessor extends WorkerHost {
         }
         break;
 
-      case 'assign':
+      case "assign":
         if (conversationTargetId) {
           await this.prisma.conversation.update({
             where: { id: conversationTargetId },
@@ -261,22 +283,22 @@ export class AutomationProcessor extends WorkerHost {
         }
         break;
 
-      case 'create_task':
+      case "create_task":
         await this.prisma.task.create({
           data: {
             workspace_id: workspaceId,
-            title: action.title ?? 'Tarea automática',
+            title: action.title ?? "Tarea automática",
             description: action.description,
-            priority: (action.priority as Priority) ?? 'MEDIUM',
-            status: 'TODO',
-            source: 'AUTOMATION',
+            priority: (action.priority as Priority) ?? "MEDIUM",
+            status: "TODO",
+            source: "AUTOMATION",
             assigned_user_id: action.assigned_user_id ?? action.user_id,
             conversation_id: conversationTargetId ?? undefined,
           },
         });
         break;
 
-      case 'notify':
+      case "notify":
         {
           const recipientId = await this.resolveNotificationRecipient(
             workspaceId,
@@ -286,15 +308,15 @@ export class AutomationProcessor extends WorkerHost {
 
           if (recipientId) {
             const actionDesc = this.describeAction(action);
-          await this.notificationsService.create(workspaceId, {
-            user_id: recipientId,
-            type: 'automation',
-            title: action.title ?? ruleName,
-            body: action.body ?? `${ruleName}: ${actionDesc}`,
-            related_entity_type: conversationTargetId ? 'conversation' : triggerEntityType,
-            related_entity_id: conversationTargetId ?? triggerEntityId,
-          });
-        }
+            await this.notificationsService.create(workspaceId, {
+              user_id: recipientId,
+              type: "automation",
+              title: action.title ?? ruleName,
+              body: action.body ?? `${ruleName}: ${actionDesc}`,
+              related_entity_type: conversationTargetId ? "conversation" : triggerEntityType,
+              related_entity_id: conversationTargetId ?? triggerEntityId,
+            });
+          }
         }
         break;
 
@@ -305,13 +327,20 @@ export class AutomationProcessor extends WorkerHost {
 
   private describeAction(action: AutomationAction): string {
     switch (action.type) {
-      case 'set_priority': return `Cambió prioridad a ${action.priority}`;
-      case 'set_status': return `Cambió estado a ${action.status}`;
-      case 'assign': return `Asignó conversación`;
-      case 'create_task': return `Creó tarea: ${action.title ?? ''}`;
-      case 'notify': return 'Notificación enviada';
-      case 'notify_in_app': return 'Notificación en app';
-      default: return `Acción: ${action.type}`;
+      case "set_priority":
+        return `Cambió prioridad a ${action.priority}`;
+      case "set_status":
+        return `Cambió estado a ${action.status}`;
+      case "assign":
+        return `Asignó conversación`;
+      case "create_task":
+        return `Creó tarea: ${action.title ?? ""}`;
+      case "notify":
+        return "Notificación enviada";
+      case "notify_in_app":
+        return "Notificación en app";
+      default:
+        return `Acción: ${action.type}`;
     }
   }
 
@@ -319,11 +348,11 @@ export class AutomationProcessor extends WorkerHost {
     triggerEntityType: string,
     triggerEntityId: string,
   ): Promise<string | null> {
-    if (triggerEntityType === 'conversation') {
+    if (triggerEntityType === "conversation") {
       return triggerEntityId;
     }
 
-    if (triggerEntityType === 'message') {
+    if (triggerEntityType === "message") {
       const message = await this.prisma.message.findUnique({
         where: { id: triggerEntityId },
         select: { conversation_id: true },
@@ -331,7 +360,7 @@ export class AutomationProcessor extends WorkerHost {
       return message?.conversation_id ?? null;
     }
 
-    if (triggerEntityType === 'task') {
+    if (triggerEntityType === "task") {
       const task = await this.prisma.task.findUnique({
         where: { id: triggerEntityId },
         select: { conversation_id: true },
@@ -339,7 +368,7 @@ export class AutomationProcessor extends WorkerHost {
       return task?.conversation_id ?? null;
     }
 
-    if (triggerEntityType === 'document') {
+    if (triggerEntityType === "document") {
       const document = await this.prisma.document.findUnique({
         where: { id: triggerEntityId },
         select: { conversation_id: true },

@@ -3,14 +3,8 @@ import {
   BillingProvider,
   WorkspacePlan,
   WorkspaceSubscriptionStatus,
-} from '@prisma/client';
-import {
-  IsBoolean,
-  IsDateString,
-  IsEnum,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+} from "@prisma/client";
+import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from "class-validator";
 
 export class UpdateWorkspaceBillingDto {
   @IsOptional()

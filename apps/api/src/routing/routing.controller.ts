@@ -8,32 +8,32 @@ import {
   Patch,
   Post,
   UseGuards,
-} from '@nestjs/common';
-import { WorkspaceUserRole } from '@prisma/client';
-import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CreateRoutingRuleDto } from './dto/create-routing-rule.dto';
-import { UpdateRoutingRuleDto } from './dto/update-routing-rule.dto';
+} from "@nestjs/common";
+import { WorkspaceUserRole } from "@prisma/client";
+import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CreateRoutingRuleDto } from "./dto/create-routing-rule.dto";
+import { UpdateRoutingRuleDto } from "./dto/update-routing-rule.dto";
 
 const INCLUDE = {
   department: { select: { id: true, name: true, color: true } },
   channel: { select: { id: true, name: true, type: true } },
 } as const;
 
-@Controller('routing/rules')
+@Controller("routing/rules")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class RoutingController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get()
-  findAll(@CurrentUser('workspace_id') workspaceId: string) {
+  findAll(@CurrentUser("workspace_id") workspaceId: string) {
     return this.prisma.routingRule.findMany({
       where: { workspace_id: workspaceId },
-      orderBy: [{ priority: 'desc' }, { created_at: 'asc' }],
+      orderBy: [{ priority: "desc" }, { created_at: "asc" }],
       include: INCLUDE,
     });
   }
@@ -41,7 +41,7 @@ export class RoutingController {
   @Post()
   @Roles(WorkspaceUserRole.ADMIN)
   async create(
-    @CurrentUser('workspace_id') workspaceId: string,
+    @CurrentUser("workspace_id") workspaceId: string,
     @Body() dto: CreateRoutingRuleDto,
   ) {
     const departmentId = await this.resolveDepartment(workspaceId, dto.department_id);
@@ -51,7 +51,7 @@ export class RoutingController {
         workspace_id: workspaceId,
         channel_id: dto.channel_id ?? null,
         name: dto.name,
-        match_type: dto.match_type ?? 'KEYWORD',
+        match_type: dto.match_type ?? "KEYWORD",
         pattern: dto.pattern.trim().toLowerCase(),
         department_id: departmentId,
         priority: dto.priority ?? 0,
@@ -72,17 +72,17 @@ export class RoutingController {
     return created.id;
   }
 
-  @Patch(':id')
+  @Patch(":id")
   @Roles(WorkspaceUserRole.ADMIN)
   async update(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id', ValidateUUIDPipe) id: string,
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
     @Body() dto: UpdateRoutingRuleDto,
   ) {
     const rule = await this.prisma.routingRule.findFirst({
       where: { id, workspace_id: workspaceId },
     });
-    if (!rule) throw new NotFoundException('Routing rule not found.');
+    if (!rule) throw new NotFoundException("Routing rule not found.");
 
     return this.prisma.routingRule.update({
       where: { id },
@@ -103,16 +103,16 @@ export class RoutingController {
     });
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @Roles(WorkspaceUserRole.ADMIN)
   async remove(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Param('id', ValidateUUIDPipe) id: string,
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
   ) {
     const rule = await this.prisma.routingRule.findFirst({
       where: { id, workspace_id: workspaceId },
     });
-    if (!rule) throw new NotFoundException('Routing rule not found.');
+    if (!rule) throw new NotFoundException("Routing rule not found.");
 
     await this.prisma.routingRule.delete({ where: { id } });
     return { deleted: true };

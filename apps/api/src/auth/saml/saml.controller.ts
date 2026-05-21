@@ -1,21 +1,34 @@
-import { Body, Controller, Get, Param, Post, Put, Res, Req, BadRequestException, UseGuards, Logger, ForbiddenException } from '@nestjs/common';
-import { Response, Request } from 'express';
-import { PrismaService } from '../../common/prisma/prisma.service';
-import { parseJsonValue } from '../../common/prisma/json';
-import { CryptoService } from '../../common/crypto/crypto.service';
-import { SamlService, SamlIdpConfig } from './saml.service';
-import { AuthService } from '../auth.service';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { RolesGuard } from '../guards/roles.guard';
-import { Roles } from '../decorators/roles.decorator';
-import { AuthUser } from '../strategies/jwt.strategy';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  Res,
+  Req,
+  BadRequestException,
+  UseGuards,
+  Logger,
+  ForbiddenException,
+} from "@nestjs/common";
+import { Response, Request } from "express";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import { parseJsonValue } from "../../common/prisma/json";
+import { CryptoService } from "../../common/crypto/crypto.service";
+import { SamlService, SamlIdpConfig } from "./saml.service";
+import { AuthService } from "../auth.service";
+import { JwtAuthGuard } from "../guards/jwt-auth.guard";
+import { RolesGuard } from "../guards/roles.guard";
+import { Roles } from "../decorators/roles.decorator";
+import { AuthUser } from "../strategies/jwt.strategy";
 
 /** Express Request augmented by Passport after JwtAuthGuard runs */
 interface AuthenticatedRequest extends Request {
   user: AuthUser;
 }
 
-@Controller('auth/saml')
+@Controller("auth/saml")
 export class SamlController {
   private readonly logger = new Logger(SamlController.name);
 
@@ -28,8 +41,8 @@ export class SamlController {
 
   // ─── Public endpoints ─────────────────────────────────────────────────
 
-  @Get('status/:workspaceSlug')
-  async status(@Param('workspaceSlug') workspaceSlug: string) {
+  @Get("status/:workspaceSlug")
+  async status(@Param("workspaceSlug") workspaceSlug: string) {
     try {
       const config = await this.getSsoConfig(workspaceSlug);
       return {
@@ -42,26 +55,26 @@ export class SamlController {
     }
   }
 
-  @Get(':workspaceSlug/metadata')
-  metadata(@Param('workspaceSlug') workspaceSlug: string) {
+  @Get(":workspaceSlug/metadata")
+  metadata(@Param("workspaceSlug") workspaceSlug: string) {
     return this.samlService.generateMetadata(workspaceSlug);
   }
 
-  @Get(':workspaceSlug/login')
-  async login(@Param('workspaceSlug') workspaceSlug: string, @Res() res: Response) {
+  @Get(":workspaceSlug/login")
+  async login(@Param("workspaceSlug") workspaceSlug: string, @Res() res: Response) {
     const idpConfig = await this.getIdpConfig(workspaceSlug);
     const url = await this.samlService.getLoginUrl(workspaceSlug, idpConfig);
     res.redirect(url);
   }
 
-  @Post(':workspaceSlug/callback')
+  @Post(":workspaceSlug/callback")
   async callback(
-    @Param('workspaceSlug') workspaceSlug: string,
-    @Body('SAMLResponse') samlResponse: string,
+    @Param("workspaceSlug") workspaceSlug: string,
+    @Body("SAMLResponse") samlResponse: string,
     @Res() res: Response,
   ) {
     if (!samlResponse) {
-      throw new BadRequestException('SAMLResponse is required');
+      throw new BadRequestException("SAMLResponse is required");
     }
 
     const idpConfig = await this.getIdpConfig(workspaceSlug);
@@ -76,7 +89,7 @@ export class SamlController {
       throw new BadRequestException(`Workspace "${workspaceSlug}" not found`);
     }
 
-    const baseRedirect = process.env.CORS_ORIGIN?.split(',')[0] || 'https://pymeshub.lat';
+    const baseRedirect = process.env.CORS_ORIGIN?.split(",")[0] || "https://pymeshub.lat";
     try {
       // ssoLogin verifies the user exists and is a member of the
       // workspace. We then mint a 60-second one-shot exchange code
@@ -89,7 +102,7 @@ export class SamlController {
       this.logger.log(`SAML login success: ${result.email} → workspace ${ws.id}`);
       res.redirect(`${baseRedirect}/login?code=${encodeURIComponent(code)}&slug=${ws.slug}`);
     } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      const errMsg = err instanceof Error ? err.message : "Unknown error";
       this.logger.warn(`SAML login failed for ${result.email}: ${errMsg}`);
       // Don't echo err.message into the URL — it ends up in proxy logs.
       res.redirect(`${baseRedirect}/login?error=sso_failed`);
@@ -98,13 +111,13 @@ export class SamlController {
 
   // ─── Admin endpoints — SSO Config Management ─────────────────────────
 
-  @Get('config/:workspaceId')
+  @Get("config/:workspaceId")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('OWNER', 'ADMIN')
-  async getConfig(@Param('workspaceId') workspaceId: string, @Req() req: Request) {
+  @Roles("OWNER", "ADMIN")
+  async getConfig(@Param("workspaceId") workspaceId: string, @Req() req: Request) {
     const user = (req as AuthenticatedRequest).user;
     if (user?.workspace_id !== workspaceId) {
-      throw new ForbiddenException('Cannot access SSO config for another workspace');
+      throw new ForbiddenException("Cannot access SSO config for another workspace");
     }
     const config = await this.prisma.workspaceSsoConfig.findUnique({
       where: { workspace_id: workspaceId },
@@ -135,17 +148,17 @@ export class SamlController {
     return { workspace_id: workspaceId, enabled: false };
   }
 
-  @Put('config/:workspaceId')
+  @Put("config/:workspaceId")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('OWNER', 'ADMIN')
+  @Roles("OWNER", "ADMIN")
   async upsertConfig(
-    @Param('workspaceId') workspaceId: string,
+    @Param("workspaceId") workspaceId: string,
     @Body() data: Record<string, any>,
     @Req() req: Request,
   ) {
     const user = (req as AuthenticatedRequest).user;
     if (user?.workspace_id !== workspaceId) {
-      throw new ForbiddenException('Cannot modify SSO config for another workspace');
+      throw new ForbiddenException("Cannot modify SSO config for another workspace");
     }
 
     // Encrypt certificate if provided as plaintext
@@ -194,17 +207,19 @@ export class SamlController {
           },
         });
 
-    this.logger.log(`SAML SSO config ${existing ? 'updated' : 'created'} for workspace ${workspaceId}`);
+    this.logger.log(
+      `SAML SSO config ${existing ? "updated" : "created"} for workspace ${workspaceId}`,
+    );
 
     // Return without certificate
     const { idp_certificate_encrypted, ...safe } = config;
     return { ...safe, has_certificate: !!idp_certificate_encrypted };
   }
 
-  @Post('config/:workspaceId/enable')
+  @Post("config/:workspaceId/enable")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('OWNER', 'ADMIN')
-  async enableSso(@Param('workspaceId') workspaceId: string, @Req() req: Request) {
+  @Roles("OWNER", "ADMIN")
+  async enableSso(@Param("workspaceId") workspaceId: string, @Req() req: Request) {
     const user = (req as AuthenticatedRequest).user;
     if (user?.workspace_id !== workspaceId) {
       throw new ForbiddenException();
@@ -217,10 +232,10 @@ export class SamlController {
     return { enabled: true };
   }
 
-  @Post('config/:workspaceId/disable')
+  @Post("config/:workspaceId/disable")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('OWNER', 'ADMIN')
-  async disableSso(@Param('workspaceId') workspaceId: string, @Req() req: Request) {
+  @Roles("OWNER", "ADMIN")
+  async disableSso(@Param("workspaceId") workspaceId: string, @Req() req: Request) {
     const user = (req as AuthenticatedRequest).user;
     if (user?.workspace_id !== workspaceId) {
       throw new ForbiddenException();
@@ -264,7 +279,12 @@ export class SamlController {
       where: { workspace_id: ws.id },
     });
 
-    if (typed?.enabled && typed?.idp_entity_id && typed?.idp_sso_url && typed?.idp_certificate_encrypted) {
+    if (
+      typed?.enabled &&
+      typed?.idp_entity_id &&
+      typed?.idp_sso_url &&
+      typed?.idp_certificate_encrypted
+    ) {
       const certDecrypted = this.crypto.decrypt(typed.idp_certificate_encrypted);
       return {
         entityId: typed.idp_entity_id,
@@ -279,7 +299,9 @@ export class SamlController {
     const config = s.saml_idp_config as SamlIdpConfig | undefined;
 
     if (!config?.entityId || !config?.ssoUrl || !config?.certificate) {
-      throw new BadRequestException('SAML IdP not configured for this workspace. Configure entityId, ssoUrl, and certificate in workspace settings.');
+      throw new BadRequestException(
+        "SAML IdP not configured for this workspace. Configure entityId, ssoUrl, and certificate in workspace settings.",
+      );
     }
 
     return config;

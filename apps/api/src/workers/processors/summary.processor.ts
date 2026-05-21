@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
-import { PrismaService } from '../../common/prisma/prisma.service';
-import { stringifyJson } from '../../common/prisma/json';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import { stringifyJson } from "../../common/prisma/json";
 
 @Injectable()
 export class SummaryProcessor {
@@ -9,13 +9,13 @@ export class SummaryProcessor {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  @Cron('55 23 * * *') // 11:55 PM cada día
+  @Cron("55 23 * * *") // 11:55 PM cada día
   async generateDailySummaries(): Promise<void> {
-    this.logger.log('Running generateDailySummaries cron job');
+    this.logger.log("Running generateDailySummaries cron job");
 
     // Obtener todos los workspaces activos
     const workspaces = await this.prisma.workspace.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: "ACTIVE" },
       select: { id: true },
     });
 
@@ -32,7 +32,7 @@ export class SummaryProcessor {
       }
     }
 
-    this.logger.log('generateDailySummaries cron job finished');
+    this.logger.log("generateDailySummaries cron job finished");
   }
 
   private async generateWorkspaceSummary(workspaceId: string): Promise<void> {
@@ -83,7 +83,7 @@ export class SummaryProcessor {
     };
 
     const generated_text =
-      `Resumen del día ${startOfDay.toLocaleDateString('es-CR')} para workspace ${workspaceId}: ` +
+      `Resumen del día ${startOfDay.toLocaleDateString("es-CR")} para workspace ${workspaceId}: ` +
       `${conversationsCount} conversaciones, ${messagesCount} mensajes, ` +
       `${tasksCount} tareas, ${documentsCount} documentos procesados.`;
 

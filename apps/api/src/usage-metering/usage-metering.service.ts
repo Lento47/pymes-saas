@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
 
 @Injectable()
 export class UsageMeteringService {
@@ -13,7 +13,9 @@ export class UsageMeteringService {
 
     const [contacts, invoices, automations, users, messages] = await Promise.all([
       this.prisma.contact.count({ where: { workspace_id: workspaceId } }),
-      this.prisma.invoice.count({ where: { workspace_id: workspaceId, created_at: { gte: monthStart } } }),
+      this.prisma.invoice.count({
+        where: { workspace_id: workspaceId, created_at: { gte: monthStart } },
+      }),
       this.prisma.automationRule.count({ where: { workspace_id: workspaceId } }),
       this.prisma.workspaceUser.count({ where: { workspace_id: workspaceId } }),
       this.prisma.message.count({
@@ -27,7 +29,7 @@ export class UsageMeteringService {
     });
 
     const whatsappMsgs = await this.prisma.message.count({
-      where: { workspace_id: workspaceId, created_at: { gte: monthStart }, direction: 'INBOUND' },
+      where: { workspace_id: workspaceId, created_at: { gte: monthStart }, direction: "INBOUND" },
     });
 
     return {
@@ -75,7 +77,7 @@ export class UsageMeteringService {
   async getUsageHistory(workspaceId: string, limit = 6) {
     return this.prisma.workspaceUsageSnapshot.findMany({
       where: { workspace_id: workspaceId },
-      orderBy: { period_start: 'desc' },
+      orderBy: { period_start: "desc" },
       take: limit,
     });
   }

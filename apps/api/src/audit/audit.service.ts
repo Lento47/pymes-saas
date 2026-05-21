@@ -1,36 +1,27 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { FilterAuditDto } from './dto/filter-audit.dto';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { FilterAuditDto } from "./dto/filter-audit.dto";
 
 @Injectable()
 export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(workspaceId: string, filters: FilterAuditDto) {
-    const {
-      entity_type,
-      entity_id,
-      user_id,
-      action,
-      from,
-      to,
-      page = 1,
-      limit = 20,
-    } = filters;
+    const { entity_type, entity_id, user_id, action, from, to, page = 1, limit = 20 } = filters;
 
     const where: Record<string, any> = { workspace_id: workspaceId };
 
     if (entity_type) {
-      where.entity_type = { contains: entity_type, mode: 'insensitive' };
+      where.entity_type = { contains: entity_type, mode: "insensitive" };
     }
     if (entity_id) {
-      where.entity_id = { contains: entity_id, mode: 'insensitive' };
+      where.entity_id = { contains: entity_id, mode: "insensitive" };
     }
     if (user_id) {
-      where.user_id = { contains: user_id, mode: 'insensitive' };
+      where.user_id = { contains: user_id, mode: "insensitive" };
     }
     if (action) {
-      where.action = { contains: action, mode: 'insensitive' };
+      where.action = { contains: action, mode: "insensitive" };
     }
     if (from || to) {
       where.created_at = {};
@@ -43,7 +34,7 @@ export class AuditService {
     const [data, total] = await Promise.all([
       this.prisma.auditLog.findMany({
         where,
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
         skip,
         take: limit,
       }),

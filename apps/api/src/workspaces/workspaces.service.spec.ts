@@ -1,15 +1,37 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { WorkspacesService } from './workspaces.service';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CryptoService } from '../common/crypto/crypto.service';
-import { AiService } from '../ai/ai.service';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
-import { JwtModule } from '@nestjs/jwt';
-import { EmailService } from '../email/email.service';
+import type { TestingModule } from "@nestjs/testing";
+import { Test } from "@nestjs/testing";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
+import { WorkspacesService } from "./workspaces.service";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CryptoService } from "../common/crypto/crypto.service";
+import { AiService } from "../ai/ai.service";
+import type { AuthUser } from "../auth/strategies/jwt.strategy";
+import { JwtModule } from "@nestjs/jwt";
+import { EmailService } from "../email/email.service";
 
-const ownerUser: AuthUser = { id: 'u1', email: 'owner@test.com', name: 'Owner', workspace_id: 'w1', role: 'OWNER', is_owner: true, is_platform_admin: false };
-const agentUser: AuthUser = { id: 'u2', email: 'agent@test.com', name: 'Agent', workspace_id: 'w1', role: 'AGENT', is_owner: false, is_platform_admin: false };
+const ownerUser: AuthUser = {
+  id: "u1",
+  email: "owner@test.com",
+  name: "Owner",
+  workspace_id: "w1",
+  role: "OWNER",
+  is_owner: true,
+  is_platform_admin: false,
+};
+const agentUser: AuthUser = {
+  id: "u2",
+  email: "agent@test.com",
+  name: "Agent",
+  workspace_id: "w1",
+  role: "AGENT",
+  is_owner: false,
+  is_platform_admin: false,
+};
 
 const mockPrisma = {
   workspace: {
@@ -39,56 +61,88 @@ const mockPrisma = {
   invoice: { aggregate: jest.fn() },
   automationRule: { count: jest.fn() },
   message: { count: jest.fn() },
-  rawQuery: jest.fn().mockResolvedValue([{
-    contacts: 10, conversations: 5, tasks: 8, documents: 4,
-    automations: 2, members: 3, active_conversations: 2,
-    pending_tasks: 3, total_document_bytes: 1024,
-    monthly_revenue: 1000, prev_month_revenue: 0,
-  }]),
+  rawQuery: jest.fn().mockResolvedValue([
+    {
+      contacts: 10,
+      conversations: 5,
+      tasks: 8,
+      documents: 4,
+      automations: 2,
+      members: 3,
+      active_conversations: 2,
+      pending_tasks: 3,
+      total_document_bytes: 1024,
+      monthly_revenue: 1000,
+      prev_month_revenue: 0,
+    },
+  ]),
 };
 
 const mockCrypto = { encrypt: jest.fn((v: string) => `enc:${v}`), decrypt: jest.fn() };
-const mockAiService = { getWorkspaceConfig: jest.fn(), getDefaultModel: jest.fn(), testConnection: jest.fn() };
+const mockAiService = {
+  getWorkspaceConfig: jest.fn(),
+  getDefaultModel: jest.fn(),
+  testConnection: jest.fn(),
+};
 const mockEmailService = { sendOutbound: jest.fn() };
 const mockEventsGateway = { emitToWorkspace: jest.fn(), emitToUser: jest.fn() };
-const mockPlanLimits = { checkUserLimit: jest.fn(), enforceMembers: jest.fn(), getUpgradePlan: jest.fn(), getLimits: jest.fn(), isPlanAtLeast: jest.fn(), enforcePlanTier: jest.fn() };
+const mockPlanLimits = {
+  checkUserLimit: jest.fn(),
+  enforceMembers: jest.fn(),
+  getUpgradePlan: jest.fn(),
+  getLimits: jest.fn(),
+  isPlanAtLeast: jest.fn(),
+  enforcePlanTier: jest.fn(),
+};
 
-describe('WorkspacesService', () => {
+describe("WorkspacesService", () => {
   let service: WorkspacesService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      imports: [JwtModule.register({ secret: 'test-secret' })],
+      imports: [JwtModule.register({ secret: "test-secret" })],
       providers: [
         WorkspacesService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: CryptoService, useValue: mockCrypto },
         { provide: AiService, useValue: mockAiService },
         { provide: EmailService, useValue: mockEmailService },
-        { provide: require('../gateways/events.gateway').EventsGateway, useValue: mockEventsGateway },
-        { provide: require('../common/plan-limits/plan-limits.service').PlanLimitsService, useValue: mockPlanLimits },
+        {
+          provide: require("../gateways/events.gateway").EventsGateway,
+          useValue: mockEventsGateway,
+        },
+        {
+          provide: require("../common/plan-limits/plan-limits.service").PlanLimitsService,
+          useValue: mockPlanLimits,
+        },
       ],
     }).compile();
 
     service = module.get<WorkspacesService>(WorkspacesService);
   });
 
-  describe('getCurrent', () => {
-    it('returns workspace with serialized settings', async () => {
-      const workspace = { id: 'w1', name: 'Acme', slug: 'acme', settings_json: { ai_message_finance_opt_in: true }, workspace_tax_profile: null };
+  describe("getCurrent", () => {
+    it("returns workspace with serialized settings", async () => {
+      const workspace = {
+        id: "w1",
+        name: "Acme",
+        slug: "acme",
+        settings_json: { ai_message_finance_opt_in: true },
+        workspace_tax_profile: null,
+      };
       mockPrisma.workspace.findUniqueOrThrow.mockResolvedValue(workspace);
 
-      const result = await service.getCurrent('w1');
+      const result = await service.getCurrent("w1");
 
       expect(result.ai_message_finance_opt_in).toBe(true);
-      expect(result.name).toBe('Acme');
+      expect(result.name).toBe("Acme");
     });
   });
 
-  describe('getStats', () => {
-    it('returns aggregated stats for workspace', async () => {
+  describe("getStats", () => {
+    it("returns aggregated stats for workspace", async () => {
       mockPrisma.contact.count.mockResolvedValue(10);
       mockPrisma.conversation.count.mockResolvedValueOnce(5).mockResolvedValueOnce(2);
       mockPrisma.task.count.mockResolvedValueOnce(8).mockResolvedValueOnce(3);
@@ -99,7 +153,7 @@ describe('WorkspacesService', () => {
       mockPrisma.invoice.aggregate.mockResolvedValue({ _sum: { amount: 1000 } });
       mockPrisma.message.count.mockResolvedValue(5);
 
-      const result = await service.getStats('w1');
+      const result = await service.getStats("w1");
 
       expect(result.contacts).toBe(10);
       expect(result.activeConversations).toBe(2);
@@ -108,76 +162,86 @@ describe('WorkspacesService', () => {
     });
   });
 
-  describe('inviteUser', () => {
-    it('throws ForbiddenException when agent tries to invite', async () => {
-      await expect(service.inviteUser('w1', agentUser, { email: 'new@test.com', role: 'AGENT' }))
-        .rejects.toThrow(ForbiddenException);
+  describe("inviteUser", () => {
+    it("throws ForbiddenException when agent tries to invite", async () => {
+      await expect(
+        service.inviteUser("w1", agentUser, { email: "new@test.com", role: "AGENT" }),
+      ).rejects.toThrow(ForbiddenException);
     });
 
-    it('throws BadRequestException when inviting with OWNER role', async () => {
-      await expect(service.inviteUser('w1', ownerUser, { email: 'new@test.com', role: 'OWNER' }))
-        .rejects.toThrow(BadRequestException);
+    it("throws BadRequestException when inviting with OWNER role", async () => {
+      await expect(
+        service.inviteUser("w1", ownerUser, { email: "new@test.com", role: "OWNER" }),
+      ).rejects.toThrow(BadRequestException);
     });
 
-    it('throws ConflictException when user is already a member', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'u3', email: 'existing@test.com' });
-      mockPrisma.workspaceUser.findUnique.mockResolvedValue({ id: 'wu1' });
+    it("throws ConflictException when user is already a member", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: "u3", email: "existing@test.com" });
+      mockPrisma.workspaceUser.findUnique.mockResolvedValue({ id: "wu1" });
 
-      await expect(service.inviteUser('w1', ownerUser, { email: 'existing@test.com', role: 'AGENT' }))
-        .rejects.toThrow(ConflictException);
+      await expect(
+        service.inviteUser("w1", ownerUser, { email: "existing@test.com", role: "AGENT" }),
+      ).rejects.toThrow(ConflictException);
     });
 
-    it('creates new user and membership when email does not exist', async () => {
+    it("creates new user and membership when email does not exist", async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.user.create.mockResolvedValue({ id: 'u4', email: 'brand-new@test.com' });
+      mockPrisma.user.create.mockResolvedValue({ id: "u4", email: "brand-new@test.com" });
       mockPrisma.workspaceUser.findUnique.mockResolvedValue(null);
-      mockPrisma.workspaceUser.create.mockResolvedValue({ id: 'wu2' });
-      mockPrisma.workspace.findUniqueOrThrow.mockResolvedValue({ id: 'w1', name: 'Acme', slug: 'acme' });
+      mockPrisma.workspaceUser.create.mockResolvedValue({ id: "wu2" });
+      mockPrisma.workspace.findUniqueOrThrow.mockResolvedValue({
+        id: "w1",
+        name: "Acme",
+        slug: "acme",
+      });
       mockPrisma.channel.findFirst.mockResolvedValue(null);
 
-      const result = await service.inviteUser('w1', ownerUser, { email: 'brand-new@test.com', role: 'AGENT' });
+      const result = await service.inviteUser("w1", ownerUser, {
+        email: "brand-new@test.com",
+        role: "AGENT",
+      });
 
       expect(mockPrisma.user.create).toHaveBeenCalledTimes(1);
       expect(mockPrisma.workspaceUser.create).toHaveBeenCalledTimes(1);
-      expect(result.message).toContain('brand-new@test.com');
-      expect(result.invite_links.desktop).toContain('PymesHub://accept-invite?token=');
-      expect(result.invite_links.browser).toContain('https://pymeshub.lat/accept-invite?token=');
+      expect(result.message).toContain("brand-new@test.com");
+      expect(result.invite_links.desktop).toContain("PymesHub://accept-invite?token=");
+      expect(result.invite_links.browser).toContain("https://pymeshub.lat/accept-invite?token=");
     });
   });
 
-  describe('removeMember', () => {
-    it('throws BadRequestException when removing self', async () => {
-      await expect(service.removeMember('w1', ownerUser, ownerUser.id))
-        .rejects.toThrow(BadRequestException);
+  describe("removeMember", () => {
+    it("throws BadRequestException when removing self", async () => {
+      await expect(service.removeMember("w1", ownerUser, ownerUser.id)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('throws ForbiddenException when agent tries to remove member', async () => {
-      await expect(service.removeMember('w1', agentUser, 'u3'))
-        .rejects.toThrow(ForbiddenException);
+    it("throws ForbiddenException when agent tries to remove member", async () => {
+      await expect(service.removeMember("w1", agentUser, "u3")).rejects.toThrow(ForbiddenException);
     });
 
-    it('throws NotFoundException when member does not exist', async () => {
+    it("throws NotFoundException when member does not exist", async () => {
       mockPrisma.workspaceUser.findUnique.mockResolvedValue(null);
 
-      await expect(service.removeMember('w1', ownerUser, 'u999'))
-        .rejects.toThrow(NotFoundException);
+      await expect(service.removeMember("w1", ownerUser, "u999")).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
-    it('throws ForbiddenException when removing the owner', async () => {
-      mockPrisma.workspaceUser.findUnique.mockResolvedValue({ id: 'wu1', is_owner: true });
+    it("throws ForbiddenException when removing the owner", async () => {
+      mockPrisma.workspaceUser.findUnique.mockResolvedValue({ id: "wu1", is_owner: true });
 
-      await expect(service.removeMember('w1', ownerUser, 'u2'))
-        .rejects.toThrow(ForbiddenException);
+      await expect(service.removeMember("w1", ownerUser, "u2")).rejects.toThrow(ForbiddenException);
     });
 
-    it('removes member successfully', async () => {
-      mockPrisma.workspaceUser.findUnique.mockResolvedValue({ id: 'wu3', is_owner: false });
+    it("removes member successfully", async () => {
+      mockPrisma.workspaceUser.findUnique.mockResolvedValue({ id: "wu3", is_owner: false });
       mockPrisma.workspaceUser.delete.mockResolvedValue({});
 
-      const result = await service.removeMember('w1', ownerUser, 'u3');
+      const result = await service.removeMember("w1", ownerUser, "u3");
 
       expect(mockPrisma.workspaceUser.delete).toHaveBeenCalledTimes(1);
-      expect(result.message).toContain('removido');
+      expect(result.message).toContain("removido");
     });
   });
 });

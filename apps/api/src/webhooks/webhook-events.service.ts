@@ -1,9 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { parseJsonValue } from '../common/prisma/json';
-import { WebhookEventStatus } from '@prisma/client';
-import { Prisma } from '@prisma/client';
-import * as crypto from 'crypto';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { parseJsonValue } from "../common/prisma/json";
+import { WebhookEventStatus } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import * as crypto from "crypto";
 
 @Injectable()
 export class WebhookEventsService {
@@ -24,7 +24,7 @@ export class WebhookEventsService {
         // Fetch all active WhatsApp channels and filter in-memory
         // to handle both object and string config_json values
         const channels = await this.prisma.channel.findMany({
-          where: { type: 'WHATSAPP', status: 'ACTIVE' },
+          where: { type: "WHATSAPP", status: "ACTIVE" },
           select: { workspace_id: true, config_json: true },
         });
 
@@ -57,13 +57,13 @@ export class WebhookEventsService {
 
       this.logger.log(
         `[${provider}] Webhook persisted — id=${event.id} fingerprint=${fingerprint} type=${eventType}` +
-          (workspaceId ? ` workspace_id=${workspaceId}` : '') +
-          (phoneNumberId ? ` phone_number_id=${phoneNumberId}` : ''),
+          (workspaceId ? ` workspace_id=${workspaceId}` : "") +
+          (phoneNumberId ? ` phone_number_id=${phoneNumberId}` : ""),
       );
 
       return { event, duplicate: false };
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
         const existing = await this.prisma.webhookEvent.findUnique({
           where: { event_fingerprint: fingerprint },
         });
@@ -79,7 +79,8 @@ export class WebhookEventsService {
   }
 
   async claimNext(workerId: string): Promise<any | null> {
-    const result = await this.prisma.rawQuery<any[]>(`
+    const result = await this.prisma.rawQuery<any[]>(
+      `
       UPDATE "webhook_events"
       SET
         status = 'PROCESSING'::"WebhookEventStatus",
@@ -97,7 +98,9 @@ export class WebhookEventsService {
         FOR UPDATE SKIP LOCKED
       )
       RETURNING *;
-    `, workerId);
+    `,
+      workerId,
+    );
 
     return result?.length > 0 ? result[0] : null;
   }
@@ -243,11 +246,13 @@ export class WebhookEventsService {
     if (messages?.length > 0) {
       const msg = messages[0];
       if (!msg.id) {
-        throw new Error(`[${provider}] Message event missing msg.id — cannot generate deterministic fingerprint`);
+        throw new Error(
+          `[${provider}] Message event missing msg.id — cannot generate deterministic fingerprint`,
+        );
       }
       const fp = `${provider}:message:${msg.id}`;
       return {
-        eventType: 'message',
+        eventType: "message",
         fingerprint: fp,
         phoneNumberId,
         wabaId,
@@ -257,13 +262,13 @@ export class WebhookEventsService {
 
     if (statuses?.length > 0) {
       const st = statuses[0];
-      const statusId = st.id ?? '';
-      const recipientId = st.recipient_id ?? '';
-      const ts = st.timestamp ?? '';
-      const statusVal = st.status ?? '';
+      const statusId = st.id ?? "";
+      const recipientId = st.recipient_id ?? "";
+      const ts = st.timestamp ?? "";
+      const statusVal = st.status ?? "";
       const fp = `${provider}:status:${statusId}:${recipientId}:${ts}:${statusVal}`;
       return {
-        eventType: 'status',
+        eventType: "status",
         fingerprint: fp,
         phoneNumberId,
         wabaId,
@@ -273,18 +278,15 @@ export class WebhookEventsService {
 
     const stableParts = [
       provider,
-      phoneNumberId ?? 'unknown',
-      value?.metadata?.display_phone_number ?? '',
+      phoneNumberId ?? "unknown",
+      value?.metadata?.display_phone_number ?? "",
       JSON.stringify(this.normalizePayload(value ?? {})),
     ];
-    const hash = crypto
-      .createHash('sha256')
-      .update(stableParts.join('|'))
-      .digest('hex');
+    const hash = crypto.createHash("sha256").update(stableParts.join("|")).digest("hex");
     const fp = `${provider}:other:${hash}`;
 
     return {
-      eventType: value?.messaging_product ?? 'other',
+      eventType: value?.messaging_product ?? "other",
       fingerprint: fp,
       phoneNumberId,
       wabaId,
@@ -293,10 +295,10 @@ export class WebhookEventsService {
   }
 
   private normalizePayload(obj: Record<string, any>): Record<string, any> {
-    if (typeof obj !== 'object' || obj === null) return obj;
+    if (typeof obj !== "object" || obj === null) return obj;
     if (Array.isArray(obj)) return obj.map((i) => this.normalizePayload(i));
     const keys = Object.keys(obj).filter(
-      (k) => !['entry', 'changes', 'received_at', 'timestamp'].includes(k),
+      (k) => !["entry", "changes", "received_at", "timestamp"].includes(k),
     );
     keys.sort();
     const result: Record<string, any> = {};

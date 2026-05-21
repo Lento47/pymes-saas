@@ -1,10 +1,6 @@
-import { randomBytes } from 'crypto';
-import { ConversationStatus } from '@prisma/client';
-import type {
-  RunbookDescriptor,
-  RunbookExecutor,
-  RunbookExecutionContext,
-} from './runbooks.types';
+import { randomBytes } from "crypto";
+import { ConversationStatus } from "@prisma/client";
+import type { RunbookDescriptor, RunbookExecutor, RunbookExecutionContext } from "./runbooks.types";
 
 /**
  * Registry of all runbooks. Each entry has a descriptor (shown to the
@@ -32,26 +28,26 @@ interface RunbookEntry {
 
 const revokeUserSessions: RunbookEntry = {
   descriptor: {
-    name: 'revoke-user-sessions',
-    title: 'Revocar sesiones de un usuario',
+    name: "revoke-user-sessions",
+    title: "Revocar sesiones de un usuario",
     description:
-      'Invalida todos los refresh tokens del usuario en este workspace. ' +
-      'Las sesiones activas siguen funcionando hasta que su access token expire ' +
-      '(15-30 minutos), después no se pueden renovar.',
+      "Invalida todos los refresh tokens del usuario en este workspace. " +
+      "Las sesiones activas siguen funcionando hasta que su access token expire " +
+      "(15-30 minutos), después no se pueden renovar.",
     reversalNotes:
-      'No-op irreversible per se: el usuario simplemente vuelve a iniciar sesión. ' +
-      'No hay efecto colateral en datos del workspace.',
+      "No-op irreversible per se: el usuario simplemente vuelve a iniciar sesión. " +
+      "No hay efecto colateral en datos del workspace.",
     parameters: [
       {
-        key: 'user_id',
-        label: 'ID del usuario',
-        description: 'ID interno del User cuyas sesiones se invalidan.',
-        type: 'uuid',
+        key: "user_id",
+        label: "ID del usuario",
+        description: "ID interno del User cuyas sesiones se invalidan.",
+        type: "uuid",
         required: true,
       },
     ],
-    risk: 'low',
-    requiredScope: 'platform_admin',
+    risk: "low",
+    requiredScope: "platform_admin",
   },
   async execute(ctx: RunbookExecutionContext) {
     const userId = ctx.params.user_id;
@@ -66,9 +62,7 @@ const revokeUserSessions: RunbookEntry = {
       select: { id: true },
     });
     if (!membership) {
-      throw new Error(
-        `User ${userId} is not a member of workspace ${ctx.workspaceId}`,
-      );
+      throw new Error(`User ${userId} is not a member of workspace ${ctx.workspaceId}`);
     }
 
     const result = await ctx.prisma.refreshToken.updateMany({
@@ -96,48 +90,46 @@ const revokeUserSessions: RunbookEntry = {
 
 const markConversationResolved: RunbookEntry = {
   descriptor: {
-    name: 'mark-conversation-resolved',
-    title: 'Forzar cierre de conversación',
+    name: "mark-conversation-resolved",
+    title: "Forzar cierre de conversación",
     description:
-      'Marca una conversación como RESOLVED. ' +
-      'Útil cuando la UI normal no permite cerrarla (agente offline, SLA al límite).',
+      "Marca una conversación como RESOLVED. " +
+      "Útil cuando la UI normal no permite cerrarla (agente offline, SLA al límite).",
     reversalNotes:
-      'Reversible desde la UI: abrir la conversación y reabrirla. ' +
-      'No borra mensajes ni datos asociados.',
+      "Reversible desde la UI: abrir la conversación y reabrirla. " +
+      "No borra mensajes ni datos asociados.",
     parameters: [
       {
-        key: 'conversation_id',
-        label: 'ID de la conversación',
-        type: 'uuid',
+        key: "conversation_id",
+        label: "ID de la conversación",
+        type: "uuid",
         required: true,
       },
       {
-        key: 'reason',
-        label: 'Razón del cierre',
-        description: 'Texto que se guarda en la conversación para auditoría.',
-        type: 'string',
+        key: "reason",
+        label: "Razón del cierre",
+        description: "Texto que se guarda en la conversación para auditoría.",
+        type: "string",
         required: true,
       },
     ],
-    risk: 'medium',
-    requiredScope: 'platform_admin',
+    risk: "medium",
+    requiredScope: "platform_admin",
   },
   async execute(ctx: RunbookExecutionContext) {
     const conversationId = ctx.params.conversation_id;
-    const reason = ctx.params.reason || '(sin razón especificada)';
+    const reason = ctx.params.reason || "(sin razón especificada)";
 
     const conv = await ctx.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: ctx.workspaceId },
       select: { id: true, status: true },
     });
     if (!conv) {
-      throw new Error(
-        `Conversation ${conversationId} not found in workspace ${ctx.workspaceId}`,
-      );
+      throw new Error(`Conversation ${conversationId} not found in workspace ${ctx.workspaceId}`);
     }
     if (conv.status === ConversationStatus.RESOLVED) {
       return {
-        summary: 'La conversación ya estaba cerrada — no se hicieron cambios.',
+        summary: "La conversación ya estaba cerrada — no se hicieron cambios.",
         details: { conversation_id: conversationId, no_op: true },
       };
     }
@@ -154,7 +146,7 @@ const markConversationResolved: RunbookEntry = {
     // — the service persists params on every execution. No need to also
     // dump it on the Conversation row (which has no internal_notes field).
     return {
-      summary: 'Conversación marcada como RESOLVED.',
+      summary: "Conversación marcada como RESOLVED.",
       details: {
         conversation_id: conversationId,
         previous_status: conv.status,
@@ -176,25 +168,25 @@ const markConversationResolved: RunbookEntry = {
 
 const rotateChannelWebhookSecret: RunbookEntry = {
   descriptor: {
-    name: 'rotate-channel-webhook-secret',
-    title: 'Rotar secret de webhook de canal',
+    name: "rotate-channel-webhook-secret",
+    title: "Rotar secret de webhook de canal",
     description:
-      'Genera un nuevo webhook_secret para el canal y lo guarda en config_json. ' +
-      'Útil si el secret se filtró o el canal está rechazando inbounds. ' +
+      "Genera un nuevo webhook_secret para el canal y lo guarda en config_json. " +
+      "Útil si el secret se filtró o el canal está rechazando inbounds. " +
       'Para Telegram, ejecutar después "Re-registrar webhook" desde Configuración → Canales.',
     reversalNotes:
-      'Irreversible: el secret anterior se sobrescribe. Si no se re-registra ' +
-      'el webhook con el proveedor, el canal puede quedar sin recibir mensajes.',
+      "Irreversible: el secret anterior se sobrescribe. Si no se re-registra " +
+      "el webhook con el proveedor, el canal puede quedar sin recibir mensajes.",
     parameters: [
       {
-        key: 'channel_id',
-        label: 'ID del canal',
-        type: 'uuid',
+        key: "channel_id",
+        label: "ID del canal",
+        type: "uuid",
         required: true,
       },
     ],
-    risk: 'high',
-    requiredScope: 'platform_admin',
+    risk: "high",
+    requiredScope: "platform_admin",
   },
   async execute(ctx: RunbookExecutionContext) {
     const channelId = ctx.params.channel_id;
@@ -204,12 +196,10 @@ const rotateChannelWebhookSecret: RunbookEntry = {
       select: { id: true, type: true, config_json: true },
     });
     if (!channel) {
-      throw new Error(
-        `Channel ${channelId} not found in workspace ${ctx.workspaceId}`,
-      );
+      throw new Error(`Channel ${channelId} not found in workspace ${ctx.workspaceId}`);
     }
 
-    const newSecret = randomBytes(32).toString('hex');
+    const newSecret = randomBytes(32).toString("hex");
     const existing = (channel.config_json as Record<string, unknown> | null) ?? {};
     const next = { ...existing, webhook_secret: newSecret };
 
@@ -221,7 +211,7 @@ const rotateChannelWebhookSecret: RunbookEntry = {
     return {
       summary:
         `Nuevo webhook_secret generado para canal ${channel.type}. ` +
-        'Re-registrar webhook con el proveedor para aplicarlo.',
+        "Re-registrar webhook con el proveedor para aplicarlo.",
       details: {
         channel_id: channelId,
         channel_type: channel.type,
@@ -240,6 +230,6 @@ export const RUNBOOK_REGISTRY: Record<string, RunbookEntry> = {
   [rotateChannelWebhookSecret.descriptor.name]: rotateChannelWebhookSecret,
 };
 
-export const RUNBOOK_DESCRIPTORS: RunbookDescriptor[] = Object.values(
-  RUNBOOK_REGISTRY,
-).map((entry) => entry.descriptor);
+export const RUNBOOK_DESCRIPTORS: RunbookDescriptor[] = Object.values(RUNBOOK_REGISTRY).map(
+  (entry) => entry.descriptor,
+);

@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
 
 @Injectable()
 export class KnownIssuesSeedService {
@@ -8,7 +8,7 @@ export class KnownIssuesSeedService {
   constructor(private readonly prisma: PrismaService) {}
 
   async seed(): Promise<void> {
-    const { KNOWN_ISSUES } = await import('./support-known-issues.data');
+    const { KNOWN_ISSUES } = await import("./support-known-issues.data");
     let count = 0;
     for (const issue of KNOWN_ISSUES) {
       await (this.prisma as any).supportKnownIssue.upsert({

@@ -13,7 +13,7 @@
  *      Compare with: "find the right admin endpoint and curl it."
  */
 
-import type { PrismaService } from '../common/prisma/prisma.service';
+import type { PrismaService } from "../common/prisma/prisma.service";
 
 export interface RunbookDescriptor {
   /** Unique key, kebab-case. Used in URLs and as the DB column value. */
@@ -35,7 +35,7 @@ export interface RunbookDescriptor {
   parameters: RunbookParameter[];
 
   /** Risk classification — used to pick the icon/color in the UI. */
-  risk: 'low' | 'medium' | 'high';
+  risk: "low" | "medium" | "high";
 
   /**
    * Who can invoke this runbook.
@@ -46,14 +46,14 @@ export interface RunbookDescriptor {
    * declared so we can relax the policy per-runbook later without
    * changing the registry shape.
    */
-  requiredScope: 'platform_admin' | 'workspace_admin';
+  requiredScope: "platform_admin" | "workspace_admin";
 }
 
 export interface RunbookParameter {
   key: string;
   label: string;
   description?: string;
-  type: 'string' | 'uuid';
+  type: "string" | "uuid";
   required: boolean;
 }
 
@@ -82,6 +82,4 @@ export interface RunbookExecutionResult {
 }
 
 /** A runbook executor is the actual side-effect function. */
-export type RunbookExecutor = (
-  ctx: RunbookExecutionContext,
-) => Promise<RunbookExecutionResult>;
+export type RunbookExecutor = (ctx: RunbookExecutionContext) => Promise<RunbookExecutionResult>;

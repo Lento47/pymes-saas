@@ -1,11 +1,5 @@
-import {
-  IsString,
-  IsOptional,
-  IsObject,
-  IsEnum,
-  IsBoolean,
-} from 'class-validator';
-import { TriggerType } from '@prisma/client';
+import { IsString, IsOptional, IsObject, IsEnum, IsBoolean } from "class-validator";
+import { TriggerType } from "@prisma/client";
 
 export class CreateAutomationDto {
   @IsString()

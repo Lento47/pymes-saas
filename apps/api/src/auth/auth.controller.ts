@@ -13,47 +13,44 @@ import {
   Res,
   UnauthorizedException,
   UseGuards,
-} from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { Request, Response } from 'express';
-import { Throttle } from '@nestjs/throttler';
-import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
-import { AcceptInviteDto } from './dto/accept-invite.dto';
-import { InvitePreviewDto } from './dto/invite-preview.dto';
-import { RegisterDto } from './dto/register.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { CurrentUser } from './decorators/current-user.decorator';
-import { AuthUser } from './strategies/jwt.strategy';
-import { RefreshTokenService } from './refresh-token.service';
+} from "@nestjs/common";
+import { AuthGuard } from "@nestjs/passport";
+import { Request, Response } from "express";
+import { Throttle } from "@nestjs/throttler";
+import { AuthService } from "./auth.service";
+import { LoginDto } from "./dto/login.dto";
+import { AcceptInviteDto } from "./dto/accept-invite.dto";
+import { InvitePreviewDto } from "./dto/invite-preview.dto";
+import { RegisterDto } from "./dto/register.dto";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard";
+import { CurrentUser } from "./decorators/current-user.decorator";
+import { AuthUser } from "./strategies/jwt.strategy";
+import { RefreshTokenService } from "./refresh-token.service";
 
-@Controller('auth')
+@Controller("auth")
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly refreshTokenService: RefreshTokenService,
   ) {}
 
-  @Get('login')
+  @Get("login")
   loginGet() {
     throw new MethodNotAllowedException(
-      'Usa POST /api/auth/login con JSON { email, password } y cabecera x-workspace-slug',
+      "Usa POST /api/auth/login con JSON { email, password } y cabecera x-workspace-slug",
     );
   }
 
   /** POST /auth/login */
-  @Post('login')
+  @Post("login")
   @Throttle({ auth: { limit: 5, ttl: 900_000 } })
   @HttpCode(HttpStatus.OK)
-  login(
-    @Body() dto: LoginDto,
-    @Headers('x-workspace-slug') workspaceSlug: string | undefined,
-  ) {
+  login(@Body() dto: LoginDto, @Headers("x-workspace-slug") workspaceSlug: string | undefined) {
     return this.authService.login(dto, workspaceSlug);
   }
 
   /** POST /auth/register */
-  @Post('register')
+  @Post("register")
   @Throttle({ auth: { limit: 3, ttl: 3600_000 } })
   @HttpCode(HttpStatus.CREATED)
   register(@Body() dto: RegisterDto) {
@@ -61,14 +58,14 @@ export class AuthController {
   }
 
   /** POST /auth/invite-preview */
-  @Post('invite-preview')
+  @Post("invite-preview")
   @HttpCode(HttpStatus.OK)
   invitePreview(@Body() dto: InvitePreviewDto) {
     return this.authService.getInvitePreview(dto.token);
   }
 
   /** POST /auth/accept-invite */
-  @Post('accept-invite')
+  @Post("accept-invite")
   @Throttle({ auth: { limit: 10, ttl: 600_000 } })
   @HttpCode(HttpStatus.OK)
   acceptInvite(@Body() dto: AcceptInviteDto) {
@@ -76,25 +73,25 @@ export class AuthController {
   }
 
   /** POST /auth/invite-code-preview */
-  @Post('invite-code-preview')
+  @Post("invite-code-preview")
   @HttpCode(HttpStatus.OK)
   inviteCodePreview(@Body() dto: { code: string }) {
     return this.authService.getInviteCodePreview(dto.code);
   }
 
   /** POST /auth/redeem-invite-code */
-  @Post('redeem-invite-code')
+  @Post("redeem-invite-code")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   redeemInviteCode(
-    @CurrentUser('id') userId: string,
+    @CurrentUser("id") userId: string,
     @Body() dto: { code: string; name?: string; password?: string },
   ) {
     return this.authService.redeemInviteCode(dto, userId);
   }
 
   /** GET /auth/me */
-  @Get('me')
+  @Get("me")
   @UseGuards(JwtAuthGuard)
   getMe(@CurrentUser() user: AuthUser) {
     return this.authService.getMe(user);
@@ -105,22 +102,22 @@ export class AuthController {
    * Body: { refresh_token: string }
    * Returns new access_token + refresh_token (rotation).
    */
-  @Post('refresh')
+  @Post("refresh")
   @Throttle({ auth: { limit: 20, ttl: 3600_000 } })
   @HttpCode(HttpStatus.OK)
-  async refresh(@Body('refresh_token') rawToken: string) {
-    if (!rawToken) throw new UnauthorizedException('refresh_token requerido.');
+  async refresh(@Body("refresh_token") rawToken: string) {
+    if (!rawToken) throw new UnauthorizedException("refresh_token requerido.");
     const { accessToken, refreshToken } = await this.refreshTokenService.rotate(rawToken);
     return { access_token: accessToken, refresh_token: refreshToken };
   }
 
   /** POST /auth/logout — revokes all refresh tokens for the session */
-  @Post('logout')
+  @Post("logout")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async logout(@CurrentUser() user: AuthUser) {
     await this.refreshTokenService.revokeAll(user.id, user.workspace_id);
-    return { message: 'Sesión cerrada.' };
+    return { message: "Sesión cerrada." };
   }
 
   /**
@@ -128,10 +125,10 @@ export class AuthController {
    * Always returns the same generic message regardless of whether the
    * email exists (H7 — prevent email enumeration).
    */
-  @Post('request-password-reset')
+  @Post("request-password-reset")
   @Throttle({ auth: { limit: 5, ttl: 900_000 } })
   @HttpCode(HttpStatus.OK)
-  requestPasswordReset(@Body('email') email: string) {
+  requestPasswordReset(@Body("email") email: string) {
     return this.authService.requestPasswordReset(email);
   }
 
@@ -140,47 +137,46 @@ export class AuthController {
    * /auth/request-password-reset. Requires a valid, unexpired, single-use
    * token (C1 fix — no longer allows arbitrary password change by email).
    */
-  @Post('reset-password')
+  @Post("reset-password")
   @Throttle({ auth: { limit: 5, ttl: 900_000 } })
   @HttpCode(HttpStatus.OK)
-  resetPassword(
-    @Body('token') token: string,
-    @Body('newPassword') newPassword: string,
-  ) {
+  resetPassword(@Body("token") token: string, @Body("newPassword") newPassword: string) {
     return this.authService.resetPassword(token, newPassword);
   }
 
   /** GET /auth/my-workspaces — list all workspaces the user belongs to */
-  @Get('my-workspaces')
+  @Get("my-workspaces")
   @UseGuards(JwtAuthGuard)
   getMyWorkspaces(@CurrentUser() user: AuthUser) {
     return this.authService.getMyWorkspaces(user.id);
   }
 
   /** POST /auth/switch-workspace — get new JWT for a different workspace */
-  @Post('switch-workspace')
+  @Post("switch-workspace")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  switchWorkspace(
-    @CurrentUser() user: AuthUser,
-    @Body('workspace_slug') workspaceSlug: string,
-  ) {
+  switchWorkspace(@CurrentUser() user: AuthUser, @Body("workspace_slug") workspaceSlug: string) {
     return this.authService.switchWorkspace(user.id, workspaceSlug);
   }
 
   // ── Google OAuth ───────────────────────────────────────────────────────────
 
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
+  @Get("google")
+  @UseGuards(AuthGuard("google"))
   googleAuth() {
     // Initiates Google OAuth flow — redirects to Google
   }
 
-  @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
+  @Get("google/callback")
+  @UseGuards(AuthGuard("google"))
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const profile = req.user as { googleId: string; email: string; name: string; avatarUrl: string | null };
-    const frontendUrl = process.env.PUBLIC_URL ?? 'https://pymeshub.lat';
+    const profile = req.user as {
+      googleId: string;
+      email: string;
+      name: string;
+      avatarUrl: string | null;
+    };
+    const frontendUrl = process.env.PUBLIC_URL ?? "https://pymeshub.lat";
     try {
       // Resolve / create the user via Google profile, then mint a 60s
       // exchange code instead of putting the access + refresh token in
@@ -197,10 +193,10 @@ export class AuthController {
   }
 
   // Unified SSO exchange endpoint — used by both SAML and Google callbacks.
-  @Post('sso-exchange')
+  @Post("sso-exchange")
   @Throttle({ auth: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
-  async ssoExchange(@Body('code') code: string) {
+  async ssoExchange(@Body("code") code: string) {
     return this.authService.consumeSsoExchangeCode(code);
   }
 
@@ -211,19 +207,19 @@ export class AuthController {
   //      then POST /auth/sso-exchange with the returned `code`; OR
   //   2. Implement Google ID-token verification via google-auth-library
   //      and re-enable this endpoint with verified credentials only.
-  @Post('google')
+  @Post("google")
   @HttpCode(HttpStatus.GONE)
   googleLoginDeprecated() {
     throw new BadRequestException(
-      'POST /auth/google is disabled. Use GET /auth/google then redeem the code at POST /auth/sso-exchange.',
+      "POST /auth/google is disabled. Use GET /auth/google then redeem the code at POST /auth/sso-exchange.",
     );
   }
 
   // ── Facebook OAuth — token exchange via SDK ──────────────────────────────
 
-  @Post('facebook/token')
+  @Post("facebook/token")
   @HttpCode(HttpStatus.OK)
-  async facebookTokenLogin(@Body('accessToken') accessToken: string) {
+  async facebookTokenLogin(@Body("accessToken") accessToken: string) {
     const profile = await this.authService.exchangeFacebookToken(accessToken);
     const result = await this.authService.facebookLogin(profile);
     const code = this.authService.mintSsoExchangeCode(result.user.id, result.user.workspace.id);
@@ -238,7 +234,7 @@ export class AuthController {
 
   // ── Telegram Login Widget ─────────────────────────────────────────────────
 
-  @Post('telegram/token')
+  @Post("telegram/token")
   @HttpCode(HttpStatus.OK)
   async telegramTokenLogin(@Body() data: Record<string, any>) {
     const profile = await this.authService.verifyTelegramAuth(data);

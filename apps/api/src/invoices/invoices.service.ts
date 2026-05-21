@@ -4,7 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   HaciendaStatus,
   InvoiceDocumentType,
@@ -12,23 +12,27 @@ import {
   InvoiceStatus,
   Prisma,
   WorkspaceUserRole,
-} from '@prisma/client';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { parseJsonValue } from '../common/prisma/json';
-import { StorageService } from '../common/storage/storage.service';
-import { HaciendaRecepcionService } from '../hacienda/hacienda-recepcion.service';
-import { HaciendaSigningService } from '../hacienda/hacienda-signing.service';
-import { HaciendaXmlBuilderService } from '../hacienda/hacienda-xml-builder.service';
-import { FiscalSequenceService } from '../hacienda/fiscal-sequence.service';
-import { QueueService } from '../workers/queue.service';
-import { CreateInvoiceDto } from './dto/create-invoice.dto';
-import { UpdateInvoiceDto } from './dto/update-invoice.dto';
-import { FilterInvoicesDto } from './dto/filter-invoices.dto';
-import { CreateInvoicePaymentDto } from './dto/create-invoice-payment.dto';
-import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { AiService } from '../ai/ai.service';
-import { INVOICE_TEMPLATES, getTemplatesByIndustry, type InvoiceTemplate } from './invoice-templates.data';
+} from "@prisma/client";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { parseJsonValue } from "../common/prisma/json";
+import { StorageService } from "../common/storage/storage.service";
+import { HaciendaRecepcionService } from "../hacienda/hacienda-recepcion.service";
+import { HaciendaSigningService } from "../hacienda/hacienda-signing.service";
+import { HaciendaXmlBuilderService } from "../hacienda/hacienda-xml-builder.service";
+import { FiscalSequenceService } from "../hacienda/fiscal-sequence.service";
+import { QueueService } from "../workers/queue.service";
+import { CreateInvoiceDto } from "./dto/create-invoice.dto";
+import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
+import { FilterInvoicesDto } from "./dto/filter-invoices.dto";
+import { CreateInvoicePaymentDto } from "./dto/create-invoice-payment.dto";
+import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { AiService } from "../ai/ai.service";
+import {
+  INVOICE_TEMPLATES,
+  getTemplatesByIndustry,
+  type InvoiceTemplate,
+} from "./invoice-templates.data";
 
 @Injectable()
 export class InvoicesService {
@@ -80,7 +84,7 @@ export class InvoicesService {
         where,
         skip,
         take: limit,
-        orderBy: [{ due_date: 'asc' }, { created_at: 'desc' }],
+        orderBy: [{ due_date: "asc" }, { created_at: "desc" }],
         include: this.invoiceInclude(),
       }),
       this.prisma.invoice.count({ where }),
@@ -132,14 +136,20 @@ export class InvoicesService {
     const computedAmount = preparedLines.totalAmount;
 
     if (computedAmount <= 0 && preparedLines.lines.length === 0) {
-      throw new BadRequestException('La factura debe tener al menos una línea de detalle o un monto mayor a cero.');
+      throw new BadRequestException(
+        "La factura debe tener al menos una línea de detalle o un monto mayor a cero.",
+      );
     }
 
     // Check if approvals_signature addon is active — if so, route to PENDING_APPROVAL
-    let initialStatus: InvoiceStatus = dto.issuance_mode === InvoiceIssuanceMode.HACIENDA ? InvoiceStatus.DRAFT : InvoiceStatus.SENT;
+    let initialStatus: InvoiceStatus =
+      dto.issuance_mode === InvoiceIssuanceMode.HACIENDA ? InvoiceStatus.DRAFT : InvoiceStatus.SENT;
     if (initialStatus === InvoiceStatus.SENT) {
-      const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { plan: true, settings_json: true } });
-      if (ws && ws.plan !== 'ENTERPRISE' && ws.plan !== 'BUSINESS_PLUS') {
+      const ws = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { plan: true, settings_json: true },
+      });
+      if (ws && ws.plan !== "ENTERPRISE" && ws.plan !== "BUSINESS_PLUS") {
         const settings = (ws.settings_json as Record<string, any>) ?? {};
         if (settings.approvals_signature_active) {
           initialStatus = InvoiceStatus.PENDING_APPROVAL;
@@ -158,7 +168,7 @@ export class InvoicesService {
         subtotal: dto.subtotal,
         tax_rate: dto.tax_rate,
         tax_amount: dto.tax_amount,
-        currency: dto.currency ?? 'USD',
+        currency: dto.currency ?? "USD",
         due_date: new Date(dto.due_date),
         description: dto.description,
         notes_json: (dto.notes as Prisma.InputJsonValue) ?? undefined,
@@ -193,7 +203,7 @@ export class InvoicesService {
       });
     }
 
-    this.trackQuickStart(workspaceId, 'invoicing_configured');
+    this.trackQuickStart(workspaceId, "invoicing_configured");
 
     return this.serializeInvoice(invoice);
   }
@@ -211,7 +221,11 @@ export class InvoicesService {
     }
 
     if (dto.conversation_id) {
-      await this.assertConversation(workspaceId, dto.conversation_id, dto.contact_id ?? existing.contact_id);
+      await this.assertConversation(
+        workspaceId,
+        dto.conversation_id,
+        dto.contact_id ?? existing.contact_id,
+      );
     }
 
     if (dto.reference_invoice_id) {
@@ -288,7 +302,12 @@ export class InvoicesService {
     const finalStatus =
       dto.status !== undefined
         ? dto.status
-        : this.computeInvoiceStatus(invoice.status as InvoiceStatus, this.getAmountPaid(invoice), Number(invoice.amount), invoice.due_date);
+        : this.computeInvoiceStatus(
+            invoice.status as InvoiceStatus,
+            this.getAmountPaid(invoice),
+            Number(invoice.amount),
+            invoice.due_date,
+          );
 
     const normalized =
       finalStatus !== invoice.status
@@ -296,7 +315,7 @@ export class InvoicesService {
             where: { id },
             data: {
               status: finalStatus,
-              paid_at: finalStatus === InvoiceStatus.PAID ? invoice.paid_at ?? new Date() : null,
+              paid_at: finalStatus === InvoiceStatus.PAID ? (invoice.paid_at ?? new Date()) : null,
               updated_at: new Date(),
             },
             include: this.invoiceInclude(),
@@ -306,11 +325,11 @@ export class InvoicesService {
     const prevStatus = existing.status as string;
     const nextStatus = finalStatus as string;
 
-    if (prevStatus === 'DRAFT' && nextStatus === 'SENT') {
+    if (prevStatus === "DRAFT" && nextStatus === "SENT") {
       await this.deductStock(workspaceId, id).catch((err) =>
         this.logger.error(`Stock deduction on update failed: ${err?.message}`),
       );
-    } else if (nextStatus === 'CANCELLED' && prevStatus !== 'DRAFT') {
+    } else if (nextStatus === "CANCELLED" && prevStatus !== "DRAFT") {
       await this.reverseStock(workspaceId, id).catch((err) =>
         this.logger.error(`Stock reversal on cancel failed: ${err?.message}`),
       );
@@ -323,7 +342,7 @@ export class InvoicesService {
     const invoice = await this.getInvoiceOrThrow(workspaceId, id);
     this.ensureMutableInvoice(invoice);
     await this.prisma.invoice.delete({ where: { id } });
-    return { message: 'Factura eliminada.' };
+    return { message: "Factura eliminada." };
   }
 
   async registerPayment(
@@ -335,12 +354,12 @@ export class InvoicesService {
     const invoice = await this.getInvoiceOrThrow(workspaceId, invoiceId);
 
     if (invoice.status === InvoiceStatus.CANCELLED) {
-      throw new BadRequestException('No se pueden registrar pagos para una factura cancelada.');
+      throw new BadRequestException("No se pueden registrar pagos para una factura cancelada.");
     }
 
     const amount = Number(dto.amount ?? 0);
     if (amount <= 0) {
-      throw new BadRequestException('El monto del pago debe ser mayor a cero.');
+      throw new BadRequestException("El monto del pago debe ser mayor a cero.");
     }
 
     // Reject payments with mismatched currency
@@ -358,17 +377,19 @@ export class InvoicesService {
       });
 
       if (freshInvoice.status === InvoiceStatus.CANCELLED) {
-        throw new BadRequestException('No se pueden registrar pagos para una factura cancelada.');
+        throw new BadRequestException("No se pueden registrar pagos para una factura cancelada.");
       }
 
       const balanceDue = this.getBalanceDue(freshInvoice);
 
       if (balanceDue <= 0) {
-        throw new BadRequestException('La factura no tiene saldo pendiente.');
+        throw new BadRequestException("La factura no tiene saldo pendiente.");
       }
 
       if (amount > balanceDue) {
-        throw new BadRequestException(`El pago excede el saldo pendiente de ${balanceDue.toFixed(2)}.`);
+        throw new BadRequestException(
+          `El pago excede el saldo pendiente de ${balanceDue.toFixed(2)}.`,
+        );
       }
 
       const paidAt = dto.paid_at ? new Date(dto.paid_at) : new Date();
@@ -425,18 +446,23 @@ export class InvoicesService {
     for (const admin of admins) {
       if (notified.has(admin.user_id)) continue;
       notified.add(admin.user_id);
-      this.notificationsService.create(workspaceId, {
-        user_id: admin.user_id,
-        type: isPaid ? 'invoice_paid' : 'payment_received',
-        title: isPaid ? 'Factura pagada' : 'Pago recibido',
-        body: isPaid
-          ? `La factura ${invoice.number} fue pagada por completo (₡${amount.toFixed(2)}).`
-          : `Se recibió un pago de ₡${amount.toFixed(2)} para la factura ${invoice.number}.`,
-        related_entity_type: 'invoice',
-        related_entity_id: invoiceId,
-      }).catch((err) =>
-        this.logger.warn(`Failed to notify workspace ${workspaceId} about invoice ${invoice.number || invoiceId}`, err),
-      );
+      this.notificationsService
+        .create(workspaceId, {
+          user_id: admin.user_id,
+          type: isPaid ? "invoice_paid" : "payment_received",
+          title: isPaid ? "Factura pagada" : "Pago recibido",
+          body: isPaid
+            ? `La factura ${invoice.number} fue pagada por completo (₡${amount.toFixed(2)}).`
+            : `Se recibió un pago de ₡${amount.toFixed(2)} para la factura ${invoice.number}.`,
+          related_entity_type: "invoice",
+          related_entity_id: invoiceId,
+        })
+        .catch((err) =>
+          this.logger.warn(
+            `Failed to notify workspace ${workspaceId} about invoice ${invoice.number || invoiceId}`,
+            err,
+          ),
+        );
     }
 
     return {
@@ -449,18 +475,18 @@ export class InvoicesService {
     const invoice = await this.getInvoiceOrThrow(workspaceId, id);
 
     if (invoice.status === InvoiceStatus.CANCELLED) {
-      throw new BadRequestException('No se puede marcar como pagada una factura cancelada.');
+      throw new BadRequestException("No se puede marcar como pagada una factura cancelada.");
     }
 
     if (this.getBalanceDue(invoice) <= 0) {
-      throw new BadRequestException('La factura ya está marcada como pagada.');
+      throw new BadRequestException("La factura ya está marcada como pagada.");
     }
 
     return this.registerPayment(workspaceId, userId, id, {
       amount: this.getBalanceDue(invoice),
       currency: invoice.currency,
-      method: 'MANUAL_FULL',
-      notes: 'Pago registrado desde acción rápida de marcar pagada.',
+      method: "MANUAL_FULL",
+      notes: "Pago registrado desde acción rápida de marcar pagada.",
       paid_at: new Date().toISOString(),
     });
   }
@@ -468,13 +494,13 @@ export class InvoicesService {
   async submitToHacienda(workspaceId: string, id: string) {
     const invoice = await this.getInvoiceOrThrow(workspaceId, id);
     if (invoice.issuance_mode !== InvoiceIssuanceMode.HACIENDA) {
-      throw new BadRequestException('La factura no está configurada para emisión Hacienda.');
+      throw new BadRequestException("La factura no está configurada para emisión Hacienda.");
     }
     if (invoice.hacienda_status === HaciendaStatus.ACEPTADO) {
-      throw new BadRequestException('La factura ya fue aceptada por Hacienda.');
+      throw new BadRequestException("La factura ya fue aceptada por Hacienda.");
     }
     if (invoice.hacienda_status === HaciendaStatus.PENDING_SUBMISSION) {
-      throw new BadRequestException('La factura ya está en cola de envío a Hacienda.');
+      throw new BadRequestException("La factura ya está en cola de envío a Hacienda.");
     }
 
     const settings = await this.prisma.workspace.findUnique({
@@ -482,10 +508,11 @@ export class InvoicesService {
       select: { settings_json: true, workspace_tax_profile: true },
     });
     const workspaceTaxProfile = settings?.workspace_tax_profile ?? null;
-    const missingWorkspaceTaxProfileFields = this.getMissingWorkspaceTaxProfileFields(workspaceTaxProfile);
+    const missingWorkspaceTaxProfileFields =
+      this.getMissingWorkspaceTaxProfileFields(workspaceTaxProfile);
     if (missingWorkspaceTaxProfileFields.length) {
       throw new BadRequestException(
-        `Configuración de Hacienda incompleta en el workspace. Faltan: ${missingWorkspaceTaxProfileFields.join(', ')}. Ve a Configuración > Facturación electrónica CR y guarda el perfil tributario.`,
+        `Configuración de Hacienda incompleta en el workspace. Faltan: ${missingWorkspaceTaxProfileFields.join(", ")}. Ve a Configuración > Facturación electrónica CR y guarda el perfil tributario.`,
       );
     }
 
@@ -493,7 +520,7 @@ export class InvoicesService {
     const missingWorkspaceSettings = this.getMissingWorkspaceHaciendaSettings(workspaceSettings);
     if (missingWorkspaceSettings.length) {
       throw new BadRequestException(
-        `Configuración operativa de Hacienda incompleta. Faltan: ${missingWorkspaceSettings.join(', ')}. Revisálo en Configuración > Facturación electrónica CR.`,
+        `Configuración operativa de Hacienda incompleta. Faltan: ${missingWorkspaceSettings.join(", ")}. Revisálo en Configuración > Facturación electrónica CR.`,
       );
     }
 
@@ -540,31 +567,32 @@ export class InvoicesService {
   async syncHaciendaStatus(workspaceId: string, id: string) {
     const invoice = await this.getInvoiceOrThrow(workspaceId, id);
     if (!invoice.clave) {
-      throw new BadRequestException('La factura aún no tiene clave para consultar en Hacienda.');
+      throw new BadRequestException("La factura aún no tiene clave para consultar en Hacienda.");
     }
 
     const response = await this.haciendaRecepcion.getRecepcionStatus(workspaceId, invoice.clave);
-    const responseXmlBase64 = response?.['respuesta-xml'];
+    const responseXmlBase64 = response?.["respuesta-xml"];
     let responseKey = invoice.response_xml_storage_key;
 
     if (responseXmlBase64) {
       responseKey = `hacienda/${workspaceId}/invoices/${invoice.id}/response.xml`;
       await this.storage.upload(
         responseKey,
-        Buffer.from(responseXmlBase64, 'base64'),
-        'application/xml',
+        Buffer.from(responseXmlBase64, "base64"),
+        "application/xml",
       );
     }
 
     const updated = await this.prisma.invoice.update({
       where: { id },
       data: {
-        hacienda_status: this.mapHaciendaStatus(response?.['ind-estado']),
+        hacienda_status: this.mapHaciendaStatus(response?.["ind-estado"]),
         response_xml_storage_key: responseKey,
         hacienda_last_checked_at: new Date(),
-        hacienda_last_error: this.mapHaciendaStatus(response?.['ind-estado']) === HaciendaStatus.RECHAZADO
-          ? 'Hacienda rechazó el comprobante.'
-          : null,
+        hacienda_last_error:
+          this.mapHaciendaStatus(response?.["ind-estado"]) === HaciendaStatus.RECHAZADO
+            ? "Hacienda rechazó el comprobante."
+            : null,
         updated_at: new Date(),
       },
       include: this.invoiceInclude(),
@@ -579,7 +607,9 @@ export class InvoicesService {
   async createCreditNote(workspaceId: string, sourceInvoiceId: string, dto: CreateInvoiceDto) {
     const source = await this.getInvoiceOrThrow(workspaceId, sourceInvoiceId);
     if (source.hacienda_status !== HaciendaStatus.ACEPTADO) {
-      throw new BadRequestException('La nota de crédito debe referenciar una factura aceptada por Hacienda.');
+      throw new BadRequestException(
+        "La nota de crédito debe referenciar una factura aceptada por Hacienda.",
+      );
     }
 
     return this.create(workspaceId, {
@@ -590,16 +620,18 @@ export class InvoicesService {
       document_type: InvoiceDocumentType.NOTA_CREDITO,
       issuance_mode: InvoiceIssuanceMode.HACIENDA,
       reference_invoice_id: sourceInvoiceId,
-      lines: dto.lines ?? source.lines.map((line) => ({
-        description: line.description,
-        quantity: Number(line.quantity),
-        unit_price: Number(line.unit_price),
-        discount_amount: Number(line.discount_amount),
-        cabys_code: line.cabys_code ?? undefined,
-        unit_of_measure: line.unit_of_measure ?? undefined,
-        tax_code: line.tax_code ?? undefined,
-        tax_rate: line.tax_rate ? Number(line.tax_rate) : undefined,
-      })),
+      lines:
+        dto.lines ??
+        source.lines.map((line) => ({
+          description: line.description,
+          quantity: Number(line.quantity),
+          unit_price: Number(line.unit_price),
+          discount_amount: Number(line.discount_amount),
+          cabys_code: line.cabys_code ?? undefined,
+          unit_of_measure: line.unit_of_measure ?? undefined,
+          tax_code: line.tax_code ?? undefined,
+          tax_rate: line.tax_rate ? Number(line.tax_rate) : undefined,
+        })),
       amount: dto.amount ?? Number(source.amount),
     });
   }
@@ -607,7 +639,9 @@ export class InvoicesService {
   async createDebitNote(workspaceId: string, sourceInvoiceId: string, dto: CreateInvoiceDto) {
     const source = await this.getInvoiceOrThrow(workspaceId, sourceInvoiceId);
     if (source.hacienda_status !== HaciendaStatus.ACEPTADO) {
-      throw new BadRequestException('La nota de débito debe referenciar una factura aceptada por Hacienda.');
+      throw new BadRequestException(
+        "La nota de débito debe referenciar una factura aceptada por Hacienda.",
+      );
     }
 
     return this.create(workspaceId, {
@@ -619,23 +653,31 @@ export class InvoicesService {
       issuance_mode: InvoiceIssuanceMode.HACIENDA,
       reference_invoice_id: sourceInvoiceId,
       amount: dto.amount ?? Number(source.amount),
-      lines: dto.lines ?? source.lines.map((line) => ({
-        description: line.description,
-        quantity: Number(line.quantity),
-        unit_price: Number(line.unit_price),
-        discount_amount: Number(line.discount_amount),
-        cabys_code: line.cabys_code ?? undefined,
-        unit_of_measure: line.unit_of_measure ?? undefined,
-        tax_code: line.tax_code ?? undefined,
-        tax_rate: line.tax_rate ? Number(line.tax_rate) : undefined,
-      })),
+      lines:
+        dto.lines ??
+        source.lines.map((line) => ({
+          description: line.description,
+          quantity: Number(line.quantity),
+          unit_price: Number(line.unit_price),
+          discount_amount: Number(line.discount_amount),
+          cabys_code: line.cabys_code ?? undefined,
+          unit_of_measure: line.unit_of_measure ?? undefined,
+          tax_code: line.tax_code ?? undefined,
+          tax_rate: line.tax_rate ? Number(line.tax_rate) : undefined,
+        })),
     });
   }
 
-  async createReceiverMessage(workspaceId: string, sourceInvoiceId: string, dto: { number?: string; description?: string; notes?: unknown[] }) {
+  async createReceiverMessage(
+    workspaceId: string,
+    sourceInvoiceId: string,
+    dto: { number?: string; description?: string; notes?: unknown[] },
+  ) {
     const source = await this.getInvoiceOrThrow(workspaceId, sourceInvoiceId);
     if (source.hacienda_status !== HaciendaStatus.ACEPTADO) {
-      throw new BadRequestException('El mensaje del receptor debe referenciar un comprobante aceptado.');
+      throw new BadRequestException(
+        "El mensaje del receptor debe referenciar un comprobante aceptado.",
+      );
     }
 
     const number = dto.number ?? `MR-${Date.now()}`;
@@ -695,11 +737,11 @@ export class InvoicesService {
         },
       },
       reminders: {
-        orderBy: { created_at: 'desc' as const },
+        orderBy: { created_at: "desc" as const },
         take: 1,
       },
       payments: {
-        orderBy: { paid_at: 'desc' as const },
+        orderBy: { paid_at: "desc" as const },
         take: 5,
         include: {
           recorded_by_user: {
@@ -712,7 +754,7 @@ export class InvoicesService {
         },
       },
       lines: {
-        orderBy: { line_number: 'asc' as const },
+        orderBy: { line_number: "asc" as const },
         take: 50,
       },
     };
@@ -736,7 +778,10 @@ export class InvoicesService {
 
   private parseAmount(value: unknown): number {
     if (value === null || value === undefined) return 0;
-    if (typeof value === 'object' && typeof (value as { toNumber?: unknown }).toNumber === 'function') {
+    if (
+      typeof value === "object" &&
+      typeof (value as { toNumber?: unknown }).toNumber === "function"
+    ) {
       const n = (value as { toNumber(): number }).toNumber();
       return isNaN(n) ? 0 : n;
     }
@@ -758,18 +803,29 @@ export class InvoicesService {
   private validateStateTransition(current: InvoiceStatus, next: InvoiceStatus): void {
     const ALLOWED_TRANSITIONS: Partial<Record<InvoiceStatus, InvoiceStatus[]>> = {
       [InvoiceStatus.DRAFT]: [InvoiceStatus.SENT, InvoiceStatus.CANCELLED],
-      [InvoiceStatus.SENT]: [InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID, InvoiceStatus.OVERDUE, InvoiceStatus.CANCELLED],
-      [InvoiceStatus.PARTIALLY_PAID]: [InvoiceStatus.PAID, InvoiceStatus.OVERDUE, InvoiceStatus.CANCELLED],
-      [InvoiceStatus.OVERDUE]: [InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID, InvoiceStatus.CANCELLED],
+      [InvoiceStatus.SENT]: [
+        InvoiceStatus.PARTIALLY_PAID,
+        InvoiceStatus.PAID,
+        InvoiceStatus.OVERDUE,
+        InvoiceStatus.CANCELLED,
+      ],
+      [InvoiceStatus.PARTIALLY_PAID]: [
+        InvoiceStatus.PAID,
+        InvoiceStatus.OVERDUE,
+        InvoiceStatus.CANCELLED,
+      ],
+      [InvoiceStatus.OVERDUE]: [
+        InvoiceStatus.PARTIALLY_PAID,
+        InvoiceStatus.PAID,
+        InvoiceStatus.CANCELLED,
+      ],
       [InvoiceStatus.PAID]: [],
       [InvoiceStatus.CANCELLED]: [],
     };
 
     const allowed = ALLOWED_TRANSITIONS[current] ?? [];
     if (current !== next && !allowed.includes(next)) {
-      throw new BadRequestException(
-        `Transición de estado inválida: ${current} → ${next}.`,
-      );
+      throw new BadRequestException(`Transición de estado inválida: ${current} → ${next}.`);
     }
   }
 
@@ -804,7 +860,7 @@ export class InvoicesService {
       include: this.invoiceInclude(),
     });
 
-    if (!invoice) throw new NotFoundException('Factura no encontrada.');
+    if (!invoice) throw new NotFoundException("Factura no encontrada.");
     return invoice;
   }
 
@@ -812,7 +868,7 @@ export class InvoicesService {
     const contact = await this.prisma.contact.findFirst({
       where: { id: contactId, workspace_id: workspaceId },
     });
-    if (!contact) throw new NotFoundException('Contacto no encontrado.');
+    if (!contact) throw new NotFoundException("Contacto no encontrado.");
   }
 
   private async assertConversation(workspaceId: string, conversationId: string, contactId: string) {
@@ -822,11 +878,11 @@ export class InvoicesService {
     });
 
     if (!conversation) {
-      throw new NotFoundException('Conversación no encontrada.');
+      throw new NotFoundException("Conversación no encontrada.");
     }
 
     if (conversation.contact_id && conversation.contact_id !== contactId) {
-      throw new BadRequestException('La conversación está vinculada a otro contacto.');
+      throw new BadRequestException("La conversación está vinculada a otro contacto.");
     }
   }
 
@@ -841,7 +897,7 @@ export class InvoicesService {
     });
 
     if (!invoice) {
-      throw new NotFoundException('La factura de referencia no existe en este workspace.');
+      throw new NotFoundException("La factura de referencia no existe en este workspace.");
     }
   }
 
@@ -863,10 +919,15 @@ export class InvoicesService {
   private ensureMutableInvoice(invoice: Record<string, any>) {
     if (
       invoice.issuance_mode === InvoiceIssuanceMode.HACIENDA &&
-      [HaciendaStatus.SUBMITTED, HaciendaStatus.RECIBIDO, HaciendaStatus.PROCESANDO, HaciendaStatus.ACEPTADO].includes(invoice.hacienda_status)
+      [
+        HaciendaStatus.SUBMITTED,
+        HaciendaStatus.RECIBIDO,
+        HaciendaStatus.PROCESANDO,
+        HaciendaStatus.ACEPTADO,
+      ].includes(invoice.hacienda_status)
     ) {
       throw new BadRequestException(
-        'El comprobante ya fue enviado a Hacienda. Use nota de crédito/débito para corregirlo.',
+        "El comprobante ya fue enviado a Hacienda. Use nota de crédito/débito para corregirlo.",
       );
     }
   }
@@ -917,14 +978,22 @@ export class InvoicesService {
     await this.prisma.$transaction(async (tx) => {
       const lines = await tx.invoiceLine.findMany({
         where: { invoice_id: invoiceId, workspace_id: workspaceId, product_id: { not: null } },
-        include: { product: { select: { id: true, track_inventory: true, type: true, current_stock: true } } },
+        include: {
+          product: { select: { id: true, track_inventory: true, type: true, current_stock: true } },
+        },
       });
 
       for (const line of lines) {
-        if (!line.product || !line.product.track_inventory || line.product.type === 'SERVICE') continue;
+        if (!line.product || !line.product.track_inventory || line.product.type === "SERVICE")
+          continue;
 
         const existingMovement = await tx.stockMovement.findFirst({
-          where: { product_id: line.product_id, reference_type: 'invoice', reference_id: invoiceId, type: 'OUT' },
+          where: {
+            product_id: line.product_id,
+            reference_type: "invoice",
+            reference_id: invoiceId,
+            type: "OUT",
+          },
         });
         if (existingMovement) continue;
 
@@ -943,12 +1012,12 @@ export class InvoicesService {
           data: {
             workspace_id: workspaceId,
             product_id: line.product_id,
-            type: 'OUT',
+            type: "OUT",
             quantity: qty,
             previous_stock: previousStock,
             new_stock: newStock,
-            reason: 'Venta — factura electrónica',
-            reference_type: 'invoice',
+            reason: "Venta — factura electrónica",
+            reference_type: "invoice",
             reference_id: invoiceId,
           },
         });
@@ -958,12 +1027,18 @@ export class InvoicesService {
 
   private async reverseStock(workspaceId: string, invoiceId: string) {
     const movements = await this.prisma.stockMovement.findMany({
-      where: { reference_type: 'invoice', reference_id: invoiceId, type: 'OUT' },
+      where: { reference_type: "invoice", reference_id: invoiceId, type: "OUT" },
     });
 
     for (const mov of movements) {
       const alreadyReversed = await this.prisma.stockMovement.findFirst({
-        where: { product_id: mov.product_id, reference_type: 'invoice', reference_id: invoiceId, type: 'REVERSAL', quantity: mov.quantity },
+        where: {
+          product_id: mov.product_id,
+          reference_type: "invoice",
+          reference_id: invoiceId,
+          type: "REVERSAL",
+          quantity: mov.quantity,
+        },
       });
       if (alreadyReversed) continue;
 
@@ -984,12 +1059,12 @@ export class InvoicesService {
         data: {
           workspace_id: workspaceId,
           product_id: mov.product_id,
-          type: 'REVERSAL',
+          type: "REVERSAL",
           quantity: mov.quantity,
           previous_stock: product.current_stock,
           new_stock: newStock,
           reason: `Reversión factura #${invoiceId?.slice(0, 8)}`,
-          reference_type: 'invoice',
+          reference_type: "invoice",
           reference_id: invoiceId,
         },
       });
@@ -997,16 +1072,16 @@ export class InvoicesService {
   }
 
   private mapHaciendaStatus(value?: string): HaciendaStatus {
-    switch ((value ?? '').toLowerCase()) {
-      case 'recibido':
+    switch ((value ?? "").toLowerCase()) {
+      case "recibido":
         return HaciendaStatus.RECIBIDO;
-      case 'procesando':
+      case "procesando":
         return HaciendaStatus.PROCESANDO;
-      case 'aceptado':
+      case "aceptado":
         return HaciendaStatus.ACEPTADO;
-      case 'rechazado':
+      case "rechazado":
         return HaciendaStatus.RECHAZADO;
-      case 'error':
+      case "error":
         return HaciendaStatus.ERROR;
       default:
         return HaciendaStatus.SUBMITTED;
@@ -1015,39 +1090,39 @@ export class InvoicesService {
 
   private buildConsecutivo(documentType: InvoiceDocumentType) {
     const suffix = {
-      [InvoiceDocumentType.FACTURA_ELECTRONICA]: '00100001010000000001',
-      [InvoiceDocumentType.TIQUETE_ELECTRONICO]: '00200001010000000001',
-      [InvoiceDocumentType.NOTA_CREDITO]: '00300001010000000001',
-      [InvoiceDocumentType.NOTA_DEBITO]: '00400001010000000001',
-      [InvoiceDocumentType.MENSAJE_RECEPTOR]: '00500001010000000001',
+      [InvoiceDocumentType.FACTURA_ELECTRONICA]: "00100001010000000001",
+      [InvoiceDocumentType.TIQUETE_ELECTRONICO]: "00200001010000000001",
+      [InvoiceDocumentType.NOTA_CREDITO]: "00300001010000000001",
+      [InvoiceDocumentType.NOTA_DEBITO]: "00400001010000000001",
+      [InvoiceDocumentType.MENSAJE_RECEPTOR]: "00500001010000000001",
     }[documentType];
     return `${suffix}${Date.now().toString().slice(-8)}`.slice(0, 20);
   }
 
   private buildClave(identificationNumber: string, documentType: InvoiceDocumentType) {
     const now = new Date();
-    const dd = String(now.getDate()).padStart(2, '0');
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, "0");
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
     const yy = String(now.getFullYear()).slice(-2);
     const tipo = {
-      [InvoiceDocumentType.FACTURA_ELECTRONICA]: '01',
-      [InvoiceDocumentType.TIQUETE_ELECTRONICO]: '04',
-      [InvoiceDocumentType.NOTA_CREDITO]: '03',
-      [InvoiceDocumentType.NOTA_DEBITO]: '02',
-      [InvoiceDocumentType.MENSAJE_RECEPTOR]: '05',
+      [InvoiceDocumentType.FACTURA_ELECTRONICA]: "01",
+      [InvoiceDocumentType.TIQUETE_ELECTRONICO]: "04",
+      [InvoiceDocumentType.NOTA_CREDITO]: "03",
+      [InvoiceDocumentType.NOTA_DEBITO]: "02",
+      [InvoiceDocumentType.MENSAJE_RECEPTOR]: "05",
     }[documentType];
-    const cedula = identificationNumber.padStart(12, '0').slice(-12);
+    const cedula = identificationNumber.padStart(12, "0").slice(-12);
     const random = `${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-20);
     return `506${dd}${mm}${yy}${cedula}${tipo}${random}`.slice(0, 50);
   }
 
   private formatRecepcionDate(date: Date) {
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
     return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-0600`;
   }
 
@@ -1063,8 +1138,8 @@ export class InvoicesService {
         tax_amount: 0,
         total_line_amount: Number(invoice.amount),
         cabys_code: null,
-        unit_of_measure: 'Unid',
-        tax_code: '01',
+        unit_of_measure: "Unid",
+        tax_code: "01",
         tax_rate: 0,
       },
     ];
@@ -1073,31 +1148,31 @@ export class InvoicesService {
   private getMissingWorkspaceTaxProfileFields(workspaceTaxProfile: Record<string, any> | null) {
     if (!workspaceTaxProfile) {
       return [
-        'razón social',
-        'tipo de identificación',
-        'identificación',
-        'actividad económica',
-        'correo tributario',
+        "razón social",
+        "tipo de identificación",
+        "identificación",
+        "actividad económica",
+        "correo tributario",
       ];
     }
 
     const missing: string[] = [];
-    if (!workspaceTaxProfile.legal_name?.trim()) missing.push('razón social');
-    if (!workspaceTaxProfile.identification_type?.trim()) missing.push('tipo de identificación');
-    if (!workspaceTaxProfile.identification_number?.trim()) missing.push('identificación');
-    if (!workspaceTaxProfile.activity_code?.trim()) missing.push('actividad económica');
-    if (!workspaceTaxProfile.tax_email?.trim()) missing.push('correo tributario');
+    if (!workspaceTaxProfile.legal_name?.trim()) missing.push("razón social");
+    if (!workspaceTaxProfile.identification_type?.trim()) missing.push("tipo de identificación");
+    if (!workspaceTaxProfile.identification_number?.trim()) missing.push("identificación");
+    if (!workspaceTaxProfile.activity_code?.trim()) missing.push("actividad económica");
+    if (!workspaceTaxProfile.tax_email?.trim()) missing.push("correo tributario");
     return missing;
   }
 
   private getMissingWorkspaceHaciendaSettings(settings: Record<string, any>) {
     const missing: string[] = [];
-    if (!settings.hacienda_environment) missing.push('ambiente');
-    if (!settings.hacienda_callback_url) missing.push('callback URL');
-    if (!settings.hacienda_client_id) missing.push('client ID');
-    if (!settings.hacienda_token_url) missing.push('token URL');
-    if (!settings.hacienda_username) missing.push('usuario Hacienda');
-    if (!settings.hacienda_password) missing.push('contraseña Hacienda');
+    if (!settings.hacienda_environment) missing.push("ambiente");
+    if (!settings.hacienda_callback_url) missing.push("callback URL");
+    if (!settings.hacienda_client_id) missing.push("client ID");
+    if (!settings.hacienda_token_url) missing.push("token URL");
+    if (!settings.hacienda_username) missing.push("usuario Hacienda");
+    if (!settings.hacienda_password) missing.push("contraseña Hacienda");
     return missing;
   }
 
@@ -1106,7 +1181,7 @@ export class InvoicesService {
       where: { id: workspaceId },
       select: { id: true },
     });
-    if (!ws) throw new NotFoundException('Workspace no encontrado.');
+    if (!ws) throw new NotFoundException("Workspace no encontrado.");
 
     return getTemplatesByIndustry(industry);
   }
@@ -1121,7 +1196,7 @@ export class InvoicesService {
       },
     });
 
-    const issues: Array<{ field: string; severity: 'error' | 'warning'; message: string }> = [];
+    const issues: Array<{ field: string; severity: "error" | "warning"; message: string }> = [];
     let valid = true;
 
     const taxProfile = workspace?.workspace_tax_profile;
@@ -1130,32 +1205,48 @@ export class InvoicesService {
     const missingProfile = this.getMissingWorkspaceTaxProfileFields(taxProfile);
     if (missingProfile.length > 0) {
       valid = false;
-      missingProfile.forEach(f => issues.push({
-        field: 'perfil_fiscal',
-        severity: 'error',
-        message: `Falta completar en Ajustes → Facturación CR: ${f}`,
-      }));
+      missingProfile.forEach((f) =>
+        issues.push({
+          field: "perfil_fiscal",
+          severity: "error",
+          message: `Falta completar en Ajustes → Facturación CR: ${f}`,
+        }),
+      );
     }
 
     const missingSettings = this.getMissingWorkspaceHaciendaSettings(settings);
     if (missingSettings.length > 0) {
       valid = false;
-      missingSettings.forEach(f => issues.push({
-        field: 'config_hacienda',
-        severity: 'error',
-        message: `Falta configurar en Ajustes → Facturación CR: ${f}`,
-      }));
+      missingSettings.forEach((f) =>
+        issues.push({
+          field: "config_hacienda",
+          severity: "error",
+          message: `Falta configurar en Ajustes → Facturación CR: ${f}`,
+        }),
+      );
     }
 
     if (!invoice.activity_code) {
       valid = false;
-      issues.push({ field: 'activity_code', severity: 'error', message: 'El código de actividad económica es obligatorio.' });
+      issues.push({
+        field: "activity_code",
+        severity: "error",
+        message: "El código de actividad económica es obligatorio.",
+      });
     }
     if (!invoice.sale_condition) {
-      issues.push({ field: 'sale_condition', severity: 'warning', message: 'Condición de venta no definida (01=contado, 02=crédito).' });
+      issues.push({
+        field: "sale_condition",
+        severity: "warning",
+        message: "Condición de venta no definida (01=contado, 02=crédito).",
+      });
     }
     if (!invoice.payment_method) {
-      issues.push({ field: 'payment_method', severity: 'warning', message: 'Medio de pago no definido.' });
+      issues.push({
+        field: "payment_method",
+        severity: "warning",
+        message: "Medio de pago no definido.",
+      });
     }
 
     if (invoice.lines && invoice.lines.length > 0) {
@@ -1163,15 +1254,27 @@ export class InvoicesService {
         const line = invoice.lines[i];
         if (!line.cabys_code) {
           valid = false;
-          issues.push({ field: `linea_${i + 1}_cabys`, severity: 'error', message: `Línea ${i + 1}: falta código CABYS.` });
+          issues.push({
+            field: `linea_${i + 1}_cabys`,
+            severity: "error",
+            message: `Línea ${i + 1}: falta código CABYS.`,
+          });
         }
         if (!line.tax_code) {
-          issues.push({ field: `linea_${i + 1}_tax`, severity: 'warning', message: `Línea ${i + 1}: código de impuesto no definido.` });
+          issues.push({
+            field: `linea_${i + 1}_tax`,
+            severity: "warning",
+            message: `Línea ${i + 1}: código de impuesto no definido.`,
+          });
         }
       }
     } else {
       valid = false;
-      issues.push({ field: 'lineas', severity: 'error', message: 'La factura debe tener al menos una línea de detalle.' });
+      issues.push({
+        field: "lineas",
+        severity: "error",
+        message: "La factura debe tener al menos una línea de detalle.",
+      });
     }
 
     let ai_review: string | null = null;
@@ -1192,7 +1295,10 @@ export class InvoicesService {
       if (result) {
         if (result.issues?.length) {
           valid = false;
-          result.issues.forEach((issue: { field: string; severity: 'error' | 'warning'; message: string }) => issues.push(issue));
+          result.issues.forEach(
+            (issue: { field: string; severity: "error" | "warning"; message: string }) =>
+              issues.push(issue),
+          );
         }
         ai_review = result.ai_review || null;
       }
@@ -1208,15 +1314,18 @@ export class InvoicesService {
       where: { id: invoiceId, workspace_id: workspaceId },
       select: { hacienda_last_error: true, hacienda_status: true },
     });
-    if (!invoice) throw new NotFoundException('Factura no encontrada.');
-    if (!invoice.hacienda_last_error) throw new BadRequestException('Esta factura no tiene errores de Hacienda registrados.');
+    if (!invoice) throw new NotFoundException("Factura no encontrada.");
+    if (!invoice.hacienda_last_error)
+      throw new BadRequestException("Esta factura no tiene errores de Hacienda registrados.");
 
     const aiResult = await this.ai.explainHaciendaError(workspaceId, invoice.hacienda_last_error);
 
     return {
-      error_code: 'HACIENDA_RECHAZO',
+      error_code: "HACIENDA_RECHAZO",
       technical_message: invoice.hacienda_last_error,
-      plain_explanation: aiResult?.explanation ?? 'No se pudo generar una explicación automática. Contactá soporte para más detalles.',
+      plain_explanation:
+        aiResult?.explanation ??
+        "No se pudo generar una explicación automática. Contactá soporte para más detalles.",
       suggested_fix: aiResult?.suggested_fix ?? null,
     };
   }
@@ -1224,7 +1333,7 @@ export class InvoicesService {
   async getXmlPreview(workspaceId: string, invoiceId: string) {
     const invoice = await this.getInvoiceOrThrow(workspaceId, invoiceId);
     if (invoice.issuance_mode !== InvoiceIssuanceMode.HACIENDA) {
-      throw new BadRequestException('La factura no está configurada para emisión Hacienda.');
+      throw new BadRequestException("La factura no está configurada para emisión Hacienda.");
     }
 
     const workspace = await this.prisma.workspace.findUnique({
@@ -1253,13 +1362,22 @@ export class InvoicesService {
 
   private async trackQuickStart(workspaceId: string, step: string) {
     try {
-      const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
-      const s: Record<string, any> = (ws?.settings_json && typeof ws.settings_json === 'object') ? ws.settings_json : {};
+      const ws = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { settings_json: true },
+      });
+      const s: Record<string, any> =
+        ws?.settings_json && typeof ws.settings_json === "object" ? ws.settings_json : {};
       const progress = s.quick_start_progress || {};
       if (progress[step]) return;
       s.quick_start_progress = { ...progress, [step]: true };
-      await this.prisma.workspace.update({ where: { id: workspaceId }, data: { settings_json: s } });
-    } catch { /* fire-and-forget */ }
+      await this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { settings_json: s },
+      });
+    } catch {
+      /* fire-and-forget */
+    }
   }
 
   // ── Invoice approval workflow ─────────────────────────────────────────────
@@ -1270,26 +1388,26 @@ export class InvoicesService {
 
   async getPendingApprovals(workspaceId: string) {
     return this.prisma.invoice.findMany({
-      where: { workspace_id: workspaceId, status: 'PENDING_APPROVAL' },
+      where: { workspace_id: workspaceId, status: "PENDING_APPROVAL" },
       include: {
         contact: { select: { id: true, full_name: true, company_name: true } },
         lines: true,
         payments: { select: { id: true, amount: true } },
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
       take: 20,
     });
   }
 
   async approveInvoice(workspaceId: string, userId: string, id: string) {
     const invoice = await this.getInvoiceOrThrow(workspaceId, id);
-    if (invoice.status !== 'PENDING_APPROVAL') {
-      throw new BadRequestException('Solo se pueden aprobar facturas en estado PENDING_APPROVAL.');
+    if (invoice.status !== "PENDING_APPROVAL") {
+      throw new BadRequestException("Solo se pueden aprobar facturas en estado PENDING_APPROVAL.");
     }
 
     const updated = await this.prisma.invoice.update({
       where: { id },
-      data: { status: 'SENT', updated_at: new Date() },
+      data: { status: "SENT", updated_at: new Date() },
       include: {
         contact: { select: { id: true, full_name: true, company_name: true } },
       },
@@ -1297,21 +1415,26 @@ export class InvoicesService {
 
     // Notify workspace admin about the approval
     const admins = await this.prisma.workspaceUser.findMany({
-      where: { workspace_id: workspaceId, role: { in: ['OWNER', 'ADMIN'] as any } },
+      where: { workspace_id: workspaceId, role: { in: ["OWNER", "ADMIN"] as any } },
       select: { user_id: true },
       take: 3,
     });
     for (const admin of admins) {
-      this.notificationsService.create(workspaceId, {
-        user_id: admin.user_id,
-        type: 'invoice_approved',
-        title: 'Factura aprobada',
-        body: `La factura ${invoice.number} fue aprobada.`,
-        related_entity_type: 'invoice',
-        related_entity_id: id,
-      }).catch((err) =>
-        this.logger.warn(`Failed to notify workspace ${updated.workspace_id} about invoice approval ${invoice.number}`, err),
-      );
+      this.notificationsService
+        .create(workspaceId, {
+          user_id: admin.user_id,
+          type: "invoice_approved",
+          title: "Factura aprobada",
+          body: `La factura ${invoice.number} fue aprobada.`,
+          related_entity_type: "invoice",
+          related_entity_id: id,
+        })
+        .catch((err) =>
+          this.logger.warn(
+            `Failed to notify workspace ${updated.workspace_id} about invoice approval ${invoice.number}`,
+            err,
+          ),
+        );
     }
 
     return updated;
@@ -1319,16 +1442,19 @@ export class InvoicesService {
 
   async rejectInvoice(workspaceId: string, id: string, reason: string) {
     const invoice = await this.getInvoiceOrThrow(workspaceId, id);
-    if (invoice.status !== 'PENDING_APPROVAL') {
-      throw new BadRequestException('Solo se pueden rechazar facturas en estado PENDING_APPROVAL.');
+    if (invoice.status !== "PENDING_APPROVAL") {
+      throw new BadRequestException("Solo se pueden rechazar facturas en estado PENDING_APPROVAL.");
     }
 
     const updated = await this.prisma.invoice.update({
       where: { id },
       data: {
-        status: 'DRAFT',
+        status: "DRAFT",
         updated_at: new Date(),
-        notes_json: { ...(invoice.notes_json as any || {}), rejection_reason: reason || 'Rechazada' },
+        notes_json: {
+          ...((invoice.notes_json as any) || {}),
+          rejection_reason: reason || "Rechazada",
+        },
       },
     });
 

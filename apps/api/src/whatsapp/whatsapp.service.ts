@@ -1,21 +1,15 @@
-import {
-  BadGatewayException,
-  Inject,
-  Injectable,
-  Logger,
-  forwardRef,
-} from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CryptoService } from '../common/crypto/crypto.service';
-import { StorageService } from '../common/storage/storage.service';
-import { extractWhatsAppMediaFromMessage } from '../common/whatsapp-media.helper';
-import { parseJsonValue } from '../common/prisma/json';
-import { MessagesService } from '../conversations/messages.service';
-import { WebhookEventsService } from '../webhooks/webhook-events.service';
-import { EventsGateway } from '../gateways/events.gateway';
-import * as path from 'path';
+import { BadGatewayException, Inject, Injectable, Logger, forwardRef } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CryptoService } from "../common/crypto/crypto.service";
+import { StorageService } from "../common/storage/storage.service";
+import { extractWhatsAppMediaFromMessage } from "../common/whatsapp-media.helper";
+import { parseJsonValue } from "../common/prisma/json";
+import { MessagesService } from "../conversations/messages.service";
+import { WebhookEventsService } from "../webhooks/webhook-events.service";
+import { EventsGateway } from "../gateways/events.gateway";
+import * as path from "path";
 
-const META_API_BASE = 'https://graph.facebook.com/v19.0';
+const META_API_BASE = "https://graph.facebook.com/v19.0";
 
 @Injectable()
 export class WhatsAppService {
@@ -41,24 +35,30 @@ export class WhatsAppService {
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
     const cfg: Record<string, any> = parseJsonValue<Record<string, any>>(raw, {});
-    this.logger.log(`[DIAG] sendMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(',')}`);
+    this.logger.log(
+      `[DIAG] sendMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(",")}`,
+    );
     if (!cfg?.access_token_encrypted) {
-      this.logger.error(`WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`);
-      throw new BadGatewayException('WhatsApp access token no configurado. Verificá la configuración del canal.');
+      this.logger.error(
+        `WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`,
+      );
+      throw new BadGatewayException(
+        "WhatsApp access token no configurado. Verificá la configuración del canal.",
+      );
     }
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
 
     const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        messaging_product: 'whatsapp',
+        messaging_product: "whatsapp",
         to,
-        type: 'text',
+        type: "text",
         text: { body: bodyText },
       }),
       signal: AbortSignal.timeout(10_000),
@@ -67,13 +67,11 @@ export class WhatsAppService {
     const data: Record<string, any> = await res.json();
 
     if (!res.ok) {
-      this.logger.error('Meta API error:', JSON.stringify(data));
-      throw new BadGatewayException(
-        data?.error?.message ?? 'Error enviando mensaje por WhatsApp',
-      );
+      this.logger.error("Meta API error:", JSON.stringify(data));
+      throw new BadGatewayException(data?.error?.message ?? "Error enviando mensaje por WhatsApp");
     }
 
-    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+    return { message_id: data.messages?.[0]?.id ?? "unknown" };
   }
 
   // TODO(refactor): sendMedia is ~110 lines long and mixes file download logic,
@@ -83,13 +81,13 @@ export class WhatsAppService {
     channel: Record<string, any>,
     to: string,
     mediaUrl: string,
-    mediaType: 'image' | 'video' | 'audio' | 'document' | 'sticker',
+    mediaType: "image" | "video" | "audio" | "document" | "sticker",
     caption?: string,
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
     const cfg: Record<string, any> = parseJsonValue<Record<string, any>>(raw, {});
     if (!cfg?.access_token_encrypted) {
-      throw new BadGatewayException('WhatsApp access token no configurado.');
+      throw new BadGatewayException("WhatsApp access token no configurado.");
     }
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
@@ -98,82 +96,101 @@ export class WhatsAppService {
     const trimmedUrl = mediaUrl.trim();
     let fileBuffer: Buffer;
     let resolvedFileName: string;
-    const storageProxyMarker = '/api/storage/file/';
+    const storageProxyMarker = "/api/storage/file/";
     const storageProxyIndex = trimmedUrl.indexOf(storageProxyMarker);
 
     if (storageProxyIndex >= 0) {
-      const key = decodeURIComponent(trimmedUrl.slice(storageProxyIndex + storageProxyMarker.length));
+      const key = decodeURIComponent(
+        trimmedUrl.slice(storageProxyIndex + storageProxyMarker.length),
+      );
       fileBuffer = await this.storage.download(key);
-      resolvedFileName = key.split('/').pop() || 'file';
-    } else if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+      resolvedFileName = key.split("/").pop() || "file";
+    } else if (trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://")) {
       const res = await fetch(trimmedUrl, { signal: AbortSignal.timeout(30_000) });
       if (!res.ok) throw new BadGatewayException(`Failed to fetch media: ${res.status}`);
       fileBuffer = Buffer.from(await res.arrayBuffer());
-      resolvedFileName = new URL(trimmedUrl).pathname.split('/').pop() || 'file';
+      resolvedFileName = new URL(trimmedUrl).pathname.split("/").pop() || "file";
     } else {
       fileBuffer = await this.storage.download(trimmedUrl);
-      resolvedFileName = trimmedUrl.split('/').pop() || 'file';
+      resolvedFileName = trimmedUrl.split("/").pop() || "file";
     }
 
     // Determine MIME type from mediaType and file extension
     const ext = this.guessExtensionFromUrl(resolvedFileName);
     const mimeMap: Record<string, string> = {
-      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
-      gif: 'image/gif', webp: 'image/webp',
-      mp4: 'video/mp4', mov: 'video/quicktime', avi: 'video/x-msvideo', mkv: 'video/x-matroska',
-      mp3: 'audio/mpeg', ogg: 'audio/ogg', opus: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4',
-      pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      zip: 'application/zip', rar: 'application/vnd.rar', '7z': 'application/x-7z-compressed',
+      png: "image/png",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      gif: "image/gif",
+      webp: "image/webp",
+      mp4: "video/mp4",
+      mov: "video/quicktime",
+      avi: "video/x-msvideo",
+      mkv: "video/x-matroska",
+      mp3: "audio/mpeg",
+      ogg: "audio/ogg",
+      opus: "audio/ogg",
+      wav: "audio/wav",
+      m4a: "audio/mp4",
+      pdf: "application/pdf",
+      doc: "application/msword",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      xls: "application/vnd.ms-excel",
+      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      zip: "application/zip",
+      rar: "application/vnd.rar",
+      "7z": "application/x-7z-compressed",
     };
-    const contentType = mimeMap[ext] ?? 'application/octet-stream';
+    const contentType = mimeMap[ext] ?? "application/octet-stream";
     const fileName = resolvedFileName || `${mediaType}.${ext}`;
 
     // Step 2: Upload to Meta Media API using multipart/form-data
     const boundary = `----HermesWhatsApp${Date.now()}${Math.random().toString(36).slice(2)}`;
-    const CRLF = '\r\n';
+    const CRLF = "\r\n";
 
     const headerParts: string[] = [
       `--${boundary}`,
       `Content-Disposition: form-data; name="messaging_product"`,
-      '',
-      'whatsapp',
+      "",
+      "whatsapp",
       `--${boundary}`,
       `Content-Disposition: form-data; name="type"`,
-      '',
+      "",
       contentType,
       `--${boundary}`,
       `Content-Disposition: form-data; name="file"; filename="${fileName}"`,
       `Content-Type: ${contentType}`,
-      '',
+      "",
     ];
     const headerStr = headerParts.join(CRLF) + CRLF;
     const footerStr = CRLF + `--${boundary}--` + CRLF;
     const bodyBuffer = Buffer.concat([
-      Buffer.from(headerStr, 'utf-8'),
+      Buffer.from(headerStr, "utf-8"),
       fileBuffer,
-      Buffer.from(footerStr, 'utf-8'),
+      Buffer.from(footerStr, "utf-8"),
     ]);
 
     const uploadRes = await fetch(`${META_API_BASE}/${phoneNumberId}/media`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        "Content-Type": `multipart/form-data; boundary=${boundary}`,
       },
       body: bodyBuffer,
       signal: AbortSignal.timeout(60_000),
     });
     const uploadData: Record<string, any> = await uploadRes.json();
     if (!uploadRes.ok || !uploadData.id) {
-      this.logger.error('Meta media upload failed:', JSON.stringify(uploadData));
-      throw new BadGatewayException(uploadData?.error?.message ?? 'Error subiendo archivo a WhatsApp.');
+      this.logger.error("Meta media upload failed:", JSON.stringify(uploadData));
+      throw new BadGatewayException(
+        uploadData?.error?.message ?? "Error subiendo archivo a WhatsApp.",
+      );
     }
     const mediaId = uploadData.id;
 
     // Step 3: Send message with media_id
     const msgPayload: Record<string, any> = {
-      messaging_product: 'whatsapp',
+      messaging_product: "whatsapp",
       to,
       type: mediaType,
       [mediaType]: { id: mediaId },
@@ -181,9 +198,9 @@ export class WhatsAppService {
     if (caption) msgPayload[mediaType].caption = caption;
 
     const sendRes = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(msgPayload),
@@ -191,16 +208,18 @@ export class WhatsAppService {
     });
     const sendData: Record<string, any> = await sendRes.json();
     if (!sendRes.ok) {
-      this.logger.error('Meta media send failed:', JSON.stringify(sendData));
-      throw new BadGatewayException(sendData?.error?.message ?? 'Error enviando archivo por WhatsApp.');
+      this.logger.error("Meta media send failed:", JSON.stringify(sendData));
+      throw new BadGatewayException(
+        sendData?.error?.message ?? "Error enviando archivo por WhatsApp.",
+      );
     }
-    return { message_id: sendData.messages?.[0]?.id ?? 'unknown' };
+    return { message_id: sendData.messages?.[0]?.id ?? "unknown" };
   }
 
   private guessExtensionFromUrl(url: string): string {
-    const clean = url.split('?')[0].split('#')[0];
-    const parts = clean.split('.');
-    return parts.length > 1 ? parts.pop()!.toLowerCase() : 'bin';
+    const clean = url.split("?")[0].split("#")[0];
+    const parts = clean.split(".");
+    return parts.length > 1 ? parts.pop()!.toLowerCase() : "bin";
   }
 
   async sendTemplateMessage(
@@ -212,10 +231,16 @@ export class WhatsAppService {
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
     const cfg: Record<string, any> = parseJsonValue<Record<string, any>>(raw, {});
-    this.logger.log(`[DIAG] sendTemplateMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(',')}`);
+    this.logger.log(
+      `[DIAG] sendTemplateMessage: channelId=${channel.id}, cfgHasToken=${!!cfg?.access_token_encrypted}, cfgKeys=${Object.keys(cfg || {}).join(",")}`,
+    );
     if (!cfg?.access_token_encrypted) {
-      this.logger.error(`WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`);
-      throw new BadGatewayException('WhatsApp access token no configurado. Verificá la configuración del canal.');
+      this.logger.error(
+        `WhatsApp channel ${channel.id}: access_token_encrypted not set in config_json`,
+      );
+      throw new BadGatewayException(
+        "WhatsApp access token no configurado. Verificá la configuración del canal.",
+      );
     }
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
     const phoneNumberId = cfg.phone_number_id;
@@ -223,27 +248,27 @@ export class WhatsAppService {
     const components: Record<string, any>[] = [];
     if (Object.keys(variables).length > 0) {
       components.push({
-        type: 'body',
+        type: "body",
         parameters: Object.values(variables).map((v) => ({
-          type: 'text',
+          type: "text",
           text: v,
         })),
       });
     }
 
     const res = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        messaging_product: 'whatsapp',
+        messaging_product: "whatsapp",
         to,
-        type: 'template',
+        type: "template",
         template: {
           name: templateName,
-          language: { code: language || 'es' },
+          language: { code: language || "es" },
           ...(components.length > 0 ? { components } : {}),
         },
       }),
@@ -253,13 +278,13 @@ export class WhatsAppService {
     const data: Record<string, any> = await res.json();
 
     if (!res.ok) {
-      this.logger.error('Meta template API error:', JSON.stringify(data));
+      this.logger.error("Meta template API error:", JSON.stringify(data));
       throw new BadGatewayException(
-        data?.error?.message ?? 'Error enviando plantilla por WhatsApp',
+        data?.error?.message ?? "Error enviando plantilla por WhatsApp",
       );
     }
 
-    return { message_id: data.messages?.[0]?.id ?? 'unknown' };
+    return { message_id: data.messages?.[0]?.id ?? "unknown" };
   }
 
   // ── Ingestión durable del webhook ──────────────────────────────────────────
@@ -268,8 +293,10 @@ export class WhatsAppService {
    * Write webhook payload to webhook_events and return 200 to Meta quickly.
    * Processing happens asynchronously via WebhookEventsProcessor.
    */
-  async ingestWebhook(payload: Record<string, any>): Promise<{ persisted: boolean; duplicate: boolean }> {
-    const result = await this.webhookEvents.ingest('whatsapp', payload);
+  async ingestWebhook(
+    payload: Record<string, any>,
+  ): Promise<{ persisted: boolean; duplicate: boolean }> {
+    const result = await this.webhookEvents.ingest("whatsapp", payload);
     return { persisted: true, duplicate: result.duplicate };
   }
 
@@ -283,7 +310,7 @@ export class WhatsAppService {
       // Fetch all active WhatsApp channels and filter in-memory
       // to handle both object and string config_json values
       const channels = await this.prisma.channel.findMany({
-        where: { type: 'WHATSAPP', status: 'ACTIVE' },
+        where: { type: "WHATSAPP", status: "ACTIVE" },
         select: { workspace_id: true, config_json: true },
       });
 
@@ -314,9 +341,9 @@ export class WhatsAppService {
   ): Promise<{ id: string; workspace_id: string; config_json: Record<string, any> } | null> {
     // Fast path: works when config_json is real JSONB object
     const fastWhere: Record<string, any> = {
-      type: 'WHATSAPP',
-      status: 'ACTIVE',
-      config_json: { path: ['phone_number_id'], equals: phoneNumberId },
+      type: "WHATSAPP",
+      status: "ACTIVE",
+      config_json: { path: ["phone_number_id"], equals: phoneNumberId },
     };
     if (workspaceId) fastWhere.workspace_id = workspaceId;
 
@@ -328,7 +355,7 @@ export class WhatsAppService {
     if (direct) return direct as any;
 
     // Legacy fallback: handles config_json stored as string JSON
-    const fallbackWhere: Record<string, any> = { type: 'WHATSAPP', status: 'ACTIVE' };
+    const fallbackWhere: Record<string, any> = { type: "WHATSAPP", status: "ACTIVE" };
     if (workspaceId) fallbackWhere.workspace_id = workspaceId;
 
     const channels = await this.prisma.channel.findMany({
@@ -356,7 +383,7 @@ export class WhatsAppService {
 
     if (!phoneNumberId) {
       this.logger.warn(`Missing phone_number_id — event=${eventId}`);
-      throw new Error('Missing phone_number_id in webhook payload');
+      throw new Error("Missing phone_number_id in webhook payload");
     }
 
     const workspaceId = await this.resolveWorkspaceFromPhoneNumberId(phoneNumberId);
@@ -375,31 +402,33 @@ export class WhatsAppService {
     for (const msg of value.messages) {
       const from = msg.from;
 
-      let bodyText = '';
-      if (msg.type === 'text') {
-        bodyText = msg.text?.body ?? '';
-      } else if (msg.type === 'location') {
+      let bodyText = "";
+      if (msg.type === "text") {
+        bodyText = msg.text?.body ?? "";
+      } else if (msg.type === "location") {
         const loc = msg.location ?? {};
         bodyText = [
-          loc.name ? `📍 ${loc.name}` : '📍 Ubicación compartida',
+          loc.name ? `📍 ${loc.name}` : "📍 Ubicación compartida",
           loc.address,
           `${loc.latitude}, ${loc.longitude}`,
-        ].filter(Boolean).join('\n');
-      } else if (msg.type === 'image') {
-        bodyText = msg.image?.caption ? `🖼️ ${msg.image.caption}` : '🖼️ Imagen';
-      } else if (msg.type === 'document') {
-        const fn = msg.document?.filename ? ` (${msg.document.filename})` : '';
+        ]
+          .filter(Boolean)
+          .join("\n");
+      } else if (msg.type === "image") {
+        bodyText = msg.image?.caption ? `🖼️ ${msg.image.caption}` : "🖼️ Imagen";
+      } else if (msg.type === "document") {
+        const fn = msg.document?.filename ? ` (${msg.document.filename})` : "";
         bodyText = msg.document?.caption ? `📄 ${msg.document.caption}` : `📄 Documento${fn}`;
-      } else if (msg.type === 'audio') {
-        bodyText = msg.audio?.caption ? `🎧 ${msg.audio.caption}` : '🎧 Audio';
-      } else if (msg.type === 'video') {
-        bodyText = msg.video?.caption ? `🎬 ${msg.video.caption}` : '🎬 Video';
-      } else if (msg.type === 'sticker') {
-        bodyText = '💬 Sticker';
-      } else if (msg.type === 'contacts') {
+      } else if (msg.type === "audio") {
+        bodyText = msg.audio?.caption ? `🎧 ${msg.audio.caption}` : "🎧 Audio";
+      } else if (msg.type === "video") {
+        bodyText = msg.video?.caption ? `🎬 ${msg.video.caption}` : "🎬 Video";
+      } else if (msg.type === "sticker") {
+        bodyText = "💬 Sticker";
+      } else if (msg.type === "contacts") {
         const contactNames = (msg.contacts || [])
-          .map((c: Record<string, any>) => c.name?.formatted_name ?? 'Contacto')
-          .join(', ');
+          .map((c: Record<string, any>) => c.name?.formatted_name ?? "Contacto")
+          .join(", ");
         bodyText = `👤 Contacto compartido: ${contactNames}`;
       } else {
         bodyText = `📩 Mensaje de tipo ${msg.type}`;
@@ -414,7 +443,7 @@ export class WhatsAppService {
       // than desired. Consider breaking into non-transactional steps if latency
       // becomes a concern.
       const result = await this.messages.receiveProviderInbound({
-        provider: 'whatsapp',
+        provider: "whatsapp",
         workspaceId,
         channelPhoneNumberId: phoneNumberId,
         from,
@@ -426,7 +455,7 @@ export class WhatsAppService {
         whatsappMedia,
       });
 
-      if (result.status === 'duplicate') {
+      if (result.status === "duplicate") {
         this.logger.log(
           `Duplicate message skipped — event=${eventId} provider_message_id=${providerMessageId}`,
         );
@@ -448,9 +477,7 @@ export class WhatsAppService {
           messageId,
           whatsappMedia,
         ).catch((err) =>
-          this.logger.error(
-            `Failed to download inbound media — msg=${messageId}: ${err.message}`,
-          ),
+          this.logger.error(`Failed to download inbound media — msg=${messageId}: ${err.message}`),
         );
       }
 
@@ -486,14 +513,19 @@ export class WhatsAppService {
     workspaceId: string,
     conversationId: string,
     messageId: string,
-    media: { whatsappMediaId: string; mediaType: string; mimeType: string | null; caption: string | null; filename: string | null },
+    media: {
+      whatsappMediaId: string;
+      mediaType: string;
+      mimeType: string | null;
+      caption: string | null;
+      filename: string | null;
+    },
   ): Promise<void> {
-    const channel = await this.findActiveWhatsappChannelByPhoneNumberId(
-      phoneNumberId,
-      workspaceId,
-    );
+    const channel = await this.findActiveWhatsappChannelByPhoneNumberId(phoneNumberId, workspaceId);
     if (!channel) {
-      this.logger.warn(`downloadInboundMediaToStorage: no channel for phoneNumberId=${phoneNumberId}`);
+      this.logger.warn(
+        `downloadInboundMediaToStorage: no channel for phoneNumberId=${phoneNumberId}`,
+      );
       return;
     }
 
@@ -512,12 +544,14 @@ export class WhatsAppService {
       signal: AbortSignal.timeout(15_000),
     });
     if (!metaRes.ok) {
-      this.logger.warn(`downloadInboundMediaToStorage: Meta metadata fetch failed — id=${mediaId} status=${metaRes.status}`);
+      this.logger.warn(
+        `downloadInboundMediaToStorage: Meta metadata fetch failed — id=${mediaId} status=${metaRes.status}`,
+      );
       return;
     }
     const metaData: Record<string, any> = await metaRes.json();
     const downloadUrl = metaData.url;
-    const mimeType = metaData.mime_type || media.mimeType || 'application/octet-stream';
+    const mimeType = metaData.mime_type || media.mimeType || "application/octet-stream";
 
     // Download file
     const fileRes = await fetch(downloadUrl, {
@@ -525,7 +559,9 @@ export class WhatsAppService {
       signal: AbortSignal.timeout(30_000),
     });
     if (!fileRes.ok) {
-      this.logger.warn(`downloadInboundMediaToStorage: file download failed — id=${mediaId} status=${fileRes.status}`);
+      this.logger.warn(
+        `downloadInboundMediaToStorage: file download failed — id=${mediaId} status=${fileRes.status}`,
+      );
       return;
     }
     const buffer = Buffer.from(await fileRes.arrayBuffer());
@@ -539,7 +575,7 @@ export class WhatsAppService {
 
     // Store attachment info in the message
     const attachmentEntry = {
-      provider: 'whatsapp',
+      provider: "whatsapp",
       mediaId: mediaId,
       storageKey,
       mimeType,
@@ -565,7 +601,7 @@ export class WhatsAppService {
       message_id: messageId,
       conversation_id: conversationId,
       media_type: media.mediaType,
-      media_status: 'available',
+      media_status: "available",
       media_download_url: `/api/conversations/messages/${messageId}/media`,
       media_mime_type: mimeType,
       media_filename: media.filename ?? null,
@@ -579,40 +615,43 @@ export class WhatsAppService {
 
   private guessExtension(mimeType: string, mediaType: string): string {
     const map: Record<string, string> = {
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/webp': '.webp',
-      'image/gif': '.gif',
-      'video/mp4': '.mp4',
-      'video/3gp': '.3gp',
-      'audio/ogg': '.ogg',
-      'audio/mpeg': '.mp3',
-      'audio/mp4': '.m4a',
-      'audio/amr': '.amr',
-      'application/pdf': '.pdf',
+      "image/jpeg": ".jpg",
+      "image/png": ".png",
+      "image/webp": ".webp",
+      "image/gif": ".gif",
+      "video/mp4": ".mp4",
+      "video/3gp": ".3gp",
+      "audio/ogg": ".ogg",
+      "audio/mpeg": ".mp3",
+      "audio/mp4": ".m4a",
+      "audio/amr": ".amr",
+      "application/pdf": ".pdf",
     };
     if (map[mimeType]) return map[mimeType];
-    if (mediaType === 'image') return '.jpg';
-    if (mediaType === 'video') return '.mp4';
-    if (mediaType === 'audio') return '.ogg';
-    if (mediaType === 'document') return '.bin';
-    if (mediaType === 'sticker') return '.webp';
-    return '.bin';
+    if (mediaType === "image") return ".jpg";
+    if (mediaType === "video") return ".mp4";
+    if (mediaType === "audio") return ".ogg";
+    if (mediaType === "document") return ".bin";
+    if (mediaType === "sticker") return ".webp";
+    return ".bin";
   }
 
   // ── Verificar webhook de Meta ──────────────────────────────────────────────
 
   verifyWebhook(mode: string, token: string, challenge: string): string | null {
     const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
-    if (mode === 'subscribe' && token === verifyToken) {
-      this.logger.log('WhatsApp webhook verified successfully');
+    if (mode === "subscribe" && token === verifyToken) {
+      this.logger.log("WhatsApp webhook verified successfully");
       return challenge;
     }
     this.logger.warn(`Webhook verification failed — token mismatch`);
     return null;
   }
 
-  async downloadMedia(messageId: string, workspaceId: string): Promise<{ buffer: Buffer; contentType: string }> {
+  async downloadMedia(
+    messageId: string,
+    workspaceId: string,
+  ): Promise<{ buffer: Buffer; contentType: string }> {
     const msg = await this.prisma.message.findFirst({
       where: { id: messageId, workspace_id: workspaceId },
       select: {
@@ -621,7 +660,7 @@ export class WhatsAppService {
         conversation: { select: { channel_id: true } },
       },
     });
-    if (!msg) throw new BadGatewayException('Mensaje no encontrado');
+    if (!msg) throw new BadGatewayException("Mensaje no encontrado");
 
     // ── Prioritize MinIO storage ──────────────────────────────────────────
     const attachments = msg.attachments_json as any[] | null | undefined;
@@ -632,13 +671,22 @@ export class WhatsAppService {
         const fileRes = await fetch(presignedUrl, { signal: AbortSignal.timeout(30_000) });
         if (fileRes.ok) {
           const buffer = Buffer.from(await fileRes.arrayBuffer());
-          const contentType = attachmentEntry.mimeType || fileRes.headers.get('content-type') || 'application/octet-stream';
-          this.logger.log(`downloadMedia: served from MinIO — msg=${messageId} key=${attachmentEntry.storageKey}`);
+          const contentType =
+            attachmentEntry.mimeType ||
+            fileRes.headers.get("content-type") ||
+            "application/octet-stream";
+          this.logger.log(
+            `downloadMedia: served from MinIO — msg=${messageId} key=${attachmentEntry.storageKey}`,
+          );
           return { buffer, contentType };
         }
-        this.logger.warn(`downloadMedia: MinIO fetch failed — msg=${messageId} status=${fileRes.status}, falling back to Meta`);
+        this.logger.warn(
+          `downloadMedia: MinIO fetch failed — msg=${messageId} status=${fileRes.status}, falling back to Meta`,
+        );
       } catch (err) {
-        this.logger.warn(`downloadMedia: MinIO error — msg=${messageId}: ${err.message}, falling back to Meta`);
+        this.logger.warn(
+          `downloadMedia: MinIO error — msg=${messageId}: ${err.message}, falling back to Meta`,
+        );
       }
     }
 
@@ -646,7 +694,7 @@ export class WhatsAppService {
     const payload = msg.raw_payload_json as any;
     if (!payload) {
       this.logger.warn(`downloadMedia: raw_payload_json is null for message ${messageId}`);
-      throw new BadGatewayException('Media no disponible');
+      throw new BadGatewayException("Media no disponible");
     }
 
     // Handle string payloads (legacy stringifyJson)
@@ -659,10 +707,14 @@ export class WhatsAppService {
     if (wm) {
       if (wm.whatsappMediaId) {
         mediaId = wm.whatsappMediaId;
-        this.logger.log(`downloadMedia: found media via whatsapp_media.whatsappMediaId — id=${mediaId}`);
+        this.logger.log(
+          `downloadMedia: found media via whatsapp_media.whatsappMediaId — id=${mediaId}`,
+        );
       } else if (wm.id) {
         mediaId = wm.id;
-        this.logger.log(`downloadMedia: found media via whatsapp_media.id (legacy) — id=${mediaId}`);
+        this.logger.log(
+          `downloadMedia: found media via whatsapp_media.id (legacy) — id=${mediaId}`,
+        );
       }
     }
 
@@ -671,7 +723,8 @@ export class WhatsAppService {
       const wrappedBody = parsed?.raw_payload ?? parsed;
       const inner = wrappedBody?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
       const msgPayload = parsed?.entry?.[0]?.changes?.[0]?.value?.messages?.[0] ?? inner ?? parsed;
-      const mediaObj = msgPayload?.image ?? msgPayload?.document ?? msgPayload?.audio ?? msgPayload?.video;
+      const mediaObj =
+        msgPayload?.image ?? msgPayload?.document ?? msgPayload?.audio ?? msgPayload?.video;
       if (mediaObj?.id) {
         mediaId = mediaObj.id;
         this.logger.log(`downloadMedia: found media via webhook fallback — id=${mediaId}`);
@@ -681,20 +734,21 @@ export class WhatsAppService {
     if (!mediaId) {
       this.logger.warn(
         `downloadMedia: no media found — hasWhatsappMedia=${!!parsed?.whatsapp_media}, ` +
-        `hasRawPayload=${!!parsed?.raw_payload}`,
+          `hasRawPayload=${!!parsed?.raw_payload}`,
       );
-      throw new BadGatewayException('No se encontró media en el mensaje');
+      throw new BadGatewayException("No se encontró media en el mensaje");
     }
 
     const channel = await this.prisma.channel.findFirst({
       where: { id: msg.conversation.channel_id, workspace_id: workspaceId },
       select: { config_json: true },
     });
-    if (!channel) throw new BadGatewayException('Canal no encontrado');
+    if (!channel) throw new BadGatewayException("Canal no encontrado");
 
     const raw = channel.config_json as any;
     const cfg = parseJsonValue<Record<string, any>>(raw, {});
-    if (!cfg?.access_token_encrypted) throw new BadGatewayException('WhatsApp access token no configurado');
+    if (!cfg?.access_token_encrypted)
+      throw new BadGatewayException("WhatsApp access token no configurado");
 
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
 
@@ -702,7 +756,7 @@ export class WhatsAppService {
       headers: { Authorization: `Bearer ${accessToken}` },
       signal: AbortSignal.timeout(15_000),
     });
-    if (!mediaRes.ok) throw new BadGatewayException('Error al obtener metadata del media');
+    if (!mediaRes.ok) throw new BadGatewayException("Error al obtener metadata del media");
 
     const mediaData: Record<string, any> = await mediaRes.json();
     const downloadUrl = mediaData.url;
@@ -711,10 +765,11 @@ export class WhatsAppService {
       headers: { Authorization: `Bearer ${accessToken}` },
       signal: AbortSignal.timeout(30_000),
     });
-    if (!fileRes.ok) throw new BadGatewayException('Error al descargar media');
+    if (!fileRes.ok) throw new BadGatewayException("Error al descargar media");
 
     const buffer = Buffer.from(await fileRes.arrayBuffer());
-    const contentType = mediaData.mime_type || fileRes.headers.get('content-type') || 'application/octet-stream';
+    const contentType =
+      mediaData.mime_type || fileRes.headers.get("content-type") || "application/octet-stream";
 
     return { buffer, contentType };
   }

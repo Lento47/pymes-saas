@@ -1,8 +1,8 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { FeatureFlagsService } from './feature-flags.service';
+import { Injectable, CanActivate, ExecutionContext } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { FeatureFlagsService } from "./feature-flags.service";
 
-export const REQUIRE_FEATURE = 'REQUIRE_FEATURE';
+export const REQUIRE_FEATURE = "REQUIRE_FEATURE";
 
 export const RequireFeature = (key: string) => {
   return (target: any, propertyKey?: string, descriptor?: any) => {

@@ -1,4 +1,4 @@
-import { WorkspaceUserRole } from '@prisma/client';
+import { WorkspaceUserRole } from "@prisma/client";
 import {
   Body,
   Controller,
@@ -9,23 +9,23 @@ import {
   Post,
   Query,
   UseGuards,
-} from '@nestjs/common';
-import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
-import { WorkspacesService } from './workspaces.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
-import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
-import { InviteUserDto } from './dto/invite-user.dto';
-import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
-import { PlanLimitsService } from '../common/plan-limits/plan-limits.service';
-import { FeaturesService } from '../features/features.service';
-import { TestAiConnectionDto } from './dto/test-ai-connection.dto';
-import { BusinessProfileDto } from './dto/business-profile.dto';
+} from "@nestjs/common";
+import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
+import { WorkspacesService } from "./workspaces.service";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { AuthUser } from "../auth/strategies/jwt.strategy";
+import { UpdateWorkspaceDto } from "./dto/update-workspace.dto";
+import { InviteUserDto } from "./dto/invite-user.dto";
+import { ChangeMemberRoleDto } from "./dto/change-member-role.dto";
+import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { FeaturesService } from "../features/features.service";
+import { TestAiConnectionDto } from "./dto/test-ai-connection.dto";
+import { BusinessProfileDto } from "./dto/business-profile.dto";
 
-@Controller('workspaces')
+@Controller("workspaces")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class WorkspacesController {
   constructor(
@@ -36,73 +36,73 @@ export class WorkspacesController {
 
   // ── Workspace ──────────────────────────────────────────────────────────────
 
-  @Get('current')
-  getCurrent(@CurrentUser('workspace_id') workspaceId: string) {
+  @Get("current")
+  getCurrent(@CurrentUser("workspace_id") workspaceId: string) {
     return this.service.getCurrent(workspaceId);
   }
 
-  @Get('current/dashboard')
-  getDashboard(@CurrentUser('workspace_id') workspaceId: string) {
+  @Get("current/dashboard")
+  getDashboard(@CurrentUser("workspace_id") workspaceId: string) {
     return this.service.getDashboard(workspaceId);
   }
 
-  @Get('current/subscription')
-  getSubscription(@CurrentUser('workspace_id') workspaceId: string) {
+  @Get("current/subscription")
+  getSubscription(@CurrentUser("workspace_id") workspaceId: string) {
     return this.service.getSubscription(workspaceId);
   }
 
-  @Get('current/features')
-  getFeatures(@CurrentUser('workspace_id') workspaceId: string) {
+  @Get("current/features")
+  getFeatures(@CurrentUser("workspace_id") workspaceId: string) {
     return this.features.getEffectiveFeatures(workspaceId);
   }
 
-  @Get('current/stats')
-  getStats(@CurrentUser('workspace_id') workspaceId: string) {
+  @Get("current/stats")
+  getStats(@CurrentUser("workspace_id") workspaceId: string) {
     return this.service.getStats(workspaceId);
   }
 
-  @Get('current/stats/today')
-  getTodayStats(@CurrentUser('workspace_id') workspaceId: string) {
+  @Get("current/stats/today")
+  getTodayStats(@CurrentUser("workspace_id") workspaceId: string) {
     return this.service.getTodayStats(workspaceId);
   }
 
-  @Get('current/api-keys')
+  @Get("current/api-keys")
   @Roles(WorkspaceUserRole.ADMIN)
-  getApiKeys(@CurrentUser('workspace_id') workspaceId: string) {
+  getApiKeys(@CurrentUser("workspace_id") workspaceId: string) {
     return this.service.getApiKeys(workspaceId);
   }
 
-  @Get('current/export')
+  @Get("current/export")
   @Roles(WorkspaceUserRole.ADMIN)
-  exportData(@CurrentUser('workspace_id') workspaceId: string, @Query('type') type: string) {
+  exportData(@CurrentUser("workspace_id") workspaceId: string, @Query("type") type: string) {
     return this.service.exportData(workspaceId, type);
   }
 
-  @Get('current/landing-config')
+  @Get("current/landing-config")
   @Roles(WorkspaceUserRole.ADMIN)
-  async getLandingConfig(@CurrentUser('workspace_id') workspaceId: string) {
+  async getLandingConfig(@CurrentUser("workspace_id") workspaceId: string) {
     const workspace = await this.service.getCurrent(workspaceId);
     const settings =
-      workspace.settings_json && typeof workspace.settings_json === 'object'
+      workspace.settings_json && typeof workspace.settings_json === "object"
         ? (workspace.settings_json as Record<string, any>)
         : {};
 
     return settings.landing_config ?? {};
   }
 
-  @Patch('current/landing-config')
+  @Patch("current/landing-config")
   @Roles(WorkspaceUserRole.ADMIN)
   async updateLandingConfig(
-    @CurrentUser('workspace_id') workspaceId: string,
+    @CurrentUser("workspace_id") workspaceId: string,
     @Body() dto: Record<string, any>,
   ) {
     const workspace = await this.service.getCurrent(workspaceId);
     const settings =
-      workspace.settings_json && typeof workspace.settings_json === 'object'
+      workspace.settings_json && typeof workspace.settings_json === "object"
         ? (workspace.settings_json as Record<string, any>)
         : {};
     const current =
-      settings.landing_config && typeof settings.landing_config === 'object'
+      settings.landing_config && typeof settings.landing_config === "object"
         ? (settings.landing_config as Record<string, any>)
         : {};
     const landing_config = {
@@ -118,71 +118,59 @@ export class WorkspacesController {
     return landing_config;
   }
 
-  @Patch('current')
+  @Patch("current")
   @Roles(WorkspaceUserRole.ADMIN)
-  updateCurrent(
-    @CurrentUser('workspace_id') workspaceId: string,
-    @Body() dto: UpdateWorkspaceDto,
-  ) {
+  updateCurrent(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: UpdateWorkspaceDto) {
     return this.service.updateCurrent(workspaceId, dto);
   }
 
-  @Post('current/ai/test')
+  @Post("current/ai/test")
   @Roles(WorkspaceUserRole.ADMIN)
   async testAiConnection(
-    @CurrentUser('workspace_id') workspaceId: string,
+    @CurrentUser("workspace_id") workspaceId: string,
     @Body() dto: TestAiConnectionDto,
   ) {
-    await this.planLimits.enforcePlanTier(workspaceId, 'ENTERPRISE', 'Inteligencia Artificial');
+    await this.planLimits.enforcePlanTier(workspaceId, "ENTERPRISE", "Inteligencia Artificial");
     return this.service.testAiConnection(workspaceId, dto);
   }
 
   // ── Members ────────────────────────────────────────────────────────────────
 
-  @Get('current/members')
-  getMembers(@CurrentUser('workspace_id') workspaceId: string) {
+  @Get("current/members")
+  getMembers(@CurrentUser("workspace_id") workspaceId: string) {
     return this.service.getMembers(workspaceId);
   }
 
-  @Post('current/members/invite')
+  @Post("current/members/invite")
   @Roles(WorkspaceUserRole.ADMIN)
-  async inviteUser(
-    @CurrentUser() user: AuthUser,
-    @Body() dto: InviteUserDto,
-  ) {
+  async inviteUser(@CurrentUser() user: AuthUser, @Body() dto: InviteUserDto) {
     await this.planLimits.enforceMembers(user.workspace_id);
     return this.service.inviteUser(user.workspace_id, user, dto);
   }
 
-  @Patch('current/members/:userId/role')
+  @Patch("current/members/:userId/role")
   @Roles(WorkspaceUserRole.ADMIN)
   changeMemberRole(
     @CurrentUser() user: AuthUser,
-    @Param('userId') targetUserId: string,
+    @Param("userId") targetUserId: string,
     @Body() dto: ChangeMemberRoleDto,
   ) {
     return this.service.changeMemberRole(user.workspace_id, user, targetUserId, dto);
   }
 
-  @Delete('current/members/:userId')
+  @Delete("current/members/:userId")
   @Roles(WorkspaceUserRole.ADMIN)
-  removeMember(
-    @CurrentUser() user: AuthUser,
-    @Param('userId') targetUserId: string,
-  ) {
+  removeMember(@CurrentUser() user: AuthUser, @Param("userId") targetUserId: string) {
     return this.service.removeMember(user.workspace_id, user, targetUserId);
   }
 
-  @Get('business-profile')
+  @Get("business-profile")
   getBusinessProfile(@CurrentUser() user: AuthUser) {
     return this.service.getBusinessProfile(user.workspace_id);
   }
 
-  @Post('business-profile')
-  saveBusinessProfile(
-    @CurrentUser() user: AuthUser,
-    @Body() dto: BusinessProfileDto,
-  ) {
+  @Post("business-profile")
+  saveBusinessProfile(@CurrentUser() user: AuthUser, @Body() dto: BusinessProfileDto) {
     return this.service.saveBusinessProfile(user.workspace_id, dto);
   }
 }

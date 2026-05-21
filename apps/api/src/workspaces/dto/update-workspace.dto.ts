@@ -10,10 +10,10 @@ import {
   ValidateNested,
   IsTimeZone,
   Length,
-} from 'class-validator';
-import { WorkspaceStatus } from '@prisma/client';
-import { Type } from 'class-transformer';
-import { WorkspaceTaxProfileDto } from './workspace-tax-profile.dto';
+} from "class-validator";
+import { WorkspaceStatus } from "@prisma/client";
+import { Type } from "class-transformer";
+import { WorkspaceTaxProfileDto } from "./workspace-tax-profile.dto";
 
 export class UpdateWorkspaceDto {
   @IsOptional()
@@ -43,7 +43,7 @@ export class UpdateWorkspaceDto {
   ai_message_finance_opt_in?: boolean;
 
   @IsOptional()
-  @IsIn(['openai', 'anthropic', 'gemini', 'moonshot'])
+  @IsIn(["openai", "anthropic", "gemini", "moonshot"])
   ai_provider?: string;
 
   @IsOptional()

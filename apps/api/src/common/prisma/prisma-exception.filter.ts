@@ -1,12 +1,6 @@
-import {
-  ExceptionFilter,
-  Catch,
-  ArgumentsHost,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { Response } from 'express';
+import { ExceptionFilter, Catch, ArgumentsHost, HttpStatus, Logger } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { Response } from "express";
 
 @Catch(Prisma.PrismaClientKnownRequestError)
 export class PrismaExceptionFilter implements ExceptionFilter {
@@ -17,21 +11,21 @@ export class PrismaExceptionFilter implements ExceptionFilter {
     const res = ctx.getResponse<Response>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Error interno del servidor.';
+    let message = "Error interno del servidor.";
 
     switch (exception.code) {
-      case 'P2002':
+      case "P2002":
         status = HttpStatus.CONFLICT;
-        const target = (exception.meta?.target as string[])?.join(', ') ?? 'campo';
+        const target = (exception.meta?.target as string[])?.join(", ") ?? "campo";
         message = `Ya existe un registro con ese ${target}.`;
         break;
-      case 'P2025':
+      case "P2025":
         status = HttpStatus.NOT_FOUND;
-        message = 'El recurso solicitado no fue encontrado.';
+        message = "El recurso solicitado no fue encontrado.";
         break;
-      case 'P2003':
+      case "P2003":
         status = HttpStatus.BAD_REQUEST;
-        message = 'Referencia inválida — el registro relacionado no existe.';
+        message = "Referencia inválida — el registro relacionado no existe.";
         break;
       default:
         this.logger.error(`Prisma error code ${exception.code}`, exception.message);

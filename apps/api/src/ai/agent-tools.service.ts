@@ -1,9 +1,9 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { InsightsService } from '../insights/insights.service';
-import { SearchService } from '../search/search.service';
-import { DiagnosticService } from './diagnostic.service';
-import { EngineeringFixService } from './engineering-fix.service';
+import { Injectable, Logger, BadRequestException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { InsightsService } from "../insights/insights.service";
+import { SearchService } from "../search/search.service";
+import { DiagnosticService } from "./diagnostic.service";
+import { EngineeringFixService } from "./engineering-fix.service";
 
 @Injectable()
 export class AgentToolsService {
@@ -19,61 +19,61 @@ export class AgentToolsService {
 
   async execute(workspaceId: string, tool: string, args: Record<string, any>): Promise<any> {
     switch (tool) {
-      case 'get_workspace':
+      case "get_workspace":
         return this.getWorkspace(workspaceId);
-      case 'get_stats':
+      case "get_stats":
         return this.getStats(workspaceId);
-      case 'get_insights':
+      case "get_insights":
         return this.getInsights(workspaceId);
-      case 'search':
+      case "search":
         return this.search(workspaceId, args);
-      case 'list_contacts':
+      case "list_contacts":
         return this.listContacts(workspaceId, args);
-      case 'list_tasks':
+      case "list_tasks":
         return this.listTasks(workspaceId, args);
-      case 'create_task':
+      case "create_task":
         return this.createTask(workspaceId, args);
-      case 'update_task':
+      case "update_task":
         return this.updateTask(workspaceId, args);
-      case 'list_invoices':
+      case "list_invoices":
         return this.listInvoices(workspaceId);
-      case 'list_conversations':
+      case "list_conversations":
         return this.listConversations(workspaceId, args);
-      case 'get_conversation_detail':
+      case "get_conversation_detail":
         return this.getConversationDetail(workspaceId, args);
-      case 'reply_conversation':
+      case "reply_conversation":
         return this.replyConversation(workspaceId, args);
-      case 'list_automations':
+      case "list_automations":
         return this.listAutomations(workspaceId);
-      case 'create_automation':
+      case "create_automation":
         return this.createAutomation(workspaceId, args);
-      case 'toggle_automation':
+      case "toggle_automation":
         return this.toggleAutomation(workspaceId, args);
-      case 'get_billing':
+      case "get_billing":
         return this.getBilling(workspaceId);
-      case 'get_billing_invoices':
+      case "get_billing_invoices":
         return this.getBillingInvoices(workspaceId);
-      case 'list_pipeline_deals':
+      case "list_pipeline_deals":
         return this.listPipelineDeals(workspaceId);
-      case 'create_deal':
+      case "create_deal":
         return this.createDeal(workspaceId, args);
-      case 'move_deal':
+      case "move_deal":
         return this.moveDeal(workspaceId, args);
-      case 'list_documents':
+      case "list_documents":
         return this.listDocuments(workspaceId, args);
-      case 'get_settings':
+      case "get_settings":
         return this.getSettings(workspaceId);
-      case 'get_errors':
+      case "get_errors":
         return this.getErrors(workspaceId, args);
-      case 'diagnose':
+      case "diagnose":
         return this.diagnose(workspaceId, args);
-      case 'list_diagnostic_cases':
+      case "list_diagnostic_cases":
         return this.listDiagnosticCases(workspaceId);
-      case 'list_fix_cases':
+      case "list_fix_cases":
         return this.listFixCases(workspaceId);
-      case 'approve_fix':
+      case "approve_fix":
         return this.approveFix(workspaceId, args);
-      case 'reject_fix':
+      case "reject_fix":
         return this.rejectFix(workspaceId, args);
       default:
         throw new BadRequestException(`Unknown tool: ${tool}`);
@@ -100,7 +100,7 @@ export class AgentToolsService {
 
   private async listContacts(workspaceId: string, args: Record<string, any>) {
     const where: Record<string, any> = { workspace_id: workspaceId };
-    if (args.search) where.full_name = { contains: args.search, mode: 'insensitive' };
+    if (args.search) where.full_name = { contains: args.search, mode: "insensitive" };
     const contacts = await this.prisma.contact.findMany({
       where,
       select: { id: true, full_name: true, email: true, phone: true, type: true },
@@ -116,7 +116,7 @@ export class AgentToolsService {
       where,
       select: { id: true, title: true, status: true, priority: true, due_at: true },
       take: 50,
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
     });
     return { tasks };
   }
@@ -126,10 +126,10 @@ export class AgentToolsService {
       data: {
         workspace_id: workspaceId,
         title: args.title,
-        description: args.description || '',
-        priority: args.priority || 'MEDIUM',
+        description: args.description || "",
+        priority: args.priority || "MEDIUM",
         due_at: args.due_date ? new Date(args.due_date) : undefined,
-        status: 'TODO',
+        status: "TODO",
       },
     });
     return { task };
@@ -138,9 +138,18 @@ export class AgentToolsService {
   private async listInvoices(workspaceId: string) {
     const invoices = await this.prisma.invoice.findMany({
       where: { workspace_id: workspaceId },
-      select: { id: true, number: true, amount: true, subtotal: true, tax_rate: true, tax_amount: true, status: true, due_date: true },
+      select: {
+        id: true,
+        number: true,
+        amount: true,
+        subtotal: true,
+        tax_rate: true,
+        tax_amount: true,
+        status: true,
+        due_date: true,
+      },
       take: 50,
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
     });
     return { invoices };
   }
@@ -152,7 +161,7 @@ export class AgentToolsService {
       where,
       select: { id: true, subject: true, status: true, priority: true, created_at: true },
       take: 50,
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
     });
     return { conversations };
   }
@@ -170,7 +179,13 @@ export class AgentToolsService {
     const [sub, ws] = await Promise.all([
       this.prisma.workspaceSubscription.findFirst({
         where: { workspace_id: workspaceId },
-        select: { plan: true, status: true, provider: true, current_period_start: true, current_period_end: true },
+        select: {
+          plan: true,
+          status: true,
+          provider: true,
+          current_period_start: true,
+          current_period_end: true,
+        },
       }),
       this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { plan: true } }),
     ]);
@@ -180,9 +195,17 @@ export class AgentToolsService {
   private async getBillingInvoices(workspaceId: string) {
     const invoices = await this.prisma.billingInvoice.findMany({
       where: { workspace_id: workspaceId },
-      select: { id: true, number: true, plan_name: true, total: true, currency: true, status: true, issued_at: true },
+      select: {
+        id: true,
+        number: true,
+        plan_name: true,
+        total: true,
+        currency: true,
+        status: true,
+        issued_at: true,
+      },
       take: 50,
-      orderBy: { issued_at: 'desc' },
+      orderBy: { issued_at: "desc" },
     });
     return { billing_invoices: invoices };
   }
@@ -192,7 +215,7 @@ export class AgentToolsService {
       where: { workspace_id: workspaceId },
       select: { id: true, title: true, stage_id: true, value: true, status: true },
       take: 50,
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
     });
     return { deals };
   }
@@ -201,7 +224,15 @@ export class AgentToolsService {
     const [ws, members] = await Promise.all([
       this.prisma.workspace.findUnique({
         where: { id: workspaceId },
-        select: { id: true, name: true, slug: true, plan: true, status: true, locale: true, timezone: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          plan: true,
+          status: true,
+          locale: true,
+          timezone: true,
+        },
       }),
       this.prisma.workspaceUser.findMany({
         where: { workspace_id: workspaceId },
@@ -218,9 +249,11 @@ export class AgentToolsService {
   }
 
   private async search(workspaceId: string, args: Record<string, any>) {
-    const q = args.q || args.query || '';
+    const q = args.q || args.query || "";
     if (!q) throw new BadRequestException('search requires a "q" argument');
-    const typesArr = args.types ? (args.types as string).split(',').map((t: string) => t.trim()) : [];
+    const typesArr = args.types
+      ? (args.types as string).split(",").map((t: string) => t.trim())
+      : [];
     const results = await this.searchService.search(workspaceId, q, typesArr, 10);
     return { results };
   }
@@ -231,13 +264,21 @@ export class AgentToolsService {
     const [conv, messages] = await Promise.all([
       this.prisma.conversation.findFirst({
         where: { id, workspace_id: workspaceId },
-        select: { id: true, subject: true, status: true, priority: true, category: true, created_at: true, contact: { select: { full_name: true, email: true } } },
+        select: {
+          id: true,
+          subject: true,
+          status: true,
+          priority: true,
+          category: true,
+          created_at: true,
+          contact: { select: { full_name: true, email: true } },
+        },
       }),
       this.prisma.message.findMany({
         where: { conversation_id: id, workspace_id: workspaceId },
         select: { id: true, direction: true, body_text: true, sender_name: true, sent_at: true },
         take: 100,
-        orderBy: { sent_at: 'asc' },
+        orderBy: { sent_at: "asc" },
       }),
     ]);
     if (!conv) throw new BadRequestException(`Conversation "${id}" not found`);
@@ -252,9 +293,9 @@ export class AgentToolsService {
       data: {
         workspace_id: workspaceId,
         conversation_id: id,
-        direction: 'OUTBOUND',
+        direction: "OUTBOUND",
         body_text: text,
-        sender_name: 'HubbyAgent',
+        sender_name: "HubbyAgent",
       },
     });
     return { message: msg };
@@ -268,7 +309,7 @@ export class AgentToolsService {
       data: {
         workspace_id: workspaceId,
         name: args.name,
-        description: args.description || '',
+        description: args.description || "",
         trigger_type: args.trigger_type,
         trigger_config_json: args.trigger_config || {},
         action_config_json: args.action_config || args.config || {},
@@ -309,7 +350,8 @@ export class AgentToolsService {
   }
 
   private async createDeal(workspaceId: string, args: Record<string, any>) {
-    if (!args.title || !args.stage_id) throw new BadRequestException('create_deal requires "title" and "stage_id"');
+    if (!args.title || !args.stage_id)
+      throw new BadRequestException('create_deal requires "title" and "stage_id"');
     const deal = await this.prisma.deal.create({
       data: {
         workspace_id: workspaceId,
@@ -317,14 +359,15 @@ export class AgentToolsService {
         stage_id: args.stage_id,
         value: args.value || 0,
         contact_id: args.contact_id || undefined,
-        status: 'OPEN',
+        status: "OPEN",
       },
     });
     return { deal };
   }
 
   private async moveDeal(workspaceId: string, args: Record<string, any>) {
-    if (!args.id || !args.stage_id) throw new BadRequestException('move_deal requires "id" and "stage_id"');
+    if (!args.id || !args.stage_id)
+      throw new BadRequestException('move_deal requires "id" and "stage_id"');
     const deal = await this.prisma.deal.update({
       where: { id: args.id, workspace_id: workspaceId },
       data: { stage_id: args.stage_id },
@@ -334,12 +377,19 @@ export class AgentToolsService {
 
   private async listDocuments(workspaceId: string, args: Record<string, any>) {
     const where: Record<string, any> = { workspace_id: workspaceId };
-    if (args.search) where.file_name = { contains: args.search, mode: 'insensitive' };
+    if (args.search) where.file_name = { contains: args.search, mode: "insensitive" };
     const docs = await this.prisma.document.findMany({
       where,
-      select: { id: true, file_name: true, mime_type: true, file_size: true, ocr_text: true, created_at: true },
+      select: {
+        id: true,
+        file_name: true,
+        mime_type: true,
+        file_size: true,
+        ocr_text: true,
+        created_at: true,
+      },
       take: 50,
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: "desc" },
     });
     return { documents: docs };
   }
@@ -349,26 +399,35 @@ export class AgentToolsService {
     const errors = await (this.prisma as any).errorReport.findMany({
       where: { workspace_id: workspaceId },
       select: {
-        id: true, source: true, category: true, severity: true, title: true,
-        message: true, route: true, method: true, status_code: true,
-        occurred_at: true, context_json: true,
+        id: true,
+        source: true,
+        category: true,
+        severity: true,
+        title: true,
+        message: true,
+        route: true,
+        method: true,
+        status_code: true,
+        occurred_at: true,
+        context_json: true,
       },
-      orderBy: { occurred_at: 'desc' },
+      orderBy: { occurred_at: "desc" },
       take: limit,
     });
     return {
       errors,
       count: errors.length,
-      summary: errors.length > 0
-        ? `${errors.length} error(es) reciente(s). ${errors.filter((e: Record<string, any>) => e.status_code && e.status_code >= 500).length} son del servidor (5xx).`
-        : 'No hay errores recientes en este workspace.',
+      summary:
+        errors.length > 0
+          ? `${errors.length} error(es) reciente(s). ${errors.filter((e: Record<string, any>) => e.status_code && e.status_code >= 500).length} son del servidor (5xx).`
+          : "No hay errores recientes en este workspace.",
     };
   }
 
   private async diagnose(workspaceId: string, args: Record<string, any>) {
     const result = await this.diagnostic.diagnose({
       workspaceId,
-      user_description: args.description || args.user_description || '',
+      user_description: args.description || args.user_description || "",
       error_report_id: args.error_report_id,
     });
     return { diagnosis: result };
@@ -385,12 +444,15 @@ export class AgentToolsService {
   }
 
   private async approveFix(workspaceId: string, args: Record<string, any>) {
-    if (!args.fix_case_id) throw new BadRequestException('approve_fix requires fix_case_id');
+    if (!args.fix_case_id) throw new BadRequestException("approve_fix requires fix_case_id");
     return this.fixService.approveFix(args.fix_case_id, { workspaceId, isPlatformAdmin: false });
   }
 
   private async rejectFix(workspaceId: string, args: Record<string, any>) {
-    if (!args.fix_case_id) throw new BadRequestException('reject_fix requires fix_case_id');
-    return this.fixService.rejectFix(args.fix_case_id, args.reason || '', { workspaceId, isPlatformAdmin: false });
+    if (!args.fix_case_id) throw new BadRequestException("reject_fix requires fix_case_id");
+    return this.fixService.rejectFix(args.fix_case_id, args.reason || "", {
+      workspaceId,
+      isPlatformAdmin: false,
+    });
   }
 }

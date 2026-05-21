@@ -1,31 +1,31 @@
-import {
-  Injectable,
-  ServiceUnavailableException,
-} from '@nestjs/common';
-import { HaciendaAuthService } from './hacienda-auth.service';
+import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import { HaciendaAuthService } from "./hacienda-auth.service";
 
 @Injectable()
 export class HaciendaRecepcionService {
-  private readonly baseUrl = 'https://api.comprobanteselectronicos.go.cr/recepcion/v1';
+  private readonly baseUrl = "https://api.comprobanteselectronicos.go.cr/recepcion/v1";
 
   constructor(private readonly authService: HaciendaAuthService) {}
 
-  async submitComprobante(workspaceId: string, payload: {
-    clave: string;
-    fecha: string;
-    emisor: { tipoIdentificacion: string; numeroIdentificacion: string };
-    receptor?: { tipoIdentificacion: string; numeroIdentificacion: string };
-    callbackUrl?: string;
-    consecutivoReceptor?: string;
-    comprobanteXml: string;
-  }) {
+  async submitComprobante(
+    workspaceId: string,
+    payload: {
+      clave: string;
+      fecha: string;
+      emisor: { tipoIdentificacion: string; numeroIdentificacion: string };
+      receptor?: { tipoIdentificacion: string; numeroIdentificacion: string };
+      callbackUrl?: string;
+      consecutivoReceptor?: string;
+      comprobanteXml: string;
+    },
+  ) {
     const token = await this.authService.getAccessToken(workspaceId);
     const response = await fetch(`${this.baseUrl}/recepcion`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        Accept: 'application/json',
+        Accept: "application/json",
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
     });
@@ -38,11 +38,11 @@ export class HaciendaRecepcionService {
     }
 
     return {
-      location: response.headers.get('Location'),
+      location: response.headers.get("Location"),
       rateLimit: {
-        limit: response.headers.get('X-Ratelimit-Limit'),
-        remaining: response.headers.get('X-Ratelimit-Remaining'),
-        reset: response.headers.get('X-Ratelimit-Reset'),
+        limit: response.headers.get("X-Ratelimit-Limit"),
+        remaining: response.headers.get("X-Ratelimit-Remaining"),
+        reset: response.headers.get("X-Ratelimit-Reset"),
       },
       statusCode: response.status,
     };
@@ -52,7 +52,7 @@ export class HaciendaRecepcionService {
     const token = await this.authService.getAccessToken(workspaceId);
     const response = await fetch(`${this.baseUrl}/recepcion/${encodeURIComponent(clave)}`, {
       headers: {
-        Accept: 'application/json',
+        Accept: "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
@@ -71,14 +71,14 @@ export class HaciendaRecepcionService {
     const token = await this.authService.getAccessToken(workspaceId);
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null && value !== "") {
         query.set(key, String(value));
       }
     });
 
     const response = await fetch(`${this.baseUrl}/comprobantes?${query.toString()}`, {
       headers: {
-        Accept: 'application/json',
+        Accept: "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
@@ -97,7 +97,7 @@ export class HaciendaRecepcionService {
     const token = await this.authService.getAccessToken(workspaceId);
     const response = await fetch(`${this.baseUrl}/comprobantes/${encodeURIComponent(clave)}`, {
       headers: {
-        Accept: 'application/json',
+        Accept: "application/json",
         Authorization: `Bearer ${token}`,
       },
     });

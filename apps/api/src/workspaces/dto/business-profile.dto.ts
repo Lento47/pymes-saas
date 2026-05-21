@@ -1,4 +1,4 @@
-import { IsArray, IsString, ArrayMinSize } from 'class-validator';
+import { IsArray, IsString, ArrayMinSize } from "class-validator";
 
 export class BusinessProfileDto {
   @IsArray()

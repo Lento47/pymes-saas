@@ -1,5 +1,5 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
 
 @Injectable()
 export class TemplateService {
@@ -16,21 +16,25 @@ export class TemplateService {
         ...(type ? { type } : {}),
         ...(category ? { category } : {}),
       },
-      orderBy: [{ order: 'asc' }, { name: 'asc' }],
+      orderBy: [{ order: "asc" }, { name: "asc" }],
     });
   }
 
   async getSystemTemplate(id: string) {
     const t = await this.prisma.systemTemplate.findUnique({ where: { id } });
-    if (!t) throw new NotFoundException('Template not found');
+    if (!t) throw new NotFoundException("Template not found");
     return t;
   }
 
   // ─── Instantiate Templates ─────────────────────────────────────────────
 
-  async instantiateAutomationTemplate(workspaceId: string, templateId: string, overrides?: Record<string, any>) {
+  async instantiateAutomationTemplate(
+    workspaceId: string,
+    templateId: string,
+    overrides?: Record<string, any>,
+  ) {
     const template = await this.getSystemTemplate(templateId);
-    if (template.type !== 'automation') throw new NotFoundException('Not an automation template');
+    if (template.type !== "automation") throw new NotFoundException("Not an automation template");
 
     const body = template.body as any;
     return this.prisma.automationRule.create({
@@ -47,20 +51,24 @@ export class TemplateService {
     });
   }
 
-  async instantiateMessageTemplate(workspaceId: string, templateId: string, overrides?: Record<string, any>) {
+  async instantiateMessageTemplate(
+    workspaceId: string,
+    templateId: string,
+    overrides?: Record<string, any>,
+  ) {
     const template = await this.getSystemTemplate(templateId);
-    if (template.type !== 'message') throw new NotFoundException('Not a message template');
+    if (template.type !== "message") throw new NotFoundException("Not a message template");
 
     const body = template.body as any;
     return this.prisma.messageTemplate.create({
       data: {
         workspace_id: workspaceId,
-        channel: template.channel ?? 'WHATSAPP',
+        channel: template.channel ?? "WHATSAPP",
         name: overrides?.name ?? template.name,
         category: template.category,
-        language: body.language ?? 'es',
-        body: body.body ?? (body as any).text ?? '',
-        status: 'DRAFT',
+        language: body.language ?? "es",
+        body: body.body ?? (body as any).text ?? "",
+        status: "DRAFT",
         variables: body.variables ?? undefined,
       },
     });
@@ -74,7 +82,7 @@ export class TemplateService {
         is_active: true,
         ...(industry ? { industry } : {}),
       },
-      orderBy: [{ order: 'asc' }, { name: 'asc' }],
+      orderBy: [{ order: "asc" }, { name: "asc" }],
     });
   }
 
@@ -82,7 +90,7 @@ export class TemplateService {
     const template = await this.prisma.workspaceTemplate.findUnique({
       where: { key: templateKey },
     });
-    if (!template) throw new NotFoundException('Workspace template not found');
+    if (!template) throw new NotFoundException("Workspace template not found");
 
     const results: Record<string, number> = { stages: 0, tags: 0, rules: 0 };
 
@@ -90,7 +98,12 @@ export class TemplateService {
     const stages = template.pipeline_stages as any[];
     if (stages?.length) {
       await this.prisma.dealStage.createMany({
-        data: stages.map(s => ({ workspace_id: workspaceId, name: s.name, order: s.order, color: s.color })),
+        data: stages.map((s) => ({
+          workspace_id: workspaceId,
+          name: s.name,
+          order: s.order,
+          color: s.color,
+        })),
       });
       results.stages = stages.length;
     }
@@ -99,7 +112,7 @@ export class TemplateService {
     const rules = template.automation_rules as any[];
     if (rules?.length) {
       await this.prisma.automationRule.createMany({
-        data: rules.map(r => ({
+        data: rules.map((r) => ({
           workspace_id: workspaceId,
           name: r.name,
           description: r.description,

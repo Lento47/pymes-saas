@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { CreateErrorReportDto } from './dto/create-error-report.dto';
-import { FilterErrorReportsDto } from './dto/filter-error-reports.dto';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CreateErrorReportDto } from "./dto/create-error-report.dto";
+import { FilterErrorReportsDto } from "./dto/filter-error-reports.dto";
 
 @Injectable()
 export class ErrorReportsService {
@@ -15,33 +15,34 @@ export class ErrorReportsService {
 
   async createClientReport(dto: CreateErrorReportDto) {
     const workspaceId = dto.workspace_slug
-      ? (
+      ? ((
           await this.prisma.workspace.findUnique({
             where: { slug: dto.workspace_slug },
             select: { id: true },
           })
-        )?.id ?? null
+        )?.id ?? null)
       : null;
 
     // Auto-ticket: ERROR/CRITICAL frontend errors with a known workspace get
     // a SupportDiagnosticCase opened (or reused) so the user/admin sees a ticket,
     // and the ErrorReport row is FK-linked to it.
-    const severity = (dto.severity ?? 'ERROR').toUpperCase();
-    const diagnosticCaseId = workspaceId && (severity === 'ERROR' || severity === 'CRITICAL')
-      ? await this.openCaseForReport({
-          workspace_id: workspaceId,
-          user_id: dto.client_user_id ?? null,
-          severity,
-          source: dto.source,
-          category: dto.category,
-          title: dto.title ?? `${dto.category} en ${dto.source}`,
-          message: dto.message,
-          stack: dto.stack ?? null,
-          route: dto.route ?? null,
-          method: dto.method ?? null,
-          status_code: dto.status_code ?? null,
-        })
-      : null;
+    const severity = (dto.severity ?? "ERROR").toUpperCase();
+    const diagnosticCaseId =
+      workspaceId && (severity === "ERROR" || severity === "CRITICAL")
+        ? await this.openCaseForReport({
+            workspace_id: workspaceId,
+            user_id: dto.client_user_id ?? null,
+            severity,
+            source: dto.source,
+            category: dto.category,
+            title: dto.title ?? `${dto.category} en ${dto.source}`,
+            message: dto.message,
+            stack: dto.stack ?? null,
+            route: dto.route ?? null,
+            method: dto.method ?? null,
+            status_code: dto.status_code ?? null,
+          })
+        : null;
 
     try {
       return await this.errorReportsRepo.create({
@@ -51,7 +52,7 @@ export class ErrorReportsService {
           diagnostic_case_id: diagnosticCaseId ?? undefined,
           source: dto.source,
           category: dto.category,
-          severity: dto.severity ?? 'ERROR',
+          severity: dto.severity ?? "ERROR",
           title: dto.title,
           message: dto.message,
           stack: dto.stack,
@@ -68,7 +69,10 @@ export class ErrorReportsService {
         },
       });
     } catch (error: unknown) {
-      this.logger.error(`No se pudo guardar el error reportado por cliente: ${(error as Error)?.message}`, (error as Error)?.stack);
+      this.logger.error(
+        `No se pudo guardar el error reportado por cliente: ${(error as Error)?.message}`,
+        (error as Error)?.stack,
+      );
       return null;
     }
   }
@@ -99,7 +103,7 @@ export class ErrorReportsService {
           diagnostic_case_id: data.diagnostic_case_id ?? undefined,
           source: data.source,
           category: data.category,
-          severity: data.severity ?? 'ERROR',
+          severity: data.severity ?? "ERROR",
           title: data.title ?? undefined,
           message: data.message,
           stack: data.stack ?? undefined,
@@ -113,7 +117,10 @@ export class ErrorReportsService {
         },
       });
     } catch (error: unknown) {
-      this.logger.error(`No se pudo guardar el error del servidor: ${(error as Error)?.message}`, (error as Error)?.stack);
+      this.logger.error(
+        `No se pudo guardar el error del servidor: ${(error as Error)?.message}`,
+        (error as Error)?.stack,
+      );
       return null;
     }
   }
@@ -141,7 +148,7 @@ export class ErrorReportsService {
         where: {
           workspace_id: input.workspace_id,
           module,
-          status: 'OPEN',
+          status: "OPEN",
           // dedupe within a 24h window to keep cases fresh
           created_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
         },
@@ -155,12 +162,12 @@ export class ErrorReportsService {
           user_id: input.user_id ?? undefined,
           module,
           error_code: `${input.source}_${input.category}`.toUpperCase().slice(0, 60),
-          category: input.severity === 'CRITICAL' ? 'PLATFORM_INCIDENT' : 'WORKSPACE_CONFIGURATION',
-          risk_level: input.severity === 'CRITICAL' ? 'critical' : 'high',
-          status: 'OPEN',
+          category: input.severity === "CRITICAL" ? "PLATFORM_INCIDENT" : "WORKSPACE_CONFIGURATION",
+          risk_level: input.severity === "CRITICAL" ? "critical" : "high",
+          status: "OPEN",
           title: input.title.slice(0, 120),
           user_description: input.message,
-          safe_summary: `Origen: ${input.source}. Ruta: ${input.method ?? '-'} ${input.route ?? '-'}. Status: ${input.status_code ?? '-'}.`,
+          safe_summary: `Origen: ${input.source}. Ruta: ${input.method ?? "-"} ${input.route ?? "-"}. Status: ${input.status_code ?? "-"}.`,
           evidence_json: {
             source: input.source,
             category: input.category,
@@ -172,18 +179,22 @@ export class ErrorReportsService {
         },
         select: { id: true },
       });
-      this.logger.log(`Auto-opened diagnostic case ${created.id} from ${input.source} report (${module})`);
+      this.logger.log(
+        `Auto-opened diagnostic case ${created.id} from ${input.source} report (${module})`,
+      );
       return created.id;
     } catch (error: unknown) {
-      this.logger.error(`No se pudo abrir caso desde reporte de error: ${(error as Error)?.message}`);
+      this.logger.error(
+        `No se pudo abrir caso desde reporte de error: ${(error as Error)?.message}`,
+      );
       return null;
     }
   }
 
   private deriveModule(path?: string | null): string {
-    if (!path) return 'unknown';
-    const parts = path.split('/').filter(Boolean);
-    return parts.find((p) => p !== 'api' && p !== 'v1') ?? 'unknown';
+    if (!path) return "unknown";
+    const parts = path.split("/").filter(Boolean);
+    return parts.find((p) => p !== "api" && p !== "v1") ?? "unknown";
   }
 
   async findAll(workspaceId: string, filters: FilterErrorReportsDto) {
@@ -203,7 +214,7 @@ export class ErrorReportsService {
         where,
         skip,
         take: limit,
-        orderBy: { occurred_at: 'desc' },
+        orderBy: { occurred_at: "desc" },
       }),
       this.errorReportsRepo.count({ where }),
     ]);

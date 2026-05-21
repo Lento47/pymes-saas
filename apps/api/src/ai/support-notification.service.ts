@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 /**
  * Closes the loop after a support case is resolved by sending an
@@ -52,21 +52,21 @@ export class SupportNotificationService {
 
     const resolution = (dCase.resolution_json as any) || {};
     const summary: string =
-      resolution.resolution || resolution.summary || 'Tu reporte fue resuelto por el equipo de soporte.';
+      resolution.resolution ||
+      resolution.summary ||
+      "Tu reporte fue resuelto por el equipo de soporte.";
 
     await this.notifications
       .create(dCase.workspace_id, {
         user_id: dCase.user_id,
-        type: 'support_case_resolved',
+        type: "support_case_resolved",
         title: `Tu reporte fue resuelto: ${dCase.title}`,
         body: summary.slice(0, 500),
-        related_entity_type: 'support_diagnostic_case',
+        related_entity_type: "support_diagnostic_case",
         related_entity_id: dCase.id,
       })
       .catch((err) => {
-        this.logger.warn(
-          `In-app notification failed for case ${dCase.id}: ${err?.message}`,
-        );
+        this.logger.warn(`In-app notification failed for case ${dCase.id}: ${err?.message}`);
       });
   }
 }

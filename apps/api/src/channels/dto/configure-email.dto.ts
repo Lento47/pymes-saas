@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsNumber, IsOptional, IsString, MinLength } from "class-validator";
 
 export class ConfigureEmailDto {
   /** Resend API key — starts with re_... — optional if SMTP is configured */

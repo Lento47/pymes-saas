@@ -1,6 +1,6 @@
-import { IsEnum, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { Type } from 'class-transformer';
-import { Priority, TaskStatus, TaskSource } from '@prisma/client';
+import { IsEnum, IsIn, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import { Type } from "class-transformer";
+import { Priority, TaskStatus, TaskSource } from "@prisma/client";
 
 export class FilterTasksDto {
   @IsOptional()
@@ -50,6 +50,6 @@ export class FilterTasksDto {
   limit?: number = 20;
 
   @IsOptional()
-  @IsIn(['asc', 'desc'])
+  @IsIn(["asc", "desc"])
   sort?: string;
 }

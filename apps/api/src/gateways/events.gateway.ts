@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger } from "@nestjs/common";
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -7,10 +7,10 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
-} from '@nestjs/websockets';
-import { JwtService } from '@nestjs/jwt';
-import { Server, Socket } from 'socket.io';
-import { PrismaService } from '../common/prisma/prisma.service';
+} from "@nestjs/websockets";
+import { JwtService } from "@nestjs/jwt";
+import { Server, Socket } from "socket.io";
+import { PrismaService } from "../common/prisma/prisma.service";
 
 // ─── Eventos emitidos al cliente ─────────────────────────────────────────────
 // message:new          → nuevo mensaje en una conversación (DTO enriquecido)
@@ -22,16 +22,17 @@ import { PrismaService } from '../common/prisma/prisma.service';
 
 @WebSocketGateway({
   cors: {
-    origin:
-      process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) ?? [
-        'http://localhost:5000',
-        'http://127.0.0.1:5000',
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-      ],
+    origin: process.env.CORS_ORIGIN?.split(",")
+      .map((o) => o.trim())
+      .filter(Boolean) ?? [
+      "http://localhost:5000",
+      "http://127.0.0.1:5000",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    ],
     credentials: true,
   },
-  namespace: '/ws',
+  namespace: "/ws",
 })
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -42,17 +43,17 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
   // ── Conexión ───────────────────────────────────────────────────────────────
 
   async handleConnection(client: Socket) {
     try {
       const token =
-        (client.handshake.auth as Record<string, unknown>)?.token as string | undefined ||
-        client.handshake.headers.authorization?.replace('Bearer ', '');
+        ((client.handshake.auth as Record<string, unknown>)?.token as string | undefined) ||
+        client.handshake.headers.authorization?.replace("Bearer ", "");
 
-      if (!token) throw new Error('No token');
+      if (!token) throw new Error("No token");
 
       const payload = this.jwtService.verify<{
         sub: string;
@@ -84,28 +85,28 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // ── Eventos del cliente ────────────────────────────────────────────────────
 
   /** Cliente abre una conversación → entra al room */
-  @SubscribeMessage('join:conversation')
+  @SubscribeMessage("join:conversation")
   async handleJoinConversation(
     @ConnectedSocket() client: Socket,
     @MessageBody() conversationId: string,
   ) {
     const workspaceId = client.data.workspaceId as string | undefined;
     if (!workspaceId) {
-      return { ok: false, error: 'Unauthenticated' };
+      return { ok: false, error: "Unauthenticated" };
     }
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
       select: { id: true },
     });
     if (!conv) {
-      return { ok: false, error: 'Not found' };
+      return { ok: false, error: "Not found" };
     }
     await client.join(`conversation:${conversationId}`);
     return { ok: true, room: `conversation:${conversationId}` };
   }
 
   /** Cliente cierra una conversación → sale del room */
-  @SubscribeMessage('leave:conversation')
+  @SubscribeMessage("leave:conversation")
   async handleLeaveConversation(
     @ConnectedSocket() client: Socket,
     @MessageBody() conversationId: string,
@@ -115,7 +116,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   /** Ping de keepalive */
-  @SubscribeMessage('ping')
+  @SubscribeMessage("ping")
   handlePing() {
     return { pong: true, ts: Date.now() };
   }
@@ -128,17 +129,13 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
   emitNewMessage(conversationId: string, workspaceId: string, message: unknown) {
     // Todos en la conversación reciben el mensaje completo
-    this.server
-      .to(`conversation:${conversationId}`)
-      .emit('message:new', message);
+    this.server.to(`conversation:${conversationId}`).emit("message:new", message);
 
     // Todo el workspace recibe un update del inbox (solo metadata)
-    this.server
-      .to(`workspace:${workspaceId}`)
-      .emit('conversation:updated', {
-        id: conversationId,
-        last_message_at: new Date().toISOString(),
-      });
+    this.server.to(`workspace:${workspaceId}`).emit("conversation:updated", {
+      id: conversationId,
+      last_message_at: new Date().toISOString(),
+    });
   }
 
   /**
@@ -155,53 +152,39 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     media_filename: string | null;
     media_caption: string | null;
   }) {
-    this.server
-      .to(`conversation:${payload.conversation_id}`)
-      .emit('message:media-ready', payload);
+    this.server.to(`conversation:${payload.conversation_id}`).emit("message:media-ready", payload);
   }
 
   /**
    * Emitir cambio de estado/prioridad/asignación de una conversación.
    */
   emitConversationUpdated(workspaceId: string, conversation: unknown) {
-    this.server
-      .to(`workspace:${workspaceId}`)
-      .emit('conversation:updated', conversation);
+    this.server.to(`workspace:${workspaceId}`).emit("conversation:updated", conversation);
   }
 
   /**
    * Emitir notificación personal a un usuario específico.
    */
   emitNotification(userId: string, notification: unknown) {
-    this.server
-      .to(`user:${userId}`)
-      .emit('notification:new', notification);
+    this.server.to(`user:${userId}`).emit("notification:new", notification);
   }
 
   /**
    * Emitir actualización de tarea al workspace.
    */
   emitTaskUpdated(workspaceId: string, task: unknown) {
-    this.server
-      .to(`workspace:${workspaceId}`)
-      .emit('task:updated', task);
+    this.server.to(`workspace:${workspaceId}`).emit("task:updated", task);
   }
 
   emitCaseUpdated(workspaceId: string, caseData: unknown) {
-    this.server
-      .to(`workspace:${workspaceId}`)
-      .emit('case:updated', caseData);
+    this.server.to(`workspace:${workspaceId}`).emit("case:updated", caseData);
   }
 
   emitAgentMoved(workspaceId: string, agentData: unknown) {
-    this.server
-      .to(`workspace:${workspaceId}`)
-      .emit('agent:moved', agentData);
+    this.server.to(`workspace:${workspaceId}`).emit("agent:moved", agentData);
   }
 
   emitWorkspaceUpdated(workspaceId: string, workspace: unknown) {
-    this.server
-      .to(`workspace:${workspaceId}`)
-      .emit('workspace:updated', workspace);
+    this.server.to(`workspace:${workspaceId}`).emit("workspace:updated", workspace);
   }
 }

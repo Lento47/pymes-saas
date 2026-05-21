@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsEnum, IsObject } from 'class-validator';
-import { Priority } from '@prisma/client';
+import { IsString, IsOptional, IsEnum, IsObject } from "class-validator";
+import { Priority } from "@prisma/client";
 
 export class CreateEscalationDto {
   @IsString()

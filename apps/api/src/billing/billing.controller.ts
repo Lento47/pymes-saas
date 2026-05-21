@@ -1,18 +1,32 @@
-import { Body, Controller, Get, Logger, Param, Post, Query, RawBodyRequest, Req, Res, UseGuards, BadRequestException, InternalServerErrorException } from '@nestjs/common';
-import { ValidateUUIDPipe } from '../common/pipes/validate-uuid.pipe';
-import { Request, Response } from 'express';
-import { ConfigService } from '@nestjs/config';
-import { PaddleSdkService } from './paddle-sdk.service';
-import { BillingInvoiceService } from './billing-invoice.service';
-import { ChangePlanDto } from './dto/change-plan.dto';
-import { CreateCheckoutDto } from './dto/checkout.dto';
-import { FilterBillingInvoicesDto } from './dto/filter-billing-invoices.dto';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ApiRolesGuard } from '../api-tokens/api-roles.guard';
-import { RequireApiRole } from '../api-tokens/api-roles.decorator';
-import { ApiRole } from '../api-tokens/api-token.guard';
+import {
+  Body,
+  Controller,
+  Get,
+  Logger,
+  Param,
+  Post,
+  Query,
+  RawBodyRequest,
+  Req,
+  Res,
+  UseGuards,
+  BadRequestException,
+  InternalServerErrorException,
+} from "@nestjs/common";
+import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
+import { Request, Response } from "express";
+import { ConfigService } from "@nestjs/config";
+import { PaddleSdkService } from "./paddle-sdk.service";
+import { BillingInvoiceService } from "./billing-invoice.service";
+import { ChangePlanDto } from "./dto/change-plan.dto";
+import { CreateCheckoutDto } from "./dto/checkout.dto";
+import { FilterBillingInvoicesDto } from "./dto/filter-billing-invoices.dto";
+import { AuthUser } from "../auth/strategies/jwt.strategy";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { ApiRolesGuard } from "../api-tokens/api-roles.guard";
+import { RequireApiRole } from "../api-tokens/api-roles.decorator";
+import { ApiRole } from "../api-tokens/api-token.guard";
 
 // ───────────────────────────────────────────────────────────────────────────
 // IMPORTANTE — PADDLE ESTA EN SANDBOX.
@@ -27,7 +41,7 @@ import { ApiRole } from '../api-tokens/api-token.guard';
 // LO QUE NO ES IMPORTANTE: EL CODIGO DE ESTE ARCHIVO NO CAMBIA AL PASAR A
 // PROD — TODA LA CONFIGURACION VIVE EN ENV VARS.
 // ───────────────────────────────────────────────────────────────────────────
-@Controller('billing')
+@Controller("billing")
 export class BillingController {
   private readonly logger = new Logger(BillingController.name);
 
@@ -39,19 +53,17 @@ export class BillingController {
 
   // PRIMERA COMPRA — CHECKOUT NUEVO. SI EL WORKSPACE YA TIENE SUBSCRIPCION,
   // USAR `/change-plan` EN VEZ (PRORRATEADO).
-  @Post('checkout')
+  @Post("checkout")
   @UseGuards(JwtAuthGuard)
-  async createCheckout(
-    @CurrentUser() user: AuthUser,
-    @Body() dto: CreateCheckoutDto,
-  ) {
+  async createCheckout(@CurrentUser() user: AuthUser, @Body() dto: CreateCheckoutDto) {
     try {
       const customerId = await this.paddleService.createOrGetCustomer(
         user.workspace_id,
         user.email,
       );
 
-      const appUrl = this.configService.get<string>('CORS_ORIGIN')?.split(',')[0] || 'https://pymeshub.lat';
+      const appUrl =
+        this.configService.get<string>("CORS_ORIGIN")?.split(",")[0] || "https://pymeshub.lat";
       const result = await this.paddleService.createTransaction(
         user.workspace_id,
         customerId,
@@ -63,7 +75,9 @@ export class BillingController {
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`Checkout failed for workspace=${user.workspace_id}:`, error);
-      throw new InternalServerErrorException('No se pudo iniciar el checkout. Intentalo de nuevo o contacta a soporte.');
+      throw new InternalServerErrorException(
+        "No se pudo iniciar el checkout. Intentalo de nuevo o contacta a soporte.",
+      );
     }
   }
 
@@ -79,29 +93,35 @@ export class BillingController {
   // SI EL WORKSPACE NO TIENE SUBSCRIPCION ACTIVA, ESTE ENDPOINT FALLARA Y
   // EL FRONTEND DEBE USAR `/checkout` (CHECKOUT NUEVO).
   // ────────────────────────────────────────────────────────────────────────
-  @Post('change-plan')
+  @Post("change-plan")
   @UseGuards(JwtAuthGuard)
-  async changePlan(
-    @CurrentUser() user: AuthUser,
-    @Body() dto: ChangePlanDto,
-  ) {
+  async changePlan(@CurrentUser() user: AuthUser, @Body() dto: ChangePlanDto) {
     try {
       return await this.paddleService.changePlan(user.workspace_id, dto.priceId);
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`Plan change failed for workspace=${user.workspace_id}:`, error);
-      this.paddleService.createDiagnosticCase(
-        user.workspace_id,
-        `Error al cambiar de plan: ${(error as Error)?.message}`,
-        'PLAN_CHANGE_FAILED',
-        `Workspace ${user.workspace_id} intentó cambiar de plan y falló: ${(error as Error)?.message}`,
-        'critical',
-      ).catch((err) => this.logger.warn(`Diagnostic case creation failed for workspace=${user.workspace_id}`, err));
-      throw new InternalServerErrorException('No se pudo cambiar el plan. Intentalo de nuevo o contacta a soporte.');
+      this.paddleService
+        .createDiagnosticCase(
+          user.workspace_id,
+          `Error al cambiar de plan: ${(error as Error)?.message}`,
+          "PLAN_CHANGE_FAILED",
+          `Workspace ${user.workspace_id} intentó cambiar de plan y falló: ${(error as Error)?.message}`,
+          "critical",
+        )
+        .catch((err) =>
+          this.logger.warn(
+            `Diagnostic case creation failed for workspace=${user.workspace_id}`,
+            err,
+          ),
+        );
+      throw new InternalServerErrorException(
+        "No se pudo cambiar el plan. Intentalo de nuevo o contacta a soporte.",
+      );
     }
   }
 
-  @Post('cancel')
+  @Post("cancel")
   @UseGuards(JwtAuthGuard)
   async cancelPlan(@CurrentUser() user: AuthUser) {
     try {
@@ -109,17 +129,19 @@ export class BillingController {
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`Cancel plan failed for workspace=${user.workspace_id}:`, error);
-      throw new InternalServerErrorException('No se pudo cancelar el plan. Intentalo de nuevo o contacta a soporte.');
+      throw new InternalServerErrorException(
+        "No se pudo cancelar el plan. Intentalo de nuevo o contacta a soporte.",
+      );
     }
   }
 
-  @Post('webhook')
+  @Post("webhook")
   async handleWebhook(@Req() request: RawBodyRequest<Request>) {
-    const signature = request.headers['paddle-signature'] as string;
-    const webhookSecret = this.configService.get<string>('PADDLE_WEBHOOK_SECRET');
+    const signature = request.headers["paddle-signature"] as string;
+    const webhookSecret = this.configService.get<string>("PADDLE_WEBHOOK_SECRET");
 
     if (!signature || !webhookSecret) {
-      throw new BadRequestException('Missing paddle-signature header or webhook secret');
+      throw new BadRequestException("Missing paddle-signature header or webhook secret");
     }
 
     let event: Record<string, any>;
@@ -130,7 +152,9 @@ export class BillingController {
         signature,
       );
     } catch (error) {
-      throw new BadRequestException(`Webhook signature verification failed: ${(error as Error).message}`);
+      throw new BadRequestException(
+        `Webhook signature verification failed: ${(error as Error).message}`,
+      );
     }
 
     await this.paddleService.handleWebhookEvent(event as any);
@@ -138,13 +162,13 @@ export class BillingController {
     return { received: true };
   }
 
-  @Get('prices')
+  @Get("prices")
   @UseGuards(JwtAuthGuard)
   getAvailablePrices() {
     return this.paddleService.getAvailablePrices();
   }
 
-  @Get('portal')
+  @Get("portal")
   @UseGuards(JwtAuthGuard)
   async getBillingPortal(@CurrentUser() user: AuthUser) {
     try {
@@ -155,55 +179,58 @@ export class BillingController {
     }
   }
 
-  @Get('invoices')
+  @Get("invoices")
   @UseGuards(JwtAuthGuard)
-  async getInvoices(
-    @CurrentUser() user: AuthUser,
-    @Query() filters: FilterBillingInvoicesDto,
-  ) {
+  async getInvoices(@CurrentUser() user: AuthUser, @Query() filters: FilterBillingInvoicesDto) {
     return this.billingInvoice.findByWorkspace(user.workspace_id, filters);
   }
 
-  @Get('invoices/:id/pdf')
+  @Get("invoices/:id/pdf")
   @UseGuards(JwtAuthGuard)
   async getInvoicePdf(
     @CurrentUser() user: AuthUser,
-    @Param('id', ValidateUUIDPipe) invoiceId: string,
+    @Param("id", ValidateUUIDPipe) invoiceId: string,
     @Res() res: Response,
   ) {
     const { buffer, filename } = await this.billingInvoice.getPdfBuffer(invoiceId);
     res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="${filename}"`,
-      'Content-Length': buffer.length,
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="${filename}"`,
+      "Content-Length": buffer.length,
     });
     res.end(buffer);
   }
 
-  @Post('sync')
+  @Post("sync")
   @UseGuards(JwtAuthGuard, ApiRolesGuard)
   @RequireApiRole(ApiRole.FOUNDER, ApiRole.WORKSPACE, ApiRole.USER)
   async syncSubscription(
     @CurrentUser() user: AuthUser,
     @Body() dto?: { customerId?: string; subscriptionId?: string },
   ) {
-    return this.paddleService.syncSubscription(user.workspace_id, dto?.customerId, dto?.subscriptionId);
+    return this.paddleService.syncSubscription(
+      user.workspace_id,
+      dto?.customerId,
+      dto?.subscriptionId,
+    );
   }
 
-  @Get('addon-prices')
+  @Get("addon-prices")
   @UseGuards(JwtAuthGuard)
   getAddonPrices() {
     return this.paddleService.getAvailableAddonPrices();
   }
 
-  @Post('checkout-addon')
+  @Post("checkout-addon")
   @UseGuards(JwtAuthGuard)
-  async createAddonCheckout(
-    @CurrentUser() user: AuthUser,
-    @Body('addonKey') addonKey: string,
-  ) {
-    if (!addonKey) throw new BadRequestException('addonKey is required');
+  async createAddonCheckout(@CurrentUser() user: AuthUser, @Body("addonKey") addonKey: string) {
+    if (!addonKey) throw new BadRequestException("addonKey is required");
     const customerId = await this.paddleService.createOrGetCustomer(user.workspace_id, user.email);
-    return this.paddleService.createAddonTransaction(user.workspace_id, customerId, user.email, addonKey);
+    return this.paddleService.createAddonTransaction(
+      user.workspace_id,
+      customerId,
+      user.email,
+      addonKey,
+    );
   }
 }
