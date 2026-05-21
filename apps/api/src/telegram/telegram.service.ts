@@ -94,24 +94,17 @@ export class TelegramService {
       throw new BadRequestException('Invalid or expired Telegram bot token');
     }
 
-    // Remove existing webhook if any
-    await this.removeWebhook(channelId).catch((err) =>
-      this.logger.warn(`Failed to remove existing Telegram webhook for channel=${channelId}`, err),
-    );
-
     const bot = new Telegraf(token);
     const rawBaseUrl = this.config.get<string>('TELEGRAM_WEBHOOK_BASE_URL')
       ?? this.config.get<string>('APP_URL')
       ?? process.env.PUBLIC_URL
       ?? 'https://api.pymeshub.lat';
-    const baseUrl = rawBaseUrl.replace(/\/+$/, ''); // strip trailing slash
+    const baseUrl = rawBaseUrl.replace(/\/+$/, '');
     const webhookUrl = `${baseUrl}/api/inbound/telegram/webhook/${channelId}`;
 
     this.logger.log(`Registering webhook for channel ${channelId}: ${webhookUrl}`);
 
     // Generate a per-channel webhook secret so we can verify inbound updates
-    // via the X-Telegram-Bot-Api-Secret-Token header. Telegram requires the
-    // secret to be 1-256 chars, ASCII A-Z/a-z/0-9/_/-.
     const webhookSecret = randomBytes(32).toString('hex');
 
     try {
@@ -120,6 +113,12 @@ export class TelegramService {
         max_connections: 40,
         secret_token: webhookSecret,
       });
+
+      // Remove old webhook after new one is confirmed registered.
+      // Doing it before would leave the channel without a webhook if setWebhook fails.
+      await this.removeWebhook(channelId).catch((err) =>
+        this.logger.warn(`Failed to clean up old webhook for channel=${channelId}`, err),
+      );
 
       // Persist the secret on the channel config so the webhook handler can validate it.
       const existing = (channel.config_json as any) || {};
@@ -556,6 +555,8 @@ export class TelegramService {
     const fileInfo = await bot.telegram.getFile(attachment.file_id);
     if (!fileInfo.file_path) return;
 
+    // WARNING: bot token is embedded in the download URL (Telegram API requirement).
+    // Ensure this URL is NOT logged — token leak would compromise the bot.
     const downloadUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.file_path}`;
     const res = await fetch(downloadUrl, { signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error(`Telegram file fetch failed: ${res.status}`);

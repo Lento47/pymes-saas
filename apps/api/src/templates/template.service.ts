@@ -95,23 +95,21 @@ export class TemplateService {
       results.stages = stages.length;
     }
 
-    // Apply automation rules
+    // Apply automation rules — use createMany for atomic batch insert
     const rules = template.automation_rules as any[];
     if (rules?.length) {
-      for (const r of rules) {
-        await this.prisma.automationRule.create({
-          data: {
-            workspace_id: workspaceId,
-            name: r.name,
-            description: r.description,
-            trigger_type: r.trigger_type,
-            trigger_config_json: r.trigger_config_json ?? {},
-            condition_config_json: r.condition_config_json ?? null,
-            action_config_json: r.action_config_json ?? {},
-            enabled: r.enabled ?? true,
-          },
-        });
-      }
+      await this.prisma.automationRule.createMany({
+        data: rules.map(r => ({
+          workspace_id: workspaceId,
+          name: r.name,
+          description: r.description,
+          trigger_type: r.trigger_type,
+          trigger_config_json: r.trigger_config_json ?? {},
+          condition_config_json: r.condition_config_json ?? null,
+          action_config_json: r.action_config_json ?? {},
+          enabled: r.enabled ?? true,
+        })),
+      });
       results.rules = rules.length;
     }
 

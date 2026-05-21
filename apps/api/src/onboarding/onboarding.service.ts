@@ -34,6 +34,8 @@ export class OnboardingService {
     return { exists: true, status: project.status, completed, total };
   }
 
+  // TODO(types): saveProject and updateProject accept Record<string,any> instead
+  // of a typed DTO. Add CreateOnboardingProjectDto with explicit validation.
   async saveProject(workspaceId: string, data: Record<string, any>) {
     const existing = await this.prisma.onboardingProject.findUnique({ where: { workspace_id: workspaceId } });
     if (existing) {

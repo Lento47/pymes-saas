@@ -135,7 +135,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
         method: request.method,
         status_code: status,
         user_agent: request.headers['user-agent'] ?? null,
-        context_json: { params: request.params, query: request.query, workspace_slug: request.headers['x-workspace-slug'] ?? null },
+        context_json: {
+          route: request.path,
+          method: request.method,
+          status_code: status,
+          // Redacted: no query params, body, or headers to avoid storing PII
+        },
       });
     }
 

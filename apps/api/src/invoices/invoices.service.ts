@@ -914,44 +914,46 @@ export class InvoicesService {
   }
 
   private async deductStock(workspaceId: string, invoiceId: string) {
-    const lines = await this.prisma.invoiceLine.findMany({
-      where: { invoice_id: invoiceId, workspace_id: workspaceId, product_id: { not: null } },
-      include: { product: { select: { id: true, track_inventory: true, type: true, current_stock: true } } },
+    await this.prisma.$transaction(async (tx) => {
+      const lines = await tx.invoiceLine.findMany({
+        where: { invoice_id: invoiceId, workspace_id: workspaceId, product_id: { not: null } },
+        include: { product: { select: { id: true, track_inventory: true, type: true, current_stock: true } } },
+      });
+
+      for (const line of lines) {
+        if (!line.product || !line.product.track_inventory || line.product.type === 'SERVICE') continue;
+
+        const existingMovement = await tx.stockMovement.findFirst({
+          where: { product_id: line.product_id, reference_type: 'invoice', reference_id: invoiceId, type: 'OUT' },
+        });
+        if (existingMovement) continue;
+
+        const qty = Math.round(Number(line.quantity));
+        if (qty <= 0) continue;
+
+        const previousStock = line.product.current_stock;
+        const newStock = Math.max(0, previousStock - qty);
+
+        await tx.product.update({
+          where: { id: line.product_id },
+          data: { current_stock: newStock },
+        });
+
+        await tx.stockMovement.create({
+          data: {
+            workspace_id: workspaceId,
+            product_id: line.product_id,
+            type: 'OUT',
+            quantity: qty,
+            previous_stock: previousStock,
+            new_stock: newStock,
+            reason: 'Venta — factura electrónica',
+            reference_type: 'invoice',
+            reference_id: invoiceId,
+          },
+        });
+      }
     });
-
-    for (const line of lines) {
-      if (!line.product || !line.product.track_inventory || line.product.type === 'SERVICE') continue;
-
-      const existingMovement = await this.prisma.stockMovement.findFirst({
-        where: { product_id: line.product_id, reference_type: 'invoice', reference_id: invoiceId, type: 'OUT' },
-      });
-      if (existingMovement) continue;
-
-      const qty = Math.round(Number(line.quantity));
-      if (qty <= 0) continue;
-
-      const previousStock = line.product.current_stock;
-      const newStock = Math.max(0, previousStock - qty);
-
-      await this.prisma.product.update({
-        where: { id: line.product_id },
-        data: { current_stock: newStock },
-      });
-
-      await this.prisma.stockMovement.create({
-        data: {
-          workspace_id: workspaceId,
-          product_id: line.product_id,
-          type: 'OUT',
-          quantity: qty,
-          previous_stock: previousStock,
-          new_stock: newStock,
-          reason: `Factura #${line.invoice_id?.slice(0, 8)}`,
-          reference_type: 'invoice',
-          reference_id: invoiceId,
-        },
-      });
-    }
   }
 
   private async reverseStock(workspaceId: string, invoiceId: string) {

@@ -8,6 +8,9 @@ const WORKER_ID = `webhook-worker-${crypto.randomUUID().slice(0, 8)}`;
 const BATCH_SIZE = 25;
 
 @Injectable()
+// TODO: Add dead-letter queue for webhook events that exhaust retries.
+// Currently failed events are swept (sweepStuck) but permanently lost events
+// have no fallback. Consider BullMQ dead-letter pattern or a failed_events table.
 export class WebhookEventsProcessor {
   private readonly logger = new Logger(WebhookEventsProcessor.name);
 

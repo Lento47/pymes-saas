@@ -100,6 +100,8 @@ export class ContactSalesService {
     </div>`;
 
     try {
+      // TODO(types): sendOutbound channel param uses `as any` cast — define a minimal
+      // ChannelLike interface with config_json and type to avoid unsafe casts.
       await this.emailService.sendOutbound(
         { config_json: {}, type: 'EMAIL' } as any,
         salesEmail,
@@ -121,8 +123,10 @@ export class ContactSalesService {
       </div>`;
 
       try {
-        await this.emailService.sendOutbound(
-          { config_json: {}, type: 'EMAIL' } as any,
+      // TODO(types): sendOutbound channel param uses `as any` cast — define a minimal
+      // ChannelLike interface with config_json and type to avoid unsafe casts.
+      await this.emailService.sendOutbound(
+        { config_json: {}, type: 'EMAIL' } as any,
           data.email,
           'Hemos recibido tu solicitud — PymesHub Business+',
           confirmHtml,

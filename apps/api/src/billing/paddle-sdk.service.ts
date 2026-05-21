@@ -193,6 +193,8 @@ export class PaddleSdkService {
     const newPlan = this.mapPaddlePriceToPlan(newPriceId);
     const newRank = PLAN_ORDER.indexOf(newPlan as typeof PLAN_ORDER[number]);
     const currentRank = PLAN_ORDER.indexOf(sub.plan as typeof PLAN_ORDER[number]);
+    // NOTE: same-rank (e.g. monthly→annual STARTER) is treated as downgrade.
+    // This avoids charging the user immediately when they switch billing intervals.
     const isDowngrade = newRank <= currentRank;
 
     // IMPORTANTE — PADDLE RECHAZA 'prorated_immediately' CUANDO LA SUSCRIPCION
