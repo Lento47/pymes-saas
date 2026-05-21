@@ -64,8 +64,12 @@ export default {
       const apiBase = env.API_URL || "https://api.pymeshub.lat";
       const target = new URL(url.pathname + url.search, apiBase);
 
-      // Webhook verifications + POST requests bypass KV cache
-      if (url.pathname.startsWith("/api/inbound/") || request.method !== "GET") {
+      // Webhook verifications + POST requests + dynamic data bypass KV cache
+      if (
+        url.pathname.startsWith("/api/inbound/") ||
+        url.pathname.startsWith("/api/conversations/") ||
+        request.method !== "GET"
+      ) {
         const proxied = new Request(target.toString(), request);
         proxied.headers.set("Host", target.host);
         return fetch(proxied);
