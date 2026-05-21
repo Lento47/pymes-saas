@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 import { AiModule } from "../ai/ai.module";
 import { ConversationsModule } from "../conversations/conversations.module";
 import { HaciendaModule } from "../hacienda/hacienda.module";
@@ -6,6 +6,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { FeaturesModule } from "../features/features.module";
 import { WorkersModule } from "../workers/workers.module";
+import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { InvoicesController } from "./invoices.controller";
 import { InvoicesService } from "./invoices.service";
 import { RemindersService } from "./reminders.service";
@@ -19,6 +20,7 @@ import { RemindersService } from "./reminders.service";
     FeatureFlagsModule,
     FeaturesModule,
     WorkersModule,
+    forwardRef(() => WhatsAppModule),
   ],
   controllers: [InvoicesController],
   providers: [InvoicesService, RemindersService],

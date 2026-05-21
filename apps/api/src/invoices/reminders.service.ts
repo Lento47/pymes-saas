@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException, forwardRef } from "@nestjs/common";
 import { ChannelType, ConversationStatus, InvoiceStatus, WorkspaceUserRole } from "@prisma/client";
 import { AiService } from "../ai/ai.service";
 import { PrismaService } from "../common/prisma/prisma.service";
@@ -6,6 +6,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { ConversationsService } from "../conversations/conversations.service";
 import { MessagesService } from "../conversations/messages.service";
+import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { SendReminderDto } from "./dto/send-reminder.dto";
 
 @Injectable()
@@ -17,6 +18,8 @@ export class RemindersService {
     private readonly notificationsService: NotificationsService,
     private readonly conversationsService: ConversationsService,
     private readonly messagesService: MessagesService,
+    @Inject(forwardRef(() => WhatsAppService))
+    private readonly whatsAppService: WhatsAppService,
   ) {}
 
   async detectOverdue(workspaceId: string) {
@@ -224,10 +227,74 @@ export class RemindersService {
 
     const finalDraft = dto.draft_text?.trim() || reminder.draft_text;
 
+    // Create the message record in DB
     const message = await this.messagesService.send(workspaceId, conversation.id, user, {
       direction: "OUTBOUND",
       body_text: finalDraft,
     });
+
+    // ── Dispatch to external channel ──────────────────────────────────────
+    if (channel.type === ChannelType.WHATSAPP && invoice.contact.phone) {
+      try {
+        const to = invoice.contact.phone.replace(/\D/g, "");
+
+        // Resolve workspace name for {{6}}
+        const workspace = await this.prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { name: true },
+        });
+
+        // Format amount: "₡45,000.00"
+        const amountFormatted = new Intl.NumberFormat("es-CR", {
+          style: "currency",
+          currency: invoice.currency,
+        }).format(Number(invoice.amount));
+
+        // Format due date: "15 de junio, 2026"
+        const dueDateFormatted = invoice.due_date
+          ? new Intl.DateTimeFormat("es-CR", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }).format(new Date(invoice.due_date))
+          : "—";
+
+        // Extract products summary from the draft text if present
+        const draftLines = finalDraft.split("\n");
+        const productsIdx = draftLines.findIndex((l: string) => l.includes("📦"));
+        const productsSummary =
+          productsIdx >= 0
+            ? draftLines
+                .slice(productsIdx + 1)
+                .filter((l: string) => l.trim().startsWith("-"))
+                .join("\n")
+                .substring(0, 400)
+            : "Ver detalle en el enlace";
+
+        const waResult = await this.whatsAppService.sendInvoiceTemplate(
+          channel,
+          to,
+          {
+            customerName: invoice.contact.full_name,
+            invoiceNumber: invoice.number,
+            amountFormatted,
+            dueDateFormatted,
+            productsSummary,
+            companyName: workspace?.name ?? "PymesHub",
+          },
+        );
+
+        // Link the external message ID for delivery status tracking
+        await this.prisma.message.update({
+          where: { id: message.id },
+          data: { external_message_id: waResult.message_id },
+        });
+      } catch (err: any) {
+        this.logger.error(
+          `WhatsApp invoice template dispatch failed for invoice ${invoice.number}: ${err?.message}`,
+        );
+      }
+    }
 
     const updatedReminder = await this.prisma.paymentReminder.update({
       where: { id: reminder.id },
