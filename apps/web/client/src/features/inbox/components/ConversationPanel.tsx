@@ -85,8 +85,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     queryKey: ["/api/conversations", id, "messages"],
     queryFn: () => api.getMessages(id),
     enabled: !!id,
-    staleTime: 30_000,
-    refetchInterval: 5_000,
+    staleTime: 3_000,
+    refetchInterval: 2_000,
   });
 
   const { data: members } = useQuery({
