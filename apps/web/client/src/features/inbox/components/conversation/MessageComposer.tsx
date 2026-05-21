@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Loader2, Paperclip, Send, MessageSquare, List, MapPin } from "lucide-react";
+import { FileText, List, Loader2, MapPin, MessageSquare, Paperclip, Plus, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ComposerAttachmentPreview } from "./ComposerAttachmentPreview";
 import { InteractiveToolbar, type InteractiveState } from "../composer/InteractiveToolbar";
 
@@ -142,43 +143,47 @@ export function MessageComposer({
           uploading={uploading}
           onRemove={onRemoveAttachment}
         />
-        <div className="flex items-end gap-0 rounded-xl border border-border bg-background overflow-hidden focus-within:border-primary/40 focus-within:shadow-sm focus-within:shadow-primary/5 transition-all duration-200">
-          {/* Interactive type buttons (WhatsApp only) */}
+        <div className="flex items-end gap-1.5 rounded-2xl border border-border bg-background p-1.5 shadow-sm transition-all duration-200 focus-within:border-primary/40 focus-within:shadow-primary/5">
           {isWhatsApp && !interactive.type && (
-            <div className="flex items-center gap-0.5 pl-1.5">
-              <button
-                type="button"
-                onClick={() => handleInteractiveType("buttons")}
-                className="p-1.5 rounded-md text-muted-foreground/60 hover:text-primary hover:bg-primary/[0.06] transition-colors"
-                title="Botones de respuesta"
-                disabled={!!interactive.type}
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleInteractiveType("list")}
-                className="p-1.5 rounded-md text-muted-foreground/60 hover:text-primary hover:bg-primary/[0.06] transition-colors"
-                title="Lista de opciones"
-                disabled={!!interactive.type}
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleInteractiveType("location_request")}
-                className="p-1.5 rounded-md text-muted-foreground/60 hover:text-primary hover:bg-primary/[0.06] transition-colors"
-                title="Solicitar ubicación"
-                disabled={!!interactive.type}
-              >
-                <MapPin className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 shrink-0 rounded-full p-0 text-muted-foreground hover:text-foreground"
+                  disabled={isPending || freeFormDisabled}
+                  aria-label="Más acciones de mensaje"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="top" className="w-52">
+                <DropdownMenuItem onClick={() => handleInteractiveType("buttons")}>
+                  <MessageSquare className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                  Botones de respuesta
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleInteractiveType("list")}>
+                  <List className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                  Lista de opciones
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleInteractiveType("location_request")}>
+                  <MapPin className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                  Solicitar ubicación
+                </DropdownMenuItem>
+                {onSelectTemplate && (
+                  <DropdownMenuItem onClick={onSelectTemplate}>
+                    <FileText className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                    Plantilla
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* Attachment button */}
           <label
-            className="cursor-pointer flex items-center justify-center p-2.5 text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-colors shrink-0"
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground ${freeFormDisabled ? "pointer-events-none opacity-45" : "cursor-pointer"}`}
             aria-label="Adjuntar archivo"
           >
             <Paperclip className="w-4 h-4" />
@@ -187,11 +192,12 @@ export function MessageComposer({
               className="sr-only"
               accept="image/*,video/mp4,video/quicktime,audio/mpeg,audio/ogg,audio/wav,.pdf,.docx,.xlsx"
               onChange={handleFileChange}
+              disabled={freeFormDisabled || isPending || uploading}
             />
           </label>
 
           <Textarea
-            className="flex-1 border-0 bg-transparent min-h-[40px] max-h-[100px] py-2.5 px-0 text-sm resize-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="min-h-[38px] max-h-[104px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-sm leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onInput={handleInput}
@@ -206,9 +212,9 @@ export function MessageComposer({
           <Button
             type="button"
             size="sm"
-            className={`m-1.5 h-8 w-8 p-0 rounded-lg shrink-0 ${
+            className={`h-8 w-8 shrink-0 rounded-full p-0 ${
               canSend
-                ? "bg-primary hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200 scale-100 hover:scale-105 active:scale-95"
+                ? "bg-primary text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 active:scale-95"
                 : "bg-muted text-muted-foreground/40 cursor-not-allowed"
             }`}
             onClick={handleSend}

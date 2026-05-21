@@ -55,8 +55,6 @@ export interface InboxConversation {
     name?: string | null;
     type?: string | null;
   } | null;
-  is_service_window_open?: boolean;
-  service_window_expires_at?: string | null;
   messages?: Array<{
     id?: string;
     body_text?: string | null;

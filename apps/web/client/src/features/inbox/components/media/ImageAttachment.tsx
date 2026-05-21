@@ -19,7 +19,7 @@ export function ImageAttachment({ messageId, caption, mimeType, className }: Ima
 
   if (hookLoading && !blobUrl) {
     return (
-      <div className={cn("relative flex items-center justify-center h-40 w-full max-w-64 rounded-lg bg-muted/50", className)}>
+      <div className={cn("relative flex h-44 w-64 max-w-full items-center justify-center rounded-[14px] bg-muted/45", className)}>
         <Loader2 className="absolute inset-0 m-auto h-4 w-4 animate-spin text-muted-foreground" />
       </div>
     );
@@ -27,7 +27,7 @@ export function ImageAttachment({ messageId, caption, mimeType, className }: Ima
 
   if (imgError || error || !blobUrl) {
     return (
-      <div className={cn("flex items-center gap-2 rounded-lg border border-border/50 bg-card/50 px-3 py-2.5 text-sm text-muted-foreground", className)} role="alert">
+      <div className={cn("flex items-center gap-2 rounded-[14px] border border-border/50 bg-card/60 px-3 py-2.5 text-sm text-muted-foreground", className)} role="alert">
         <AlertCircle className="h-4 w-4" />
         <span>No se pudo cargar la imagen</span>
       </div>
@@ -36,29 +36,31 @@ export function ImageAttachment({ messageId, caption, mimeType, className }: Ima
 
   return (
     <div className={cn("flex flex-col", className)}>
-      <div className="relative group cursor-pointer" onClick={() => blobUrl && window.open(blobUrl, "_blank")}>
+      <div className="group relative cursor-pointer overflow-hidden rounded-[14px]" onClick={() => blobUrl && window.open(blobUrl, "_blank")}>
         <img
           src={blobUrl}
           alt={caption ?? "Imagen adjunta"}
           role="img"
-          className="max-h-64 max-w-full rounded-lg object-contain"
+          className="max-h-72 max-w-full rounded-[14px] object-contain"
           onError={() => setImgError(true)}
         />
-        <div className="absolute inset-0 bg-black/30 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-          <Search className="w-6 h-6 text-white" />
+        <div className="absolute inset-0 flex items-center justify-center rounded-[14px] bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="rounded-full bg-black/35 p-2 text-white backdrop-blur-sm">
+            <Search className="h-4 w-4" />
+          </div>
           <a
             href={blobUrl}
             download={safeFileName(mimeType ?? "image")}
             aria-label={`Descargar imagen: ${safeFileName(mimeType ?? "image")}`}
-            className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+            className="absolute right-2 top-2 rounded-full bg-black/35 p-1.5 text-white/85 opacity-0 transition-all hover:bg-black/50 hover:text-white group-hover:opacity-100"
             onClick={(e) => e.stopPropagation()}
           >
-            <Download className="w-5 h-5" />
+            <Download className="h-3.5 w-3.5" />
           </a>
         </div>
       </div>
       {caption && (
-        <p className="mt-1.5 text-[11px] text-muted-foreground/80">
+        <p className="px-1 pt-1.5 text-[11px] leading-snug text-muted-foreground/80">
           <SensitiveText text={caption} />
         </p>
       )}

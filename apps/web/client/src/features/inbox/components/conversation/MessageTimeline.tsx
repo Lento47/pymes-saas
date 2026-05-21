@@ -58,18 +58,26 @@ export function MessageTimeline({
   });
 
   if (isLoading) {
-    return <EmptyConversationState isLoading />;
+    return (
+      <div className={`relative flex-1 min-h-0 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
+        <EmptyConversationState isLoading />
+      </div>
+    );
   }
 
   if (messages.length === 0) {
-    return <EmptyConversationState isLoading={false} contactName={contactName} />;
+    return (
+      <div className={`relative flex-1 min-h-0 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
+        <EmptyConversationState isLoading={false} contactName={contactName} />
+      </div>
+    );
   }
 
   return (
     <div className={`relative flex-1 min-h-0 overflow-hidden bg-muted/[0.12] ${className ?? ""}`}>
       <div
         ref={scrollRef}
-        className="h-full overflow-y-auto px-4 py-4"
+        className="h-full overflow-y-auto px-3 py-4 sm:px-4 sm:py-5"
         onScroll={onScroll}
         style={{ scrollbarWidth: "thin" }}
       >
@@ -118,13 +126,13 @@ export function MessageTimeline({
       </div>
 
       {!nearBottom && messages.length > 0 && (
-        <div className="absolute bottom-3 left-0 right-0 flex justify-center z-10 pointer-events-none">
+        <div className="absolute bottom-4 left-0 right-0 z-10 flex justify-center pointer-events-none">
           <button
             onClick={onScrollToBottom}
             aria-label="Ir al final de la conversación"
-            className="pointer-events-auto px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-medium shadow-lg hover:bg-primary/90 transition-all duration-200 hover:scale-105 active:scale-95"
+            className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-border/50 bg-background/95 px-3 py-1.5 text-[11px] font-medium text-foreground shadow-lg shadow-black/10 backdrop-blur transition-all duration-200 hover:border-primary/30 hover:text-primary active:scale-95"
           >
-            <ArrowDown className="w-3 h-3 inline mr-1" /> Nuevos mensajes
+            <ArrowDown className="w-3 h-3" /> Nuevos mensajes
           </button>
         </div>
       )}

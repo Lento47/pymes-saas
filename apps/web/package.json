@@ -7,7 +7,7 @@
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
-    "check": "node_modules/.bin/tsc --noEmit",
+    "check": "tsc --noEmit --incremental false",
     "lint": "eslint \"{client/src,server}/**/*.{ts,tsx}\"",
     "format": "prettier --write \"{client/src,server}/**/*.{ts,tsx}\"",
     "test": "vitest run",

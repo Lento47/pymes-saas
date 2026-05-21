@@ -23,6 +23,16 @@ interface MessageBubbleProps {
 const URL_REGEX = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
 const URL_PATTERN = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/;
 
+type BubbleVariant =
+  | "text"
+  | "media"
+  | "sticker"
+  | "audio"
+  | "document"
+  | "location"
+  | "contact"
+  | "system";
+
 function renderTextWithLinks(text: string) {
   const parts = text.split(URL_REGEX);
   return parts.map((part, i) => {
@@ -48,6 +58,37 @@ function getInitials(name: string) {
   return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?";
 }
 
+function getBubbleVariant(message: UiMessage): BubbleVariant {
+  switch (message.mediaType) {
+    case "image":
+    case "video":
+      return "media";
+    case "sticker":
+      return "sticker";
+    case "audio":
+      return "audio";
+    case "document":
+      return "document";
+    case "location":
+      return "location";
+    case "contact":
+      return "contact";
+    case "text":
+    case null:
+    case undefined:
+      return message.direction === "INTERNAL" ? "system" : "text";
+    default:
+      return "text";
+  }
+}
+
+function bubbleRadius(isOutbound: boolean, isConsecutive: boolean, loose = false) {
+  if (!isConsecutive) return loose ? "rounded-[18px]" : "rounded-2xl";
+  return isOutbound
+    ? loose ? "rounded-[18px] rounded-tr-md" : "rounded-2xl rounded-tr-md"
+    : loose ? "rounded-[18px] rounded-tl-md" : "rounded-2xl rounded-tl-md";
+}
+
 export const MessageBubble = function MessageBubble({
   message,
   isConsecutive,
@@ -58,8 +99,8 @@ export const MessageBubble = function MessageBubble({
   className,
 }: MessageBubbleProps) {
   const isOutbound = message.direction === "OUTBOUND";
-  const hasMedia = !!message.mediaType && message.mediaType !== "text";
   const isShort = message.bodyText?.length < 100;
+  const variant = getBubbleVariant(message);
 
   const timeString = useMemo(() => {
     return message.sentAt ? new Date(message.sentAt).toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" }) : "";
@@ -68,52 +109,29 @@ export const MessageBubble = function MessageBubble({
   const senderLabel = isOutbound ? "Tú" : (contactName || "Contacto");
 
   const bubbleClasses = useMemo(() => {
-    const base = "max-w-[75%]";
-    const spacing = isConsecutive ? "mt-0.5" : "mt-2";
+    const spacing = isConsecutive ? "mt-0.5" : "mt-2.5";
+    const surface = isOutbound
+      ? "bg-primary/[0.075] border border-primary/[0.14]"
+      : "bg-card border border-border/55 shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
 
-    if (message.mediaType === "sticker") {
-      return `${base} ${spacing} bg-transparent border-0 shadow-none rounded-none px-0 py-0`;
+    switch (variant) {
+      case "sticker":
+        return `max-w-[180px] ${spacing} bg-transparent border-0 shadow-none px-0 py-0`;
+      case "media":
+        return `relative max-w-[78%] sm:max-w-[360px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive, true)} p-1 overflow-hidden`;
+      case "audio":
+        return `max-w-[82%] sm:max-w-[340px] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive, true)} px-2.5 py-2`;
+      case "document":
+      case "location":
+      case "contact":
+        return `max-w-[82%] sm:max-w-[360px] ${spacing} bg-transparent border-0 shadow-none p-0`;
+      case "system":
+        return `max-w-[82%] ${spacing} rounded-full bg-muted/45 border border-border/40 px-3 py-1.5`;
+      case "text":
+      default:
+        return `max-w-[78%] sm:max-w-[68%] ${spacing} ${surface} ${bubbleRadius(isOutbound, isConsecutive)} ${isShort ? "px-3 py-2" : "px-3.5 py-2.5"}`;
     }
-
-    if (message.mediaType === "image" || message.mediaType === "video") {
-      const radius = isConsecutive
-        ? isOutbound ? "rounded-tr-sm rounded-bl-lg rounded-br-lg" : "rounded-tl-sm rounded-bl-lg rounded-br-lg"
-        : "rounded-2xl";
-      const bg = isOutbound
-        ? "bg-primary/[0.06] border border-primary/[0.10]"
-        : "bg-card border border-border/40 shadow-sm";
-      return `${base} ${spacing} ${bg} ${radius} px-1 py-1`;
-    }
-
-    if (message.mediaType === "audio") {
-      const radius = isConsecutive
-        ? isOutbound ? "rounded-tr-sm rounded-bl-lg rounded-br-lg" : "rounded-tl-sm rounded-bl-lg rounded-br-lg"
-        : "rounded-2xl";
-      const bg = isOutbound
-        ? "bg-primary/[0.06] border border-primary/[0.10]"
-        : "bg-card border border-border/40 shadow-sm";
-      return `${base} ${spacing} ${bg} ${radius} px-2 py-1.5`;
-    }
-
-    if (message.mediaType === "document" || message.mediaType === "location" || message.mediaType === "contact") {
-      const radius = isConsecutive
-        ? isOutbound ? "rounded-tr-sm rounded-bl-lg rounded-br-lg" : "rounded-tl-sm rounded-bl-lg rounded-br-lg"
-        : "rounded-2xl";
-      const bg = isOutbound
-        ? "bg-primary/[0.06] border border-primary/[0.10]"
-        : "bg-card border border-border/40 shadow-sm";
-      return `${base} ${spacing} ${bg} ${radius} px-2 py-2`;
-    }
-
-    const radius = isConsecutive
-      ? isOutbound ? "rounded-tr-md rounded-bl-2xl rounded-br-2xl" : "rounded-tl-md rounded-bl-2xl rounded-br-2xl"
-      : "rounded-2xl";
-    const bg = isOutbound
-      ? "bg-primary/[0.08] border border-primary/[0.12]"
-      : "bg-card border border-border/50 shadow-sm";
-    const padding = isShort ? "px-3 py-2" : "px-3.5 py-2.5";
-    return `${base} ${spacing} ${bg} ${radius} ${padding}`;
-  }, [message.mediaType, isConsecutive, isOutbound, isShort]);
+  }, [variant, isConsecutive, isOutbound, isShort]);
 
   const renderContent = () => {
     switch (message.mediaType) {
@@ -149,7 +167,7 @@ export const MessageBubble = function MessageBubble({
   };
 
   return (
-    <div className={`flex gap-2 ${isOutbound ? "justify-end" : ""} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
+    <div className={`flex gap-2 px-1 ${isOutbound ? "justify-end" : ""} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
       {!isOutbound && !isConsecutive && (
         <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-auto ring-1 ring-border/50 overflow-hidden" aria-label={`Avatar de ${senderLabel}`}>
           {contactAvatarUrl ? (
@@ -170,6 +188,8 @@ export const MessageBubble = function MessageBubble({
           message={message}
           isOutbound={isOutbound}
           showSenderName={showSenderName}
+          compact={variant === "sticker" || variant === "document" || variant === "location" || variant === "contact"}
+          overlay={variant === "media"}
         />
       </div>
     </div>

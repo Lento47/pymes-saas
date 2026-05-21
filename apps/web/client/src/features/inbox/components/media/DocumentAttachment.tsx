@@ -53,7 +53,7 @@ export function DocumentAttachment({
 
   if (loading && !blobUrl) {
     return (
-      <div className={cn("flex items-center gap-2 rounded-lg border border-border/50 bg-card/50 px-3 py-2.5", className)}>
+      <div className={cn("flex items-center gap-2 rounded-xl border border-border/50 bg-card/70 px-3 py-2.5", className)}>
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         <span className="text-sm text-muted-foreground">Cargando…</span>
       </div>
@@ -62,7 +62,7 @@ export function DocumentAttachment({
 
   if (error || !blobUrl) {
     return (
-      <div className={cn("flex items-center gap-2 rounded-lg border border-border/50 bg-card/50 px-3 py-2.5 text-sm text-muted-foreground", className)} role="alert">
+      <div className={cn("flex items-center gap-2 rounded-xl border border-border/50 bg-card/70 px-3 py-2.5 text-sm text-muted-foreground", className)} role="alert">
         <AlertCircle className="h-4 w-4" />
         <span>No se pudo cargar el documento</span>
       </div>
@@ -70,10 +70,12 @@ export function DocumentAttachment({
   }
 
   return (
-    <div className={cn("group flex items-center gap-3 rounded-lg border border-border/50 bg-card/50 px-3 py-2.5 hover:bg-card/80 hover:border-border/70 transition-all duration-150", className)}>
-      <FileText className="h-6 w-6 shrink-0 text-primary" />
+    <div className={cn("group flex min-w-[230px] max-w-[360px] items-center gap-3 rounded-xl border border-border/55 bg-card/80 px-3 py-2.5 shadow-sm transition-all duration-150 hover:border-border/80 hover:bg-card", className)}>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/[0.08] text-primary">
+        <FileText className="h-5 w-5" />
+      </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium group-hover:text-primary/80">
+        <p className="truncate text-sm font-medium leading-snug group-hover:text-primary/80">
           <SensitiveText text={displayName} />
         </p>
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground/50">
@@ -81,7 +83,7 @@ export function DocumentAttachment({
           {sizeBytes != null && <span>{formatFileSize(sizeBytes)}</span>}
         </div>
         {caption && (
-          <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+          <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground/80">
             <SensitiveText text={caption} />
           </p>
         )}
@@ -90,7 +92,7 @@ export function DocumentAttachment({
         href={blobUrl}
         download={displayName}
         aria-label={`Descargar ${displayName}`}
-        className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="shrink-0 rounded-md p-1.5 text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
       >
         <Download className="h-4 w-4" aria-hidden="true" />
       </a>
