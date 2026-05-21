@@ -10,6 +10,7 @@ import { MessageTimeline } from "./conversation/MessageTimeline";
 import { MessageComposer } from "./conversation/MessageComposer";
 import { InvoiceDialog } from "./conversation/InvoiceDialog";
 import { DeleteConversationAlert } from "./conversation/DeleteConversationAlert";
+import { ContactFromConversationDialog } from "./ContactFromConversationDialog";
 import { useAvatarUrl } from "@/hooks/use-avatar-url";
 import { normalizeMessage } from "@/features/inbox/message-adapters";
 import type { UiMessage } from "@/features/inbox/message-types";
@@ -46,6 +47,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const [uploading, setUploading] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
+  const [showAddContact, setShowAddContact] = useState(false);
   const [isUserTyping, setIsUserTyping] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -416,9 +418,11 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         onRefresh={() => qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] })}
         onInvoice={() => setShowInvoice(true)}
         onDelete={() => setShowDelete(true)}
+        onAddContact={() => setShowAddContact(true)}
         members={memberList as Array<{ user?: { id: string; name?: string }; id: string; name?: string; email?: string }>}
         canResolve={conversation?.status !== "RESOLVED"}
         canSendInvoice={canSendInvoice}
+        canAddContact={!conversation?.contact?.id}
       />
 
       <MessageTimeline
@@ -467,6 +471,13 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         onOpenChange={setShowDelete}
         onDelete={() => deleteMut.mutate()}
         deletePending={deleteMut.isPending}
+      />
+
+      <ContactFromConversationDialog
+        open={showAddContact}
+        onOpenChange={setShowAddContact}
+        conversationId={id}
+        conversation={conversation ?? null}
       />
     </div>
   );

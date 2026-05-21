@@ -8,6 +8,7 @@ import { InboxToolbar } from "./components/InboxToolbar";
 import { ConversationList } from "./components/ConversationList";
 import { ConversationPanel } from "./components/ConversationPanel";
 import { CustomerContextPanel } from "./components/CustomerContextPanel";
+import { ContactFromConversationDialog } from "./components/ContactFromConversationDialog";
 import { buildConversationQueryParams, normalizeConversationResponse } from "./utils";
 import type { ChannelTab, ConversationStatusFilter } from "./types";
 import { HelpButton } from "@/components/shared/help-button";
@@ -26,6 +27,7 @@ export default function InboxPage() {
   const [statusFilter, setStatusFilter] = useState<ConversationStatusFilter>("ALL");
   const [channelTab, setChannelTab] = useState<ChannelTab>("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(urlConversationId);
+  const [showAddContact, setShowAddContact] = useState(false);
 
   const queryParams = buildConversationQueryParams({ search, statusFilter, channelTab, assignedUserId: user?.id });
 
@@ -68,7 +70,10 @@ export default function InboxPage() {
             </div>
           </section>
         )}
-        <CustomerContextPanel conversation={selectedConversation} />
+        <CustomerContextPanel
+          conversation={selectedConversation}
+          onAddContact={selectedId ? () => setShowAddContact(true) : undefined}
+        />
       </div>
 
       {/* Mobile: list or conversation detail */}
@@ -88,6 +93,14 @@ export default function InboxPage() {
           />
         )}
       </div>
+      {selectedId && (
+        <ContactFromConversationDialog
+          open={showAddContact}
+          onOpenChange={setShowAddContact}
+          conversationId={selectedId}
+          conversation={selectedConversation}
+        />
+      )}
       <HelpButton page="Bandeja" />
     </div>
   );
