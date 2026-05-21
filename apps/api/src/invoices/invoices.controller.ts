@@ -11,6 +11,7 @@ import {
   UseGuards,
   Logger,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { Roles } from "../auth/decorators/roles.decorator";
@@ -46,6 +47,7 @@ export class InvoicesController {
 
   @Post()
   @Roles(WorkspaceUserRole.AGENT)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async create(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: CreateInvoiceDto) {
     await this.features.assertEnabled(workspaceId, "billing");
     return this.invoicesService.create(workspaceId, dto);
@@ -96,6 +98,7 @@ export class InvoicesController {
 
   @Post(":id/payments")
   @Roles(WorkspaceUserRole.AGENT)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   registerPayment(
     @CurrentUser() user: AuthUser,
     @Param("id", ValidateUUIDPipe) id: string,
@@ -107,6 +110,7 @@ export class InvoicesController {
   @Post(":id/submit")
   @Roles(WorkspaceUserRole.AGENT)
   @RequireFeature("hacienda")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   submitToHacienda(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,

@@ -38,6 +38,7 @@ import { PipelineModule } from "./pipeline/pipeline.module";
 import { HealthModule } from "./health/health.module";
 import { AiModule } from "./ai/ai.module";
 import { ApiTokensModule } from "./api-tokens/api-tokens.module";
+import { SanitizeModule } from "./common/sanitize/sanitize.module";
 import { BillingModule } from "./billing/billing.module";
 import { RoutingModule } from "./routing/routing.module";
 import { PlanThrottlerGuard } from "./common/plan-limits/plan-throttler.guard";
@@ -73,6 +74,7 @@ import { InventoryModule } from "./inventory/inventory.module";
     StorageModule,
     CryptoModule,
     PlanLimitsModule,
+    SanitizeModule,
 
     AuthModule,
     WorkspacesModule,

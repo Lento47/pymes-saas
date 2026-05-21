@@ -1,4 +1,4 @@
-import * as PDFDocument from "pdfkit";
+import PDFDocument from "pdfkit";
 
 export interface BillingInvoicePdfData {
   id: string;
