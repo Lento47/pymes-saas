@@ -25,10 +25,8 @@
   --foreground:        var(--fg);
   --card:              var(--bg-card);
   --card-foreground:   var(--fg);
-  --card-border:       var(--border);
   --popover:           var(--bg-elevated);
   --popover-foreground: var(--fg);
-  --border-color:      var(--border);
   --primary:           var(--accent);
   --primary-foreground: var(--accent-fg);
   --secondary:         var(--bg-card);
@@ -56,6 +54,12 @@
   --chart-4:           270 60% 62%;  /* purple */
   --chart-5:           0 72% 51%;    /* red */
   --radius: 0.25rem;
+
+  /* ── Status semantic tokens ── */
+  --status-open:     145 63% 42%;   /* green */
+  --status-resolved: 228 65% 55%;   /* indigo */
+  --status-pending:  38 95% 54%;    /* amber */
+  --status-overdue:  0 72% 51%;     /* red */
 }
 
 /* ── Light theme (opt-in) ── */
@@ -71,8 +75,11 @@ html.light {
   --fg-2:         220 8% 46%;
   --fg-3:         220 6% 65%;
   --accent:       240 65% 52%;
+  --accent-fg:    0 0% 100%;
   --danger:       0 72% 45%;
+  --danger-fg:    0 0% 100%;
   --success:      145 63% 38%;
+  --warning:      35 90% 48%;
 }
 
 :root {
@@ -93,6 +100,15 @@ body {
   font-size: 13px;
   line-height: 1.5;
   overflow-x: hidden;
+}
+
+/* ── Global interactive transition base ── */
+@layer base {
+  button, a, input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"]) {
+    transition-property: background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
 }
 
 /* Safari scrollbar fix: webkit-scrollbar not supported, removed */
@@ -163,8 +179,8 @@ html.light .marketing-grid {
 
 .luminous-border { position: relative; }
 
-.glow-button { box-shadow: none; }
-.soft-glow { box-shadow: none; }
+.glow-button { box-shadow: 0 0 24px rgba(245, 158, 11, 0.30), 0 0 48px rgba(245, 158, 11, 0.10); }
+.soft-glow { text-shadow: 0 0 20px rgba(251, 191, 36, 0.40); }
 
 @keyframes float-y {
   0%, 100% { transform: translateY(0); will-change: transform; }

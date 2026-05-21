@@ -6,9 +6,9 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: "0.25rem",
-        md: "0.25rem",
-        sm: "0.125rem",
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
         panel: "18px",
         card: "16px",
         control: "12px",
