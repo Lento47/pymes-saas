@@ -31,24 +31,35 @@ function extractBodyText(raw: Record<string, any>): string {
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&nbsp;/g, " ")
-      .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(Number(num)))
+      .replace(/&#(\\d+);/g, (_, num) => String.fromCharCode(Number(num)))
       .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
   }
   return "";
 }
 
+/**
+ * Priority: DB message_type → msg.media_type → inferred from body
+ */
 function detectMediaType(raw: Record<string, any>, bodyText: string): MediaType | null {
-  const messageType = raw.message_type;
+  // DB-level type
+  const dbType = raw.message_type;
   const mediaType = raw.media_type;
 
-  if (mediaType === "image" || mediaType === "video" || mediaType === "audio" || mediaType === "document" || mediaType === "sticker" || mediaType === "location" || mediaType === "contact") {
+  if (dbType) {
+    const t = String(dbType).toLowerCase();
+    if (t === "image" || t === "video" || t === "audio" || t === "document" ||
+        t === "sticker" || t === "location" || t === "contact") {
+      return t as MediaType;
+    }
+  }
+
+  if (mediaType === "image" || mediaType === "video" || mediaType === "audio" ||
+      mediaType === "document" || mediaType === "sticker" || mediaType === "location" ||
+      mediaType === "contact") {
     return mediaType;
   }
 
-  if (messageType === "sticker" || messageType === "location" || messageType === "contact") {
-    return messageType;
-  }
-
+  // Detect from bodyText patterns
   if (bodyText.startsWith("\ud83d\udccd ")) return "location";
   if (bodyText.startsWith("\ud83d\udc64 ")) return "contact";
 
@@ -56,6 +67,8 @@ function detectMediaType(raw: Record<string, any>, bodyText: string): MediaType 
 }
 
 function detectSticker(raw: Record<string, any>): boolean {
+  const dbType = String(raw.message_type ?? "").toLowerCase();
+  if (dbType === "sticker") return true;
   if (raw.media_type === "sticker" || raw.message_type === "sticker") return true;
 
   const mimeType = raw.media_mime_type;
@@ -66,15 +79,24 @@ function detectSticker(raw: Record<string, any>): boolean {
 }
 
 function detectLocation(raw: Record<string, any>, bodyText: string): boolean {
-  return raw.media_type === "location" || raw.message_type === "location" || bodyText.startsWith("\ud83d\udccd ");
+  return detectMediaType(raw, bodyText) === "location" ||
+    raw.media_type === "location" || raw.message_type === "location" ||
+    bodyText.startsWith("\ud83d\udccd ");
 }
 
 function detectContact(raw: Record<string, any>, bodyText: string): boolean {
-  return raw.media_type === "contact" || raw.message_type === "contact" || bodyText.startsWith("\ud83d\udc64 ");
+  return detectMediaType(raw, bodyText) === "contact" ||
+    raw.media_type === "contact" || raw.message_type === "contact" ||
+    bodyText.startsWith("\ud83d\udc64 ");
+}
+
+function detectReaction(raw: Record<string, any>): boolean {
+  return String(raw.message_type ?? "").toLowerCase() === "reaction";
 }
 
 function buildMediaUrl(raw: Record<string, any>): string | null {
   if (raw.media_download_url) return String(raw.media_download_url);
+  if (raw.media_url) return String(raw.media_url);
   if (raw.has_media) return `/api/conversations/messages/${raw.id}/media`;
   return null;
 }
@@ -83,6 +105,24 @@ function extractMediaStatus(raw: Record<string, any>): MediaStatus {
   const status = raw.media_status;
   if (status === "none" || status === "processing" || status === "available" || status === "error") return status;
   return raw.has_media ? "available" : "none";
+}
+
+function extractDeliveryStatus(raw: Record<string, any>): string | null {
+  return raw.delivery_status ?? raw.provider_status ?? null;
+}
+
+function parseAttachments(raw: Record<string, any>): { type: string; url: string; filename?: string; mimeType?: string } | null {
+  // Check explicit media_url from DB
+  const mediaUrl = raw.media_url ?? raw.media_download_url;
+  if (mediaUrl) {
+    return {
+      type: raw.message_type ?? "document",
+      url: String(mediaUrl),
+      filename: raw.media_filename ?? undefined,
+      mimeType: raw.media_mime_type ?? undefined,
+    };
+  }
+  return null;
 }
 
 function buildAttachments(raw: Record<string, any>): MessageAttachment[] {
@@ -148,9 +188,12 @@ export function normalizeMessage(raw: Record<string, any>): UiMessage {
     isSticker: detectSticker(raw),
     isLocation: detectLocation(raw, bodyText),
     isContact: detectContact(raw, bodyText),
+    isReaction: detectReaction(raw),
     provider: raw.provider ?? null,
-    deliveryStatus: raw.delivery_status ?? null,
+    deliveryStatus: extractDeliveryStatus(raw),
     deliveryError: raw.delivery_error ?? null,
+    replyToMessageId: raw.reply_to_message_id ?? null,
+    wamid: raw.external_message_id ?? null,
     raw,
   };
 }

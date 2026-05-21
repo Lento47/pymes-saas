@@ -40,9 +40,12 @@ export interface UiMessage {
   isSticker: boolean;
   isLocation: boolean;
   isContact: boolean;
+  isReaction: boolean;
   provider?: string | null;
   deliveryStatus?: string | null;
   deliveryError?: string | null;
+  replyToMessageId?: string | null;
+  wamid?: string | null;
   raw?: Record<string, any>;
 }
 

@@ -9,6 +9,7 @@ import { MessageTimeline } from "./conversation/MessageTimeline";
 import { MessageComposer } from "./conversation/MessageComposer";
 import { InvoiceDialog } from "./conversation/InvoiceDialog";
 import { DeleteConversationAlert } from "./conversation/DeleteConversationAlert";
+import { useAvatarUrl } from "@/hooks/use-avatar-url";
 import { normalizeMessage } from "@/features/inbox/message-adapters";
 import type { UiMessage } from "@/features/inbox/message-types";
 
@@ -46,6 +47,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const id = conversationId || "";
 
   const { data: conv } = useQuery({
@@ -54,6 +56,29 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     enabled: !!id,
     staleTime: 30_000,
   });
+
+  // ── Read receipt when conversation opens ──
+  useEffect(() => {
+    if (!id || !conv?.channel?.type || String(conv.channel.type).toUpperCase() !== "WHATSAPP") return;
+    api.sendReadReceipt(id).catch(() => { /* best-effort */ });
+  }, [id, conv?.channel?.type]);
+
+  // ── Typing indicator with debounce ──
+  useEffect(() => {
+    if (!id || !conv?.channel?.type || String(conv.channel.type).toUpperCase() !== "WHATSAPP") return;
+
+    if (message.length > 0) {
+      api.sendTypingIndicator(id, "typing_on").catch(() => {});
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        api.sendTypingIndicator(id, "typing_off").catch(() => {});
+      }, 3000);
+    }
+
+    return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    };
+  }, [id, message, conv?.channel?.type]);
 
   const { data: messages, isLoading: msgsLoading } = useQuery({
     queryKey: ["/api/conversations", id, "messages"],
@@ -185,6 +210,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const conversation = conv;
   const contact = conversation?.contact;
   const contactName = contact?.full_name || "Desconocido";
+  const contactIdentity = contact?.email ?? contact?.phone ?? contact?.id ?? contactName;
+  const contactAvatarUrl = useAvatarUrl(contactIdentity);
   const channelType = conversation?.channel?.type || "";
   const canSendInvoice = ["EMAIL", "WHATSAPP", "TELEGRAM"].includes(channelType?.toUpperCase() ?? "");
 
@@ -238,6 +265,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
       <ConversationHeader
         contactName={contactName}
         contactAvatarInitials={getInitials(contactName)}
+        contactAvatarUrl={contactAvatarUrl}
         channelType={channelType || undefined}
         statusLabel={statusLabel ?? undefined}
         assigneeName={assigneeName}
@@ -258,6 +286,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         isLoading={msgsLoading}
         contactName={contactName}
         contactAvatarInitials={getInitials(contactName)}
+        contactAvatarUrl={contactAvatarUrl}
         scrollRef={scrollRef}
         bottomRef={bottomRef}
         nearBottom={nearBottom}

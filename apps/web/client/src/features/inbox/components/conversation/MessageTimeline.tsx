@@ -28,6 +28,7 @@ interface MessageTimelineProps {
   isLoading: boolean;
   contactName?: string;
   contactAvatarInitials?: string;
+  contactAvatarUrl?: string | null;
   scrollRef: React.RefObject<HTMLDivElement>;
   bottomRef: React.RefObject<HTMLDivElement>;
   nearBottom: boolean;
@@ -41,6 +42,7 @@ export function MessageTimeline({
   isLoading,
   contactName,
   contactAvatarInitials,
+  contactAvatarUrl,
   scrollRef,
   bottomRef,
   nearBottom,
@@ -106,6 +108,7 @@ export function MessageTimeline({
                   showSenderName={showSenderName}
                   contactName={contactName}
                   contactAvatarInitials={contactAvatarInitials}
+                  contactAvatarUrl={contactAvatarUrl}
                 />
               </div>
             );

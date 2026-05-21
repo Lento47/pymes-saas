@@ -39,6 +39,13 @@ function ConversationListItemImpl({
     conversation.contact?.name ||
     "Contacto desconocido";
 
+  // Privacy-safe identity for avatar hashing (never use raw name)
+  const contactIdentity =
+    conversation.contact?.email ||
+    conversation.contact?.phone ||
+    conversation.contact?.id ||
+    null;
+
   const msgs = conversation.messages;
   const preview =
     (msgs?.[msgs.length - 1]?.body_text) ||
@@ -68,7 +75,7 @@ function ConversationListItemImpl({
       <div className="flex gap-3 items-start">
         {/* Avatar with status dot */}
         <div className="relative shrink-0">
-          <AvatarFallback name={contactName} />
+          <AvatarFallback name={contactName} identity={contactIdentity} />
           <span
             aria-hidden
             className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background ${statusDot}`}

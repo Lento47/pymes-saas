@@ -16,6 +16,7 @@ interface MessageBubbleProps {
   showSenderName: boolean;
   contactName?: string;
   contactAvatarInitials?: string;
+  contactAvatarUrl?: string | null;
   className?: string;
 }
 
@@ -53,6 +54,7 @@ export const MessageBubble = function MessageBubble({
   showSenderName,
   contactName,
   contactAvatarInitials,
+  contactAvatarUrl,
   className,
 }: MessageBubbleProps) {
   const isOutbound = message.direction === "OUTBOUND";
@@ -149,10 +151,14 @@ export const MessageBubble = function MessageBubble({
   return (
     <div className={`flex gap-2 ${isOutbound ? "justify-end" : ""} ${className ?? ""}`} role="article" aria-label={`${senderLabel} · ${timeString}`}>
       {!isOutbound && !isConsecutive && (
-        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-auto ring-1 ring-border/50" aria-label={`Avatar de ${senderLabel}`}>
-          <span className="text-[10px] font-semibold text-muted-foreground">
-            {contactAvatarInitials || getInitials(contactName || "")}
-          </span>
+        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-auto ring-1 ring-border/50 overflow-hidden" aria-label={`Avatar de ${senderLabel}`}>
+          {contactAvatarUrl ? (
+            <img src={contactAvatarUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-[10px] font-semibold text-muted-foreground">
+              {contactAvatarInitials || getInitials(contactName || "")}
+            </span>
+          )}
         </div>
       )}
       {!isOutbound && isConsecutive && (

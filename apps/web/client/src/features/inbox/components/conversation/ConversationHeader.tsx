@@ -9,6 +9,7 @@ import { SensitiveText } from "@/components/shared/sensitive-text";
 interface ConversationHeaderProps {
   contactName: string;
   contactAvatarInitials: string;
+  contactAvatarUrl?: string | null;
   channelType?: string;
   statusLabel?: string;
   assigneeName?: string | null;
@@ -28,6 +29,7 @@ interface ConversationHeaderProps {
 export function ConversationHeader({
   contactName,
   contactAvatarInitials,
+  contactAvatarUrl,
   channelType,
   statusLabel,
   assigneeName,
@@ -51,8 +53,12 @@ export function ConversationHeader({
         </Button>
       )}
 
-      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 ring-1 ring-border/50" aria-hidden="true">
-        <span className="text-[11px] font-semibold text-muted-foreground">{contactAvatarInitials}</span>
+      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 ring-1 ring-border/50 overflow-hidden" aria-hidden="true">
+        {contactAvatarUrl ? (
+          <img src={contactAvatarUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-[11px] font-semibold text-muted-foreground">{contactAvatarInitials}</span>
+        )}
       </div>
 
       <div className="flex-1 min-w-0">
