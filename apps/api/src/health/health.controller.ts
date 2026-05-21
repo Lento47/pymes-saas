@@ -130,14 +130,18 @@ export class HealthController {
     const usage = process.memoryUsage();
     const heapUsedMB = Math.round(usage.heapUsed / 1024 / 1024);
     const heapTotalMB = Math.round(usage.heapTotal / 1024 / 1024);
+    const heapLimitMB = Math.round(usage.heapSizeLimit / 1024 / 1024);
     const rssMB = Math.round(usage.rss / 1024 / 1024);
-    const percent = Math.round((usage.heapUsed / usage.heapTotal) * 100);
+    const externalMB = Math.round(usage.external / 1024 / 1024);
+    const percentOfLimit = Math.round((usage.heapUsed / usage.heapSizeLimit) * 100);
 
-    const status: "ok" | "error" = percent > 90 ? "error" : "ok";
+    // heapTotal is V8's current allocation, NOT the max. V8 expands it on demand.
+    // Only alert when heapUsed approaches the actual heapSizeLimit (the container cap).
+    const status: "ok" | "error" = percentOfLimit > 90 ? "error" : "ok";
 
     checks.memory = {
       status,
-      detail: `heap ${heapUsedMB}/${heapTotalMB}MB (${percent}%) · rss ${rssMB}MB`,
+      detail: `heap ${heapUsedMB}/${heapTotalMB}MB (${heapLimitMB}MB limit, ${percentOfLimit}%) · rss ${rssMB}MB · ext ${externalMB}MB`,
     };
   }
 }
