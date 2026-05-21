@@ -20,9 +20,11 @@ interface ConversationHeaderProps {
   onRefresh?: () => void;
   onInvoice?: () => void;
   onDelete?: () => void;
+  onAddContact?: () => void;
   members?: Array<{ user?: { id: string; name?: string }; id: string; name?: string; email?: string }>;
   canResolve?: boolean;
   canSendInvoice?: boolean;
+  canAddContact?: boolean;
   className?: string;
 }
 
@@ -40,9 +42,11 @@ export function ConversationHeader({
   onRefresh,
   onInvoice,
   onDelete,
+  onAddContact,
   members,
   canResolve,
   canSendInvoice,
+  canAddContact,
   className,
 }: ConversationHeaderProps) {
   return (
@@ -125,6 +129,12 @@ export function ConversationHeader({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
+              {onAddContact && canAddContact && (
+                <DropdownMenuItem onClick={onAddContact}>
+                  <UserPlus className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                  Agregar contacto
+                </DropdownMenuItem>
+              )}
               {onRefresh && (
                 <DropdownMenuItem onClick={onRefresh}>
                   <RefreshCw className="w-3.5 h-3.5 mr-2 text-muted-foreground" />

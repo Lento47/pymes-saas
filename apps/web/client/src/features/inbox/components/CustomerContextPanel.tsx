@@ -4,8 +4,8 @@ import { api } from "@/lib/api";
 import type { InboxConversation } from "../types";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Sparkles, TrendingUp, MessageCircle, Receipt, Target,
-  Loader2, ChevronDown, ChevronUp, User, Hash, Copy, ExternalLink,
+  ClipboardList, TrendingUp, MessageCircle, Receipt, Target,
+  Loader2, ChevronDown, ChevronUp, User, Hash, Copy, ExternalLink, UserPlus,
 } from "lucide-react";
 
 const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
@@ -33,8 +33,10 @@ function DataRow({ label, value }: { label: string; value: string }) {
 
 export function CustomerContextPanel({
   conversation,
+  onAddContact,
 }: {
   conversation: InboxConversation | null;
+  onAddContact?: () => void;
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -69,6 +71,16 @@ export function CustomerContextPanel({
           <DataRow label="Teléfono" value={(conversation.contact as any).phone} />
         )}
         <DataRow label="Canal" value={conversation.channel?.name || "—"} />
+        {!contactId && onAddContact && (
+          <button
+            type="button"
+            onClick={onAddContact}
+            className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted/40"
+          >
+            <UserPlus className="h-3 w-3 text-muted-foreground" />
+            Agregar contacto
+          </button>
+        )}
       </div>
 
       {/* Conversation state section */}
@@ -246,8 +258,8 @@ function ClientMetrics({ contactId, queryClient }: { contactId: string; queryCli
           </>
         ) : (
           <>
-            <Sparkles className="w-3 h-3" />
-            Extraer datos inteligentes
+            <ClipboardList className="w-3 h-3" />
+            Extraer datos del cliente
           </>
         )}
       </button>
