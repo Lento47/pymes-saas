@@ -1,6 +1,7 @@
 import { Controller, Get, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../common/prisma/prisma.service";
+import v8 from "node:v8";
 
 const startedAt = new Date();
 
@@ -130,10 +131,10 @@ export class HealthController {
     const usage = process.memoryUsage();
     const heapUsedMB = Math.round(usage.heapUsed / 1024 / 1024);
     const heapTotalMB = Math.round(usage.heapTotal / 1024 / 1024);
-    const heapLimitMB = Math.round(usage.heapSizeLimit / 1024 / 1024);
+    const heapLimitMB = Math.round(v8.getHeapStatistics().heap_size_limit / 1024 / 1024);
     const rssMB = Math.round(usage.rss / 1024 / 1024);
     const externalMB = Math.round(usage.external / 1024 / 1024);
-    const percentOfLimit = Math.round((usage.heapUsed / usage.heapSizeLimit) * 100);
+    const percentOfLimit = Math.round((usage.heapUsed / v8.getHeapStatistics().heap_size_limit) * 100);
 
     // heapTotal is V8's current allocation, NOT the max. V8 expands it on demand.
     // Only alert when heapUsed approaches the actual heapSizeLimit (the container cap).
