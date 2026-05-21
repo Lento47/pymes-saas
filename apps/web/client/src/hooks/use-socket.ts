@@ -21,10 +21,10 @@ export function getSocket(): Socket | null {
 //
 // DEV: backend NestJS corre en :4000 en el mismo host.
 //
-// PROD: `VITE_WS_URL` apunta directo a Railway (ej. wss://api.pymeshub.lat)
-//       para que el WS evite el Worker de Cloudflare (que es solo estático).
-//       Si no está seteada, cae a `window.location.origin` y el Worker
-//       proxea /socket.io a Railway.
+// PROD: por defecto usa `window.location.origin` (pymeshub.lat).
+//       El Worker de Cloudflare en pymeshub.lat proxyfica /socket.io
+//       a Railway con soporte WebSocket completo (WebSocketPair + 101 upgrade).
+//       Si se necesita otra URL, setear VITE_WS_URL en Cloudflare Pages env vars.
 // ───────────────────────────────────────────────────────────────────────────
 const WS_URL = import.meta.env.DEV
   ? `${window.location.protocol}//${window.location.hostname}:4000`
