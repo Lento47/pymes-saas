@@ -1,6 +1,5 @@
 import { WorkspaceUserRole } from "@prisma/client";
 import { Controller, Get, Post, Param, Query, UseGuards } from "@nestjs/common";
-import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
 import { SummariesService } from "./summaries.service";
 import { FilterSummariesDto } from "./dto/filter-summaries.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -20,13 +19,18 @@ export class SummariesController {
   }
 
   @Get("daily/:date")
-  @Roles(WorkspaceUserRole.AGENT, WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
-  findByDate(@CurrentUser() user: Record<string, any>, @Param("date") date: string) {
-    return this.summariesService.findByDate(user.workspace_id, date);
+  findByDate(
+    @CurrentUser() user: Record<string, any>,
+    @Param("date") date: string,
+  ) {
+    // Handle 'today' as a special value (sent by the frontend for /daily/today)
+    const resolved = date === "today"
+      ? new Date().toISOString().split("T")[0]
+      : date;
+    return this.summariesService.findByDate(user.workspace_id, resolved);
   }
 
   @Post("generate")
-  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   generate(@CurrentUser() user: Record<string, any>) {
     return this.summariesService.generate(user.workspace_id);
   }
