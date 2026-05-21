@@ -44,8 +44,17 @@ export function ImageAttachment({ messageId, caption, mimeType, className }: Ima
           className="max-h-64 max-w-full rounded-lg object-contain"
           onError={() => setImgError(true)}
         />
-        <div className="absolute inset-0 bg-black/30 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/30 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
           <Search className="w-6 h-6 text-white" />
+          <a
+            href={blobUrl}
+            download={safeFileName(mimeType ?? "image")}
+            aria-label={`Descargar imagen: ${safeFileName(mimeType ?? "image")}`}
+            className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Download className="w-5 h-5" />
+          </a>
         </div>
       </div>
       {caption && (
@@ -53,14 +62,6 @@ export function ImageAttachment({ messageId, caption, mimeType, className }: Ima
           <SensitiveText text={caption} />
         </p>
       )}
-      <a
-        href={blobUrl}
-        download={safeFileName(mimeType ?? "image")}
-        aria-label={`Descargar imagen: ${safeFileName(mimeType ?? "image")}`}
-        className="mt-1 text-[11px] text-primary hover:text-primary/80 transition-colors"
-      >
-        Descargar
-      </a>
     </div>
   );
 }

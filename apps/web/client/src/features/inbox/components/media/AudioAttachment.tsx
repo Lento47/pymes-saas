@@ -1,7 +1,8 @@
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 import { getMediaProxyUrl } from "@/features/inbox/media-utils";
 import { cn } from "@/lib/utils";
-import { Loader2, AlertCircle, Music } from "lucide-react";
+import { Loader2, AlertCircle, Play, Pause } from "lucide-react";
 import { SensitiveText } from "@/components/shared/sensitive-text";
 
 interface AudioAttachmentProps {
@@ -21,6 +22,38 @@ function formatDuration(ms: number): string {
 export function AudioAttachment({ messageId, caption, durationMs, className }: AudioAttachmentProps) {
   const mediaUrl = getMediaProxyUrl(messageId);
   const { blobUrl, error, loading } = useMediaBlobUrl(mediaUrl);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(durationMs ? durationMs / 1000 : 0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      audio.play();
+    } else {
+      audio.pause();
+    }
+  }, []);
+
+  const handleTimeUpdate = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    setCurrentTime(audio.currentTime);
+    if (audio.duration && !audioDuration) {
+      setAudioDuration(audio.duration);
+    }
+  }, [audioDuration]);
+
+  const handleEnded = useCallback(() => {
+    setPlaying(false);
+    setCurrentTime(0);
+  }, []);
+
+  const progress = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
+  const displayTime = audioDuration > 0 ? formatDuration((audioDuration - currentTime) * 1000) : durationMs ? formatDuration(durationMs) : "0:00";
 
   if (loading && !blobUrl) {
     return (
@@ -46,21 +79,53 @@ export function AudioAttachment({ messageId, caption, durationMs, className }: A
           <SensitiveText text={caption} />
         </p>
       )}
-      <div className="flex items-center gap-2 max-w-xs">
-        <Music className="w-4 h-4 text-muted-foreground shrink-0" />
-        <div className="border border-border/50 bg-card/50 rounded-lg px-3 py-2 flex-1">
-          <audio
-            src={blobUrl}
-            className="w-full h-8 rounded"
-            controls
-          />
+      <div className="inline-flex items-center gap-2.5 min-w-[180px] max-w-[280px]">
+        <button
+          onClick={togglePlay}
+          className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 hover:border-primary/30 active:scale-95 transition-all shrink-0"
+          aria-label={playing ? "Pausar" : "Reproducir"}
+        >
+          {playing ? (
+            <Pause className="w-4 h-4" />
+          ) : (
+            <Play className="w-4 h-4 ml-0.5" />
+          )}
+        </button>
+        <div className="flex-1 min-w-0">
+          <div
+            ref={progressRef}
+            className="relative h-1 rounded-full bg-muted/60 cursor-pointer overflow-hidden"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const ratio = (e.clientX - rect.left) / rect.width;
+              const audio = audioRef.current;
+              if (audio && audioDuration > 0) {
+                audio.currentTime = ratio * audioDuration;
+              }
+            }}
+          >
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width] duration-100"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className="text-[10px] text-muted-foreground/70 tabular-nums select-none">
+              {playing ? displayTime : durationMs ? formatDuration(durationMs) : displayTime}
+            </span>
+          </div>
         </div>
-        {durationMs && (
-          <span className="shrink-0 text-[11px] text-muted-foreground/70 tabular-nums">
-            {formatDuration(durationMs)}
-          </span>
-        )}
       </div>
+      <audio
+        ref={audioRef}
+        src={blobUrl}
+        preload="metadata"
+        className="hidden"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={handleEnded}
+        onTimeUpdate={handleTimeUpdate}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
 import { useInboxSocket } from "@/hooks/use-inbox-socket";
+import { useRoute } from "wouter";
 import { InboxToolbar } from "./components/InboxToolbar";
 import { ConversationList } from "./components/ConversationList";
 import { ConversationPanel } from "./components/ConversationPanel";
@@ -17,16 +18,20 @@ export default function InboxPage() {
   useInboxSocket();
   const { user } = useAuth();
 
+  // Support direct URL navigation to /inbox/:id
+  const [, params] = useRoute("/inbox/:id");
+  const urlConversationId = params?.id ?? null;
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ConversationStatusFilter>("ALL");
   const [channelTab, setChannelTab] = useState<ChannelTab>("ALL");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(urlConversationId);
 
-  const params = buildConversationQueryParams({ search, statusFilter, channelTab, assignedUserId: user?.id });
+  const queryParams = buildConversationQueryParams({ search, statusFilter, channelTab, assignedUserId: user?.id });
 
   const conversationsQuery = useQuery({
-    queryKey: ["conversations", params],
-    queryFn: () => api.getConversations(Object.keys(params).length ? params : undefined),
+    queryKey: ["conversations", queryParams],
+    queryFn: () => api.getConversations(Object.keys(queryParams).length ? queryParams : undefined),
   });
 
   const conversations = normalizeConversationResponse(conversationsQuery.data);

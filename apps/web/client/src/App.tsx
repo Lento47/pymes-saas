@@ -21,7 +21,6 @@ import ProductPage from "@/pages/product";
 import SeoLandingPage from "@/pages/seo-landing-page";
 import Dashboard from "@/pages/dashboard";
 import Inbox from "@/pages/inbox";
-import Conversation from "@/pages/conversation";
 import Contacts from "@/pages/contacts";
 import ContactDetail from "@/pages/contact-detail";
 import Tasks from "@/pages/tasks";
@@ -155,7 +154,7 @@ function AppRouter() {
         {() => <ProtectedLayout><Inbox /></ProtectedLayout>}
       </Route>
       <Route path="/inbox/:id">
-        {() => <ProtectedLayout><Conversation /></ProtectedLayout>}
+        {() => <ProtectedLayout><Inbox /></ProtectedLayout>}
       </Route>
       <Route path="/contacts">
         {() => <ProtectedLayout><Contacts /></ProtectedLayout>}
