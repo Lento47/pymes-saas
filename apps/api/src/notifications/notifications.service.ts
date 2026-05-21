@@ -96,11 +96,12 @@ export class NotificationsService {
       },
     });
 
-    // Emitir en tiempo real al usuario
-    this.events.emitNotification(data.user_id, notification).catch((err) => {
-      // emitNotification is fire-and-forget; log failures but don't fail the creation
-      Logger.warn(`Failed to emit real-time notification to user ${data.user_id}: ${err?.message ?? err}`);
-    });
+    // Emitir en tiempo real al usuario (fire-and-forget)
+    try {
+      this.events.emitNotification(data.user_id, notification);
+    } catch (err) {
+      Logger.warn(`Failed to emit real-time notification to user ${data.user_id}: ${(err as Error)?.message ?? err}`);
+    }
 
     return notification;
   }

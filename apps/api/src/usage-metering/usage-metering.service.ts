@@ -60,7 +60,7 @@ export class UsageMeteringService {
         contacts_count: usage.contacts,
         invoices_count: usage.invoicesThisMonth,
         automations_count: usage.automations,
-        storage_used_mb: parseFloat(usage.storageUsedMb),
+        storage_used_mb: usage.storageUsedMb,
         users_count: usage.users,
         locations_count: 1,
         whatsapp_messages_count: usage.whatsappMessagesThisMonth,

@@ -220,7 +220,7 @@ export class PipelineService {
       );
     }
 
-    return { deal: updatedDeal, invoice_id: invoice.id, invoice_number: invoiceNumber };
+    return { deal: updatedDeal, invoice_id: invoice.id, invoice_number: invoice.number };
   }
 
   private async ensureStage(workspaceId: string, id: string) {

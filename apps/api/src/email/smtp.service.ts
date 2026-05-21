@@ -39,17 +39,15 @@ export class SmtpService {
       this.transporters.set(cacheKey, transporter);
     }
 
-    try {
-      const info = await transporter.sendMail({
-        from: mail.from,
-        to: mail.to,
-        subject: mail.subject,
-        html: mail.html,
-        text: mail.text,
-      });
+    const info = await transporter.sendMail({
+      from: mail.from,
+      to: mail.to,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+    });
 
-      this.logger.log(`Email sent via SMTP — messageId: ${info.messageId}`);
-      return { id: info.messageId };
-    }
+    this.logger.log(`Email sent via SMTP — messageId: ${info.messageId}`);
+    return { id: info.messageId };
   }
 }
