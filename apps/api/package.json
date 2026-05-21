@@ -7,7 +7,7 @@
     "start": "node dist/main",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "deploy:build": "prisma validate --schema ./prisma/schema.prisma && prisma generate --schema ./prisma/schema.prisma && prisma migrate deploy --schema ./prisma/schema.prisma && pnpm run build",
+    "deploy:build": "prisma validate --schema ./prisma/schema.prisma && prisma generate --schema ./prisma/schema.prisma && npx prisma migrate resolve --rolled-back 20260521063451_add_message_media_status_fields --schema ./prisma/schema.prisma || true && prisma migrate deploy --schema ./prisma/schema.prisma && pnpm run build",
     "deploy:start": "node dist/main",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
