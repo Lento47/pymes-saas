@@ -107,6 +107,7 @@ export function useMediaBlobUrl(mediaUrl: string | null | undefined): { blobUrl:
         blobCache.set(mediaUrl, url);
         errorCache.delete(mediaUrl);
         setBlobUrl(url);
+        setError(null);
         setLoading(false);
       } catch (err) {
         if (!cancelled) {
@@ -114,6 +115,8 @@ export function useMediaBlobUrl(mediaUrl: string | null | undefined): { blobUrl:
           setError(err instanceof Error ? err.message : 'Unknown error');
           setLoading(false);
         }
+      } finally {
+        clearTimeout(timeoutId);
       }
     })();
 
