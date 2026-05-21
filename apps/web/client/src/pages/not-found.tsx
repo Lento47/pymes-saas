@@ -37,8 +37,8 @@ export default function NotFound() {
       <Card className="w-full max-w-md border-border/60 bg-card/40">
         <CardContent className="pt-8 pb-6">
           <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-foreground">404 Page Not Found</h1>
+            <AlertCircle className="h-8 w-8 text-destructive" />
+            <h1 className="text-2xl font-bold text-foreground">Página no encontrada</h1>
           </div>
           <p className="text-sm text-muted-foreground">
             La página que buscas no existe o fue movida.
