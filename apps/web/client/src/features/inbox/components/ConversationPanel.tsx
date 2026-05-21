@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useConversationSocket } from "@/hooks/use-conversation-socket";
+import { getSocket } from "@/hooks/use-socket";
 import { ConversationHeader } from "./conversation/ConversationHeader";
 import { MessageTimeline } from "./conversation/MessageTimeline";
 import { MessageComposer } from "./conversation/MessageComposer";
@@ -45,10 +46,12 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const [uploading, setUploading] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
+  const [isUserTyping, setIsUserTyping] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const id = conversationId || "";
 
   const { data: conv } = useQuery({
@@ -81,6 +84,37 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     };
   }, [id, message, conv?.channel?.type]);
 
+  // ── Listen for WhatsApp user typing ──
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !id) return;
+
+    const handleUserTyping = (data: { conversationId: string; from: string }) => {
+      if (data.conversationId !== id) return;
+      setIsUserTyping(true);
+      if (userTypingTimerRef.current) clearTimeout(userTypingTimerRef.current);
+      // Auto-clear after 5s if no message arrives
+      userTypingTimerRef.current = setTimeout(() => setIsUserTyping(false), 5000);
+    };
+
+    socket.on('user:typing', handleUserTyping);
+    return () => {
+      socket.off('user:typing', handleUserTyping);
+      if (userTypingTimerRef.current) clearTimeout(userTypingTimerRef.current);
+    };
+  }, [id]);
+
+  // Clear typing indicator when a new inbound message arrives
+  useEffect(() => {
+    if (msgList.length > 0) {
+      const last = msgList[msgList.length - 1];
+      if (last.direction === 'INBOUND') {
+        setIsUserTyping(false);
+        if (userTypingTimerRef.current) clearTimeout(userTypingTimerRef.current);
+      }
+    }
+  }, [msgList.length]);
+
   const { data: messages, isLoading: msgsLoading } = useQuery({
     queryKey: ["/api/conversations", id, "messages"],
     queryFn: () => api.getMessages(id),
@@ -98,20 +132,57 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
   const sendMut = useMutation({
     mutationFn: (data: Record<string, any>) => api.sendMessage(id, data),
-    onSuccess: (response: any) => {
-      qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
-      qc.invalidateQueries({ queryKey: ["conversations"] });
+    onMutate: async (newMessage) => {
+      // Cancel refetches so they don't overwrite our optimistic update
+      await qc.cancelQueries({ queryKey: ["/api/conversations", id, "messages"] });
+
+      // Snapshot for rollback
+      const previousMessages = qc.getQueryData(["/api/conversations", id, "messages"]);
+
+      // Optimistic insert
+      const optimisticId = `temp-${Date.now()}`;
+      const optimistic = {
+        id: optimisticId,
+        body_text: newMessage.body_text,
+        direction: "OUTBOUND",
+        sender_name: user?.name ?? "Yo",
+        sender_user_id: user?.id,
+        sent_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        message_type: "TEXT",
+        delivery_status: "PENDING",
+        has_media: false,
+        media_type: null,
+        media_status: "none",
+        attachments: [],
+        conversation_id: id,
+      };
+
+      qc.setQueryData(["/api/conversations", id, "messages"], (old: any) => {
+        const dataArray = Array.isArray(old) ? old : old?.data ?? [];
+        return Array.isArray(old)
+          ? [...dataArray, optimistic]
+          : { ...old, data: [...dataArray, optimistic], meta: { ...old?.meta, total: (old?.meta?.total ?? 0) + 1 } };
+      });
+
+      // Clear input immediately
       setMessage("");
       setAttachment(null);
-      if (response?.delivery_status === "dispatch_failed") {
-        toast({
-          title: "Mensaje guardado, envío falló",
-          description: response.dispatch_error ?? "No se pudo enviar al canal externo.",
-          variant: "destructive",
-        });
-      }
+
+      return { previousMessages, optimisticId };
     },
-    onError: (e) => toast({ title: "Error al enviar", description: e.message, variant: "destructive" }),
+    onError: (err: any, _newMessage, context: any) => {
+      // Rollback on failure
+      if (context?.previousMessages) {
+        qc.setQueryData(["/api/conversations", id, "messages"], context.previousMessages);
+      }
+      toast({ title: "Error al enviar", description: err.message, variant: "destructive" });
+    },
+    onSettled: () => {
+      // Replace optimistic with real data from server
+      qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+    },
   });
 
   const deleteMut = useMutation({
@@ -328,6 +399,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         scrollRef={scrollRef}
         bottomRef={bottomRef}
         nearBottom={nearBottom}
+        isUserTyping={isUserTyping}
         onScrollToBottom={scrollToBottom}
         onScroll={handleScroll}
       />

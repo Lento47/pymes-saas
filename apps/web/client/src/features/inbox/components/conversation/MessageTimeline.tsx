@@ -26,6 +26,7 @@ function estimateSizeForIndex(idx: number, messages: UiMessage[]): number {
 interface MessageTimelineProps {
   messages: UiMessage[];
   isLoading: boolean;
+  isUserTyping?: boolean;
   contactName?: string;
   contactAvatarInitials?: string;
   contactAvatarUrl?: string | null;
@@ -40,6 +41,7 @@ interface MessageTimelineProps {
 export function MessageTimeline({
   messages,
   isLoading,
+  isUserTyping = false,
   contactName,
   contactAvatarInitials,
   contactAvatarUrl,
@@ -122,6 +124,19 @@ export function MessageTimeline({
             );
           })}
         </div>
+        {/* Typing indicator */}
+        {isUserTyping && (
+          <div className="flex items-center gap-1.5 px-3 py-2 ml-10">
+            <div className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-muted/40 rounded-bl-md">
+              <span className="flex gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:0ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:300ms]" />
+              </span>
+              <span className="text-[11px] text-muted-foreground/70">escribiendo...</span>
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
