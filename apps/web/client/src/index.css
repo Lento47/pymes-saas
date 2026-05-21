@@ -62,6 +62,14 @@
   --status-resolved: 228 65% 55%;   /* indigo */
   --status-pending:  38 95% 54%;    /* amber */
   --status-overdue:  0 72% 51%;     /* red */
+
+  /* ── shadcn/ui component tokens ── */
+  --bg-2:              228 45% 10%;   /* subtle layer between bg(7%) and bg-card(12%) */
+  --primary-fg:        var(--accent-fg);
+  --sidebar-width:     16rem;
+  --sidebar-width-icon: 3rem;
+  --skeleton-width:    5rem;
+  --spacing-4:         1rem;
 }
 
 /* ── Light theme (opt-in) ── */
@@ -82,6 +90,7 @@ html.light {
   --danger-fg:    0 0% 100%;
   --success:      145 63% 38%;
   --warning:      35 90% 48%;
+  --bg-2:         220 14% 88%;
 }
 
 :root {
