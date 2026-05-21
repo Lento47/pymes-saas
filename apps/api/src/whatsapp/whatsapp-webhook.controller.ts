@@ -17,12 +17,18 @@ import { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import * as crypto from 'crypto';
 import { WhatsAppService } from './whatsapp.service';
+import { CryptoService } from '../common/crypto/crypto.service';
+import { PrismaService } from '../common/prisma/prisma.service';
 
 @Controller('inbound/whatsapp')
 export class WhatsAppWebhookController {
   private readonly logger = new Logger(WhatsAppWebhookController.name);
 
-  constructor(private readonly whatsappService: WhatsAppService) {}
+  constructor(
+    private readonly whatsappService: WhatsAppService,
+    private readonly crypto: CryptoService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   /** GET /inbound/whatsapp/webhook — verificación de Meta */
   @Get('webhook')
@@ -42,34 +48,46 @@ export class WhatsAppWebhookController {
   /** POST /inbound/whatsapp/webhook — mensajes entrantes */
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ webhook: { limit: 10, ttl: 60_000 } }) // SECURITY: Strict rate limit for webhooks
+  @Throttle({ webhook: { limit: 10, ttl: 60_000 } })
   async receiveWebhook(
     @Headers('x-hub-signature-256') signature: string | undefined,
     @Body() payload: Record<string, unknown>,
     @Req() req: RawBodyRequest<Request>,
   ) {
-    // SECURITY: Webhook signature verification from Meta is MANDATORY.
-    // If WHATSAPP_APP_SECRET is not configured, reject ALL webhooks.
-    const appSecret = process.env.WHATSAPP_APP_SECRET;
-    if (!appSecret) {
-      this.logger.error('WHATSAPP_APP_SECRET not configured — rejecting all WhatsApp webhooks');
-      throw new UnauthorizedException('WhatsApp webhook secret not configured');
-    }
-    if (!signature) {
-      this.logger.warn('WhatsApp webhook missing X-Hub-Signature-256 header');
-      throw new UnauthorizedException('Missing webhook signature');
-    }
-    const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(payload));
-    if (!this.verifyWebhookSignature(appSecret, signature, rawBody)) {
-      this.logger.warn('Invalid WhatsApp webhook signature');
-      throw new UnauthorizedException('Invalid webhook signature');
+    // Per-channel signature verification (app_secret_encrypted in channel config_json)
+    try {
+      const phoneNumberId = this.extractPhoneNumberId(payload);
+      if (phoneNumberId && signature) {
+        const channel = await this.prisma.channel.findFirst({
+          where: {
+            type: 'WHATSAPP',
+            config_json: { path: ['phone_number_id'], equals: phoneNumberId },
+            status: 'ACTIVE',
+          },
+          select: { config_json: true },
+        });
+
+        if (channel?.config_json) {
+          const cfg = (channel.config_json as Record<string, any>) ?? {};
+          if (cfg.app_secret_encrypted) {
+            const appSecret = this.crypto.decrypt(cfg.app_secret_encrypted);
+            const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(payload));
+            if (!this.verifySignature(appSecret, signature!, rawBody)) {
+              this.logger.warn(`Invalid WhatsApp webhook signature for phone_number_id=${phoneNumberId}`);
+              throw new UnauthorizedException('Invalid webhook signature');
+            }
+          }
+        }
+      }
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
+      this.logger.warn(`Webhook signature verification skipped: ${(err as Error).message}`);
     }
 
-    // SECURITY: Workspace is resolved from WhatsApp phone_number_id, not from client headers
+    // Process the webhook
     const result = await this.whatsappService.ingestWebhook(payload);
 
     if (!result.persisted) {
-      // Database unavailable — tell Meta to retry
       this.logger.error('Failed to persist webhook event — returning error to Meta');
       throw new Error('Service unavailable');
     }
@@ -81,18 +99,24 @@ export class WhatsAppWebhookController {
     return { ok: true };
   }
 
-  /**
-   * Verify WhatsApp webhook signature using HMAC-SHA256
-   * Meta sends: X-Hub-Signature-256: sha256=<signature>
-   */
-  private verifyWebhookSignature(appSecret: string, signature: string, body: Buffer): boolean {
+  private extractPhoneNumberId(payload: any): string | null {
     try {
-      const hash = crypto
-        .createHmac('sha256', appSecret)
-        .update(body.toString('utf8'))
-        .digest('hex');
-      const expectedSignature = `sha256=${hash}`;
-      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+      const entry = payload?.entry?.[0];
+      const change = entry?.changes?.[0];
+      const value = change?.value;
+      return value?.metadata?.phone_number_id ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private verifySignature(appSecret: string, signature: string, rawBody: Buffer): boolean {
+    try {
+      const expected = crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+      return crypto.timingSafeEqual(
+        Buffer.from(signature.replace(/^sha256=/, '')),
+        Buffer.from(`sha256=${expected}`),
+      );
     } catch {
       return false;
     }

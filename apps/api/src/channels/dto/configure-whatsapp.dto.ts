@@ -7,6 +7,11 @@ export class ConfigureWhatsAppDto {
   @MinLength(10)
   access_token?: string;
 
+  /** Meta App Secret for webhook signature verification — optional on edit */
+  @IsOptional()
+  @IsString()
+  app_secret?: string;
+
   @IsString()
   @MinLength(5)
   phone_number_id: string;

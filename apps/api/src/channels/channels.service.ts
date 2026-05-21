@@ -195,8 +195,21 @@ export class ChannelsService {
       this.logger.log(`[DIAG] configureWhatsApp: no new token, keeping existing (hasToken=${!!access_token_encrypted})`);
     }
 
+    let app_secret_encrypted: string | undefined;
+    if (dto.app_secret) {
+      try {
+        app_secret_encrypted = this.crypto.encrypt(dto.app_secret);
+      } catch (err) {
+        this.logger.error(`[DIAG] configureWhatsApp: app_secret encrypt FAILED — ${err?.message}`);
+        throw new BadRequestException('Error al guardar el App Secret.');
+      }
+    } else {
+      app_secret_encrypted = existingConfigWA.app_secret_encrypted;
+    }
+
     const newConfig = {
       access_token_encrypted,
+      app_secret_encrypted,
       phone_number_id: dto.phone_number_id,
       waba_id: dto.waba_id,
     };
