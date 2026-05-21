@@ -1,30 +1,11 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
-import { useI18n } from "@/components/providers/i18n-provider";
 import { useToast } from "@/hooks/use-toast";
-import {
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  Copy,
-  Eye,
-  EyeOff,
-  Loader2,
-  LockKeyhole,
-  Mail,
-  User,
-} from "lucide-react";
-import { BrandLockup } from "@/components/marketing/brand-lockup";
-import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { Loader2 } from "lucide-react";
 
-type RegistrationSuccess = {
-  workspaceName: string;
-  workspaceSlug: string;
-};
-
-function parseError(err: unknown, fallback: string): string {
-  if (!(err instanceof Error)) return fallback;
+function parseError(err: unknown): string {
+  if (!(err instanceof Error)) return "Error desconocido";
   const m = err.message;
   const after = m.indexOf(": ");
   if (after < 0) return m;
@@ -37,310 +18,138 @@ function parseError(err: unknown, fallback: string): string {
   return rest || m;
 }
 
-function Field({
-  id,
-  label,
-  type = "text",
-  placeholder,
-  value,
-  onChange,
-  required,
-  icon,
-  hint,
-  rightAdornment,
-}: {
-  id: string;
-  label: string;
-  type?: string;
-  placeholder?: string;
-  value: string;
-  onChange: (v: string) => void;
-  required?: boolean;
-  icon: React.ReactNode;
-  hint?: string;
-  rightAdornment?: React.ReactNode;
+function Field({ id, label, type = "text", placeholder, value, onChange, required }: {
+  id: string; label: string; type?: string;
+  placeholder?: string; value: string;
+  onChange: (v: string) => void; required?: boolean;
 }) {
   return (
-    <div className="space-y-3">
-      <label htmlFor={id} className="font-marketing block text-sm font-medium text-white/88">
+    <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+      <label htmlFor={id} style={{ fontSize: "12px", fontWeight: 500, color: "hsl(var(--fg-2))" }}>
         {label}
       </label>
-      <div className="group flex items-center gap-3 rounded-[20px] border border-white/12 bg-[#09102b]/82 px-4 py-4 transition focus-within:border-[#b9c7ff]/35 focus-within:bg-[#0b1333]/92">
-        <span className="text-white/60">{icon}</span>
-        <input
-          id={id}
-          type={type}
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          required={required}
-          className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-[#8f97bc] md:text-[15px]"
-        />
-        {rightAdornment}
-      </div>
-      {hint && <p className="text-xs leading-6 text-[#a9b3df]/60">{hint}</p>}
+      <input
+        id={id}
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        required={required}
+        style={{
+          height: "32px",
+          padding: "0 10px",
+          background: "hsl(var(--bg))",
+          border: "1px solid hsl(var(--border))",
+          borderRadius: "4px",
+          color: "hsl(var(--fg))",
+          fontSize: "13px",
+          outline: "none",
+          transition: "border-color 0.1s",
+        }}
+        onFocus={e => (e.target.style.borderColor = "hsl(var(--accent))")}
+        onBlur={e => (e.target.style.borderColor = "hsl(var(--border))")}
+      />
     </div>
   );
 }
 
 export default function RegisterPage() {
-  const { register } = useAuth();
   const { toast } = useToast();
-  const { messages } = useI18n();
-  const reg = messages.register;
-
-  const planParam = new URLSearchParams(
-    window.location.hash.replace("#", "").split("?")[1] || "",
-  ).get("plan");
-  const addonParam = new URLSearchParams(
-    window.location.hash.replace("#", "").split("?")[1] || "",
-  ).get("addon");
-
-  const buildTarget = () => {
-    const params = new URLSearchParams();
-    params.set('paddle', 'success');
-    if (planParam) params.set('plan', planParam);
-    if (addonParam) params.set('addon', addonParam);
-    const qs = params.toString();
-    return qs ? `/billing?${qs}` : '/';
-  };
-
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const { refreshUser } = useAuth();
+  const [name, setName]       = useState("");
+  const [email, setEmail]     = useState("");
+  const [pass, setPass]       = useState("");
+  const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<RegistrationSuccess | null>(null);
-
-  const workspaceUrl = success ? `${window.location.origin}/#/${success.workspaceSlug}` : "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pass !== confirm) {
+      toast({ title: "Las contraseñas no coinciden", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
-      const res = await register({ name, email, password: pass });
-      const workspace = res.workspace ?? res.user?.workspace;
-      if (!workspace?.slug) {
-        throw new Error(reg.workspaceMissing);
-      }
-      setSuccess({
-        workspaceName: workspace.name ?? `${name}'s Workspace`,
-        workspaceSlug: workspace.slug,
-      });
+      const res = await api.register({ email, name, password: pass });
+      // store tokens using the same keys as lib/api.ts (setAuthState)
+      localStorage.setItem("pymes_token", res.access_token);
+      localStorage.setItem("pymes_refresh_token", res.refresh_token);
+      localStorage.setItem("pymes_slug", res.workspace.slug);
+      await refreshUser();
+      window.location.hash = "#/onboarding";
     } catch (err) {
-      toast({
-        title: reg.failed,
-        description: parseError(err, reg.genericError),
-        variant: "destructive",
-      });
+      toast({ title: "Error al crear cuenta", description: parseError(err), variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  const copyWorkspace = async () => {
-    if (!success) return;
-    const value = `Workspace slug: ${success.workspaceSlug}\nLogin URL: ${workspaceUrl}`;
-    try {
-      await navigator.clipboard.writeText(value);
-      toast({ title: reg.workspaceCopied });
-    } catch {
-      toast({ title: reg.copyFailed, description: success.workspaceSlug });
-    }
-  };
-
-  const continueToWorkspace = () => {
-    const target = buildTarget();
-    history.replaceState(null, "", target);
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  };
-
-  const passwordRules = [
-    { label: reg.lengthRule, met: pass.length >= 8 },
-    { label: reg.uppercaseRule, met: /[A-Z]/.test(pass) },
-    { label: reg.lowercaseRule, met: /[a-z]/.test(pass) },
-    { label: reg.numberRule, met: /\d/.test(pass) },
-    { label: reg.specialRule, met: /[^\w\s]/.test(pass) },
-  ];
-
   return (
-    <div className="dark marketing-canvas relative min-h-screen overflow-hidden px-4 py-10 md:px-6">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div className="relative w-[max(1536px,100vw,calc(100vh*1.5))]">
-              <img
-                src="/images/login-bg.png"
-                alt=""
-                aria-hidden="true"
-                loading="eager"
-                className="block h-auto w-full max-w-none opacity-[0.88]"
-              />
-            </div>
+    <div style={{
+      minHeight: "100vh",
+      background: "hsl(var(--bg))",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "24px",
+    }}>
+      <div style={{ width: "100%", maxWidth: "360px" }}>
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "32px" }}>
+          <div style={{
+            width: "28px", height: "28px",
+            background: "hsl(var(--accent))",
+            borderRadius: "4px",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <span style={{ color: "#fff", fontSize: "11px", fontWeight: 700, lineHeight: 1 }}>P</span>
           </div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(42,60,180,0.12),transparent_36%),linear-gradient(180deg,rgba(3,8,24,0.06),rgba(5,9,29,0.48)_36%,#05091d_100%)]" />
+          <span style={{ fontSize: "15px", fontWeight: 600, color: "hsl(var(--fg))" }}>Pymeshub</span>
         </div>
-        <div className="animate-pulse-halo absolute -left-[23rem] top-[-3rem] h-[48rem] w-[48rem] rounded-full border border-[#F59E0B]/22 shadow-[0_0_120px_rgba(245,158,11,0.18)]" />
-        <div className="absolute -left-[17rem] top-[3rem] h-[38rem] w-[38rem] rounded-full border border-[#6c7eff]/18" />
-        <div className="absolute bottom-[10%] right-[6%] h-48 w-48 rounded-full bg-[#F59E0B]/12 blur-[110px]" />
-      </div>
 
-      <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
-        <div className="w-full max-w-[34rem]">
-          <div className="mb-8 flex items-center justify-between gap-4">
-            <Link href="/login" className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/68 transition hover:text-white">
-              <ArrowLeft className="h-4 w-4" />
-              {reg.backToLogin}
-            </Link>
-            <LanguageSwitcher variant="marketing" />
-          </div>
+        <h1 style={{ fontSize: "20px", fontWeight: 600, color: "hsl(var(--fg))", letterSpacing: "-0.01em", marginBottom: "4px" }}>
+          Crear cuenta
+        </h1>
+        <p style={{ fontSize: "13px", color: "hsl(var(--fg-2))", marginBottom: "24px" }}>
+          Registra tu negocio gratis — sin tarjeta de crédito
+        </p>
 
-          <div className="glass-panel rounded-[34px] px-6 py-8 md:px-10 md:py-10">
-            <BrandLockup className="justify-center" textClassName="text-xl tracking-[0.32em]" />
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <Field id="name" label="Nombre completo" placeholder="María García" value={name} onChange={setName} required />
+          <Field id="email" label="Correo electrónico" type="email" placeholder="nombre@empresa.com" value={email} onChange={setEmail} required />
+          <Field id="password" label="Contraseña" type="password" placeholder="Mín. 12 caracteres" value={pass} onChange={setPass} required />
+          <Field id="confirm" label="Confirmar contraseña" type="password" placeholder="••••••••••••" value={confirm} onChange={setConfirm} required />
 
-            {success ? (
-              <div className="mt-10 space-y-7">
-                <div className="text-center">
-                  <CheckCircle2 className="mx-auto h-12 w-12 text-[#F59E0B]" />
-                  <h1 className="font-marketing mt-5 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl md:text-4xl">
-                    {reg.workspaceCreated}
-                  </h1>
-                  <p className="mx-auto mt-4 max-w-md text-base leading-8 text-[#c9d0f5]/72">
-                    {reg.workspaceCreatedDescription}
-                  </p>
-                </div>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              marginTop: "6px",
+              height: "32px",
+              background: loading ? "hsl(var(--accent) / 0.7)" : "hsl(var(--accent))",
+              color: "#fff",
+              border: "none",
+              borderRadius: "4px",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: loading ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "6px",
+            }}
+          >
+            {loading && <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} />}
+            Crear cuenta
+          </button>
+        </form>
 
-                <div className="space-y-4 rounded-[24px] border border-white/12 bg-[#09102b]/82 p-5">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/58">{reg.workspace}</p>
-                    <p className="mt-1 text-sm font-medium text-white">{success.workspaceName}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/58">{reg.slug}</p>
-                    <p className="mt-1 break-all font-mono text-lg font-semibold text-[#F59E0B]">
-                      {success.workspaceSlug}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/58">{reg.loginUrl}</p>
-                    <p className="mt-1 break-all text-sm text-white/78">{workspaceUrl}</p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={copyWorkspace}
-                  className="font-marketing flex w-full items-center justify-center gap-2 rounded-full border border-white/14 px-6 py-4 text-sm font-semibold text-white/86 transition hover:border-white/24 hover:text-white"
-                >
-                  <Copy className="h-4 w-4" />
-                  {reg.copyWorkspace}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={continueToWorkspace}
-                  className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px]"
-                >
-                  {reg.continueToWorkspace}
-                  <ArrowRight className="h-5 w-5" />
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="mt-10 text-center">
-                  <h1 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl md:text-4xl">
-                    {reg.createAccount}
-                  </h1>
-                  <p className="mx-auto mt-4 max-w-md text-base leading-8 text-[#c9d0f5]/72">
-                    {planParam
-                      ? reg.planDescription.replace("{plan}", planParam)
-                      : reg.description}
-                  </p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="mt-10 space-y-6">
-                  <Field
-                    id="name"
-                    label={reg.fullName}
-                    placeholder="Maria Gonzalez"
-                    value={name}
-                    onChange={setName}
-                    required
-                    icon={<User className="h-5 w-5" />}
-                  />
-                  <Field
-                    id="email"
-                    label={reg.emailAddress}
-                    type="email"
-                    placeholder="maria@empresa.com"
-                    value={email}
-                    onChange={setEmail}
-                    required
-                    icon={<Mail className="h-5 w-5" />}
-                  />
-                  <Field
-                    id="password"
-                    label={reg.password}
-                    type={showPassword ? "text" : "password"}
-                    placeholder={reg.passwordPlaceholder}
-                    value={pass}
-                    onChange={setPass}
-                    required
-                    icon={<LockKeyhole className="h-5 w-5" />}
-                    hint={reg.passwordHint}
-                    rightAdornment={
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        className="text-white/55 transition hover:text-white/85"
-                        aria-label={showPassword ? reg.hidePassword : reg.showPassword}
-                      >
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    }
-                  />
-
-                  <div className="grid gap-2">
-                    {passwordRules.map((rule) => (
-                      <span key={rule.label} className={`text-xs ${rule.met ? "text-green-400" : "text-white/40"}`}>
-                        {rule.met ? "✓" : "○"} {rule.label}
-                      </span>
-                    ))}
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading || pass.length < 12}
-                    className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {loading && <Loader2 className="h-5 w-5 animate-spin" />}
-                    {loading ? reg.creating : reg.createAccount}
-                    <ArrowRight className="h-5 w-5" />
-                  </button>
-                </form>
-              </>
-            )}
-
-            <div className="mt-8 flex flex-col items-center gap-4 text-center">
-              <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/58">
-                <Link href="/legal/terms-of-service" className="transition hover:text-white/80">{reg.terms}</Link>
-                <span className="h-1 w-1 rounded-full bg-white/24" />
-                <Link href="/legal/privacy-policy" className="transition hover:text-white/80">{reg.privacy}</Link>
-              </div>
-
-              <p className="text-sm text-[#b3bcdf]/58">
-                {reg.alreadyHaveAccount}{" "}
-                <Link href="/login" className="font-medium text-[#F59E0B] transition hover:text-[#FDE68A]">
-                  {reg.logIn}
-                </Link>
-              </p>
-
-              <p className="text-xs uppercase tracking-[0.22em] text-white/34">
-                &copy; {new Date().getFullYear()} PymesHub S.A., Lim&oacute;n, Costa Rica
-              </p>
-            </div>
-          </div>
-        </div>
+        <p style={{ marginTop: "20px", fontSize: "12px", color: "hsl(var(--fg-2))", textAlign: "center" }}>
+          ¿Ya tienes cuenta?{" "}
+          <a href="#/login" style={{ color: "hsl(var(--accent))", textDecoration: "none" }}>
+            Iniciar sesión
+          </a>
+        </p>
       </div>
     </div>
   );

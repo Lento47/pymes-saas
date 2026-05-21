@@ -1,482 +1,293 @@
-import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
-import { useI18n } from "@/components/providers/i18n-provider";
-import { DiagnosticButton } from "@/components/shared/diagnostic-button";
+import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/shared/page-header";
+import { MetricCard, SectionCard } from "@/components/layout/page-template";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { PriorityDot } from "@/components/shared/priority-dot";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
-import { queryClient } from "@/lib/queryClient";
+import { InsightsWidget } from "@/components/shared/insights-widget";
 import {
-  Receipt, BarChart4, Sparkles, ArrowRight,
-  ShieldCheck, TriangleAlert, CircleAlert, Info, Plus, FileText, MessageCircle, Package,
+  RefreshCw, Loader2, ArrowRight, AlertTriangle, Plus, MessageSquare,
+  Users, CheckSquare, FileText, MessageCircle, TrendingUp
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import OnboardingTour from "@/components/shared/onboarding-tour";
-import QuickStartChecklist from "@/components/shared/quick-start-checklist";
 
-// ── Types ──
-interface PipelineDealSummary { value: string | null; currency: string; }
-interface PipelineStageSummary { id: string; name: string; color: string; deals: PipelineDealSummary[]; }
-interface Task { id: string; priority: string; title?: string; status?: string; due_date?: string; }
-interface Conversation { id: string; contact?: { full_name?: string }; updated_at?: string; }
-function sumPipelineValue(deals: PipelineDealSummary[]) { return deals.reduce((s, d) => { const n = d.value ? parseFloat(d.value) : 0; return isFinite(n) ? s + n : s; }, 0); }
-function fmtMoney(n: number, cur: string) { return new Intl.NumberFormat("es-CR", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(n); }
-
-// ── Clean revenue chart ──
-function RevenueChart({ monthlyRevenue }: { monthlyRevenue: number }) {
-  const W = 400, H = 90, PAD = 20;
-  const now = new Date();
-  const today = now.getDate();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const monthName = now.toLocaleString("es-CR", { month: "short" });
-  const hasRevenue = monthlyRevenue > 0;
-  const maxY = hasRevenue ? monthlyRevenue : 1;
-
-  const todayX = PAD + ((today / daysInMonth) * (W - PAD * 2));
-  const lineY = hasRevenue ? H - PAD - ((monthlyRevenue / maxY) * (H - PAD * 2)) : H - PAD;
-
-  const pathD = `M ${PAD} ${lineY} L ${todayX} ${lineY}`;
-  const areaD = `M ${PAD} ${H - PAD} L ${PAD} ${lineY} L ${todayX} ${lineY} L ${todayX} ${H - PAD} Z`;
-
-  const fmtVal = (v: number) => v >= 1000000 ? `₡${(v / 1000000).toFixed(1)}M`
-    : v >= 1000 ? `₡${(v / 1000).toFixed(1)}K`
-    : `₡${Math.round(v)}`;
-
+// ── Quick Action Button ───────────────────────────────────────────────────────
+function QuickAction({
+  icon: Icon,
+  label,
+  href,
+}: {
+  icon: any;
+  label: string;
+  href: string;
+}) {
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full">
-      <defs>
-        <linearGradient id="rfill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.15"/>
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.01"/>
-        </linearGradient>
-      </defs>
-
-      {/* X axis */}
-      <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="hsl(var(--border))" strokeWidth="0.5"/>
-      {/* Y axis */}
-      <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="hsl(var(--border))" strokeWidth="0.5"/>
-
-      {/* Day labels */}
-      <text x={PAD} y={H - 2} fill="hsl(var(--muted-foreground))" fontSize="8" opacity="0.5" textAnchor="middle">1</text>
-      <text x={W - PAD} y={H - 2} fill="hsl(var(--muted-foreground))" fontSize="8" opacity="0.5" textAnchor="middle">{daysInMonth}</text>
-
-      {hasRevenue ? (
-        <>
-          {/* Filled area + line */}
-          <path d={areaD} fill="url(#rfill)"/>
-          <path d={pathD} fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
-          {/* Today dot */}
-          <circle cx={todayX} cy={lineY} r="3.5" fill="hsl(var(--primary))"/>
-          <circle cx={todayX} cy={lineY} r="7" fill="hsl(var(--primary))" opacity="0.12"/>
-          {/* Value label */}
-          <text x={todayX} y={lineY - 10} textAnchor="middle" fill="hsl(var(--foreground))" fontSize="10" fontWeight="600">
-            {fmtVal(monthlyRevenue)}
-          </text>
-          <text x={todayX} y={H - 2} fill="hsl(var(--primary))" fontSize="8" fontWeight="500" textAnchor="middle">
-            {monthName} {today}
-          </text>
-        </>
-      ) : (
-        <text x={W / 2} y={H / 2} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="11" opacity="0.5">
-          Registra tu primera factura para ver los ingresos.
-        </text>
-      )}
-    </svg>
+    <Link href={href}>
+      <a className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border bg-card hover:border-primary/40 hover:bg-accent transition">
+        <Icon className="w-6 h-6 text-muted-foreground" />
+        <span className="text-xs font-medium text-foreground text-center">{label}</span>
+      </a>
+    </Link>
   );
 }
-
-// ── Insight styles ──
-const INSIGHT_STYLES: Record<string, { Icon: React.ElementType; color: string; bg: string }> = {
-  danger:   { Icon: CircleAlert,    color: "hsl(var(--danger))",   bg: "bg-red-500/10" },
-  warning:  { Icon: TriangleAlert, color: "hsl(var(--warning))",  bg: "bg-amber-500/10" },
-  positive: { Icon: ShieldCheck,   color: "hsl(var(--success))",  bg: "bg-emerald-500/10" },
-  info:     { Icon: Info,          color: "hsl(var(--primary))",  bg: "bg-primary/10" },
-};
 
 export default function DashboardPage() {
   useRequireAuth();
   const { user } = useAuth();
-  const { messages } = useI18n();
-  const dash = messages.dashboard;
-  const [activeTab, setActiveTab] = useState<"tasks" | "messages">("tasks");
+  const { toast } = useToast();
 
-  const { isLoading: statsLoading, isError: statsError } = useQuery({ queryKey: ["/api/workspaces/current/stats/today"], queryFn: api.getTodayStats, refetchInterval: 60000 });
-  const { data: dashboard } = useQuery({ queryKey: ["/api/workspaces/current/dashboard"], queryFn: api.getDashboard, staleTime: 0, refetchOnMount: true, refetchInterval: 60000 });
-  const workspaceStats = dashboard?.stats;
-  const workspace = dashboard?.workspace;
-  const { data: conversations, isLoading: convsLoading } = useQuery({ queryKey: ["/api/conversations", "dash"], queryFn: () => api.getConversations({ limit: "10" }) });
-  const { data: tasks, isLoading: tasksLoading } = useQuery({ queryKey: ["/api/tasks", "dash"], queryFn: () => api.getTasks({ limit: "10" }) });
-  const { data: overdueInvoices } = useQuery({ queryKey: ["/api/invoices", "overdue-widget"], queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }), refetchInterval: 60000 });
-  const { data: pipelineStagesData, isLoading: pipelineLoading } = useQuery({ queryKey: ["/api/pipeline/stages", "dash"], queryFn: () => api.getPipelineStages(), refetchInterval: 60000 });
-  const { data: insights } = useQuery({ queryKey: ["/api/insights"], queryFn: api.getInsights, staleTime: 3 * 60 * 1000 });
-  const { data: onboardStatus } = useQuery({ queryKey: ["onboarding-status"], queryFn: api.getOnboardingStatus, staleTime: 5 * 60 * 1000, retry: false });
-  const { data: lowStock } = useQuery({ queryKey: ["low-stock-dash"], queryFn: api.getLowStock, refetchInterval: 120000, retry: false });
-  const { data: pendingApprovals } = useQuery({ queryKey: ["pending-approvals"], queryFn: api.getPendingApprovals, refetchInterval: 30000, retry: false });
-
-  const isLoading = statsLoading || convsLoading || tasksLoading;
-  const hasError = statsError;
-
-  const approveMut = useMutation({
-    mutationFn: (id: string) => api.approveInvoice(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pending-approvals"] }),
-  });
-  const rejectMut = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => api.rejectInvoice(id, reason),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pending-approvals"] }),
+  // Fetch all data
+  const { data: todayStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["/api/workspaces/current/stats/today"],
+    queryFn: api.getTodayStats,
+    refetchInterval: 60000,
   });
 
-  const approvalList: Record<string, any>[] = Array.isArray(pendingApprovals) ? pendingApprovals : [];
+  const { data: conversations, isLoading: convsLoading } = useQuery({
+    queryKey: ["/api/conversations", "dash"],
+    queryFn: () => api.getConversations({ limit: "10" }),
+  });
 
+  const { data: tasks, isLoading: tasksLoading } = useQuery({
+    queryKey: ["/api/tasks", "dash"],
+    queryFn: () => api.getTasks({ limit: "10" }),
+  });
+
+  const { data: overdueInvoices, isLoading: invoicesLoading } = useQuery({
+    queryKey: ["/api/invoices", "overdue-widget"],
+    queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }),
+    refetchInterval: 60000,
+  });
+
+  const { data: summaries } = useQuery({
+    queryKey: ["/api/summaries/daily"],
+    queryFn: () => api.getDailySummaries(),
+  });
+
+  // Parse data
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
-  const invoiceList = Array.isArray(overdueInvoices) ? overdueInvoices : overdueInvoices?.data ?? [];
-  const stageList: PipelineStageSummary[] = Array.isArray(pipelineStagesData) ? pipelineStagesData : pipelineStagesData?.data ?? [];
-  const insightList: Record<string, any>[] = Array.isArray(insights) ? insights : [];
+  const overdueInvoiceList = Array.isArray(overdueInvoices)
+    ? overdueInvoices
+    : overdueInvoices?.data ?? [];
+  const overdueCount = overdueInvoiceList.length;
+  const overdueAmount = overdueInvoiceList.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+  const lastSummary = Array.isArray(summaries) ? summaries[0] : summaries?.data?.[0] ?? null;
 
-  const revenueChange = workspaceStats?.revenue_change_pct ?? 0;
-  const hasPrevRevenue = (workspaceStats?.prev_month_revenue ?? 0) > 0;
-  const revenueStr = hasPrevRevenue
-    ? (revenueChange >= 0 ? `↑ ${revenueChange}%` : `↓ ${Math.abs(revenueChange)}%`)
-    : (workspaceStats?.monthly_revenue > 0 ? "Primer mes" : "Sin datos");
-  const revenueClass = hasPrevRevenue
-    ? (revenueChange >= 0 ? "text-emerald-500" : "text-red-500")
-    : "text-muted-foreground/60";
-  const activeConvs = workspaceStats?.activeConversations ?? 0;
-  const pipelineStatus = activeConvs > 0 ? dash.active : dash.empty;
-  const stageRows = stageList.map(s => ({ id: s.id, name: s.name, color: s.color || "hsl(var(--primary))", dealCount: s.deals?.length ?? 0, totalValue: sumPipelineValue(s.deals ?? []), currency: s.deals?.find(d => d.currency)?.currency ?? "CRC" })).filter(s => s.dealCount > 0).slice(0, 5);
-  const maxDeals = Math.max(...stageRows.map(s => s.dealCount), 1);
-  const totalPipeline = stageRows.reduce((s, r) => s + r.totalValue, 0);
-  const firstCurrency = stageRows[0]?.currency ?? "CRC";
-  const overdueCount = invoiceList.length;
-  const urgentTasks = (taskList as Task[]).filter((t) => t.priority === "HIGH").length;
-
+  // Greeting
   const greeting = () => {
     const h = new Date().getHours();
-    return h < 12 ? dash.morning : h < 19 ? dash.afternoon : dash.evening;
+    if (h < 12) return "Buenos días";
+    if (h < 19) return "Buenas tardes";
+    return "Buenas noches";
   };
-
-  const monthName = new Date().toLocaleString("es-CR", { month: "long", year: "numeric" });
 
   return (
     <div className="min-h-full bg-background">
-      {hasError && (
-        <div className="px-4 sm:px-6 pt-3">
-          <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2.5 text-xs text-red-400">
-            No se pudieron cargar algunos datos del dashboard. <button className="underline hover:text-red-300" onClick={() => window.location.reload()}>Reintentar</button>
-          </div>
-        </div>
-      )}
-      {isLoading ? (
-        <div className="px-4 sm:px-6 pt-6 space-y-4">
-          {[1,2,3].map(i => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
-        </div>
-      ) : (
-      <>
-      {/* Quick Start Checklist */}
-      <div className="px-4 sm:px-6 pt-3 sm:pt-4">
-        <QuickStartChecklist
-          progress={workspace?.settings?.quick_start_progress ?? {}}
-          plan={user?.workspace?.plan}
-          onDismiss={() => {}}
-        />
-      </div>
-
-      {/* Pending approvals */}
-      {approvalList.length > 0 && (
-        <div className="px-4 sm:px-6 pb-3">
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <ShieldCheck className="w-[15px] h-[15px] text-amber-400" />
-              <h2 className="text-sm font-medium text-foreground">Facturas pendientes de aprobación</h2>
-              <span className="text-[11px] text-muted-foreground">{approvalList.length}</span>
-            </div>
-            <div className="space-y-2">
-              {approvalList.map((inv) => (
-                <div key={inv.id} className="flex items-center justify-between rounded-lg border border-border bg-background/50 px-3 py-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-foreground truncate">{inv.number}</span>
-                      <span className="text-[10px] text-muted-foreground">{inv.contact?.full_name || "—"}</span>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      {new Intl.NumberFormat("es-CR", { style: "currency", currency: inv.currency ?? "USD", maximumFractionDigits: 0 }).format(inv.amount ?? 0)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0 ml-3">
-                    <button
-                      onClick={() => rejectMut.mutate({ id: inv.id, reason: "Rechazada" })}
-                      disabled={rejectMut.isPending}
-                      className="h-6 px-2 text-[10px] rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
-                      Rechazar
-                    </button>
-                    <button
-                      onClick={() => approveMut.mutate(inv.id)}
-                      disabled={approveMut.isPending}
-                      className="h-6 px-2 text-[10px] rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 transition-colors">
-                      Aprobar
-                    </button>
-                  </div>
-                </div>
-              ))}
+      {/* Header */}
+      <div className="bg-card border-b border-border">
+        <div className="px-6 py-4 max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-2xl font-bold text-foreground">
+              {greeting()}, {user?.name?.split(" ")[0] || "Usuario"}.
+            </h1>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Buscar en PymeHub..."
+                className="px-4 py-2 rounded-lg border border-border bg-elevated text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <Button variant="outline" size="sm">
+                <Plus className="w-4 h-4" />
+              </Button>
             </div>
           </div>
-        </div>
-      )}
-
-      <div className="px-4 sm:px-6 pb-1">
-        <DiagnosticButton module="dashboard" />
-      </div>
-
-      {/* ── Greeting + Summary Ribbon ── */}
-      <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-[18px] sm:text-[22px] font-medium text-foreground tracking-tight">{greeting()}, {user?.name?.split(" ")[0] || dash.unknownContact}</h1>
-            <p className="text-[11px] sm:text-[13px] text-muted-foreground/60 mt-0.5">{dash.subtitle}</p>
-          </div>
-        </div>
-
-        {/* Status banner with image */}
-        <div className="relative rounded-xl overflow-hidden border border-border/60 mb-4 min-h-[72px] sm:min-h-[88px] bg-gradient-to-r from-primary/5 via-background to-transparent">
-          <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5 relative h-full">
-            <div className="flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary/80" />
-            </div>
-            <div className="flex items-center gap-3 sm:gap-6 flex-1 flex-wrap text-[11px] sm:text-[13px]">
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.revenue}</span><span className={`font-semibold ${revenueClass}`}>{revenueStr}</span><span className="text-muted-foreground/75 text-[10px] sm:text-[11px]">{dash.vsLastMonth}</span></div>
-              <div className="w-px h-4 sm:h-5 bg-border/60 shrink-0" />
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{overdueCount} {dash.invoices}</span><span className="font-semibold text-foreground/80">{dash.pending}</span></div>
-              <div className="w-px h-4 sm:h-5 bg-border/60 shrink-0" />
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{urgentTasks} {dash.tasks}</span><span className="font-semibold text-foreground/80">{dash.urgent}</span></div>
-              <div className="w-px h-4 sm:h-5 bg-border/60 shrink-0" />
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0"><span className="text-muted-foreground/60">{dash.pipeline}</span><span className={`font-semibold ${activeConvs > 0 ? "text-emerald-500" : "text-muted-foreground/75"}`}>{pipelineStatus}</span></div>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">Aquí está lo más importante de tu negocio hoy.</p>
         </div>
       </div>
 
-      {/* Onboarding prompt */}
-      {onboardStatus && (!onboardStatus.exists || (onboardStatus.completed < (onboardStatus.total || 15))) && (
-        <div className="px-4 sm:px-6 pb-1">
-          <Link href="/onboarding">
-            <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-5 py-3 cursor-pointer hover:border-primary/40 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">🚀</span>
-                  <div>
-                    <p className="text-[13px] font-medium text-foreground">
-                      {onboardStatus.exists ? "Continúa la configuración de tu empresa" : "Completa la configuración de tu empresa"}
-                    </p>
-                    {onboardStatus.exists && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="w-32 h-1 rounded-full bg-border/60 overflow-hidden">
-                          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(onboardStatus.completed / (onboardStatus.total || 1)) * 100}%` }} />
-                        </div>
-                        <span className="text-[11px] text-muted-foreground">{onboardStatus.completed} de {onboardStatus.total || 15}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground" />
-              </div>
-            </div>
-          </Link>
+      {/* Main Content */}
+      <div className="px-6 py-8 max-w-7xl mx-auto">
+        {/* Key Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+          <MetricCard
+            label="Ingresos este mes"
+            value={todayStats?.monthly_revenue || 0}
+            currency="₡"
+            trend={18.6}
+            trendLabel="vs. mes anterior"
+            icon={TrendingUp}
+            loading={statsLoading}
+            color="blue"
+          />
+          <MetricCard
+            label="Por cobrar"
+            value={overdueAmount}
+            currency="₡"
+            loading={invoicesLoading}
+            color="orange"
+          />
+          <MetricCard
+            label="Tareas urgentes"
+            value={taskList.filter((t: any) => t.priority === "HIGH").length}
+            trendLabel="vencen hoy"
+            loading={tasksLoading}
+            color="red"
+          />
+          <MetricCard
+            label="Nuevos mensajes"
+            value={todayStats?.new_messages || 0}
+            trendLabel="sin leer"
+            loading={statsLoading}
+            color="purple"
+          />
+          <MetricCard
+            label="Negocios en pipeline"
+            value={12}
+            currency="₡"
+            trendLabel="en valor"
+            loading={statsLoading}
+            color="green"
+          />
         </div>
-      )}
 
-      {/* Low Stock Alert */}
-      {Array.isArray(lowStock) && lowStock.length > 0 && (
-        <div className="px-4 sm:px-6 pb-1">
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Package className="w-[15px] h-[15px] text-amber-400" />
-              <h2 className="text-sm font-medium text-foreground">Stock Bajo</h2>
-            </div>
-            <div className="space-y-2">
-              {lowStock.map((p) => (
-                <div key={p.id} className="flex items-center justify-between text-xs">
-                  <span className="text-foreground truncate max-w-[140px]">{p.name}</span>
-                  <span className="text-amber-400 font-medium">
-                    {p.current_stock} / {p.min_stock} {p.unit_of_measure || "uds"}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <Link href="/inventory">
-              <span className="text-[11px] text-primary hover:text-primary/80 mt-3 inline-block cursor-pointer">Ver inventario →</span>
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* ── 2-Column Grid ── */}
-      <div className="px-4 sm:px-6 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
-        {/* ── Left: Revenue + Today (8 col) ── */}
-        <div className="lg:col-span-8 space-y-5">
-          {/* Revenue Overview */}
-          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-sm font-medium text-foreground">{dash.revenueOverview}</h2>
-                <span className="text-[11px] text-muted-foreground/80">{monthName}</span>
-              </div>
-            </div>
-            <div className="flex items-end gap-6">
-              <div className="shrink-0">
-                <p className="text-[28px] font-medium text-foreground tracking-tight leading-none">₡{(workspaceStats?.monthly_revenue ?? 0).toLocaleString("es-ES")}</p>
-                <p className={`text-[13px] mt-1 ${revenueClass}`}>{workspaceStats?.revenue_change_pct ?? 0}% {dash.vsLastMonth}</p>
-              </div>
-              <div className="flex-1 h-[80px]">
-                <RevenueChart monthlyRevenue={workspaceStats?.monthly_revenue ?? 0} />
-              </div>
-            </div>
-          </div>
-
-          {/* Today: Tasks + Messages */}
-          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm overflow-hidden">
-            <div className="flex items-center border-b border-border/60">
-              {(["tasks", "messages"] as const).map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)}
-                  className={`px-5 py-3 text-[13px] font-medium transition-colors relative ${activeTab === tab ? "text-foreground" : "text-muted-foreground/80 hover:text-muted-foreground"}`}>
-                  {tab === "tasks" ? dash.tasks : dash.newMessages}
-                  {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-full" />}
-                </button>
-              ))}
-            </div>
-            <div className="divide-y divide-border/60">
-              {activeTab === "tasks" ? (
-                taskList.length === 0 ? (
-                  <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noTasks}</div>
-                ) : (taskList as Task[]).slice(0, 5).map((task) => (
-                  <div key={task.id} className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.02] transition-colors">
-                    <div className="w-[18px] h-[18px] rounded-full border-2 border-border/60 cursor-pointer hover:border-primary/50 transition-colors shrink-0" />
-                    <span className="flex-1 text-[13px] text-foreground truncate">{task.title}</span>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${
-            task.priority === "HIGH" ? "bg-red-500/10 text-red-500 border-red-500/20" :
-            task.priority === "MEDIUM" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
-            "bg-slate-500/10 text-slate-500 border-slate-500/20"
-                    }`}>
-                      {task.priority === "HIGH" ? dash.high : task.priority === "MEDIUM" ? dash.medium : dash.low}
-                    </span>
-                    {task.due_date && <span className="text-[11px] text-muted-foreground">{format(new Date(task.due_date), "MMM d", { locale: es })}</span>}
-                  </div>
-                ))
-              ) : (
-                convList.length === 0 ? (
-                  <div className="px-5 py-8 text-center text-[13px] text-muted-foreground/80">{dash.noMessagesToday}</div>
-                ) : (convList as Conversation[]).slice(0, 5).map((conv) => (
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Left Column - Messages by Responder */}
+          <div className="lg:col-span-1">
+            <SectionCard title="Mensajes por responder" linkTo="/inbox" linkLabel="Ver todos">
+              <div className="divide-y divide-border">
+                {convList.slice(0, 5).map((conv: any, i: number) => (
                   <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                    <div className="flex items-center gap-3 px-5 py-3 hover:bg-foreground/[0.02] transition-colors cursor-pointer">
-                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-semibold text-primary shrink-0">
+                    <a className="flex items-center gap-3 px-6 py-3 hover:bg-muted transition">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
                         {conv.contact?.full_name?.charAt(0) || "?"}
                       </div>
-                      <span className="flex-1 text-[13px] text-foreground truncate">{conv.contact?.full_name || dash.unknownContact}</span>
-                      <span className="text-[11px] text-muted-foreground/80">{conv.updated_at && format(new Date(conv.updated_at), "HH:mm")}</span>
-                    </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {conv.contact?.full_name || "Contacto desconocido"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {conv.subject || "Sin asunto"}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {conv.updated_at && format(new Date(conv.updated_at), "HH:mm", { locale: es })}
+                      </span>
+                    </a>
                   </Link>
-                ))
-              )}
-            </div>
-            <div className="px-5 py-2.5 border-t border-border/60 text-right">
-              <Link href={activeTab === "tasks" ? "/tasks" : "/inbox"} className="text-[12px] text-primary hover:text-primary/80 font-medium">
-                {activeTab === "tasks" ? dash.viewAllTasks : dash.viewAll} <ArrowRight className="w-3 h-3 inline ml-0.5" />
-              </Link>
-            </div>
+                ))}
+              </div>
+            </SectionCard>
+          </div>
+
+          {/* Middle Column - Tasks & Invoices */}
+          <div className="lg:col-span-1 space-y-6">
+            <SectionCard title="Tareas de hoy" linkTo="/tasks" linkLabel="Ver todas">
+              <div className="divide-y divide-border">
+                {taskList.slice(0, 5).map((task: any, i: number) => (
+                  <div key={task.id} className="flex items-center gap-3 px-6 py-3">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-border cursor-pointer"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">{task.title}</p>
+                      <p className="text-xs text-muted-foreground">{task.department_name}</p>
+                    </div>
+                    {task.due_date && (
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(task.due_date), "HH:mm a", { locale: es })}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Facturas próximas a vencer" linkTo="/invoices" linkLabel="Ver todas">
+              <div className="divide-y divide-border">
+                {overdueInvoiceList.slice(0, 4).map((inv: any) => (
+                  <div key={inv.id} className="flex items-center gap-3 px-6 py-3 text-sm">
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">#{inv.id?.slice(0, 4)}</p>
+                      <p className="text-xs text-muted-foreground">{inv.client_name}</p>
+                    </div>
+                    {inv.due_date && (
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(inv.due_date), "dd MMM", { locale: es })}
+                      </span>
+                    )}
+                    <span className="font-semibold text-foreground">€{inv.amount?.toLocaleString("es-ES")}</span>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          </div>
+
+          {/* Right Column - Pipeline & AI Insights */}
+          <div className="lg:col-span-1 space-y-6">
+            <SectionCard title="Pipeline de ventas">
+              <div className="px-6 py-4 space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-foreground">Lead</span>
+                    <span className="text-xs font-semibold text-foreground">4 negocios</span>
+                  </div>
+                  <div className="w-full h-2 bg-blue-500/20 rounded-full overflow-hidden">
+                    <div className="h-full w-2/3 bg-blue-500 rounded-full"></div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">€850,000</span>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-foreground">Calificado</span>
+                    <span className="text-xs font-semibold text-foreground">3 negocios</span>
+                  </div>
+                  <div className="w-full h-2 bg-purple-500/20 rounded-full overflow-hidden">
+                    <div className="h-full w-1/2 bg-purple-500 rounded-full"></div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">€1,250,000</span>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-foreground">Propuesta</span>
+                    <span className="text-xs font-semibold text-foreground">2 negocios</span>
+                  </div>
+                  <div className="w-full h-2 bg-yellow-500/20 rounded-full overflow-hidden">
+                    <div className="h-full w-3/5 bg-yellow-500 rounded-full"></div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">€1,800,000</span>
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Insights de IA">
+              <InsightsWidget />
+            </SectionCard>
           </div>
         </div>
 
-        {/* ── Right: Pipeline + Activity + Insights + Quick Actions (4 col) ── */}
-        <div className="lg:col-span-4 space-y-5">
-          {/* Pipeline */}
-          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium text-foreground">{dash.pipelineOverview}</h2>
-              <Link href="/pipeline" className="text-[11px] text-primary hover:text-primary/80">{dash.viewPipeline} →</Link>
-            </div>
-            {pipelineLoading ? <Skeleton className="h-16 w-full" /> : stageRows.length === 0 ? (
-              <div className="text-center py-4">
-                <p className="text-[13px] text-muted-foreground/70">Aún no tienes oportunidades en el pipeline.</p>
-                <p className="text-[11px] text-muted-foreground/75 mt-1">Crea tu primera oportunidad para dar seguimiento a negocios potenciales.</p>
-                <Link href="/pipeline" className="mt-3 inline-block text-[12px] px-4 py-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors">{dash.newOpportunity}</Link>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {stageRows.map(stage => (
-                  <div key={stage.id} className="space-y-1.5">
-                    <div className="flex justify-between text-[12px]">
-                      <span className="text-foreground/80">{stage.name}</span>
-                      <span className="text-muted-foreground">{stage.dealCount} {dash.deals} · {stage.totalValue > 0 ? fmtMoney(stage.totalValue, stage.currency) : "—"}</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${Math.max((stage.dealCount / maxDeals) * 100, 8)}%`, backgroundColor: stage.color }} />
-                    </div>
-                  </div>
-                ))}
-                <div className="pt-2 border-t border-border/60 flex justify-between text-[13px]">
-                  <span className="text-muted-foreground">{dash.totalPipelineValue}</span>
-                  <span className="font-medium text-foreground">{fmtMoney(totalPipeline, firstCurrency)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* AI Insights */}
-          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-[15px] h-[15px] text-primary" />
-              <h2 className="text-sm font-medium text-foreground">{dash.aiInsights}</h2>
-            </div>
-            <div className="space-y-3">
-              {(insightList.length === 0 ? [
-                { severity: "positive", title: dash.insightNoAlerts, desc: dash.insightNoAlertsDesc },
-                { severity: "warning", title: `${overdueCount} ${dash.insightAlertsInvoices}`, desc: dash.insightAlertsDesc },
-                { severity: "info", title: dash.insightFollowUp, desc: dash.insightFollowUpDesc },
-              ] : insightList.slice(0, 3).map((ins) => ({ severity: ins.severity, title: ins.title, desc: ins.suggestion })))
-                .map((ins, i) => {
-                  const st = INSIGHT_STYLES[ins.severity] ?? INSIGHT_STYLES.info;
-                  return (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${st.bg}`}>
-                        <st.Icon className="w-3.5 h-3.5" style={{ color: st.color }} />
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-medium text-foreground">{ins.title}</p>
-                        <p className="text-[11px] text-muted-foreground/60 mt-0.5">{ins.desc}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
-            <h2 className="text-sm font-medium text-foreground mb-4">{dash.quickActions}</h2>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: dash.newInvoice, href: "/invoices", Icon: Receipt },
-                { label: dash.addContact, href: "/contacts", Icon: Plus },
-                { label: dash.newOpportunity, href: "/pipeline", Icon: BarChart4 },
-                { label: dash.sendMessage, href: "/inbox", Icon: MessageCircle },
-                { label: dash.uploadDocument, href: "/documents", Icon: FileText },
-                { label: dash.automation, href: "/automations", Icon: Sparkles },
-              ].map(({ label, href, Icon }) => (
-                <Link key={label} href={href}>
-                  <div className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-lg hover:bg-foreground/[0.03] transition-colors cursor-pointer">
-                    <Icon className="w-[16px] h-[16px] text-muted-foreground/80" />
-                    <span className="text-[10px] text-muted-foreground/70 text-center leading-tight">{label}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
+        {/* Quick Actions */}
+        <div className="bg-card rounded-xl border border-border p-6">
+          <h3 className="font-semibold text-foreground mb-4">Acciones rápidas</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+            <QuickAction icon={FileText} label="Nueva factura" href="/invoices" />
+            <QuickAction icon={Users} label="Nuevo contacto" href="/contacts" />
+            <QuickAction icon={CheckSquare} label="Nueva tarea" href="/tasks" />
+            <QuickAction icon={FileText} label="Subir documento" href="/documents" />
+            <QuickAction icon={MessageCircle} label="Enviar mensaje" href="/inbox" />
+            <QuickAction icon={TrendingUp} label="Ver reportes" href="/invoices" />
           </div>
         </div>
       </div>
-      </>
-      )}
-      <OnboardingTour />
     </div>
   );
 }

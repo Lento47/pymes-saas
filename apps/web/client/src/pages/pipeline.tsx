@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useRequireAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { Plus, User, Calendar, DollarSign, Trash2, Trophy } from "lucide-react";
 import { useLocation } from "wouter";
@@ -425,6 +426,7 @@ function DealModal({
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Pipeline() {
+  useRequireAuth();
   const qc = useQueryClient();
   const { toast } = useToast();
   const dragDealId = useRef<string | null>(null);
