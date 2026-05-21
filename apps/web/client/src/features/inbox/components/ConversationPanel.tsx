@@ -104,17 +104,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     };
   }, [id]);
 
-  // Clear typing indicator when a new inbound message arrives
-  useEffect(() => {
-    if (msgList.length > 0) {
-      const last = msgList[msgList.length - 1];
-      if (last.direction === 'INBOUND') {
-        setIsUserTyping(false);
-        if (userTypingTimerRef.current) clearTimeout(userTypingTimerRef.current);
-      }
-    }
-  }, [msgList.length]);
-
   const { data: messages, isLoading: msgsLoading } = useQuery({
     queryKey: ["/api/conversations", id, "messages"],
     queryFn: () => api.getMessages(id),
@@ -306,6 +295,18 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   const msgList = useMemo(() => {
     return Array.isArray(messages) ? messages : messages?.data || [];
   }, [messages]);
+
+  // Clear typing indicator when a new inbound message arrives
+  // NOTE: must come AFTER msgList declaration (TDZ constraint in JS)
+  useEffect(() => {
+    if (msgList.length > 0) {
+      const last = msgList[msgList.length - 1];
+      if (last.direction === 'INBOUND') {
+        setIsUserTyping(false);
+        if (userTypingTimerRef.current) clearTimeout(userTypingTimerRef.current);
+      }
+    }
+  }, [msgList.length]);
 
   const memberList = useMemo(() => {
     return Array.isArray(members) ? members : members?.data || [];
