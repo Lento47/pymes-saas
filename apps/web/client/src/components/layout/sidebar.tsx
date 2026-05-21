@@ -562,7 +562,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   { icon: ShieldCheck, label: copy.settingsFlyout.platform, href: "/settings?tab=platform" },
                 ]},
               ].map((group) => (
-                <div key={group.label} className="space-y-1">
+                <div key={group.label} className="space-y-1 pb-3 border-b border-border/40 last:border-b-0 last:pb-0">
                   <div className="px-3 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                     {group.label}
                   </div>
