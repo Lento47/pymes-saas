@@ -22,6 +22,7 @@ import { MessagesService } from "./messages.service";
 import { SlaService } from "./sla.service";
 import { EmailService } from "../email/email.service";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
+import { WhatsAppRateLimiter } from "../whatsapp/whatsapp-rate-limiter";
 import { TelegramService } from "../telegram/telegram.service";
 import { MessageTemplatesService } from "../message-templates/message-templates.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -45,6 +46,7 @@ export class ConversationsController {
     private readonly slaService: SlaService,
     private readonly emailService: EmailService,
     private readonly whatsAppService: WhatsAppService,
+    private readonly whatsAppRateLimiter: WhatsAppRateLimiter,
     private readonly telegramService: TelegramService,
     private readonly templatesService: MessageTemplatesService,
     private readonly prisma: PrismaService,
@@ -207,10 +209,10 @@ export class ConversationsController {
     }
 
     // ── WhatsApp dispatch ──
-    if (conv.channel.type === 'WHATSAPP' && (conv.contact as any)?.phone) {
+    if (conv.channel.type === "WHATSAPP" && (conv.contact as any)?.phone) {
       try {
         const phoneStr = (conv.contact as any).phone as string;
-        const to = phoneStr ? phoneStr.replace(/\D/g, '') : '';
+        const to = phoneStr ? phoneStr.replace(/\D/g, "") : "";
         if (!to) return message;
 
         // Rate limit check
@@ -227,43 +229,51 @@ export class ConversationsController {
         const interactive = dto.interactive as Record<string, any> | undefined;
         const iType = interactive?.type as string | undefined;
 
-        if (iType === 'button' && Array.isArray(interactive?.buttons)) {
+        if (template?.external_template_id) {
+          externalId = (
+            await this.whatsAppService.sendTemplateMessage(
+              conv.channel,
+              to,
+              template.external_template_id,
+              template.language ?? "es",
+              dto.template_variables ?? {},
+            )
+          ).message_id;
+        } else if (iType === "button" && Array.isArray(interactive?.buttons)) {
           externalId = (await this.whatsAppService.sendReplyButtons(
             conv.channel, to,
-            interactive.body ?? dto.body_text ?? '',
+            interactive.body ?? dto.body_text ?? "",
             interactive.buttons,
             interactive.footer,
           )).message_id;
-        } else if (iType === 'list' && Array.isArray(interactive?.sections)) {
+        } else if (iType === "list" && Array.isArray(interactive?.sections)) {
           externalId = (await this.whatsAppService.sendListMessage(
             conv.channel, to,
-            interactive.body ?? dto.body_text ?? '',
-            interactive.buttonText ?? 'Ver opciones',
+            interactive.body ?? dto.body_text ?? "",
+            interactive.buttonText ?? "Ver opciones",
             interactive.sections,
             interactive.footer,
           )).message_id;
-        } else if (iType === 'location_request') {
+        } else if (iType === "location_request") {
           externalId = (await this.whatsAppService.sendLocationRequest(
             conv.channel, to,
-            interactive.body ?? dto.body_text ?? 'Comparte tu ubicación',
+            interactive.body ?? dto.body_text ?? "Comparte tu ubicación",
           )).message_id;
         } else if (dto.media_url && dto.media_type) {
           // Dispatch media message
-          const validMediaTypes = ['image', 'video', 'audio', 'document'];
+          const validMediaTypes = ["image", "video", "audio", "document", "sticker"];
           if (validMediaTypes.includes(dto.media_type.toLowerCase())) {
-            externalId = (await this.whatsAppService.sendMedia({
-              channel: conv.channel,
+            externalId = (await this.whatsAppService.sendMedia(
+              conv.channel,
               to,
-              type: dto.media_type.toLowerCase() as any,
-              mediaUrl: dto.media_url,
-              caption: dto.media_caption ?? dto.body_text ?? undefined,
-              filename: dto.media_filename ?? undefined,
-              mimeType: dto.media_mime_type ?? undefined,
-            })).message_id;
+              dto.media_url,
+              dto.media_type.toLowerCase() as "image" | "video" | "audio" | "document" | "sticker",
+              dto.media_caption ?? dto.body_text ?? undefined,
+            )).message_id;
           } else {
             externalId = (await this.whatsAppService.sendMessage(
               conv.channel, to,
-              dto.body_text || dto.media_caption || '📎 Archivo adjunto',
+              dto.body_text || dto.media_caption || "Archivo adjunto",
             )).message_id;
           }
         } else if (dto.body_text) {
@@ -287,7 +297,7 @@ export class ConversationsController {
             where: { id: message.id },
             data: {
               external_message_id: externalId,
-              delivery_status: 'SENT',
+              delivery_status: "SENT",
             },
           });
         }
@@ -297,60 +307,10 @@ export class ConversationsController {
         await this.prisma.message.update({
           where: { id: message.id },
           data: {
-            delivery_status: 'DISPATCH_FAILED',
-            delivery_error: err?.message?.slice(0, 500) ?? 'Unknown dispatch error',
+            delivery_status: "DISPATCH_FAILED",
+            delivery_error: err?.message?.slice(0, 500) ?? "Unknown dispatch error",
           },
         });
-      }
-    }
-
-    // ── Email dispatch ──
-    if (conv.channel.type === 'EMAIL' && (conv.contact as any)?.email) {
-      try {
-        await this.emailService.sendOutbound(
-          conv.channel,
-          (conv.contact as any).email,
-          (conv as any).subject ?? "Nuevo mensaje",
-          bodyHtml || bodyText,
-          bodyText,
-        );
-      } catch (err) {
-        this.logger.error(`Email dispatch failed: ${err?.message}`);
-        throw new BadGatewayException(err?.message ?? "No se pudo enviar el email.");
-      }
-    }
-
-    if (conv?.channel?.type === "WHATSAPP" && (conv.contact as any)?.phone) {
-      try {
-        const to = ((conv.contact as any).phone as string).replace(/\D/g, "");
-        this.logger.log(
-          `[DIAG] WhatsApp dispatch: conv=${conversationId}, channel=${conv.channel.id}, phone=${to}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? "none"}`,
-        );
-        if (dto.media_url && dto.media_type) {
-          const waType = ["image", "video", "audio", "document", "sticker"].includes(dto.media_type)
-            ? (dto.media_type as "image" | "video" | "audio" | "document" | "sticker")
-            : "document";
-          await this.whatsAppService.sendMedia(
-            conv.channel,
-            to,
-            dto.media_url,
-            waType,
-            bodyText || undefined,
-          );
-        } else if (template?.external_template_id) {
-          await this.whatsAppService.sendTemplateMessage(
-            conv.channel,
-            to,
-            template.external_template_id,
-            template.language ?? "es",
-            dto.template_variables ?? {},
-          );
-        } else {
-          await this.whatsAppService.sendMessage(conv.channel, to, bodyText);
-        }
-      } catch (err) {
-        this.logger.error(`WhatsApp dispatch failed: ${err?.message}`);
-        throw new BadGatewayException(err?.message ?? "No se pudo enviar el mensaje por WhatsApp.");
       }
     }
 
@@ -423,7 +383,6 @@ export class ConversationsController {
       res.setHeader("Cache-Control", "public, max-age=5");
       res.status(404).json({ statusCode: 404, message: err.message || "Media no disponible" });
     }
-    return message;
   }
 
   // ── WhatsApp-specific actions ─────────────────────────────────────────────

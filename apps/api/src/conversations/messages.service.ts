@@ -102,39 +102,6 @@ export class MessagesService {
         body_text: dto.body_text,
         body_html: dto.body_html,
         sent_at: new Date(),
-        message_type: dto.media_type || undefined,
-        attachments_json: dto.media_url
-          ? [
-              {
-                storageKey: dto.media_url.includes("/api/storage/file/")
-                  ? dto.media_url.split("/api/storage/file/").pop()!
-                  : dto.media_url,
-                type: dto.media_type ?? "document",
-                mimeType: (() => {
-                  const ext = dto.media_url?.split(".").pop()?.toLowerCase() ?? "";
-                  const MIME: Record<string, string> = {
-                    png: "image/png",
-                    jpg: "image/jpeg",
-                    jpeg: "image/jpeg",
-                    gif: "image/gif",
-                    webp: "image/webp",
-                    svg: "image/svg+xml",
-                    mp4: "video/mp4",
-                    mp3: "audio/mpeg",
-                    ogg: "audio/ogg",
-                    wav: "audio/wav",
-                    pdf: "application/pdf",
-                    doc: "application/msword",
-                    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                  };
-                  return MIME[ext] ?? null;
-                })(),
-                filename: dto.media_url.split("/").pop() || null,
-                caption: dto.body_text || null,
-              },
-            ]
-          : undefined,
-
         // ── Media fields ──
         provider: dto.provider ?? null,
         message_type: messageType,
@@ -145,15 +112,46 @@ export class MessagesService {
         media_caption: dto.media_caption ?? null,
         media_status: hasMedia ? 'AVAILABLE' : 'NONE',
         attachments_json: dto.attachments?.length
-          ? stringifyJson(dto.attachments)
-          : undefined,
+          ? dto.attachments
+          : dto.media_url
+            ? [
+                {
+                  storageKey: dto.media_url.includes("/api/storage/file/")
+                    ? dto.media_url.split("/api/storage/file/").pop()!
+                    : dto.media_url,
+                  type: dto.media_type ?? "document",
+                  mimeType: (() => {
+                    const ext = dto.media_url?.split(".").pop()?.toLowerCase() ?? "";
+                    const MIME: Record<string, string> = {
+                      png: "image/png",
+                      jpg: "image/jpeg",
+                      jpeg: "image/jpeg",
+                      gif: "image/gif",
+                      webp: "image/webp",
+                      svg: "image/svg+xml",
+                      mp4: "video/mp4",
+                      mp3: "audio/mpeg",
+                      ogg: "audio/ogg",
+                      wav: "audio/wav",
+                      pdf: "application/pdf",
+                      doc: "application/msword",
+                      docx:
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    };
+                    return MIME[ext] ?? null;
+                  })(),
+                  filename: dto.media_filename ?? dto.media_url.split("/").pop() ?? null,
+                  caption: dto.media_caption ?? dto.body_text ?? null,
+                },
+              ]
+            : undefined,
 
         // ── Reply context ──
         reply_to_message_id: dto.reply_to_message_id ?? null,
 
         // ── Interactive ──
         button_payload_json: dto.interactive
-          ? stringifyJson(dto.interactive)
+          ? dto.interactive
           : undefined,
 
         // ── Delivery ──
@@ -340,8 +338,7 @@ export class MessagesService {
         sender_ref: senderRef,
         body_text: bodyText,
         body_html: payload.body_html ?? payload.html ?? null,
-        raw_payload_json: payload,
-        raw_payload_json: stringifyJson(payload.raw ?? payload),
+        raw_payload_json: payload.raw ?? payload,
 
         // ── Media fields ──
         provider: provider,
@@ -361,7 +358,7 @@ export class MessagesService {
         reply_to_message_id: payload.reply_to_message_id ?? null,
         interactive_type: payload.interactive_type ?? null,
         button_payload_json: payload.button_payload
-          ? stringifyJson(payload.button_payload)
+          ? payload.button_payload
           : undefined,
 
         sent_at: new Date(),

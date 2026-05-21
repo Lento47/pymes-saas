@@ -9,6 +9,7 @@ import { MessagesService } from "../conversations/messages.service";
 import { WebhookEventsService } from "../webhooks/webhook-events.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import * as path from "path";
+import { MessageDeliveryStatus } from "@prisma/client";
 
 const META_API_BASE = "https://graph.facebook.com/v19.0";
 
@@ -1336,7 +1337,7 @@ export class WhatsAppService {
       interactive_type: interactiveType,
       button_payload: buttonPayload,
       external_id: msg.id, // wamid.xxx
-      raw: payload,
+      raw: value,
     };
 
     await this.messages.receiveInbound('whatsapp', workspaceId, normalizedPayload);
@@ -1365,7 +1366,7 @@ export class WhatsAppService {
                   delivery_error: status.errors
                     .map((e: any) => `${e.code}: ${e.title ?? e.message}`)
                     .join('; '),
-                  delivery_status: 'FAILED',
+                  delivery_status: MessageDeliveryStatus.FAILED,
                 }
               : {}),
           },
@@ -1385,13 +1386,13 @@ export class WhatsAppService {
   /**
    * Map Meta status string to our enum
    */
-  private mapMetaStatus(metaStatus: string): string {
+  private mapMetaStatus(metaStatus: string): MessageDeliveryStatus {
     switch (metaStatus) {
-      case 'sent':      return 'SENT';
-      case 'delivered': return 'DELIVERED';
-      case 'read':      return 'READ';
-      case 'failed':    return 'FAILED';
-      default:          return 'SENT';
+      case 'sent':      return MessageDeliveryStatus.SENT;
+      case 'delivered': return MessageDeliveryStatus.DELIVERED;
+      case 'read':      return MessageDeliveryStatus.READ;
+      case 'failed':    return MessageDeliveryStatus.FAILED;
+      default:          return MessageDeliveryStatus.SENT;
     }
   }
 

@@ -19,9 +19,6 @@ import * as crypto from "crypto";
 import { WhatsAppService } from "./whatsapp.service";
 import { CryptoService } from "../common/crypto/crypto.service";
 import { PrismaService } from "../common/prisma/prisma.service";
-} from '@nestjs/common';
-import { Request } from 'express';
-import { WhatsAppService } from './whatsapp.service';
 
 @Controller("inbound/whatsapp")
 export class WhatsAppWebhookController {
@@ -55,8 +52,6 @@ export class WhatsAppWebhookController {
   async receiveWebhook(
     @Headers("x-hub-signature-256") signature: string | undefined,
     @Body() payload: Record<string, unknown>,
-    @Headers('x-hub-signature-256') signature: string | undefined,
-    @Body() payload: any,
     @Req() req: RawBodyRequest<Request>,
   ) {
     // Per-channel signature verification (app_secret_encrypted in channel config_json)
@@ -101,25 +96,6 @@ export class WhatsAppWebhookController {
 
     if (result.duplicate) {
       this.logger.log("Duplicate webhook acknowledged — returning 200 to Meta");
-      // Verify signature if app secret is configured
-      const appSecret = process.env.WHATSAPP_APP_SECRET;
-      if (appSecret && signature) {
-        const rawBody = (req as any).rawBody;
-        const isValid = this.whatsappService.verifySignature(
-          rawBody ?? JSON.stringify(payload),
-          appSecret,
-          signature,
-        );
-        if (!isValid) {
-          this.logger.warn('Invalid webhook signature — rejecting');
-          return { ok: false, reason: 'invalid_signature' };
-        }
-      }
-
-      // SECURITY: Workspace is resolved from WhatsApp phone_number_id, not from client headers
-      await this.whatsappService.processInbound(payload);
-    } catch (err: any) {
-      this.logger.error(`Error processing WhatsApp webhook: ${err?.message}`);
     }
 
     return { ok: true };
@@ -138,10 +114,11 @@ export class WhatsAppWebhookController {
 
   private verifySignature(appSecret: string, signature: string, rawBody: Buffer): boolean {
     try {
-      const expected = crypto.createHmac("sha256", appSecret).update(rawBody).digest("hex");
+      const expected =
+        "sha256=" + crypto.createHmac("sha256", appSecret).update(rawBody).digest("hex");
       return crypto.timingSafeEqual(
-        Buffer.from(signature.replace(/^sha256=/, "")),
-        Buffer.from(`sha256=${expected}`),
+        Buffer.from(signature),
+        Buffer.from(expected),
       );
     } catch {
       return false;
