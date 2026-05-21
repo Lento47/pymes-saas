@@ -39,6 +39,8 @@
   --destructive-foreground: var(--danger-fg);
   --input:             var(--border);
   --ring:              var(--accent);
+  --button-outline:    hsl(var(--border));
+  --badge-outline:     hsl(var(--border));
   --elevated:          var(--bg-elevated);
   --sidebar:           var(--bg-sidebar);
   --sidebar-foreground: var(--fg);
@@ -109,6 +111,19 @@ body {
     transition-duration: 150ms;
     transition-timing-function: ease;
   }
+}
+
+/* ── Interactive elevation utilities ── */
+.hover-elevate {
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.hover-elevate:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.active-elevate-2:active {
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 /* Safari scrollbar fix: webkit-scrollbar not supported, removed */
