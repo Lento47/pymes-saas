@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, MessageCircle, FileText, ArrowUpRight } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,24 +30,48 @@ interface PipelineStage {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function crc(n: number): string {
-  return `₡${n.toLocaleString("es-CR")}`;
+  return n >= 1_000_000
+    ? `₡${(n / 1_000_000).toFixed(1)}M`
+    : `₡${n.toLocaleString("es-CR")}`;
 }
 
-// ── KPI inline ───────────────────────────────────────────────────────────────
+const urgency = (inv: any): "overdue" | "soon" | "ok" => {
+  const days = Math.ceil((new Date(inv.due_date).getTime() - Date.now()) / 86400000);
+  if (days < 0) return "overdue";
+  if (days <= 3) return "soon";
+  return "ok";
+};
 
-function KpiInline({ label, value, sub }: { label: string; value: string; sub?: string }) {
+// ── KPI Strip ────────────────────────────────────────────────────────────────
+
+function KpiStrip({
+  items,
+}: {
+  items: { label: string; value: string; sub?: string; urgent?: boolean }[];
+}) {
   return (
-    <div className="text-center px-3 py-2">
-      <div className="text-lg font-semibold text-foreground tabular-nums leading-none">
-        {value}
+    <div className="rounded-lg border border-border bg-card dash-card">
+      <div className="flex divide-x divide-border">
+        {items.map((item, i) => (
+          <div key={i} className="flex-1 text-center py-2.5 px-3">
+            <div className="flex items-center justify-center gap-1.5">
+              {item.urgent && <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
+              <div className="text-lg font-semibold text-foreground tabular-nums leading-none">
+                {item.value}
+              </div>
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">{item.label}</div>
+            {item.sub && (
+              <div className="text-[10px] text-muted-foreground/70 mt-0.5">{item.sub}</div>
+            )}
+          </div>
+        ))}
       </div>
-      <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
-      {sub && <div className="text-[10px] text-muted-foreground/70">{sub}</div>}
     </div>
   );
 }
 
-// ── Pipeline strip ───────────────────────────────────────────────────────────
+// ── Pipeline Strip ───────────────────────────────────────────────────────────
 
 function PipelineStrip({ stages }: { stages: PipelineStage[] }) {
   if (stages.length === 0) return null;
@@ -59,24 +83,101 @@ function PipelineStrip({ stages }: { stages: PipelineStage[] }) {
         const count = stage.deals.length;
         const value = stage.deals.reduce((s, d) => s + (Number(d.value) || 0), 0);
         return (
-          <div key={stage.id} className="flex-1 min-w-0 rounded-md border border-border bg-card dash-card px-3 py-2.5">
-            <div className="flex items-center gap-1.5 mb-1">
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
-              <span className="text-[11px] font-medium text-foreground truncate">{stage.name}</span>
-            </div>
-            <div className="text-lg font-semibold text-foreground tabular-nums leading-none">{count}</div>
-            <div className="flex items-baseline gap-2 mt-1">
-              <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${(count / maxDeals) * 100}%`, backgroundColor: stage.color, opacity: count > 0 ? 0.7 : 0.15 }} />
+          <Link key={stage.id} href="/pipeline" className="flex-1 min-w-0">
+            <div className="rounded-md border border-border bg-card dash-card px-3 py-2.5 hover:border-primary/30 transition-colors cursor-pointer h-full">
+              <div className="flex items-center gap-1.5 mb-1">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
+                <span className="text-[11px] font-medium text-foreground truncate">{stage.name}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{crc(value)}</span>
+              <div className="text-lg font-semibold text-foreground tabular-nums leading-none">{count}</div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${(count / maxDeals) * 100}%`, backgroundColor: stage.color, opacity: count > 0 ? 0.7 : 0.15 }}
+                  />
+                </div>
+                <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{crc(value)}</span>
+              </div>
             </div>
-          </div>
+          </Link>
         );
       })}
     </div>
   );
 }
+
+// ── Section header ───────────────────────────────────────────────────────────
+
+function SectionHeader({
+  title,
+  count,
+  linkTo,
+}: {
+  title: string;
+  count?: number;
+  linkTo?: string;
+}) {
+  const inner = (
+    <div className="flex items-center justify-between">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">
+        {title}
+        {count != null && (
+          <span className="ml-2 text-[10px] font-normal text-muted-foreground/60">
+            {count}
+          </span>
+        )}
+      </h2>
+      {linkTo && (
+        <ArrowUpRight className="w-3 h-3 text-muted-foreground/40" />
+      )}
+    </div>
+  );
+  return linkTo ? (
+    <Link href={linkTo} className="block px-4 py-2.5 border-b border-border hover:bg-muted/30 transition-colors">
+      {inner}
+    </Link>
+  ) : (
+    <div className="px-4 py-2.5 border-b border-border">{inner}</div>
+  );
+}
+
+// ── Empty state ──────────────────────────────────────────────────────────────
+
+function EmptyRow({ icon: Icon, text, cta, href }: { icon: any; text: string; cta?: string; href?: string }) {
+  return (
+    <div className="px-4 py-5 flex flex-col items-center gap-2 text-center">
+      <Icon className="w-4 h-4 text-muted-foreground/40" />
+      <span className="text-xs text-muted-foreground">{text}</span>
+      {cta && href && (
+        <Link href={href} className="text-[11px] text-primary hover:underline">
+          {cta}
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// ── Status dot ───────────────────────────────────────────────────────────────
+
+function StatusDot({ status }: { status: string }) {
+  const color =
+    status === "NEW" || status === "OPEN"
+      ? "bg-emerald-500"
+      : status === "PENDING"
+      ? "bg-amber-500"
+      : "bg-border";
+  return <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${color}`} />;
+}
+
+// ── Conversation status badge ────────────────────────────────────────────────
+
+const CONV_STATUS: Record<string, string> = {
+  NEW: "Nuevo",
+  OPEN: "Abierto",
+  PENDING: "Pendiente",
+  RESOLVED: "Resuelto",
+};
 
 // ── Main Dashboard ───────────────────────────────────────────────────────────
 
@@ -86,7 +187,6 @@ export default function DashboardPage() {
   useRequireAuth();
   const { user } = useAuth();
 
-  // AI Summary
   const { data: todaySummary, isLoading: summaryLoading } = useQuery({
     queryKey: ["/api/summaries/daily/today"],
     queryFn: () => api.getTodaySummary().catch(() => null),
@@ -101,7 +201,6 @@ export default function DashboardPage() {
     },
   });
 
-  // Business data
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/workspaces/current/stats"],
     queryFn: () => api.getWorkspaceStats(),
@@ -136,7 +235,8 @@ export default function DashboardPage() {
     refetchInterval: 120000,
   });
 
-  // Parse
+  // ── Parse ──────────────────────────────────────────────────────────────────
+
   const s = (stats as any) ?? {};
   const t = (todayStats as any) ?? {};
   const pipelineStages: PipelineStage[] = Array.isArray(pipeline) ? pipeline : [];
@@ -155,6 +255,8 @@ export default function DashboardPage() {
   const pipelineTotalValue = activeStages.reduce((s, st) => s + st.deals.reduce((ss, d) => ss + (Number(d.value) || 0), 0), 0);
   const totalOutstanding = outstandingInvoices.reduce((s: number, inv: any) => s + (Number(inv.balance_due ?? inv.amount) || 0), 0);
   const urgentTasks = taskList.filter((t: any) => t.priority === "HIGH").length;
+  const hasOverdueInvoices = upcomingInvoices.some((inv: any) => urgency(inv) === "overdue");
+  const unreadCount = t.received_messages || 0;
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -168,7 +270,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-full bg-background">
       <div className="px-5 py-5 max-w-4xl mx-auto space-y-5">
-        {/* Greeting */}
+        {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-normal text-foreground tracking-[-0.3px]">
@@ -191,126 +293,167 @@ export default function DashboardPage() {
             ) : (
               <Sparkles className="w-3 h-3" />
             )}
-            {todaySummary?.generated_text ? "Regenerar" : "Generar resumen IA"}
+            Resumen IA
           </Button>
         </div>
 
-        {/* AI Brief or fallback */}
+        {/* ── AI Brief ────────────────────────────────────────────────── */}
         {summaryLoading || isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-3/4" />
           </div>
         ) : todaySummary?.generated_text ? (
-          <div className="rounded-lg border border-amber-500/10 bg-amber-500/[0.04] dash-card p-4">
-            <p className="text-sm leading-relaxed text-foreground">
+          <div className="rounded-lg border border-border bg-card dash-card p-4">
+            <p className="text-[13px] leading-relaxed text-foreground/90">
               {todaySummary.generated_text}
             </p>
-            <div className="mt-1.5 text-[10px] text-muted-foreground">
-              Generado por IA · {format(new Date(todaySummary.summary_date || todaySummary.created_at), "d MMM", { locale: es })}
-            </div>
           </div>
         ) : generateMutation.isPending ? (
           <div className="rounded-lg border border-border bg-card dash-card p-4 flex items-center gap-3">
             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Generando resumen con IA...</span>
+            <span className="text-[13px] text-muted-foreground">Generando resumen...</span>
           </div>
-        ) : (
-          <div className="rounded-lg border border-border bg-card dash-card p-4">
-            <p className="text-sm text-muted-foreground">
-              Tocá <span className="text-foreground font-medium">"Generar resumen IA"</span> para obtener un briefing diario de tu negocio.
-            </p>
-          </div>
-        )}
+        ) : null}
 
-        {/* KPI Strip */}
+        {/* ── KPI Strip ───────────────────────────────────────────────── */}
         {!isLoading && (
-          <div className="rounded-lg border border-border bg-card dash-card">
-            <div className="flex divide-x divide-border">
-              <div className="flex-1"><KpiInline label="Ingresos del mes" value={crc(s.monthly_revenue || 0)} sub={s.monthly_revenue > 0 ? undefined : "Sin ingresos"} /></div>
-              <div className="flex-1"><KpiInline label="Por cobrar" value={crc(totalOutstanding)} sub={`${outstandingInvoices.length} facturas`} /></div>
-              <div className="flex-1"><KpiInline label="Pipeline" value={String(pipelineTotalDeals)} sub={pipelineTotalDeals > 0 ? crc(pipelineTotalValue) : "Sin negocios"} /></div>
-              <div className="flex-1"><KpiInline label="Mensajes hoy" value={String(t.received_messages || 0)} sub={urgentTasks > 0 ? `${urgentTasks} urgentes` : undefined} /></div>
-            </div>
-          </div>
+          <KpiStrip
+            items={[
+              {
+                label: "Ingresos del mes",
+                value: crc(s.monthly_revenue || 0),
+                sub: s.monthly_revenue > 0 ? undefined : "Sin ingresos",
+              },
+              {
+                label: "Por cobrar",
+                value: crc(totalOutstanding),
+                sub: `${outstandingInvoices.length} facturas`,
+                urgent: hasOverdueInvoices,
+              },
+              {
+                label: "Pipeline",
+                value: String(pipelineTotalDeals),
+                sub: pipelineTotalDeals > 0 ? crc(pipelineTotalValue) : "Sin negocios",
+              },
+              {
+                label: "Mensajes hoy",
+                value: String(unreadCount),
+                sub: urgentTasks > 0 ? `${urgentTasks} urgentes` : undefined,
+              },
+            ]}
+          />
         )}
 
-        {/* Pipeline strip */}
+        {/* ── Pipeline Strip ──────────────────────────────────────────── */}
         {!pipelineLoading && activeStages.length > 0 && (
           <div>
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground mb-2.5">Pipeline</h2>
-            <PipelineStrip stages={activeStages} />
+            <SectionHeader title="Pipeline" count={pipelineTotalDeals} linkTo="/pipeline" />
+            <div className="mt-2.5">
+              <PipelineStrip stages={activeStages} />
+            </div>
           </div>
         )}
 
-        {/* Two columns: Tasks + Invoices */}
+        {/* ── Tasks + Invoices ────────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Tasks */}
           <div className="rounded-lg border border-border bg-card dash-card">
-            <div className="px-4 py-2.5 border-b border-border">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">Tareas</h2>
-            </div>
+            <SectionHeader title="Tareas" count={taskList.length} linkTo="/tasks" />
             {taskList.length === 0 ? (
-              <div className="px-4 py-4 text-center text-xs text-muted-foreground">Todo al día</div>
+              <EmptyRow
+                icon={FileText}
+                text="No tenés tareas pendientes"
+                cta="Crear primera tarea"
+                href="/tasks"
+              />
             ) : (
               taskList.slice(0, 8).map((task: any) => (
-                <div key={task.id} className="flex items-center gap-2.5 px-4 py-2 border-b border-border last:border-0">
-                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${task.priority === "HIGH" ? "bg-red-500" : task.priority === "MEDIUM" ? "bg-amber-500" : "bg-border"}`} />
-                  <span className="text-[13px] text-foreground truncate flex-1">{task.title}</span>
-                  {task.due_date && (
-                    <span className="text-[11px] text-muted-foreground shrink-0">
-                      {formatDistanceToNow(new Date(task.due_date), { addSuffix: true, locale: es })}
-                    </span>
-                  )}
-                </div>
+                <Link key={task.id} href={`/tasks`}>
+                  <div className="flex items-center gap-2.5 px-4 py-2 border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
+                    <StatusDot status={task.priority === "HIGH" ? "NEW" : task.priority === "MEDIUM" ? "PENDING" : "RESOLVED"} />
+                    <span className="text-[13px] text-foreground truncate flex-1">{task.title}</span>
+                    {task.due_date && (
+                      <span className="text-[11px] text-muted-foreground shrink-0">
+                        {formatDistanceToNow(new Date(task.due_date), { addSuffix: true, locale: es })}
+                      </span>
+                    )}
+                  </div>
+                </Link>
               ))
             )}
           </div>
 
+          {/* Invoices */}
           <div className="rounded-lg border border-border bg-card dash-card">
-            <div className="px-4 py-2.5 border-b border-border">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">Facturas por cobrar</h2>
-            </div>
+            <SectionHeader title="Por cobrar" count={upcomingInvoices.length} linkTo="/invoices" />
             {upcomingInvoices.length === 0 ? (
-              <div className="px-4 py-4 text-center text-xs text-muted-foreground">Sin facturas pendientes</div>
+              <EmptyRow
+                icon={FileText}
+                text="No tenés facturas por cobrar"
+                cta="Ir a facturación"
+                href="/invoices"
+              />
             ) : (
               upcomingInvoices.slice(0, 8).map((inv: any) => {
-                const due = new Date(inv.due_date);
-                const days = Math.ceil((due.getTime() - Date.now()) / 86400000);
-                const isOverdue = days < 0;
-                const isSoon = days >= 0 && days <= 3;
+                const state = urgency(inv);
                 return (
-                  <div key={inv.id} className="flex items-center gap-2.5 px-4 py-2 border-b border-border last:border-0">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] text-foreground truncate">{inv.client_name || `Factura #${inv.id?.slice(0, 8)}`}</p>
-                      <p className={`text-[11px] ${isOverdue ? "text-red-500" : isSoon ? "text-amber-500" : "text-muted-foreground"}`}>
-                        {isOverdue ? `Vencida ${formatDistanceToNow(due, { addSuffix: true, locale: es })}` : `Vence ${formatDistanceToNow(due, { addSuffix: true, locale: es })}`}
-                      </p>
+                  <Link key={inv.id} href={`/invoices`}>
+                    <div className="flex items-center gap-2.5 px-4 py-2 border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
+                      <StatusDot
+                        status={state === "overdue" ? "NEW" : state === "soon" ? "PENDING" : "RESOLVED"}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] text-foreground truncate">
+                          {inv.client_name || `#${inv.id?.slice(0, 8)}`}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {state === "overdue"
+                            ? `Vencida ${formatDistanceToNow(new Date(inv.due_date), { addSuffix: true, locale: es })}`
+                            : `Vence ${formatDistanceToNow(new Date(inv.due_date), { addSuffix: true, locale: es })}`}
+                        </p>
+                      </div>
+                      <span className="text-[13px] font-medium text-foreground tabular-nums shrink-0">
+                        {crc(Number(inv.balance_due ?? inv.amount) || 0)}
+                      </span>
                     </div>
-                    <span className="text-[13px] font-medium text-foreground tabular-nums shrink-0">
-                      {crc(Number(inv.balance_due ?? inv.amount) || 0)}
-                    </span>
-                  </div>
+                  </Link>
                 );
               })
             )}
           </div>
         </div>
 
-        {/* Activity */}
-        {convList.length > 0 && (
-          <div className="rounded-lg border border-border bg-card dash-card">
-            <div className="px-4 py-2.5 border-b border-border">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">Actividad reciente</h2>
-            </div>
-            {convList.slice(0, 5).map((conv: any) => (
+        {/* ── Activity ────────────────────────────────────────────────── */}
+        <div className="rounded-lg border border-border bg-card dash-card">
+          <SectionHeader title="Actividad reciente" linkTo="/inbox" />
+          {convList.length === 0 ? (
+            <EmptyRow
+              icon={MessageCircle}
+              text="Sin actividad reciente"
+              cta="Conectar un canal"
+              href="/settings?tab=channels"
+            />
+          ) : (
+            convList.slice(0, 5).map((conv: any) => (
               <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                <div className="flex items-center gap-3 px-4 py-2 border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 px-4 py-2 border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
+                  <StatusDot status={conv.status} />
                   <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-medium text-muted-foreground shrink-0">
                     {conv.contact?.full_name?.charAt(0) || "?"}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-foreground">{conv.contact?.full_name || "Sin nombre"}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{conv.subject || "Sin asunto"}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[13px] text-foreground truncate">
+                        {conv.contact?.full_name || "Sin nombre"}
+                      </p>
+                      <span className="text-[10px] text-muted-foreground/60 shrink-0">
+                        {CONV_STATUS[conv.status] || conv.status}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {conv.subject || conv.last_message_preview || "Sin asunto"}
+                    </p>
                   </div>
                   {conv.updated_at && (
                     <span className="text-[11px] text-muted-foreground shrink-0">
@@ -319,9 +462,9 @@ export default function DashboardPage() {
                   )}
                 </div>
               </Link>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
