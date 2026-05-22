@@ -25,7 +25,7 @@ import { SlaService } from "./sla.service";
     forwardRef(() => AiModule),
     forwardRef(() => TasksModule),
     NotificationsModule,
-    AutomationsModule,
+    forwardRef(() => AutomationsModule),
     RoutingModule,
   ],
   controllers: [ConversationsController, InboundController],
