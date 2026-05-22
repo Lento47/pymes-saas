@@ -81,7 +81,12 @@ const INTENT_FLOWS: Record<AgentIntent, IntentFlow> = {
   },
 };
 
-type ConvShape = { metadata_json: unknown; contact: { phone: string | null } | null; channel_id: string | null };
+type ConvShape = {
+  metadata_json: unknown;
+  contact: { phone: string | null } | null;
+  channel_id: string | null;
+  assigned_user_id?: string | null;
+};
 
 @Injectable()
 export class AgentRunService {
@@ -104,7 +109,12 @@ export class AgentRunService {
 
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
-      select: { metadata_json: true, contact: { select: { phone: true } }, channel_id: true },
+      select: {
+        metadata_json: true,
+        contact: { select: { phone: true } },
+        channel_id: true,
+        assigned_user_id: true,
+      },
     });
     if (!conv) return null;
 
@@ -167,7 +177,12 @@ export class AgentRunService {
   async processMessage(workspaceId: string, conversationId: string, inboundText: string): Promise<boolean> {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
-      select: { metadata_json: true, contact: { select: { phone: true } }, channel_id: true },
+      select: {
+        metadata_json: true,
+        contact: { select: { phone: true } },
+        channel_id: true,
+        assigned_user_id: true,
+      },
     });
     if (!conv) return false;
 
@@ -231,7 +246,7 @@ export class AgentRunService {
 
   getRunFromMeta(conv: { metadata_json: unknown }): AgentRun | null {
     const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
-    return (meta.agent_run as AgentRun | undefined) ?? null;
+    return this.normalizeRun(meta.agent_run);
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
@@ -269,6 +284,52 @@ Reglas:
       this.logger.warn("detectIntent failed", err);
       return null;
     }
+  }
+
+  private normalizeRun(value: unknown): AgentRun | null {
+    if (!value || typeof value !== "object") return null;
+
+    const raw = value as Record<string, unknown>;
+    if (typeof raw.id !== "string" || typeof raw.status !== "string") return null;
+    if (!["RUNNING", "COMPLETED", "FAILED", "CANCELLED"].includes(raw.status)) return null;
+    if (
+      typeof raw.intent !== "string" ||
+      !["ORDER", "APPOINTMENT", "QUOTE", "COMPLAINT"].includes(raw.intent)
+    ) {
+      return null;
+    }
+
+    const collected =
+      raw.collected && typeof raw.collected === "object" && !Array.isArray(raw.collected)
+        ? (raw.collected as Record<string, string | null>)
+        : {};
+
+    return {
+      id: raw.id,
+      status: raw.status as AgentRun["status"],
+      intent: raw.intent as AgentIntent,
+      started_at:
+        typeof raw.started_at === "string" ? raw.started_at : new Date(0).toISOString(),
+      collected,
+      pending_fields: Array.isArray(raw.pending_fields)
+        ? raw.pending_fields.filter((field): field is string => typeof field === "string")
+        : [],
+      steps: Array.isArray(raw.steps)
+        ? raw.steps.filter((step): step is AgentStep => {
+            if (!step || typeof step !== "object") return false;
+            const candidate = step as Record<string, unknown>;
+            return (
+              typeof candidate.type === "string" &&
+              typeof candidate.label === "string" &&
+              typeof candidate.at === "string"
+            );
+          })
+        : [],
+      artifact:
+        raw.artifact && typeof raw.artifact === "object" && !Array.isArray(raw.artifact)
+          ? (raw.artifact as AgentArtifact)
+          : null,
+    };
   }
 
   private async extractFieldValue(field: string, question: string, answer: string): Promise<string | null> {
@@ -350,6 +411,7 @@ Si indica que no tiene la información, responde "N/A".`;
     const flow = INTENT_FLOWS[run.intent];
     const title = this.buildTaskTitle(run);
     const description = this.buildTaskDescription(run);
+    const assignedUserId = await this.resolveTaskAssignee(workspaceId, conv, run.intent);
 
     const task = await this.prisma.task.create({
       data: {
@@ -360,6 +422,7 @@ Si indica que no tiene la información, responde "N/A".`;
         priority: flow.taskPriority,
         status: "TODO",
         source: "AUTOMATION",
+        assigned_user_id: assignedUserId,
       },
       select: { id: true, title: true },
     });
@@ -413,6 +476,52 @@ Si indica que no tiene la información, responde "N/A".`;
       data: { metadata_json: { ...meta, agent_run: run } as any, updated_at: new Date() },
       select: { id: true },
     });
+  }
+
+  private async resolveTaskAssignee(
+    workspaceId: string,
+    conv: ConvShape,
+    intent: AgentIntent,
+  ): Promise<string | null> {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+
+    const settings =
+      workspace?.settings_json && typeof workspace.settings_json === "object"
+        ? (workspace.settings_json as Record<string, any>)
+        : {};
+
+    const intentAssignees =
+      settings.ai_agent_intent_assignees &&
+      typeof settings.ai_agent_intent_assignees === "object" &&
+      !Array.isArray(settings.ai_agent_intent_assignees)
+        ? (settings.ai_agent_intent_assignees as Record<string, unknown>)
+        : {};
+
+    const mode =
+      typeof settings.ai_agent_assignment_mode === "string"
+        ? settings.ai_agent_assignment_mode
+        : "conversation_assignee";
+
+    const candidates = [
+      typeof intentAssignees[intent] === "string" ? (intentAssignees[intent] as string) : null,
+      mode === "conversation_assignee" ? conv.assigned_user_id ?? null : null,
+      mode === "default_user" && typeof settings.ai_agent_default_assignee_id === "string"
+        ? settings.ai_agent_default_assignee_id
+        : null,
+    ].filter((id): id is string => !!id);
+
+    for (const userId of candidates) {
+      const member = await this.prisma.workspaceMember.findFirst({
+        where: { workspace_id: workspaceId, user_id: userId },
+        select: { user_id: true },
+      });
+      if (member) return member.user_id;
+    }
+
+    return null;
   }
 
   private computePending(intent: AgentIntent, collected: Record<string, string | null>): string[] {

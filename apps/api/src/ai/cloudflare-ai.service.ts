@@ -18,11 +18,13 @@ export class CloudflareAiService {
   private readonly token: string | null;
   private readonly searchUrl: string | null;
   private readonly chatUrl: string | null;
+  private readonly model: string;
 
   constructor(private readonly config: ConfigService) {
     this.token = config.get<string>("CLOUDFLARE_AI_TOKEN") ?? null;
     this.searchUrl = config.get<string>("CLOUDFLARE_AI_SEARCH_URL") ?? null;
     this.chatUrl = config.get<string>("CLOUDFLARE_AI_CHAT_URL") ?? null;
+    this.model = config.get<string>("CLOUDFLARE_AI_MODEL") ?? "@cf/meta/llama-3.1-8b-instruct";
   }
 
   get isConfigured(): boolean {
@@ -107,18 +109,27 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
   }
 
   async chatCompletion(messages: AssistantMessage[]): Promise<string> {
+    const isWorkersAiRunEndpoint = this.chatUrl?.includes("/ai/run/");
+    const body = isWorkersAiRunEndpoint
+      ? {
+          messages,
+          max_tokens: 1024,
+          temperature: 0.3,
+        }
+      : {
+          model: this.model,
+          messages,
+          max_tokens: 1024,
+          temperature: 0.3,
+        };
+
     const res = await fetch(this.chatUrl!, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.token}`,
       },
-      body: JSON.stringify({
-        model: "@cf/meta/llama-3.1-8b-instruct",
-        messages,
-        max_tokens: 1024,
-        temperature: 0.3,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {

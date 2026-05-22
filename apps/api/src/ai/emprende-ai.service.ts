@@ -23,6 +23,10 @@ interface BusinessContext {
   categories: string[];
   teamSize: string | null;
   needs: string[];
+  businessPrompt: string | null;
+  productsServices: string | null;
+  policies: string | null;
+  tone: string | null;
   recentConversations: { contactName: string; lastMessage: string }[];
   pendingTasks: { title: string; priority: string }[];
 }
@@ -43,6 +47,7 @@ export class EmrendeAiService {
         name: true,
         country_code: true,
         plan: true,
+        settings_json: true,
         business_profile: {
           select: { categories: true, team_size: true, needs: true },
         },
@@ -70,6 +75,8 @@ export class EmrendeAiService {
       select: { title: true, priority: true },
     });
 
+    const settings = parseJsonValue<Record<string, any>>(workspace.settings_json, {});
+
     return {
       workspaceName: workspace.name,
       countryCode: workspace.country_code ?? null,
@@ -77,6 +84,10 @@ export class EmrendeAiService {
       categories: workspace.business_profile?.categories ?? [],
       teamSize: workspace.business_profile?.team_size ?? null,
       needs: workspace.business_profile?.needs ?? [],
+      businessPrompt: this.cleanContextText(settings.ai_business_prompt),
+      productsServices: this.cleanContextText(settings.ai_business_products_services),
+      policies: this.cleanContextText(settings.ai_business_policies),
+      tone: this.cleanContextText(settings.ai_business_tone),
       recentConversations: recentConvs.map((c) => ({
         contactName: c.contact?.full_name ?? "Cliente",
         lastMessage: c.messages[0]?.body_text ?? "",
@@ -94,6 +105,22 @@ export class EmrendeAiService {
       `Responde siempre en español, con un tono amigable, directo y profesional, como lo haría un emprendedor latinoamericano.`,
       `Sé conciso. Evita respuestas largas. Si el cliente pregunta por precios, disponibilidad o servicios específicos, responde con lo que sabes del negocio.`,
     ];
+
+    if (ctx.businessPrompt) {
+      contextLines.push(`\nContexto configurado por el negocio:\n${ctx.businessPrompt}`);
+    }
+
+    if (ctx.productsServices) {
+      contextLines.push(`\nProductos o servicios del negocio:\n${ctx.productsServices}`);
+    }
+
+    if (ctx.policies) {
+      contextLines.push(`\nPolíticas operativas que debes respetar:\n${ctx.policies}`);
+    }
+
+    if (ctx.tone) {
+      contextLines.push(`\nTono de marca solicitado:\n${ctx.tone}`);
+    }
 
     if (ctx.categories.includes("alimentacion_bebidas")) {
       contextLines.push(
@@ -126,6 +153,12 @@ export class EmrendeAiService {
     );
 
     return contextLines.join("\n");
+  }
+
+  private cleanContextText(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed ? trimmed.slice(0, 2000) : null;
   }
 
   async generateReply(
