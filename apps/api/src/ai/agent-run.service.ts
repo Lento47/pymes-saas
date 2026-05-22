@@ -223,7 +223,7 @@ export class AgentRunService {
     run.status = "CANCELLED";
     await this.prisma.conversation.update({
       where: { id: conversationId },
-      data: { metadata_json: { ...meta, agent_run: run }, updated_at: new Date() },
+      data: { metadata_json: { ...meta, agent_run: run } as any, updated_at: new Date() },
       select: { id: true },
     });
     this.events.emitAgentUpdated(conversationId, workspaceId, null);
@@ -370,7 +370,7 @@ Si indica que no tiene la información, responde "N/A".`;
 
     await this.prisma.conversation.update({
       where: { id: conversationId },
-      data: { metadata_json: { ...meta, agent_run: run }, updated_at: new Date() },
+      data: { metadata_json: { ...meta, agent_run: run } as any, updated_at: new Date() },
       select: { id: true },
     });
 
@@ -410,7 +410,7 @@ Si indica que no tiene la información, responde "N/A".`;
   private async saveRun(conversationId: string, meta: Record<string, unknown>, run: AgentRun): Promise<void> {
     await this.prisma.conversation.update({
       where: { id: conversationId },
-      data: { metadata_json: { ...meta, agent_run: run }, updated_at: new Date() },
+      data: { metadata_json: { ...meta, agent_run: run } as any, updated_at: new Date() },
       select: { id: true },
     });
   }

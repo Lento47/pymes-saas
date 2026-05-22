@@ -82,10 +82,18 @@ export class SummaryProcessor {
       generated_at: new Date().toISOString(),
     };
 
-    const generated_text =
-      `Resumen del día ${startOfDay.toLocaleDateString("es-CR")} para workspace ${workspaceId}: ` +
-      `${conversationsCount} conversaciones, ${messagesCount} mensajes, ` +
-      `${tasksCount} tareas, ${documentsCount} documentos procesados.`;
+    const dateLabel = startOfDay.toLocaleDateString("es-CR", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+    });
+
+    const generated_text = [
+      `📅 Resumen del día / Daily Summary — ${dateLabel}`,
+      ``,
+      `💬 Conversaciones / Conversations: ${conversationsCount} nueva${conversationsCount !== 1 ? "s" : ""} hoy / new today`,
+      `📨 Mensajes / Messages: ${messagesCount} recibido${messagesCount !== 1 ? "s" : ""} / received`,
+      `✅ Tareas / Tasks: ${tasksCount} creada${tasksCount !== 1 ? "s" : ""} / created`,
+      `📄 Documentos / Documents: ${documentsCount} subido${documentsCount !== 1 ? "s" : ""} / uploaded`,
+    ].join("\n");
 
     await this.prisma.dailySummary.upsert({
       where: {
