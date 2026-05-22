@@ -129,7 +129,7 @@ export class ChannelsController {
     @Param("id", ValidateUUIDPipe) id: string,
     @Body() dto: ConfigureWhatsAppDto,
   ) {
-    await this.planLimits.enforcePlanTier(workspaceId, "GROWTH", "WhatsApp");
+    await this.planLimits.enforcePlanTier(workspaceId, "EMPRENDE", "WhatsApp");
     return this.channelsService.configureWhatsApp(workspaceId, id, dto);
   }
 
