@@ -397,7 +397,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="shrink-0 px-3 pb-2">
-          <Link to="/settings"
+          <Link to="/settings/workspace"
             className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
           >
             <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
