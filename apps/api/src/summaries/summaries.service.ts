@@ -112,15 +112,17 @@ export class SummariesService {
 
     const summaryDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    const dateLabel = summaryDate.toISOString().split("T")[0];
+    const dateLabel = summaryDate.toLocaleDateString("es-CR", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+    });
 
     const generated_text = [
-      `Daily Summary for ${dateLabel}`,
+      `📅 Resumen del día / Daily Summary — ${dateLabel}`,
       ``,
-      `Conversations: ${newConversations} new conversation(s) started today.`,
-      `Messages: ${receivedMessages} inbound message(s) received today.`,
-      `Tasks: ${createdTasks} task(s) created today.`,
-      `Documents: ${uploadedDocuments} document(s) uploaded today.`,
+      `💬 Conversaciones / Conversations: ${newConversations} nueva${newConversations !== 1 ? "s" : ""} hoy / new today`,
+      `📨 Mensajes / Messages: ${receivedMessages} recibido${receivedMessages !== 1 ? "s" : ""} / received`,
+      `✅ Tareas / Tasks: ${createdTasks} creada${createdTasks !== 1 ? "s" : ""} / created`,
+      `📄 Documentos / Documents: ${uploadedDocuments} subido${uploadedDocuments !== 1 ? "s" : ""} / uploaded`,
     ].join("\n");
 
     const metrics_json = {
