@@ -130,7 +130,7 @@ export class EmrendeAiService {
 
   async generateReply(
     workspaceId: string,
-    conversationId: string,
+    conversationId: string | null,
     lastMessageText: string,
   ): Promise<string> {
     if (!this.cloudflare.isConfigured) {
@@ -139,12 +139,14 @@ export class EmrendeAiService {
 
     const [ctx, recentMessages] = await Promise.all([
       this.buildBusinessContext(workspaceId),
-      this.prisma.message.findMany({
-        where: { conversation_id: conversationId, workspace_id: workspaceId },
-        orderBy: { sent_at: "desc" },
-        take: 5,
-        select: { body_text: true, direction: true },
-      }),
+      conversationId
+        ? this.prisma.message.findMany({
+            where: { conversation_id: conversationId, workspace_id: workspaceId },
+            orderBy: { sent_at: "desc" },
+            take: 5,
+            select: { body_text: true, direction: true },
+          })
+        : Promise.resolve([]),
     ]);
 
     const systemPrompt = this.buildSystemPrompt(ctx);

@@ -1,4 +1,4 @@
-import { ArrowLeft, UserPlus, CheckCircle2, MoreVertical, RefreshCw, Receipt, Trash2 } from "lucide-react";
+import { ArrowLeft, UserPlus, CheckCircle2, MoreVertical, RefreshCw, Receipt, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -25,6 +25,8 @@ interface ConversationHeaderProps {
   canResolve?: boolean;
   canSendInvoice?: boolean;
   canAddContact?: boolean;
+  onDelegateToAi?: () => void;
+  isDelegatingToAi?: boolean;
   className?: string;
 }
 
@@ -47,6 +49,8 @@ export function ConversationHeader({
   canResolve,
   canSendInvoice,
   canAddContact,
+  onDelegateToAi,
+  isDelegatingToAi,
   className,
 }: ConversationHeaderProps) {
   return (
@@ -103,6 +107,20 @@ export function ConversationHeader({
                 </Select>
               </TooltipTrigger>
               <TooltipContent side="bottom"><p className="text-xs">Asignar</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
+        {onDelegateToAi && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-9 w-9 rounded-md p-0 text-primary hover:text-primary sm:w-auto sm:gap-1.5 sm:px-2.5" onClick={onDelegateToAi} disabled={isDelegatingToAi} aria-label="Delegar a IA">
+                  {isDelegatingToAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  <span className="hidden text-xs font-medium sm:inline">Delegar a IA</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom"><p className="text-xs">Devolver control a la IA</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
         )}

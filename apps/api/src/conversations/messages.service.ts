@@ -1081,7 +1081,7 @@ export class MessagesService {
     // Check conversation ai_state — skip if human has taken over
     const conv = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
-      select: { metadata_json: true, channel_id: true },
+      select: { metadata_json: true, channel_id: true, contact: { select: { phone: true } } },
     });
     if (!conv) return;
 
@@ -1131,6 +1131,17 @@ export class MessagesService {
     });
 
     this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessageForClient(aiMessage));
+
+    // Dispatch via WhatsApp channel if applicable
+    if (conv.channel_id && conv.contact?.phone) {
+      const channel = await this.prisma.channel.findUnique({ where: { id: conv.channel_id } });
+      const to = conv.contact.phone.replace(/\D/g, "");
+      if (channel?.type === "WHATSAPP" && to) {
+        this.whatsappService.sendMessage(channel as any, to, replyText).catch((err) =>
+          this.logger.error("EmrendeAI WA dispatch failed", err),
+        );
+      }
+    }
 
     this.logger.log(`EmrendeAI auto-reply sent to conversation ${conversationId}`);
   }

@@ -190,6 +190,7 @@ export function AutomationSheet({
               actionValue={actionValue}
               onActionValueChange={setActionValue}
               members={members}
+              currentPlan={currentPlan}
             />
 
             {/* Limit warning */}

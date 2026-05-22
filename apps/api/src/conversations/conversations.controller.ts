@@ -458,4 +458,26 @@ export class ConversationsController {
 
     return { ok: true };
   }
+
+  @Patch(":id/delegate-to-ai")
+  @Roles(WorkspaceUserRole.AGENT)
+  async delegateToAi(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) conversationId: string,
+  ) {
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, workspace_id: workspaceId },
+      select: { metadata_json: true },
+    });
+    if (!conv) throw new Error("Not found");
+    const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        metadata_json: { ...meta, ai_state: "AI_ACTIVE", delegated_at: new Date().toISOString() },
+      },
+      select: { id: true },
+    });
+    return { ok: true, ai_state: "AI_ACTIVE" };
+  }
 }

@@ -246,7 +246,7 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
 
       <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs text-muted-foreground space-y-1">
         <p className="font-medium text-foreground">Webhook para Meta Developers:</p>
-        <p className="font-mono break-all">https://tu-dominio.com/api/inbound/whatsapp/webhook</p>
+        <p className="font-mono break-all">{`${window.location.origin}/api/inbound/whatsapp/webhook`}</p>
         <p>Token de verificación: el valor de <span className="font-mono">WHATSAPP_WEBHOOK_VERIFY_TOKEN</span> en tu .env</p>
       </div>
 

@@ -63,6 +63,12 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     staleTime: 30_000,
   });
 
+  const { data: workspace } = useQuery({
+    queryKey: ["/api/workspaces/current"],
+    queryFn: () => api.getWorkspace(),
+    staleTime: 5 * 60_000,
+  });
+
   // ── Read receipt when conversation opens ──
   useEffect(() => {
     if (!id || !conv?.channel?.type || String(conv.channel.type).toUpperCase() !== "WHATSAPP") return;
@@ -298,6 +304,17 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     return Array.isArray(messages) ? messages : messages?.data || [];
   }, [messages]);
 
+  const EMPRENDE_PLANS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
+  const plan = (workspace as any)?.plan ?? "FREE";
+  const isEmprendePlus = EMPRENDE_PLANS.includes(plan);
+  const aiState = (conv as any)?.metadata_json?.ai_state ?? "IDLE";
+
+  const delegateToAiMut = useMutation({
+    mutationFn: () => api.delegateConversationToAi(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/conversations", id] }),
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   // Clear typing indicator when a new inbound message arrives
   // NOTE: must come AFTER msgList declaration (TDZ constraint in JS)
   useEffect(() => {
@@ -423,6 +440,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         canResolve={conversation?.status !== "RESOLVED"}
         canSendInvoice={canSendInvoice}
         canAddContact={!conversation?.contact?.id}
+        onDelegateToAi={isEmprendePlus && aiState === "HUMAN_ACTIVE" ? () => delegateToAiMut.mutate() : undefined}
+        isDelegatingToAi={delegateToAiMut.isPending}
       />
 
       <MessageTimeline
@@ -452,8 +471,12 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         channelLabel={channelLabel}
         channelType={channelType}
         isServiceWindowOpen={isServiceWindowOpen}
-        onSelectTemplate={() => toast({ title: "Plantillas", description: "Selector de plantillas próximamente" })}
         disabled={!id}
+        onAiSuggest={isEmprendePlus ? async () => {
+          const lastInbound = [...msgList].reverse().find((m: any) => m.direction === "INBOUND");
+          const result = await api.emprendeReply(id, lastInbound?.body_text ?? "");
+          return result.reply;
+        } : undefined}
       />
 
       <InvoiceDialog

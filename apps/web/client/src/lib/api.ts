@@ -493,6 +493,7 @@ export const api = {
   emprendeReply: (conversationId: string, messageText: string) => request<{ reply: string }>("POST", "/api/ai/emprende/reply", { conversationId, messageText }),
   emprendeAnalyzeContact: (contactId: string) => request<Record<string, any>>("POST", `/api/ai/emprende/analyze-contact/${contactId}`, {}),
   emprendeSuggestTasks: (messageText: string, contactId?: string) => request<any[]>("POST", "/api/ai/emprende/suggest-tasks", { messageText, contactId }),
+  delegateConversationToAi: (id: string) => request<{ ok: boolean; ai_state: string }>("PATCH", `/api/conversations/${id}/delegate-to-ai`, {}),
   createAgentStream: (message: string, conversationId?: string) => request<Record<string, any>>("POST", "/api/agent/stream", { message, conversationId }),
   executeAgentTool: (tool: string, args?: any) => request<Record<string, any>>("POST", "/api/agent/tool", { tool, args }),
   escalateToSupport: (summary: string, severity?: string, evidence?: Record<string, any>) =>
