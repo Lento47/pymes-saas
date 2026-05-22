@@ -7,7 +7,7 @@ interface OverviewCardProps {
 }
 
 const hoverClasses =
-  "transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_32px_80px_rgba(0,0,0,0.55)]";
+  "transition-all duration-300 hover:border-white/[0.12]";
 
 const channelColors: Record<string, string> = {
   WhatsApp: "#25D366",
@@ -97,52 +97,40 @@ export function InboxCard({ copy, variant }: OverviewCardProps) {
 export function PerformanceCard({ copy, variant }: OverviewCardProps) {
   return (
     <article
-      className={`glass-panel rounded-xl px-6 py-7 ${
-        variant === "desktop" ? `md:px-8 ${hoverClasses}` : ""
+      className={`glass-panel rounded-xl p-6 ${
+        variant === "desktop" ? hoverClasses : ""
       }`}
     >
-      <div
-        className={`flex flex-col gap-6 ${
-          variant === "desktop" ? "md:flex-row md:items-start md:justify-between" : ""
-        }`}
-      >
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(98,118,255,0.34),rgba(82,97,241,0.16))] p-2 text-[#dfe6ff]">
-              <img
-                src="/landing-icons/performance.png"
-                alt=""
-                className="h-full w-full object-contain"
-                aria-hidden="true"
-              />
-            </div>
-            <div>
-              <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
-                {copy.overview.performance.title}
-              </h2>
-              <p className="text-sm text-[#bcc5ee]/64">
-                {copy.overview.performance.description}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <p className="text-sm uppercase tracking-[0.25em] text-[#aeb6df]/42">
-              {copy.overview.performance.metricLabel}
-            </p>
-            <div className="mt-2 flex items-end gap-3">
-              <span className="font-marketing text-5xl font-semibold tracking-[-0.04em]">
-                {copy.overview.performance.metricValue}
-              </span>
-              <span className="rounded-full border border-[#F59E0B]/30 bg-[#F59E0B]/10 px-3 py-1 text-sm font-semibold text-[#F59E0B]">
-                {copy.overview.performance.metricChange}
-              </span>
-            </div>
-          </div>
+      <div className="flex items-center gap-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(98,118,255,0.34),rgba(82,97,241,0.16))] p-2 text-[#dfe6ff]">
+          <img
+            src="/landing-icons/performance.png"
+            alt=""
+            className="h-full w-full object-contain"
+            aria-hidden="true"
+          />
         </div>
+        <div>
+          <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
+            {copy.overview.performance.title}
+          </h2>
+          <p className="text-sm text-[#bcc5ee]/64">
+            {copy.overview.performance.description}
+          </p>
+        </div>
+      </div>
 
-        <div className="glass-panel-soft rounded-xl px-4 py-3 text-sm text-white/72">
-          {copy.overview.performance.timeframe}
+      <div className="mt-8">
+        <p className="text-sm uppercase tracking-[0.25em] text-[#aeb6df]/42">
+          {copy.overview.performance.metricLabel}
+        </p>
+        <div className="mt-2 flex items-end gap-3">
+          <span className="font-marketing text-4xl font-semibold tracking-[-0.04em]">
+            {copy.overview.performance.metricValue}
+          </span>
+          <span className="rounded-full border border-[#F59E0B]/30 bg-[#F59E0B]/10 px-3 py-1 text-sm font-semibold text-[#F59E0B]">
+            {copy.overview.performance.metricChange}
+          </span>
         </div>
       </div>
 
