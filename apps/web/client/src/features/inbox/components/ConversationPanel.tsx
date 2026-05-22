@@ -8,6 +8,7 @@ import { getSocket } from "@/hooks/use-socket";
 import { ConversationHeader } from "./conversation/ConversationHeader";
 import { MessageTimeline } from "./conversation/MessageTimeline";
 import { MessageComposer } from "./conversation/MessageComposer";
+import { AgentRunCard, type AgentRun } from "./conversation/AgentRunCard";
 import { InvoiceDialog } from "./conversation/InvoiceDialog";
 import { DeleteConversationAlert } from "./conversation/DeleteConversationAlert";
 import { ContactFromConversationDialog } from "./ContactFromConversationDialog";
@@ -315,6 +316,25 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const { data: agentRun } = useQuery({
+    queryKey: ["agent-run", id],
+    queryFn: () => api.getAgentRun(id),
+    enabled: !!id && isEmprendePlus,
+    staleTime: 10_000,
+  });
+
+  const startAgentMut = useMutation({
+    mutationFn: () => {
+      const lastInbound = [...msgList].reverse().find((m: any) => m.direction === "INBOUND");
+      return api.startAgentRun(id, lastInbound?.body_text ?? "");
+    },
+    onSuccess: (data) => {
+      if (data?.run) qc.setQueryData(["agent-run", id], data.run);
+      else toast({ title: "No se detectó intención", description: "El agente no pudo interpretar el último mensaje.", variant: "destructive" });
+    },
+    onError: (e: any) => toast({ title: "Error al iniciar agente", description: e.message, variant: "destructive" }),
+  });
+
   // Clear typing indicator when a new inbound message arrives
   // NOTE: must come AFTER msgList declaration (TDZ constraint in JS)
   useEffect(() => {
@@ -442,7 +462,13 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         canAddContact={!conversation?.contact?.id}
         onDelegateToAi={isEmprendePlus && aiState === "HUMAN_ACTIVE" ? () => delegateToAiMut.mutate() : undefined}
         isDelegatingToAi={delegateToAiMut.isPending}
+        onStartAgent={isEmprendePlus && (agentRun as AgentRun | null | undefined)?.status !== "RUNNING" ? () => startAgentMut.mutate() : undefined}
+        isStartingAgent={startAgentMut.isPending}
       />
+
+      {agentRun && (agentRun as AgentRun).status !== "CANCELLED" && (
+        <AgentRunCard run={agentRun as AgentRun} conversationId={id} />
+      )}
 
       <MessageTimeline
         messages={uiMessages}

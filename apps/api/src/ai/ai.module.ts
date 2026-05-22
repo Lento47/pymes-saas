@@ -12,6 +12,7 @@ import { InsightsModule } from "../insights/insights.module";
 import { SearchModule } from "../search/search.module";
 import { DocsModule } from "../docs/docs.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { EventsModule } from "../gateways/events.module";
 import { SupportRouterService } from "./support-router.service";
 import { DiagnosticService } from "./diagnostic.service";
 import { EngineeringFixService } from "./engineering-fix.service";
@@ -21,6 +22,8 @@ import { CaseCommentsService } from "./case-comments.service";
 import { CloudflareAiService } from "./cloudflare-ai.service";
 import { EmrendeAiService } from "./emprende-ai.service";
 import { EmrendeAiController } from "./emprende-ai.controller";
+import { AgentRunService } from "./agent-run.service";
+import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 
 import { AiTriageService } from "./ai-triage.service";
 
@@ -38,7 +41,9 @@ import { AiTriageService } from "./ai-triage.service";
     InsightsModule,
     SearchModule,
     DocsModule,
+    EventsModule,
     forwardRef(() => NotificationsModule),
+    forwardRef(() => WhatsAppModule),
   ],
   providers: [
     AiService,
@@ -53,6 +58,7 @@ import { AiTriageService } from "./ai-triage.service";
     CloudflareAiService,
     AiTriageService,
     EmrendeAiService,
+    AgentRunService,
   ],
   controllers: [
     AgentController,
@@ -70,6 +76,7 @@ import { AiTriageService } from "./ai-triage.service";
     CloudflareAiService,
     AiTriageService,
     EmrendeAiService,
+    AgentRunService,
   ],
 })
 export class AiModule {}
