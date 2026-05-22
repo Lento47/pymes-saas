@@ -5,6 +5,7 @@ import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
+import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -14,12 +15,10 @@ import {
   CheckCircle2,
   CheckSquare,
   Clock3,
-  FileText,
   KanbanSquare,
   Loader2,
   MessageCircle,
   Receipt,
-  TrendingUp,
   Wallet,
 } from "lucide-react";
 
@@ -70,74 +69,31 @@ function greeting() {
   return "Buenas noches";
 }
 
-function toneConfig(tone: Tone) {
-  switch (tone) {
-    case "danger":
-      return {
-        dot: "bg-red-500",
-        text: "text-red-400",
-        accent: "#ef4444",
-        cardBg: "rgba(239,68,68,0.05)",
-        cardBorder: "rgba(239,68,68,0.2)",
-        pillBg: "rgba(239,68,68,0.08)",
-        pillBorder: "rgba(239,68,68,0.25)",
-        pillText: "#f87171",
-      };
-    case "warning":
-      return {
-        dot: "bg-orange-400",
-        text: "text-orange-400",
-        accent: "#fb923c",
-        cardBg: "rgba(251,146,60,0.05)",
-        cardBorder: "rgba(251,146,60,0.2)",
-        pillBg: "rgba(251,146,60,0.08)",
-        pillBorder: "rgba(251,146,60,0.25)",
-        pillText: "#fb923c",
-      };
-    case "success":
-      return {
-        dot: "bg-emerald-500",
-        text: "text-emerald-400",
-        accent: "#10b981",
-        cardBg: "rgba(16,185,129,0.04)",
-        cardBorder: "rgba(16,185,129,0.18)",
-        pillBg: "rgba(16,185,129,0.08)",
-        pillBorder: "rgba(16,185,129,0.2)",
-        pillText: "#34d399",
-      };
-    default:
-      return {
-        dot: "bg-muted-foreground/40",
-        text: "text-muted-foreground",
-        accent: "rgba(139,92,246,0.5)",
-        cardBg: "rgba(139,92,246,0.04)",
-        cardBorder: "rgba(139,92,246,0.14)",
-        pillBg: "rgba(139,92,246,0.08)",
-        pillBorder: "rgba(139,92,246,0.2)",
-        pillText: "#c4b5fd",
-      };
+function tone(t: Tone) {
+  switch (t) {
+    case "danger":  return { dot: "bg-red-500",         value: "text-red-400",    cardBorder: "border-red-500/20",    cardBg: "bg-red-500/[0.04]",    bar: "bg-red-500",         pill: "border-red-500/25 bg-red-500/[0.07] text-red-400" };
+    case "warning": return { dot: "bg-orange-400",      value: "text-orange-400", cardBorder: "border-orange-500/20", cardBg: "bg-orange-500/[0.04]", bar: "bg-orange-400",      pill: "border-orange-400/25 bg-orange-400/[0.07] text-orange-400" };
+    case "success": return { dot: "bg-emerald-500",     value: "text-foreground", cardBorder: "border-border",        cardBg: "bg-card",              bar: "bg-emerald-500/60",  pill: "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-400" };
+    default:        return { dot: "bg-muted-foreground/40", value: "text-foreground", cardBorder: "border-border",   cardBg: "bg-card",              bar: "bg-primary/40",      pill: "border-border bg-card text-muted-foreground" };
   }
 }
 
-function StatusPill({ label, tone = "neutral" }: { label: string; tone?: Tone }) {
-  const t = toneConfig(tone);
+function StatusPill({ label, t: toneKey = "neutral" }: { label: string; t?: Tone }) {
+  const c = tone(toneKey);
   return (
-    <span
-      className="inline-flex h-5 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium"
-      style={{ background: t.pillBg, borderColor: t.pillBorder, color: t.pillText }}
-    >
-      <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />
+    <span className={cn("inline-flex h-5 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium", c.pill)}>
+      <span className={cn("h-1.5 w-1.5 rounded-full", c.dot)} />
       {label}
     </span>
   );
 }
 
-function DashboardSection({
+function SectionCard({
   title,
   count,
   linkTo,
   children,
-  className = "",
+  className,
 }: {
   title: string;
   count?: number;
@@ -146,27 +102,21 @@ function DashboardSection({
   className?: string;
 }) {
   const header = (
-    <div
-      className="flex items-center justify-between gap-3 border-b px-4 py-3"
-      style={{ borderColor: "rgba(139,92,246,0.12)", background: "rgba(139,92,246,0.03)" }}
-    >
+    <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
       <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {title}
         {count != null && (
-          <span className="ml-2 font-normal" style={{ color: "rgba(196,181,253,0.5)" }}>{count}</span>
+          <span className="ml-2 font-normal text-muted-foreground/50">{count}</span>
         )}
       </h2>
-      {linkTo && <ArrowUpRight className="h-3.5 w-3.5 shrink-0" style={{ color: "rgba(139,92,246,0.5)" }} />}
+      {linkTo && <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />}
     </div>
   );
 
   return (
-    <section
-      className={`overflow-hidden rounded-card ${className}`}
-      style={{ border: "1px solid rgba(139,92,246,0.14)", background: "hsl(var(--bg-card))" }}
-    >
+    <section className={cn("overflow-hidden rounded-card border border-border bg-card", className)}>
       {linkTo ? (
-        <Link href={linkTo} className="block transition-colors" style={{ display: "block" }}>
+        <Link href={linkTo} className="block hover:bg-muted/20 transition-colors">
           {header}
         </Link>
       ) : (
@@ -177,170 +127,106 @@ function DashboardSection({
   );
 }
 
-function OperationalMetric({
+function MetricCard({
   label,
   value,
   detail,
-  tone = "neutral",
+  t: toneKey = "neutral",
   loading,
   icon: Icon,
 }: {
   label: string;
   value: string;
   detail?: string;
-  tone?: Tone;
+  t?: Tone;
   loading?: boolean;
   icon?: React.ElementType;
 }) {
-  const t = toneConfig(tone);
-
+  const c = tone(toneKey);
   return (
-    <div
-      className="relative overflow-hidden rounded-card px-4 py-4 transition-all duration-200"
-      style={{
-        border: `1px solid ${t.cardBorder}`,
-        background: t.cardBg,
-      }}
-    >
-      {/* Left accent bar */}
-      <div
-        className="absolute left-0 inset-y-0 w-[3px] rounded-l-card"
-        style={{ background: t.accent }}
-      />
-
+    <div className={cn("relative overflow-hidden rounded-card border px-4 py-4 transition-colors", c.cardBorder, c.cardBg)}>
+      <div className={cn("absolute inset-y-0 left-0 w-[3px]", c.bar)} />
       <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          {label}
-        </span>
-        {Icon && (
-          <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: t.accent, opacity: 0.7 }} />
-        )}
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</span>
+        {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground/40" />}
       </div>
-
       {loading ? (
-        <Skeleton className="h-8 w-24" />
+        <Skeleton className="h-7 w-24" />
       ) : (
-        <div
-          className="text-[28px] font-bold leading-none tracking-[-0.03em] tabular-nums"
-          style={{ color: tone === "neutral" || tone === "success" ? "rgba(255,255,255,0.9)" : t.pillText }}
-        >
+        <p className={cn("text-[28px] font-bold leading-none tracking-[-0.03em] tabular-nums", c.value)}>
           {value}
-        </div>
-      )}
-
-      {detail && (
-        <p className="mt-2 truncate text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-          {detail}
         </p>
       )}
+      {detail && <p className="mt-2 truncate text-xs text-muted-foreground">{detail}</p>}
     </div>
   );
 }
 
-function AttentionList({
-  children,
-  emptyIcon: Icon,
-  emptyText,
-  emptyCta,
-  emptyHref,
-  isEmpty,
+function EmptyState({
+  icon: Icon,
+  text,
+  cta,
+  href,
 }: {
-  children: React.ReactNode;
-  emptyIcon: React.ElementType;
-  emptyText: string;
-  emptyCta?: string;
-  emptyHref?: string;
-  isEmpty: boolean;
+  icon: React.ElementType;
+  text: string;
+  cta?: string;
+  href?: string;
 }) {
-  if (isEmpty) {
-    return (
-      <div className="flex min-h-[120px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-        <Icon className="h-4 w-4" style={{ color: "rgba(139,92,246,0.4)" }} />
-        <span className="text-sm text-muted-foreground">{emptyText}</span>
-        {emptyCta && emptyHref && (
-          <Link href={emptyHref} className="text-xs font-medium text-primary hover:text-primary/80">
-            {emptyCta}
-          </Link>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="divide-y" style={{ borderColor: "rgba(139,92,246,0.08)" }}>
-      {children}
+    <div className="flex min-h-[120px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
+      <Icon className="h-4 w-4 text-muted-foreground/40" />
+      <span className="text-sm text-muted-foreground">{text}</span>
+      {cta && href && (
+        <Link href={href} className="text-xs font-medium text-primary hover:text-primary/80">
+          {cta}
+        </Link>
+      )}
     </div>
   );
 }
 
-function RowStatus({ tone }: { tone: Tone }) {
-  const t = toneConfig(tone);
-  return <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${t.dot}`} />;
+function StatusDot({ t: toneKey }: { t: Tone }) {
+  return <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", tone(toneKey).dot)} />;
 }
-
-const ROW_HOVER_STYLE = { "--row-hover-bg": "rgba(139,92,246,0.06)" } as React.CSSProperties;
 
 function PipelineBand({ stages }: { stages: PipelineStage[] }) {
   if (stages.length === 0) return null;
-
-  const maxDeals = Math.max(...stages.map((stage) => stage.deals.length), 1);
+  const maxDeals = Math.max(...stages.map((s) => s.deals.length), 1);
 
   return (
-    <DashboardSection
+    <SectionCard
       title="Pipeline abierto"
-      count={stages.reduce((sum, stage) => sum + stage.deals.length, 0)}
+      count={stages.reduce((sum, s) => sum + s.deals.length, 0)}
       linkTo="/pipeline"
     >
-      <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-4" style={{ background: "rgba(139,92,246,0.08)" }}>
+      <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
         {stages.slice(0, 4).map((stage) => {
           const count = stage.deals.length;
-          const value = stage.deals.reduce((sum, deal) => sum + (Number(deal.value) || 0), 0);
-          const width = `${Math.max(8, (count / maxDeals) * 100)}%`;
-
+          const value = stage.deals.reduce((s, d) => s + (Number(d.value) || 0), 0);
+          const pct = Math.max(8, (count / maxDeals) * 100);
           return (
-            <Link key={stage.id} href="/pipeline">
-              <div
-                className="px-4 py-3 transition-colors duration-150 cursor-pointer"
-                style={{ background: "hsl(var(--bg-card))" }}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: "rgba(139,92,246,0.5)", border: "1px solid rgba(139,92,246,0.3)" }}
-                      />
-                      <span className="truncate text-sm font-medium text-foreground">{stage.name}</span>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">{crc(value)}</p>
-                  </div>
-                  <span
-                    className="text-2xl font-bold tabular-nums tracking-[-0.03em]"
-                    style={{ color: "rgba(255,255,255,0.88)" }}
-                  >
-                    {count}
-                  </span>
+            <Link key={stage.id} href="/pipeline" className="bg-card px-4 py-3 hover:bg-muted/25 transition-colors block">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{stage.name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{crc(value)}</p>
                 </div>
-                <div className="mt-3 h-1 overflow-hidden rounded-full" style={{ background: "rgba(139,92,246,0.12)" }}>
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width, background: "linear-gradient(90deg, #7c3aed, #6366f1)" }}
-                  />
-                </div>
+                <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-foreground">{count}</span>
+              </div>
+              <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary/50" style={{ width: `${pct}%` }} />
               </div>
             </Link>
           );
         })}
       </div>
-    </DashboardSection>
+    </SectionCard>
   );
 }
 
 const CONV_STATUS: Record<string, string> = {
-  NEW: "Nuevo",
-  OPEN: "Abierto",
-  PENDING: "Pendiente",
-  RESOLVED: "Resuelto",
+  NEW: "Nuevo", OPEN: "Abierto", PENDING: "Pendiente", RESOLVED: "Resuelto",
 };
 
 export default function DashboardPage() {
@@ -356,12 +242,10 @@ export default function DashboardPage() {
 
   const generateMutation = useMutation({
     mutationFn: () => api.generateSummary(),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["/api/summaries/daily/today"] });
-    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["/api/summaries/daily/today"] }),
   });
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { isLoading: statsLoading } = useQuery({
     queryKey: ["/api/workspaces/current/stats"],
     queryFn: () => api.getWorkspaceStats(),
     refetchInterval: 120000,
@@ -397,104 +281,73 @@ export default function DashboardPage() {
 
   const t = (todayStats as any) ?? {};
   const pipelineStages: PipelineStage[] = Array.isArray(pipeline) ? pipeline : [];
-  const activeStages = pipelineStages.filter((stage) => !ACTIVE_STAGES.includes(stage.name));
+  const activeStages = pipelineStages.filter((s) => !ACTIVE_STAGES.includes(s.name));
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
   const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
   const allInvoices: any[] = Array.isArray(invoicesData) ? invoicesData : invoicesData?.data ?? [];
-  const outstandingInvoices = allInvoices.filter((inv: any) =>
+
+  const outstandingInvoices = allInvoices.filter((inv) =>
     ["SENT", "PARTIALLY_PAID", "OVERDUE"].includes(inv.status ?? inv.collection_state)
   );
   const upcomingInvoices = [...outstandingInvoices].sort(
-    (a: any, b: any) => new Date(a.due_date ?? 0).getTime() - new Date(b.due_date ?? 0).getTime()
+    (a, b) => new Date(a.due_date ?? 0).getTime() - new Date(b.due_date ?? 0).getTime()
   );
+  const overdueInvoices  = upcomingInvoices.filter((inv) => invoiceUrgency(inv) === "overdue");
+  const soonInvoices     = upcomingInvoices.filter((inv) => invoiceUrgency(inv) === "soon");
+  const priorityInvoices = [...overdueInvoices, ...soonInvoices, ...upcomingInvoices.filter((inv) => invoiceUrgency(inv) === "ok")];
 
-  const overdueInvoices = upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "overdue");
-  const soonInvoices = upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "soon");
-  const priorityInvoices = [...overdueInvoices, ...soonInvoices, ...upcomingInvoices.filter((inv: any) => invoiceUrgency(inv) === "ok")];
-  const urgentTasks = taskList.filter((task: any) => task.priority === "HIGH");
-  const attentionTasks = [
-    ...urgentTasks,
-    ...taskList.filter((task: any) => task.priority !== "HIGH"),
-  ];
-  const pipelineTotalDeals = activeStages.reduce((sum, stage) => sum + stage.deals.length, 0);
+  const urgentTasks     = taskList.filter((task: any) => task.priority === "HIGH");
+  const attentionTasks  = [...urgentTasks, ...taskList.filter((task: any) => task.priority !== "HIGH")];
+  const pipelineTotalDeals = activeStages.reduce((sum, s) => sum + s.deals.length, 0);
   const pipelineTotalValue = activeStages.reduce(
-    (sum, stage) => sum + stage.deals.reduce((stageSum, deal) => stageSum + (Number(deal.value) || 0), 0),
-    0,
+    (sum, s) => sum + s.deals.reduce((ss, d) => ss + (Number(d.value) || 0), 0), 0,
   );
   const totalOutstanding = outstandingInvoices.reduce((sum: number, inv: any) => sum + (Number(inv.balance_due ?? inv.amount) || 0), 0);
-  const unreadCount = Number(t.unread_conversations ?? t.open_conversations ?? t.received_messages ?? 0);
-  const operatingTone: Tone = overdueInvoices.length > 0 || urgentTasks.length > 0 ? "danger" : soonInvoices.length > 0 ? "warning" : "success";
+  const unreadCount      = Number(t.unread_conversations ?? t.open_conversations ?? t.received_messages ?? 0);
+  const operatingTone: Tone = overdueInvoices.length > 0 || urgentTasks.length > 0 ? "danger"
+    : soonInvoices.length > 0 ? "warning" : "success";
 
   return (
     <div className="min-h-full bg-background">
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 md:px-6 lg:px-8">
 
         {/* Header */}
-        <header
-          className="flex flex-col gap-4 border-b pb-5 md:flex-row md:items-end md:justify-between"
-          style={{ borderColor: "rgba(139,92,246,0.12)" }}
-        >
-          <div className="min-w-0">
+        <header className="flex flex-col gap-3 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
+          <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold tracking-[-0.03em] md:text-2xl" style={{ color: "rgba(255,255,255,0.92)" }}>
-                {greeting()},{" "}
-                <span
-                  style={{
-                    background: "linear-gradient(135deg, #ffffff 30%, #c4b5fd 70%, #818cf8 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                  }}
-                >
-                  {user?.name?.split(" ")[0] || "Usuario"}
-                </span>
+              <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground md:text-2xl">
+                {greeting()}, {user?.name?.split(" ")[0] || "Usuario"}
               </h1>
               <StatusPill
                 label={
-                  operatingTone === "danger"
-                    ? "Atención requerida"
-                    : operatingTone === "warning"
-                      ? "Revisar hoy"
-                      : "Sin pendientes críticos"
+                  operatingTone === "danger" ? "Atención requerida"
+                  : operatingTone === "warning" ? "Revisar hoy"
+                  : "Sin pendientes críticos"
                 }
-                tone={operatingTone}
+                t={operatingTone}
               />
             </div>
             <p className="mt-1 text-sm text-muted-foreground capitalize">
               {format(new Date(), "EEEE d 'de' MMMM", { locale: es })}
             </p>
           </div>
-
           <Button
             variant="outline"
             size="sm"
-            className="h-8 w-fit gap-2 text-xs"
-            style={{
-              borderColor: "rgba(139,92,246,0.25)",
-              background: "rgba(139,92,246,0.06)",
-              color: "#c4b5fd",
-            }}
+            className="h-8 w-fit gap-2 text-xs text-muted-foreground"
             onClick={() => void generateMutation.mutate()}
             disabled={generateMutation.isPending}
           >
-            {generateMutation.isPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <BrainCircuit className="h-3.5 w-3.5" />
-            )}
+            {generateMutation.isPending
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <BrainCircuit className="h-3.5 w-3.5" />}
             Resumen IA
           </Button>
         </header>
 
-        {/* AI Summary card */}
+        {/* AI Summary */}
         {(summaryLoading || statsLoading || todaySummary?.generated_text || generateMutation.isPending) && (
-          <section
-            className="rounded-card px-4 py-3"
-            style={{
-              border: "1px solid rgba(139,92,246,0.2)",
-              background: "rgba(139,92,246,0.05)",
-            }}
-          >
+          <section className="rounded-card border border-primary/20 bg-primary/[0.04] px-4 py-3">
             {summaryLoading || statsLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-3.5 w-full" />
@@ -502,13 +355,11 @@ export default function DashboardPage() {
               </div>
             ) : todaySummary?.generated_text ? (
               <div className="flex gap-3">
-                <BrainCircuit className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "#a78bfa" }} />
-                <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.82)" }}>
-                  {todaySummary.generated_text}
-                </p>
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <p className="text-sm leading-relaxed text-foreground/90">{todaySummary.generated_text}</p>
               </div>
             ) : (
-              <div className="flex items-center gap-3 text-sm" style={{ color: "#c4b5fd" }}>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Generando resumen operativo...
               </div>
@@ -516,115 +367,105 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* Metrics strip */}
+        {/* Metrics */}
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <OperationalMetric
+          <MetricCard
             label="Por cobrar"
             value={crc(totalOutstanding)}
             detail={`${outstandingInvoices.length} facturas abiertas`}
-            tone={overdueInvoices.length > 0 ? "danger" : "neutral"}
+            t={overdueInvoices.length > 0 ? "danger" : "neutral"}
             loading={statsLoading}
             icon={Wallet}
           />
-          <OperationalMetric
+          <MetricCard
             label="Vencidas"
             value={String(overdueInvoices.length)}
             detail={overdueInvoices.length > 0
-              ? `${crc(overdueInvoices.reduce((sum: number, inv: any) => sum + (Number(inv.balance_due ?? inv.amount) || 0), 0))} atrasado`
+              ? `${crc(overdueInvoices.reduce((s: number, inv: any) => s + (Number(inv.balance_due ?? inv.amount) || 0), 0))} atrasado`
               : "Sin atraso"}
-            tone={overdueInvoices.length > 0 ? "danger" : "neutral"}
+            t={overdueInvoices.length > 0 ? "danger" : "neutral"}
             loading={statsLoading}
             icon={Receipt}
           />
-          <OperationalMetric
+          <MetricCard
             label="Pipeline abierto"
             value={String(pipelineTotalDeals)}
             detail={pipelineTotalDeals > 0 ? crc(pipelineTotalValue) : "Sin negocios activos"}
-            tone="neutral"
+            t="neutral"
             loading={pipelineLoading}
             icon={KanbanSquare}
           />
-          <OperationalMetric
+          <MetricCard
             label="Sin atender"
             value={String(unreadCount)}
             detail={urgentTasks.length > 0 ? `${urgentTasks.length} tareas urgentes` : "Sin conversaciones pendientes"}
-            tone={unreadCount > 0 ? "warning" : "neutral"}
+            t={unreadCount > 0 ? "warning" : "neutral"}
             loading={statsLoading}
             icon={MessageCircle}
           />
         </section>
 
-        {/* Pipeline band */}
+        {/* Pipeline */}
         {!pipelineLoading && activeStages.length > 0 && <PipelineBand stages={activeStages} />}
 
         {/* Main grid */}
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.85fr)]">
-          <div className="space-y-5">
-            <DashboardSection title="Actividad reciente" count={convList.length} linkTo="/inbox">
-              <AttentionList
-                isEmpty={convList.length === 0}
-                emptyIcon={MessageCircle}
-                emptyText="Sin actividad reciente"
-                emptyCta="Conectar un canal"
-                emptyHref="/settings?tab=channels"
-              >
+
+          {/* Conversations */}
+          <SectionCard title="Actividad reciente" count={convList.length} linkTo="/inbox">
+            {convList.length === 0 ? (
+              <EmptyState icon={MessageCircle} text="Sin actividad reciente" cta="Conectar un canal" href="/settings/channels" />
+            ) : (
+              <div className="divide-y divide-border">
                 {convList.slice(0, 7).map((conv: any) => {
-                  const statusTone: Tone = conv.status === "NEW" || conv.status === "OPEN" ? "warning" : conv.status === "PENDING" ? "neutral" : "success";
+                  const statusTone: Tone = conv.status === "NEW" || conv.status === "OPEN" ? "warning"
+                    : conv.status === "PENDING" ? "neutral" : "success";
                   return (
-                    <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                      <div
-                        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer"
-                        style={{ ["--hover-bg" as any]: "rgba(139,92,246,0.06)" }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(139,92,246,0.06)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "")}
-                      >
-                        <RowStatus tone={statusTone} />
-                        <div className="min-w-0">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <p className="truncate text-sm font-medium text-foreground">
-                              {conv.contact?.full_name || "Sin nombre"}
-                            </p>
-                            <span className="shrink-0 text-[11px] text-muted-foreground/70">
-                              {CONV_STATUS[conv.status] || conv.status}
-                            </span>
-                          </div>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {conv.subject || conv.last_message_preview || "Sin asunto"}
+                    <Link key={conv.id} href={`/inbox/${conv.id}`}
+                      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 hover:bg-muted/25 transition-colors block"
+                    >
+                      <StatusDot t={statusTone} />
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {conv.contact?.full_name || "Sin nombre"}
                           </p>
-                        </div>
-                        {conv.updated_at && (
-                          <span className="hidden text-xs text-muted-foreground sm:block">
-                            {formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true, locale: es })}
+                          <span className="shrink-0 text-[11px] text-muted-foreground/60">
+                            {CONV_STATUS[conv.status] || conv.status}
                           </span>
-                        )}
+                        </div>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {conv.subject || conv.last_message_preview || "Sin asunto"}
+                        </p>
                       </div>
+                      {conv.updated_at && (
+                        <span className="hidden text-xs text-muted-foreground sm:block">
+                          {formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true, locale: es })}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
-              </AttentionList>
-            </DashboardSection>
-          </div>
+              </div>
+            )}
+          </SectionCard>
 
           <aside className="space-y-5">
-            <DashboardSection title="Cobranza crítica" count={priorityInvoices.length} linkTo="/invoices">
-              <AttentionList
-                isEmpty={priorityInvoices.length === 0}
-                emptyIcon={Receipt}
-                emptyText="No tenés facturas por cobrar"
-                emptyCta="Ir a facturación"
-                emptyHref="/invoices"
-              >
-                {priorityInvoices.slice(0, 6).map((inv: any) => {
-                  const state = invoiceUrgency(inv);
-                  const tone: Tone = state === "overdue" ? "danger" : state === "soon" ? "warning" : "neutral";
-                  return (
-                    <Link key={inv.id} href="/invoices">
-                      <div
-                        className="flex items-start gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer"
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(139,92,246,0.06)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "")}
+
+            {/* Invoices */}
+            <SectionCard title="Cobranza crítica" count={priorityInvoices.length} linkTo="/invoices">
+              {priorityInvoices.length === 0 ? (
+                <EmptyState icon={Receipt} text="No tenés facturas por cobrar" cta="Ir a facturación" href="/invoices" />
+              ) : (
+                <div className="divide-y divide-border">
+                  {priorityInvoices.slice(0, 6).map((inv: any) => {
+                    const state = invoiceUrgency(inv);
+                    const t: Tone = state === "overdue" ? "danger" : state === "soon" ? "warning" : "neutral";
+                    return (
+                      <Link key={inv.id} href="/invoices"
+                        className="flex items-start gap-3 px-4 py-3 hover:bg-muted/25 transition-colors block"
                       >
-                        <RowStatus tone={tone} />
+                        <StatusDot t={t} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-foreground">
                             {inv.client_name || `#${inv.id?.slice(0, 8)}`}
@@ -636,39 +477,34 @@ export default function DashboardPage() {
                         <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
                           {crc(Number(inv.balance_due ?? inv.amount) || 0)}
                         </span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </AttentionList>
-            </DashboardSection>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </SectionCard>
 
-            <DashboardSection
+            {/* Tasks */}
+            <SectionCard
               title={urgentTasks.length > 0 ? "Tareas urgentes" : "Tareas pendientes"}
               count={urgentTasks.length || taskList.length}
               linkTo="/tasks"
             >
-              <AttentionList
-                isEmpty={attentionTasks.length === 0}
-                emptyIcon={CheckSquare}
-                emptyText="No tenés tareas pendientes"
-                emptyCta="Crear primera tarea"
-                emptyHref="/tasks"
-              >
-                {attentionTasks.slice(0, 7).map((task: any) => {
-                  const tone: Tone = task.priority === "HIGH" ? "danger" : task.priority === "MEDIUM" ? "warning" : "neutral";
-                  return (
-                    <Link key={task.id} href="/tasks">
-                      <div
-                        className="flex items-start gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer"
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(139,92,246,0.06)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "")}
+              {attentionTasks.length === 0 ? (
+                <EmptyState icon={CheckSquare} text="No tenés tareas pendientes" cta="Crear primera tarea" href="/tasks" />
+              ) : (
+                <div className="divide-y divide-border">
+                  {attentionTasks.slice(0, 7).map((task: any) => {
+                    const t: Tone = task.priority === "HIGH" ? "danger" : task.priority === "MEDIUM" ? "warning" : "neutral";
+                    return (
+                      <Link key={task.id} href="/tasks"
+                        className="flex items-start gap-3 px-4 py-3 hover:bg-muted/25 transition-colors block"
                       >
-                        <RowStatus tone={tone} />
+                        <StatusDot t={t} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-foreground">{task.title}</p>
-                          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                            <Clock3 className="h-3 w-3" />
+                          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Clock3 className="h-3 w-3 shrink-0" />
                             <span className="truncate">
                               {task.due_date
                                 ? formatDistanceToNow(new Date(task.due_date), { addSuffix: true, locale: es })
@@ -677,14 +513,15 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         {task.priority === "HIGH" && (
-                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                         )}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </AttentionList>
-            </DashboardSection>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </SectionCard>
+
           </aside>
         </div>
       </main>
