@@ -238,11 +238,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <div ref={wsMenuRef} className="relative">
             <button
               className={cn(
-                "group w-full flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors",
+                "group w-full flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-all duration-200",
                 wsMenuOpen
-                  ? "border-border bg-sidebar-accent/55"
-                  : "border-border/70 bg-background/25 hover:bg-sidebar-accent/30"
+                  ? "bg-[rgba(139,92,246,0.08)]"
+                  : "hover:bg-[rgba(139,92,246,0.06)]"
               )}
+              style={{
+                borderColor: wsMenuOpen ? "rgba(139,92,246,0.3)" : "rgba(139,92,246,0.18)",
+                background: wsMenuOpen ? "rgba(139,92,246,0.08)" : "rgba(139,92,246,0.04)",
+              }}
               onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
               style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
               aria-expanded={multipleWorkspaces ? wsMenuOpen : undefined}
@@ -378,16 +382,21 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   const active = isActive(href);
                   const label = key === "adminDashboard" ? copy.adminDashboard : key === "adminWorkspaces" ? copy.adminWorkspaces : key === "adminLanding" ? "Landing Page" : copy.adminPlanLimits;
                   return (
-                    <Link key={href} to={href}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
-                        active
-                          ? "bg-sidebar-accent/55 text-foreground font-medium"
-                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
-                      )}
-                    >
-                      <Icon className="w-4 h-4 shrink-0" strokeWidth={active ? 2.5 : 1.8} />
-                      <span className="flex-1 text-sm">{label}</span>
+                    <Link key={href} to={href}>
+                      <div
+                        className={cn(
+                          "group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
+                          active
+                            ? "bg-primary/10 text-foreground font-medium"
+                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
+                        )}
+                      >
+                        {active && (
+                          <div className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
+                        )}
+                        <Icon className={cn("w-4 h-4 shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} strokeWidth={active ? 2.2 : 1.8} />
+                        <span className="flex-1 text-sm">{label}</span>
+                      </div>
                     </Link>
                   );
                 })}
@@ -397,11 +406,24 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="shrink-0 px-3 pb-2">
-          <Link to="/settings/workspace"
-            className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
-          >
-            <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
-            <span className="flex-1 text-sm text-left">{copy.settingsButton}</span>
+          <Link to="/settings/workspace">
+            <div
+              className={cn(
+                "group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
+                location.startsWith("/settings")
+                  ? "bg-primary/10 text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
+              )}
+            >
+              {location.startsWith("/settings") && (
+                <div className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
+              )}
+              <Settings
+                className={cn("w-4 h-4 shrink-0 transition-colors", location.startsWith("/settings") ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}
+                strokeWidth={location.startsWith("/settings") ? 2.2 : 1.8}
+              />
+              <span className="flex-1 text-sm text-left">{copy.settingsButton}</span>
+            </div>
           </Link>
         </div>
 
@@ -427,8 +449,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-md border border-border/60 bg-background/35 px-2.5 py-2">
-            <div className="w-7 h-7 rounded-md border border-border/60 bg-sidebar-accent/45 flex items-center justify-center shrink-0 text-xs font-semibold text-foreground">
+          <div className="flex items-center gap-3 rounded-md border px-2.5 py-2" style={{ borderColor: "rgba(139,92,246,0.18)", background: "rgba(139,92,246,0.04)" }}>
+            <div className="w-7 h-7 rounded-md border flex items-center justify-center shrink-0 text-xs font-semibold" style={{ borderColor: "rgba(139,92,246,0.25)", background: "rgba(139,92,246,0.15)", color: "hsl(var(--primary))" }}>
               {initials}
             </div>
             <div className="flex-1 min-w-0">
@@ -450,7 +472,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="relative z-40 flex shrink-0 items-center gap-3 border-b border-border bg-background px-3 py-2.5 pt-safe lg:px-5">
+        <header className="relative z-40 flex shrink-0 items-center gap-3 border-b px-3 py-2.5 pt-safe lg:px-5" style={{ background: "hsl(var(--bg-sidebar))", borderColor: "rgba(139,92,246,0.12)" }}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
@@ -468,7 +490,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           <button
             onClick={() => setSearchOpen(true)}
-            className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground md:flex"
+            className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border px-3 text-left text-xs text-muted-foreground transition-all duration-200 hover:text-foreground md:flex"
+            style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(139,92,246,0.18)" }}
             title="Buscar (Ctrl+K)"
           >
             <Search className="w-3.5 h-3.5" />
@@ -491,7 +514,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           <NotificationBell />
 
-          <span className="hidden rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground/70 sm:inline-block">
+          <span className="hidden rounded-md border px-2.5 py-1 text-xs font-medium sm:inline-block" style={{ background: "rgba(139,92,246,0.08)", borderColor: "rgba(139,92,246,0.2)", color: "#c4b5fd" }}>
             {user?.role}
           </span>
         </header>
