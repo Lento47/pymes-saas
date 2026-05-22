@@ -106,7 +106,7 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
     }
   }
 
-  private async chatCompletion(messages: AssistantMessage[]): Promise<string> {
+  async chatCompletion(messages: AssistantMessage[]): Promise<string> {
     const res = await fetch(this.chatUrl!, {
       method: "POST",
       headers: {

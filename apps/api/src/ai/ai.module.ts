@@ -19,6 +19,8 @@ import { SupportNotificationService } from "./support-notification.service";
 import { KnowledgeBaseService } from "./knowledge-base.service";
 import { CaseCommentsService } from "./case-comments.service";
 import { CloudflareAiService } from "./cloudflare-ai.service";
+import { EmrendeAiService } from "./emprende-ai.service";
+import { EmrendeAiController } from "./emprende-ai.controller";
 
 import { AiTriageService } from "./ai-triage.service";
 
@@ -50,12 +52,14 @@ import { AiTriageService } from "./ai-triage.service";
     CaseCommentsService,
     CloudflareAiService,
     AiTriageService,
+    EmrendeAiService,
   ],
   controllers: [
     AgentController,
     AgentToolsController,
     AiAssistantController,
     PublicAgentController,
+    EmrendeAiController,
   ],
   exports: [
     AiService,
@@ -65,6 +69,7 @@ import { AiTriageService } from "./ai-triage.service";
     KnowledgeBaseService,
     CloudflareAiService,
     AiTriageService,
+    EmrendeAiService,
   ],
 })
 export class AiModule {}

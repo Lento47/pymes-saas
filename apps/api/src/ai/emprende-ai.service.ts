@@ -1,0 +1,321 @@
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma/prisma.service";
+import { CloudflareAiService, AssistantMessage } from "./cloudflare-ai.service";
+import { parseJsonValue } from "../common/prisma/json";
+
+export interface ContactProfileInsights {
+  summary: string;
+  common_requests: string[];
+  contact_frequency: string;
+  communication_style: string;
+}
+
+export interface TaskSuggestion {
+  title: string;
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  description: string;
+}
+
+interface BusinessContext {
+  workspaceName: string;
+  countryCode: string | null;
+  plan: string;
+  categories: string[];
+  teamSize: string | null;
+  needs: string[];
+  recentConversations: { contactName: string; lastMessage: string }[];
+  pendingTasks: { title: string; priority: string }[];
+}
+
+@Injectable()
+export class EmrendeAiService {
+  private readonly logger = new Logger(EmrendeAiService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudflare: CloudflareAiService,
+  ) {}
+
+  async buildBusinessContext(workspaceId: string): Promise<BusinessContext> {
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: {
+        name: true,
+        country_code: true,
+        plan: true,
+        business_profile: {
+          select: { categories: true, team_size: true, needs: true },
+        },
+      },
+    });
+
+    const recentConvs = await this.prisma.conversation.findMany({
+      where: { workspace_id: workspaceId, status: { in: ["NEW", "OPEN", "PENDING"] } },
+      orderBy: { last_message_at: "desc" },
+      take: 5,
+      select: {
+        contact: { select: { full_name: true } },
+        messages: {
+          orderBy: { sent_at: "desc" },
+          take: 1,
+          select: { body_text: true },
+        },
+      },
+    });
+
+    const pendingTasks = await this.prisma.task.findMany({
+      where: { workspace_id: workspaceId, status: { in: ["TODO", "IN_PROGRESS"] } },
+      orderBy: { created_at: "desc" },
+      take: 5,
+      select: { title: true, priority: true },
+    });
+
+    return {
+      workspaceName: workspace.name,
+      countryCode: workspace.country_code ?? null,
+      plan: workspace.plan,
+      categories: workspace.business_profile?.categories ?? [],
+      teamSize: workspace.business_profile?.team_size ?? null,
+      needs: workspace.business_profile?.needs ?? [],
+      recentConversations: recentConvs.map((c) => ({
+        contactName: c.contact?.full_name ?? "Cliente",
+        lastMessage: c.messages[0]?.body_text ?? "",
+      })),
+      pendingTasks: pendingTasks.map((t) => ({ title: t.title, priority: t.priority })),
+    };
+  }
+
+  buildSystemPrompt(ctx: BusinessContext): string {
+    const businessType = this.describeBusinessType(ctx.categories);
+    const country = ctx.countryCode ? ` en ${ctx.countryCode}` : "";
+
+    let contextLines = [
+      `Eres el asistente de atención al cliente de "${ctx.workspaceName}"${country}, un negocio de ${businessType}.`,
+      `Responde siempre en español, con un tono amigable, directo y profesional, como lo haría un emprendedor latinoamericano.`,
+      `Sé conciso. Evita respuestas largas. Si el cliente pregunta por precios, disponibilidad o servicios específicos, responde con lo que sabes del negocio.`,
+    ];
+
+    if (ctx.categories.includes("alimentacion_bebidas")) {
+      contextLines.push(
+        `El negocio ofrece productos de comida/bebida. Puedes responder consultas sobre pedidos, menú, horarios de entrega e ingredientes.`,
+      );
+    }
+    if (ctx.categories.includes("salud_bienestar")) {
+      contextLines.push(
+        `El negocio ofrece servicios de salud/bienestar. Puedes responder sobre disponibilidad de citas, servicios ofrecidos y precios.`,
+      );
+    }
+    if (ctx.categories.includes("comercio_ventas")) {
+      contextLines.push(
+        `El negocio se dedica a ventas/comercio. Puedes responder sobre inventario, cotizaciones y pedidos.`,
+      );
+    }
+    if (ctx.categories.includes("servicios_profesionales")) {
+      contextLines.push(
+        `El negocio ofrece servicios profesionales. Puedes orientar sobre los servicios, presupuestos y disponibilidad.`,
+      );
+    }
+
+    if (ctx.pendingTasks.length > 0) {
+      const taskList = ctx.pendingTasks.map((t) => `- ${t.title}`).join("\n");
+      contextLines.push(`\nTareas pendientes en el negocio:\n${taskList}`);
+    }
+
+    contextLines.push(
+      `\nSi no tienes información exacta para responder, dile al cliente que un agente le atenderá pronto. No inventes precios ni disponibilidad.`,
+    );
+
+    return contextLines.join("\n");
+  }
+
+  async generateReply(
+    workspaceId: string,
+    conversationId: string,
+    lastMessageText: string,
+  ): Promise<string> {
+    if (!this.cloudflare.isConfigured) {
+      return "Gracias por tu mensaje. Un agente te atenderá en breve.";
+    }
+
+    const [ctx, recentMessages] = await Promise.all([
+      this.buildBusinessContext(workspaceId),
+      this.prisma.message.findMany({
+        where: { conversation_id: conversationId, workspace_id: workspaceId },
+        orderBy: { sent_at: "desc" },
+        take: 5,
+        select: { body_text: true, direction: true },
+      }),
+    ]);
+
+    const systemPrompt = this.buildSystemPrompt(ctx);
+
+    const history: AssistantMessage[] = recentMessages
+      .reverse()
+      .slice(0, -1)
+      .map((m) => ({
+        role: m.direction === "OUTBOUND" ? "assistant" : "user",
+        content: m.body_text ?? "",
+      }));
+
+    const messages: AssistantMessage[] = [
+      { role: "system", content: systemPrompt },
+      ...history,
+      { role: "user", content: lastMessageText },
+    ];
+
+    try {
+      const result = await this.cloudflare.chatCompletion(messages);
+      return result ?? "Gracias por tu mensaje. Un agente te atenderá pronto.";
+    } catch (err) {
+      this.logger.warn("EmrendeAI generateReply failed", err);
+      return "Gracias por tu mensaje. Un agente te atenderá en breve.";
+    }
+  }
+
+  async analyzeContactProfile(
+    workspaceId: string,
+    contactId: string,
+  ): Promise<ContactProfileInsights> {
+    if (!this.cloudflare.isConfigured) {
+      throw new Error("Cloudflare AI is not configured");
+    }
+
+    const contact = await this.prisma.contact.findFirst({
+      where: { id: contactId, workspace_id: workspaceId },
+      select: { id: true, full_name: true },
+    });
+    if (!contact) throw new Error("Contacto no encontrado");
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const messages = await this.prisma.message.findMany({
+      where: {
+        workspace_id: workspaceId,
+        sent_at: { gte: thirtyDaysAgo },
+        conversation: { contact_id: contactId },
+      },
+      orderBy: { sent_at: "asc" },
+      take: 60,
+      select: { body_text: true, direction: true, sent_at: true },
+    });
+
+    if (messages.length === 0) {
+      return {
+        summary: "Sin conversaciones recientes para analizar.",
+        common_requests: [],
+        contact_frequency: "Sin datos",
+        communication_style: "Sin datos",
+      };
+    }
+
+    const transcript = messages
+      .map((m) => `[${m.direction === "INBOUND" ? "Cliente" : "Negocio"}]: ${m.body_text ?? ""}`)
+      .join("\n");
+
+    const prompt = `Analiza esta conversación de un cliente con un negocio y extrae un perfil de comportamiento.
+Responde SOLO con un JSON válido con este formato exacto:
+{
+  "summary": "resumen en 1-2 oraciones de qué suele necesitar este cliente",
+  "common_requests": ["solicitud 1", "solicitud 2"],
+  "contact_frequency": "descripción de con qué frecuencia contacta (ej: varias veces por semana, ocasionalmente)",
+  "communication_style": "descripción del tono (ej: directo y concreto, amigable y detallado)"
+}
+NO incluyas datos sensibles como ubicación exacta o datos financieros.
+
+Conversación:
+${transcript.slice(0, 3000)}`;
+
+    const responseText = await this.cloudflare.chatCompletion([
+      { role: "user", content: prompt },
+    ] as AssistantMessage[]);
+
+    let insights: ContactProfileInsights;
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      insights = JSON.parse(jsonMatch?.[0] ?? responseText);
+    } catch {
+      insights = {
+        summary: responseText.slice(0, 200),
+        common_requests: [],
+        contact_frequency: "Sin datos",
+        communication_style: "Sin datos",
+      };
+    }
+
+    const existing = await this.prisma.contact.findUnique({
+      where: { id: contactId },
+      select: { extracted_data_json: true },
+    });
+    const existingData = parseJsonValue<Record<string, unknown>>(
+      existing?.extracted_data_json,
+      {},
+    );
+
+    await this.prisma.contact.update({
+      where: { id: contactId },
+      data: {
+        extracted_data_json: {
+          ...existingData,
+          ai_profile: { ...insights, analyzed_at: new Date().toISOString() },
+        },
+      },
+    });
+
+    return insights;
+  }
+
+  async suggestTasksFromMessage(
+    workspaceId: string,
+    messageText: string,
+  ): Promise<TaskSuggestion[]> {
+    if (!this.cloudflare.isConfigured) return [];
+
+    const ctx = await this.buildBusinessContext(workspaceId);
+
+    const prompt = `Eres asistente de un negocio (${this.describeBusinessType(ctx.categories)}).
+Un cliente envió este mensaje: "${messageText.slice(0, 500)}"
+
+¿Este mensaje implica alguna tarea pendiente para el negocio?
+Responde SOLO con un JSON array. Si no implica tareas, responde [].
+Formato: [{"title": "título máx 80 chars", "priority": "LOW|MEDIUM|HIGH", "description": "descripción breve"}]
+No incluyas explicaciones, solo el JSON.`;
+
+    try {
+      const responseText = await this.cloudflare.chatCompletion([
+        { role: "user", content: prompt },
+      ] as AssistantMessage[]);
+
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) return [];
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(parsed)) return [];
+
+      return parsed
+        .filter((t: any) => t.title && t.priority)
+        .slice(0, 3)
+        .map((t: any) => ({
+          title: String(t.title).slice(0, 80),
+          priority: ["LOW", "MEDIUM", "HIGH"].includes(t.priority) ? t.priority : "MEDIUM",
+          description: String(t.description ?? ""),
+        }));
+    } catch (err) {
+      this.logger.warn("suggestTasksFromMessage failed", err);
+      return [];
+    }
+  }
+
+  private describeBusinessType(categories: string[]): string {
+    const MAP: Record<string, string> = {
+      alimentacion_bebidas: "comida y bebidas",
+      salud_bienestar: "salud y bienestar",
+      comercio_ventas: "comercio y ventas",
+      servicios_profesionales: "servicios profesionales",
+      tecnologia: "tecnología",
+      educacion: "educación",
+      belleza_cuidado: "belleza y cuidado personal",
+      transporte_logistica: "transporte y logística",
+    };
+    const mapped = categories.map((c) => MAP[c] ?? c).filter(Boolean);
+    return mapped.length > 0 ? mapped.join(", ") : "servicios generales";
+  }
+}

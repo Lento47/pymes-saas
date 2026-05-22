@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -9,10 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, MessageSquare, CheckSquare, FileText, Mail, Phone, Building2, Calendar, ExternalLink, FileImage, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, MessageSquare, CheckSquare, FileText, Mail, Phone, Building2, Calendar, ExternalLink, FileImage, FileSpreadsheet, Sparkles, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const TYPE_LABELS: Record<string, string> = {
   CUSTOMER: "Cliente",
@@ -38,6 +40,118 @@ function getFileIcon(mimeType?: string) {
   if (mimeType.includes("sheet") || mimeType.includes("excel")) return <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />;
   if (mimeType.includes("pdf")) return <FileText className="w-3.5 h-3.5 text-red-400" />;
   return <FileText className="w-3.5 h-3.5 text-muted-foreground" />;
+}
+
+const EMPRENDE_PLANS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
+
+function AiProfileCard({ contactId }: { contactId: string }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+
+  const { data: workspace } = useQuery({
+    queryKey: ["/api/workspaces/current"],
+    queryFn: () => api.getWorkspace(),
+  });
+
+  const { data: contact } = useQuery({
+    queryKey: ["/api/contacts", contactId],
+    queryFn: () => api.getContact(contactId),
+    enabled: !!contactId,
+  });
+
+  const plan: string = workspace?.plan ?? "FREE";
+  if (!EMPRENDE_PLANS.includes(plan)) return null;
+
+  const aiProfile = (contact?.extracted_data_json as any)?.ai_profile;
+
+  const analyze = useMutation({
+    mutationFn: () => api.emprendeAnalyzeContact(contactId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/contacts", contactId] });
+      toast({ title: "Perfil IA actualizado" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="bg-card border border-primary/20 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-primary" />
+          <h3 className="text-[10px] font-medium text-primary uppercase tracking-wider">Perfil IA</h3>
+        </div>
+        <div className="flex items-center gap-1">
+          {aiProfile && (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={open ? "Colapsar" : "Expandir"}
+            >
+              {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+            disabled={analyze.isPending}
+            onClick={() => analyze.mutate()}
+            title="Analizar conversaciones"
+          >
+            <RefreshCw className={cn("w-3 h-3", analyze.isPending && "animate-spin")} />
+          </Button>
+        </div>
+      </div>
+
+      {!aiProfile && !analyze.isPending && (
+        <p className="text-[11px] text-muted-foreground">
+          Presioná el botón para analizar las conversaciones de este cliente.
+        </p>
+      )}
+
+      {analyze.isPending && (
+        <p className="text-[11px] text-muted-foreground">Analizando...</p>
+      )}
+
+      {aiProfile && (open || !aiProfile.summary) && (
+        <div className="space-y-2.5 mt-1">
+          {aiProfile.summary && (
+            <p className="text-[11px] text-foreground leading-relaxed">{aiProfile.summary}</p>
+          )}
+          {aiProfile.common_requests?.length > 0 && (
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-1">Solicita frecuentemente</p>
+              <div className="flex flex-wrap gap-1">
+                {aiProfile.common_requests.map((r: string, i: number) => (
+                  <span key={i} className="text-[10px] px-1.5 py-0.5 rounded border border-primary/20 bg-primary/[0.07] text-primary/80">
+                    {r}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {aiProfile.contact_frequency && (
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">Frecuencia</span>
+              <span className="text-[10px] text-foreground">{aiProfile.contact_frequency}</span>
+            </div>
+          )}
+          {aiProfile.communication_style && (
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-[10px] text-muted-foreground shrink-0">Estilo</span>
+              <span className="text-[10px] text-foreground text-right">{aiProfile.communication_style}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {aiProfile && !open && aiProfile.summary && (
+        <p className="text-[11px] text-muted-foreground line-clamp-2 mt-1">{aiProfile.summary}</p>
+      )}
+    </div>
+  );
 }
 
 export default function ContactDetailPage() {
@@ -154,6 +268,9 @@ export default function ContactDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* AI Profile */}
+          <AiProfileCard contactId={id} />
         </div>
 
         {/* Right — Tabs */}

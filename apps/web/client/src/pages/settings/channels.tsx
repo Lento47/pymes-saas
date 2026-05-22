@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, MessageCircle, Radio, ExternalLink, PowerOff, Trash2, PlugZap, Plug } from "lucide-react";
+import { Mail, MessageCircle, Radio, ExternalLink, PowerOff, Trash2, PlugZap, Plug, Sparkles } from "lucide-react";
 import { SecretInput } from "@/components/settings/secret-input";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 
@@ -277,6 +278,58 @@ function DeleteChannelDialog({ channel, onClose }: { channel: any; onClose: () =
   );
 }
 
+const EMPRENDE_PLANS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
+
+function AiAutoReplyToggle() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const { data: workspace } = useQuery({
+    queryKey: ["/api/workspaces/current"],
+    queryFn: () => api.getWorkspace(),
+  });
+
+  const plan: string = workspace?.plan ?? "FREE";
+  const isEligible = EMPRENDE_PLANS.includes(plan);
+  const enabled = !!(workspace?.settings_json as any)?.ai_auto_reply_enabled;
+
+  const toggle = useMutation({
+    mutationFn: (value: boolean) =>
+      api.updateWorkspace({ settings_json: { ai_auto_reply_enabled: value } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/workspaces/current"] });
+      toast({ title: "Configuración guardada" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  if (!isEligible) return null;
+
+  return (
+    <div className="mb-6 rounded-lg border border-primary/20 bg-primary/[0.04] p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
+            <Sparkles className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">IA responde automáticamente</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Cloudflare AI responde con el contexto de tu negocio. Cuando un agente escribe, toma el control.
+            </p>
+          </div>
+        </div>
+        <Switch
+          checked={enabled}
+          disabled={toggle.isPending}
+          onCheckedChange={(v) => toggle.mutate(v)}
+          className="shrink-0"
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function ChannelsSettingsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -318,6 +371,7 @@ export default function ChannelsSettingsPage() {
   return (
     <SettingsLayout>
       <div>
+        <AiAutoReplyToggle />
         <div className="flex justify-between items-center mb-4">
           <p className="text-sm text-muted-foreground">{channels.length} canal(es)</p>
 
