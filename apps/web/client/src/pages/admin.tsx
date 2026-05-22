@@ -3,31 +3,6 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2, Users, Building2, MessageSquare, FileText, TrendingUp, BarChart3 } from "lucide-react";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
-type PlatformStats = {
-  totalWorkspaces: number;
-  totalUsers: number;
-  activeUsers: number;
-  totalConversations: number;
-  totalInvoices: number;
-  profiledWorkspaces: number;
-  categoriesDistribution: { category: string; count: number }[];
-  registrationsByMonth: { month: string; count: number }[];
-  usageByCategory: { category: string; avg_contacts: number; avg_conversations: number; avg_invoices: number }[];
-};
-
-type WorkspaceSummary = {
-  id: string;
-  name: string;
-  slug: string;
-  plan: string;
-  status: string;
-  member_count: number;
-  created_at: string;
-  business_profile?: { categories?: string[] };
-};
-
 // ── Category labels ────────────────────────────────────────────────────────
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -65,6 +40,12 @@ const PLAN_COLORS: Record<string, string> = {
   ENTERPRISE:   "hsl(0 70% 50%)",
 };
 
+const PROFILE_COLORS: Record<string, string> = {
+  emprende:   "hsl(32 90% 50%)",
+  business:   "hsl(210 90% 55%)",
+  enterprise: "hsl(260 70% 55%)",
+};
+
 // ── Shared card ────────────────────────────────────────────────────────────
 
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
@@ -82,7 +63,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
 }
 
 function StatCard({ icon: Icon, label, value, sub }: {
-  icon: React.ElementType; label: string; value: string | number; sub?: string;
+  icon: any; label: string; value: string | number; sub?: string;
 }) {
   return (
     <Card>
@@ -167,25 +148,33 @@ function RegistrationsChart({ data }: { data: { month: string; count: number }[]
 
 export default function AdminPage() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<PlatformStats | null>(null);
-  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const [wsSearch, setWsSearch] = useState("");
+
+  const handleProfileChange = async (slug: string, profile: string) => {
+    try {
+      await api.platformUpdateWorkspaceProfile(slug, profile);
+      setWorkspaces(prev =>
+        prev.map(w => w.slug === slug ? { ...w, profile } : w)
+      );
+    } catch (e: any) {
+      alert(e?.message ?? "Error al cambiar perfil");
+    }
+  };
 
   // Guard: only platform admins
   useEffect(() => {
     if (user && !user.is_platform_admin) {
-      history.replaceState(null, "", "/");
-      window.dispatchEvent(new PopStateEvent("popstate"));
+      window.location.hash = "#/";
     }
   }, [user]);
 
   useEffect(() => {
     if (!user?.is_platform_admin) return;
     Promise.all([api.platformGetStats(), api.platformListWorkspaces()])
-      .then(([s, w]) => { setStats(s as PlatformStats); setWorkspaces(w as WorkspaceSummary[]); })
-      .catch(() => setFetchError("No se pudieron cargar los datos del panel."))
+      .then(([s, w]) => { setStats(s); setWorkspaces(w); })
       .finally(() => setLoading(false));
   }, [user]);
 
@@ -194,15 +183,7 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <Loader2 className="animate-spin" style={{ width: 24, height: 24, color: "hsl(var(--accent))" }} />
-      </div>
-    );
-  }
-
-  if (fetchError) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <p style={{ fontSize: "14px", color: "hsl(var(--fg-2))" }}>{fetchError}</p>
+        <Loader2 style={{ width: 24, height: 24, animation: "spin 1s linear infinite", color: "hsl(var(--accent))" }} />
       </div>
     );
   }
@@ -282,8 +263,8 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      {/* Section 3 — Usage by segment */}
-      {(stats?.usageByCategory?.length ?? 0) > 0 && (
+      {/* Section 4 — Usage by segment */}
+      {stats?.usageByCategory?.length > 0 && (
         <Card style={{ marginBottom: "20px" }}>
           <h2 style={{ fontSize: "14px", fontWeight: 600, color: "hsl(var(--fg))", marginBottom: "16px" }}>
             Métricas promedio por segmento
@@ -300,7 +281,7 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {(stats?.usageByCategory ?? []).map((row, i) => (
+                {(stats.usageByCategory as any[]).map((row, i) => (
                   <tr key={row.category} style={{ borderBottom: "1px solid hsl(var(--border))", background: i % 2 === 0 ? "transparent" : "hsl(var(--border) / 0.3)" }}>
                     <td style={{ padding: "8px 12px", color: "hsl(var(--fg))", fontWeight: 500 }}>
                       {CATEGORY_LABELS[row.category] ?? row.category}
@@ -316,7 +297,7 @@ export default function AdminPage() {
         </Card>
       )}
 
-      {/* Section 4 — Workspace table */}
+      {/* Section 3 — Workspace table */}
       <Card>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
           <h2 style={{ fontSize: "14px", fontWeight: 600, color: "hsl(var(--fg))" }}>
@@ -341,7 +322,7 @@ export default function AdminPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-                {["Workspace", "Sector", "Plan", "Usuarios", "Registrado", "Estado"].map(h => (
+                {["Workspace", "Sector", "Plan", "Perfil", "Usuarios", "Registrado", "Estado"].map(h => (
                   <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: "hsl(var(--fg-2))", fontWeight: 500, whiteSpace: "nowrap" }}>
                     {h}
                   </th>
@@ -388,6 +369,24 @@ export default function AdminPage() {
                       {w.plan}
                     </span>
                   </td>
+                  <td style={{ padding: "8px 12px" }}>
+                    <select
+                      value={w.profile ?? "business"}
+                      onChange={(e) => handleProfileChange(w.slug, e.target.value)}
+                      style={{
+                        fontSize: "11px", padding: "2px 6px",
+                        background: `${PROFILE_COLORS[w.profile ?? "business"] ?? "hsl(var(--border))"}18`,
+                        color: PROFILE_COLORS[w.profile ?? "business"] ?? "hsl(var(--fg-2))",
+                        border: `1px solid ${PROFILE_COLORS[w.profile ?? "business"] ?? "hsl(var(--border))"}44`,
+                        borderRadius: "3px", fontWeight: 600,
+                        cursor: "pointer", outline: "none",
+                      }}
+                    >
+                      <option value="emprende">Emprende</option>
+                      <option value="business">Business</option>
+                      <option value="enterprise">Enterprise</option>
+                    </select>
+                  </td>
                   <td style={{ padding: "8px 12px", color: "hsl(var(--fg))" }}>{w.member_count}</td>
                   <td style={{ padding: "8px 12px", color: "hsl(var(--fg-2))", whiteSpace: "nowrap" }}>
                     {new Date(w.created_at).toLocaleDateString("es-CR")}
@@ -406,7 +405,7 @@ export default function AdminPage() {
               ))}
               {filteredWs.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "hsl(var(--fg-2))", fontSize: "13px" }}>
+                  <td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "hsl(var(--fg-2))", fontSize: "13px" }}>
                     No se encontraron workspaces.
                   </td>
                 </tr>
