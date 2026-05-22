@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, CheckCircle2, AlertTriangle } from "lucide-react";
+import { BookOpen, CheckCircle2, AlertTriangle, Upload, Building2, Loader2 } from "lucide-react";
 import { SecretInput } from "@/components/settings/secret-input";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 
@@ -19,6 +19,10 @@ export default function WorkspaceSettingsPage() {
     queryKey: ["/api/workspaces/current"],
     queryFn: () => api.getWorkspace(),
   });
+  const [wsName, setWsName] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [financeOptIn, setFinanceOptIn] = useState(false);
   const [taxStep, setTaxStep] = useState(0);
   const [taxConfig, setTaxConfig] = useState({
@@ -54,6 +58,34 @@ export default function WorkspaceSettingsPage() {
     onError: (e: any) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  const saveProfile = useMutation({
+    mutationFn: (payload: { name?: string; logo_url?: string }) => api.updateWorkspace(payload),
+    onSuccess: (workspace) => {
+      qc.setQueryData(["/api/workspaces/current"], workspace);
+      toast({ title: "Perfil actualizado" });
+    },
+    onError: (e: any) =>
+      toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const handleLogoUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Solo se permiten imágenes", variant: "destructive" });
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const { url } = await api.uploadAttachment(form);
+      setLogoUrl(url);
+    } catch (e: any) {
+      toast({ title: "Error al subir imagen", description: e.message, variant: "destructive" });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   const workspace = data;
   const taxChecklist = [
@@ -111,6 +143,11 @@ export default function WorkspaceSettingsPage() {
   const currentTaxStep = taxSteps[taxStep] ?? taxSteps[0];
 
   useEffect(() => {
+    if (workspace?.name) setWsName(workspace.name);
+    if (workspace?.logo_url) setLogoUrl(workspace.logo_url);
+  }, [workspace?.name, workspace?.logo_url]);
+
+  useEffect(() => {
     setFinanceOptIn(workspace?.ai_message_finance_opt_in === true);
     setTaxConfig({
       legal_name: workspace?.workspace_tax_profile?.legal_name ?? "",
@@ -164,9 +201,78 @@ export default function WorkspaceSettingsPage() {
     },
   });
 
+  const profileChanged = wsName !== (ws?.name ?? "") || logoUrl !== (ws?.logo_url ?? "");
+
   return (
     <SettingsLayout>
       <div className="space-y-6">
+
+        {/* ── Perfil del workspace ─────────────────────────────────────── */}
+        <section className="space-y-4 border-b border-border pb-6">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Perfil del negocio</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Nombre e imagen que representa a tu negocio dentro de la plataforma.</p>
+          </div>
+
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+            {/* Logo upload */}
+            <div className="flex flex-col items-center gap-3">
+              <div
+                className="relative flex h-20 w-20 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-[hsl(var(--elevated))] transition-colors hover:border-primary/50"
+                onClick={() => logoInputRef.current?.click()}
+              >
+                {uploadingLogo ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                ) : logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" />
+                ) : (
+                  <Building2 className="h-7 w-7 text-muted-foreground/40" />
+                )}
+                <div className="absolute inset-0 flex items-end justify-center bg-black/0 opacity-0 transition-opacity hover:bg-black/40 hover:opacity-100 pb-1.5">
+                  <Upload className="h-4 w-4 text-white" />
+                </div>
+              </div>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); e.target.value = ""; }}
+              />
+              <p className="text-center text-[11px] text-muted-foreground">PNG, JPG · máx 15 MB</p>
+            </div>
+
+            {/* Name field */}
+            <div className="flex-1 space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="ws-name" className="text-sm">Nombre del negocio</Label>
+                <Input
+                  id="ws-name"
+                  value={wsName}
+                  onChange={(e) => setWsName(e.target.value)}
+                  placeholder="Ej. Restaurante El Buen Sabor"
+                  maxLength={80}
+                  className="max-w-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">{wsName.length}/80 caracteres</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  disabled={!profileChanged || saveProfile.isPending || uploadingLogo || wsName.length < 2}
+                  onClick={() => saveProfile.mutate({ name: wsName, logo_url: logoUrl || undefined })}
+                >
+                  {saveProfile.isPending ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Guardando...</> : "Guardar perfil"}
+                </Button>
+                {profileChanged && (
+                  <span className="text-xs text-muted-foreground">Cambios sin guardar</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="space-y-5">
           <div className="grid gap-6 border-b border-border pb-5 lg:grid-cols-[minmax(0,1.8fr)_minmax(320px,0.9fr)] lg:items-start">
             <div className="space-y-4">
