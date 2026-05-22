@@ -834,16 +834,13 @@ export class PlatformService {
       select: { id: true, name: true, slug: true, profile: true },
     });
 
-    await this.audit.log({
-      workspace_id: workspace.id,
-      actor_user_id: actorUserId,
+    await this.audit.log(workspace.id, {
+      user_id: actorUserId,
       action: "WORKSPACE_PROFILE_UPDATED",
-      resource: "workspace",
-      resource_id: workspace.id,
-      metadata: {
-        previous: workspace.profile,
-        updated: profile,
-      },
+      entity_type: "workspace",
+      entity_id: workspace.id,
+      before: { profile: workspace.profile },
+      after: { profile },
     });
 
     return updated;
