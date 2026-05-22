@@ -24,6 +24,7 @@ import { EmrendeAiService } from "./emprende-ai.service";
 import { EmrendeAiController } from "./emprende-ai.controller";
 import { AgentRunService } from "./agent-run.service";
 import { WhatsAppModule } from "../whatsapp/whatsapp.module";
+import { TelegramModule } from "../telegram/telegram.module";
 
 import { AiTriageService } from "./ai-triage.service";
 
@@ -44,6 +45,7 @@ import { AiTriageService } from "./ai-triage.service";
     EventsModule,
     forwardRef(() => NotificationsModule),
     forwardRef(() => WhatsAppModule),
+    forwardRef(() => TelegramModule),
   ],
   providers: [
     AiService,

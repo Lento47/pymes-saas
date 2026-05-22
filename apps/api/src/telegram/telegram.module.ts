@@ -2,6 +2,7 @@ import { Module, forwardRef } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { TelegramController } from "./telegram.controller";
 import { TelegramService } from "./telegram.service";
+import { TelegramOutboundService } from "./telegram-outbound.service";
 import { PrismaModule } from "../common/prisma/prisma.module";
 import { CryptoModule } from "../common/crypto/crypto.module";
 import { ConversationsModule } from "../conversations/conversations.module";
@@ -16,7 +17,7 @@ import { EventsModule } from "../gateways/events.module";
     EventsModule,
   ],
   controllers: [TelegramController],
-  providers: [TelegramService],
-  exports: [TelegramService],
+  providers: [TelegramService, TelegramOutboundService],
+  exports: [TelegramService, TelegramOutboundService],
 })
 export class TelegramModule {}
