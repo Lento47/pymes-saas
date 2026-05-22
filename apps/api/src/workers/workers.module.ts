@@ -1,4 +1,4 @@
-import { Module, Logger } from "@nestjs/common";
+import { Module, Logger, forwardRef } from "@nestjs/common";
 import { BullModule } from "@nestjs/bullmq";
 import { ConfigService } from "@nestjs/config";
 import IORedis from "ioredis";
@@ -56,7 +56,7 @@ function createRedisConnection(config: ConfigService) {
 @Module({
   imports: [
     NotificationsModule,
-    AiModule,
+    forwardRef(() => AiModule),
     HaciendaModule,
     BullModule.forRootAsync({
       inject: [ConfigService],
