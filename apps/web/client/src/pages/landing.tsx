@@ -15,7 +15,7 @@ import {
   Workflow,
   X,
 } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { Footer } from "@/components/marketing/footer";
 import { InboxCard, PerformanceCard, AutomationsCard } from "@/components/marketing/overview-cards";
@@ -87,14 +87,6 @@ function MarketingMenuAction({
     </>
   );
 
-  if (href.startsWith("#")) {
-    return (
-      <button type="button" onClick={() => onNavigate(href)} className={classes}>
-        {content}
-      </button>
-    );
-  }
-
   return (
     <Link href={href} onClick={() => onNavigate(href)} className={classes}>
       {content}
@@ -120,7 +112,6 @@ function useReveal() {
 export default function Landing() {
   const { messages } = useI18n();
   const copy = messages.landing;
-  const [, navigate] = useLocation();
   const [activeMenu, setActiveMenu] = useState<NavKey | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -179,14 +170,14 @@ export default function Landing() {
       featured: {
         title: copy.menus.platform.featuredTitle,
         description: copy.menus.platform.featuredDescription,
-        href: "#platform",
+        href: "/product",
         icon: ShieldCheck,
       },
       links: [
         {
           title: copy.menus.platform.links[0].title,
           description: copy.menus.platform.links[0].description,
-          href: "#security",
+          href: "/security",
           icon: LockKeyhole,
         },
         {
@@ -210,14 +201,14 @@ export default function Landing() {
       featured: {
         title: copy.menus.workflows.featuredTitle,
         description: copy.menus.workflows.featuredDescription,
-        href: "#workflows",
+          href: "/workflows",
         icon: Workflow,
       },
       links: [
         {
           title: copy.menus.workflows.links[0].title,
           description: copy.menus.workflows.links[0].description,
-          href: "#workflows",
+          href: "/workflows",
           icon: Workflow,
         },
         {
@@ -241,14 +232,14 @@ export default function Landing() {
       featured: {
         title: copy.menus.insights.featuredTitle,
         description: copy.menus.insights.featuredDescription,
-        href: "#insights",
+          href: "/insights",
         icon: ChartSpline,
       },
       links: [
         {
           title: copy.menus.insights.links[0].title,
           description: copy.menus.insights.links[0].description,
-          href: "#insights",
+          href: "/insights",
           icon: ChartSpline,
         },
         {
@@ -272,14 +263,14 @@ export default function Landing() {
       featured: {
         title: copy.menus.security.featuredTitle,
         description: copy.menus.security.featuredDescription,
-        href: "#security",
+        href: "/security",
         icon: ShieldCheck,
       },
       links: [
         {
           title: copy.menus.security.links[0].title,
           description: copy.menus.security.links[0].description,
-          href: "#security",
+          href: "/security",
           icon: LockKeyhole,
         },
         {
@@ -298,11 +289,8 @@ export default function Landing() {
     },
   };
 
-  const handleMenuNavigate = (href: string) => {
+  const handleMenuNavigate = (_href: string) => {
     setActiveMenu(null);
-    if (href.startsWith("#")) {
-      navigate("/product");
-    }
   };
 
   const handleNavClick = (e: React.MouseEvent<HTMLDivElement>) => {
