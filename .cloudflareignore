@@ -1,0 +1,8 @@
+# Cloudflare Pages — solo frontend (apps/web)
+# Ignorar backend y dependencias que no necesita el build del frontend
+
+apps/api/
+packages/shared-types/
+pnpm-lock.yaml
+node_modules/
+.git/

@@ -1,0 +1,4 @@
+# Railway — solo backend (apps/api + packages)
+# Ignorar frontend para no hacer re-deploy por cambios en apps/web
+
+apps/web/
