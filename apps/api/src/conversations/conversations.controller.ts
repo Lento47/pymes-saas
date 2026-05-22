@@ -5,7 +5,9 @@ import {
   Controller,
   Delete,
   Get,
+  Inject,
   Logger,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -13,6 +15,7 @@ import {
   Req,
   Res,
   UseGuards,
+  forwardRef,
 } from "@nestjs/common";
 import { Request, Response } from "express";
 import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
@@ -34,6 +37,7 @@ import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { UpdateConversationDto } from "./dto/update-conversation.dto";
 import { FilterConversationsDto } from "./dto/filter-conversations.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
+import { AgentRunService } from "../ai/agent-run.service";
 
 @Controller("conversations")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -50,6 +54,8 @@ export class ConversationsController {
     private readonly telegramService: TelegramService,
     private readonly templatesService: MessageTemplatesService,
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => AgentRunService))
+    private readonly agentRunService: AgentRunService,
   ) {}
 
   // ── Conversations ──────────────────────────────────────────────────────────
@@ -456,6 +462,71 @@ export class ConversationsController {
       );
     }
 
+    return { ok: true };
+  }
+
+  @Patch(":id/delegate-to-ai")
+  @Roles(WorkspaceUserRole.AGENT)
+  async delegateToAi(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) conversationId: string,
+  ) {
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, workspace_id: workspaceId },
+      select: { metadata_json: true },
+    });
+    if (!conv) throw new NotFoundException();
+    const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        metadata_json: { ...meta, ai_state: "AI_ACTIVE", delegated_at: new Date().toISOString() },
+      },
+      select: { id: true },
+    });
+    return { ok: true, ai_state: "AI_ACTIVE" };
+  }
+
+  // ── AI Agent endpoints ─────────────────────────────────────────────────────
+
+  @Get(":id/agent-run")
+  @Roles(WorkspaceUserRole.AGENT)
+  async getAgentRun(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) conversationId: string,
+  ) {
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, workspace_id: workspaceId },
+      select: { metadata_json: true },
+    });
+    if (!conv) throw new NotFoundException();
+    return this.agentRunService.getRunFromMeta(conv);
+  }
+
+  @Post(":id/start-agent")
+  @Roles(WorkspaceUserRole.AGENT)
+  async startAgentRun(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) conversationId: string,
+    @Body("trigger_text") triggerText?: string,
+  ) {
+    const lastMsg = await this.prisma.message.findFirst({
+      where: { conversation_id: conversationId, workspace_id: workspaceId, direction: "INBOUND" },
+      orderBy: { sent_at: "desc" },
+      select: { body_text: true },
+    });
+    const text = triggerText || lastMsg?.body_text || "";
+    const run = await this.agentRunService.startRun(workspaceId, conversationId, text);
+    return { ok: !!run, run };
+  }
+
+  @Delete(":id/agent-run")
+  @Roles(WorkspaceUserRole.AGENT)
+  async stopAgentRun(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) conversationId: string,
+  ) {
+    await this.agentRunService.cancelRun(workspaceId, conversationId);
     return { ok: true };
   }
 }

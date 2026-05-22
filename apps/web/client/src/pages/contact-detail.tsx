@@ -61,8 +61,6 @@ function AiProfileCard({ contactId }: { contactId: string }) {
   });
 
   const plan: string = workspace?.plan ?? "FREE";
-  if (!EMPRENDE_PLANS.includes(plan)) return null;
-
   const aiProfile = (contact?.extracted_data_json as any)?.ai_profile;
 
   const analyze = useMutation({
@@ -73,6 +71,8 @@ function AiProfileCard({ contactId }: { contactId: string }) {
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  if (!EMPRENDE_PLANS.includes(plan)) return null;
 
   return (
     <div className="bg-card border border-primary/20 rounded-xl p-4">

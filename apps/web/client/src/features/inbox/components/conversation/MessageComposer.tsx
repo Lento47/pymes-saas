@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, List, Loader2, MapPin, MessageSquare, Paperclip, Plus, Send } from "lucide-react";
+import { FileText, List, Loader2, MapPin, MessageSquare, Paperclip, Plus, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -19,6 +19,7 @@ interface MessageComposerProps {
   channelType?: string;
   isServiceWindowOpen?: boolean;
   onSelectTemplate?: () => void;
+  onAiSuggest?: () => Promise<string>;
   disabled?: boolean;
   className?: string;
 }
@@ -36,10 +37,12 @@ export function MessageComposer({
   channelType,
   isServiceWindowOpen = true,
   onSelectTemplate,
+  onAiSuggest,
   disabled,
   className,
 }: MessageComposerProps) {
   const [interactive, setInteractive] = useState<InteractiveState>({ type: null });
+  const [isSuggesting, setIsSuggesting] = useState(false);
 
   const isWhatsApp = channelType?.toUpperCase() === "WHATSAPP";
   const windowClosed = isWhatsApp && !isServiceWindowOpen;
@@ -78,6 +81,17 @@ export function MessageComposer({
     if (file) {
       onAttach(file);
       e.target.value = "";
+    }
+  };
+
+  const handleAiSuggest = async () => {
+    if (!onAiSuggest || isSuggesting) return;
+    setIsSuggesting(true);
+    try {
+      const suggestion = await onAiSuggest();
+      if (suggestion) onChange(suggestion);
+    } finally {
+      setIsSuggesting(false);
     }
   };
 
@@ -195,6 +209,23 @@ export function MessageComposer({
               disabled={freeFormDisabled || isPending || uploading}
             />
           </label>
+
+          {/* AI Suggest button — EMPRENDE+ only, shown when onAiSuggest is provided */}
+          {onAiSuggest && (
+            <button
+              type="button"
+              onClick={handleAiSuggest}
+              disabled={isSuggesting || freeFormDisabled}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:pointer-events-none disabled:opacity-45"
+              title="Sugerir respuesta con IA"
+            >
+              {isSuggesting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
 
           <Textarea
             className="min-h-[38px] max-h-[104px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-sm leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"

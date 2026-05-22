@@ -45,6 +45,7 @@ export function useConversationSocket(conversationId: string) {
   const MESSAGES_KEY = ["/api/conversations", conversationId, "messages"];
   const CONVERSATION_KEY = ["/api/conversations", conversationId];
   const CONVERSATIONS_KEY = ["conversations"];
+  const AGENT_RUN_KEY = ["agent-run", conversationId];
 
   function looksLikeMedia(message: Message): boolean {
     if (message.has_media || message.media_type) return true;
@@ -136,6 +137,14 @@ export function useConversationSocket(conversationId: string) {
     [qc, conversationId],
   );
 
+  const handleAgentUpdated = useCallback(
+    (data: { conversationId: string; run: unknown }) => {
+      if (data.conversationId !== conversationId) return;
+      qc.setQueryData(AGENT_RUN_KEY, data.run ?? null);
+    },
+    [qc, conversationId],
+  );
+
   useEffect(() => {
     const socket = getSocket() ?? connectSocket();
     if (!socket || !conversationId) return;
@@ -145,12 +154,14 @@ export function useConversationSocket(conversationId: string) {
     socket.on('message:new', handleNewMessage);
     socket.on('message:media-ready', handleMediaReady);
     socket.on('conversation:updated', handleConversationUpdated);
+    socket.on('agent:updated', handleAgentUpdated);
 
     return () => {
       socket.emit('leave:conversation', conversationId);
       socket.off('message:new', handleNewMessage);
       socket.off('message:media-ready', handleMediaReady);
       socket.off('conversation:updated', handleConversationUpdated);
+      socket.off('agent:updated', handleAgentUpdated);
     };
-  }, [conversationId, handleNewMessage, handleMediaReady, handleConversationUpdated]);
+  }, [conversationId, handleNewMessage, handleMediaReady, handleConversationUpdated, handleAgentUpdated]);
 }

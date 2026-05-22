@@ -66,7 +66,7 @@ export class EmrendeAiController {
           dto.conversationId,
           dto.message,
         )
-      : await this.emprendeAi.generateReply(user.workspace_id, "", dto.message);
+      : await this.emprendeAi.generateReply(user.workspace_id, null, dto.message);
     return {
       reply,
       context: { businessName: ctx.workspaceName, categories: ctx.categories },

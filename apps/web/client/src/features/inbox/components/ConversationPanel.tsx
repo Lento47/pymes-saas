@@ -8,6 +8,7 @@ import { getSocket } from "@/hooks/use-socket";
 import { ConversationHeader } from "./conversation/ConversationHeader";
 import { MessageTimeline } from "./conversation/MessageTimeline";
 import { MessageComposer } from "./conversation/MessageComposer";
+import { AgentRunCard, type AgentRun } from "./conversation/AgentRunCard";
 import { InvoiceDialog } from "./conversation/InvoiceDialog";
 import { DeleteConversationAlert } from "./conversation/DeleteConversationAlert";
 import { ContactFromConversationDialog } from "./ContactFromConversationDialog";
@@ -61,6 +62,12 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     queryFn: () => api.getConversation(id),
     enabled: !!id,
     staleTime: 30_000,
+  });
+
+  const { data: workspace } = useQuery({
+    queryKey: ["/api/workspaces/current"],
+    queryFn: () => api.getWorkspace(),
+    staleTime: 5 * 60_000,
   });
 
   // ── Read receipt when conversation opens ──
@@ -298,6 +305,36 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     return Array.isArray(messages) ? messages : messages?.data || [];
   }, [messages]);
 
+  const EMPRENDE_PLANS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
+  const plan = (workspace as any)?.plan ?? "FREE";
+  const isEmprendePlus = EMPRENDE_PLANS.includes(plan);
+  const aiState = (conv as any)?.metadata_json?.ai_state ?? "IDLE";
+
+  const delegateToAiMut = useMutation({
+    mutationFn: () => api.delegateConversationToAi(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/conversations", id] }),
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const { data: agentRun } = useQuery({
+    queryKey: ["agent-run", id],
+    queryFn: () => api.getAgentRun(id),
+    enabled: !!id && isEmprendePlus,
+    staleTime: 10_000,
+  });
+
+  const startAgentMut = useMutation({
+    mutationFn: () => {
+      const lastInbound = [...msgList].reverse().find((m: any) => m.direction === "INBOUND");
+      return api.startAgentRun(id, lastInbound?.body_text ?? "");
+    },
+    onSuccess: (data) => {
+      if (data?.run) qc.setQueryData(["agent-run", id], data.run);
+      else toast({ title: "No se detectó intención", description: "El agente no pudo interpretar el último mensaje.", variant: "destructive" });
+    },
+    onError: (e: any) => toast({ title: "Error al iniciar agente", description: e.message, variant: "destructive" }),
+  });
+
   // Clear typing indicator when a new inbound message arrives
   // NOTE: must come AFTER msgList declaration (TDZ constraint in JS)
   useEffect(() => {
@@ -423,7 +460,15 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         canResolve={conversation?.status !== "RESOLVED"}
         canSendInvoice={canSendInvoice}
         canAddContact={!conversation?.contact?.id}
+        onDelegateToAi={isEmprendePlus && aiState === "HUMAN_ACTIVE" ? () => delegateToAiMut.mutate() : undefined}
+        isDelegatingToAi={delegateToAiMut.isPending}
+        onStartAgent={isEmprendePlus && (agentRun as AgentRun | null | undefined)?.status !== "RUNNING" ? () => startAgentMut.mutate() : undefined}
+        isStartingAgent={startAgentMut.isPending}
       />
+
+      {agentRun && (agentRun as AgentRun).status !== "CANCELLED" && (
+        <AgentRunCard run={agentRun as AgentRun} conversationId={id} />
+      )}
 
       <MessageTimeline
         messages={uiMessages}
@@ -452,8 +497,12 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         channelLabel={channelLabel}
         channelType={channelType}
         isServiceWindowOpen={isServiceWindowOpen}
-        onSelectTemplate={() => toast({ title: "Plantillas", description: "Selector de plantillas próximamente" })}
         disabled={!id}
+        onAiSuggest={isEmprendePlus ? async () => {
+          const lastInbound = [...msgList].reverse().find((m: any) => m.direction === "INBOUND");
+          const result = await api.emprendeReply(id, lastInbound?.body_text ?? "");
+          return result.reply;
+        } : undefined}
       />
 
       <InvoiceDialog

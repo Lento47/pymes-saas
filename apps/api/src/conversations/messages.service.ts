@@ -6,6 +6,7 @@ import { ConversationsService } from "./conversations.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { AiService } from "../ai/ai.service";
 import { EmrendeAiService } from "../ai/emprende-ai.service";
+import { AgentRunService } from "../ai/agent-run.service";
 import { TasksService } from "../tasks/tasks.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { Contact, Priority } from "@prisma/client";
@@ -36,6 +37,8 @@ export class MessagesService {
     private readonly aiService: AiService,
     @Inject(forwardRef(() => EmrendeAiService))
     private readonly emprendeAiService: EmrendeAiService,
+    @Inject(forwardRef(() => AgentRunService))
+    private readonly agentRunService: AgentRunService,
     private readonly tasksService: TasksService,
     private readonly notificationsService: NotificationsService,
     private readonly automationsService: AutomationsService,
@@ -469,9 +472,15 @@ export class MessagesService {
       this.logger.error("Error en análisis de IA", err?.stack ?? err),
     );
 
-    this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText).catch((err) =>
-      this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
-    );
+    this.agentRunService
+      .processMessage(workspaceId, conversationId, bodyText)
+      .then((consumedByAgent) => {
+        if (consumedByAgent) return;
+        this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText).catch((err) =>
+          this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
+        );
+      })
+      .catch((err) => this.logger.error("Error en agent run processMessage", err?.stack ?? err));
 
     return { ok: true, message_id: message.id, conversation_id: conversation.id };
   }
@@ -679,9 +688,15 @@ export class MessagesService {
       this.logger.error("Error en análisis de IA", err?.stack ?? err),
     );
 
-    this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText).catch((err) =>
-      this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
-    );
+    this.agentRunService
+      .processMessage(workspaceId, conversationId, bodyText)
+      .then((consumedByAgent) => {
+        if (consumedByAgent) return;
+        this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText).catch((err) =>
+          this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
+        );
+      })
+      .catch((err) => this.logger.error("Error en agent run processMessage", err?.stack ?? err));
   }
 
   // ── Serializer único para clientes ────────────────────────────────────────
@@ -1081,7 +1096,7 @@ export class MessagesService {
     // Check conversation ai_state — skip if human has taken over
     const conv = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
-      select: { metadata_json: true, channel_id: true },
+      select: { metadata_json: true, channel_id: true, contact: { select: { phone: true } } },
     });
     if (!conv) return;
 
@@ -1131,6 +1146,17 @@ export class MessagesService {
     });
 
     this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessageForClient(aiMessage));
+
+    // Dispatch via WhatsApp channel if applicable
+    if (conv.channel_id && conv.contact?.phone) {
+      const channel = await this.prisma.channel.findUnique({ where: { id: conv.channel_id } });
+      const to = conv.contact.phone.replace(/\D/g, "");
+      if (channel?.type === "WHATSAPP" && to) {
+        this.whatsappService.sendMessage(channel as any, to, replyText).catch((err) =>
+          this.logger.error("EmrendeAI WA dispatch failed", err),
+        );
+      }
+    }
 
     this.logger.log(`EmrendeAI auto-reply sent to conversation ${conversationId}`);
   }

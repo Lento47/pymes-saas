@@ -170,10 +170,14 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
   const [accessToken, setAccessToken] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState(channel?.config?.phone_number_id ?? "");
   const [wabaId, setWabaId] = useState(channel?.config?.waba_id ?? "");
+  const [appSecret, setAppSecret] = useState("");
 
   const save = useMutation({
     mutationFn: () => api.configureWhatsApp(channel.id, {
-      access_token: accessToken, phone_number_id: phoneNumberId, waba_id: wabaId,
+      access_token: accessToken,
+      phone_number_id: phoneNumberId,
+      waba_id: wabaId,
+      app_secret: appSecret || undefined,
     }),
     onSuccess: () => {
       toast({ title: "Canal WhatsApp guardado y activado" });
@@ -223,9 +227,26 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
           placeholder="987654321098765" className="mt-1 bg-[hsl(var(--elevated))] border-border font-mono text-xs" />
       </div>
 
+      <div>
+        <Label>
+          Clave secreta de la app (App Secret){" "}
+          {isEdit && <span className="text-muted-foreground font-normal">(dejá vacío para mantener la actual)</span>}
+        </Label>
+        <div className="mt-1">
+          <SecretInput
+            value={appSecret}
+            onChange={setAppSecret}
+            placeholder={isEdit ? "••••••••••••••••••••••••••••••••" : "a1b2c3d4e5f6..."}
+          />
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Meta Developers → Tu App → Configuración → Clave secreta de la app
+        </p>
+      </div>
+
       <div className="p-3 rounded-lg bg-[hsl(var(--elevated))] border border-border text-xs text-muted-foreground space-y-1">
         <p className="font-medium text-foreground">Webhook para Meta Developers:</p>
-        <p className="font-mono break-all">https://tu-dominio.com/api/inbound/whatsapp/webhook</p>
+        <p className="font-mono break-all">{`${window.location.origin}/api/inbound/whatsapp/webhook`}</p>
         <p>Token de verificación: el valor de <span className="font-mono">WHATSAPP_WEBHOOK_VERIFY_TOKEN</span> en tu .env</p>
       </div>
 
