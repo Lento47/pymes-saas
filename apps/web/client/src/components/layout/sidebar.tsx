@@ -1,280 +1,505 @@
-import { useState, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
+import { useTheme } from "@/components/providers/theme-provider";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { NotificationBell } from "@/components/shared/notification-bell";
+import { SearchDialog } from "@/components/shared/search-dialog";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
+import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api } from "@/lib/api";
-import { useFeatureFlags } from "@/hooks/use-feature-flags";
 import {
-  LayoutDashboard,
-  Inbox,
-  Users,
-  CheckSquare,
-  FileText,
-  Receipt,
-  Zap,
-  KanbanSquare,
-  Settings,
-  CircleHelp,
-  LogOut,
-  ChevronDown,
-  Check,
-  ShieldCheck,
-  Clock,
-  Sparkles,
-  MessageSquareText,
+  LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
+  Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot,
+  Sun, Moon, Search, Menu, X,
+  ShieldCheck, LayoutTemplate,
 } from "lucide-react";
 
-// ─── Icon map for sidebar items ────────────────────────────────────────────
-const ICON_MAP: Record<string, any> = {
-  LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt,
-  Zap, KanbanSquare, Settings, CircleHelp, ShieldCheck,
-  Clock, Sparkles, MessageSquareText,
+type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "notifications" | "settings" | "help";
+type NavItem = { path: string; icon: React.ElementType; key: NavKey; badge?: "unread" | "overdue" };
+
+const BETA_LABELS: Partial<Record<NavKey, string>> = {
+  contacts: "Clientes",
+  pipeline: "Estado del cliente",
+  tasks: "Pedidos",
+  automations: "Recordatorios",
+  inbox: "Bandeja WS",
+  invoices: "Facturación",
+  dashboard: "Resumen",
+  inventory: "Inventario",
 };
 
-// ─── Fallback NAV for Business/Enterprise (when feature flags haven't loaded) ─
-const FALLBACK_NAV = [
-  { path: "/",            icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/inbox",       icon: Inbox,           label: "Bandeja",   badge: "unread" },
-  { path: "/contacts",    icon: Users,           label: "Contactos" },
-  { path: "/tasks",       icon: CheckSquare,     label: "Tareas",    badge: "overdue" },
-  { path: "/documents",   icon: FileText,        label: "Archivos" },
-  { path: "/invoices",    icon: Receipt,         label: "Facturas" },
-  { path: "/pipeline",    icon: KanbanSquare,    label: "Pipeline" },
-  { path: "/automations", icon: Zap,             label: "Automatizaciones" },
+function navLabel(copy: Record<string, any>, key: NavKey, isBeta?: boolean): string {
+  if (isBeta && BETA_LABELS[key]) return BETA_LABELS[key]!;
+  if (key === "settings") return copy.settings;
+  if (key === "help") return copy.help;
+  return copy.nav[key] ?? key;
+}
+
+interface NavGroup {
+  key: "work" | "operations" | "assistants";
+  items: NavItem[];
+}
+
+const PLAN_MIN: Record<string, string> = {
+  pipeline: 'STARTER',
+  agent: 'ENTERPRISE',
+};
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: "work",
+    items: [
+      { path: "/",              icon: LayoutDashboard, key: "dashboard" },
+      { path: "/inbox",         icon: Inbox,           key: "inbox",       badge: "unread" },
+      { path: "/tasks",         icon: CheckSquare,      key: "tasks",       badge: "overdue" },
+      { path: "/pipeline",      icon: KanbanSquare,     key: "pipeline" },
+    ],
+  },
+  {
+    key: "operations",
+    items: [
+      { path: "/contacts",      icon: Users,           key: "contacts" },
+      { path: "/documents",     icon: FileText,        key: "documents" },
+      { path: "/invoices",      icon: Receipt,         key: "invoices" },
+      { path: "/automations",   icon: Zap,             key: "automations" },
+      { path: "/inventory",     icon: Package,         key: "inventory" },
+    ],
+  },
+  {
+    key: "assistants",
+    items: [
+      { path: "/agent",         icon: Bot,             key: "agent" },
+      { path: "/help",          icon: CircleHelp,       key: "help" },
+      { path: "/notifications", icon: BellRing,        key: "notifications", badge: "unread" },
+    ],
+  },
 ];
+
+const ADMIN_ITEMS = [
+  { href: "/admin", icon: LayoutDashboard, key: "adminDashboard" as const },
+  { href: "/admin/workspaces", icon: Shield, key: "adminWorkspaces" as const },
+  { href: "/admin/plan-limits", icon: ShieldCheck, key: "adminPlanLimits" as const },
+  { href: "/admin/landing", icon: LayoutTemplate, key: "adminLanding" as const },
+] as const;
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, switchWorkspace } = useAuth();
+  const { messages } = useI18n();
+  const { theme, toggle } = useTheme();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
+  );
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 1024,
+  );
+  const wsMenuRef = useRef<HTMLDivElement>(null);
+  const copy = messages.sidebar;
 
-  // Feature flags — determines sidebar items based on profile
-  const { data: featureData } = useFeatureFlags();
+  useNotificationsSocket();
 
   const { data: myWorkspaces } = useQuery({
-    queryKey: ["/api/auth/my-workspaces"],
-    queryFn: api.getMyWorkspaces,
-    staleTime: 60_000,
+    queryKey: ["/api/auth/my-workspaces"], queryFn: api.getMyWorkspaces, staleTime: 60_000,
   });
-
   const { data: unreadData } = useQuery({
-    queryKey: ["/api/notifications/unread-count"],
-    queryFn: api.getUnreadCount,
-    refetchInterval: 30000,
+    queryKey: ["/api/notifications/unread-count"], queryFn: api.getUnreadCount, refetchInterval: 30000,
   });
+  const { data: features } = useQuery({
+    queryKey: ["/api/workspaces/current/features"], queryFn: api.getCurrentFeatures, staleTime: 120_000,
+  });
+  const isBeta = features?.plan === "BETA_INFORMAL";
+  const isFeatureEnabled = (key: string): boolean => {
+    const map: Record<string, string> = {
+      inbox: "whatsapp_inbox", tasks: "orders", pipeline: "contacts",
+      contacts: "contacts", documents: "contacts", invoices: "billing",
+      automations: "automations", inventory: "orders", agent: "ai_assistant",
+      notifications: "conversations",
+    };
+    const fk = map[key] || key;
+    return features?.features?.[fk] !== false;
+  };
+  const canShowNavItem = (key: string): boolean => {
+    const minPlan = PLAN_MIN[key];
+    if (minPlan) {
+      const plan = user?.workspace?.plan ?? 'FREE';
+      const order = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
+      if (order.indexOf(plan) < order.indexOf(minPlan)) return false;
+    }
+    return isFeatureEnabled(key);
+  };
   const { data: overdueData } = useQuery({
-    queryKey: ["/api/tasks/overdue"],
-    queryFn: api.getOverdueTasks,
-    refetchInterval: 60000,
+    queryKey: ["/api/tasks/overdue"], queryFn: api.getOverdueTasks, refetchInterval: 60000,
   });
 
-  const unreadCount  = unreadData?.count ?? 0;
+  const unreadCount = unreadData?.count ?? 0;
   const overdueCount = Array.isArray(overdueData) ? overdueData.length : 0;
-  const ws = user?.workspace?.name ?? "Workspace";
+  const ws = user?.workspace?.name ?? copy.workspaceFallback;
   const name = user?.name ?? user?.email ?? "—";
   const initials = name.slice(0, 2).toUpperCase();
+  const workspaceInitial = ws.trim().charAt(0).toUpperCase() || "P";
   const multipleWorkspaces = Array.isArray(myWorkspaces) && myWorkspaces.length > 1;
-
-  // Build nav from feature flags or fallback
-  const navItems = useMemo(() => {
-    if (featureData?.sidebarItems) {
-      return featureData.sidebarItems.map((item: any) => ({
-        ...item,
-        icon: ICON_MAP[item.icon] || LayoutDashboard,
-      }));
-    }
-    return FALLBACK_NAV;
-  }, [featureData]);
-
   const isActive = (p: string) => p === "/" ? location === "/" : location.startsWith(p);
+  const badgeVal = (bk?: string) => bk === "unread" ? unreadCount : bk === "overdue" ? overdueCount : 0;
 
-  const badge = (key?: string) =>
-    key === "unread" ? unreadCount : key === "overdue" ? overdueCount : 0;
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (mobile) setSidebarOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  const isEmprende = featureData?.profile === "emprende";
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [location, isMobile]);
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (isMobile && sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isMobile, sidebarOpen]);
+
+  // Close workspace menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wsMenuRef.current && !wsMenuRef.current.contains(e.target as Node)) {
+        setWsMenuOpen(false);
+      }
+    };
+    if (wsMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [wsMenuOpen]);
+
+  // Ctrl+K / Cmd+K to open search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+      if (e.key === "Escape") {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* ── Sidebar ── */}
-      <aside
-        style={{ background: "hsl(var(--bg-sidebar))", borderRight: "1px solid hsl(var(--border))" }}
-        className="w-[200px] shrink-0 flex flex-col"
-      >
-        {/* Workspace header / switcher */}
-        <div className="relative shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-          <button
-            className="w-full px-4 h-12 flex items-center gap-2.5 hover:bg-white/5 transition-colors"
-            onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
-            style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
-          >
-            <div
-              style={{ background: "hsl(var(--accent))", borderRadius: "4px" }}
-              className="w-6 h-6 flex items-center justify-center shrink-0"
-            >
-              <span className="text-white font-semibold" style={{ fontSize: "10px", lineHeight: 1 }}>P</span>
-            </div>
-            <div className="min-w-0 flex-1 text-left">
-              <div className="text-sm font-semibold text-white leading-none truncate">{ws}</div>
-              {isEmprende && (
-                <div className="text-[10px] leading-none mt-0.5" style={{ color: "hsl(var(--accent))" }}>
-                  Emprende
-                </div>
-              )}
-            </div>
-            {multipleWorkspaces && (
-              <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
-            )}
-          </button>
+    <div className="auth-ui flex h-screen overflow-hidden bg-background">
+      {isMobile && sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/45 transition-opacity duration-200 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-          {wsMenuOpen && multipleWorkspaces && (
-            <div
-              className="absolute left-0 right-0 top-full z-50 py-1"
-              style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))", borderTop: "none" }}
+      <aside
+        className={cn(
+          "flex flex-col shrink-0 transition-all duration-200 ease-out overflow-hidden bg-sidebar border-r border-border",
+          sidebarOpen ? "w-[260px]" : "w-0 border-r-0",
+          isMobile && "fixed left-0 top-0 z-50 shadow-xl h-[100dvh]",
+          isMobile && sidebarOpen && "w-[260px] border-r",
+        )}
+      >
+        {isMobile && (
+          <div className="shrink-0 flex justify-end px-3 py-3 border-b border-border pt-safe">
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className={cn(
+                "p-2 rounded-md transition-colors",
+                "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
+              )}
             >
-              {(myWorkspaces as any[]).map((m: any) => {
-                const isCurrent = m.workspace.id === user?.workspace?.id;
-                return (
-                  <button
-                    key={m.workspace.id}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-white/5 transition-colors"
-                    onClick={() => { setWsMenuOpen(false); if (!isCurrent) switchWorkspace(m.workspace.slug); }}
-                  >
-                    <span className="flex-1 text-left text-sm truncate" style={{ color: isCurrent ? "white" : "hsl(var(--fg-2))" }}>
-                      {m.workspace.name}
-                    </span>
-                    {isCurrent && <Check style={{ width: 12, height: 12, color: "hsl(var(--accent))" }} />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        <div className="shrink-0 px-3 pt-3 pb-3 border-b border-border">
+          <div ref={wsMenuRef} className="relative">
+            <button
+              className={cn(
+                "group w-full flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors",
+                wsMenuOpen
+                  ? "border-border bg-sidebar-accent/55"
+                  : "border-border/70 bg-background/25 hover:bg-sidebar-accent/30"
+              )}
+              onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
+              style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
+              aria-expanded={multipleWorkspaces ? wsMenuOpen : undefined}
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/55 text-xs font-semibold text-foreground">
+                {workspaceInitial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold leading-tight text-foreground">{ws}</p>
+                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                  {multipleWorkspaces ? copy.wsAvailable(myWorkspaces?.length ?? 0) : user?.workspace?.plan ?? user?.role}
+                </p>
+              </div>
+              {multipleWorkspaces && (
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                    wsMenuOpen && "rotate-180 text-foreground"
+                  )}
+                />
+              )}
+            </button>
+
+            {wsMenuOpen && multipleWorkspaces && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-2 overflow-hidden rounded-lg border border-border bg-popover shadow-lg animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="p-1.5 max-h-[280px] overflow-y-auto minimal-scrollbar">
+                  {(myWorkspaces as any[]).map((m) => {
+                    const isCurrent = m.workspace.id === user?.workspace?.id;
+                    return (
+                      <button
+                        key={m.workspace.id}
+                        className={cn(
+                          "group w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-left",
+                          isCurrent
+                            ? "bg-sidebar-accent/55 text-foreground"
+                            : "text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground"
+                        )}
+                        onClick={() => {
+                          setWsMenuOpen(false);
+                          if (!isCurrent) switchWorkspace(m.workspace.slug);
+                        }}
+                      >
+                        <div className="w-6 h-6 rounded-md border border-border/60 bg-sidebar-accent/40 flex items-center justify-center shrink-0 text-xs font-semibold">
+                          {m.workspace.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="flex-1 text-sm truncate font-medium">{m.workspace.name}</span>
+                        {isCurrent && (
+                          <Check className="w-4 h-4 text-muted-foreground shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {multipleWorkspaces && (
+                  <div className="border-t border-border px-3 py-2 bg-sidebar-accent/15">
+                    <p className="text-xs text-muted-foreground/80">{copy.wsAvailable(myWorkspaces?.length ?? 0)}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 py-2 overflow-y-auto">
-          {navItems.map(({ path, icon: Icon, label, badge: bk }: any) => {
-            const active = isActive(path);
-            const b = badge(bk);
-            return (
-              <Link key={path} href={path}>
-                <div
-                  className={cn(
-                    "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                    active
-                      ? "text-white"
-                      : "text-[hsl(var(--fg-2))] hover:text-white"
-                  )}
-                  style={active ? { background: "hsl(var(--bg-active))" } : undefined}
-                >
-                  <Icon
-                    className="shrink-0"
-                    style={{ width: 14, height: 14 }}
-                    strokeWidth={active ? 2.2 : 1.8}
-                  />
-                  <span className="flex-1 truncate" style={{ fontSize: "13px" }}>{label}</span>
-                  {b > 0 && (
-                    <span
-                      style={{
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        lineHeight: 1,
-                        padding: "2px 5px",
-                        borderRadius: "10px",
-                        background: bk === "overdue" ? "hsl(var(--danger) / 0.15)" : "hsl(var(--accent) / 0.15)",
-                        color: bk === "overdue" ? "hsl(var(--danger))" : "hsl(var(--accent))",
-                      }}
-                    >
-                      {b}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
-
-          {/* Divider */}
-          <div className="my-2 mx-3" style={{ height: 1, background: "hsl(var(--border))" }} />
-
-          <Link href="/settings">
-            <div
-              className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/settings") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
-              )}
-              style={isActive("/settings") ? { background: "hsl(var(--bg-active))" } : undefined}
-            >
-              <Settings style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>Configuración</span>
+        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5 minimal-scrollbar">
+          {ws.startsWith("Admin Hub —") && (myWorkspaces as any[])?.length > 1 && (
+            <div className="mx-2 rounded-md border border-border bg-sidebar-accent/25 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+              {copy.adminHint}
             </div>
-          </Link>
+          )}
+          {NAV_GROUPS.map((group) => (
+            <div key={group.key} className="space-y-1.5">
+              <div className="flex items-center gap-2 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/65">
+                <div className="h-px w-3 bg-border" />
+                <span>{(copy.groups as any)[group.key]}</span>
+              </div>
+              <div className="space-y-1">
+                {group.items.filter(({ key }) => canShowNavItem(key)).map(({ path, icon: Icon, key, badge: bk }) => {
+                  const active = isActive(path);
+                  const b = badgeVal(bk);
+                  return (
+                    <Link key={path} href={path}>
+                      <div
+                        className={cn(
+                          "group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
+                          active
+                            ? "bg-sidebar-accent/55 text-foreground font-medium"
+                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
+                        )}
+                      >
+                        {active && (
+                          <div className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-foreground/70" />
+                        )}
 
-          <Link href="/help">
-            <div
-              className={cn(
-                "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                isActive("/help") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
-              )}
-              style={isActive("/help") ? { background: "hsl(var(--bg-active))" } : undefined}
-            >
-              <CircleHelp style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-              <span style={{ fontSize: "13px" }}>Ayuda</span>
+                        <Icon
+                          className={cn(
+                            "w-4 h-4 shrink-0 transition-colors",
+                            active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                          )}
+                          strokeWidth={active ? 2.2 : 1.8}
+                        />
+
+                        <span className="flex-1 text-sm">{navLabel(copy, key, isBeta)}</span>
+
+                        {b > 0 && (
+                          <span
+                            className={cn(
+                              "text-[11px] font-semibold px-1.5 py-0.5 rounded-md leading-none transition-colors",
+                              bk === "overdue"
+                                ? "border border-destructive/25 bg-transparent text-destructive"
+                                : "border border-border bg-transparent text-muted-foreground"
+                            )}
+                          >
+                            {b}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </Link>
+          ))}
 
           {user?.is_platform_admin && (
-            <Link href="/admin">
-              <div
-                className={cn(
-                  "flex items-center gap-2.5 mx-1.5 px-2.5 py-[6px] rounded cursor-pointer transition-colors duration-100",
-                  isActive("/admin") ? "text-white" : "text-[hsl(var(--fg-2))] hover:text-white"
-                )}
-                style={isActive("/admin") ? { background: "hsl(var(--bg-active))" } : undefined}
-              >
-                <ShieldCheck style={{ width: 14, height: 14 }} strokeWidth={1.8} className="shrink-0" />
-                <span style={{ fontSize: "13px" }}>Panel Admin</span>
+            <div className="space-y-1.5 border-t border-border/60 pt-2">
+              <div className="flex items-center gap-2 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/65">
+                <div className="h-px w-3 bg-border" />
+                <span>{copy.admin}</span>
               </div>
-            </Link>
+              <div className="space-y-1">
+                {ADMIN_ITEMS.map(({ href, icon: Icon, key }) => {
+                  const active = isActive(href);
+                  const label = key === "adminDashboard" ? copy.adminDashboard : key === "adminWorkspaces" ? copy.adminWorkspaces : key === "adminLanding" ? "Landing Page" : copy.adminPlanLimits;
+                  return (
+                    <Link key={href} to={href}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
+                        active
+                          ? "bg-sidebar-accent/55 text-foreground font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
+                      )}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" strokeWidth={active ? 2.5 : 1.8} />
+                      <span className="flex-1 text-sm">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </nav>
 
-        {/* User row */}
-        <div
-          className="px-3 py-3 flex items-center gap-2"
-          style={{ borderTop: "1px solid hsl(var(--border))" }}
-        >
-          <div
-            style={{
-              width: 24, height: 24,
-              borderRadius: "50%",
-              background: "hsl(var(--bg-active))",
-              border: "1px solid hsl(var(--border))",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "10px", fontWeight: 600, color: "hsl(var(--fg-2))",
-              flexShrink: 0,
-            }}
+        <div className="shrink-0 px-3 pb-2">
+          <Link to="/settings"
+            className="group relative w-full flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
           >
-            {initials}
+            <Settings className="w-4 h-4 shrink-0" strokeWidth={1.8} />
+            <span className="flex-1 text-sm text-left">{copy.settingsButton}</span>
+          </Link>
+        </div>
+
+        <div className="shrink-0 space-y-2 border-t border-border bg-sidebar px-3 py-3 pb-safe">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={toggle}
+              className={cn(
+                "h-8 rounded-md transition-colors flex items-center justify-center",
+                "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
+              )}
+              aria-label={theme === "dark" ? copy.lightMode : copy.darkMode}
+              title={theme === "dark" ? copy.lightMode : copy.darkMode}
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </button>
+            <div className="h-8">
+              <LanguageSwitcher />
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="truncate font-medium text-white" style={{ fontSize: "12px", lineHeight: "1.3" }}>{name}</div>
-            <div className="truncate" style={{ fontSize: "11px", color: "hsl(var(--fg-3))" }}>{user?.role ?? ""}</div>
+
+          <div className="flex items-center gap-3 rounded-md border border-border/60 bg-background/35 px-2.5 py-2">
+            <div className="w-7 h-7 rounded-md border border-border/60 bg-sidebar-accent/45 flex items-center justify-center shrink-0 text-xs font-semibold text-foreground">
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-foreground truncate">{name}</p>
+              <p className="text-[10px] text-muted-foreground/60 truncate capitalize">{user?.role?.toLowerCase()}</p>
+            </div>
+            <button
+              onClick={logout}
+              className={cn(
+                "p-1.5 rounded-md transition-all duration-200 shrink-0",
+                "text-muted-foreground/80 hover:text-destructive hover:bg-destructive/10"
+              )}
+              title={copy.logout}
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <button
-            onClick={logout}
-            style={{ color: "hsl(var(--fg-3))", padding: "4px" }}
-            className="hover:text-white transition-colors shrink-0 rounded"
-            title="Cerrar sesión"
-          >
-            <LogOut style={{ width: 13, height: 13 }} />
-          </button>
         </div>
       </aside>
 
-      {/* ── Main ── */}
-      <main className="flex-1 overflow-y-auto" style={{ background: "hsl(var(--bg))" }}>
-        {children}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <header className="relative z-40 flex shrink-0 items-center gap-3 border-b border-border bg-background px-3 py-2.5 pt-safe lg:px-5">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={cn(
+              "p-2 rounded-md transition-colors shrink-0",
+              "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            )}
+            title={sidebarOpen ? copy.closeMenu : copy.openMenu}
+          >
+            {sidebarOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
+          </button>
+
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground md:flex"
+            title="Buscar (Ctrl+K)"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span className="flex-1">{copy.searchPlaceholder}</span>
+            <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">Ctrl K</kbd>
+          </button>
+
+          <div className="flex-1 md:hidden" />
+
+          <button
+            onClick={() => setSearchOpen(true)}
+            className={cn(
+              "p-2 rounded-md transition-colors md:hidden",
+              "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            )}
+            title="Buscar (Ctrl+K)"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
+          <NotificationBell />
+
+          <span className="hidden rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground/70 sm:inline-block">
+            {user?.role}
+          </span>
+        </header>
+
+        <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
+
+        <div className="flex-1 overflow-y-auto minimal-scrollbar pb-16 lg:pb-0">
+          {children}
+        </div>
       </main>
+
+      <MobileBottomNav onMenuClick={() => setSidebarOpen(true)} isItemVisible={canShowNavItem} />
+
     </div>
   );
 }
