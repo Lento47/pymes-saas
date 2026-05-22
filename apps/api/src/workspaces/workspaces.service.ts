@@ -85,6 +85,7 @@ export class WorkspacesService {
         locale: true,
         status: true,
         plan: true,
+        logo_url: true,
         settings_json: true,
         workspace_tax_profile: true,
         created_at: true,

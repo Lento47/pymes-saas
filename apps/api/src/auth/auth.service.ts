@@ -1171,7 +1171,7 @@ export class AuthService {
     const memberships = await this.prisma.workspaceUser.findMany({
       where: { user_id: userId },
       include: {
-        workspace: { select: { id: true, name: true, slug: true, plan: true, status: true } },
+        workspace: { select: { id: true, name: true, slug: true, plan: true, status: true, logo_url: true } },
       },
       orderBy: { created_at: "asc" },
     });

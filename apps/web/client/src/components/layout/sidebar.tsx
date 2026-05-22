@@ -251,9 +251,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
               aria-expanded={multipleWorkspaces ? wsMenuOpen : undefined}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/70 bg-background/55">
-                <img src="/images/pymeshub-logo.png" alt="" className="h-6 w-6 object-contain" />
-                <span className="sr-only">{workspaceInitial}</span>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/70 bg-sidebar-accent/40">
+                {user?.workspace?.logo_url ? (
+                  <img src={user.workspace.logo_url} alt={ws} className="h-6 w-6 object-contain" />
+                ) : (
+                  <span className="text-xs font-semibold text-muted-foreground">{workspaceInitial}</span>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold leading-tight text-foreground">{ws}</p>
@@ -291,7 +294,11 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                         }}
                       >
                         <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-sidebar-accent/40">
-                          <img src="/images/pymeshub-logo.png" alt="" className="h-4 w-4 object-contain" />
+                          {m.workspace.logo_url ? (
+                            <img src={m.workspace.logo_url} alt={m.workspace.name} className="h-4 w-4 object-contain" />
+                          ) : (
+                            <span className="text-[10px] font-semibold text-muted-foreground">{m.workspace.name.trim().charAt(0).toUpperCase() || "W"}</span>
+                          )}
                         </div>
                         <span className="flex-1 text-sm truncate font-medium">{m.workspace.name}</span>
                         {isCurrent && (

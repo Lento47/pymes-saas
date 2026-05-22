@@ -96,6 +96,10 @@ export class UpdateWorkspaceDto {
   settings_json?: Record<string, any>;
 
   @IsOptional()
+  @IsString()
+  logo_url?: string;
+
+  @IsOptional()
   @IsBooleanString()
   hacienda_signing_enabled?: string;
 

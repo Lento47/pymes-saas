@@ -291,6 +291,7 @@ model Workspace {
   beta_profile  String?
   features_json Json?           @db.JsonB
   limits_json   Json?           @db.JsonB
+  logo_url      String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
