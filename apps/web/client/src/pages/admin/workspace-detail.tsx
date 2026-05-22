@@ -17,11 +17,13 @@ const BETA_PROFILE_FEATURES: Record<string, Record<string, boolean>> = {
   BETA_LIGHT:       { contacts:true, orders:true, reminders:true, dashboard:true, conversations:false, whatsapp_inbox:false, billing:false, automations:false, roles:false, reports:false, api_access:false, multi_location:false, audit_logs:false },
   BETA_CONVERSATIONS:{ contacts:true, reminders:true, conversations:true, whatsapp_inbox:true, dashboard:true, orders:false, billing:false, automations:false, roles:false, reports:false, api_access:false, multi_location:false, audit_logs:false },
   BETA_OPERATIONS:  { contacts:true, orders:true, reminders:true, conversations:true, dashboard:true, roles:true, whatsapp_inbox:false, billing:false, automations:false, reports:false, api_access:false, multi_location:false, audit_logs:false },
+  EMPRENDE_ELIGIBLE: {},
 };
 const BETA_PROFILE_LIMITS: Record<string, Record<string, number>> = {
   BETA_LIGHT:       { "contacts.max":150, "users.max":1, "channels.max":0, "orders.monthly_max":100, "invoices.monthly_max":0, "automations.max":0, "storage.gb":1 },
   BETA_CONVERSATIONS:{ "contacts.max":300, "users.max":2, "channels.max":1, "orders.monthly_max":0,  "invoices.monthly_max":0, "automations.max":0, "storage.gb":2 },
   BETA_OPERATIONS:  { "contacts.max":500, "users.max":3, "channels.max":1, "orders.monthly_max":300, "invoices.monthly_max":0, "automations.max":0, "storage.gb":3 },
+  EMPRENDE_ELIGIBLE: {},
 };
 
 const featureList = ["contacts","orders","reminders","conversations","whatsapp_inbox","billing","automations","dashboard","roles","reports","api_access","multi_location","audit_logs"];
@@ -104,7 +106,7 @@ export default function AdminWorkspaceDetail() {
     <div className="min-h-full" style={{ background: "hsl(var(--bg))" }}>
       <PageHeader title={ws.name ?? slug} description="Workspace details and configuration.">
         <div className="flex items-center gap-2">
-          {featuresQ.data?.beta_profile && <Badge className="text-[10px] bg-purple-500/20 text-purple-400 border-purple-500/30">{featuresQ.data.beta_profile}</Badge>}
+          {featuresQ.data?.beta_profile && <Badge variant="outline" className="text-[10px]">{featuresQ.data.beta_profile}</Badge>}
           <Badge variant="outline" className="text-[10px]">{featuresQ.data?.plan ?? ws.plan}</Badge>
         </div>
       </PageHeader>
@@ -165,7 +167,7 @@ export default function AdminWorkspaceDetail() {
                   ))}
                 </div>
                 <div className="mt-3 text-[10px] text-muted-foreground">
-                  Plan: {featuresQ.data.plan}{featuresQ.data.beta_profile ? ` · Beta: ${featuresQ.data.beta_profile}` : ""}
+                  Plan: {featuresQ.data.plan}{featuresQ.data.beta_profile ? ` · Perfil comercial: ${featuresQ.data.beta_profile}` : ""}
                 </div>
               </>
             ) : <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
@@ -238,15 +240,19 @@ export default function AdminWorkspaceDetail() {
               <div>
                 <Label className="text-[10px]">Plan</Label>
                 <select className="w-full h-8 text-xs bg-background border border-border rounded-md px-2" value={edit.plan} onChange={e => setEdit({...edit, plan: e.target.value})}>
-                  {["FREE","STARTER","GROWTH","BUSINESS","ENTERPRISE","BUSINESS_PLUS","BETA_INFORMAL"].map(p => <option key={p}>{p}</option>)}
+                  {["FREE","EMPRENDE","STARTER","GROWTH","BUSINESS","ENTERPRISE","BUSINESS_PLUS","BETA_INFORMAL"].map(p => <option key={p}>{p}</option>)}
                 </select>
               </div>
               <div>
-                <Label className="text-[10px]">Beta Profile</Label>
+                <Label className="text-[10px]">Perfil comercial</Label>
                 <div className="flex gap-1">
                   <select className="flex-1 h-8 text-xs bg-background border border-border rounded-md px-2" value={edit.beta} onChange={e => applyBetaProfile(e.target.value)}>
                     <option value="">(ninguno)</option>
-                    {Object.keys(BETA_PROFILE_FEATURES).map(p => <option key={p}>{p}</option>)}
+                    {Object.keys(BETA_PROFILE_FEATURES).map(p => (
+                      <option key={p} value={p}>
+                        {p === "EMPRENDE_ELIGIBLE" ? "PymesHub Emprende elegible" : p}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -273,7 +279,7 @@ export default function AdminWorkspaceDetail() {
 
             <div>
               <Label className="text-[10px]">Motivo (audit log)</Label>
-              <Input className="h-8 text-xs" value={edit.reason} onChange={e => setEdit({...edit, reason: e.target.value})} placeholder="Ej: Beta informal: repostería casera" />
+              <Input className="h-8 text-xs" value={edit.reason} onChange={e => setEdit({...edit, reason: e.target.value})} placeholder="Ej: Cliente aprobado para PymesHub Emprende" />
             </div>
 
             <div className="flex gap-2 justify-end">

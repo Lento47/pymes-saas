@@ -165,9 +165,9 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
 
 export const PLAN_ORDER = [
   "FREE",
+  "EMPRENDE",
   "STARTER",
   "GROWTH",
-  "EMPRENDE",
   "BUSINESS",
   "ENTERPRISE",
   "BUSINESS_PLUS",

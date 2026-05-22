@@ -135,7 +135,7 @@ export class FeatureFlagsService implements OnModuleInit {
     });
     if (!ws) return false;
 
-    const planOrder = ["FREE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
+    const planOrder = ["FREE", "EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
     const normalizedPlan = ws.plan === "ENTERPRISE" ? "BUSINESS" : ws.plan;
     const flagPlan = flag.required_plan === "ENTERPRISE" ? "BUSINESS" : flag.required_plan;
 
@@ -149,7 +149,7 @@ export class FeatureFlagsService implements OnModuleInit {
       select: { plan: true },
     });
 
-    const planOrder = ["FREE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
+    const planOrder = ["FREE", "EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
     const normalizedPlan = ws?.plan === "ENTERPRISE" ? "BUSINESS" : (ws?.plan ?? "FREE");
 
     const result: Record<string, boolean> = {};
@@ -200,11 +200,15 @@ export class FeatureFlagsService implements OnModuleInit {
   // ── Profile-based methods ──────────────────────────────────────────────
 
   async getProfile(workspaceId: string): Promise<WorkspaceProfile> {
-    const rows = await this.prisma.$queryRawUnsafe<Array<{ profile: string }>>(
-      `SELECT profile FROM workspaces WHERE id = $1`,
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ profile: string; plan: string }>>(
+      `SELECT profile, plan FROM workspaces WHERE id = $1`,
       workspaceId,
     );
+    const plan = rows[0]?.plan ?? "FREE";
+    if (plan === "EMPRENDE") return "emprende";
+
     const profile = rows[0]?.profile as WorkspaceProfile;
+    if (profile === "emprende") return "business";
     return PROFILE_FEATURES[profile] ? profile : "business";
   }
 

@@ -33,6 +33,8 @@ import { Resend } from "resend";
 // ───────────────────────────────────────────────────────────────────────────
 @Injectable()
 export class PaddleSdkService {
+  private static readonly EMPRENDE_ELIGIBLE_PROFILE = "EMPRENDE_ELIGIBLE";
+
   private paddle: Paddle | null = null;
   private readonly logger = new Logger(PaddleSdkService.name);
 
@@ -202,6 +204,7 @@ export class PaddleSdkService {
     // CLASIFICAR UPGRADE VS DOWNGRADE COMPARANDO PLANES INTERNOS.
     // PLAN_ORDER (FUENTE UNICA EN plan-limits) INCLUYE BUSINESS Y BUSINESS_PLUS.
     const newPlan = this.mapPaddlePriceToPlan(newPriceId);
+    await this.ensurePlanPurchaseAllowed(workspaceId, newPlan);
     const newRank = PLAN_ORDER.indexOf(newPlan as (typeof PLAN_ORDER)[number]);
     const currentRank = PLAN_ORDER.indexOf(sub.plan as (typeof PLAN_ORDER)[number]);
     // NOTE: same-rank (e.g. monthly→annual STARTER) is treated as downgrade.
@@ -1143,6 +1146,8 @@ export class PaddleSdkService {
 
   getAvailablePrices(): Record<string, string | null> {
     return {
+      emprende_monthly: this.configService.get<string>("PADDLE_PRICE_EMPRENDE_MONTHLY") ?? null,
+      emprende_annual: this.configService.get<string>("PADDLE_PRICE_EMPRENDE_ANNUAL") ?? null,
       starter_monthly: this.configService.get<string>("PADDLE_PRICE_STARTER_MONTHLY") ?? null,
       starter_annual: this.configService.get<string>("PADDLE_PRICE_STARTER_ANNUAL") ?? null,
       growth_monthly: this.configService.get<string>("PADDLE_PRICE_GROWTH_MONTHLY") ?? null,
@@ -1237,6 +1242,11 @@ export class PaddleSdkService {
       where: { id: workspaceId },
       select: { slug: true },
     });
+    if (!addonKey) {
+      const plan = this.mapPaddlePriceToPlan(priceId);
+      await this.ensurePlanPurchaseAllowed(workspaceId, plan);
+      customData.plan = plan;
+    }
     customData.workspaceSlug = ws.slug;
     if (addonKey) customData.addon = addonKey;
 
@@ -1267,10 +1277,14 @@ export class PaddleSdkService {
     return map[status] ?? "MANUAL";
   }
 
-  private mapPaddlePriceToPlan(priceId: string): "FREE" | "STARTER" | "GROWTH" | "ENTERPRISE" {
+  private mapPaddlePriceToPlan(
+    priceId: string,
+  ): "FREE" | "EMPRENDE" | "STARTER" | "GROWTH" | "ENTERPRISE" {
     if (!priceId) return "FREE";
 
-    const priceVars: Record<string, "FREE" | "STARTER" | "GROWTH" | "ENTERPRISE"> = {};
+    const priceVars: Record<string, "FREE" | "EMPRENDE" | "STARTER" | "GROWTH" | "ENTERPRISE"> = {};
+    const emprendeMonthly = this.configService.get<string>("PADDLE_PRICE_EMPRENDE_MONTHLY");
+    const emprendeAnnual = this.configService.get<string>("PADDLE_PRICE_EMPRENDE_ANNUAL");
     const starterMonthly = this.configService.get<string>("PADDLE_PRICE_STARTER_MONTHLY");
     const starterAnnual = this.configService.get<string>("PADDLE_PRICE_STARTER_ANNUAL");
     const growthMonthly = this.configService.get<string>("PADDLE_PRICE_GROWTH_MONTHLY");
@@ -1278,6 +1292,8 @@ export class PaddleSdkService {
     const enterpriseMonthly = this.configService.get<string>("PADDLE_PRICE_ENTERPRISE_MONTHLY");
     const enterpriseAnnual = this.configService.get<string>("PADDLE_PRICE_ENTERPRISE_ANNUAL");
 
+    if (emprendeMonthly) priceVars[emprendeMonthly] = "EMPRENDE";
+    if (emprendeAnnual) priceVars[emprendeAnnual] = "EMPRENDE";
     if (starterMonthly) priceVars[starterMonthly] = "STARTER";
     if (starterAnnual) priceVars[starterAnnual] = "STARTER";
     if (growthMonthly) priceVars[growthMonthly] = "GROWTH";
@@ -1292,6 +1308,27 @@ export class PaddleSdkService {
       );
     }
     return result;
+  }
+
+  private async ensurePlanPurchaseAllowed(
+    workspaceId: string,
+    plan: "FREE" | "EMPRENDE" | "STARTER" | "GROWTH" | "ENTERPRISE",
+  ): Promise<void> {
+    if (plan !== "EMPRENDE") return;
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { plan: true, beta_profile: true },
+    });
+    if (!workspace) throw new NotFoundException("Workspace not found");
+
+    const alreadyEmprende = workspace.plan === "EMPRENDE";
+    const eligible = workspace.beta_profile === PaddleSdkService.EMPRENDE_ELIGIBLE_PROFILE;
+    if (!alreadyEmprende && !eligible) {
+      throw new BadRequestException(
+        "El plan PymesHub Emprende requiere aprobación previa del equipo PymesHub.",
+      );
+    }
   }
 
   private async getWorkspaceInfo(workspaceId: string): Promise<{ name: string; email: string }> {

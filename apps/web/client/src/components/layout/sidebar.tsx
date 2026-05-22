@@ -128,7 +128,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     const minPlan = PLAN_MIN[key];
     if (minPlan) {
       const plan = user?.workspace?.plan ?? 'FREE';
-      const order = ['FREE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
+      const order = ['FREE', 'EMPRENDE', 'STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE', 'BUSINESS_PLUS'];
       if (order.indexOf(plan) < order.indexOf(minPlan)) return false;
     }
     return isFeatureEnabled(key);

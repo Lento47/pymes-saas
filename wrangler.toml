@@ -12,7 +12,14 @@ routes = [
 
 [build]
 command = "pnpm install --frozen-lockfile && cd apps/web && pnpm run build"
-watch_paths = ["apps/web/**/*.{ts,tsx,css}"]
+watch_paths = [
+  "apps/web/**",
+  "packages/shared-types/**",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "wrangler.toml"
+]
 
 [[build.upload.rules]]
 type = "CompiledContentType"

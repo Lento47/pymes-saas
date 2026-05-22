@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
@@ -8,26 +8,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 
-async function fetchWorkspaceSubscription(workspaceSlug: string) {
-  const token = localStorage.getItem("pymes_token");
-  const response = await fetch(`/api/workspaces/${workspaceSlug}/subscription`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!response.ok) throw new Error('Failed to fetch subscription');
-  return response.json();
-}
-
-async function fetchBillingPortalLink() {
-  const token = localStorage.getItem("pymes_token");
-  const response = await fetch('/api/billing/portal', {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!response.ok) throw new Error('Failed to fetch billing portal link');
-  return response.json();
-}
-
 // Maps the ?plan= URL param value to a tier planKey
 const PLAN_PARAM_MAP: Record<string, string> = {
+  emprende: 'emprende',
   starter: 'starter',
   growth: 'growth',
   business: 'enterprise',
@@ -36,25 +19,33 @@ const PLAN_PARAM_MAP: Record<string, string> = {
 
 const PRICING_TIERS = [
   {
+    name: 'Emprende',
+    planKey: 'emprende',
+    monthlyUSD: 12,
+    monthlyCRC: 6900,
+    features: ['500 contactos', '25 facturas/mes', '3 automatizaciones', '1 usuario'],
+    requiresEligibility: true,
+  },
+  {
     name: 'Starter',
     planKey: 'starter',
     monthlyUSD: 25,
     monthlyCRC: 12900,
-    features: ['500 Contacts', '100 invoices/month', '5 Automations', '1 User'],
+    features: ['500 contactos', '100 facturas/mes', '15 automatizaciones', '1 usuario'],
   },
   {
     name: 'Growth',
     planKey: 'growth',
     monthlyUSD: 59,
     monthlyCRC: 29900,
-    features: ['2,500 Contacts', '500 invoices/month', '25 Automations', '5 Users'],
+    features: ['2,500 contactos', '500 facturas/mes', '25 automatizaciones', '5 usuarios'],
   },
   {
     name: 'Business',
     planKey: 'enterprise',
     monthlyUSD: 119,
     monthlyCRC: 59900,
-    features: ['15,000 Contacts', '2,000 invoices/month', '100 Automations', '15 Users'],
+    features: ['15,000 contactos', '2,000 facturas/mes', '100 automatizaciones', '15 usuarios'],
   },
 ];
 
@@ -72,13 +63,13 @@ export default function BillingPage() {
 
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
     queryKey: ['subscription', workspaceSlug],
-    queryFn: () => fetchWorkspaceSubscription(workspaceSlug || ''),
+    queryFn: () => api.getSubscription(),
     enabled: !!workspaceSlug && isAuthenticated,
   });
 
   const { data: portalLink, isLoading: portalLoading } = useQuery({
     queryKey: ['billingPortal'],
-    queryFn: fetchBillingPortalLink,
+    queryFn: () => api.getBillingPortal(),
     enabled: isAuthenticated,
   });
 
@@ -88,13 +79,28 @@ export default function BillingPage() {
     enabled: isAuthenticated,
   });
 
+  const { data: currentFeatures, isLoading: featuresLoading } = useQuery({
+    queryKey: ['currentFeatures'],
+    queryFn: () => api.getCurrentFeatures(),
+    enabled: isAuthenticated,
+  });
+
+  const isEmprendeActive =
+    subscription?.plan === 'EMPRENDE' || currentFeatures?.plan === 'EMPRENDE';
+  const isEmprendeEligible =
+    isEmprendeActive || currentFeatures?.beta_profile === 'EMPRENDE_ELIGIBLE';
+  const visiblePricingTiers = useMemo(
+    () => PRICING_TIERS.filter((tier) => !tier.requiresEligibility || isEmprendeEligible),
+    [isEmprendeEligible],
+  );
+
   // Auto-trigger checkout when arriving from a ?plan= link (e.g. login?plan=starter)
   useEffect(() => {
     if (autoCheckoutFired.current) return;
-    if (!planParam || pricesLoading || subscriptionLoading) return;
+    if (!planParam || pricesLoading || subscriptionLoading || featuresLoading) return;
 
     const targetPlanKey = PLAN_PARAM_MAP[planParam.toLowerCase()];
-    const tier = PRICING_TIERS.find(t => t.planKey === targetPlanKey);
+    const tier = visiblePricingTiers.find(t => t.planKey === targetPlanKey);
     if (!tier) return;
 
     const isCurrentPlan =
@@ -105,9 +111,14 @@ export default function BillingPage() {
     autoCheckoutFired.current = true;
     handleUpgrade(tier);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planParam, prices, pricesLoading, subscriptionLoading, subscription]);
+  }, [planParam, prices, pricesLoading, subscriptionLoading, featuresLoading, subscription, visiblePricingTiers]);
 
   async function handleUpgrade(tier: (typeof PRICING_TIERS)[number]) {
+    if (tier.requiresEligibility && !isEmprendeEligible) {
+      setCheckoutError('PymesHub Emprende requiere aprobación previa de PymesHub.');
+      return;
+    }
+
     const priceId = prices?.[`${tier.planKey}_monthly`];
     if (!priceId) {
       setCheckoutError('Plan pricing is not configured yet. Please contact support.');
@@ -229,8 +240,14 @@ export default function BillingPage() {
       {/* Available Plans */}
       <div id="upgrade-plans" className="space-y-4">
         <h2 className="text-2xl font-bold">Available Plans</h2>
+        {!isEmprendeEligible && (
+          <p className="text-sm text-muted-foreground">
+            PymesHub Emprende está disponible para clientes aprobados. Si aplica para tu negocio,
+            contactá a soporte para revisar elegibilidad.
+          </p>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {PRICING_TIERS.map((tier) => {
+          {visiblePricingTiers.map((tier) => {
             const isCurrentPlan =
               subscription?.plan?.toUpperCase() === tier.name.toUpperCase() ||
               subscription?.plan?.toUpperCase() === tier.planKey.toUpperCase();

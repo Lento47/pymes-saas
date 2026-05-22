@@ -2,51 +2,34 @@ name: Deploy to Railway
 
 on:
   push:
-    branches: [main-api]
+    branches: [master]
     paths:
       - 'apps/api/**'
+      - 'packages/shared-types/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - 'Dockerfile'
+      - '.dockerignore'
+      - 'entrypoint.sh'
       - 'railway.toml'
-      - 'packages/shared-types/**'
       - '.github/workflows/deploy-railway.yml'
   pull_request:
-    branches: [main-api]
+    branches: [master]
+    paths:
+      - 'apps/api/**'
+      - 'packages/shared-types/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'entrypoint.sh'
+      - 'railway.toml'
+      - '.github/workflows/deploy-railway.yml'
 
 jobs:
-  branch-guard:
-    name: Branch-path guard
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Verify no forbidden paths
-        run: |
-          echo "==> Branch-path guard for main-api"
-          FORBIDDEN=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^apps/web/' || true)
-          if [ -n "$FORBIDDEN" ]; then
-            echo "::error::main-api MUST NOT contain apps/web/** changes"
-            echo "Forbidden files:"
-            echo "$FORBIDDEN"
-            exit 1
-          fi
-          SHARED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^packages/shared-types/' || true)
-          if [ -n "$SHARED" ]; then
-            echo "::warning::shared-types change detected — ensure this is also pushed to main-web"
-          fi
-          echo "==> Branch-path guard passed"
-
   build-and-test:
-    needs: branch-guard
-    if: |
-      always() &&
-      (needs.branch-guard.result == 'success' || needs.branch-guard.result == 'skipped')
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true

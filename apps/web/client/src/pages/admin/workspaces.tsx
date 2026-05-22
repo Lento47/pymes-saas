@@ -7,6 +7,14 @@ import { PageLoader } from "@/components/shared/loading-spinner";
 import { Badge } from "@/components/ui/badge";
 import { Building2 } from "lucide-react";
 
+function getCommercialStatus(ws: any) {
+  const eligible = ws.beta_profile === "EMPRENDE_ELIGIBLE" || ws.profile === "emprende";
+  if (ws.plan === "EMPRENDE" && eligible) return "Emprende activo";
+  if (ws.plan === "EMPRENDE" && !eligible) return "Plan activo sin perfil Emprende";
+  if (eligible) return "Elegible Emprende, sin pago";
+  return ws.profile ? `Perfil ${ws.profile}` : "Perfil regular";
+}
+
 export default function AdminWorkspaces() {
   const { user } = useAuth();
 
@@ -45,9 +53,14 @@ export default function AdminWorkspaces() {
                       <span className="text-[10px] text-muted-foreground ml-2">/{ws.slug}</span>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                    {ws.plan}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                      {getCommercialStatus(ws)}
+                    </Badge>
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                      {ws.plan}
+                    </Badge>
+                  </div>
                 </Link>
               ))}
             </div>

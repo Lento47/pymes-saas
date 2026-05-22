@@ -26,6 +26,14 @@ import { stringifyJson } from "../common/prisma/json";
 import * as bcrypt from "bcrypt";
 import { randomBytes } from "crypto";
 
+const EMPRENDE_ELIGIBLE_PROFILE = "EMPRENDE_ELIGIBLE";
+const VALID_BETA_PROFILES = [
+  "BETA_LIGHT",
+  "BETA_CONVERSATIONS",
+  "BETA_OPERATIONS",
+  EMPRENDE_ELIGIBLE_PROFILE,
+] as const;
+
 @Injectable()
 export class PlatformService {
   constructor(
@@ -92,16 +100,23 @@ export class PlatformService {
         slug: true,
         plan: true,
         profile: true,
+        beta_profile: true,
         status: true,
         created_at: true,
         _count: { select: { workspace_users: true } },
         business_profile: { select: { categories: true, team_size: true } },
+        subscriptions: {
+          select: { plan: true, status: true, provider: true, updated_at: true },
+          orderBy: [{ updated_at: "desc" }, { created_at: "desc" }],
+          take: 1,
+        },
       },
       orderBy: { created_at: "desc" },
     });
 
     return workspaces.map((w) => ({
       ...w,
+      subscription: w.subscriptions[0] ?? null,
       member_count: w._count.workspace_users,
     }));
   }
@@ -603,8 +618,22 @@ export class PlatformService {
     };
 
     const updateData: Record<string, any> = {};
-    if (dto.plan !== undefined) updateData.plan = dto.plan;
-    if (dto.beta_profile !== undefined) updateData.beta_profile = dto.beta_profile;
+    if (dto.plan !== undefined) {
+      const validPlans = Object.values(WorkspacePlan) as string[];
+      if (!validPlans.includes(dto.plan)) {
+        throw new BadRequestException(`Plan inválido. Debe ser: ${validPlans.join(", ")}.`);
+      }
+      updateData.plan = dto.plan;
+    }
+    if (dto.beta_profile !== undefined) {
+      const betaProfile = dto.beta_profile || null;
+      if (betaProfile && !VALID_BETA_PROFILES.includes(betaProfile as any)) {
+        throw new BadRequestException(
+          `Perfil comercial inválido. Debe ser: ${VALID_BETA_PROFILES.join(", ")}.`,
+        );
+      }
+      updateData.beta_profile = betaProfile;
+    }
     if (dto.features !== undefined) updateData.features_json = dto.features;
     if (dto.limits !== undefined) updateData.limits_json = dto.limits;
 
@@ -795,6 +824,7 @@ export class PlatformService {
         slug: true,
         plan: true,
         profile: true,
+        beta_profile: true,
         status: true,
         timezone: true,
         locale: true,
@@ -824,14 +854,21 @@ export class PlatformService {
 
     const workspace = await this.prisma.workspace.findUnique({
       where: { slug },
-      select: { id: true, name: true, profile: true },
+      select: { id: true, name: true, profile: true, beta_profile: true },
     });
     if (!workspace) throw new NotFoundException("Workspace no encontrado.");
 
+    const betaProfile =
+      profile === "emprende"
+        ? EMPRENDE_ELIGIBLE_PROFILE
+        : workspace.beta_profile === EMPRENDE_ELIGIBLE_PROFILE
+          ? null
+          : workspace.beta_profile;
+
     const updated = await this.prisma.workspace.update({
       where: { id: workspace.id },
-      data: { profile },
-      select: { id: true, name: true, slug: true, profile: true },
+      data: { profile, beta_profile: betaProfile },
+      select: { id: true, name: true, slug: true, plan: true, profile: true, beta_profile: true },
     });
 
     await this.audit.log(workspace.id, {
@@ -839,8 +876,8 @@ export class PlatformService {
       action: "WORKSPACE_PROFILE_UPDATED",
       entity_type: "workspace",
       entity_id: workspace.id,
-      before: { profile: workspace.profile },
-      after: { profile },
+      before: { profile: workspace.profile, beta_profile: workspace.beta_profile },
+      after: { profile, beta_profile: betaProfile },
     });
 
     return updated;

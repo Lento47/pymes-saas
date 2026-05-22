@@ -1549,6 +1549,7 @@ model WorkspaceSsoConfig {
 
 enum RequiredPlan {
   FREE
+  EMPRENDE
   STARTER
   GROWTH
   BUSINESS

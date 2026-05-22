@@ -1,6 +1,17 @@
 [build]
 builder = "dockerfile"
 dockerfile = "./Dockerfile"
+watchPatterns = [
+  "apps/api/**",
+  "packages/shared-types/**",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "Dockerfile",
+  ".dockerignore",
+  "entrypoint.sh",
+  "railway.toml"
+]
 
 [deploy]
 healthcheckPath = "/api/health"

@@ -33,6 +33,7 @@ const TEAM_LABELS: Record<string, string> = {
 
 const PLAN_COLORS: Record<string, string> = {
   FREE:         "hsl(220 13% 60%)",
+  EMPRENDE:     "hsl(36 40% 42%)",
   STARTER:      "hsl(210 90% 55%)",
   GROWTH:       "hsl(142 70% 45%)",
   BUSINESS:     "hsl(260 70% 55%)",
@@ -41,10 +42,18 @@ const PLAN_COLORS: Record<string, string> = {
 };
 
 const PROFILE_COLORS: Record<string, string> = {
-  emprende:   "hsl(32 90% 50%)",
+  emprende:   "hsl(36 40% 42%)",
   business:   "hsl(210 90% 55%)",
   enterprise: "hsl(260 70% 55%)",
 };
+
+function getCommercialStatus(w: any) {
+  const eligible = w.beta_profile === "EMPRENDE_ELIGIBLE" || w.profile === "emprende";
+  if (w.plan === "EMPRENDE" && eligible) return "Emprende activo";
+  if (w.plan === "EMPRENDE" && !eligible) return "Plan activo sin perfil Emprende";
+  if (eligible) return "Elegible Emprende, sin pago";
+  return "Perfil regular";
+}
 
 // ── Shared card ────────────────────────────────────────────────────────────
 
@@ -155,9 +164,9 @@ export default function AdminPage() {
 
   const handleProfileChange = async (slug: string, profile: string) => {
     try {
-      await api.platformUpdateWorkspaceProfile(slug, profile);
+      const updated = await api.platformUpdateWorkspaceProfile(slug, profile);
       setWorkspaces(prev =>
-        prev.map(w => w.slug === slug ? { ...w, profile } : w)
+        prev.map(w => w.slug === slug ? { ...w, ...updated } : w)
       );
     } catch (e: any) {
       alert(e?.message ?? "Error al cambiar perfil");
@@ -322,7 +331,7 @@ export default function AdminPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-                {["Workspace", "Sector", "Plan", "Perfil", "Usuarios", "Registrado", "Estado"].map(h => (
+                {["Workspace", "Sector", "Plan", "Perfil comercial", "Usuarios", "Registrado", "Estado"].map(h => (
                   <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: "hsl(var(--fg-2))", fontWeight: 500, whiteSpace: "nowrap" }}>
                     {h}
                   </th>
@@ -370,22 +379,27 @@ export default function AdminPage() {
                     </span>
                   </td>
                   <td style={{ padding: "8px 12px" }}>
-                    <select
-                      value={w.profile ?? "business"}
-                      onChange={(e) => handleProfileChange(w.slug, e.target.value)}
-                      style={{
-                        fontSize: "11px", padding: "2px 6px",
-                        background: `${PROFILE_COLORS[w.profile ?? "business"] ?? "hsl(var(--border))"}18`,
-                        color: PROFILE_COLORS[w.profile ?? "business"] ?? "hsl(var(--fg-2))",
-                        border: `1px solid ${PROFILE_COLORS[w.profile ?? "business"] ?? "hsl(var(--border))"}44`,
-                        borderRadius: "3px", fontWeight: 600,
-                        cursor: "pointer", outline: "none",
-                      }}
-                    >
-                      <option value="emprende">Emprende</option>
-                      <option value="business">Business</option>
-                      <option value="enterprise">Enterprise</option>
-                    </select>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <select
+                        value={w.profile ?? "business"}
+                        onChange={(e) => handleProfileChange(w.slug, e.target.value)}
+                        style={{
+                          fontSize: "11px", padding: "2px 6px",
+                          background: `${PROFILE_COLORS[w.profile ?? "business"] ?? "hsl(var(--border))"}12`,
+                          color: PROFILE_COLORS[w.profile ?? "business"] ?? "hsl(var(--fg-2))",
+                          border: `1px solid ${PROFILE_COLORS[w.profile ?? "business"] ?? "hsl(var(--border))"}33`,
+                          borderRadius: "3px", fontWeight: 600,
+                          cursor: "pointer", outline: "none",
+                        }}
+                      >
+                        <option value="emprende">Emprende</option>
+                        <option value="business">Business</option>
+                        <option value="enterprise">Enterprise</option>
+                      </select>
+                      <span style={{ fontSize: "10px", color: "hsl(var(--fg-2))", whiteSpace: "nowrap" }}>
+                        {getCommercialStatus(w)}
+                      </span>
+                    </div>
                   </td>
                   <td style={{ padding: "8px 12px", color: "hsl(var(--fg))" }}>{w.member_count}</td>
                   <td style={{ padding: "8px 12px", color: "hsl(var(--fg-2))", whiteSpace: "nowrap" }}>

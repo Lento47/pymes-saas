@@ -1,12 +1,11 @@
 # Railway Docker — solo backend
-# Excluir frontend del contexto de build
+# Excluir frontend del contexto de build. pnpm necesita ver el manifest
+# del workspace web porque el workspace root incluye apps/*.
 
-apps/web/client/
-apps/web/dist/
-apps/web/server/
-apps/web/public/
+apps/web/*
+!apps/web/package.json
 
-# Keep apps/web/package.json (needed for pnpm workspace)
+apps/desktop/
 
 .git/
 node_modules/
