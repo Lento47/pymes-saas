@@ -335,7 +335,6 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     onError: (e: any) => toast({ title: "Error al iniciar agente", description: e.message, variant: "destructive" }),
   });
 
-
   // Clear typing indicator when a new inbound message arrives
   // NOTE: must come AFTER msgList declaration (TDZ constraint in JS)
   useEffect(() => {
