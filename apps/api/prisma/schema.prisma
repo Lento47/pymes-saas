@@ -11,6 +11,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================================
@@ -240,6 +241,13 @@ enum DealStatus {
   LOST
 }
 
+enum OrderStatus {
+  RECEIVED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
 enum AutomationExecutionStatus {
   QUEUED
   RUNNING
@@ -334,6 +342,7 @@ model Workspace {
   fiscal_certificates FiscalCertificate[]
   hacienda_token_cache HaciendaTokenCache[]
   business_profile   WorkspaceBusinessProfile?
+  orders             Order[]
 
   @@index([slug])
   @@index([status])
@@ -371,6 +380,7 @@ model User {
   recorded_invoice_payments InvoicePayment[]   @relation("InvoicePaymentRecorder")
   error_reports             ErrorReport[]
   assigned_deals            Deal[]             @relation("DealAssignee")
+  assigned_orders           Order[]            @relation("OrderAssignee")
   billing_events            BillingEvent[]
   agent_sessions            AgentSession[]
 
@@ -518,6 +528,7 @@ model Contact {
   documents     Document[]
   invoices      Invoice[]
   deals         Deal[]
+  orders        Order[]
 
   @@index([workspace_id])
   @@index([workspace_id, email])
@@ -599,6 +610,7 @@ model Conversation {
   tasks     Task[]
   documents Document[]
   invoices  Invoice[]
+  orders    Order[]
 
   @@index([workspace_id])
   @@index([workspace_id, status])
@@ -1232,6 +1244,44 @@ model Deal {
   @@index([workspace_id, contact_id])
   @@index([workspace_id, assigned_user_id])
   @@map("deals")
+}
+
+// ============================================================
+// ORDERS — Pipeline de pedidos para emprendedores
+// Estados fijos: RECEIVED → PROCESSING → COMPLETED / CANCELLED
+// ============================================================
+
+model Order {
+  id                  String      @id @default(cuid())
+  workspace_id        String
+  contact_id          String?
+  conversation_id     String?
+  assigned_user_id    String?
+  title               String
+  description         String?     @db.Text
+  status              OrderStatus @default(RECEIVED)
+  amount              Decimal?    @db.Decimal(14, 2)
+  currency            String      @default("CRC")
+  received_at         DateTime?
+  completed_at        DateTime?
+  cancelled_at        DateTime?
+  cancellation_reason String?     @db.Text
+  notes               String?     @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace     Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  contact       Contact?      @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  conversation  Conversation? @relation(fields: [conversation_id], references: [id], onDelete: SetNull)
+  assigned_user User?         @relation("OrderAssignee", fields: [assigned_user_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, contact_id])
+  @@index([workspace_id, assigned_user_id])
+  @@index([workspace_id, received_at(sort: Desc)])
+  @@map("orders")
 }
 
 model ErrorReport {

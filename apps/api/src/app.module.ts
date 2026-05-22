@@ -35,6 +35,7 @@ import { PlatformModule } from "./platform/platform.module";
 import { RunbooksModule } from "./runbooks/runbooks.module";
 import { HaciendaModule } from "./hacienda/hacienda.module";
 import { PipelineModule } from "./pipeline/pipeline.module";
+import { OrdersModule } from "./orders/orders.module";
 import { HealthModule } from "./health/health.module";
 import { AiModule } from "./ai/ai.module";
 import { ApiTokensModule } from "./api-tokens/api-tokens.module";
@@ -100,6 +101,7 @@ import { InventoryModule } from "./inventory/inventory.module";
     InviteCodesModule,
     HaciendaModule,
     PipelineModule,
+    OrdersModule,
     AiModule,
     ErrorReportsModule,
     HealthModule,
