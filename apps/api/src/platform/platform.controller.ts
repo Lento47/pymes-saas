@@ -154,4 +154,13 @@ export class PlatformController {
   getWorkspaceBySlug(@Param("slug") slug: string) {
     return this.service.getWorkspaceBySlug(slug);
   }
+
+  @Patch("workspaces/:slug/profile")
+  updateWorkspaceProfile(
+    @Param("slug") slug: string,
+    @Body() body: { profile: string },
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.updateWorkspaceProfile(slug, body.profile, user.id);
+  }
 }

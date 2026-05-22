@@ -91,6 +91,7 @@ export class PlatformService {
         name: true,
         slug: true,
         plan: true,
+        profile: true,
         status: true,
         created_at: true,
         _count: { select: { workspace_users: true } },
@@ -793,6 +794,7 @@ export class PlatformService {
         name: true,
         slug: true,
         plan: true,
+        profile: true,
         status: true,
         timezone: true,
         locale: true,
@@ -808,6 +810,43 @@ export class PlatformService {
       conversation_count: workspace._count.conversations,
       invoice_count: workspace._count.invoices,
     };
+  }
+
+  // ── PATCH /platform/workspaces/:slug/profile ───────────────────────────
+
+  async updateWorkspaceProfile(slug: string, profile: string, actorUserId: string) {
+    const validProfiles = ["emprende", "business", "enterprise"];
+    if (!validProfiles.includes(profile)) {
+      throw new BadRequestException(
+        `Perfil inválido. Debe ser: ${validProfiles.join(", ")}.`,
+      );
+    }
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { slug },
+      select: { id: true, name: true, profile: true },
+    });
+    if (!workspace) throw new NotFoundException("Workspace no encontrado.");
+
+    const updated = await this.prisma.workspace.update({
+      where: { id: workspace.id },
+      data: { profile },
+      select: { id: true, name: true, slug: true, profile: true },
+    });
+
+    await this.audit.log({
+      workspace_id: workspace.id,
+      actor_user_id: actorUserId,
+      action: "WORKSPACE_PROFILE_UPDATED",
+      resource: "workspace",
+      resource_id: workspace.id,
+      metadata: {
+        previous: workspace.profile,
+        updated: profile,
+      },
+    });
+
+    return updated;
   }
 
   private async ensureUserExists(userId: string) {

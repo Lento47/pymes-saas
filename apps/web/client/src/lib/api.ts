@@ -355,6 +355,8 @@ export const api = {
     return request<any>("GET", `/api/platform/users${qs}`);
   },
   platformGetStats: () => request<any>("GET", "/api/platform/stats"),
+  platformUpdateWorkspaceProfile: (slug: string, profile: string) =>
+    request<any>("PATCH", `/api/platform/workspaces/${slug}/profile`, { profile }),
   // Business profile (onboarding)
   getBusinessProfile: () => request<any>("GET", "/api/workspaces/business-profile"),
   saveBusinessProfile: (data: {
