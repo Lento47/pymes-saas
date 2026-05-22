@@ -596,6 +596,9 @@ model Conversation {
   external_contact_id       String?   // wa_id
   external_conversation_key String?   // tenant + phoneNumberId + wa_id dedup
 
+  // ── AI / Workflow metadata ──
+  metadata_json            Json?    @db.JsonB   // { ai_state, last_ai_reply_at, ... }
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
