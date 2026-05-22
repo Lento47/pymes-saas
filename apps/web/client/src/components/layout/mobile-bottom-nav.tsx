@@ -23,7 +23,7 @@ export function MobileBottomNav({
   const visibleTabs = TABS.filter((tab) => !isItemVisible || isItemVisible(tab.label));
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background pb-safe lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t pb-safe lg:hidden" style={{ background: "hsl(var(--bg-sidebar))", borderColor: "rgba(139,92,246,0.14)" }}>
       <div className="flex h-14 items-center justify-around gap-1 px-2">
         {visibleTabs.map(({ path, icon: Icon, label }) => {
           const active = path === "/" ? location === "/" : location.startsWith(path);

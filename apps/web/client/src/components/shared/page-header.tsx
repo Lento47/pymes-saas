@@ -11,9 +11,10 @@ export function PageHeader({ title, description, className, children }: PageHead
   return (
     <div
       className={cn(
-        "sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-background px-4 py-3 md:px-6",
+        "sticky top-0 z-10 flex items-start justify-between gap-3 border-b px-4 py-3 md:px-6",
         className,
       )}
+      style={{ background: "hsl(var(--bg-sidebar))", borderColor: "rgba(139,92,246,0.12)" }}
       data-testid="page-header"
     >
       <div className="min-w-0">
