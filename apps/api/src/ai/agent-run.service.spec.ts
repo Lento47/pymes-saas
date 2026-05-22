@@ -18,11 +18,16 @@ jest.mock("../whatsapp/whatsapp.service", () => ({
   WhatsAppService: class WhatsAppService {},
 }));
 
+jest.mock("../telegram/telegram-outbound.service", () => ({
+  TelegramOutboundService: class TelegramOutboundService {},
+}));
+
 import { AgentRunService } from "./agent-run.service";
 
 describe("AgentRunService", () => {
   function makeService() {
     return new AgentRunService(
+      {} as any,
       {} as any,
       {} as any,
       {} as any,
