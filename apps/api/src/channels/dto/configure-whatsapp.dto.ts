@@ -4,7 +4,7 @@ export class ConfigureWhatsAppDto {
   /** Meta System User or Permanent Token — optional on edit (omit to keep existing) */
   @IsOptional()
   @IsString()
-  @MinLength(10)
+  @MinLength(1)
   access_token?: string;
 
   /** Meta App Secret for webhook signature verification — optional on edit */
