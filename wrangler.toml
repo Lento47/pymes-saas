@@ -1,7 +1,10 @@
 name = "pymeshubsaas"
-main = "index.js"
+main = "apps/web/cloudflare-worker.js"
 compatibility_date = "2024-01-01"
-pages_build_output_dir = "apps/web/dist/public"
+routes = [
+  { pattern = "pymeshub.lat/*", zone_name = "pymeshub.lat" },
+  { pattern = "www.pymeshub.lat/*", zone_name = "pymeshub.lat" }
+]
 
 [env.production]
 name = "pymeshubsaas-prod"
@@ -10,28 +13,7 @@ routes = [
   { pattern = "www.pymeshub.lat", zone_name = "pymeshub.lat" }
 ]
 
-[build]
-command = "cd apps/web && pnpm run build"
-watch_paths = [
-  "apps/web/**",
-  "packages/shared-types/**",
-  "package.json",
-  "pnpm-lock.yaml",
-  "pnpm-workspace.yaml",
-  "wrangler.toml"
-]
-
-[[build.upload.rules]]
-type = "CompiledContentType"
-globs = ["**/*.wasm"]
-fallthrough = true
-
-[[build.upload.rules]]
-type = "text/javascript"
-globs = ["**/*.js"]
-fallthrough = true
-
-[[build.upload.rules]]
-type = "application/typescript"
-globs = ["**/*.ts"]
-fallthrough = true
+[assets]
+directory = "apps/web/dist/public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
