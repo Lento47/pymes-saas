@@ -2,24 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Dark theme (default) — sober operational palette ── */
+/* ── Dark theme (default) - neutral operational palette ── */
 :root {
-  --bg:           220 18% 8%;
-  --bg-sidebar:   220 20% 6%;
-  --bg-card:      220 16% 11%;
-  --bg-elevated:  220 15% 14%;
-  --bg-hover:     220 12% 17%;
-  --bg-active:    220 11% 19%;
-  --border:       220 12% 20%;
-  --fg:           220 12% 93%;
-  --fg-2:         220 8% 64%;
-  --fg-3:         220 7% 46%;
-  --accent:       38 95% 54%;    /* #F59E0B — amber */
+  --bg:           220 18% 7%;
+  --bg-sidebar:   220 18% 6%;
+  --bg-card:      220 14% 10%;
+  --bg-elevated:  220 13% 13%;
+  --bg-hover:     220 12% 16%;
+  --bg-active:    216 18% 18%;
+  --border:       220 12% 18%;
+  --fg:           220 12% 94%;
+  --fg-2:         220 8% 66%;
+  --fg-3:         220 7% 48%;
+  --accent:       214 82% 52%;
   --accent-fg:    0 0% 100%;
   --danger:       0 72% 51%;
   --danger-fg:    0 0% 100%;
-  --success:      145 63% 42%;
-  --warning:      38 95% 54%;
+  --success:      156 58% 40%;
+  --warning:      38 88% 50%;
 
   --background:        var(--bg);
   --foreground:        var(--fg);
@@ -50,17 +50,23 @@
   --sidebar-accent:    var(--bg-active);
   --sidebar-accent-foreground: var(--fg);
   --sidebar-ring:      var(--accent);
-  --chart-1:           38 95% 54%;   /* amber */
+  --chart-1:           214 82% 52%;
   --chart-2:           220 8% 58%;   /* neutral */
-  --chart-3:           145 63% 42%;  /* green */
+  --chart-3:           156 58% 40%;  /* green */
   --chart-4:           210 10% 62%;  /* cool gray */
   --chart-5:           0 72% 51%;    /* red */
-  --radius: 0.25rem;
+  --radius: 0.5rem;
+
+  --surface:           var(--bg-card);
+  --surface-subtle:    220 14% 9%;
+  --surface-raised:    var(--bg-elevated);
+  --border-subtle:     220 12% 15%;
+  --link:              214 82% 60%;
 
   /* ── Status semantic tokens ── */
   --status-open:     145 63% 42%;   /* green */
-  --status-resolved: 228 65% 55%;   /* indigo */
-  --status-pending:  38 95% 54%;    /* amber */
+  --status-resolved: 156 58% 40%;   /* green */
+  --status-pending:  38 88% 50%;    /* amber */
   --status-overdue:  0 72% 51%;     /* red */
 
   /* ── shadcn/ui component tokens ── */
@@ -74,23 +80,28 @@
 
 /* ── Light theme (opt-in) ── */
 html.light {
-  --bg:           220 14% 96%;
-  --bg-sidebar:   220 14% 93%;
+  --bg:           210 20% 98%;
+  --bg-sidebar:   0 0% 100%;
   --bg-card:      0 0% 100%;
   --bg-elevated:  0 0% 100%;
-  --bg-hover:     220 14% 94%;
-  --bg-active:    220 14% 90%;
-  --border:       220 13% 91%;
+  --bg-hover:     214 24% 96%;
+  --bg-active:    214 32% 94%;
+  --border:       214 18% 88%;
   --fg:           220 10% 15%;
   --fg-2:         220 8% 46%;
   --fg-3:         220 6% 65%;
-  --accent:       240 65% 52%;
+  --accent:       214 82% 44%;
   --accent-fg:    0 0% 100%;
   --danger:       0 72% 45%;
   --danger-fg:    0 0% 100%;
-  --success:      145 63% 38%;
+  --success:      156 58% 34%;
   --warning:      35 90% 48%;
-  --bg-2:         220 14% 88%;
+  --bg-2:         214 18% 92%;
+  --surface:      var(--bg-card);
+  --surface-subtle: 210 20% 97%;
+  --surface-raised: 0 0% 100%;
+  --border-subtle: 214 18% 92%;
+  --link:         214 82% 44%;
 }
 
 :root {
@@ -123,19 +134,12 @@ body {
 }
 
 /* ── Interactive elevation utilities ── */
-.hover-elevate {
-  transition: transform 150ms ease, box-shadow 150ms ease;
-}
-.hover-elevate:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-}
+.hover-elevate { transition: background-color 150ms ease, border-color 150ms ease; }
+.hover-elevate:hover { background-color: hsl(var(--muted) / 0.35); }
 .active-elevate-2:active {
   transform: translateY(1px);
   box-shadow: none;
 }
-
-/* Safari scrollbar fix: webkit-scrollbar not supported, removed */
 
 ::selection { background: hsl(var(--accent) / 0.2); color: inherit; }
 :focus-visible { outline: 2px solid hsl(var(--accent)); outline-offset: 2px; }
@@ -145,28 +149,28 @@ body {
 
 /* ── Glass panels ── */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 html.light .glass-panel {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   box-shadow: none;
 }
 
 .glass-panel-soft {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: hsl(var(--surface-subtle));
+  border: 1px solid hsl(var(--border-subtle));
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 html.light .glass-panel-soft {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: hsl(var(--surface-subtle));
+  border: 1px solid hsl(var(--border-subtle));
   box-shadow: none;
 }
 
@@ -182,38 +186,49 @@ html.light .marketing-grid {
 }
 
 .marketing-canvas {
-  background:
-    radial-gradient(circle at 18% 10%, rgba(87, 113, 255, 0.24), transparent 28rem),
-    radial-gradient(circle at 86% 18%, rgba(245, 158, 11, 0.12), transparent 24rem),
-    linear-gradient(180deg, #05091d 0%, #060a20 42%, #040817 100%);
+  background: hsl(var(--background));
   color: #fff;
 }
 
 .marketing-surface {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   box-shadow: none;
 }
 
 .marketing-surface-quiet {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   box-shadow: none;
 }
 
 .luminous-border { position: relative; }
 
-.glow-button { box-shadow: 0 0 24px rgba(245, 158, 11, 0.30), 0 0 48px rgba(245, 158, 11, 0.10); }
-.soft-glow { text-shadow: 0 0 20px rgba(251, 191, 36, 0.40); }
+.glow-button { box-shadow: none; }
+.soft-glow { text-shadow: none; }
 
 .app-surface {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
 }
 
+.app-panel {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+.app-row {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.app-link {
+  color: hsl(var(--link));
+}
+
 .app-surface-subtle {
-  background: hsl(var(--muted) / 0.35);
-  border: 1px solid hsl(var(--border) / 0.7);
+  background: hsl(var(--surface-subtle));
+  border: 1px solid hsl(var(--border-subtle));
 }
 
 .auth-ui * {

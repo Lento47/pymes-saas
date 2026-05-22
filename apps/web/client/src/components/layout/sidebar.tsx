@@ -7,13 +7,14 @@ import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { SearchDialog } from "@/components/shared/search-dialog";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api } from "@/lib/api";
 import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
-  Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, Bot,
+  Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, MessageSquareText,
   Sun, Moon, Search, Menu, X,
   ShieldCheck, LayoutTemplate,
 } from "lucide-react";
@@ -72,7 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: "assistants",
     items: [
-      { path: "/agent",         icon: Bot,             key: "agent" },
+      { path: "/agent",         icon: MessageSquareText, key: "agent" },
       { path: "/help",          icon: CircleHelp,       key: "help" },
       { path: "/notifications", icon: BellRing,        key: "notifications", badge: "unread" },
     ],
@@ -212,7 +213,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         className={cn(
           "flex flex-col shrink-0 transition-all duration-200 ease-out overflow-hidden bg-sidebar border-r border-border",
           sidebarOpen ? "w-[260px]" : "w-0 border-r-0",
-          isMobile && "fixed left-0 top-0 z-50 shadow-xl h-[100dvh]",
+          isMobile && "fixed left-0 top-0 z-50 h-[100dvh]",
           isMobile && sidebarOpen && "w-[260px] border-r",
         )}
       >
@@ -230,7 +231,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <div className="shrink-0 px-3 pt-3 pb-3 border-b border-border">
+        <div className="shrink-0 border-b border-border px-3 pb-3 pt-3">
+          <Link href="/" className="mb-3 flex items-center rounded-md px-1.5 py-1.5 text-foreground hover:bg-sidebar-accent/25">
+            <BrandLockup compact markClassName="h-6 w-6" textClassName="text-[13px]" />
+          </Link>
           <div ref={wsMenuRef} className="relative">
             <button
               className={cn(
@@ -243,8 +247,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
               aria-expanded={multipleWorkspaces ? wsMenuOpen : undefined}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/55 text-xs font-semibold text-foreground">
-                {workspaceInitial}
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/70 bg-background/55">
+                <img src="/images/pymeshub-logo.png" alt="" className="h-6 w-6 object-contain" />
+                <span className="sr-only">{workspaceInitial}</span>
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold leading-tight text-foreground">{ws}</p>
@@ -281,8 +286,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                           if (!isCurrent) switchWorkspace(m.workspace.slug);
                         }}
                       >
-                        <div className="w-6 h-6 rounded-md border border-border/60 bg-sidebar-accent/40 flex items-center justify-center shrink-0 text-xs font-semibold">
-                          {m.workspace.name.charAt(0).toUpperCase()}
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-sidebar-accent/40">
+                          <img src="/images/pymeshub-logo.png" alt="" className="h-4 w-4 object-contain" />
                         </div>
                         <span className="flex-1 text-sm truncate font-medium">{m.workspace.name}</span>
                         {isCurrent && (

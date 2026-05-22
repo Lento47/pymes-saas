@@ -10,10 +10,10 @@ import { es } from "date-fns/locale";
 import {
   AlertTriangle,
   ArrowUpRight,
-  Bot,
   CheckCircle2,
   CheckSquare,
   Clock3,
+  FileText,
   Loader2,
   MessageCircle,
   Receipt,
@@ -381,7 +381,7 @@ export default function DashboardPage() {
             {generateMutation.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Bot className="h-3.5 w-3.5" />
+              <FileText className="h-3.5 w-3.5" />
             )}
             Resumen IA
           </Button>

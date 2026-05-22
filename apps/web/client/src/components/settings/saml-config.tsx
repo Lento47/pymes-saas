@@ -82,8 +82,8 @@ export function SamlConfig() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
-            <Shield className="w-4 h-4 text-violet-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40">
+              <Shield className="h-4 w-4 text-muted-foreground" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-foreground">SAML SSO</h2>

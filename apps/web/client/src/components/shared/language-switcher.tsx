@@ -20,9 +20,9 @@ export function LanguageSwitcher({
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border p-1",
+        "inline-flex items-center gap-1 rounded-md border p-1",
         isMarketing
-          ? "border-border bg-foreground/[0.04] text-white/76"
+          ? "border-border bg-card text-muted-foreground"
           : "border-border bg-[hsl(var(--elevated))] text-muted-foreground",
         className
       )}
@@ -30,8 +30,8 @@ export function LanguageSwitcher({
     >
       <span
         className={cn(
-          "inline-flex h-8 w-8 items-center justify-center rounded-full",
-            isMarketing ? "bg-foreground/[0.05]" : "bg-foreground/[0.06]"
+          "inline-flex h-8 w-8 items-center justify-center rounded-md",
+            isMarketing ? "bg-muted/40" : "bg-foreground/[0.06]"
         )}
         aria-hidden="true"
       >
@@ -47,13 +47,13 @@ export function LanguageSwitcher({
             type="button"
             onClick={() => setLocale(option)}
             className={cn(
-              "rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] transition",
+              "rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition",
               active
                 ? isMarketing
-                  ? "bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] text-[#071126]"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-primary text-primary-foreground shadow-sm"
                 : isMarketing
-                  ? "text-foreground/75 hover:text-white"
+                  ? "text-muted-foreground hover:text-foreground"
                   : "text-muted-foreground hover:text-foreground"
             )}
             aria-pressed={active}

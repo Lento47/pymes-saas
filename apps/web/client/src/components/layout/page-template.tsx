@@ -24,14 +24,13 @@ export function PageTemplate({
 }: PageTemplateProps) {
   return (
     <div className="min-h-full bg-background">
-      {/* Header */}
-      <div className="bg-card border-b border-border sticky top-0 z-50">
-        <div className="px-3 md:px-6 py-4 max-w-7xl mx-auto">
+      <div className="sticky top-0 z-50 border-b border-border bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-3 md:px-6">
           <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+            <div className="min-w-0">
+              <h1 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground">{title}</h1>
               {description && (
-                <p className="text-sm text-muted-foreground mt-1">{description}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{description}</p>
               )}
             </div>
 
@@ -44,7 +43,7 @@ export function PageTemplate({
                     size="sm"
                     onClick={action.onClick}
                     asChild={!!action.href}
-                    className="gap-2"
+                    className="h-8 gap-2 rounded-md text-xs"
                   >
                     {action.href ? (
                       <Link href={action.href} className="flex items-center gap-2">
@@ -65,8 +64,7 @@ export function PageTemplate({
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-3 md:px-6 py-8 max-w-7xl mx-auto">
+      <div className="mx-auto max-w-7xl px-4 py-5 md:px-6">
         {children}
       </div>
     </div>
@@ -95,15 +93,15 @@ export function SectionCard({
   className = "",
 }: SectionCardProps) {
   return (
-    <div className={`bg-card rounded-xl border border-border overflow-hidden ${className}`}>
+    <div className={`overflow-hidden rounded-lg border border-border bg-card ${className}`}>
       {title && (
-        <div className="flex items-center justify-between px-3 md:px-6 py-4 border-b border-border">
-          <div>
-            <h3 className="font-semibold text-foreground">{title}</h3>
-            {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
+        <div className="flex items-center justify-between border-b border-border px-4 py-3 md:px-5">
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold text-foreground">{title}</h3>
+            {description && <p className="mt-1 truncate text-xs text-muted-foreground">{description}</p>}
           </div>
           {linkTo && (
-            <Link href={linkTo} className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 flex-shrink-0">
+            <Link href={linkTo} className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:text-primary/80">
               {linkLabel} <ArrowRight className="w-4 h-4" />
             </Link>
           )}
@@ -111,13 +109,13 @@ export function SectionCard({
       )}
 
       {loading ? (
-        <div className="px-3 md:px-6 py-4 space-y-3">
+        <div className="space-y-3 px-4 py-4 md:px-5">
           {[0, 1, 2].map(i => (
             <div key={i} className="h-4 bg-muted rounded animate-pulse" />
           ))}
         </div>
       ) : empty ? (
-        <div className="px-3 md:px-6 py-12 text-center">
+        <div className="px-4 py-10 text-center md:px-5">
           <p className="text-sm text-muted-foreground">Sin datos aún</p>
         </div>
       ) : (
@@ -157,10 +155,10 @@ export function MetricCard({
   };
 
   return (
-    <div className="bg-card rounded-xl border border-border p-6 hover:shadow-lg transition-shadow">
-      <div className="flex items-start justify-between mb-4">
+    <div className="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/20">
+      <div className="mb-3 flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
         </div>
         {Icon && <Icon className={`w-5 h-5 ${colorMap[color]}`} />}
       </div>
@@ -170,7 +168,7 @@ export function MetricCard({
       ) : (
         <>
           <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold text-foreground">
+            <p className="text-2xl font-semibold leading-none tracking-[-0.02em] text-foreground tabular-nums">
               {currency}{typeof value === "number" ? value.toLocaleString("es-ES") : value}
             </p>
           </div>
@@ -203,7 +201,7 @@ export function TableRow({ children, onClick, href, className = "" }: TableRowPr
   const content = (
     <div
       onClick={onClick}
-      className={`flex items-center gap-3 px-3 md:px-6 py-3 hover:bg-muted transition cursor-pointer ${className}`}
+      className={`flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-muted/30 md:px-5 ${className}`}
     >
       {children}
     </div>

@@ -93,7 +93,7 @@ export function ConditionsSection({ conditions, onChange, currentPlan, isEditing
             Condiciones
           </span>
           {conditions.length > 0 && (
-            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-violet-500/20 bg-violet-500/5 text-violet-400">
+          <Badge variant="outline" className="border-primary/20 bg-primary/5 px-1.5 py-0 text-[9px] text-primary">
               {conditions.length}
             </Badge>
           )}

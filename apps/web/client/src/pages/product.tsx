@@ -11,8 +11,8 @@ import {
   LifeBuoy,
   LockKeyhole,
   Menu,
+  MessageSquareText,
   ShieldCheck,
-  Sparkles,
   Workflow,
   X,
 } from "lucide-react";
@@ -57,10 +57,10 @@ function MarketingMenuAction({
   onNavigate: (href: string) => void;
 }) {
   const classes = cn(
-    "group block rounded-xl px-4 py-3 text-left transition-all duration-200",
+    "group block rounded-md px-4 py-3 text-left transition-colors duration-150",
     featured
-      ? "bg-foreground/[0.04] hover:bg-white/[0.08] border border-border/[0.8]"
-      : "hover:bg-foreground/[0.04]"
+      ? "border border-border bg-muted/35 hover:bg-muted/55"
+      : "hover:bg-muted/35"
   );
 
   const content = (
@@ -69,16 +69,16 @@ function MarketingMenuAction({
         <div className={cn(
           "flex h-8 w-8 items-center justify-center rounded-lg shrink-0",
           featured
-            ? "bg-[#F59E0B]/10 text-[#F59E0B]"
-            : "bg-white/[0.06] text-white/50 group-hover:text-white/80"
+            ? "bg-primary/10 text-primary"
+            : "bg-muted text-muted-foreground group-hover:text-foreground"
         )}>
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-marketing text-sm font-semibold tracking-[-0.01em] text-white group-hover:text-white/90">
+          <h3 className="font-marketing text-sm font-semibold tracking-[-0.01em] text-foreground">
             {title}
           </h3>
-          <p className="mt-0.5 text-xs leading-5 text-white/40">{description}</p>
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{description}</p>
         </div>
       </div>
     </>
@@ -104,12 +104,12 @@ function PerformanceChart({ labels }: { labels: readonly string[] }) {
     <svg viewBox="0 0 460 260" className="h-full w-full" aria-hidden="true">
       <defs>
         <linearGradient id="request-line" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0%" stopColor="#F59E0B" />
-          <stop offset="100%" stopColor="#FDE68A" />
+          <stop offset="0%" stopColor="#2563eb" />
+          <stop offset="100%" stopColor="#60a5fa" />
         </linearGradient>
         <linearGradient id="request-area" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="rgba(245,158,11,0.40)" />
-          <stop offset="100%" stopColor="rgba(245,158,11,0.02)" />
+          <stop offset="0%" stopColor="rgba(37,99,235,0.16)" />
+          <stop offset="100%" stopColor="rgba(37,99,235,0.02)" />
         </linearGradient>
         <filter id="request-glow" x="-30%" y="-30%" width="160%" height="160%">
           <feGaussianBlur stdDeviation="5" result="blur" />
@@ -154,7 +154,6 @@ function PerformanceChart({ labels }: { labels: readonly string[] }) {
         stroke="url(#request-line)"
         strokeWidth="4"
         strokeLinecap="round"
-        filter="url(#request-glow)"
       />
 
       {labels.map((label, index) => (
@@ -175,19 +174,16 @@ function PerformanceChart({ labels }: { labels: readonly string[] }) {
 
 function OrbitGraphic() {
   return (
-    <div className="relative mx-auto mt-8 h-56 w-56">
-      <div className="absolute inset-0 rounded-full border border-[#5f72ff]/30" />
-      <div className="absolute inset-5 rounded-full border border-[#5f72ff]/25" />
-      <div className="absolute inset-11 rounded-full border border-[#5f72ff]/20" />
-      <div className="absolute inset-[4.65rem] rounded-full border border-[#5f72ff]/15" />
-      <div className="animate-pulse-halo absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(245,158,11,0.95)_0%,rgba(245,158,11,0.2)_40%,transparent_72%)]" />
-      <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#F59E0B]/35 bg-[#10173a]/90 text-[#F59E0B] shadow-[0_0_32px_rgba(245,158,11,0.35)]">
-        <Sparkles className="h-6 w-6" />
+    <div className="app-panel relative mx-auto mt-8 h-56 w-56 rounded-lg p-5">
+      <div className="grid h-full grid-cols-2 gap-3">
+        {["Bandeja", "Facturas", "Tareas", "Pipeline"].map((label) => (
+          <div key={label} className="rounded-md border border-border-subtle bg-muted/20 p-3">
+            <span className="mb-3 block h-2 w-8 rounded-full bg-primary/45" />
+            <p className="font-marketing text-xs font-semibold text-foreground">{label}</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Operativo</p>
+          </div>
+        ))}
       </div>
-      <div className="absolute left-[18%] top-[34%] h-3 w-3 rounded-full bg-[#5c72ff]/80 shadow-[0_0_16px_rgba(92,114,255,0.65)]" />
-      <div className="absolute bottom-[18%] right-[14%] h-3.5 w-3.5 rounded-full bg-[#5c72ff]/70 shadow-[0_0_18px_rgba(92,114,255,0.55)]" />
-      <div className="absolute right-[26%] top-[13%] h-2.5 w-2.5 rounded-full bg-[#9db0ff]/90 shadow-[0_0_14px_rgba(157,176,255,0.7)]" />
-      <div className="absolute left-[50%] top-[8%] h-2 w-2 -translate-x-1/2 rounded-full bg-[#F59E0B]/70 shadow-[0_0_14px_rgba(245,158,11,0.7)]" />
     </div>
   );
 }
@@ -414,25 +410,8 @@ export default function Landing() {
   };
 
   return (
-    <div className="dark relative overflow-hidden bg-[#060b21] text-white">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-0 -translate-x-1/2 overflow-hidden">
-          <div className="relative w-[max(1536px,100vw,calc(100vh*1.5))]">
-            <img
-              src="/images/hero-bg.png"
-              alt=""
-              aria-hidden="true"
-              loading="eager"
-              className="block h-auto w-full max-w-none opacity-[0.92]"
-            />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,28,88,0.10),transparent_44%),linear-gradient(180deg,rgba(4,8,26,0.04)_0%,rgba(5,9,29,0.18)_24%,rgba(5,9,29,0.64)_78%,#05091d_100%)]" />
-          </div>
-        </div>
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0.04)_0%,rgba(5,9,29,0.06)_22%,rgba(5,9,29,0.18)_44%,rgba(5,9,29,0.42)_64%,#05091d_86%)]" />
-        <div className="animate-drift-x absolute left-[-10rem] top-[8rem] h-80 w-80 rounded-full bg-[#5771ff]/16 blur-[110px]" />
-        <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#F59E0B]/12 blur-[130px]" />
-        <div className="marketing-grid absolute inset-x-0 bottom-0 h-[36rem] opacity-50" />
-      </div>
+    <div className="relative overflow-hidden bg-background text-foreground">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-border" />
 
       <main className="relative z-10">
         <section className="px-4 pb-16 pt-6 md:px-8 md:pb-24">
@@ -443,7 +422,7 @@ export default function Landing() {
               onTouchEnd={handleNavTouchEnd}
             >
               <nav
-                className="glass-panel luminous-border flex items-center justify-between rounded-full px-5 py-4 md:px-7"
+                className="flex items-center justify-between rounded-lg border border-border bg-card px-5 py-4 md:px-7"
                 data-nav-item
               >
                 <BrandLockup compact />
@@ -457,13 +436,13 @@ export default function Landing() {
                       onClick={() =>
                         setActiveMenu((current) => (current === item.key ? null : item.key))
                       }
-                      className="font-marketing text-sm font-medium text-white/78 transition hover:text-white"
+                      className="font-marketing text-sm font-medium text-muted-foreground transition hover:text-foreground"
                     >
                       {copy.nav[item.key]}
                       <ChevronDown
                         className={cn(
-                          "ml-1 inline h-4 w-4 text-white/55 transition",
-                          activeMenu === item.key && "rotate-180 text-white"
+                          "ml-1 inline h-4 w-4 text-muted-foreground transition",
+                          activeMenu === item.key && "rotate-180 text-foreground"
                         )}
                       />
                     </button>
@@ -475,24 +454,24 @@ export default function Landing() {
                     <LanguageSwitcher variant="marketing" />
                   </div>
                   <div className="hidden md:flex items-center gap-4">
-                    <Link href="/pricing" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    <Link href="/pricing" className="font-marketing text-sm font-medium text-muted-foreground transition hover:text-foreground">
                         {copy.nav.pricing}
                     </Link>
-                    <Link href="/documentation" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    <Link href="/documentation" className="font-marketing text-sm font-medium text-muted-foreground transition hover:text-foreground">
                         {copy.nav.documentation}
                     </Link>
                   </div>
-                  <Link href="/login" className="font-marketing hidden sm:block text-sm font-medium text-white/78 transition hover:text-white">
+                  <Link href="/login" className="font-marketing hidden sm:block text-sm font-medium text-muted-foreground transition hover:text-foreground">
                     {copy.nav.logIn}
                   </Link>
-                  <Link href="/login" className="glow-button font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
+                  <Link href="/login" className="font-marketing hidden items-center gap-1 whitespace-nowrap rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 sm:inline-flex sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
                     {copy.nav.getStarted}
                     <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Link>
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="md:hidden text-white/78 transition hover:text-white flex-shrink-0"
+                    className="md:hidden text-muted-foreground transition hover:text-foreground flex-shrink-0"
                   >
                     {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                   </button>
@@ -500,18 +479,18 @@ export default function Landing() {
               </nav>
 
               {mobileMenuOpen && (
-                <div className="md:hidden mt-2 glass-panel luminous-border rounded-[28px] p-4" data-mobile-menu>
+                <div className="md:hidden mt-2 rounded-lg border border-border bg-card p-4" data-mobile-menu>
                   <div className="space-y-2">
-                    <Link href="/pricing" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/pricing" className="block w-full rounded-lg px-4 py-3 text-left font-marketing text-sm font-medium text-muted-foreground transition hover:bg-muted/35 hover:text-foreground">
                         {copy.nav.pricing}
                     </Link>
-                    <Link href="/documentation" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/documentation" className="block w-full rounded-lg px-4 py-3 text-left font-marketing text-sm font-medium text-muted-foreground transition hover:bg-muted/35 hover:text-foreground">
                         {copy.nav.documentation}
                     </Link>
-                    <Link href="/login" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/login" className="block w-full rounded-lg px-4 py-3 text-left font-marketing text-sm font-medium text-muted-foreground transition hover:bg-muted/35 hover:text-foreground">
                         {copy.nav.logIn}
                     </Link>
-                    <Link href="/login" className="glow-button font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-[#071126] transition hover:translate-y-[-1px]">
+                    <Link href="/login" className="font-marketing block w-full rounded-md bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground transition hover:bg-primary/90">
                         {copy.nav.getStarted}
                         <ArrowRight className="h-3 w-3 inline" />
                     </Link>
@@ -524,14 +503,14 @@ export default function Landing() {
                   className="absolute inset-x-0 top-full z-20 pt-4 pointer-events-auto"
                   data-nav-dropdown
                 >
-                  <div className="bg-[#0a1022]/98 backdrop-blur-xl border border-white/[0.07] rounded-2xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)_inset]">
+                  <div className="rounded-lg border border-border bg-card">
                     {/* Header row */}
                     <div className="flex items-center justify-between px-6 pt-5 pb-2">
                       <div>
-                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30">
+                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                           {dropdownMenus[activeMenu].eyebrow}
                         </p>
-                        <h2 className="font-marketing mt-1 text-xl font-semibold tracking-[-0.02em] text-white">
+                        <h2 className="font-marketing mt-1 text-xl font-semibold tracking-[-0.02em] text-foreground">
                           {dropdownMenus[activeMenu].title}
                         </h2>
                       </div>
@@ -540,7 +519,7 @@ export default function Landing() {
                     <div className="grid gap-3 p-4 pt-2 lg:grid-cols-[1fr_1.5fr]">
                       {/* Left: featured */}
                       <div>
-                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-white/25 px-1 pb-2">
+                        <p className="font-marketing px-1 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                           {copy.menus[activeMenu].featuredLabel}
                         </p>
                         <MarketingMenuAction
@@ -567,13 +546,13 @@ export default function Landing() {
             </div>
 
             <div className="mx-auto max-w-4xl pt-16 text-center md:pt-16">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                 {copy.platform.eyebrow}
               </p>
-              <h1 className="font-marketing mt-5 text-5xl font-extrabold leading-[0.96] tracking-[-0.05em] text-white sm:text-6xl md:text-[5rem]">
+              <h1 className="font-marketing mt-5 text-5xl font-semibold leading-[0.98] tracking-[-0.05em] text-foreground sm:text-6xl md:text-[5rem]">
                 {copy.platform.title}
               </h1>
-              <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70 md:text-lg">
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-muted-foreground md:text-lg">
                 {copy.platform.description}
               </p>
             </div>
@@ -583,13 +562,13 @@ export default function Landing() {
         <section id="platform" className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                 {copy.platform.eyebrow}
               </p>
-              <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-white md:text-6xl">
+              <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-foreground md:text-6xl">
                 {copy.platform.title}
               </h2>
-              <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70 md:text-lg">
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-muted-foreground md:text-lg">
                 {copy.platform.description}
               </p>
             </div>
@@ -602,8 +581,8 @@ export default function Landing() {
                     const Icon = card.icon;
                     return (
                       <CarouselItem key={card.title} className="basis-full">
-                        <article className="glass-panel rounded-[28px] p-7">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(245,158,11,0.12))] p-2 text-white/90">
+                        <article className="app-panel rounded-lg p-7">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 p-2 text-primary">
                             {card.assetSrc ? (
                               <img
                                 src={card.assetSrc}
@@ -618,13 +597,13 @@ export default function Landing() {
                           <h3 className="font-marketing mt-7 text-2xl font-semibold tracking-[-0.03em]">
                             {card.title}
                           </h3>
-                          <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/72">
+                          <p className="mt-4 text-sm leading-7 text-muted-foreground">
                             {card.description}
                           </p>
-                          <ul className="mt-8 space-y-3 text-sm leading-7 text-white/78">
+                          <ul className="mt-8 space-y-3 text-sm leading-7 text-muted-foreground">
                             {card.bullets.map((bullet) => (
                               <li key={bullet} className="flex gap-3">
-                                <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_14px_rgba(245,158,11,0.65)]" />
+                                <span className="mt-2 h-2.5 w-2.5 rounded-full bg-primary/50" />
                                 <span>{bullet}</span>
                               </li>
                             ))}
@@ -646,8 +625,8 @@ export default function Landing() {
               {productCards.map((card) => {
                 const Icon = card.icon;
                 return (
-                  <article key={card.title} className="glass-panel rounded-[28px] p-7">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(108,126,255,0.28),rgba(245,158,11,0.12))] p-2 text-white/90">
+                  <article key={card.title} className="app-panel rounded-lg p-7">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 p-2 text-primary">
                       {card.assetSrc ? (
                         <img
                           src={card.assetSrc}
@@ -662,13 +641,13 @@ export default function Landing() {
                     <h3 className="font-marketing mt-7 text-2xl font-semibold tracking-[-0.03em]">
                       {card.title}
                     </h3>
-                    <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/72">
+                    <p className="mt-4 text-sm leading-7 text-muted-foreground">
                       {card.description}
                     </p>
-                    <ul className="mt-8 space-y-3 text-sm leading-7 text-white/78">
+                    <ul className="mt-8 space-y-3 text-sm leading-7 text-muted-foreground">
                       {card.bullets.map((bullet) => (
                         <li key={bullet} className="flex gap-3">
-                          <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_14px_rgba(245,158,11,0.65)]" />
+                          <span className="mt-2 h-2.5 w-2.5 rounded-full bg-primary/50" />
                           <span>{bullet}</span>
                         </li>
                       ))}
@@ -682,34 +661,34 @@ export default function Landing() {
 
         <section id="workflows" className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.08fr_0.92fr]">
-            <article className="glass-panel rounded-[34px] p-8 md:p-10">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
+            <article className="app-panel rounded-lg p-8 md:p-10">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                 {copy.workflows.eyebrow}
               </p>
               <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
                 {copy.workflows.title}
               </h2>
-              <p className="mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
+              <p className="mt-6 max-w-2xl text-base leading-8 text-muted-foreground">
                 {copy.workflows.description}
               </p>
 
               <div className="mt-10 grid gap-5 md:grid-cols-2">
                 {[
                   { icon: Workflow, ...copy.workflows.features[0] },
-                  { icon: Sparkles, ...copy.workflows.features[1] },
+                  { icon: MessageSquareText, ...copy.workflows.features[1] },
                   { icon: ChartSpline, ...copy.workflows.features[2] },
                   { icon: Globe2, ...copy.workflows.features[3] },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
-                    <div key={item.title} className="glass-panel-soft rounded-[24px] p-5">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/[0.06] text-[#e3e8ff]">
+                    <div key={item.title} className="rounded-md border border-border bg-muted/20 p-5">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
                         <Icon className="h-5 w-5" />
                       </div>
                       <h3 className="font-marketing mt-5 text-xl font-semibold tracking-[-0.03em]">
                         {item.title}
                       </h3>
-                      <p className="mt-3 text-sm leading-7 text-[#bcc5ee]/68">
+                      <p className="mt-3 text-sm leading-7 text-muted-foreground">
                         {item.body}
                       </p>
                     </div>
@@ -718,8 +697,8 @@ export default function Landing() {
               </div>
             </article>
 
-            <article className="glass-panel rounded-[34px] p-6 md:p-8">
-              <div className="glass-panel-soft rounded-[26px] p-5">
+            <article className="app-panel rounded-lg p-6 md:p-8">
+              <div className="rounded-lg border border-border bg-muted/20 p-5">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-[#aeb6df]/52">
@@ -729,26 +708,26 @@ export default function Landing() {
                       {copy.workflows.flowHeadline}
                     </h3>
                   </div>
-                  <div className="flex items-center gap-2 rounded-full border border-[#F59E0B]/28 bg-[#F59E0B]/10 px-3 py-1.5 text-sm text-[#F59E0B]">
-                    <span className="h-2 w-2 rounded-full bg-[#F59E0B]" />
+                  <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-sm text-success">
+                    <span className="h-2 w-2 rounded-full bg-success" />
                     {copy.workflows.flowLive}
                   </div>
                 </div>
 
                 <div className="mt-8 space-y-4">
                   {copy.workflows.flowSteps.map(([title, detail], index) => (
-                    <div key={title} className="flex gap-4 rounded-[22px] border border-white/8 bg-foreground/[0.03] px-4 py-4">
+                    <div key={title} className="flex gap-4 rounded-md border border-border-subtle bg-background px-4 py-4">
                       <div className="flex flex-col items-center">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#F59E0B,#D97706)] text-sm font-bold text-[#051127]">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-sm font-bold text-primary">
                           {index + 1}
                         </span>
-                        {index < 3 && <span className="mt-2 h-8 w-px bg-white/10" />}
+                        {index < 3 && <span className="mt-2 h-8 w-px bg-border" />}
                       </div>
                       <div>
-                        <p className="font-marketing text-base font-semibold text-white/90">
+                        <p className="font-marketing text-base font-semibold text-foreground">
                           {title}
                         </p>
-                        <p className="mt-1 text-sm leading-7 text-[#bcc5ee]/66">
+                        <p className="mt-1 text-sm leading-7 text-muted-foreground">
                           {detail}
                         </p>
                       </div>
@@ -759,14 +738,14 @@ export default function Landing() {
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 {copy.workflows.metrics.map(([label, value, detail]) => (
-                  <div key={label} className="glass-panel-soft rounded-[24px] p-5">
+                  <div key={label} className="rounded-md border border-border bg-muted/20 p-5">
                     <p className="font-marketing text-sm font-semibold uppercase tracking-[0.26em] text-[#aeb6df]/44">
                       {label}
                     </p>
-                    <p className="font-marketing mt-3 text-3xl font-semibold tracking-[-0.04em] text-white/92">
+                    <p className="font-marketing mt-3 text-3xl font-semibold tracking-[-0.04em] text-foreground">
                       {value}
                     </p>
-                    <p className="mt-2 text-sm leading-7 text-[#bcc5ee]/66">
+                    <p className="mt-2 text-sm leading-7 text-muted-foreground">
                       {detail}
                     </p>
                   </div>
@@ -778,27 +757,27 @@ export default function Landing() {
 
         <section id="insights" className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
-            <div className="glass-panel rounded-[34px] px-8 py-10 md:px-12 md:py-14">
+            <div className="app-panel rounded-lg px-8 py-10 md:px-12 md:py-14">
               <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
                 <div>
-                  <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
+                  <p className="font-marketing text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                     {copy.insights.eyebrow}
                   </p>
                   <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
                     {copy.insights.title}
                   </h2>
-                  <p className="mt-6 max-w-2xl text-base leading-8 text-[#c9d0f5]/70">
+                  <p className="mt-6 max-w-2xl text-base leading-8 text-muted-foreground">
                     {copy.insights.description}
                   </p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   {copy.insights.stats.map(([value, label]) => (
-                    <div key={label} className="glass-panel-soft rounded-[24px] p-5">
-                      <p className="font-marketing text-3xl font-semibold tracking-[-0.04em] text-white">
+                    <div key={label} className="rounded-md border border-border bg-muted/20 p-5">
+                      <p className="font-marketing text-3xl font-semibold tracking-[-0.04em] text-foreground">
                         {value}
                       </p>
-                      <p className="mt-2 text-sm leading-7 text-[#bcc5ee]/64">
+                      <p className="mt-2 text-sm leading-7 text-muted-foreground">
                         {label}
                       </p>
                     </div>
@@ -812,13 +791,13 @@ export default function Landing() {
         <section id="security" className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                 {copy.security.eyebrow}
               </p>
-              <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">
+              <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] text-foreground md:text-5xl">
                 {copy.security.title}
               </h2>
-              <p className="mt-6 text-base leading-8 text-[#c9d0f5]/70">
+              <p className="mt-6 text-base leading-8 text-muted-foreground">
                 {copy.security.description}
               </p>
             </div>
@@ -829,8 +808,8 @@ export default function Landing() {
                 <CarouselContent>
                   {copy.security.cards.map((item) => (
                     <CarouselItem key={item.title} className="basis-full">
-                      <article className="glass-panel rounded-[28px] p-7">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(245,158,11,0.15))] p-2 text-[rgba(233,255,93]">
+                      <article className="app-panel rounded-lg p-7">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 p-2 text-primary">
                           <img
                             src="/landing-icons/security.png"
                             alt=""
@@ -841,7 +820,7 @@ export default function Landing() {
                         <h3 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                           {item.title}
                         </h3>
-                        <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/70">
+                        <p className="mt-4 text-sm leading-7 text-muted-foreground">
                           {item.body}
                         </p>
                       </article>
@@ -858,8 +837,8 @@ export default function Landing() {
             {/* Desktop Grid */}
             <div className="hidden md:grid mt-14 grid gap-6 md:grid-cols-3">
               {copy.security.cards.map((item) => (
-                <article key={item.title} className="glass-panel rounded-[28px] p-7">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(245,158,11,0.15))] p-2 text-[rgba(233,255,93]">
+                <article key={item.title} className="app-panel rounded-lg p-7">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 p-2 text-primary">
                     <img
                       src="/landing-icons/security.png"
                       alt=""
@@ -870,47 +849,46 @@ export default function Landing() {
                   <h3 className="font-marketing mt-6 text-2xl font-semibold tracking-[-0.03em]">
                     {item.title}
                   </h3>
-                  <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/70">
+                  <p className="mt-4 text-sm leading-7 text-muted-foreground">
                     {item.body}
                   </p>
                 </article>
               ))}
             </div>
 
-            <div className="relative mt-12 overflow-hidden rounded-[34px] border border-[#2f3f93]/55 bg-[#060b21] px-8 py-10 text-center shadow-[0_28px_90px_rgba(4,8,28,0.4)] md:px-12 md:py-14">
+            <div className="relative mt-12 overflow-hidden rounded-lg border border-border bg-card px-8 py-10 text-center md:px-12 md:py-14">
               <img
                 src="/landing-icons/readytolunch.png"
                 alt=""
-                className="absolute left-1/2 top-1/2 h-[124%] w-[124%] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover object-center opacity-[0.98] [filter:brightness(1.2)_saturate(1.14)_contrast(1.06)]"
+                className="absolute left-1/2 top-1/2 h-[124%] w-[124%] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover object-center opacity-[0.14] grayscale"
                 aria-hidden="true"
               />
               <div
                 className="absolute inset-0"
                 style={{
                   background:
-                    "linear-gradient(180deg, rgba(6, 11, 33, 0.08) 0%, rgba(6, 11, 33, 0.18) 55%, rgba(6, 11, 33, 0.34) 100%)",
+                    "linear-gradient(180deg, hsl(var(--card) / 0.82) 0%, hsl(var(--card) / 0.94) 100%)",
                 }}
               />
-              <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.08),transparent_68%)]" />
-              <div className="relative z-10 mx-auto max-w-4xl [text-shadow:0_2px_18px_rgba(4,8,28,0.55)]">
-                <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
+              <div className="relative z-10 mx-auto max-w-4xl">
+                <p className="font-marketing text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                   {copy.security.ctaEyebrow}
                 </p>
                 <h2 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
                   {copy.security.ctaTitle}
                 </h2>
-                <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[#d4daf8]/84">
+                <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-muted-foreground">
                   {copy.security.ctaDescription}
                 </p>
                 <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                  <Link href="/login" className="glow-button font-marketing inline-flex items-center gap-2 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-8 py-4 text-base font-bold text-[#071126] transition hover:translate-y-[-1px]">
+                  <Link href="/login" className="font-marketing inline-flex items-center gap-2 rounded-md bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition hover:bg-primary/90">
                       {copy.security.ctaPrimary}
                       <ArrowRight className="h-5 w-5" />
                   </Link>
                   <button
                     type="button"
                     onClick={() => scrollToSection("platform")}
-                    className="font-marketing rounded-full border border-white/12 bg-foreground/[0.04] px-6 py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]"
+                    className="font-marketing rounded-md border border-border bg-card px-6 py-4 text-sm font-semibold text-foreground transition hover:bg-muted/40"
                   >
                     {copy.security.ctaSecondary}
                   </button>

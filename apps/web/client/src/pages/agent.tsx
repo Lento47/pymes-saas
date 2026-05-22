@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm';
 import {
   Send,
   Trash2,
-  Bot,
+  MessageSquareText,
   X,
   ArrowUp,
   Loader2,
@@ -227,7 +227,7 @@ export default function Agent() {
       <header className="relative flex shrink-0 items-center justify-between border-b border-border px-6 py-2.5">
         <div className="flex items-center gap-2.5">
           <div className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-card text-muted-foreground">
-            <Bot style={{ width: 13, height: 13 }} />
+            <MessageSquareText style={{ width: 13, height: 13 }} />
           </div>
           <h1 className="text-[13px] font-semibold tracking-tight text-foreground">Asistente operativo</h1>
           <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -254,7 +254,7 @@ export default function Agent() {
               </div>
             )}
             <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground">
-              <Bot style={{ width: 24, height: 24 }} />
+              <MessageSquareText style={{ width: 24, height: 24 }} />
             </div>
             <h2 className="mb-1.5 text-xl font-semibold tracking-tight text-foreground">Asistente operativo</h2>
             <p className="mb-10 max-w-sm text-center text-sm leading-relaxed text-muted-foreground">
@@ -290,7 +290,7 @@ export default function Agent() {
                     ) : msg.role === 'tool' ? (
                       <CheckCircle2 style={{ width: 12, height: 12 }} />
                     ) : (
-                      <Bot style={{ width: 12, height: 12 }} />
+                      <MessageSquareText style={{ width: 12, height: 12 }} />
                     )}
                   </div>
                 )}

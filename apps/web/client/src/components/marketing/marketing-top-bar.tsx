@@ -22,12 +22,12 @@ export function MarketingTopBar({
   return (
     <nav
       className={cn(
-        "marketing-surface-quiet luminous-border flex min-h-14 items-center justify-between gap-3 rounded-2xl px-4 py-2.5 md:rounded-full md:px-5",
+        "marketing-surface-quiet flex min-h-14 items-center justify-between gap-3 rounded-lg px-4 py-2.5 md:px-5",
         className
       )}
     >
       <Link href="/">
-        <a className="min-w-0 rounded-xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05091d]">
+        <a className="min-w-0 rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           <BrandLockup compact />
         </a>
       </Link>
@@ -36,14 +36,14 @@ export function MarketingTopBar({
         <LanguageSwitcher variant="marketing" />
         {secondaryLabel && (
           <Link href={secondaryHref}>
-            <a className="font-marketing hidden whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold text-white/76 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">
+            <a className="hidden whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-muted/35 hover:text-foreground sm:inline-flex">
               {secondaryLabel}
             </a>
           </Link>
         )}
         {primaryLabel && (
           <Link href={primaryHref}>
-            <a className="glow-button font-marketing inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-4 py-2 text-xs font-bold text-[#071126] transition hover:translate-y-[-1px] sm:text-sm">
+            <a className="inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 sm:text-sm">
               {primaryLabel}
               <ArrowRight className="h-3.5 w-3.5" />
             </a>

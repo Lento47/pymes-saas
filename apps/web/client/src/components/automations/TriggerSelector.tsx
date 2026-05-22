@@ -41,24 +41,24 @@ export function TriggerSelector({ value, onChange, channels, channelId, onChanne
                 type="button"
                 onClick={() => onChange(t.value)}
                 className={cn(
-                  "relative flex flex-col gap-1.5 p-3 rounded-xl border text-left transition-all duration-200",
+                  "relative flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors",
                   isSelected
-                    ? "border-violet-500/50 bg-violet-500/[0.06] ring-1 ring-violet-500/20"
+                    ? "border-primary/45 bg-primary/5"
                     : "border-border/60 bg-card/40 hover:bg-accent/40 hover:border-border"
                 )}
               >
                 {isSelected && (
-                  <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
-                    <Check className="w-2.5 h-2.5 text-white" />
+                  <div className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary">
+                    <Check className="h-2.5 w-2.5 text-primary-foreground" />
                   </div>
                 )}
                 <div className={cn(
                   "w-7 h-7 rounded-lg flex items-center justify-center",
-                  isSelected ? "bg-violet-500/15" : "bg-muted/40"
+                  isSelected ? "bg-primary/10" : "bg-muted/40"
                 )}>
                   <Icon className={cn(
                     "w-3.5 h-3.5",
-                    isSelected ? "text-violet-400" : "text-muted-foreground/60"
+                    isSelected ? "text-primary" : "text-muted-foreground/60"
                   )} />
                 </div>
                 <div>
@@ -73,7 +73,7 @@ export function TriggerSelector({ value, onChange, channels, channelId, onChanne
 
       {/* Channel filter for MESSAGE_RECEIVED */}
       {value === "MESSAGE_RECEIVED" && (
-        <div className="rounded-xl border border-border/60 bg-card/40 p-3 space-y-1.5">
+        <div className="space-y-1.5 rounded-lg border border-border/60 bg-card/40 p-3">
           <Label className="text-[11px] text-muted-foreground">Canal (opcional)</Label>
           <Select value={channelId} onValueChange={onChannelChange}>
             <SelectTrigger className="h-8 text-[11px] bg-background border-border">

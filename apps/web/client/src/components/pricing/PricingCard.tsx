@@ -70,49 +70,45 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
 
   return (
     <div className={cn(
-      'relative rounded-3xl border transition-all backdrop-blur-md p-5',
+      'relative rounded-lg border bg-card p-5 transition-colors',
       tier.popular
-        ? 'border-[#F59E0B]/40 bg-indigo-900/30 shadow-[0_8px_40px_rgba(245,158,11,0.15)] md:scale-105'
-        : 'border-border bg-indigo-900/10 hover:bg-indigo-900/15 hover:border-white/20'
+        ? 'border-primary/35'
+        : 'border-border hover:bg-muted/25'
     )}>
-      {/* Popular Badge */}
       {tier.popular && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <span className="rounded-full bg-[#F59E0B] px-4 py-1.5 text-xs font-bold text-[#051127] shadow-[0_4px_16px_rgba(245,158,11,0.4)] whitespace-nowrap">
-            🌟 RECOMENDADO
+          <span className="whitespace-nowrap rounded-md border border-primary/30 bg-card px-3 py-1.5 text-xs font-semibold text-primary">
+            Recomendado
           </span>
         </div>
       )}
 
-      {/* Header */}
       <div>
-        <h3 className="text-lg font-bold text-white">{tier.name}</h3>
+        <h3 className="text-lg font-semibold text-foreground">{tier.name}</h3>
         <p className="mt-1 text-xs text-muted-foreground">{tier.description}</p>
       </div>
 
-      {/* Pricing */}
       <div className="mt-4">
         {isEnterprise ? (
-          <div className="text-2xl font-bold text-white">Precio personalizado</div>
+          <div className="text-2xl font-semibold text-foreground">Precio personalizado</div>
         ) : (
           <>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-white">${price}</span>
+              <span className="text-4xl font-semibold text-foreground tabular-nums">${price}</span>
               <span className="text-xs text-muted-foreground">/{isAnnual ? 'año' : 'mes'}</span>
             </div>
           </>
         )}
       </div>
 
-      {/* CTA Button */}
       <button
         onClick={handleCTA}
         disabled={loading}
         className={cn(
-          'mt-5 w-full rounded-full px-4 py-2.5 font-semibold transition flex items-center justify-center gap-2 text-xs disabled:opacity-60 disabled:cursor-not-allowed',
+          'mt-5 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
           tier.popular
-            ? 'glow-button bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] text-[#051127] hover:translate-y-[-1px]'
-            : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/[0.08]'
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+            : 'border border-border text-foreground hover:bg-muted/35'
         )}>
         {loading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -124,7 +120,6 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
         )}
       </button>
 
-      {/* Features List */}
       <div className="mt-5 border-t border-border pt-5">
         <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
           Incluye
@@ -134,7 +129,7 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
             const status = tier.featureStatuses?.[feature];
             return (
               <div key={index} className="flex gap-2">
-                <Check className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-[#F59E0B]" />
+                <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-success" />
                 <span className="text-xs text-foreground/85">{feature}</span>
                 {status && (
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
@@ -149,7 +144,6 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
         </div>
       </div>
 
-      {/* Limits */}
       <div className="mt-5 border-t border-border pt-5">
         <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
           Límites
@@ -160,11 +154,11 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
           </div>
         ) : (
           <div className="space-y-1 text-[11px] text-foreground/75">
-            <div>Contactos: <span className="text-white font-semibold">{tier.limits.contacts.toLocaleString()}</span></div>
-            <div>Facturas/mes: <span className="text-white font-semibold">{tier.limits.invoicesPerMonth.toLocaleString()}</span></div>
-            <div>Automatizaciones: <span className="text-white font-semibold">{tier.limits.automations}</span></div>
-            <div>Almacenamiento: <span className="text-white font-semibold">{tier.limits.storageGB} GB</span></div>
-            <div>Ubicaciones: <span className="text-white font-semibold">{tier.limits.locations}</span></div>
+            <div>Contactos: <span className="font-semibold text-foreground">{tier.limits.contacts.toLocaleString()}</span></div>
+            <div>Facturas/mes: <span className="font-semibold text-foreground">{tier.limits.invoicesPerMonth.toLocaleString()}</span></div>
+            <div>Automatizaciones: <span className="font-semibold text-foreground">{tier.limits.automations}</span></div>
+            <div>Almacenamiento: <span className="font-semibold text-foreground">{tier.limits.storageGB} GB</span></div>
+            <div>Ubicaciones: <span className="font-semibold text-foreground">{tier.limits.locations}</span></div>
           </div>
         )}
       </div>

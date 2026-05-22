@@ -3,6 +3,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { BrandLockup } from "@/components/marketing/brand-lockup";
 
 function parseError(err: unknown): string {
   if (!(err instanceof Error)) return "Error desconocido";
@@ -93,18 +94,9 @@ export default function RegisterPage() {
       justifyContent: "center",
       padding: "24px",
     }}>
-      <div style={{ width: "100%", maxWidth: "360px" }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "32px" }}>
-          <div style={{
-            width: "28px", height: "28px",
-            background: "hsl(var(--accent))",
-            borderRadius: "4px",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <span style={{ color: "#fff", fontSize: "11px", fontWeight: 700, lineHeight: 1 }}>P</span>
-          </div>
-          <span style={{ fontSize: "15px", fontWeight: 600, color: "hsl(var(--fg))" }}>Pymeshub</span>
+      <div className="w-full max-w-[380px] rounded-lg border border-border bg-card p-6">
+        <div className="mb-8">
+          <BrandLockup compact textClassName="text-[15px]" />
         </div>
 
         <h1 style={{ fontSize: "20px", fontWeight: 600, color: "hsl(var(--fg))", letterSpacing: "-0.01em", marginBottom: "4px" }}>
@@ -123,21 +115,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            style={{
-              marginTop: "6px",
-              height: "32px",
-              background: loading ? "hsl(var(--accent) / 0.7)" : "hsl(var(--accent))",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              fontSize: "13px",
-              fontWeight: 500,
-              cursor: loading ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "6px",
-            }}
+            className="mt-2 flex h-9 items-center justify-center gap-2 rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading && <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} />}
             Crear cuenta

@@ -60,14 +60,14 @@ export function WorkflowSpine({ triggerType, actionType, hasBoth }: WorkflowSpin
       {/* Trigger step */}
       <div className="flex flex-col items-center gap-1.5">
         <div className={cn(
-          "w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-200",
+          "flex h-10 w-10 items-center justify-center rounded-lg border transition-colors",
           triggerType
-            ? "bg-violet-500/10 border-violet-500/30"
+            ? "border-primary/30 bg-primary/10"
             : "bg-muted/30 border-border/40"
         )}>
           <TriggerIcon className={cn(
             "w-4 h-4 transition-colors",
-            triggerType ? "text-violet-400" : "text-muted-foreground/40"
+            triggerType ? "text-primary" : "text-muted-foreground/40"
           )} />
         </div>
         <span className="text-[10px] font-medium text-center leading-tight px-1 text-foreground/80">
@@ -80,7 +80,7 @@ export function WorkflowSpine({ triggerType, actionType, hasBoth }: WorkflowSpin
         <div className="w-[2px] h-6 bg-muted-foreground/15 rounded-full" />
         <div className={cn(
           "w-1.5 h-1.5 rounded-full -mt-[13px] transition-colors duration-300",
-          hasBoth ? "bg-violet-400 shadow-[0_0_6px_rgba(139,124,246,0.5)]" : "bg-muted-foreground/20"
+          hasBoth ? "bg-primary" : "bg-muted-foreground/20"
         )} />
         <div className="w-[2px] h-6 bg-muted-foreground/15 rounded-full" />
       </div>
@@ -88,7 +88,7 @@ export function WorkflowSpine({ triggerType, actionType, hasBoth }: WorkflowSpin
       {/* Action step */}
       <div className="flex flex-col items-center gap-1.5">
         <div className={cn(
-          "w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-200",
+          "flex h-10 w-10 items-center justify-center rounded-lg border transition-colors",
           actionType
             ? "bg-emerald-500/10 border-emerald-500/30"
             : "bg-muted/30 border-border/40"
@@ -105,7 +105,7 @@ export function WorkflowSpine({ triggerType, actionType, hasBoth }: WorkflowSpin
 
       {/* Summary chip */}
       {hasBoth && (
-        <div className="mt-5 px-2 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-[9px] text-violet-400 font-medium text-center leading-snug">
+        <div className="mt-5 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-center text-[9px] font-medium leading-snug text-primary">
           Si {TRIGGER_LABEL[triggerType]?.toLowerCase()}<br />
           → {ACTION_LABEL[actionType]?.toLowerCase()}
         </div>

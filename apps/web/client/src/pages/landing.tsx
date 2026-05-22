@@ -60,10 +60,10 @@ function MarketingMenuAction({
   onNavigate: (href: string) => void;
 }) {
   const classes = cn(
-    "group block rounded-xl px-4 py-3 text-left transition-all duration-200",
+    "group block rounded-md px-4 py-3 text-left transition-colors duration-150",
     featured
-      ? "bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06]"
-      : "hover:bg-white/[0.04]"
+      ? "border border-border bg-muted/35 hover:bg-muted/55"
+      : "hover:bg-muted/35"
   );
 
   const content = (
@@ -72,16 +72,16 @@ function MarketingMenuAction({
         <div className={cn(
           "flex h-8 w-8 items-center justify-center rounded-lg shrink-0",
           featured
-            ? "bg-[#F59E0B]/10 text-[#F59E0B]"
-            : "bg-white/[0.06] text-white/50 group-hover:text-white/80"
+            ? "bg-primary/10 text-primary"
+            : "bg-muted text-muted-foreground group-hover:text-foreground"
         )}>
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-marketing text-sm font-semibold tracking-[-0.01em] text-white group-hover:text-white/90">
+          <h3 className="font-marketing text-sm font-semibold tracking-[-0.01em] text-foreground">
             {title}
           </h3>
-          <p className="mt-0.5 text-xs leading-5 text-white/40">{description}</p>
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{description}</p>
         </div>
       </div>
     </>
@@ -389,29 +389,7 @@ export default function Landing() {
           ]
         })}
       </script>
-      <div className="relative overflow-hidden bg-[#05091d] text-white">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-0 -translate-x-1/2 overflow-hidden">
-          <div className="relative w-[max(1536px,100vw,calc(100vh*1.5))]">
-            <img
-              src="/images/hero-bg.png"
-              alt=""
-              aria-hidden="true"
-              loading="eager"
-              width="1920"
-              height="800"
-              className="block h-auto w-full max-w-none opacity-[0.92]"
-            />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,28,88,0.10),transparent_44%),linear-gradient(180deg,rgba(4,8,26,0.04)_0%,rgba(5,9,29,0.18)_24%,rgba(5,9,29,0.64)_78%,#05091d_100%)]" />
-          </div>
-        </div>
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,9,29,0.04)_0%,rgba(5,9,29,0.06)_22%,rgba(5,9,29,0.18)_44%,rgba(5,9,29,0.42)_64%,#05091d_86%)]" />
-        <div className="animate-drift-x absolute left-[-10rem] top-[8rem] h-80 w-80 rounded-full bg-[#5771ff]/16 blur-[110px]" />
-        <div className="animate-pulse-halo absolute bottom-[-6rem] right-[-5rem] h-96 w-96 rounded-full bg-[#F59E0B]/12 blur-[130px]" />
-        <div className="absolute right-[20%] top-[30%] h-72 w-72 rounded-full bg-[#4F6EF7]/8 blur-[100px]" />
-        <div className="absolute left-[38%] top-[-4rem] h-64 w-64 rounded-full bg-[#F59E0B]/5 blur-[90px]" />
-        <div className="marketing-grid absolute inset-x-0 bottom-0 h-[36rem] opacity-50" />
-      </div>
+      <div className="relative overflow-hidden bg-background text-foreground">
 
       <main className="relative z-10">
         <section className="px-4 pb-16 pt-6 md:px-8 md:pb-24">
@@ -423,10 +401,10 @@ export default function Landing() {
             >
               <nav
                 className={cn(
-                  "flex items-center justify-between rounded-lg px-5 py-4 md:px-7 transition-all duration-300",
+                  "flex items-center justify-between rounded-lg px-5 py-4 md:px-7 transition-colors",
                   scrolled
-                    ? "bg-[rgba(5,9,29,0.88)] backdrop-blur-[32px] border border-white/[0.06] shadow-sm"
-                    : "glass-panel"
+                    ? "border border-border bg-card"
+                    : "border border-border bg-card"
                 )}
                 data-nav-item
               >
@@ -441,13 +419,13 @@ export default function Landing() {
                       onClick={() =>
                         setActiveMenu((current) => (current === item.key ? null : item.key))
                       }
-                      className="font-marketing text-sm font-medium text-white/78 transition hover:text-white"
+                      className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
                     >
                       {copy.nav[item.key]}
                       <ChevronDown
                         className={cn(
-                          "ml-1 inline h-4 w-4 text-white/55 transition",
-                          activeMenu === item.key && "rotate-180 text-white"
+                          "ml-1 inline h-4 w-4 text-muted-foreground transition",
+                          activeMenu === item.key && "rotate-180 text-foreground"
                         )}
                       />
                     </button>
@@ -456,27 +434,27 @@ export default function Landing() {
 
                 <div className="flex items-center gap-1 md:gap-4 flex-shrink-0">
                   <div className="hidden md:flex items-center gap-4">
-                    <Link href="/pricing" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    <Link href="/pricing" className="text-sm font-medium text-muted-foreground transition hover:text-foreground">
                         {copy.nav.pricing}
                     </Link>
-                    <Link href="/documentation" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    <Link href="/documentation" className="text-sm font-medium text-muted-foreground transition hover:text-foreground">
                         {copy.nav.documentation}
                     </Link>
-                    <Link href="/product" className="font-marketing text-sm font-medium text-white/78 transition hover:text-white">
+                    <Link href="/product" className="text-sm font-medium text-muted-foreground transition hover:text-foreground">
                         {copy.nav.platform}
                     </Link>
                   </div>
-                  <Link href="/login" className="font-marketing hidden sm:block text-sm font-medium text-white/78 transition hover:text-white">
+                  <Link href="/login" className="hidden text-sm font-medium text-muted-foreground transition hover:text-foreground sm:block">
                     {copy.nav.logIn}
                   </Link>
-                  <Link href="/register" className="font-marketing hidden sm:inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px] sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
+                  <Link href="/register" className="hidden items-center gap-1 whitespace-nowrap rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 sm:inline-flex sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
                       {copy.nav.getStarted}
                       <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Link>
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="md:hidden text-white/78 transition hover:text-white flex-shrink-0"
+                    className="flex-shrink-0 text-muted-foreground transition hover:text-foreground md:hidden"
                   >
                     {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                   </button>
@@ -484,31 +462,31 @@ export default function Landing() {
               </nav>
 
               {mobileMenuOpen && (
-                <div className="md:hidden mt-2 glass-panel rounded-xl p-4" data-mobile-menu>
+                <div className="mt-2 rounded-lg border border-border bg-card p-4 md:hidden" data-mobile-menu>
                   <div className="space-y-2">
-                    <Link href="/product" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/product" className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted/35 hover:text-foreground">
                         {copy.nav.platform}
                     </Link>
-                    <Link href="/product" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/product" className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted/35 hover:text-foreground">
                         {copy.nav.workflows}
                     </Link>
-                    <Link href="/product" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/product" className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted/35 hover:text-foreground">
                         {copy.nav.insights}
                     </Link>
-                    <Link href="/product" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/product" className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted/35 hover:text-foreground">
                         {copy.nav.security}
                     </Link>
-                    <div className="border-t border-white/[0.06] pt-2" />
-                    <Link href="/pricing" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <div className="border-t border-border pt-2" />
+                    <Link href="/pricing" className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted/35 hover:text-foreground">
                         {copy.nav.pricing}
                     </Link>
-                    <Link href="/documentation" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/documentation" className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted/35 hover:text-foreground">
                         {copy.nav.documentation}
                     </Link>
-                    <Link href="/login" className="block w-full text-left px-4 py-3 font-marketing text-sm font-medium text-white/78 transition hover:text-white hover:bg-white/5 rounded-lg">
+                    <Link href="/login" className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-muted-foreground transition hover:bg-muted/35 hover:text-foreground">
                         {copy.nav.logIn}
                     </Link>
-                    <Link href="/register" className="font-marketing block w-full text-center items-center gap-1 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-3 py-2 text-xs font-semibold text-white transition hover:translate-y-[-1px]">
+                    <Link href="/register" className="block w-full items-center gap-1 rounded-md bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground transition hover:bg-primary/90">
                         {copy.nav.getStarted}
                         <ArrowRight className="h-3 w-3 inline" />
                     </Link>
@@ -521,14 +499,14 @@ export default function Landing() {
                   className="absolute inset-x-0 top-full z-20 pt-4 pointer-events-auto"
                   data-nav-dropdown
                 >
-                  <div className="bg-[#0a1022]/98 backdrop-blur-xl border border-white/[0.07] rounded-2xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.03)_inset]">
+                  <div className="rounded-lg border border-border bg-card">
                     {/* Header row */}
                     <div className="flex items-center justify-between px-6 pt-5 pb-2">
                       <div>
-                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30">
+                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                           {dropdownMenus[activeMenu].eyebrow}
                         </p>
-                        <h2 className="font-marketing mt-1 text-xl font-semibold tracking-[-0.02em] text-white">
+                        <h2 className="font-marketing mt-1 text-xl font-semibold tracking-[-0.02em] text-foreground">
                           {dropdownMenus[activeMenu].title}
                         </h2>
                       </div>
@@ -537,7 +515,7 @@ export default function Landing() {
                     <div className="grid gap-3 p-4 pt-2 lg:grid-cols-[1fr_1.5fr]">
                       {/* Left: featured */}
                       <div>
-                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-white/25 px-1 pb-2">
+                        <p className="font-marketing px-1 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                           {copy.menus[activeMenu].featuredLabel}
                         </p>
                         <MarketingMenuAction
@@ -564,19 +542,19 @@ export default function Landing() {
             </div>
 
             <div className="mx-auto max-w-4xl pt-16 text-center md:pt-20">
-              <div className="glass-panel-soft inline-flex items-center gap-3 rounded-full px-5 py-2.5 text-sm text-white/84">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_14px_rgba(245,158,11,0.85)]" />
+              <div className="inline-flex items-center gap-3 rounded-md border border-border bg-card px-4 py-2 text-sm text-muted-foreground">
+                <span className="h-2 w-2 rounded-full bg-success" />
                 {copy.intro}
               </div>
 
-              <h1 className="font-marketing mt-6 md:mt-8 text-[2rem] leading-[1.05] tracking-[-0.03em] font-bold text-white sm:text-[2.5rem] md:text-[3.25rem] lg:text-[4rem]">
+              <h1 className="font-marketing mt-6 text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.5rem] md:mt-8 md:text-[3.25rem] lg:text-[4rem]">
                 {copy.title[0]}
                 <br />
                 {copy.title[1]}
               </h1>
 
               <p
-                className="soft-glow mt-3 md:mt-4 text-[1.25rem] font-medium leading-[1.1] tracking-[-0.03em] text-[#FBBF24] sm:text-[1.75rem] md:text-[2.5rem]"
+                className="mt-3 text-[1.25rem] font-medium leading-[1.1] tracking-[-0.03em] text-primary sm:text-[1.75rem] md:mt-4 md:text-[2.5rem]"
                 style={{
                   fontFamily:
                     'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -585,43 +563,43 @@ export default function Landing() {
                 {copy.subtitle}
               </p>
 
-              <p className="mx-auto mt-6 md:mt-8 max-w-3xl text-base leading-7 md:text-lg md:leading-8 text-[#c9d0f5]/78 md:text-xl">
+              <p className="mx-auto mt-6 max-w-3xl text-base leading-7 text-muted-foreground md:mt-8 md:text-lg md:leading-8 lg:text-xl">
                 {copy.description}
               </p>
 
               <div className="mt-8 md:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-                <Link href="/register" className="font-marketing inline-flex items-center gap-2 rounded-lg bg-[#2563eb] px-6 md:px-8 py-3.5 md:py-4 text-sm md:text-base font-bold text-white transition hover:translate-y-[-1px]">
+                <Link href="/register" className="font-marketing inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 md:px-8 md:py-4 md:text-base">
                     {copy.primaryCta}
                     <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
                 </Link>
-                <Link href="/product" className="font-marketing inline-flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.04] px-5 md:px-6 py-3.5 md:py-4 text-sm font-semibold text-white/84 transition hover:border-white/20 hover:bg-white/[0.07]">
+                <Link href="/product" className="font-marketing inline-flex items-center gap-2 rounded-md border border-border bg-card px-5 py-3.5 text-sm font-semibold text-foreground transition hover:bg-muted/40 md:px-6 md:py-4">
                     {copy.secondaryCta}
                 </Link>
               </div>
 
-              <p className="mt-5 text-sm text-[#c9d0f5]/52">
+              <p className="mt-5 text-sm text-muted-foreground">
                 {copy.note}
               </p>
 
               <div className="mt-8 flex items-center justify-center gap-3">
                 <div className="flex -space-x-2">
-                  {["#4F6EF7","#F59E0B","#7FC8F8","#F87171"].map((c, i) => (
-                    <span key={i} className="h-7 w-7 rounded-full border-2 border-[#05091d]" style={{ background: c, opacity: 0.88 }} />
+                  {["bg-primary/20","bg-success/20","bg-warning/20","bg-destructive/20"].map((c, i) => (
+                    <span key={i} className={cn("h-7 w-7 rounded-full border-2 border-background", c)} />
                   ))}
                 </div>
-                <p className="text-sm text-[#c9d0f5]/60">
-                  {copy.trustedByPrefix}<span className="font-semibold text-white/80">{copy.trustedByCount}</span>{copy.trustedBySuffix}
+                <p className="text-sm text-muted-foreground">
+                  {copy.trustedByPrefix}<span className="font-semibold text-foreground">{copy.trustedByCount}</span>{copy.trustedBySuffix}
                 </p>
               </div>
 
               {/* Mini hero dashboard mockup */}
               <div ref={revealMockup} className="mx-auto mt-14 max-w-2xl reveal-up" style={{ transitionDelay: "120ms" }}>
-                <div className="glass-panel rounded-xl p-4 shadow-sm">
+                <div className="app-panel rounded-lg p-4 text-left">
                   <div className="mb-3 flex items-center gap-2 px-1">
-                    {["#ff5f57","#febc2e","#28c840"].map((c, i) => (
-                      <span key={i} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
+                    {["bg-destructive/55","bg-warning/55","bg-success/55"].map((c, i) => (
+                      <span key={i} className={cn("h-2.5 w-2.5 rounded-full", c)} />
                     ))}
-                    <span className="ml-2 text-xs text-white/30 font-marketing">PymesHub — Inbox</span>
+                    <span className="ml-2 text-xs text-muted-foreground font-marketing">PymesHub - Inbox</span>
                   </div>
                   <div className="space-y-2">
                     {[
@@ -629,22 +607,22 @@ export default function Landing() {
                       { ch: "EM", color: "#4F6EF7", name: "Carlos Ríos", msg: "Follow-up scheduled for Friday", time: "14m", dot: false },
                       { ch: "WA", color: "#25D366", name: "Beatriz Salas", msg: "Proposal accepted — pipeline updated", time: "1h", dot: true },
                     ].map((row) => (
-                      <div key={row.name} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5 hover:bg-white/[0.06] transition-colors">
+                      <div key={row.name} className="flex items-center gap-3 rounded-md border border-border-subtle bg-muted/20 px-3 py-2.5 transition-colors hover:bg-muted/35">
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: row.color + "22", color: row.color }}>{row.ch}</span>
                         <div className="min-w-0 flex-1">
-                          <p className="font-marketing text-xs font-semibold text-white/90">{row.name}</p>
-                          <p className="truncate text-[11px] text-white/40">{row.msg}</p>
+                          <p className="font-marketing text-xs font-semibold text-foreground">{row.name}</p>
+                          <p className="truncate text-[11px] text-muted-foreground">{row.msg}</p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <span className="text-[10px] text-white/30">{row.time}</span>
-                          {row.dot && <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B] shadow-[0_0_6px_rgba(203,255,71,0.8)]" />}
+                          <span className="text-[10px] text-muted-foreground">{row.time}</span>
+                          {row.dot && <span className="h-1.5 w-1.5 rounded-full bg-warning" />}
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 flex items-center justify-between rounded-xl bg-white/[0.02] px-3 py-2">
-                    <span className="text-xs text-white/30">3 active threads · avg reply 6 min</span>
-                    <span className="rounded-full bg-[#F59E0B]/10 px-2 py-0.5 text-[10px] font-semibold text-[#F59E0B]">SLA 94%</span>
+                  <div className="mt-3 flex items-center justify-between rounded-md border border-border-subtle bg-muted/20 px-3 py-2">
+                    <span className="text-xs text-muted-foreground">3 active threads - avg reply 6 min</span>
+                    <span className="rounded-md bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">SLA 94%</span>
                   </div>
                 </div>
               </div>
@@ -678,17 +656,17 @@ export default function Landing() {
               <AutomationsCard copy={copy} variant="desktop" />
             </div>
 
-            <div ref={revealTrust} className="reveal-up mt-16 border-t border-white/10 pt-10">
-              <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-[#95a0cc]/44">
+            <div ref={revealTrust} className="reveal-up mt-16 border-t border-border pt-10">
+              <p className="text-center text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground">
                 {copy.trustTitle}
               </p>
               <div className="relative mt-7 overflow-hidden">
-                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-[linear-gradient(to_right,#05091d,transparent)]" />
-                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-[linear-gradient(to_left,#05091d,transparent)]" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-background to-transparent" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-background to-transparent" />
                 <div className="flex animate-marquee items-center gap-12 whitespace-nowrap">
                   {[...copy.trustSignals, ...copy.trustSignals].map((signal, i) => (
-                    <span key={i} className="font-marketing text-lg font-semibold tracking-[-0.02em] text-white/38 inline-flex items-center gap-2">
-                      <span className="h-1 w-1 rounded-full bg-[#4F6EF7]/50" />
+                    <span key={i} className="font-marketing inline-flex items-center gap-2 text-lg font-semibold tracking-[-0.02em] text-muted-foreground">
+                      <span className="h-1 w-1 rounded-full bg-primary/45" />
                       {signal}
                     </span>
                   ))}
@@ -701,15 +679,15 @@ export default function Landing() {
       </main>
 
       {copy.seoHub && (
-        <section className="border-t border-white/10 px-4 py-16 md:px-8">
+        <section className="border-t border-border px-4 py-16 md:px-8">
           <div className="mx-auto max-w-7xl text-center">
-            <p className="font-marketing text-xs font-semibold uppercase tracking-[0.32em] text-[#F59E0B]/68">
+            <p className="font-marketing text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
               {copy.seoHub.eyebrow}
             </p>
             <h2 className="font-marketing mt-3 text-2xl font-semibold tracking-[-0.03em] md:text-3xl">
               {copy.seoHub.title}
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#95a0cc]/70">
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
               {copy.seoHub.description}
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -717,7 +695,7 @@ export default function Landing() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-[#F59E0B]/40 hover:text-white"
+                  className="rounded-md border border-border px-4 py-2 text-sm text-muted-foreground transition hover:bg-muted/35 hover:text-foreground"
                 >
                   {link.label}
                 </Link>

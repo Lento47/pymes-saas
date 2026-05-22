@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 const PLAN_BADGE: Record<string, { label: string; className: string }> = {
   FREE: { label: "Free", className: "border-zinc-500/20 bg-zinc-500/5 text-zinc-400" },
   STARTER: { label: "Starter", className: "border-amber-500/20 bg-amber-500/5 text-amber-400" },
-  GROWTH: { label: "Growth", className: "border-violet-500/20 bg-violet-500/5 text-violet-400" },
+  GROWTH: { label: "Growth", className: "border-primary/20 bg-primary/5 text-primary" },
   ENTERPRISE: { label: "Business+", className: "border-yellow-500/20 bg-yellow-500/5 text-yellow-400" },
 };
 
@@ -220,7 +220,7 @@ export function AutomationSheet({
             size="sm"
             onClick={handleSave}
             disabled={isSaving || !canSave}
-            className="h-8 text-xs gap-1.5 bg-violet-600 hover:bg-violet-700"
+                        className="h-8 gap-1.5 text-xs"
           >
             {isSaving ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />

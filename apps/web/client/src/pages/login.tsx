@@ -60,12 +60,12 @@ function Field({
     <div className="space-y-3">
       <label
         htmlFor={id}
-        className="font-marketing block text-sm font-medium text-white/95"
+        className="block text-xs font-medium text-muted-foreground"
       >
         {label}
       </label>
-      <div className="group flex items-center gap-3 rounded-[20px] border border-indigo-400/25 bg-indigo-900/30 backdrop-blur-sm px-4 py-4 shadow-[0_4px_20px_rgba(79,56,220,0.10)] transition focus-within:border-indigo-400/50 focus-within:bg-indigo-900/40 focus-within:shadow-[0_8px_32px_rgba(79,56,220,0.20)]">
-        <span className="text-white/75">{icon}</span>
+      <div className="group flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10">
+        <span className="text-muted-foreground">{icon}</span>
         <input
           id={id}
           data-testid={`input-${id}`}
@@ -74,11 +74,11 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required={required}
-          className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-white/50 md:text-[15px]"
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/55"
         />
         {rightAdornment}
       </div>
-      {hint && <p className="text-xs leading-6 text-white/70">{hint}</p>}
+      {hint && <p className="text-xs leading-6 text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -247,31 +247,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="dark relative min-h-screen overflow-hidden bg-background px-4 py-10 md:px-6">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div className="relative w-[max(1536px,100vw,calc(100vh*1.5))]">
-              <img
-                src="/images/login-bg.png"
-                alt=""
-                aria-hidden="true"
-                loading="eager"
-                className="block h-auto w-full max-w-none opacity-[0.88]"
-              />
-            </div>
-          </div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(42,60,180,0.12),transparent_36%),linear-gradient(180deg,rgba(3,8,24,0.06),rgba(5,9,29,0.48)_36%,#05091d_100%)]" />
-        </div>
-        <div className="animate-pulse-halo absolute -left-[23rem] top-[-3rem] h-[48rem] w-[48rem] rounded-full border border-[#F59E0B]/22 shadow-[0_0_120px_rgba(245,158,11,0.18)]" />
-        <div className="absolute -left-[17rem] top-[3rem] h-[38rem] w-[38rem] rounded-full border border-[#6c7eff]/18" />
-        <div className="absolute bottom-[10%] right-[6%] h-48 w-48 rounded-full bg-[#F59E0B]/12 blur-[110px]" />
-      </div>
+    <div className="relative min-h-screen overflow-hidden bg-background px-4 py-10 md:px-6">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-border" />
 
       <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
         <div className="w-full max-w-[34rem]">
           <div className="mb-8 flex items-center justify-between gap-4">
-            <Link href="/" className="font-marketing inline-flex items-center gap-2 text-sm font-medium text-white/85 transition hover:text-white">
+            <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
               {copy.back}
             </Link>
@@ -279,16 +261,16 @@ export default function LoginPage() {
             <LanguageSwitcher variant="marketing" />
           </div>
 
-          <div className="bg-indigo-950/50 backdrop-blur-xl border border-indigo-400/20 rounded-[34px] px-6 py-8 md:px-10 md:py-10">
-            <BrandLockup className="justify-center" textClassName="text-xl tracking-[0.32em]" />
+          <div className="rounded-lg border border-border bg-card px-6 py-8 md:px-10 md:py-10">
+            <BrandLockup className="justify-center" textClassName="text-xl" />
 
             {expired && (
-              <div className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-4 text-center">
+              <div className="mt-8 rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-4 text-center">
                 <Clock className="mx-auto mb-2 h-5 w-5 text-amber-400" />
-                <p className="text-sm font-semibold text-amber-300">
+                <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
                   Tu sesión ha expirado
                 </p>
-                <p className="mt-1 text-xs text-amber-200/80">
+                <p className="mt-1 text-xs text-amber-700/80 dark:text-amber-300/80">
                   Por seguridad, la sesión se cierra después de 30 minutos de inactividad. Ingresa de nuevo para continuar.
                 </p>
               </div>
@@ -296,24 +278,24 @@ export default function LoginPage() {
 
             {workspaceOptions.length > 0 ? (
               <div className="mt-10">
-                <h2 className="text-center font-marketing text-xl font-semibold text-white">{copy.workspacePickerTitle}</h2>
-                <p className="mt-2 text-center text-sm text-white/75">{copy.workspacePickerDescription}</p>
+                <h2 className="text-center text-xl font-semibold text-foreground">{copy.workspacePickerTitle}</h2>
+                <p className="mt-2 text-center text-sm text-muted-foreground">{copy.workspacePickerDescription}</p>
                 <div className="mt-6 space-y-3">
                   {workspaceOptions.map((ws) => (
                     <button
                       key={ws.slug}
                       onClick={(e) => { setWorkspaceOptions([]); handleSubmit(e, ws.slug); }}
                       disabled={loading}
-                      className="w-full rounded-2xl border border-border bg-foreground/[0.04] p-4 text-left transition hover:border-white/20 hover:bg-white/[0.08]"
+                      className="w-full rounded-lg border border-border bg-background p-4 text-left transition hover:bg-muted/35"
                     >
-                      <p className="text-sm font-semibold text-white">{ws.name}</p>
-                      <p className="text-xs text-white/75">{ws.slug}</p>
+                      <p className="text-sm font-semibold text-foreground">{ws.name}</p>
+                      <p className="text-xs text-muted-foreground">{ws.slug}</p>
                     </button>
                   ))}
                 </div>
                 <button
                   onClick={() => setWorkspaceOptions([])}
-                  className="mt-4 w-full text-center text-xs text-white/75 hover:text-white/75"
+                  className="mt-4 w-full text-center text-xs text-muted-foreground hover:text-foreground"
                 >
                   {copy.cancel}
                 </button>
@@ -321,10 +303,10 @@ export default function LoginPage() {
             ) : (
               <>
             <div className="mt-10 text-center">
-              <h1 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl md:text-4xl">
+              <h1 className="text-2xl font-semibold tracking-[-0.03em] text-foreground sm:text-3xl">
                 {copy.welcome}
               </h1>
-              <p className="mx-auto mt-4 max-w-md text-base leading-8 text-white/85">
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
                 {copy.description}
               </p>
             </div>
@@ -353,7 +335,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((current) => !current)}
-                    className="text-white/75 transition hover:text-white/85"
+                    className="text-muted-foreground transition hover:text-foreground"
                     aria-label={showPassword ? copy.hidePassword : copy.showPassword}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -365,7 +347,7 @@ export default function LoginPage() {
                 type="submit"
                 disabled={loading}
                 data-testid="button-login"
-                className="glow-button font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] px-6 py-4 text-lg font-semibold text-[#071126] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading && <Loader2 className="h-5 w-5 animate-spin" />}
                 {copy.logIn}
@@ -375,9 +357,9 @@ export default function LoginPage() {
 
             <div className="mt-6">
               <div className="flex items-center gap-4">
-                <div className="h-px flex-1 bg-indigo-400/20" />
-                <span className="text-sm text-white/70">{copy.orContinueWith}</span>
-                <div className="h-px flex-1 bg-indigo-400/20" />
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground">{copy.orContinueWith}</span>
+                <div className="h-px flex-1 bg-border" />
               </div>
               {/* Facebook circular — uses FB.login() with config_id */}
               <button type="button"
@@ -387,7 +369,7 @@ export default function LoginPage() {
                     if (resp?.authResponse?.accessToken) (window as any).handleFbLogin(resp.authResponse.accessToken);
                   }, { config_id: '1375303354406780', scope: 'public_profile' });
                 }}
-                className="mt-3 bg-[#1877F2] font-marketing inline-flex w-full items-center justify-center gap-3 rounded-full px-6 py-4 text-lg font-semibold text-white transition hover:translate-y-[-1px] hover:bg-[#166fe5] cursor-pointer border-none"
+                className="mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-3 rounded-md border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted/35"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                 {copy.facebookLogin}
@@ -420,16 +402,16 @@ export default function LoginPage() {
 
             <div className="mt-8">
               <div className="flex items-center gap-4">
-                <div className="h-px flex-1 bg-indigo-400/20" />
-                <span className="text-sm text-white/70">{copy.forgot}</span>
-                <div className="h-px flex-1 bg-indigo-400/20" />
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground">{copy.forgot}</span>
+                <div className="h-px flex-1 bg-border" />
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <Link href="/accept-invite" className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/95 transition hover:border-white/18 hover:text-white">
+                <Link href="/accept-invite" className="flex items-center justify-center rounded-md border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted/35">
                   {copy.acceptInvite}
                 </Link>
-                <Link href="/legal" className="bg-indigo-900/20 backdrop-blur-sm border border-indigo-400/20 font-marketing flex items-center justify-center rounded-[20px] px-5 py-4 text-sm font-semibold text-white/95 transition hover:border-white/18 hover:text-white">
+                <Link href="/legal" className="flex items-center justify-center rounded-md border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted/35">
                   {copy.legalCenter}
                 </Link>
               </div>
@@ -438,26 +420,26 @@ export default function LoginPage() {
             )}
 
             <div className="mt-10 flex flex-col items-center gap-4 text-center">
-              <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/80">
-                <Link href="/legal/terms-of-service" className="transition hover:text-white/80">{copy.terms}</Link>
-                <span className="h-1 w-1 rounded-full bg-white/40" />
-                <Link href="/legal/privacy-policy" className="transition hover:text-white/80">{copy.privacy}</Link>
+              <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
+                <Link href="/legal/terms-of-service" className="transition hover:text-foreground">{copy.terms}</Link>
+                <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                <Link href="/legal/privacy-policy" className="transition hover:text-foreground">{copy.privacy}</Link>
               </div>
 
-              <p className="text-sm text-white/85">
+              <p className="text-sm text-muted-foreground">
                 {copy.noWorkspace}{" "}
-                <Link href="/" className="font-medium text-[#F59E0B] transition hover:text-[#F59E0B]">
+                <Link href="/" className="font-medium text-primary transition hover:text-primary/80">
                   {copy.explore}
                 </Link>
               </p>
 
-              <p className="text-sm text-white/85">
-                <Link href="/register" className="font-medium text-[#F59E0B] transition hover:text-[#F59E0B]">
+              <p className="text-sm text-muted-foreground">
+                <Link href="/register" className="font-medium text-primary transition hover:text-primary/80">
                   Create account →
                 </Link>
               </p>
 
-              <p className="text-xs uppercase tracking-[0.22em] text-white/60">
+              <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
                 &copy; {new Date().getFullYear()} PymesHub S.A., Lim&oacute;n, Costa Rica
               </p>
             </div>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { Bell, CheckCheck, MessageCircle, CheckSquare, KanbanSquare, Receipt, Zap, AlertTriangle, Bot, ChevronRight } from "lucide-react";
+import { Bell, CheckCheck, MessageCircle, CheckSquare, KanbanSquare, Receipt, Zap, AlertTriangle, ClipboardList, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -11,14 +11,14 @@ const TYPE_CONFIG: Record<string, { icon: typeof Bell; color: string; bg: string
   task_completed: { icon: CheckSquare, color: "text-emerald-400", bg: "bg-emerald-500/10", label: "Tarea completada" },
   task_overdue: { icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/10", label: "Tarea vencida" },
   new_message: { icon: MessageCircle, color: "text-blue-400", bg: "bg-blue-500/10", label: "Nuevo mensaje" },
-  AI_TASK_CREATED: { icon: Bot, color: "text-violet-400", bg: "bg-violet-500/10", label: "Tarea IA" },
+  AI_TASK_CREATED: { icon: ClipboardList, color: "text-muted-foreground", bg: "bg-muted", label: "Tarea creada" },
   deal_created: { icon: KanbanSquare, color: "text-amber-400", bg: "bg-amber-500/10", label: "Negocio creado" },
   deal_stage_changed: { icon: KanbanSquare, color: "text-sky-400", bg: "bg-sky-500/10", label: "Etapa cambiada" },
   deal_won: { icon: KanbanSquare, color: "text-emerald-400", bg: "bg-emerald-500/10", label: "Negocio ganado" },
   invoice_paid: { icon: Receipt, color: "text-emerald-400", bg: "bg-emerald-500/10", label: "Factura pagada" },
   payment_received: { icon: Receipt, color: "text-emerald-400", bg: "bg-emerald-500/10", label: "Pago recibido" },
   invoice_overdue: { icon: Receipt, color: "text-red-400", bg: "bg-red-500/10", label: "Factura vencida" },
-  automation: { icon: Zap, color: "text-violet-400", bg: "bg-violet-500/10", label: "Automatización" },
+  automation: { icon: Zap, color: "text-muted-foreground", bg: "bg-muted", label: "Automatización" },
   conversation_no_reply: { icon: MessageCircle, color: "text-amber-400", bg: "bg-amber-500/10", label: "Sin respuesta" },
 };
 
@@ -79,7 +79,7 @@ export function NotificationBell() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
-            className="fixed right-4 top-14 z-50 w-80 rounded-lg border shadow-xl"
+            className="fixed right-4 top-14 z-50 w-80 rounded-lg border"
             style={{ background: "hsl(var(--bg-elevated))", borderColor: "hsl(var(--border))" }}
           >
             <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: "1px solid hsl(var(--border))" }}>

@@ -57,16 +57,16 @@ export function CookieBanner() {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={() => setVisible(false)} />
+      <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setVisible(false)} />
       <div
         role="dialog"
         aria-label="Configuración de cookies"
-        className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-2xl border border-border/60 bg-card/95 px-5 py-5 shadow-[0_16px_64px_rgba(0,0,0,0.6)] backdrop-blur-xl md:bottom-6"
+        className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-lg border border-border bg-card px-5 py-5 md:bottom-6"
       >
         {!settingsOpen ? (
           <>
             <div className="flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-[#F59E0B] mt-0.5 shrink-0" />
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-success" />
               <div className="flex-1 space-y-2">
                 <p className="text-sm font-semibold text-foreground">
                   Este sitio usa cookies
@@ -86,10 +86,10 @@ export function CookieBanner() {
             </div>
 
             <div className="mt-4 flex gap-2">
-              <button onClick={() => apply("accept_all")} className="flex-1 rounded-full bg-[linear-gradient(90deg,#F59E0B,#D97706)] py-2.5 text-xs font-semibold text-[#071126] transition hover:opacity-90">
+              <button onClick={() => apply("accept_all")} className="flex-1 rounded-md bg-primary py-2.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90">
                 Aceptar todas
               </button>
-              <button onClick={() => apply("reject_non_essential")} className="flex-1 rounded-full border border-white/15 py-2.5 text-xs font-semibold text-foreground/85 transition hover:border-white/30">
+              <button onClick={() => apply("reject_non_essential")} className="flex-1 rounded-md border border-border py-2.5 text-xs font-semibold text-foreground/85 transition hover:bg-muted/35">
                 Solo esenciales
               </button>
             </div>
@@ -100,7 +100,7 @@ export function CookieBanner() {
         ) : (
           <>
             <div className="flex items-center gap-2 mb-4">
-              <Cookie className="w-4 h-4 text-[#F59E0B]" />
+              <Cookie className="h-4 w-4 text-muted-foreground" />
               <p className="text-sm font-semibold text-foreground">Preferencias de cookies</p>
             </div>
 
@@ -152,10 +152,10 @@ export function CookieBanner() {
             </div>
 
             <div className="mt-4 flex gap-2">
-              <button onClick={() => setSettingsOpen(false)} className="flex-1 rounded-full border border-white/15 py-2.5 text-xs font-semibold text-foreground/85">
+              <button onClick={() => setSettingsOpen(false)} className="flex-1 rounded-md border border-border py-2.5 text-xs font-semibold text-foreground/85">
                 Volver
               </button>
-              <button onClick={() => apply("custom")} className="flex-1 rounded-full bg-[linear-gradient(90deg,#F59E0B,#D97706)] py-2.5 text-xs font-semibold text-[#071126]">
+              <button onClick={() => apply("custom")} className="flex-1 rounded-md bg-primary py-2.5 text-xs font-semibold text-primary-foreground">
                 Guardar preferencias
               </button>
             </div>
