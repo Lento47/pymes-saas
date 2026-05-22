@@ -89,9 +89,9 @@ export function AgentRunCard({ run, conversationId }: Props) {
 
   const isRunning = run.status === "RUNNING";
   const isCompleted = run.status === "COMPLETED";
-  const collectedEntries = Object.entries(run.collected).filter(([, v]) => v && v !== "N/A");
+  const collectedEntries = Object.entries(run.collected ?? {}).filter(([, v]) => v && v !== "N/A");
   const intentLabel = INTENT_LABELS[run.intent] ?? run.intent;
-  const currentField = run.pending_fields[0];
+  const currentField = (run.pending_fields ?? [])[0];
 
   return (
     <div
