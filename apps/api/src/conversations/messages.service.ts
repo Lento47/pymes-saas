@@ -5,6 +5,7 @@ import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { ConversationsService } from "./conversations.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { AiService } from "../ai/ai.service";
+import { EmrendeAiService } from "../ai/emprende-ai.service";
 import { TasksService } from "../tasks/tasks.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { Contact, Priority } from "@prisma/client";
@@ -33,6 +34,8 @@ export class MessagesService {
     private readonly conversationsService: ConversationsService,
     private readonly events: EventsGateway,
     private readonly aiService: AiService,
+    @Inject(forwardRef(() => EmrendeAiService))
+    private readonly emprendeAiService: EmrendeAiService,
     private readonly tasksService: TasksService,
     private readonly notificationsService: NotificationsService,
     private readonly automationsService: AutomationsService,
@@ -164,10 +167,32 @@ export class MessagesService {
 
     await this.conversationsService.touchLastMessage(workspaceId, conversationId);
 
+    // Human handover: if AI was active and a human agent just wrote, transfer control to human
+    this.handoverToHuman(workspaceId, conversationId).catch(() => {});
+
     const serialized = this.serializeMessageForClient(message);
     this.events.emitNewMessage(conversationId, workspaceId, serialized);
 
     return serialized;
+  }
+
+  private async handoverToHuman(workspaceId: string, conversationId: string): Promise<void> {
+    const conv = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { metadata_json: true },
+    });
+    if (!conv) return;
+    const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
+    if (meta.ai_state !== "AI_ACTIVE") return;
+
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        metadata_json: { ...meta, ai_state: "HUMAN_ACTIVE" },
+        updated_at: new Date(),
+      },
+      select: { id: true },
+    });
   }
 
   async receiveInbound(provider: string, workspaceId: string, payload: Record<string, any>) {
@@ -444,6 +469,10 @@ export class MessagesService {
       this.logger.error("Error en análisis de IA", err?.stack ?? err),
     );
 
+    this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText).catch((err) =>
+      this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
+    );
+
     return { ok: true, message_id: message.id, conversation_id: conversation.id };
   }
 
@@ -648,6 +677,10 @@ export class MessagesService {
 
     this.triggerAiAnalysis(workspaceId, conversationId, contactId).catch((err) =>
       this.logger.error("Error en análisis de IA", err?.stack ?? err),
+    );
+
+    this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText).catch((err) =>
+      this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
     );
   }
 
@@ -1025,5 +1058,80 @@ export class MessagesService {
         }
       }
     }
+  }
+
+  private async triggerEmrendeAutoReply(
+    workspaceId: string,
+    conversationId: string,
+    inboundText: string,
+  ): Promise<void> {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { plan: true, settings_json: true },
+    });
+    if (!workspace) return;
+
+    const settings = (workspace.settings_json as Record<string, unknown>) ?? {};
+    if (!settings.ai_auto_reply_enabled) return;
+
+    // Only EMPRENDE+ plans
+    const EMPRENDE_PLUS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
+    if (!EMPRENDE_PLUS.includes(workspace.plan)) return;
+
+    // Check conversation ai_state — skip if human has taken over
+    const conv = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { metadata_json: true, channel_id: true },
+    });
+    if (!conv) return;
+
+    const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
+    if (meta.ai_state === "HUMAN_ACTIVE") return;
+
+    // Throttle: don't reply again within 30 seconds
+    const lastAiReply = meta.last_ai_reply_at as string | undefined;
+    if (lastAiReply && Date.now() - new Date(lastAiReply).getTime() < 30_000) return;
+
+    const replyText = await this.emprendeAiService.generateReply(
+      workspaceId,
+      conversationId,
+      inboundText,
+    );
+    if (!replyText) return;
+
+    // Store AI reply as outbound message
+    const aiMessage = await this.prisma.message.create({
+      data: {
+        workspace_id: workspaceId,
+        conversation_id: conversationId,
+        direction: "OUTBOUND",
+        sender_name: "Asistente IA",
+        sender_ref: "ai@emprende",
+        body_text: replyText,
+        sent_at: new Date(),
+        delivery_status: "SENT",
+        message_type: "TEXT",
+        has_media: false,
+        media_status: "NONE",
+      },
+    });
+
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        last_message_at: new Date(),
+        updated_at: new Date(),
+        metadata_json: {
+          ...meta,
+          ai_state: "AI_ACTIVE",
+          last_ai_reply_at: new Date().toISOString(),
+        },
+      },
+      select: { id: true },
+    });
+
+    this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessageForClient(aiMessage));
+
+    this.logger.log(`EmrendeAI auto-reply sent to conversation ${conversationId}`);
   }
 }

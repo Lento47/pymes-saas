@@ -4,6 +4,7 @@ import { Job } from "bullmq";
 import { ConversationStatus, Priority } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { NotificationsService } from "../../notifications/notifications.service";
+import { EmrendeAiService } from "../../ai/emprende-ai.service";
 import { stringifyJson } from "../../common/prisma/json";
 import { QUEUE_NAMES } from "../queues.constants";
 
@@ -15,7 +16,7 @@ interface AutomationJobData {
 }
 
 interface AutomationAction {
-  type: "set_priority" | "set_status" | "assign" | "create_task" | "notify" | "notify_in_app";
+  type: "set_priority" | "set_status" | "assign" | "create_task" | "notify" | "notify_in_app" | "ai_auto_reply" | "ai_create_task";
   priority?: string;
   status?: string;
   user_id?: string;
@@ -33,6 +34,7 @@ export class AutomationProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly emprendeAi: EmrendeAiService,
   ) {
     super();
   }
@@ -320,9 +322,96 @@ export class AutomationProcessor extends WorkerHost {
         }
         break;
 
+      case "ai_auto_reply": {
+        const ok = await this.checkEmprendePlan(workspaceId);
+        if (!ok) {
+          this.logger.warn(`ai_auto_reply skipped — workspace ${workspaceId} not on EMPRENDE+ plan`);
+          break;
+        }
+        if (conversationTargetId) {
+          const msg = await this.prisma.message.findFirst({
+            where: { conversation_id: conversationTargetId, direction: "INBOUND" },
+            orderBy: { sent_at: "desc" },
+            select: { body_text: true },
+          });
+          if (msg?.body_text) {
+            const reply = await this.emprendeAi.generateReply(
+              workspaceId,
+              conversationTargetId,
+              msg.body_text,
+            );
+            await this.prisma.message.create({
+              data: {
+                workspace_id: workspaceId,
+                conversation_id: conversationTargetId,
+                direction: "OUTBOUND",
+                sender_name: "Asistente IA",
+                sender_ref: "ai@emprende",
+                body_text: reply,
+                sent_at: new Date(),
+                delivery_status: "SENT",
+                message_type: "TEXT",
+                has_media: false,
+                media_status: "NONE",
+              },
+            });
+            await this.prisma.conversation.update({
+              where: { id: conversationTargetId },
+              data: { last_message_at: new Date(), updated_at: new Date() },
+              select: { id: true },
+            });
+          }
+        }
+        break;
+      }
+
+      case "ai_create_task": {
+        const ok = await this.checkEmprendePlan(workspaceId);
+        if (!ok) {
+          this.logger.warn(`ai_create_task skipped — workspace ${workspaceId} not on EMPRENDE+ plan`);
+          break;
+        }
+        const msg = conversationTargetId
+          ? await this.prisma.message.findFirst({
+              where: { conversation_id: conversationTargetId, direction: "INBOUND" },
+              orderBy: { sent_at: "desc" },
+              select: { body_text: true },
+            })
+          : null;
+        if (msg?.body_text) {
+          const suggestions = await this.emprendeAi.suggestTasksFromMessage(
+            workspaceId,
+            msg.body_text,
+          );
+          for (const s of suggestions) {
+            await this.prisma.task.create({
+              data: {
+                workspace_id: workspaceId,
+                title: s.title,
+                description: s.description,
+                priority: s.priority as Priority,
+                status: "TODO",
+                source: "AUTOMATION",
+                conversation_id: conversationTargetId ?? undefined,
+              },
+            });
+          }
+        }
+        break;
+      }
+
       default:
         this.logger.warn(`Unknown action type: ${action.type}`);
     }
+  }
+
+  private async checkEmprendePlan(workspaceId: string): Promise<boolean> {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { plan: true },
+    });
+    const EMPRENDE_PLUS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
+    return EMPRENDE_PLUS.includes(ws?.plan ?? "");
   }
 
   private describeAction(action: AutomationAction): string {
@@ -339,6 +428,10 @@ export class AutomationProcessor extends WorkerHost {
         return "Notificación enviada";
       case "notify_in_app":
         return "Notificación en app";
+      case "ai_auto_reply":
+        return "Respuesta automática IA enviada";
+      case "ai_create_task":
+        return "Tareas IA creadas desde mensaje";
       default:
         return `Acción: ${action.type}`;
     }

@@ -58,6 +58,7 @@ interface PlanLimits {
   product_categories: number | "custom";
   diagnostics_per_day: number | "custom";
   media_messages_per_day: number | "custom";
+  ai_chat_messages_per_day?: number | "custom";
 }
 
 export type { PlanLimits };
@@ -107,7 +108,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   },
   EMPRENDE: {
     users: 1,
-    automations: 3,
+    automations: 10,
     contacts: 500,
     documents: 100,
     invoices_per_month: 25,
@@ -118,6 +119,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     product_categories: 5,
     diagnostics_per_day: 10,
     media_messages_per_day: 10,
+    ai_chat_messages_per_day: 100,
   },
   BUSINESS: {
     users: 15,

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -87,6 +88,8 @@ const SUGGESTIONS = [
   { text: 'Resume las cuentas por cobrar que requieren atención', sub: 'Facturación' },
 ];
 
+const EMPRENDE_ONLY = ["EMPRENDE"];
+
 export default function Agent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -98,6 +101,13 @@ export default function Agent() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [escalating, setEscalating] = useState(false);
   const [escalated, setEscalated] = useState(false);
+
+  const { data: workspace } = useQuery({
+    queryKey: ['/api/workspaces/current'],
+    queryFn: () => api.getWorkspace(),
+  });
+  const plan: string = (workspace as any)?.plan ?? 'FREE';
+  const isEmprendeMode = EMPRENDE_ONLY.includes(plan);
   const [location] = useLocation();
   const pageContext = useMemo(() => {
     const params = new URLSearchParams(location.split('?')[1] || '');
@@ -126,6 +136,21 @@ export default function Agent() {
     setToolCalls([]);
     setInput('');
     setIsStreaming(true);
+
+    // EMPRENDE plan: use simplified Cloudflare AI chat (no SSE streaming)
+    if (isEmprendeMode) {
+      try {
+        const { reply } = await api.emprendeChat(messageText, conversationId);
+        setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, content: reply, isStreaming: false } : m));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Error al procesar tu mensaje';
+        setError(msg);
+        setMessages(prev => prev.map(m => m.id === agentMessage.id ? { ...m, role: 'system', content: msg, isStreaming: false } : m));
+      } finally {
+        setIsStreaming(false);
+      }
+      return;
+    }
 
     try {
       const response = await api.createAgentStream(messageText, conversationId);
@@ -229,7 +254,14 @@ export default function Agent() {
           <div className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-card text-muted-foreground">
             <MessageSquareText style={{ width: 13, height: 13 }} />
           </div>
-          <h1 className="text-[13px] font-semibold tracking-tight text-foreground">Asistente operativo</h1>
+          <h1 className="text-[13px] font-semibold tracking-tight text-foreground">
+            {isEmprendeMode ? 'Asistente Emprende' : 'Asistente operativo'}
+          </h1>
+          {isEmprendeMode && (workspace as any)?.name && (
+            <span className="text-[11px] text-muted-foreground">
+              · {(workspace as any).name}
+            </span>
+          )}
           <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             {isStreaming ? 'Procesando' : 'Disponible'}
           </span>

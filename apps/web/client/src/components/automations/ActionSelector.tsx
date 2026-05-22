@@ -1,4 +1,4 @@
-import { Check, Bell, Flag, CircleDot, UserPlus } from "lucide-react";
+import { Check, Bell, Flag, CircleDot, UserPlus, Sparkles, ListTodo } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,11 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const ACTIONS = [
-  { value: "notify_in_app", icon: Bell, label: "Notificar en app", desc: "Envía una notificación interna al usuario configurado" },
-  { value: "set_priority", icon: Flag, label: "Cambiar prioridad", desc: "Modifica la prioridad de la conversación o tarea" },
-  { value: "set_status", icon: CircleDot, label: "Cambiar estado", desc: "Actualiza el estado de la conversación o tarea" },
-  { value: "assign", icon: UserPlus, label: "Asignar agente", desc: "Asigna la conversación o tarea a un miembro" },
-  { value: "create_task", icon: Check, label: "Crear tarea", desc: "Genera una nueva tarea en el workspace" },
+  { value: "notify_in_app", icon: Bell, label: "Notificar en app", desc: "Envía una notificación interna al usuario configurado", plan: null },
+  { value: "set_priority", icon: Flag, label: "Cambiar prioridad", desc: "Modifica la prioridad de la conversación o tarea", plan: null },
+  { value: "set_status", icon: CircleDot, label: "Cambiar estado", desc: "Actualiza el estado de la conversación o tarea", plan: null },
+  { value: "assign", icon: UserPlus, label: "Asignar agente", desc: "Asigna la conversación o tarea a un miembro", plan: null },
+  { value: "create_task", icon: Check, label: "Crear tarea", desc: "Genera una nueva tarea en el workspace", plan: null },
+  { value: "ai_auto_reply", icon: Sparkles, label: "IA: Auto-responder", desc: "Cloudflare AI responde automáticamente con el contexto del negocio", plan: "EMPRENDE" },
+  { value: "ai_create_task", icon: ListTodo, label: "IA: Crear tareas", desc: "La IA analiza el mensaje y crea tareas pertinentes", plan: "EMPRENDE" },
 ] as const;
 
 const PRIORITIES = [
@@ -34,9 +36,12 @@ interface ActionSelectorProps {
   actionValue: string;
   onActionValueChange: (v: string) => void;
   members: Record<string, any>[];
+  currentPlan?: string;
 }
 
-export function ActionSelector({ value, onChange, actionValue, onActionValueChange, members }: ActionSelectorProps) {
+const EMPRENDE_PLANS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
+
+export function ActionSelector({ value, onChange, actionValue, onActionValueChange, members, currentPlan = "FREE" }: ActionSelectorProps) {
   return (
     <div className="space-y-4">
       <div>
@@ -47,16 +52,21 @@ export function ActionSelector({ value, onChange, actionValue, onActionValueChan
           {ACTIONS.map((a) => {
             const Icon = a.icon;
             const isSelected = value === a.value;
+            const needsEmprende = a.plan === "EMPRENDE";
+            const isLocked = needsEmprende && !EMPRENDE_PLANS.includes(currentPlan);
             return (
               <button
                 key={a.value}
                 type="button"
-                onClick={() => onChange(a.value)}
+                onClick={() => !isLocked && onChange(a.value)}
+                title={isLocked ? "Requiere plan EMPRENDE+" : undefined}
                 className={cn(
                   "relative flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors",
                   isSelected
                     ? "border-primary/45 bg-primary/5"
-                    : "border-border/60 bg-card/40 hover:bg-accent/40 hover:border-border"
+                    : isLocked
+                      ? "border-border/40 bg-card/20 opacity-60 cursor-not-allowed"
+                      : "border-border/60 bg-card/40 hover:bg-accent/40 hover:border-border"
                 )}
               >
                 {isSelected && (
@@ -64,13 +74,18 @@ export function ActionSelector({ value, onChange, actionValue, onActionValueChan
                     <Check className="h-2.5 w-2.5 text-primary-foreground" />
                   </div>
                 )}
+                {needsEmprende && !isSelected && (
+                  <div className="absolute right-2 top-2 text-[9px] font-semibold px-1 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                    EMPRENDE+
+                  </div>
+                )}
                 <div className={cn(
                   "w-7 h-7 rounded-lg flex items-center justify-center",
-                  isSelected ? "bg-primary/10" : "bg-muted/40"
+                  isSelected ? "bg-primary/10" : needsEmprende ? "bg-primary/5" : "bg-muted/40"
                 )}>
                   <Icon className={cn(
                     "w-3.5 h-3.5",
-                    isSelected ? "text-primary" : "text-muted-foreground/60"
+                    isSelected ? "text-primary" : needsEmprende ? "text-primary/60" : "text-muted-foreground/60"
                   )} />
                 </div>
                 <div>
@@ -167,6 +182,20 @@ export function ActionSelector({ value, onChange, actionValue, onActionValueChan
                 </SelectContent>
               </Select>
             </div>
+          )}
+
+          {/* ai_auto_reply — no config needed */}
+          {value === "ai_auto_reply" && (
+            <p className="text-[11px] text-muted-foreground">
+              Cloudflare AI generará una respuesta contextualizada con la información de tu negocio y la enviará automáticamente.
+            </p>
+          )}
+
+          {/* ai_create_task — no config needed */}
+          {value === "ai_create_task" && (
+            <p className="text-[11px] text-muted-foreground">
+              La IA analizará el mensaje del cliente y creará las tareas necesarias para atenderlo. Sin configuración adicional.
+            </p>
           )}
 
           {/* create_task */}
