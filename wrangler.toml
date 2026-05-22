@@ -11,7 +11,7 @@ routes = [
 ]
 
 [build]
-command = "pnpm install --frozen-lockfile && cd apps/web && pnpm run build"
+command = "cd apps/web && pnpm run build"
 watch_paths = [
   "apps/web/**",
   "packages/shared-types/**",
