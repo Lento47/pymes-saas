@@ -68,13 +68,19 @@ export function AgentRunCard({ run, conversationId }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
+  const status = run?.status;
+  const collected = run?.collected ?? {};
+  const pendingFields = Array.isArray(run?.pending_fields) ? run.pending_fields : [];
+  const steps = Array.isArray(run?.steps) ? run.steps : [];
+  const artifact = run?.artifact ?? null;
+
   // Auto-dismiss completed run after 8 seconds
   useEffect(() => {
-    if (run.status === "COMPLETED") {
+    if (status === "COMPLETED") {
       const t = setTimeout(() => setDismissed(true), 8000);
       return () => clearTimeout(t);
     }
-  }, [run.status]);
+  }, [status]);
 
   const stopMut = useMutation({
     mutationFn: () => api.stopAgentRun(conversationId),
@@ -85,13 +91,14 @@ export function AgentRunCard({ run, conversationId }: Props) {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  if (dismissed || run.status === "CANCELLED") return null;
+  if (!run?.id || !status) return null;
+  if (dismissed || status === "CANCELLED") return null;
 
-  const isRunning = run.status === "RUNNING";
-  const isCompleted = run.status === "COMPLETED";
-  const collectedEntries = Object.entries(run.collected ?? {}).filter(([, v]) => v && v !== "N/A");
-  const intentLabel = INTENT_LABELS[run.intent] ?? run.intent;
-  const currentField = (run.pending_fields ?? [])[0];
+  const isRunning = status === "RUNNING";
+  const isCompleted = status === "COMPLETED";
+  const collectedEntries = Object.entries(collected).filter(([, v]) => v && v !== "N/A");
+  const intentLabel = INTENT_LABELS[run.intent] ?? run.intent ?? "Agente";
+  const currentField = pendingFields[0];
 
   return (
     <div
@@ -180,10 +187,10 @@ export function AgentRunCard({ run, conversationId }: Props) {
       )}
 
       {/* Artifact when completed */}
-      {isCompleted && run.artifact && (
+      {isCompleted && artifact && (
         <div className="mx-3 mb-2 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3 py-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="text-emerald-300 text-xs font-medium flex-1 truncate">{run.artifact.title}</span>
+          <span className="text-emerald-300 text-xs font-medium flex-1 truncate">{artifact.title}</span>
           <a
             href="/tasks"
             className="flex items-center gap-1 text-xs text-emerald-400/70 hover:text-emerald-300 transition-colors"
@@ -194,9 +201,9 @@ export function AgentRunCard({ run, conversationId }: Props) {
       )}
 
       {/* Expanded steps */}
-      {expanded && run.steps.length > 0 && (
+      {expanded && steps.length > 0 && (
         <div className="border-t border-border/30 px-3 py-2 space-y-1.5">
-          {run.steps.map((step, i) => (
+          {steps.map((step, i) => (
             <div key={i} className="flex items-start gap-2 text-xs">
               <div className="mt-0.5 shrink-0">
                 {step.type === "ARTIFACT_CREATED" ? (

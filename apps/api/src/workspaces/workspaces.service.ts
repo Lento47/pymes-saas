@@ -51,6 +51,19 @@ export class WorkspacesService {
       ai_message_finance_opt_in: settings.ai_message_finance_opt_in === true,
       ai_provider: settings.ai_provider ?? null,
       ai_model: settings.ai_model ?? null,
+      ai_business_prompt: settings.ai_business_prompt ?? "",
+      ai_business_products_services: settings.ai_business_products_services ?? "",
+      ai_business_policies: settings.ai_business_policies ?? "",
+      ai_business_tone: settings.ai_business_tone ?? "",
+      ai_agent_assignment_mode:
+        settings.ai_agent_assignment_mode ?? "conversation_assignee",
+      ai_agent_default_assignee_id: settings.ai_agent_default_assignee_id ?? "",
+      ai_agent_intent_assignees:
+        settings.ai_agent_intent_assignees &&
+        typeof settings.ai_agent_intent_assignees === "object" &&
+        !Array.isArray(settings.ai_agent_intent_assignees)
+          ? settings.ai_agent_intent_assignees
+          : {},
       // IMPORTANTE — DEFAULT A `staging` PARA DEV. EN PROD, CADA WORKSPACE
       // DEBE FIJAR EXPLICITAMENTE `hacienda_environment='production'` EN
       // SUS SETTINGS, SINO LAS FACTURAS VAN AL AMBIENTE STAGING DE HACIENDA.
