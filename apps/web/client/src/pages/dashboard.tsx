@@ -1,33 +1,55 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
+import { useFeatureFlags } from "@/hooks/use-feature-flags";
 import { PageHeader } from "@/components/shared/page-header";
-import { MetricCard, SectionCard } from "@/components/layout/page-template";
-import { StatusBadge } from "@/components/shared/status-badge";
-import { PriorityDot } from "@/components/shared/priority-dot";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
-import { InsightsWidget } from "@/components/shared/insights-widget";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  RefreshCw, Loader2, ArrowRight, AlertTriangle, Plus, MessageSquare,
-  Users, CheckSquare, FileText, MessageCircle, TrendingUp
+  MessageSquare, Users, Clock, CheckCircle2, AlertCircle,
+  ArrowRight, TrendingUp, MessageCircle, FileText, Zap,
 } from "lucide-react";
-import { format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
-// ── Quick Action Button ───────────────────────────────────────────────────────
-function QuickAction({
-  icon: Icon,
-  label,
-  href,
+// ── Metric Card ──────────────────────────────────────────────────────────────
+function MetricCard({
+  icon: Icon, label, value, subtitle, color, loading, href,
 }: {
-  icon: any;
-  label: string;
-  href: string;
+  icon: any; label: string; value: number | string; subtitle?: string;
+  color: string; loading?: boolean; href?: string;
 }) {
+  const colorMap: Record<string, string> = {
+    blue: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    orange: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    red: "bg-red-500/10 text-red-400 border-red-500/20",
+    purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    green: "bg-green-500/10 text-green-400 border-green-500/20",
+  };
+
+  const card = (
+    <div className="bg-card border border-border rounded-xl p-5 hover:border-primary/30 transition-colors">
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${colorMap[color]}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        {href && <ArrowRight className="w-4 h-4 text-muted-foreground" />}
+      </div>
+      {loading ? (
+        <Skeleton className="h-8 w-16 mb-1" />
+      ) : (
+        <p className="text-2xl font-bold text-foreground mb-1">{value}</p>
+      )}
+      <p className="text-sm font-medium text-foreground">{label}</p>
+      {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+    </div>
+  );
+
+  return href ? <Link href={href}>{card}</Link> : card;
+}
+
+// ── Quick Action ─────────────────────────────────────────────────────────────
+function QuickAction({ icon: Icon, label, href }: { icon: any; label: string; href: string }) {
   return (
     <Link href={href}>
       <a className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border bg-card hover:border-primary/40 hover:bg-accent transition">
@@ -38,12 +60,36 @@ function QuickAction({
   );
 }
 
-export default function DashboardPage() {
-  useRequireAuth();
-  const { user } = useAuth();
-  const { toast } = useToast();
+// ── Conversation Row ─────────────────────────────────────────────────────────
+function ConvRow({ conv }: { conv: any }) {
+  const timeAgo = conv.updated_at
+    ? formatDistanceToNow(new Date(conv.updated_at), { addSuffix: true, locale: es })
+    : "";
 
-  // Fetch all data
+  return (
+    <Link href={`/inbox/${conv.id}`}>
+      <a className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition rounded-lg">
+        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary shrink-0">
+          {conv.contact?.full_name?.charAt(0) || "?"}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground truncate">
+            {conv.contact?.full_name || "Contacto"}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">
+            {conv.last_message_preview || conv.subject || "Sin mensajes"}
+          </p>
+        </div>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">{timeAgo}</span>
+      </a>
+    </Link>
+  );
+}
+
+// ── Emprende Dashboard ───────────────────────────────────────────────────────
+function EmprendeDashboard() {
+  const { user } = useAuth();
+
   const { data: todayStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/workspaces/current/stats/today"],
     queryFn: api.getTodayStats,
@@ -52,36 +98,19 @@ export default function DashboardPage() {
 
   const { data: conversations, isLoading: convsLoading } = useQuery({
     queryKey: ["/api/conversations", "dash"],
-    queryFn: () => api.getConversations({ limit: "10" }),
+    queryFn: () => api.getConversations({ limit: "5", status: "OPEN" }),
   });
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery({
-    queryKey: ["/api/tasks", "dash"],
-    queryFn: () => api.getTasks({ limit: "10" }),
+  const { data: contacts } = useQuery({
+    queryKey: ["/api/contacts", "recent"],
+    queryFn: () => api.getContacts({ limit: "5", sort: "created_at_desc" }),
   });
 
-  const { data: overdueInvoices, isLoading: invoicesLoading } = useQuery({
-    queryKey: ["/api/invoices", "overdue-widget"],
-    queryFn: () => api.getInvoices({ status: "OVERDUE", limit: "5" }),
-    refetchInterval: 60000,
-  });
-
-  const { data: summaries } = useQuery({
-    queryKey: ["/api/summaries/daily"],
-    queryFn: () => api.getDailySummaries(),
-  });
-
-  // Parse data
   const convList = Array.isArray(conversations) ? conversations : conversations?.data ?? [];
-  const taskList = Array.isArray(tasks) ? tasks : tasks?.data ?? [];
-  const overdueInvoiceList = Array.isArray(overdueInvoices)
-    ? overdueInvoices
-    : overdueInvoices?.data ?? [];
-  const overdueCount = overdueInvoiceList.length;
-  const overdueAmount = overdueInvoiceList.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
-  const lastSummary = Array.isArray(summaries) ? summaries[0] : summaries?.data?.[0] ?? null;
+  const contactList = Array.isArray(contacts) ? contacts : contacts?.data ?? [];
+  const pendingCount = convList.length;
+  const newContacts = contactList.length;
 
-  // Greeting
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return "Buenos días";
@@ -93,201 +122,170 @@ export default function DashboardPage() {
     <div className="min-h-full bg-background">
       {/* Header */}
       <div className="bg-card border-b border-border">
-        <div className="px-6 py-4 max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-bold text-foreground">
-              {greeting()}, {user?.name?.split(" ")[0] || "Usuario"}.
-            </h1>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Buscar en PymeHub..."
-                className="px-4 py-2 rounded-lg border border-border bg-elevated text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <Button variant="outline" size="sm">
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">Aquí está lo más importante de tu negocio hoy.</p>
+        <div className="px-6 py-6 max-w-5xl mx-auto">
+          <h1 className="text-2xl font-bold text-foreground mb-1">
+            {greeting()}, {user?.name?.split(" ")[0] || "Usuario"} 👋
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Aquí está lo más importante de tu negocio hoy.
+          </p>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-6 py-8 max-w-7xl mx-auto">
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+      {/* Content */}
+      <div className="px-6 py-8 max-w-5xl mx-auto">
+        {/* Key Metrics Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <MetricCard
-            label="Ingresos este mes"
-            value={todayStats?.monthly_revenue || 0}
-            currency="€"
-            trend={18.6}
-            trendLabel="vs. mes anterior"
-            icon={TrendingUp}
-            loading={statsLoading}
+            icon={MessageSquare}
+            label="Pendientes"
+            value={pendingCount}
+            subtitle="conversaciones"
             color="blue"
+            loading={convsLoading}
+            href="/inbox"
           />
           <MetricCard
-            label="Por cobrar"
-            value={overdueAmount}
-            currency="€"
-            loading={invoicesLoading}
-            color="orange"
-          />
-          <MetricCard
-            label="Tareas urgentes"
-            value={taskList.filter((t: any) => t.priority === "HIGH").length}
-            trendLabel="vencen hoy"
-            loading={tasksLoading}
+            icon={AlertCircle}
+            label="Sin responder"
+            value={todayStats?.unanswered_messages ?? 0}
+            subtitle="mensajes"
             color="red"
+            loading={statsLoading}
+            href="/inbox"
           />
           <MetricCard
-            label="Nuevos mensajes"
-            value={todayStats?.new_messages || 0}
-            trendLabel="sin leer"
-            loading={statsLoading}
-            color="purple"
-          />
-          <MetricCard
-            label="Negocios en pipeline"
-            value={12}
-            currency="€"
-            trendLabel="en valor"
-            loading={statsLoading}
+            icon={Users}
+            label="Nuevos clientes"
+            value={newContacts}
+            subtitle="esta semana"
             color="green"
+            loading={convsLoading}
+            href="/contacts"
+          />
+          <MetricCard
+            icon={Clock}
+            label="Seguimientos"
+            value={todayStats?.overdue_followups ?? 0}
+            subtitle="pendientes"
+            color="orange"
+            loading={statsLoading}
+            href="/followups"
+          />
+          <MetricCard
+            icon={CheckCircle2}
+            label="Resueltas"
+            value={todayStats?.resolved_today ?? 0}
+            subtitle="hoy"
+            color="purple"
+            loading={statsLoading}
           />
         </div>
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Left Column - Messages by Responder */}
-          <div className="lg:col-span-1">
-            <SectionCard title="Mensajes por responder" linkTo="/inbox" linkLabel="Ver todos">
-              <div className="divide-y divide-border">
-                {convList.slice(0, 5).map((conv: any, i: number) => (
-                  <Link key={conv.id} href={`/inbox/${conv.id}`}>
-                    <a className="flex items-center gap-3 px-6 py-3 hover:bg-muted transition">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
-                        {conv.contact?.full_name?.charAt(0) || "?"}
+        {/* Main content: Conversations + Recent contacts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Conversaciones activas */}
+          <div className="bg-card border border-border rounded-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="font-semibold text-foreground text-sm">Conversaciones activas</h3>
+              <Link href="/inbox">
+                <a className="text-xs text-primary hover:underline">Ver todas</a>
+              </Link>
+            </div>
+            <div className="divide-y divide-border">
+              {convsLoading ? (
+                <div className="p-4 space-y-3">
+                  {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+                </div>
+              ) : convList.length === 0 ? (
+                <div className="p-6 text-center text-sm text-muted-foreground">
+                  <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p>No hay conversaciones pendientes</p>
+                  <p className="text-xs mt-1">¡Buen trabajo! Todo está al día.</p>
+                </div>
+              ) : (
+                convList.map((conv: any) => <ConvRow key={conv.id} conv={conv} />)
+              )}
+            </div>
+          </div>
+
+          {/* Clientes recientes */}
+          <div className="bg-card border border-border rounded-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="font-semibold text-foreground text-sm">Clientes recientes</h3>
+              <Link href="/contacts">
+                <a className="text-xs text-primary hover:underline">Ver todos</a>
+              </Link>
+            </div>
+            <div className="divide-y divide-border">
+              {contactList.length === 0 ? (
+                <div className="p-6 text-center text-sm text-muted-foreground">
+                  <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p>No hay clientes recientes</p>
+                  <p className="text-xs mt-1">Conecta WhatsApp para empezar a recibir clientes.</p>
+                </div>
+              ) : (
+                contactList.map((c: any) => (
+                  <Link key={c.id} href={`/contacts/${c.id}`}>
+                    <a className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition rounded-lg">
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                        {c.full_name?.charAt(0) || "?"}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {conv.contact?.full_name || "Contacto desconocido"}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {conv.subject || "Sin asunto"}
-                        </p>
+                        <p className="text-sm font-medium text-foreground">{c.full_name || "Sin nombre"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{c.phone || c.email || "Sin contacto"}</p>
                       </div>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {conv.updated_at && format(new Date(conv.updated_at), "HH:mm", { locale: es })}
-                      </span>
                     </a>
                   </Link>
-                ))}
-              </div>
-            </SectionCard>
-          </div>
-
-          {/* Middle Column - Tasks & Invoices */}
-          <div className="lg:col-span-1 space-y-6">
-            <SectionCard title="Tareas de hoy" linkTo="/tasks" linkLabel="Ver todas">
-              <div className="divide-y divide-border">
-                {taskList.slice(0, 5).map((task: any, i: number) => (
-                  <div key={task.id} className="flex items-center gap-3 px-6 py-3">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 rounded border-border cursor-pointer"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{task.title}</p>
-                      <p className="text-xs text-muted-foreground">{task.department_name}</p>
-                    </div>
-                    {task.due_date && (
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(task.due_date), "HH:mm a", { locale: es })}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Facturas próximas a vencer" linkTo="/invoices" linkLabel="Ver todas">
-              <div className="divide-y divide-border">
-                {overdueInvoiceList.slice(0, 4).map((inv: any) => (
-                  <div key={inv.id} className="flex items-center gap-3 px-6 py-3 text-sm">
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground">#{inv.id?.slice(0, 4)}</p>
-                      <p className="text-xs text-muted-foreground">{inv.client_name}</p>
-                    </div>
-                    {inv.due_date && (
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(inv.due_date), "dd MMM", { locale: es })}
-                      </span>
-                    )}
-                    <span className="font-semibold text-foreground">€{inv.amount?.toLocaleString("es-ES")}</span>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          </div>
-
-          {/* Right Column - Pipeline & AI Insights */}
-          <div className="lg:col-span-1 space-y-6">
-            <SectionCard title="Pipeline de ventas">
-              <div className="px-6 py-4 space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-foreground">Lead</span>
-                    <span className="text-xs font-semibold text-foreground">4 negocios</span>
-                  </div>
-                  <div className="w-full h-2 bg-blue-500/20 rounded-full overflow-hidden">
-                    <div className="h-full w-2/3 bg-blue-500 rounded-full"></div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">€850,000</span>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-foreground">Calificado</span>
-                    <span className="text-xs font-semibold text-foreground">3 negocios</span>
-                  </div>
-                  <div className="w-full h-2 bg-purple-500/20 rounded-full overflow-hidden">
-                    <div className="h-full w-1/2 bg-purple-500 rounded-full"></div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">€1,250,000</span>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-foreground">Propuesta</span>
-                    <span className="text-xs font-semibold text-foreground">2 negocios</span>
-                  </div>
-                  <div className="w-full h-2 bg-yellow-500/20 rounded-full overflow-hidden">
-                    <div className="h-full w-3/5 bg-yellow-500 rounded-full"></div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">€1,800,000</span>
-                </div>
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Insights de IA">
-              <InsightsWidget />
-            </SectionCard>
+                ))
+              )}
+            </div>
           </div>
         </div>
 
         {/* Quick Actions */}
         <div className="bg-card rounded-xl border border-border p-6">
-          <h3 className="font-semibold text-foreground mb-4">Acciones rápidas</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-            <QuickAction icon={FileText} label="Nueva factura" href="/invoices" />
-            <QuickAction icon={Users} label="Nuevo contacto" href="/contacts" />
-            <QuickAction icon={CheckSquare} label="Nueva tarea" href="/tasks" />
-            <QuickAction icon={FileText} label="Subir documento" href="/documents" />
+          <h3 className="font-semibold text-foreground text-sm mb-4">Acciones rápidas</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <QuickAction icon={MessageCircle} label="Enviar mensaje" href="/inbox" />
-            <QuickAction icon={TrendingUp} label="Ver reportes" href="/invoices" />
+            <QuickAction icon={Users} label="Nuevo cliente" href="/contacts" />
+            <QuickAction icon={FileText} label="Nueva plantilla" href="/templates" />
+            <QuickAction icon={Zap} label="Preguntar a IA" href="/ia" />
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+// ── Main Dashboard (routes to correct variant) ──────────────────────────────
+export default function DashboardPage() {
+  useRequireAuth();
+  const { data: featureData, isLoading: flagsLoading } = useFeatureFlags();
+
+  if (flagsLoading) {
+    return (
+      <div className="min-h-full bg-background flex items-center justify-center">
+        <Skeleton className="h-8 w-48" />
+      </div>
+    );
+  }
+
+  const isEmprende = featureData?.profile === "emprende";
+
+  if (isEmprende) {
+    return <EmprendeDashboard />;
+  }
+
+  // For now, the existing dashboard is imported inline. 
+  // Once fully migrated, this will route based on profile.
+  // For Business+, we fall through to the existing dashboard.
+  return <ExistingDashboard />;
+}
+
+// ── Temporary: import and re-export existing dashboard ──────────────────────
+import ExistingDashboardComponent from "./dashboard-business";
+
+function ExistingDashboard() {
+  return <ExistingDashboardComponent />;
 }

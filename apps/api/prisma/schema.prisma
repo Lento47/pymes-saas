@@ -29,6 +29,7 @@ enum WorkspacePlan {
   FREE
   STARTER
   GROWTH
+  EMPRENDE
   BUSINESS
   ENTERPRISE
   BUSINESS_PLUS
@@ -286,6 +287,7 @@ model Workspace {
   locale        String          @default("en")
   status        WorkspaceStatus @default(ACTIVE)
   plan          WorkspacePlan   @default(FREE)
+  profile       String          @default("business")
   settings_json Json?           @db.JsonB
   beta_profile  String?
   features_json Json?           @db.JsonB

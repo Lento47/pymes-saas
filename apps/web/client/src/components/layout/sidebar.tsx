@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useFeatureFlags } from "@/hooks/use-feature-flags";
 import {
   LayoutDashboard,
   Inbox,
@@ -19,16 +20,27 @@ import {
   ChevronDown,
   Check,
   ShieldCheck,
+  Clock,
+  Sparkles,
+  MessageSquareText,
 } from "lucide-react";
 
-const NAV = [
+// ─── Icon map for sidebar items ────────────────────────────────────────────
+const ICON_MAP: Record<string, any> = {
+  LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt,
+  Zap, KanbanSquare, Settings, CircleHelp, ShieldCheck,
+  Clock, Sparkles, MessageSquareText,
+};
+
+// ─── Fallback NAV for Business/Enterprise (when feature flags haven't loaded) ─
+const FALLBACK_NAV = [
   { path: "/",            icon: LayoutDashboard, label: "Dashboard" },
   { path: "/inbox",       icon: Inbox,           label: "Bandeja",   badge: "unread" },
   { path: "/contacts",    icon: Users,           label: "Contactos" },
   { path: "/tasks",       icon: CheckSquare,     label: "Tareas",    badge: "overdue" },
   { path: "/documents",   icon: FileText,        label: "Archivos" },
   { path: "/invoices",    icon: Receipt,         label: "Facturas" },
-  { path: "/pipeline",   icon: KanbanSquare,    label: "Pipeline" },
+  { path: "/pipeline",    icon: KanbanSquare,    label: "Pipeline" },
   { path: "/automations", icon: Zap,             label: "Automatizaciones" },
 ];
 
@@ -36,6 +48,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, switchWorkspace } = useAuth();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
+
+  // Feature flags — determines sidebar items based on profile
+  const { data: featureData } = useFeatureFlags();
 
   const { data: myWorkspaces } = useQuery({
     queryKey: ["/api/auth/my-workspaces"],
@@ -61,10 +76,23 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const initials = name.slice(0, 2).toUpperCase();
   const multipleWorkspaces = Array.isArray(myWorkspaces) && myWorkspaces.length > 1;
 
+  // Build nav from feature flags or fallback
+  const navItems = useMemo(() => {
+    if (featureData?.sidebarItems) {
+      return featureData.sidebarItems.map((item: any) => ({
+        ...item,
+        icon: ICON_MAP[item.icon] || LayoutDashboard,
+      }));
+    }
+    return FALLBACK_NAV;
+  }, [featureData]);
+
   const isActive = (p: string) => p === "/" ? location === "/" : location.startsWith(p);
 
   const badge = (key?: string) =>
     key === "unread" ? unreadCount : key === "overdue" ? overdueCount : 0;
+
+  const isEmprende = featureData?.profile === "emprende";
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -88,6 +116,11 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
             <div className="min-w-0 flex-1 text-left">
               <div className="text-sm font-semibold text-white leading-none truncate">{ws}</div>
+              {isEmprende && (
+                <div className="text-[10px] leading-none mt-0.5" style={{ color: "hsl(var(--accent))" }}>
+                  Emprende
+                </div>
+              )}
             </div>
             {multipleWorkspaces && (
               <ChevronDown style={{ width: 12, height: 12, color: "hsl(var(--fg-3))", flexShrink: 0 }} />
@@ -120,7 +153,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 py-2 overflow-y-auto">
-          {NAV.map(({ path, icon: Icon, label, badge: bk }) => {
+          {navItems.map(({ path, icon: Icon, label, badge: bk }: any) => {
             const active = isActive(path);
             const b = badge(bk);
             return (

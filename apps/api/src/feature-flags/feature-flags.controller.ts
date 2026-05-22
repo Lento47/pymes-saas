@@ -12,7 +12,18 @@ export class FeatureFlagsController {
 
   @Get("check")
   async getAll(@CurrentUser("workspace_id") workspaceId: string) {
-    return this.featureFlags.getAll(workspaceId);
+    const dbFlags = await this.featureFlags.getAll(workspaceId);
+    const profileFlags = await this.featureFlags.getProfileFlags(workspaceId);
+    // Profile flags take precedence over DB plan-based flags
+    return { ...dbFlags, ...profileFlags };
+  }
+
+  @Get("profile")
+  async getProfile(@CurrentUser("workspace_id") workspaceId: string) {
+    const profile = await this.featureFlags.getProfile(workspaceId);
+    const flags = await this.featureFlags.getProfileFlags(workspaceId);
+    const sidebarItems = this.featureFlags.getSidebarItems(profile);
+    return { profile, flags, sidebarItems };
   }
 
   @Get("public")

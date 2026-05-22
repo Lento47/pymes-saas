@@ -9,6 +9,7 @@ export enum WorkspacePlan {
   FREE = 'FREE',
   STARTER = 'STARTER',
   GROWTH = 'GROWTH',
+  EMPRENDE = 'EMPRENDE',
   BUSINESS = 'BUSINESS',
   ENTERPRISE = 'ENTERPRISE', // Legacy — maps to BUSINESS
   BUSINESS_PLUS = 'BUSINESS_PLUS',

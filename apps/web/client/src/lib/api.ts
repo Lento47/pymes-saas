@@ -367,4 +367,6 @@ export const api = {
   listCertificates: () => request<any[]>("GET", "/api/hacienda/certificates"),
   uploadCertificate: (form: FormData) => request<any>("POST", "/api/hacienda/certificates", form, { isFormData: true }),
   revokeCertificate: (id: string) => request<any>("DELETE", `/api/hacienda/certificates/${id}`),
+  // Feature flags & profile
+  getFeatureFlags: () => request<any>("GET", "/api/feature-flags/profile"),
 };
