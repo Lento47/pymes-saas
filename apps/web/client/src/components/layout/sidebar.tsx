@@ -201,7 +201,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="auth-ui flex h-screen overflow-hidden bg-background">
+    <div className="auth-ui flex h-screen overflow-hidden bg-background premium-ambient">
       {isMobile && sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/45 transition-opacity duration-200 lg:hidden"
@@ -329,18 +329,18 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                         className={cn(
                           "group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
                           active
-                            ? "bg-sidebar-accent/55 text-foreground font-medium"
+                            ? "bg-primary/10 text-foreground font-medium"
                             : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
                         )}
                       >
                         {active && (
-                          <div className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-foreground/70" />
+                          <div className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
                         )}
 
                         <Icon
                           className={cn(
                             "w-4 h-4 shrink-0 transition-colors",
-                            active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                            active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                           )}
                           strokeWidth={active ? 2.2 : 1.8}
                         />

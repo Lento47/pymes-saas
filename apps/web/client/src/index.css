@@ -2,23 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Dark theme (default) - neutral operational palette ── */
+/* ── Dark theme (default) - premium violet/indigo palette ── */
 :root {
-  --bg:           220 18% 7%;
-  --bg-sidebar:   220 18% 6%;
-  --bg-card:      220 14% 10%;
-  --bg-elevated:  220 13% 13%;
-  --bg-hover:     220 12% 16%;
-  --bg-active:    216 18% 18%;
-  --border:       220 12% 18%;
-  --fg:           220 12% 94%;
-  --fg-2:         220 8% 66%;
-  --fg-3:         220 7% 48%;
-  --accent:       214 82% 52%;
+  --bg:           256 22% 6%;
+  --bg-sidebar:   258 26% 5%;
+  --bg-card:      258 18% 9%;
+  --bg-elevated:  258 16% 12%;
+  --bg-hover:     258 15% 15%;
+  --bg-active:    262 22% 18%;
+  --border:       258 16% 20%;
+  --fg:           258 14% 95%;
+  --fg-2:         258 8% 65%;
+  --fg-3:         258 6% 46%;
+  --accent:       262 83% 68%;
   --accent-fg:    0 0% 100%;
   --danger:       0 72% 51%;
   --danger-fg:    0 0% 100%;
-  --success:      156 58% 40%;
+  --success:      156 58% 42%;
   --warning:      38 88% 50%;
 
   --background:        var(--bg);
@@ -50,18 +50,18 @@
   --sidebar-accent:    var(--bg-active);
   --sidebar-accent-foreground: var(--fg);
   --sidebar-ring:      var(--accent);
-  --chart-1:           214 82% 52%;
-  --chart-2:           220 8% 58%;   /* neutral */
-  --chart-3:           156 58% 40%;  /* green */
-  --chart-4:           210 10% 62%;  /* cool gray */
+  --chart-1:           262 83% 68%;
+  --chart-2:           156 58% 42%;  /* green */
+  --chart-3:           38 88% 50%;   /* amber */
+  --chart-4:           294 60% 62%;  /* magenta-violet */
   --chart-5:           0 72% 51%;    /* red */
-  --radius: 0.5rem;
+  --radius: 0.625rem;
 
   --surface:           var(--bg-card);
-  --surface-subtle:    220 14% 9%;
+  --surface-subtle:    258 18% 8%;
   --surface-raised:    var(--bg-elevated);
-  --border-subtle:     220 12% 15%;
-  --link:              214 82% 60%;
+  --border-subtle:     258 14% 16%;
+  --link:              262 83% 72%;
 
   /* ── Status semantic tokens ── */
   --status-open:     145 63% 42%;   /* green */
@@ -70,7 +70,7 @@
   --status-overdue:  0 72% 51%;     /* red */
 
   /* ── shadcn/ui component tokens ── */
-  --bg-2:              220 16% 10%;
+  --bg-2:              258 18% 9%;
   --primary-fg:        var(--accent-fg);
   --sidebar-width:     16rem;
   --sidebar-width-icon: 3rem;
@@ -80,28 +80,28 @@
 
 /* ── Light theme (opt-in) ── */
 html.light {
-  --bg:           210 20% 98%;
-  --bg-sidebar:   0 0% 100%;
+  --bg:           258 20% 98%;
+  --bg-sidebar:   258 16% 100%;
   --bg-card:      0 0% 100%;
   --bg-elevated:  0 0% 100%;
-  --bg-hover:     214 24% 96%;
-  --bg-active:    214 32% 94%;
-  --border:       214 18% 88%;
-  --fg:           220 10% 15%;
-  --fg-2:         220 8% 46%;
-  --fg-3:         220 6% 65%;
-  --accent:       214 82% 44%;
+  --bg-hover:     262 24% 96%;
+  --bg-active:    262 32% 93%;
+  --border:       258 18% 87%;
+  --fg:           258 12% 14%;
+  --fg-2:         258 8% 44%;
+  --fg-3:         258 6% 62%;
+  --accent:       262 83% 56%;
   --accent-fg:    0 0% 100%;
   --danger:       0 72% 45%;
   --danger-fg:    0 0% 100%;
   --success:      156 58% 34%;
   --warning:      35 90% 48%;
-  --bg-2:         214 18% 92%;
+  --bg-2:         258 16% 92%;
   --surface:      var(--bg-card);
-  --surface-subtle: 210 20% 97%;
+  --surface-subtle: 258 18% 97%;
   --surface-raised: 0 0% 100%;
-  --border-subtle: 214 18% 92%;
-  --link:         214 82% 44%;
+  --border-subtle: 258 16% 91%;
+  --link:         262 83% 52%;
 }
 
 :root {
@@ -149,46 +149,73 @@ body {
 
 /* ── Glass panels ── */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(120, 80, 220, 0.04);
+  border: 1px solid rgba(160, 100, 255, 0.12);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
 }
 html.light .glass-panel {
-  background: rgba(0, 0, 0, 0.02);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(120, 60, 220, 0.03);
+  border: 1px solid rgba(120, 60, 220, 0.1);
 }
 
 .glass-panel-soft {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(120, 80, 220, 0.025);
+  border: 1px solid rgba(160, 100, 255, 0.07);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 html.light .glass-panel-soft {
-  background: rgba(0, 0, 0, 0.015);
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  background: rgba(120, 60, 220, 0.02);
+  border: 1px solid rgba(120, 60, 220, 0.06);
 }
 
-/* ── Elevated card (border-raised, no shadow) ── */
+/* ── Elevated card (border-raised, subtle violet glow) ── */
 .glass-panel-raised {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(120, 80, 220, 0.05);
+  border: 1px solid rgba(160, 100, 255, 0.14);
+  box-shadow: 0 0 24px rgba(120, 60, 220, 0.08);
 }
 html.light .glass-panel-raised {
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(120, 60, 220, 0.03);
+  border: 1px solid rgba(120, 60, 220, 0.1);
+}
+
+/* ── Premium glow utilities ── */
+.glow-violet {
+  box-shadow: 0 0 32px rgba(139, 92, 246, 0.28), 0 0 8px rgba(139, 92, 246, 0.15);
+}
+.glow-violet-sm {
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.22), 0 0 4px rgba(139, 92, 246, 0.12);
+}
+.border-glow-violet {
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.2) inset;
+}
+.text-glow-violet {
+  text-shadow: 0 0 20px rgba(167, 139, 250, 0.5);
+}
+
+/* ── Premium ambient background gradient ── */
+.premium-ambient {
+  background-image:
+    radial-gradient(ellipse 60% 40% at 20% 0%, rgba(124, 58, 237, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 100%, rgba(91, 92, 240, 0.06) 0%, transparent 60%);
 }
 
 html.light .marketing-grid {
   background-image:
-    linear-gradient(to right, rgba(78, 98, 214, 0.12) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(78, 98, 214, 0.08) 1px, transparent 1px);
+    linear-gradient(to right, rgba(120, 60, 220, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(120, 60, 220, 0.07) 1px, transparent 1px);
   background-size: 72px 72px;
   mask-image: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.65) 18%, black 60%, transparent);
 }
 .marketing-grid {
-  background: none;
+  background-image:
+    linear-gradient(to right, rgba(160, 100, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(160, 100, 255, 0.04) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.5) 15%, black 55%, transparent);
 }
 
 .marketing-canvas {
@@ -208,10 +235,20 @@ html.light .marketing-grid {
   box-shadow: none;
 }
 
-.luminous-border { position: relative; }
+.luminous-border {
+  position: relative;
+  border-color: rgba(160, 100, 255, 0.25) !important;
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.12) inset;
+}
 
-.glow-button { box-shadow: none; }
-.soft-glow { text-shadow: none; }
+.glow-button {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.35), 0 1px 3px rgba(0,0,0,0.3);
+  transition: box-shadow 200ms ease;
+}
+.glow-button:hover {
+  box-shadow: 0 0 28px rgba(139, 92, 246, 0.5), 0 2px 8px rgba(0,0,0,0.35);
+}
+.soft-glow { text-shadow: 0 0 24px rgba(167, 139, 250, 0.4); }
 
 .app-surface {
   background: hsl(var(--card));

@@ -136,7 +136,7 @@ function DashboardSection({
   );
 
   return (
-    <section className={`overflow-hidden rounded-lg border border-border bg-card ${className}`}>
+    <section className={`overflow-hidden rounded-card border border-border bg-card ${className}`}>
       {linkTo ? (
         <Link href={linkTo} className="block transition-colors hover:bg-muted/25">
           {header}
@@ -166,7 +166,7 @@ function OperationalMetric({
   const showStatusDot = tone === "danger" || tone === "warning";
 
   return (
-    <div className="rounded-lg border border-border bg-card px-4 py-3">
+    <div className="rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-elevated/60">
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           {label}
@@ -176,7 +176,7 @@ function OperationalMetric({
       {loading ? (
         <Skeleton className="h-7 w-24" />
       ) : (
-        <div className="text-2xl font-semibold leading-none tracking-[-0.02em] text-foreground tabular-nums">
+        <div className={`text-2xl font-semibold leading-none tracking-[-0.02em] tabular-nums ${tone === "neutral" || tone === "success" ? "text-foreground" : t.text}`}>
           {value}
         </div>
       )}
