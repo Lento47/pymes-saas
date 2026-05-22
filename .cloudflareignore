@@ -1,0 +1,5 @@
+# ============================================================
+# Cloudflare Pages ignore — skip Cloudflare builds when only backend changes
+# Only files matching these patterns → build is skipped
+# ============================================================
+apps/api/**

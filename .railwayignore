@@ -1,0 +1,5 @@
+# ============================================================
+# Railway ignore — skip Railway builds when only frontend changes
+# Only files matching these patterns → build is skipped
+# ============================================================
+apps/web/**
