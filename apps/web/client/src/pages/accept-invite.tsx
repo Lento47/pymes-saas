@@ -20,9 +20,16 @@ type InvitePreview = {
   };
 };
 
-function parseTokenFromHash() {
-  const [, query = ""] = window.location.hash.split("?");
-  return new URLSearchParams(query).get("token") ?? "";
+function parseTokenFromUrl() {
+  const search = new URLSearchParams(window.location.search).get("token");
+  if (search) return search;
+  const hash = window.location.hash;
+  const qi = hash.indexOf("?");
+  return qi >= 0 ? (new URLSearchParams(hash.slice(qi + 1)).get("token") ?? "") : "";
+}
+
+function parseCodeFromUrl() {
+  return new URLSearchParams(window.location.search).get("code") ?? "";
 }
 
 function parseError(err: unknown): string {
@@ -33,19 +40,34 @@ function parseError(err: unknown): string {
 }
 
 export default function AcceptInvitePage() {
-  const { acceptInvite, isAuthenticated } = useAuth();
+  const { acceptInvite, isAuthenticated, login, user } = useAuth();
   const { toast } = useToast();
-  const token = useMemo(() => parseTokenFromHash(), []);
+  const token = useMemo(() => parseTokenFromUrl(), []);
+  const code = useMemo(() => parseCodeFromUrl(), []);
+  const isCodeFlow = !!code;
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [codeInput, setCodeInput] = useState(code);
 
   useEffect(() => {
+    if (isCodeFlow) {
+      if (!code) { setLoading(false); return; }
+      void (async () => {
+        try {
+          const result = await api.previewInviteCode(code);
+          setPreview({ ...result, email: user?.email || "", requires_account_setup: false } as InvitePreview);
+        } catch (err) { setError(parseError(err)); }
+        finally { setLoading(false); }
+      })();
+      return;
+    }
+
     if (!token) {
-      setError("El enlace no incluye un token de invitación válido.");
+      // no token y no code — muestra el formulario de entrada manual
       setLoading(false);
       return;
     }
@@ -54,7 +76,7 @@ export default function AcceptInvitePage() {
     void api.getInvitePreview(token)
       .then((result) => {
         if (!active) return;
-        setPreview(result);
+        setPreview(result as InvitePreview);
         setName(result.name ?? "");
       })
       .catch((err) => {
@@ -65,32 +87,39 @@ export default function AcceptInvitePage() {
         if (active) setLoading(false);
       });
 
-    return () => {
-      active = false;
-    };
-  }, [token]);
+    return () => { active = false; };
+  }, [token, code, isCodeFlow, user?.email]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      window.location.hash = "#/";
+    if (isAuthenticated && !isCodeFlow) {
+      history.replaceState(null, "", "/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isCodeFlow]);
 
   const handleAccept = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!token) return;
-
     setSubmitting(true);
     setError(null);
 
     try {
+      if (isCodeFlow || codeInput) {
+        await api.redeemInviteCode({ code: codeInput, name, password });
+        toast({ title: "Invitación aceptada", description: "Ya eres miembro del workspace." });
+        history.replaceState(null, "", "/");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+        return;
+      }
+
+      if (!token) return;
       await acceptInvite(
         token,
         preview?.requires_account_setup ? name : undefined,
         preview?.requires_account_setup ? password : undefined,
       );
       toast({ title: "Invitación aceptada", description: "Tu acceso ya está listo." });
-      window.location.hash = "#/";
+      history.replaceState(null, "", "/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
     } catch (err) {
       setError(parseError(err));
     } finally {
@@ -102,12 +131,24 @@ export default function AcceptInvitePage() {
     <div className="min-h-screen bg-background px-6 py-10 text-foreground">
       <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-6">
-          <p className="text-sm uppercase tracking-[0.18em] text-muted-foreground">Pymeshub</p>
-          <h1 className="mt-2 text-2xl font-semibold">Aceptar invitación</h1>
+          <p className="text-sm uppercase tracking-[0.18em] text-muted-foreground">PymesHub</p>
+          <h1 className="mt-2 text-2xl font-semibold">{isCodeFlow ? "Ingresar con código" : "Aceptar invitación"}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Completa tu acceso al workspace desde este enlace seguro.
+            {isCodeFlow ? "Ingresá el código de invitación que te compartieron." : "Completa tu acceso al workspace desde este enlace seguro."}
           </p>
         </div>
+
+        {!loading && !isCodeFlow && !token && !preview && (
+          <form onSubmit={handleAccept} className="space-y-4">
+            <div>
+              <Label>Código de invitación</Label>
+              <Input value={codeInput} onChange={e => setCodeInput(e.target.value.toUpperCase())} placeholder="ABC123" maxLength={6} className="mt-1 text-center tracking-[0.5em] uppercase" />
+            </div>
+            <Button type="submit" disabled={!codeInput || submitting} className="w-full">
+              {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Verificando...</> : "Verificar código"}
+            </Button>
+          </form>
+        )}
 
         {loading ? (
           <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">

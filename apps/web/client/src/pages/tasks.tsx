@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -11,15 +13,15 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TaskSheet } from "@/components/tasks/TaskSheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CheckSquare, Plus, AlertTriangle, Check, Loader2, MoreHorizontal, Pencil, Trash, Search, Calendar, Clock } from "lucide-react";
+import { CheckSquare, Plus, AlertTriangle, Check, MoreHorizontal, Pencil, Trash, Search, Calendar, Clock, ListChecks, Timer, AlertCircle } from "lucide-react";
 import { format, isPast, isToday, isTomorrow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { MarkdownRenderer } from "@/components/shared/markdown-renderer";
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -40,11 +42,12 @@ function DueDateLabel({ dateStr }: { dateStr?: string }) {
   );
 }
 
-function toCreateTaskPayload(form: { title: string; description: string; priority: string; dueDate: string }) {
+function toCreateTaskPayload(form: { title: string; description: string; priority: string; dueDate: string; assignedUserId: string }) {
   const body: Record<string, string> = { title: form.title.trim() };
   if (form.description?.trim()) body.description = form.description.trim();
   if (form.priority) body.priority = form.priority;
   if (form.dueDate) body.due_at = `${form.dueDate}T12:00:00.000Z`;
+  if (form.assignedUserId) body.assigned_user_id = form.assignedUserId;
   return body;
 }
 
@@ -52,15 +55,38 @@ const PRIORITY_LABELS: Record<string, string> = { LOW: "Baja", MEDIUM: "Media", 
 const STATUS_OPTIONS = ["ALL", "TODO", "IN_PROGRESS", "BLOCKED", "DONE"];
 const PRIORITY_OPTIONS = ["ALL", "LOW", "MEDIUM", "HIGH", "URGENT"];
 
+function TaskDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!text) return null;
+  const long = text.length > 80;
+  return (
+    <div className="text-[11px] text-muted-foreground max-w-[280px]">
+      {expanded || !long ? (
+        <MarkdownRenderer content={text} />
+      ) : (
+        <MarkdownRenderer content={text.slice(0, 80) + "..."} />
+      )}
+      {long && (
+        <button onClick={() => setExpanded(!expanded)}
+          className="text-[10px] text-primary/70 hover:text-primary ml-1 whitespace-nowrap">
+          {expanded ? "Ver menos" : "Ver más"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function TasksPage() {
   useRequireAuth();
+  const { messages } = useI18n();
+  const t = messages.tasks;
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", priority: "MEDIUM", dueDate: "" });
+  const [form, setForm] = useState({ title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" });
 
   const params: Record<string, string> = {};
   if (statusFilter !== "ALL") params.status = statusFilter;
@@ -75,6 +101,11 @@ export default function TasksPage() {
     queryKey: ["/api/tasks/overdue"],
     queryFn: () => api.getOverdueTasks(),
   });
+  const { data: membersRaw } = useQuery({
+    queryKey: ["/api/workspaces/current/members", "tasks"],
+    queryFn: api.getMembers,
+  });
+  const members = Array.isArray(membersRaw) ? membersRaw : (membersRaw as any)?.data || [];
 
   const createMutation = useMutation({
     mutationFn: (data: Parameters<typeof toCreateTaskPayload>[0]) =>
@@ -84,11 +115,11 @@ export default function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
       setShowCreate(false);
       setEditingId(null);
-      setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "" });
+      setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" });
       toast({ title: editingId ? "Tarea actualizada" : "Tarea creada" });
     },
-    onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    onError: (err) => {
+      toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -99,8 +130,8 @@ export default function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
       toast({ title: "Tarea eliminada" });
     },
-    onError: (err: any) => {
-      toast({ title: "Error al eliminar", description: err.message, variant: "destructive" });
+    onError: (err) => {
+      toast({ title: "Error al eliminar", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -111,8 +142,8 @@ export default function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/overdue"] });
       toast({ title: "Tarea completada" });
     },
-    onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    onError: (err) => {
+      toast({ title: "Error", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -123,7 +154,7 @@ export default function TasksPage() {
     ? allTasks.filter((t: any) => t.title?.toLowerCase().includes(search.toLowerCase()))
     : allTasks;
 
-  const openEdit = (task: any) => {
+  const openEdit = (task: Record<string, any>) => {
     setEditingId(task.id);
     setForm({
       title: task.title || "",
@@ -132,6 +163,7 @@ export default function TasksPage() {
       dueDate: task.dueDate || task.due_date
         ? format(new Date(task.dueDate || task.due_date), "yyyy-MM-dd")
         : "",
+      assignedUserId: task.assigned_user_id || "",
     });
     setShowCreate(true);
   };
@@ -139,13 +171,14 @@ export default function TasksPage() {
   return (
     <TooltipProvider>
       <div>
-        <PageHeader title="Tareas" description="Gestiona y da seguimiento a tus tareas">
+        <PageHeader title={t.title} description="Gestiona y da seguimiento a tus tareas">
+
           <Button
             size="sm"
             className="h-8 text-xs"
             onClick={() => {
-              setEditingId(null);
-              setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "" });
+               setEditingId(null);
+               setForm({ title: "", description: "", priority: "MEDIUM", dueDate: "", assignedUserId: "" });
               setShowCreate(true);
             }}
             data-testid="button-create-task"
@@ -154,9 +187,10 @@ export default function TasksPage() {
           </Button>
         </PageHeader>
 
+        <div className="px-4 md:px-6 py-4 space-y-4">
         {/* Overdue banner */}
         {overdueList.length > 0 && (
-          <div className="flex items-center gap-2.5 mb-4 px-3.5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400" data-testid="alert-overdue">
+          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400" data-testid="alert-overdue">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             <span className="text-xs">
               Tienes <strong>{overdueList.length}</strong> tarea{overdueList.length > 1 ? "s" : ""} vencida{overdueList.length > 1 ? "s" : ""} que requieren atención.
@@ -164,10 +198,32 @@ export default function TasksPage() {
           </div>
         )}
 
+        {/* Stats */}
+        {taskList.length > 0 && (
+          <div className="flex items-center gap-4 flex-wrap text-xs">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <ListChecks className="w-3.5 h-3.5" />
+              <span><strong className="text-foreground">{taskList.length}</strong> totales</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-emerald-400">
+              <Check className="w-3.5 h-3.5" />
+              <span><strong>{taskList.filter((t: any) => t.status === "DONE").length}</strong> completadas</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-amber-400">
+              <Timer className="w-3.5 h-3.5" />
+              <span><strong>{taskList.filter((t: any) => t.status === "IN_PROGRESS").length}</strong> en progreso</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-red-400">
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span><strong>{overdueList.length}</strong> vencidas</span>
+            </div>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
             <Input
               placeholder="Buscar tareas..."
               value={search}
@@ -214,10 +270,10 @@ export default function TasksPage() {
         {isLoading ? (
           <PageLoader />
         ) : taskList.length === 0 ? (
-          <EmptyState icon={CheckSquare} title="Sin tareas" description="Crea una tarea para empezar." />
+          <EmptyState icon={CheckSquare} title={t.noTasks} description="Crea una tarea para empezar." />
         ) : (
-          <div className="rounded-lg border border-border overflow-hidden bg-card">
-            <Table>
+          <div className="rounded-lg border border-border overflow-x-auto bg-card">
+            <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="w-8" />
@@ -233,16 +289,14 @@ export default function TasksPage() {
                 {taskList.map((task: any) => {
                   const dueStr = task.dueDate || task.due_date || task.due_at;
                   const isOverdue = dueStr && isPast(new Date(dueStr)) && !isToday(new Date(dueStr)) && task.status !== "DONE";
-                  const assigneeName = task.assignedTo?.firstName
-                    ? `${task.assignedTo.firstName} ${task.assignedTo.lastName || ""}`.trim()
-                    : task.assigned_to?.firstName
-                    ? `${task.assigned_to.firstName} ${task.assigned_to.lastName || ""}`.trim()
+                  const assigneeName = task.assigned_user?.name
+                    ? task.assigned_user.name
                     : null;
 
                   return (
                     <TableRow
                       key={task.id}
-                      className={cn("border-border hover:bg-white/[0.02]", isOverdue && "bg-red-500/5")}
+                      className={cn("border-border hover:bg-foreground/[0.015]", isOverdue && "bg-red-500/5")}
                       data-testid={`task-row-${task.id}`}
                     >
                       <TableCell>
@@ -267,13 +321,11 @@ export default function TasksPage() {
                       <TableCell>
                         <div className="flex items-start gap-2">
                           <PriorityDot priority={task.priority} />
-                          <div>
-                            <div className={cn("text-sm font-medium", task.status === "DONE" ? "line-through text-muted-foreground" : "text-foreground")}>
-                              {task.title}
-                            </div>
-                            {task.description && (
-                              <div className="text-[11px] text-muted-foreground truncate max-w-[240px]">{task.description}</div>
-                            )}
+              <div>
+                <div className={cn("text-sm font-medium", task.status === "DONE" ? "line-through text-muted-foreground/60" : "text-foreground")}>
+                  {task.title}
+                </div>
+                <TaskDescription text={task.description || ""} />
                           </div>
                         </div>
                       </TableCell>
@@ -295,7 +347,7 @@ export default function TasksPage() {
                             <span className="text-xs text-muted-foreground truncate max-w-[80px]">{assigneeName}</span>
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground/50">Sin asignar</span>
+                          <span className="text-xs text-muted-foreground/40">Sin asignar</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -334,76 +386,18 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* Create / Edit Dialog */}
-        <Dialog open={showCreate} onOpenChange={setShowCreate}>
-          <DialogContent className="bg-card border-border sm:max-w-[420px]" data-testid="dialog-create-task">
-            <DialogHeader>
-              <DialogTitle className="text-sm">{editingId ? "Editar tarea" : "Nueva tarea"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Título</Label>
-                <Input
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="h-8 text-xs bg-background border-border"
-                  placeholder="¿Qué hay que hacer?"
-                  data-testid="input-task-title"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Descripción <span className="text-muted-foreground/50">(opcional)</span></Label>
-                <Input
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="h-8 text-xs bg-background border-border"
-                  placeholder="Detalles adicionales..."
-                  data-testid="input-task-description"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Prioridad</Label>
-                  <Select value={form.priority} onValueChange={(val) => setForm({ ...form, priority: val })}>
-                    <SelectTrigger className="h-8 text-xs bg-background border-border" data-testid="select-new-task-priority">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
-                        <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Fecha límite</Label>
-                  <Input
-                    type="date"
-                    value={form.dueDate}
-                    onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                    className="h-8 text-xs bg-background border-border"
-                    data-testid="input-task-due-date"
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setShowCreate(false)} className="h-8 text-xs">
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => createMutation.mutate(form)}
-                disabled={createMutation.isPending || !form.title.trim()}
-                data-testid="button-save-task"
-              >
-                {createMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                {editingId ? "Guardar cambios" : "Crear tarea"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        </div>{/* end px-4 content wrapper */}
+
+        {/* Create / Edit Sheet */}
+        <TaskSheet
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          editingId={editingId}
+          initialData={form}
+          onSave={(data) => createMutation.mutate(data)}
+          isSaving={createMutation.isPending}
+          members={members}
+        />
       </div>
     </TooltipProvider>
   );

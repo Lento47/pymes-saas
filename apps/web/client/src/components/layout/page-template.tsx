@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
@@ -12,9 +12,8 @@ interface PageTemplateProps {
     href?: string;
     onClick?: () => void;
     variant?: "primary" | "secondary";
-    icon?: any;
+    icon?: React.ReactNode;
   }>;
-  showSearch?: boolean;
 }
 
 export function PageTemplate({
@@ -22,13 +21,12 @@ export function PageTemplate({
   description,
   children,
   actions,
-  showSearch = true,
 }: PageTemplateProps) {
   return (
     <div className="min-h-full bg-background">
       {/* Header */}
       <div className="bg-card border-b border-border sticky top-0 z-50">
-        <div className="px-6 py-4">
+        <div className="px-3 md:px-6 py-4 max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-foreground">{title}</h1>
@@ -37,46 +35,38 @@ export function PageTemplate({
               )}
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {showSearch && (
-                <input
-                  type="text"
-                  placeholder="Buscar..."
-                  className="px-4 py-2 rounded-lg border border-border bg-elevated text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary hidden sm:block"
-                />
-              )}
-
-              {actions?.map((action, i) => (
-                <Button
-                  key={i}
-                  variant={action.variant === "primary" ? "default" : "outline"}
-                  size="sm"
-                  onClick={action.onClick}
-                  asChild={!!action.href}
-                  className="gap-2"
-                >
-                  {action.href ? (
-                    <Link href={action.href}>
-                      <a className="flex items-center gap-2">
+            {actions && actions.length > 0 && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {actions.map((action, i) => (
+                  <Button
+                    key={i}
+                    variant={action.variant === "primary" ? "default" : "outline"}
+                    size="sm"
+                    onClick={action.onClick}
+                    asChild={!!action.href}
+                    className="gap-2"
+                  >
+                    {action.href ? (
+                      <Link href={action.href} className="flex items-center gap-2">
                         {action.icon || <Plus className="w-4 h-4" />}
                         {action.label}
-                      </a>
-                    </Link>
-                  ) : (
-                    <>
-                      {action.icon || <Plus className="w-4 h-4" />}
-                      {action.label}
-                    </>
-                  )}
-                </Button>
-              ))}
-            </div>
+                      </Link>
+                    ) : (
+                      <>
+                        {action.icon || <Plus className="w-4 h-4" />}
+                        {action.label}
+                      </>
+                    )}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="px-6 py-8 max-w-7xl mx-auto">
+      <div className="px-3 md:px-6 py-8 max-w-7xl mx-auto">
         {children}
       </div>
     </div>
@@ -107,29 +97,27 @@ export function SectionCard({
   return (
     <div className={`bg-card rounded-xl border border-border overflow-hidden ${className}`}>
       {title && (
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-3 md:px-6 py-4 border-b border-border">
           <div>
             <h3 className="font-semibold text-foreground">{title}</h3>
             {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
           </div>
           {linkTo && (
-            <Link href={linkTo}>
-              <a className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 flex-shrink-0">
-                {linkLabel} <ArrowRight className="w-4 h-4" />
-              </a>
+            <Link href={linkTo} className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 flex-shrink-0">
+              {linkLabel} <ArrowRight className="w-4 h-4" />
             </Link>
           )}
         </div>
       )}
 
       {loading ? (
-        <div className="px-6 py-4 space-y-3">
+        <div className="px-3 md:px-6 py-4 space-y-3">
           {[0, 1, 2].map(i => (
             <div key={i} className="h-4 bg-muted rounded animate-pulse" />
           ))}
         </div>
       ) : empty ? (
-        <div className="px-6 py-12 text-center">
+        <div className="px-3 md:px-6 py-12 text-center">
           <p className="text-sm text-muted-foreground">Sin datos aún</p>
         </div>
       ) : (
@@ -145,7 +133,7 @@ interface MetricCardProps {
   currency?: string;
   trend?: number;
   trendLabel?: string;
-  icon?: any;
+  icon?: React.ElementType;
   loading?: boolean;
   color?: "blue" | "orange" | "red" | "purple" | "green";
 }
@@ -161,11 +149,11 @@ export function MetricCard({
   color = "blue",
 }: MetricCardProps) {
   const colorMap = {
-    blue: "text-blue-500",
+    blue: "text-primary",
     orange: "text-orange-500",
-    red: "text-red-500",
+    red: "text-destructive",
     purple: "text-purple-500",
-    green: "text-green-500",
+    green: "text-emerald-500",
   };
 
   return (
@@ -189,10 +177,10 @@ export function MetricCard({
           {trend !== undefined && (
             <p
               className={`text-sm mt-2 flex items-center gap-1 ${
-                trend >= 0 ? "text-green-600" : "text-red-600"
+                trend >= 0 ? "text-emerald-500" : "text-destructive"
               }`}
             >
-              <span className={trend >= 0 ? "text-green-500" : "text-red-500"}>
+              <span className={trend >= 0 ? "text-emerald-500" : "text-destructive"}>
                 {trend >= 0 ? "↑" : "↓"}
               </span>
               {Math.abs(trend)}% {trendLabel || "vs. mes anterior"}
@@ -215,18 +203,14 @@ export function TableRow({ children, onClick, href, className = "" }: TableRowPr
   const content = (
     <div
       onClick={onClick}
-      className={`flex items-center gap-3 px-6 py-3 hover:bg-muted transition cursor-pointer ${className}`}
+      className={`flex items-center gap-3 px-3 md:px-6 py-3 hover:bg-muted transition cursor-pointer ${className}`}
     >
       {children}
     </div>
   );
 
   if (href) {
-    return (
-      <Link href={href}>
-        <a>{content}</a>
-      </Link>
-    );
+    return <Link href={href}>{content}</Link>;
   }
 
   return content;

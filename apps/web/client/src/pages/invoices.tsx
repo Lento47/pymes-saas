@@ -6,10 +6,11 @@ import {
   AlertTriangle,
   BookOpen,
   CheckCircle2,
+  Code2,
   Coins,
   Eye,
   FileUp,
-  HelpCircle,
+  Info,
   Loader2,
   Pencil,
   Plus,
@@ -17,107 +18,33 @@ import {
   Receipt,
   Search,
   Send,
-  Sparkles,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
+import CsvImportModal from "@/components/import/csv-import-modal";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
+import { DiagnosticButton } from "@/components/shared/diagnostic-button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { HaciendaChecklist, type ChecklistItem } from "@/components/shared/hacienda-checklist";
+import { InvoiceSheet } from "@/components/invoices/InvoiceSheet";
+import { FieldHelp } from "@/components/invoices/FieldHelp";
+import { HACIENDA_GUIDE } from "@/data/hacienda-guide";
+import { STATUS_OPTIONS, HACIENDA_STATUS_OPTIONS, DOCUMENT_TYPES, ISSUANCE_MODES } from "@/data/invoice-filters";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-
-const STATUS_OPTIONS = ["ALL", "DRAFT", "SENT", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"];
-const HACIENDA_STATUS_OPTIONS = ["ALL", "DRAFT", "PENDING_SUBMISSION", "SUBMITTED", "RECIBIDO", "PROCESANDO", "ACEPTADO", "RECHAZADO", "ERROR"];
-const DOCUMENT_TYPES = ["FACTURA_ELECTRONICA", "TIQUETE_ELECTRONICO", "NOTA_CREDITO", "NOTA_DEBITO", "MENSAJE_RECEPTOR"];
-const ISSUANCE_MODES = ["MANUAL_ONLY", "HACIENDA"];
-
-const HACIENDA_GUIDE = [
-  {
-    title: "Modo",
-    meaning: "Define si la factura será solo comercial o si también debe convertirse en comprobante electrónico oficial ante Hacienda.",
-    example: "`MANUAL_ONLY`: cobro interno sin envío oficial. `HACIENDA`: genera XML, firma, envío y seguimiento.",
-  },
-  {
-    title: "Documento",
-    meaning: "Es el tipo de comprobante fiscal que vas a emitir.",
-    example: "`FACTURA_ELECTRONICA` para ventas normales, `TIQUETE_ELECTRONICO` para venta simplificada, `NOTA_CREDITO` para rebajos o anulaciones parciales.",
-  },
-  {
-    title: "Condición de venta",
-    meaning: "Describe cómo se pactó el pago de la operación.",
-    example: "`01` contado, `02` crédito. Si la venta se paga después, normalmente corresponde crédito.",
-  },
-  {
-    title: "Medio de pago",
-    meaning: "Indica cómo el cliente pagó o pagará la operación.",
-    example: "`01` efectivo, `02` tarjeta, `03` transferencia, según el catálogo tributario aplicable.",
-  },
-  {
-    title: "Actividad",
-    meaning: "Código de actividad económica del emisor que respalda esa venta.",
-    example: "Si la empresa tiene varias actividades registradas, aquí se indica cuál aplica para esta factura.",
-  },
-  {
-    title: "CABYS",
-    meaning: "Código del catálogo CABYS para el producto o servicio facturado. Hacienda lo usa para clasificar lo vendido.",
-    example: "Un servicio profesional y un producto físico usan códigos distintos; no conviene inventarlo, hay que buscar el correcto.",
-  },
-  {
-    title: "Impuesto %",
-    meaning: "Porcentaje del impuesto aplicado a la línea.",
-    example: "`13` para IVA general, `0` si el concepto no lleva impuesto o está exento según corresponda.",
-  },
-  {
-    title: "Clave y consecutivo",
-    meaning: "Identificadores oficiales del comprobante. El sistema los genera y luego se usan para consultar estado, notas y mensajes del receptor.",
-    example: "Después del envío a Hacienda, la clave identifica de forma única el comprobante aceptado o rechazado.",
-  },
-];
-
-function FieldHelp({
-  title,
-  meaning,
-  example,
-}: {
-  title: string;
-  meaning: string;
-  example: string;
-}) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
-          aria-label={`Ayuda sobre ${title}`}
-        >
-          <HelpCircle className="h-3.5 w-3.5" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 border-border bg-card p-3">
-        <div className="space-y-2">
-          <div className="text-sm font-medium text-foreground">{title}</div>
-          <p className="text-xs leading-5 text-muted-foreground">{meaning}</p>
-          <div className="rounded-md border border-border bg-background px-2.5 py-2 text-xs leading-5 text-foreground">
-            {example}
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 function formatMoney(amount: unknown, currency = "USD") {
   const value = Number(amount ?? 0);
@@ -129,9 +56,9 @@ function formatMoney(amount: unknown, currency = "USD") {
   }).format(value);
 }
 
-function getErrorMessage(err: any) {
-  return err?.message ?? "Ocurrió un error inesperado";
-}
+// Replaced by `apiErrorDescription` from "@/lib/api-error" so the toast can
+// surface the auto-opened support ticket as a clickable link, not just text.
+const getErrorMessage = (err: unknown) => apiErrorDescription(err, "Ocurrió un error inesperado");
 
 export default function InvoicesPage() {
   useRequireAuth();
@@ -145,6 +72,7 @@ export default function InvoicesPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
@@ -165,6 +93,7 @@ export default function InvoicesPage() {
     line_description: "",
     cabys_code: "",
     tax_rate: "0",
+    product_id: "",
   });
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
@@ -290,22 +219,24 @@ export default function InvoicesPage() {
         line_description,
         cabys_code,
         tax_rate,
+        product_id,
         ...invoiceFields
       } = createForm;
 
       return api.createInvoice({
         ...invoiceFields,
-        amount: Number(createForm.amount),
+        amount: Math.round(Number(createForm.amount) * 100) / 100,
         issue_date: createForm.issue_date,
         lines: createForm.issuance_mode === "HACIENDA"
           ? [{
               description: line_description || createForm.description || `Factura ${createForm.number}`,
               quantity: 1,
-              unit_price: Number(createForm.amount),
+              unit_price: Math.round(Number(createForm.amount) * 100) / 100,
               cabys_code: cabys_code || undefined,
               unit_of_measure: "Unid",
               tax_code: "01",
               tax_rate: Number(tax_rate || 0),
+              product_id: product_id || undefined,
             }]
           : undefined,
         notes: [],
@@ -330,23 +261,24 @@ export default function InvoicesPage() {
         line_description: "",
         cabys_code: "",
         tax_rate: "0",
+        product_id: "",
       });
       toast({ title: "Factura creada" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" });
     },
   });
 
   const detectMutation = useMutation({
     mutationFn: api.detectOverdueInvoices,
-    onSuccess: (result: any) => {
+    onSuccess: (result) => {
       const rows = Array.isArray(result) ? result : result?.data ?? [];
       setHighlightedIds(rows.map((invoice: any) => invoice.id));
       invalidateInvoices();
       toast({ title: "Deudas detectadas", description: `${rows.length} factura(s) vencida(s)` });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" });
     },
   });
@@ -357,13 +289,13 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Factura saldada" });
     },
-    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const registerPaymentMutation = useMutation({
     mutationFn: () =>
       api.registerInvoicePayment(selectedInvoice.id, {
-        amount: Number(paymentForm.amount),
+        amount: Math.round(Number(paymentForm.amount) * 100) / 100,
         paid_at: paymentForm.paid_at || undefined,
         method: paymentForm.method || undefined,
         reference: paymentForm.reference || undefined,
@@ -382,7 +314,7 @@ export default function InvoicesPage() {
       });
       toast({ title: "Pago registrado" });
     },
-    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -391,7 +323,7 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Factura eliminada" });
     },
-    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const cancelMutation = useMutation({
@@ -400,13 +332,13 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Factura cancelada" });
     },
-    onError: (err: any) => toast({ title: "Error al cancelar", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err) => toast({ title: "Error al cancelar", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const creditNoteMutation = useMutation({
-    mutationFn: (invoice: any) => api.createCreditNote(invoice.id, {
+    mutationFn: (invoice: Record<string, any>) => api.createCreditNote(invoice.id, {
       number: `NC-${invoice.number}`,
-      amount: Number(invoice.amount),
+      amount: Math.round(Number(invoice.amount) * 100) / 100,
       currency: invoice.currency,
       due_date: new Date().toISOString().slice(0, 10),
     }),
@@ -414,7 +346,7 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Nota de crédito creada. Revisa y envía a Hacienda." });
     },
-    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const submitHaciendaMutation = useMutation({
@@ -423,7 +355,7 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Comprobante enviado a Hacienda" });
     },
-    onError: (err: any) => toast({ title: "Error Hacienda", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err) => toast({ title: "Error Hacienda", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const syncHaciendaMutation = useMutation({
@@ -432,16 +364,49 @@ export default function InvoicesPage() {
       invalidateInvoices();
       toast({ title: "Estado Hacienda actualizado" });
     },
-    onError: (err: any) => toast({ title: "Error Hacienda", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err) => toast({ title: "Error Hacienda", description: getErrorMessage(err), variant: "destructive" }),
+  });
+
+  const [showValidation, setShowValidation] = useState(false);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const validateHaciendaMutation = useMutation({
+    mutationFn: (id: string) => api.validateInvoiceForHacienda(id),
+    onSuccess: (data) => {
+      setValidationResult(data);
+      setShowValidation(true);
+    },
+    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+  });
+
+  const [showErrorExplain, setShowErrorExplain] = useState(false);
+  const [errorExplainData, setErrorExplainData] = useState<any>(null);
+  const explainErrorMutation = useMutation({
+    mutationFn: (id: string) => api.getInvoiceHaciendaErrorExplain(id),
+    onSuccess: (data) => {
+      setErrorExplainData(data);
+      setShowErrorExplain(true);
+    },
+    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+  });
+
+  const [showXmlPreview, setShowXmlPreview] = useState(false);
+  const [xmlPreview, setXmlPreview] = useState<{ xml: string } | null>(null);
+  const xmlPreviewMutation = useMutation({
+    mutationFn: (id: string) => api.getInvoiceXmlPreview(id),
+    onSuccess: (data) => {
+      setXmlPreview(data as { xml: string });
+      setShowXmlPreview(true);
+    },
+    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const generateReminderMutation = useMutation({
-    mutationFn: (invoice: any) => api.generateInvoiceReminder(invoice.id),
-    onSuccess: (reminder: any, invoice: any) => {
+    mutationFn: (invoice: Record<string, any>) => api.generateInvoiceReminder(invoice.id),
+    onSuccess: (reminder: Record<string, any>, invoice: any) => {
       setSelectedInvoice(invoice);
       setReminderDraft(reminder?.draft_text ?? "");
     },
-    onError: (err: any) => {
+    onError: (err) => {
       setShowReminder(false);
       toast({ title: "Error al redactar", description: getErrorMessage(err), variant: "destructive" });
     },
@@ -460,7 +425,7 @@ export default function InvoicesPage() {
       setReminderDraft("");
       toast({ title: "Recordatorio enviado" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error al enviar", description: getErrorMessage(err), variant: "destructive" });
     },
   });
@@ -469,7 +434,7 @@ export default function InvoicesPage() {
     mutationFn: () =>
       api.updateInvoice(selectedInvoice.id, {
         number: editForm.number,
-        amount: Number(editForm.amount),
+        amount: Math.round(Number(editForm.amount) * 100) / 100,
         currency: editForm.currency,
         due_date: editForm.due_date,
         issue_date: editForm.issue_date,
@@ -487,7 +452,7 @@ export default function InvoicesPage() {
       setSelectedInvoice(null);
       toast({ title: "Factura actualizada" });
     },
-    onError: (err: any) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
+    onError: (err) => toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" }),
   });
 
   const openEditModal = (invoice: any) => {
@@ -534,7 +499,7 @@ export default function InvoicesPage() {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 text-xs"
+          className="h-8 text-xs hidden md:inline-flex"
           onClick={() => detectMutation.mutate()}
           disabled={detectMutation.isPending}
         >
@@ -544,10 +509,18 @@ export default function InvoicesPage() {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 text-xs"
+          className="h-8 text-xs hidden md:inline-flex"
           onClick={() => setShowGuide(true)}
         >
           <BookOpen className="w-3.5 h-3.5 mr-1.5" /> Guía Hacienda
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={() => setImportOpen(true)}
+        >
+          <Upload className="w-3.5 h-3.5 mr-1.5" /> Import CSV
         </Button>
         <Button
           size="sm"
@@ -558,7 +531,11 @@ export default function InvoicesPage() {
         </Button>
       </PageHeader>
 
-      <div className="px-6 py-6 space-y-4">
+      <div className="px-6 pb-2">
+        <DiagnosticButton module="invoices" />
+      </div>
+
+      <div className="px-4 md:px-6 py-4 space-y-4">
         {(totalOverdue > 0 || overdueAmount > 0) && (
           <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
             <div className="flex items-center gap-2">
@@ -567,7 +544,7 @@ export default function InvoicesPage() {
                 <div className="text-sm font-medium text-foreground">
                   {totalOverdue} factura{totalOverdue === 1 ? "" : "s"} vencida{totalOverdue === 1 ? "" : "s"}
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground/60">
                   {formatMoney(overdueAmount, "USD")} pendientes de cobro
                 </div>
               </div>
@@ -580,7 +557,7 @@ export default function InvoicesPage() {
             <BookOpen className="mt-0.5 h-4 w-4 text-sky-400" />
             <div className="space-y-1">
               <div className="text-sm font-medium text-foreground">Ayuda para PYMES</div>
-              <p className="text-xs leading-5 text-muted-foreground">
+              <p className="text-xs leading-5 text-muted-foreground/60">
                 Facturación ya muestra ayuda por campo con el ícono <span className="font-medium text-foreground">?</span>.
                 Si usas modo <span className="font-medium text-foreground">HACIENDA</span>, conviene tener configurado
                 el emisor, credenciales, certificado, callback y catálogos fiscales antes de emitir.
@@ -594,7 +571,7 @@ export default function InvoicesPage() {
               <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-400" />
               <div className="space-y-1">
                 <div className="text-sm font-medium text-foreground">Hacienda aún no está lista para emitir</div>
-                <p className="text-xs leading-5 text-muted-foreground">
+                <p className="text-xs leading-5 text-muted-foreground/60">
                   Antes de usar <span className="font-medium text-foreground">Enviar MH</span>, completa en Configuración estos datos:
                   {" "}{haciendaReadinessIssues.join(", ")}.
                 </p>
@@ -605,7 +582,7 @@ export default function InvoicesPage() {
 
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-[320px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -657,18 +634,20 @@ export default function InvoicesPage() {
         ) : filteredInvoices.length === 0 ? (
           <EmptyState icon={Receipt} title="Sin facturas" description="Crea tu primera factura para empezar." />
         ) : (
-          <div className="rounded-lg border border-border overflow-hidden bg-card">
+          <div className="rounded-lg border border-border overflow-x-auto bg-card">
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-[11px] text-muted-foreground font-medium"># Factura</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Contacto</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Total</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Pagado</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Saldo</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Vencimiento</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium">Cobro / Hacienda</TableHead>
-                  <TableHead className="text-[11px] text-muted-foreground font-medium text-right">Acciones</TableHead>
+            <TableHead className="text-[11px] text-muted-foreground/60 font-medium"># Factura</TableHead>
+            <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Contacto</TableHead>
+            <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Subtotal</TableHead>
+            <TableHead className="text-[11px] text-muted-foreground/60 font-medium">IVA</TableHead>
+            <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Total</TableHead>
+                  <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Pagado</TableHead>
+                  <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Saldo</TableHead>
+                  <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Vencimiento</TableHead>
+                  <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Cobro / Hacienda</TableHead>
+                  <TableHead className="text-[11px] text-muted-foreground/60 font-medium text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -681,17 +660,23 @@ export default function InvoicesPage() {
                     <TableRow
                       key={invoice.id}
                       className={cn(
-                        "border-border hover:bg-white/[0.02]",
+                        "border-border hover:bg-foreground/[0.015]",
                         (invoice.status === "OVERDUE" || highlightedIds.includes(invoice.id)) && "bg-amber-500/5",
                       )}
                     >
                       <TableCell className="text-sm font-medium text-foreground">{invoice.number}</TableCell>
                       <TableCell>
                         <div className="text-sm text-foreground">{invoice.contact?.full_name ?? "—"}</div>
-                        <div className="text-[11px] text-muted-foreground">{invoice.contact?.email || invoice.contact?.phone || "Sin dato de contacto"}</div>
+                        <div className="text-[11px] text-muted-foreground/60">{invoice.contact?.email || invoice.contact?.phone || "Sin dato de contacto"}</div>
                         {invoice.conversation?.subject && (
-                          <div className="text-[11px] text-muted-foreground truncate">{invoice.conversation.subject}</div>
+                          <div className="text-[11px] text-muted-foreground/60 truncate">{invoice.conversation.subject}</div>
                         )}
+                      </TableCell>
+                      <TableCell className="text-sm text-foreground">
+                        {invoice.subtotal != null ? formatMoney(invoice.subtotal, invoice.currency) : "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-foreground">
+                        {invoice.tax_rate != null ? `${invoice.tax_rate}%` : "—"}
                       </TableCell>
                       <TableCell className="text-sm text-foreground">
                         {formatMoney(invoice.amount, invoice.currency)}
@@ -705,7 +690,7 @@ export default function InvoicesPage() {
                           <div className="text-[11px] text-amber-400">{overdueDays}d vencida</div>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs text-muted-foreground/60">
                         {format(new Date(invoice.due_date), "d MMM yyyy", { locale: es })}
                       </TableCell>
                       <TableCell>
@@ -771,6 +756,42 @@ export default function InvoicesPage() {
                               Estado MH
                             </Button>
                           )}
+                          {invoice.issuance_mode === "HACIENDA" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-xs text-green-400 hover:text-green-300"
+                              onClick={() => validateHaciendaMutation.mutate(invoice.id)}
+                              disabled={validateHaciendaMutation.isPending}
+                            >
+                              {validateHaciendaMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
+                              Validar MH
+                            </Button>
+                          )}
+                          {invoice.hacienda_status === "RECHAZADO" && invoice.hacienda_last_error && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-xs text-amber-400 hover:text-amber-300"
+                              onClick={() => explainErrorMutation.mutate(invoice.id)}
+                              disabled={explainErrorMutation.isPending}
+                            >
+                              {explainErrorMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Info className="w-3.5 h-3.5 mr-1" />}
+                              Error MH
+                            </Button>
+                          )}
+                          {invoice.issuance_mode === "HACIENDA" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-xs"
+                              onClick={() => xmlPreviewMutation.mutate(invoice.id)}
+                              disabled={xmlPreviewMutation.isPending}
+                            >
+                              {xmlPreviewMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Code2 className="w-3.5 h-3.5 mr-1" />}
+                              XML
+                            </Button>
+                          )}
                           {invoice.status === "OVERDUE" && (
                             <Button
                               size="sm"
@@ -781,8 +802,8 @@ export default function InvoicesPage() {
                             >
                               {generateReminderMutation.isPending && selectedInvoice?.id === invoice.id
                                 ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
-                              Redactar IA
+                                : <Pencil className="w-3.5 h-3.5 mr-1.5" />}
+                              Redactar
                             </Button>
                           )}
                           {!["PAID", "CANCELLED"].includes(invoice.status) && (
@@ -857,374 +878,100 @@ export default function InvoicesPage() {
         )}
       </div>
 
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="bg-card border-border sm:max-w-[460px]">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Nueva factura</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Modo</Label>
-                  <FieldHelp
-                    title="Modo"
-                    meaning="Permite decidir si esta factura queda solo para cobranza interna o si además se emite oficialmente ante Hacienda."
-                    example="Usa `MANUAL_ONLY` para control comercial y `HACIENDA` cuando debe ser comprobante electrónico oficial."
-                  />
-                </div>
-                <Select value={createForm.issuance_mode} onValueChange={(value) => setCreateForm((prev) => ({ ...prev, issuance_mode: value }))}>
-                  <SelectTrigger className="h-8 text-xs bg-background border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ISSUANCE_MODES.map((mode) => (
-                      <SelectItem key={mode} value={mode}>{mode}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Documento</Label>
-                  <FieldHelp
-                    title="Documento"
-                    meaning="Tipo de comprobante fiscal que se emitirá."
-                    example="`FACTURA_ELECTRONICA` para la mayoría de ventas. `NOTA_CREDITO` si debes disminuir o corregir una factura emitida."
-                  />
-                </div>
-                <Select value={createForm.document_type} onValueChange={(value) => setCreateForm((prev) => ({ ...prev, document_type: value }))}>
-                  <SelectTrigger className="h-8 text-xs bg-background border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DOCUMENT_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>{type}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1">
-                <Label className="text-xs text-muted-foreground">Contacto</Label>
-                <FieldHelp
-                  title="Contacto"
-                  meaning="Es la persona o empresa a la que se le emite la factura. Para Hacienda, este registro debe tener datos fiscales correctos."
-                  example="Idealmente el contacto debe incluir identificación, correo tributario y dirección si vas a emitir comprobante electrónico."
-                />
-              </div>
-              <select
-                value={createForm.contact_id}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, contact_id: e.target.value }))}
-                className="flex h-8 w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isContactsLoading}
-              >
-                <option value="">
-                  {isContactsLoading
-                    ? "Cargando contactos..."
-                    : hasContactsError
-                      ? "No se pudieron cargar los contactos"
-                    : contacts.length
-                      ? "Selecciona un contacto"
-                      : "No hay contactos disponibles"}
-                </option>
-                {contacts.map((contact: any) => (
-                  <option key={contact.id} value={contact.id}>
-                    {contact.full_name}
-                    {contact.company_name ? ` · ${contact.company_name}` : ""}
-                  </option>
-                ))}
-              </select>
-              {hasContactsError && (
-                <p className="text-[11px] text-destructive">
-                  No pudimos cargar los contactos. Cierra y vuelve a abrir el formulario.
-                </p>
-              )}
-              {!isContactsLoading && !contacts.length && !hasContactsError && (
-                <p className="text-[11px] text-muted-foreground">
-                  No hay contactos creados todavía. Puedes agregarlos desde Contactos o vinculando uno desde el inbox.
-                </p>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Número</Label>
-                  <FieldHelp
-                    title="Número"
-                    meaning="Identificador comercial visible de la factura dentro del sistema."
-                    example="Ejemplo: `FAC-00125`. En Hacienda, además existirán clave y consecutivo oficiales."
-                  />
-                </div>
-                <Input
-                  value={createForm.number}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, number: e.target.value }))}
-                  className="h-8 text-xs bg-background border-border"
-                  placeholder="FAC-001"
-                />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Moneda</Label>
-                  <FieldHelp
-                    title="Moneda"
-                    meaning="Moneda en la que se emite la operación."
-                    example="`CRC` para colones o `USD` para dólares. Si no es CRC, Hacienda requiere tipo de cambio correcto."
-                  />
-                </div>
-                <Input
-                  value={createForm.currency}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, currency: e.target.value.toUpperCase() }))}
-                  className="h-8 text-xs bg-background border-border"
-                  placeholder="USD"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Monto total</Label>
-                  <FieldHelp
-                    title="Monto total"
-                    meaning="Total comercial de la factura. En modo Hacienda se usa para construir la línea y el cálculo fiscal."
-                    example="Si vendes un servicio por 10,000 CRC con IVA 13%, la línea debe reflejar base e impuesto de forma consistente."
-                  />
-                </div>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={createForm.amount}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, amount: e.target.value }))}
-                  className="h-8 text-xs bg-background border-border"
-                />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Vencimiento</Label>
-                  <FieldHelp
-                    title="Vencimiento"
-                    meaning="Fecha límite de pago para cobranza interna."
-                    example="Si vendes a 30 días, la fecha de vencimiento suele ser 30 días después de la emisión."
-                  />
-                </div>
-                <Input
-                  type="date"
-                  value={createForm.due_date}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, due_date: e.target.value }))}
-                  className="h-8 text-xs bg-background border-border"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Fecha emisión</Label>
-                  <FieldHelp
-                    title="Fecha de emisión"
-                    meaning="Fecha oficial del comprobante."
-                    example="Normalmente coincide con el día en que se realiza la venta o se genera la factura."
-                  />
-                </div>
-                <Input
-                  type="date"
-                  value={createForm.issue_date}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, issue_date: e.target.value }))}
-                  className="h-8 text-xs bg-background border-border"
-                />
-              </div>
-              {createForm.issuance_mode === "HACIENDA" && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1">
-                    <Label className="text-xs text-muted-foreground">Actividad</Label>
-                    <FieldHelp
-                      title="Actividad"
-                      meaning="Código de actividad económica del emisor ante Hacienda."
-                      example="Si la empresa vende servicios de software y también equipo, debe elegir la actividad correcta para esa factura."
-                    />
-                  </div>
-                  <Input
-                    value={createForm.activity_code}
-                    onChange={(e) => setCreateForm((prev) => ({ ...prev, activity_code: e.target.value }))}
-                    className="h-8 text-xs bg-background border-border"
-                    placeholder="Código actividad"
-                  />
-                </div>
-              )}
-            </div>
-            {createForm.issuance_mode === "HACIENDA" && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Condición venta</Label>
-                      <FieldHelp
-                        title="Condición de venta"
-                        meaning="Indica si la venta es de contado, crédito u otra modalidad tributaria."
-                        example="`01` contado si se paga al momento, `02` crédito si se paga después."
-                      />
-                    </div>
-                    <Input
-                      value={createForm.sale_condition}
-                      onChange={(e) => setCreateForm((prev) => ({ ...prev, sale_condition: e.target.value }))}
-                      className="h-8 text-xs bg-background border-border"
-                      placeholder="01"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Medio pago</Label>
-                      <FieldHelp
-                        title="Medio de pago"
-                        meaning="Forma en que se realiza el pago de la operación."
-                        example="`01` efectivo, `02` tarjeta, `03` transferencia. Debe corresponder al catálogo tributario que maneje el sistema."
-                      />
-                    </div>
-                    <Input
-                      value={createForm.payment_method}
-                      onChange={(e) => setCreateForm((prev) => ({ ...prev, payment_method: e.target.value }))}
-                      className="h-8 text-xs bg-background border-border"
-                      placeholder="01"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1 col-span-2">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Detalle línea</Label>
-                      <FieldHelp
-                        title="Detalle de línea"
-                        meaning="Descripción fiscal del producto o servicio."
-                        example="Ejemplo bueno: `Servicio mensual de soporte técnico abril 2026`. Evita descripciones genéricas como `Varios`."
-                      />
-                    </div>
-                    <Input
-                      value={createForm.line_description}
-                      onChange={(e) => setCreateForm((prev) => ({ ...prev, line_description: e.target.value }))}
-                      className="h-8 text-xs bg-background border-border"
-                      placeholder="Descripción fiscal"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Impuesto %</Label>
-                      <FieldHelp
-                        title="Impuesto %"
-                        meaning="Porcentaje del impuesto aplicado a la línea."
-                        example="Usa `13` si aplica IVA general. Usa `0` solo si realmente no corresponde impuesto o hay exención válida."
-                      />
-                    </div>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={createForm.tax_rate}
-                      onChange={(e) => setCreateForm((prev) => ({ ...prev, tax_rate: e.target.value }))}
-                      className="h-8 text-xs bg-background border-border"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1">
-                    <Label className="text-xs text-muted-foreground">CABYS</Label>
-                    <FieldHelp
-                      title="CABYS"
-                      meaning="Código oficial que clasifica el bien o servicio facturado."
-                      example="Cada producto o servicio tiene un código distinto. Es mejor buscarlo antes de emitir que usar uno aproximado."
-                    />
-                  </div>
-                  <Input
-                    value={createForm.cabys_code}
-                    onChange={(e) => setCreateForm((prev) => ({ ...prev, cabys_code: e.target.value }))}
-                    className="h-8 text-xs bg-background border-border"
-                    placeholder="Código CABYS"
-                  />
-                </div>
-              </>
-            )}
-            <div className="space-y-1">
-              <div className="flex items-center gap-1">
-                <Label className="text-xs text-muted-foreground">Descripción</Label>
-                <FieldHelp
-                  title="Descripción"
-                  meaning="Texto comercial o interno de apoyo para entender la factura."
-                  example="Puedes anotar contexto como período facturado, proyecto o condiciones comerciales."
-                />
-              </div>
-              <Textarea
-                value={createForm.description}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, description: e.target.value }))}
-                className="min-h-[90px] text-xs bg-background border-border"
-                placeholder="Detalles opcionales de la factura"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowCreate(false)}>
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => createMutation.mutate()}
-              disabled={
-                createMutation.isPending ||
-                !createForm.contact_id ||
-                !createForm.number.trim() ||
-                !createForm.amount ||
-                !createForm.due_date
-              }
-            >
-              {createMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-              Crear factura
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <InvoiceSheet
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        contacts={contacts}
+        isContactsLoading={isContactsLoading}
+        hasContactsError={hasContactsError}
+        initialData={createForm}
+        onChange={(updates) => setCreateForm((prev) => ({ ...prev, ...updates }))}
+        onSave={() => createMutation.mutate()}
+        isSaving={createMutation.isPending}
+      />
 
       <Dialog open={showDetail} onOpenChange={(open) => { setShowDetail(open); if (!open) setSelectedInvoice(null); }}>
-        <DialogContent className="bg-card border-border sm:max-w-[480px]">
+        <DialogContent className="bg-card border-border sm:max-w-[640px]">
           <DialogHeader>
             <DialogTitle className="text-sm">Detalle de factura</DialogTitle>
           </DialogHeader>
           {selectedInvoice && (
             <div className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Número</span><div className="text-foreground font-medium mt-0.5">{selectedInvoice.number}</div></div>
-                <div><span className="text-muted-foreground">Estado</span><div className="mt-0.5"><StatusBadge status={selectedInvoice.status} type="invoice" /></div></div>
+                <div><span className="text-muted-foreground/60">Número</span><div className="text-foreground font-medium mt-0.5">{selectedInvoice.number}</div></div>
+                <div><span className="text-muted-foreground/60">Estado</span><div className="mt-0.5"><StatusBadge status={selectedInvoice.status} type="invoice" /></div></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Contacto</span><div className="text-foreground mt-0.5">{selectedInvoice.contact?.full_name ?? "—"}</div></div>
-                <div><span className="text-muted-foreground">Empresa</span><div className="text-foreground mt-0.5">{selectedInvoice.contact?.company_name ?? "—"}</div></div>
+                <div><span className="text-muted-foreground/60">Contacto</span><div className="text-foreground mt-0.5">{selectedInvoice.contact?.full_name ?? "—"}</div></div>
+                <div><span className="text-muted-foreground/60">Empresa</span><div className="text-foreground mt-0.5">{selectedInvoice.contact?.company_name ?? "—"}</div></div>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div><span className="text-muted-foreground">Total</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.amount, selectedInvoice.currency)}</div></div>
-                <div><span className="text-muted-foreground">Pagado</span><div className="text-green-400 font-medium mt-0.5">{formatMoney(selectedInvoice.amount_paid, selectedInvoice.currency)}</div></div>
-                <div><span className="text-muted-foreground">Saldo</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)}</div></div>
+                <div><span className="text-muted-foreground/60">Total</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.amount, selectedInvoice.currency)}</div></div>
+                <div><span className="text-muted-foreground/60">Pagado</span><div className="text-green-400 font-medium mt-0.5">{formatMoney(selectedInvoice.amount_paid, selectedInvoice.currency)}</div></div>
+                <div><span className="text-muted-foreground/60">Saldo</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)}</div></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Emisión</span><div className="text-foreground mt-0.5">{selectedInvoice.issue_date ? format(new Date(selectedInvoice.issue_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
-                <div><span className="text-muted-foreground">Vencimiento</span><div className="text-foreground mt-0.5">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
+                <div><span className="text-muted-foreground/60">Subtotal</span><div className="text-foreground mt-0.5">{selectedInvoice.subtotal != null ? formatMoney(selectedInvoice.subtotal, selectedInvoice.currency) : "—"}</div></div>
+                <div><span className="text-muted-foreground/60">IVA</span><div className="text-foreground mt-0.5">{selectedInvoice.tax_rate != null ? `${selectedInvoice.tax_rate}%` : "—"}{selectedInvoice.tax_amount != null ? ` (${formatMoney(selectedInvoice.tax_amount, selectedInvoice.currency)})` : ""}</div></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Modo</span><div className="text-foreground mt-0.5">{selectedInvoice.issuance_mode}</div></div>
-                <div><span className="text-muted-foreground">Hacienda</span><div className="mt-0.5"><StatusBadge status={selectedInvoice.hacienda_status} type="invoice" /></div></div>
+                <div><span className="text-muted-foreground/60">Emisión</span><div className="text-foreground mt-0.5">{selectedInvoice.issue_date ? format(new Date(selectedInvoice.issue_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
+                <div><span className="text-muted-foreground/60">Vencimiento</span><div className="text-foreground mt-0.5">{selectedInvoice.due_date ? format(new Date(selectedInvoice.due_date), "d MMM yyyy", { locale: es }) : "—"}</div></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Moneda</span><div className="text-foreground mt-0.5">{selectedInvoice.currency}</div></div>
-                <div><span className="text-muted-foreground">Tipo documento</span><div className="text-foreground mt-0.5">{selectedInvoice.document_type}</div></div>
+                <div><span className="text-muted-foreground/60">Modo</span><div className="text-foreground mt-0.5">{selectedInvoice.issuance_mode}</div></div>
+                <div><span className="text-muted-foreground/60">Hacienda</span><div className="mt-0.5"><StatusBadge status={selectedInvoice.hacienda_status} type="invoice" /></div></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><span className="text-muted-foreground/60">Moneda</span><div className="text-foreground mt-0.5">{selectedInvoice.currency}</div></div>
+                <div><span className="text-muted-foreground/60">Tipo documento</span><div className="text-foreground mt-0.5">{selectedInvoice.document_type}</div></div>
               </div>
               {selectedInvoice.description && (
-                <div><span className="text-muted-foreground">Descripción</span><div className="text-foreground mt-0.5 whitespace-pre-wrap">{selectedInvoice.description}</div></div>
+                <div><span className="text-muted-foreground/60">Descripción</span><div className="text-foreground mt-0.5 whitespace-pre-wrap">{selectedInvoice.description}</div></div>
+              )}
+              {selectedInvoice.lines?.length > 0 && (
+                <div>
+                  <span className="text-muted-foreground/60">Líneas ({selectedInvoice.lines.length})</span>
+                  <div className="mt-1.5 rounded-lg border border-border overflow-hidden">
+                    <table className="w-full text-[10px]">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left px-2 py-1.5 text-muted-foreground font-medium">#</th>
+                          <th className="text-left px-2 py-1.5 text-muted-foreground font-medium">Descripción</th>
+                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Cant</th>
+                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Precio</th>
+                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">IVA</th>
+                          <th className="text-right px-2 py-1.5 text-muted-foreground font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedInvoice.lines.map((line: any) => (
+                          <tr key={line.id} className="border-t border-border/50 hover:bg-muted/30 transition-colors">
+                            <td className="px-2 py-1.5 text-muted-foreground">{line.line_number}</td>
+                            <td className="px-2 py-1.5 text-foreground">
+                              <span>{line.description}</span>
+                              {line.product?.name && <span className="text-muted-foreground/60 ml-1">({line.product.name})</span>}
+                            </td>
+                            <td className="px-2 py-1.5 text-right text-foreground">{Number(line.quantity)}</td>
+                            <td className="px-2 py-1.5 text-right text-foreground">{formatMoney(line.unit_price, selectedInvoice.currency)}</td>
+                            <td className="px-2 py-1.5 text-right text-muted-foreground">{line.tax_rate != null ? `${line.tax_rate}%` : "—"}</td>
+                            <td className="px-2 py-1.5 text-right text-foreground font-medium">{formatMoney(line.total_line_amount, selectedInvoice.currency)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               )}
               {selectedInvoice.payments?.length > 0 && (
                 <div>
-                  <span className="text-muted-foreground">Pagos registrados</span>
+                  <span className="text-muted-foreground/60">Pagos registrados</span>
                   <div className="mt-1 space-y-1">
                     {selectedInvoice.payments.map((p: any) => (
                       <div key={p.id} className="flex justify-between rounded border border-border bg-background px-2 py-1">
                         <span className="text-foreground">{formatMoney(p.amount, selectedInvoice.currency)}</span>
-                        <span className="text-muted-foreground">{p.paid_at ? format(new Date(p.paid_at), "d MMM yyyy", { locale: es }) : "—"}</span>
-                        <span className="text-muted-foreground">{p.method ?? "—"}</span>
+                        <span className="text-muted-foreground/60">{p.paid_at ? format(new Date(p.paid_at), "d MMM yyyy", { locale: es }) : "—"}</span>
+                        <span className="text-muted-foreground/60">{p.method ?? "—"}</span>
                       </div>
                     ))}
                   </div>
@@ -1246,14 +993,14 @@ export default function InvoicesPage() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Modo</Label>
+                <Label className="text-xs text-muted-foreground/60">Modo</Label>
                 <Select value={editForm.issuance_mode} onValueChange={(v) => setEditForm(f => ({ ...f, issuance_mode: v }))}>
                   <SelectTrigger className="h-8 text-xs bg-background border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{ISSUANCE_MODES.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Documento</Label>
+                <Label className="text-xs text-muted-foreground/60">Documento</Label>
                 <Select value={editForm.document_type} onValueChange={(v) => setEditForm(f => ({ ...f, document_type: v }))}>
                   <SelectTrigger className="h-8 text-xs bg-background border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{DOCUMENT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
@@ -1261,7 +1008,7 @@ export default function InvoicesPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Contacto</Label>
+              <Label className="text-xs text-muted-foreground/60">Contacto</Label>
               <select
                 value={editForm.contact_id}
                 onChange={(e) => setEditForm(f => ({ ...f, contact_id: e.target.value }))}
@@ -1275,46 +1022,46 @@ export default function InvoicesPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Número</Label>
+                <Label className="text-xs text-muted-foreground/60">Número</Label>
                 <Input value={editForm.number} onChange={(e) => setEditForm(f => ({ ...f, number: e.target.value }))} className="h-8 text-xs bg-background border-border" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Moneda</Label>
+                <Label className="text-xs text-muted-foreground/60">Moneda</Label>
                 <Input value={editForm.currency} onChange={(e) => setEditForm(f => ({ ...f, currency: e.target.value.toUpperCase() }))} className="h-8 text-xs bg-background border-border" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Monto total</Label>
+                <Label className="text-xs text-muted-foreground/60">Monto total</Label>
                 <Input type="number" step="0.01" value={editForm.amount} onChange={(e) => setEditForm(f => ({ ...f, amount: e.target.value }))} className="h-8 text-xs bg-background border-border" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Vencimiento</Label>
+                <Label className="text-xs text-muted-foreground/60">Vencimiento</Label>
                 <Input type="date" value={editForm.due_date} onChange={(e) => setEditForm(f => ({ ...f, due_date: e.target.value }))} className="h-8 text-xs bg-background border-border" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Fecha emisión</Label>
+                <Label className="text-xs text-muted-foreground/60">Fecha emisión</Label>
                 <Input type="date" value={editForm.issue_date} onChange={(e) => setEditForm(f => ({ ...f, issue_date: e.target.value }))} className="h-8 text-xs bg-background border-border" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Actividad</Label>
+                <Label className="text-xs text-muted-foreground/60">Actividad</Label>
                 <Input value={editForm.activity_code} onChange={(e) => setEditForm(f => ({ ...f, activity_code: e.target.value }))} className="h-8 text-xs bg-background border-border" placeholder="Código" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Condición venta</Label>
+                <Label className="text-xs text-muted-foreground/60">Condición venta</Label>
                 <Input value={editForm.sale_condition} onChange={(e) => setEditForm(f => ({ ...f, sale_condition: e.target.value }))} className="h-8 text-xs bg-background border-border" placeholder="01" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Medio pago</Label>
+                <Label className="text-xs text-muted-foreground/60">Medio pago</Label>
                 <Input value={editForm.payment_method} onChange={(e) => setEditForm(f => ({ ...f, payment_method: e.target.value }))} className="h-8 text-xs bg-background border-border" placeholder="01" />
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Descripción</Label>
+              <Label className="text-xs text-muted-foreground/60">Descripción</Label>
               <Textarea value={editForm.description} onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))} className="min-h-[80px] text-xs bg-background border-border" placeholder="Detalles opcionales" />
             </div>
           </div>
@@ -1341,7 +1088,7 @@ export default function InvoicesPage() {
           <div className="space-y-4">
             <div className="rounded-lg border border-border bg-background px-4 py-3">
               <div className="text-sm font-medium text-foreground">Qué necesita una factura rigurosa para Hacienda</div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              <p className="mt-1 text-xs leading-5 text-muted-foreground/60">
                 No basta con monto y cliente. Para que el sistema sea sólido se necesitan datos correctos del emisor,
                 datos fiscales del receptor, líneas con CABYS e impuesto, catálogos tributarios, XML, firma, token,
                 envío, callback o consulta de estado, y trazabilidad de aceptación o rechazo.
@@ -1351,7 +1098,7 @@ export default function InvoicesPage() {
               {HACIENDA_GUIDE.map((item) => (
                 <div key={item.title} className="rounded-lg border border-border bg-background px-4 py-3">
                   <div className="text-sm font-medium text-foreground">{item.title}</div>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.meaning}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground/60">{item.meaning}</p>
                   <div className="mt-2 rounded-md border border-border bg-card px-2.5 py-2 text-xs leading-5 text-foreground">
                     {item.example}
                   </div>
@@ -1360,7 +1107,7 @@ export default function InvoicesPage() {
             </div>
             <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
               <div className="text-sm font-medium text-foreground">Pendiente importante</div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              <p className="mt-1 text-xs leading-5 text-muted-foreground/60">
                 El flujo ya contempla la estructura de Hacienda, pero para operar en serio aún debes tener configurados
                 el certificado real, la firma real, credenciales válidas, callback accesible y catálogos tributarios correctos.
               </p>
@@ -1397,20 +1144,20 @@ export default function InvoicesPage() {
           {!selectedInvoice ? null : (
             <div className="space-y-3">
               <div className="rounded-md border border-border bg-background px-3 py-2 space-y-1">
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground/60">
                   {selectedInvoice.number} · {selectedInvoice.contact?.full_name}
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-xs">
                   <div>
-                    <div className="text-muted-foreground">Total</div>
+                    <div className="text-muted-foreground/60">Total</div>
                     <div className="text-foreground">{formatMoney(selectedInvoice.amount, selectedInvoice.currency)}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">Pagado</div>
+                    <div className="text-muted-foreground/60">Pagado</div>
                     <div className="text-foreground">{formatMoney(selectedInvoice.amount_paid, selectedInvoice.currency)}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">Saldo</div>
+                    <div className="text-muted-foreground/60">Saldo</div>
                     <div className="text-foreground">{formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)}</div>
                   </div>
                 </div>
@@ -1418,7 +1165,7 @@ export default function InvoicesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Monto abonado</Label>
+                  <Label className="text-xs text-muted-foreground/60">Monto abonado</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -1428,7 +1175,7 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Fecha de pago</Label>
+                  <Label className="text-xs text-muted-foreground/60">Fecha de pago</Label>
                   <Input
                     type="date"
                     value={paymentForm.paid_at}
@@ -1440,7 +1187,7 @@ export default function InvoicesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Método</Label>
+                  <Label className="text-xs text-muted-foreground/60">Método</Label>
                   <Input
                     value={paymentForm.method}
                     onChange={(e) => setPaymentForm((prev) => ({ ...prev, method: e.target.value }))}
@@ -1449,7 +1196,7 @@ export default function InvoicesPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Referencia</Label>
+                  <Label className="text-xs text-muted-foreground/60">Referencia</Label>
                   <Input
                     value={paymentForm.reference}
                     onChange={(e) => setPaymentForm((prev) => ({ ...prev, reference: e.target.value }))}
@@ -1460,7 +1207,7 @@ export default function InvoicesPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Notas</Label>
+                <Label className="text-xs text-muted-foreground/60">Notas</Label>
                 <Textarea
                   value={paymentForm.notes}
                   onChange={(e) => setPaymentForm((prev) => ({ ...prev, notes: e.target.value }))}
@@ -1502,14 +1249,14 @@ export default function InvoicesPage() {
             <DialogTitle className="text-sm">Recordatorio de pago</DialogTitle>
           </DialogHeader>
           {!selectedInvoice || (generateReminderMutation.isPending && !reminderDraft.trim()) ? (
-            <div className="py-6 flex items-center justify-center text-sm text-muted-foreground">
+            <div className="py-6 flex items-center justify-center text-sm text-muted-foreground/60">
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Cargando borrador...
             </div>
           ) : (
             <div className="space-y-3">
               <div className="rounded-md border border-border bg-background px-3 py-2">
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground/60">
                   {selectedInvoice.number} · {selectedInvoice.contact?.full_name}
                 </div>
                 <div className="text-sm text-foreground mt-1">
@@ -1518,7 +1265,7 @@ export default function InvoicesPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Borrador</Label>
+                <Label className="text-xs text-muted-foreground/60">Borrador</Label>
                 <Textarea
                   value={reminderDraft}
                   onChange={(e) => setReminderDraft(e.target.value)}
@@ -1528,7 +1275,7 @@ export default function InvoicesPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Canal</Label>
+                <Label className="text-xs text-muted-foreground/60">Canal</Label>
                 <Select value={selectedChannelId} onValueChange={setSelectedChannelId}>
                   <SelectTrigger className="h-8 text-xs bg-background border-border">
                     <SelectValue placeholder="Selecciona un canal" />
@@ -1557,6 +1304,123 @@ export default function InvoicesPage() {
               {sendReminderMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
               Enviar
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} entityType="invoices" />
+
+      <Dialog open={showValidation} onOpenChange={setShowValidation}>
+        <DialogContent className="bg-card border-border sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              {validationResult?.valid ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <AlertTriangle className="w-4 h-4 text-amber-400" />}
+              Validación Hacienda — {validationResult?.valid ? "Listo para enviar" : "Requiere correcciones"}
+            </DialogTitle>
+          </DialogHeader>
+          {validationResult && (
+            <div className="space-y-3 text-xs max-h-[50vh] overflow-y-auto">
+              {validationResult.issues?.length > 0 && (
+                <div className="space-y-2">
+                  {validationResult.issues.map((issue: Record<string, any>, i: number) => (
+                    <div key={i} className={cn(
+                      "rounded-md border px-3 py-2",
+                      issue.severity === "error" ? "border-red-500/20 bg-red-500/5" : "border-amber-500/20 bg-amber-500/5",
+                    )}>
+                      <span className={issue.severity === "error" ? "text-red-400" : "text-amber-400"}>{issue.field}</span>
+                      <p className="text-muted-foreground mt-0.5">{issue.message}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {validationResult.ai_review && (
+                <div className="rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2">
+                  <span className="text-blue-400 font-medium">Revisión IA</span>
+                  <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{validationResult.ai_review}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowValidation(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showErrorExplain} onOpenChange={setShowErrorExplain}>
+        <DialogContent className="bg-card border-border sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <Info className="w-4 h-4 text-amber-400" />
+              Error de Hacienda explicado
+            </DialogTitle>
+          </DialogHeader>
+          {errorExplainData && (
+            <div className="space-y-3 text-xs">
+              <div className="rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2">
+                <span className="text-red-400 font-medium">Mensaje técnico</span>
+                <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{errorExplainData.technical_message?.slice(0, 500)}</p>
+              </div>
+              <div className="rounded-md border border-border/60 bg-background px-3 py-2">
+                <span className="text-foreground font-medium">Explicación</span>
+                <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{errorExplainData.plain_explanation}</p>
+              </div>
+              {errorExplainData.suggested_fix && (
+                <div className="rounded-md border border-green-500/20 bg-green-500/5 px-3 py-2">
+                  <span className="text-green-400 font-medium">Sugerencia para corregir</span>
+                  <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{errorExplainData.suggested_fix}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowErrorExplain(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showXmlPreview} onOpenChange={setShowXmlPreview}>
+        <DialogContent className="bg-card border-border sm:max-w-[680px] max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <Code2 className="w-4 h-4 text-blue-400" />
+              Vista previa XML — Factura Electrónica
+            </DialogTitle>
+          </DialogHeader>
+          {xmlPreview && (
+            <div className="flex-1 overflow-y-auto space-y-3 text-xs">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[10px]"
+                  onClick={() => navigator.clipboard.writeText(xmlPreview.xml)}
+                >
+                  Copiar XML
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[10px]"
+                  onClick={() => {
+                    const blob = new Blob([xmlPreview.xml], { type: "application/xml" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "factura-electronica.xml";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Descargar XML
+                </Button>
+              </div>
+              <pre className="rounded-md border border-border/60 bg-background p-3 text-[10px] text-muted-foreground whitespace-pre-wrap max-h-[300px] overflow-y-auto leading-relaxed">
+                {xmlPreview.xml}
+              </pre>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowXmlPreview(false)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

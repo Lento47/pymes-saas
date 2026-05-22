@@ -1,0 +1,174 @@
+import { useLocation } from 'wouter';
+import type { PricingTier } from '@/data/pricing.data';
+import { Check, ArrowRight, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { usePaddle } from '@/hooks/use-paddle';
+import { useAuth } from '@/hooks/use-auth';
+import { useState } from 'react';
+import ContactSalesModal from './contact-sales-modal';
+
+interface PricingCardProps {
+  tier: PricingTier;
+  isAnnual: boolean;
+}
+
+export function PricingCard({ tier, isAnnual }: PricingCardProps) {
+  const [, navigate] = useLocation();
+  const paddle = usePaddle();
+  const { user, isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+
+  const price = isAnnual ? tier.annualUSD : tier.monthlyUSD;
+  const isEnterprise = tier.name === 'Business+';
+
+  const priceId = isAnnual ? tier.paddlePriceIdAnnual : tier.paddlePriceIdMonthly;
+
+  const handleCTA = async () => {
+    // Authenticated users should manage via Billing, not create duplicates
+    if (isAuthenticated && !isEnterprise) {
+      navigate('/settings/billing');
+      return;
+    }
+
+    if (priceId && paddle) {
+      const origin = window.location.origin;
+      const successUrl = isAuthenticated
+        ? `${origin}/billing?paddle=success`
+        : `${origin}/login?plan=${tier.name.toLowerCase().replace('+', 'plus')}`;
+
+      setLoading(true);
+      try {
+        await paddle.Checkout.open({
+          items: [{ priceId, quantity: 1 }],
+          customData: {
+            workspaceSlug: user?.workspace?.slug ?? null,
+            plan: tier.name.toLowerCase().replace('+', 'plus'),
+          },
+          settings: {
+            displayMode: 'overlay',
+            theme: 'dark',
+            locale: 'en',
+            successUrl,
+          },
+        });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Enterprise with no price ID → contact sales
+    if (isEnterprise) {
+      setContactOpen(true);
+      return;
+    }
+
+    // Fallback: price ID not configured yet
+    navigate(`/login?plan=${tier.name.toLowerCase().replace('+', 'plus')}`);
+  };
+
+  return (
+    <div className={cn(
+      'relative rounded-3xl border transition-all backdrop-blur-md p-5',
+      tier.popular
+        ? 'border-[#F59E0B]/40 bg-indigo-900/30 shadow-[0_8px_40px_rgba(245,158,11,0.15)] md:scale-105'
+        : 'border-border bg-indigo-900/10 hover:bg-indigo-900/15 hover:border-white/20'
+    )}>
+      {/* Popular Badge */}
+      {tier.popular && (
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+          <span className="rounded-full bg-[#F59E0B] px-4 py-1.5 text-xs font-bold text-[#051127] shadow-[0_4px_16px_rgba(245,158,11,0.4)] whitespace-nowrap">
+            🌟 RECOMENDADO
+          </span>
+        </div>
+      )}
+
+      {/* Header */}
+      <div>
+        <h3 className="text-lg font-bold text-white">{tier.name}</h3>
+        <p className="mt-1 text-xs text-muted-foreground">{tier.description}</p>
+      </div>
+
+      {/* Pricing */}
+      <div className="mt-4">
+        {isEnterprise ? (
+          <div className="text-2xl font-bold text-white">Precio personalizado</div>
+        ) : (
+          <>
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-bold text-white">${price}</span>
+              <span className="text-xs text-muted-foreground">/{isAnnual ? 'año' : 'mes'}</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* CTA Button */}
+      <button
+        onClick={handleCTA}
+        disabled={loading}
+        className={cn(
+          'mt-5 w-full rounded-full px-4 py-2.5 font-semibold transition flex items-center justify-center gap-2 text-xs disabled:opacity-60 disabled:cursor-not-allowed',
+          tier.popular
+            ? 'glow-button bg-[linear-gradient(90deg,#F59E0B_0%,#D97706_55%,#B45309_100%)] text-[#051127] hover:translate-y-[-1px]'
+            : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/[0.08]'
+        )}>
+        {loading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <>
+            {tier.cta}
+            {tier.popular && <ArrowRight className="h-3.5 w-3.5" />}
+          </>
+        )}
+      </button>
+
+      {/* Features List */}
+      <div className="mt-5 border-t border-border pt-5">
+        <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+          Incluye
+        </div>
+        <div className="space-y-1.5">
+          {tier.features.map((feature, index) => {
+            const status = tier.featureStatuses?.[feature];
+            return (
+              <div key={index} className="flex gap-2">
+                <Check className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-[#F59E0B]" />
+                <span className="text-xs text-foreground/85">{feature}</span>
+                {status && (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                    status === 'Parcial' ? 'bg-amber-500/10 text-amber-300' : 'bg-zinc-500/10 text-zinc-400'
+                  }`}>
+                    {status}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Limits */}
+      <div className="mt-5 border-t border-border pt-5">
+        <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+          Límites
+        </div>
+        {isEnterprise ? (
+          <div className="text-xs text-foreground/75 italic">
+            Contactá a ventas para límites a la medida de tu negocio
+          </div>
+        ) : (
+          <div className="space-y-1 text-[11px] text-foreground/75">
+            <div>Contactos: <span className="text-white font-semibold">{tier.limits.contacts.toLocaleString()}</span></div>
+            <div>Facturas/mes: <span className="text-white font-semibold">{tier.limits.invoicesPerMonth.toLocaleString()}</span></div>
+            <div>Automatizaciones: <span className="text-white font-semibold">{tier.limits.automations}</span></div>
+            <div>Almacenamiento: <span className="text-white font-semibold">{tier.limits.storageGB} GB</span></div>
+            <div>Ubicaciones: <span className="text-white font-semibold">{tier.limits.locations}</span></div>
+          </div>
+        )}
+      </div>
+      <ContactSalesModal open={contactOpen} onClose={() => setContactOpen(false)} />
+    </div>
+  );
+}

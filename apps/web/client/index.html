@@ -1,18 +1,105 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#05091d" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="facebook-domain-verification" content="tqiw1daxs7dmllz4kli9gdk9y6jecr" />
+    <link rel="privacy-policy" href="/privacy-policy.html" />
+    <link rel="terms-of-service" href="/terms-of-service.html" />
+
+    <title>PymesHub — CRM, facturación electrónica y automatización para PYMEs</title>
+    <meta name="description" content="Centralizá conversaciones de WhatsApp, email y Telegram. Facturá electrónicamente con Hacienda CR. Automatizá tareas y gestioná tu pipeline de ventas. Todo en un solo lugar." />
+    <meta name="keywords" content="facturación electrónica, CRM, WhatsApp business, PYMEs, Costa Rica, Hacienda, pipeline de ventas, automatización" />
+
+    <link rel="canonical" href="https://pymeshub.lat" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PymesHub" />
+    <meta property="og:url" content="https://pymeshub.lat" />
+    <meta property="og:title" content="PymesHub — CRM, facturación electrónica y automatización para PYMEs" />
+    <meta property="og:description" content="Centralizá conversaciones, facturá electrónicamente con Hacienda CR, automatizá tareas y gestioná tu pipeline de ventas." />
+    <meta property="og:image" content="https://pymeshub.lat/images/pymesHub.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PymesHub — CRM, facturación electrónica y automatización para PYMEs" />
+    <meta name="twitter:description" content="Centralizá conversaciones, facturá electrónicamente con Hacienda CR, automatizá tareas y gestioná tu pipeline de ventas." />
+    <meta name="twitter:image" content="https://pymeshub.lat/images/pymesHub.png" />
+
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/pymesHubic.png" />
+    <link rel="shortcut icon" type="image/png" href="https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/pymesHubic.png" />
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/pymesHubic.png" />
+    <link rel="preload" as="image" href="/images/hero-bg.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "PymesHub",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "url": "https://pymeshub.lat/",
+        "description": "CRM, WhatsApp shared inbox, client management, invoicing and workflow automation for growing SMBs.",
+        "offers": {
+          "@type": "Offer",
+          "category": "SaaS",
+          "availability": "https://schema.org/InStock"
+        },
+        "provider": {
+          "@type": "Organization",
+          "name": "PymesHub",
+          "url": "https://pymeshub.lat/"
+        }
+      }
+    </script>
+
+    <script>
+      (function() {
+        var t = (function() { try { var v = localStorage.getItem('PymesHub-theme'); return v === 'light' ? v : 'dark'; } catch(e) { return 'dark'; } })();
+        document.documentElement.classList.toggle('light', t === 'light');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#070B14' : '#f2f3f5');
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Fira+Code:wght@300..700&family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Outfit:wght@100..900&family=Oxanium:wght@200..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100..900;1,100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Space+Grotesk:wght@300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Manrope:wght@400;500;600;700;800&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet" />
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        analytics_storage: 'denied',
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        wait_for_update: 500
+      });
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-YKYJDR6THP"></script>
+    <script>
+      gtag('js', new Date());
+      gtag('config', 'G-YKYJDR6THP');
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" style="min-height:100vh">
+      <!-- Google OAuth verification — crawlers see this, React.render() replaces entire #root -->
+      <div id="seo-legal">
+        <h1>PymesHub — CRM, facturación electrónica y automatización para PYMEs</h1>
+        <p>Centralizá conversaciones de WhatsApp, email y Telegram. Facturá electrónicamente con Hacienda CR. Automatizá tareas y gestioná tu pipeline de ventas.</p>
+        <a href="/privacy-policy.html">Política de privacidad</a>
+        <a href="/terms-of-service.html">Términos del servicio</a>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Facebook SDK — async, non-blocking -->
+    <script>
+      window.fbAsyncInit = function() {
+        FB.init({ appId: '3174214569635492', autoLogAppEvents: true, xfbml: true, version: 'v25.0' });
+      };
+    </script>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+    <script async src="https://telegram.org/js/telegram-widget.js?23"></script>
   </body>
 </html>

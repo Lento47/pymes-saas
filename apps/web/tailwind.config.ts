@@ -6,9 +6,12 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: "0.25rem",
-        md: "0.25rem",
-        sm: "0.125rem",
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+        panel: "18px",
+        card: "16px",
+        control: "12px",
       },
       colors: {
         background:  "hsl(var(--bg) / <alpha-value>)",
@@ -18,6 +21,14 @@ export default {
         "bg-hover":  "hsl(var(--bg-hover) / <alpha-value>)",
         input:       "hsl(var(--border) / <alpha-value>)",
         ring:        "hsl(var(--accent) / <alpha-value>)",
+        brand: {
+          indigo: "#5B5CF0",
+          violet: "#7C3AED",
+          blue: "#3B82F6",
+        },
+        "primary-border":     "hsl(var(--accent) / 0.25)",
+        "destructive-border": "hsl(var(--danger) / 0.25)",
+        "secondary-border":   "hsl(var(--border) / <alpha-value>)",
         card: {
           DEFAULT:    "hsl(var(--bg-card) / <alpha-value>)",
           foreground: "hsl(var(--fg) / <alpha-value>)",
@@ -89,6 +100,11 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.15s ease-out",
         "accordion-up":   "accordion-up 0.15s ease-out",
+      },
+      boxShadow: {
+        xs: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        panel: "0 18px 60px rgba(0,0,0,0.28)",
+        glow: "0 0 40px rgba(91,92,240,0.22)",
       },
     },
   },

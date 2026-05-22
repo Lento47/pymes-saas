@@ -1,20 +1,41 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import { BookOpen, ExternalLink, FolderOpen } from "lucide-react";
+import { BookOpen, ExternalLink, FolderOpen, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   DOCUMENTATION_CATEGORIES,
   DOCUMENTATION_ENTRIES,
 } from "@/lib/documentation";
 
 export default function HelpPage() {
+  const [search, setSearch] = useState("");
+  const filtered = search.trim()
+    ? DOCUMENTATION_ENTRIES.filter(
+        (d) =>
+          d.title.toLowerCase().includes(search.toLowerCase()) ||
+          d.summary.toLowerCase().includes(search.toLowerCase()) ||
+          d.purpose.toLowerCase().includes(search.toLowerCase())
+      )
+    : DOCUMENTATION_ENTRIES;
   return (
     <div className="p-6 space-y-6">
       <PageHeader
         title="Ayuda y documentación"
-        description="Centro de ayuda interno con enlaces a la documentación maestra de PymeHub."
+        description="Centro de ayuda interno con enlaces a la documentación maestra de PymesHub."
       />
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar en documentación..."
+          className="pl-9 h-10 bg-card border-border"
+        />
+      </div>
 
       <Card className="bg-card border-border">
         <CardContent className="pt-6 space-y-3">
@@ -54,8 +75,14 @@ export default function HelpPage() {
       </Card>
 
       <div className="space-y-6">
-        {Object.entries(DOCUMENTATION_CATEGORIES).map(([key, category]) => {
-          const docs = DOCUMENTATION_ENTRIES.filter((entry) => entry.category === key);
+        {search.trim() && filtered.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <p className="text-sm">No se encontraron documentos para "{search}"</p>
+          </div>
+        ) : (
+          Object.entries(DOCUMENTATION_CATEGORIES).map(([key, category]) => {
+            const docs = filtered.filter((entry) => entry.category === key);
+            if (docs.length === 0) return null;
 
           return (
             <section key={key} className="space-y-3">
@@ -67,7 +94,7 @@ export default function HelpPage() {
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {docs.map((doc) => (
                   <Link key={doc.slug} href={`/help/${doc.slug}`}>
-                    <div className="cursor-pointer rounded-xl border border-border bg-card p-4 transition-colors hover:bg-white/[0.03]">
+                    <div className="cursor-pointer rounded-xl border border-border bg-card p-4 transition-colors hover:bg-foreground/[0.03]">
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <p className="text-sm font-medium text-foreground">{doc.title}</p>
@@ -86,7 +113,6 @@ export default function HelpPage() {
                       </div>
                       <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                         <span>{doc.audience}</span>
-                        <span>{doc.repoPath}</span>
                       </div>
                     </div>
                   </Link>
@@ -94,7 +120,8 @@ export default function HelpPage() {
               </div>
             </section>
           );
-        })}
+        })
+      )}
       </div>
     </div>
   );

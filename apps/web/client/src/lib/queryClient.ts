@@ -1,4 +1,5 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import type { QueryFunction } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import { reportClientError } from "@/lib/error-reporting";
 
 const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
@@ -33,14 +34,16 @@ export async function apiRequest(
       headers: data ? { "Content-Type": "application/json" } : {},
       body: data ? JSON.stringify(data) : undefined,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : `Falló la llamada ${method} ${url}`;
+    const stack = error instanceof Error ? error.stack : undefined;
     void reportClientError({
       source: "FRONTEND",
       category: "QUERY_NETWORK",
       severity: "ERROR",
       title: "Query network failure",
-      message: error?.message ?? `Falló la llamada ${method} ${url}`,
-      stack: error?.stack,
+      message: msg,
+      stack,
       method,
       url: `${API_BASE}${url}`,
     });
@@ -60,14 +63,14 @@ export const getQueryFn: <T>(options: {
     let res: Response;
     try {
       res = await fetch(`${API_BASE}${queryKey.join("/")}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       void reportClientError({
         source: "FRONTEND",
         category: "QUERY_NETWORK",
         severity: "ERROR",
         title: "Query fetch failure",
-        message: error?.message ?? "Falló una consulta de datos.",
-        stack: error?.stack,
+        message: error instanceof Error ? error.message : "Falló una consulta de datos.",
+        stack: error instanceof Error ? error.stack : undefined,
         url: `${API_BASE}${queryKey.join("/")}`,
       });
       throw error;
@@ -87,7 +90,7 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      staleTime: 30_000,
       retry: false,
     },
     mutations: {

@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -13,15 +14,59 @@ declare module "http" {
   }
 }
 
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'wss:', 'ws:'],
+      fontSrc: ["'self'", 'data:'],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+    },
+  },
+  hsts: { maxAge: 63072000, includeSubDomains: true },
+  frameguard: { action: 'deny' },
+  noSniff: true,
+  xssFilter: true,
+}));
+
+// HTTPS redirect in production
+app.use((req, res, next) => {
+  if (
+    process.env.NODE_ENV === 'production' &&
+    req.get('x-forwarded-proto') !== 'https' &&
+    req.get('x-forwarded-proto') !== undefined
+  ) {
+    return res.redirect(301, `https://${req.get('host')}${req.url}`);
+  }
+  next();
+});
+
 app.use(
   express.json({
+    limit: '10mb',
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ limit: '10mb', extended: false }));
+
+const SENSITIVE_FIELDS = new Set(['token', 'password', 'access_token', 'refresh_token', 'api_key', 'secret', 'authorization']);
+
+function sanitizeResponseForLog(obj: Record<string, any> | undefined): Record<string, any> | undefined {
+  if (!obj || typeof obj !== 'object') return obj;
+  const sanitized: Record<string, any> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    sanitized[k] = SENSITIVE_FIELDS.has(k.toLowerCase()) ? '[REDACTED]' : v;
+  }
+  return sanitized;
+}
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -50,7 +95,8 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        // Sanitize sensitive fields before logging
+        logLine += ` :: ${JSON.stringify(sanitizeResponseForLog(capturedJsonResponse))}`;
       }
 
       log(logLine);
@@ -65,10 +111,7 @@ app.use((req, res, next) => {
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    // SECURITY: Return generic message in production to avoid information disclosure
-    const message = process.env.NODE_ENV === 'production'
-      ? 'Internal Server Error'
-      : (err.message || "Internal Server Error");
+    const message = err.message || "Internal Server Error";
 
     console.error("Internal Server Error:", err);
 
@@ -76,7 +119,13 @@ app.use((req, res, next) => {
       return next(err);
     }
 
-    return res.status(status).json({ message });
+    // Return generic message for 5xx in production
+    const clientMessage =
+      process.env.NODE_ENV === 'production' && status >= 500
+        ? 'Internal Server Error'
+        : message;
+
+    return res.status(status).json({ message: clientMessage });
   });
 
   // importantly only setup vite in development and after

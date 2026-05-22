@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useRequireAuth } from "@/hooks/use-auth";
 import { Loader2, CheckCircle2 } from "lucide-react";
 
 // ── Data definitions ───────────────────────────────────────────────────────
@@ -125,6 +126,7 @@ function RadioChip({ label, sub, selected, onClick }: {
 // ── Main component ─────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
+  useRequireAuth();
   const { toast } = useToast();
   const [step, setStep]         = useState(0);
   const [categories, setCategories] = useState<string[]>([]);

@@ -1,10 +1,13 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { apiErrorDescription } from "@/lib/api-error";
 import { queryClient } from "@/lib/queryClient";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/shared/page-header";
+import { DiagnosticButton } from "@/components/shared/diagnostic-button";
+import { HelpButton } from "@/components/shared/help-button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PageLoader } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
@@ -28,14 +31,14 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function getFileIcon(mimeType?: string) {
-  if (!mimeType) return <FileText className="w-4 h-4 text-muted-foreground" />;
+  if (!mimeType) return <FileText className="w-4 h-4 text-muted-foreground/60" />;
   if (mimeType.includes("image")) return <FileImage className="w-4 h-4 text-blue-400" />;
   if (mimeType.includes("pdf")) return <FileText className="w-4 h-4 text-red-400" />;
   if (mimeType.includes("sheet") || mimeType.includes("excel") || mimeType.includes("csv"))
     return <FileSpreadsheet className="w-4 h-4 text-emerald-400" />;
   if (mimeType.includes("word") || mimeType.includes("document"))
     return <FileText className="w-4 h-4 text-blue-400" />;
-  return <FileText className="w-4 h-4 text-muted-foreground" />;
+  return <FileText className="w-4 h-4 text-muted-foreground/60" />;
 }
 
 function getMimeLabel(mimeType?: string) {
@@ -84,8 +87,8 @@ export default function DocumentsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       toast({ title: "Archivo subido correctamente" });
     },
-    onError: (err: any) => {
-      toast({ title: "Error al subir", description: err.message, variant: "destructive" });
+    onError: (err) => {
+      toast({ title: "Error al subir", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
@@ -95,14 +98,14 @@ export default function DocumentsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       toast({ title: "Archivo eliminado" });
     },
-    onError: (err: any) => {
-      toast({ title: "Error al eliminar", description: err.message, variant: "destructive" });
+    onError: (err) => {
+      toast({ title: "Error al eliminar", description: apiErrorDescription(err), variant: "destructive" });
     },
   });
 
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const handleDownload = async (doc: any) => {
+  const handleDownload = async (doc: Record<string, any>) => {
     try {
       setDownloadingId(doc.id);
       const full = await api.getDocument(doc.id);
@@ -118,8 +121,8 @@ export default function DocumentsPage() {
       } else {
         toast({ title: "No se pudo obtener la URL de descarga", variant: "destructive" });
       }
-    } catch (err: any) {
-      toast({ title: "Error al descargar", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error al descargar", description: apiErrorDescription(err), variant: "destructive" });
     } finally {
       setDownloadingId(null);
     }
@@ -164,6 +167,11 @@ export default function DocumentsPage() {
         />
       </PageHeader>
 
+      <div className="px-6 pb-2">
+        <DiagnosticButton module="documents" />
+      </div>
+
+      <div className="px-4 md:px-6 py-4 space-y-4">
       {/* Drag & drop zone — only shown when no docs or uploading */}
       {(docList.length === 0 && !isLoading) && (
         <div
@@ -173,19 +181,19 @@ export default function DocumentsPage() {
           onClick={() => fileInputRef.current?.click()}
           className={cn(
             "mb-4 border-2 border-dashed rounded-xl p-10 flex flex-col items-center gap-3 cursor-pointer transition-colors",
-            dragOver ? "border-primary/60 bg-primary/5" : "border-border hover:border-border/80 hover:bg-white/[0.02]"
+            dragOver ? "border-primary/60 bg-primary/5" : "border-border hover:border-border/80 hover:bg-foreground/[0.015]"
           )}
         >
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
             {uploadMutation.isPending
-              ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-              : <CloudUpload className="w-5 h-5 text-muted-foreground" />}
+              ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/60" />
+              : <CloudUpload className="w-5 h-5 text-muted-foreground/60" />}
           </div>
           <div className="text-center">
             <p className="text-sm font-medium text-foreground">
               {uploadMutation.isPending ? "Subiendo archivo..." : "Arrastra un archivo aquí"}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">o haz clic para seleccionar — PDF, Word, Excel, imágenes</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">o haz clic para seleccionar — PDF, Word, Excel, imágenes</p>
           </div>
         </div>
       )}
@@ -194,7 +202,7 @@ export default function DocumentsPage() {
       {docList.length > 0 && (
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
             <Input
               placeholder="Buscar archivos..."
               value={search}
@@ -217,7 +225,7 @@ export default function DocumentsPage() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-xs text-muted-foreground"
+              className="h-8 text-xs text-muted-foreground/60"
               onClick={() => { setStatusFilter("ALL"); setSearch(""); }}
             >
               Limpiar
@@ -243,19 +251,19 @@ export default function DocumentsPage() {
       {isLoading ? (
         <PageLoader />
       ) : docList.length === 0 && (search || statusFilter !== "ALL") ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">
+        <div className="text-center py-12 text-muted-foreground/60 text-sm">
           No se encontraron archivos con ese filtro.
         </div>
       ) : docList.length > 0 ? (
-        <div className="rounded-lg border border-border overflow-hidden bg-card">
+        <div className="rounded-lg border border-border overflow-x-auto bg-card">
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-[11px] text-muted-foreground font-medium">Archivo</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium">Tipo</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium">Estado</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium">Subido por</TableHead>
-                <TableHead className="text-[11px] text-muted-foreground font-medium">Fecha</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Archivo</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Tipo</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Estado</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Subido por</TableHead>
+                <TableHead className="text-[11px] text-muted-foreground/60 font-medium">Fecha</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -267,7 +275,7 @@ export default function DocumentsPage() {
                 const fileSize = formatBytes(doc.file_size || doc.fileSize);
 
                 return (
-                  <TableRow key={doc.id} className="border-border hover:bg-white/[0.02]" data-testid={`doc-row-${doc.id}`}>
+                  <TableRow key={doc.id} className="border-border hover:bg-foreground/[0.015]" data-testid={`doc-row-${doc.id}`}>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         {getFileIcon(mime)}
@@ -278,20 +286,20 @@ export default function DocumentsPage() {
                           >
                             {doc.file_name || doc.filename || doc.name || "Sin nombre"}
                           </button>
-                          {fileSize && <div className="text-[10px] text-muted-foreground">{fileSize}</div>}
+                          {fileSize && <div className="text-[10px] text-muted-foreground/60">{fileSize}</div>}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs text-muted-foreground">{getMimeLabel(mime)}</span>
+                      <span className="text-xs text-muted-foreground/60">{getMimeLabel(mime)}</span>
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={doc.status} type="document" />
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-xs text-muted-foreground/60">
                       {uploaderName || "—"}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-xs text-muted-foreground/60">
                       {dateStr ? (
                         <span title={format(new Date(dateStr), "dd/MM/yyyy HH:mm")}>
                           {formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: es })}
@@ -329,6 +337,8 @@ export default function DocumentsPage() {
           </Table>
         </div>
       ) : null}
+      </div>{/* end px-4 content wrapper */}
+      <HelpButton page="Documentos" />
     </div>
   );
 }

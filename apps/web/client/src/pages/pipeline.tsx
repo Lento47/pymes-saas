@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useRequireAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { Plus, User, Calendar, DollarSign, Trash2, Trophy } from "lucide-react";
 import { useLocation } from "wouter";
@@ -83,7 +84,7 @@ function DealCard({
       className="rounded-md p-3 cursor-pointer select-none transition-all hover:brightness-110 active:opacity-70"
       style={{ background: "hsl(var(--bg-sidebar))", border: "1px solid hsl(var(--border))" }}
     >
-      <div className="text-white text-[13px] font-medium leading-snug mb-2">{deal.title}</div>
+      <div className="text-foreground text-[13px] font-medium leading-snug mb-2">{deal.title}</div>
 
       {deal.value && (
         <div className="flex items-center gap-1 mb-1.5">
@@ -156,7 +157,7 @@ function KanbanColumn({
         className="px-3 py-2.5 flex items-center gap-2 rounded-t-lg"
         style={{ borderBottom: "1px solid hsl(var(--border))", borderLeft: `3px solid ${stage.color}` }}
       >
-        <span className="flex-1 text-[13px] font-semibold text-white truncate">{stage.name}</span>
+        <span className="flex-1 text-[13px] font-semibold text-foreground truncate">{stage.name}</span>
         <span
           className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full"
           style={{ background: `${stage.color}22`, color: stage.color }}
@@ -252,13 +253,13 @@ function DealModal({
   });
 
   const createMut = useMutation({
-    mutationFn: (data: any) => api.createDeal(data),
+    mutationFn: (data: Record<string, any>) => api.createDeal(data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }); onClose(); },
     onError: () => toast({ title: "Error al crear deal", variant: "destructive" }),
   });
 
   const updateMut = useMutation({
-    mutationFn: (data: any) => api.updateDeal(deal!.id, data),
+    mutationFn: (data: Record<string, any>) => api.updateDeal(deal!.id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/pipeline/stages"] }); onClose(); },
     onError: () => toast({ title: "Error al actualizar deal", variant: "destructive" }),
   });
@@ -277,7 +278,7 @@ function DealModal({
       toast({ title: `Deal ganado. Factura borrador ${data.invoice_number} creada.` });
       navigate("/invoices");
     },
-    onError: (err: any) => {
+    onError: (err) => {
       const msg = err?.message?.includes("contact") ? "Asigna un contacto al deal primero" : "Error al cerrar deal";
       toast({ title: msg, variant: "destructive" });
     },
@@ -425,6 +426,7 @@ function DealModal({
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Pipeline() {
+  useRequireAuth();
   const qc = useQueryClient();
   const { toast } = useToast();
   const dragDealId = useRef<string | null>(null);
@@ -435,7 +437,7 @@ export default function Pipeline() {
 
   const { data: stages = [], isLoading } = useQuery<Stage[]>({
     queryKey: ["/api/pipeline/stages"],
-    queryFn: api.getPipelineStages,
+    queryFn: () => api.getPipelineStages() as Promise<Stage[]>,
     staleTime: 30_000,
   });
 
@@ -488,7 +490,7 @@ export default function Pipeline() {
         style={{ borderBottom: "1px solid hsl(var(--border))" }}
       >
         <div>
-          <h1 className="text-xl font-bold text-white">Pipeline de Ventas</h1>
+          <h1 className="text-xl font-bold text-foreground">Pipeline de Ventas</h1>
           <p style={{ fontSize: 13, color: "hsl(var(--fg-3))" }}>
             {totalDeals} deal{totalDeals !== 1 ? "s" : ""}
             {totalFormatted && <> · <span style={{ color: "hsl(var(--accent))" }}>{totalFormatted}</span></>}

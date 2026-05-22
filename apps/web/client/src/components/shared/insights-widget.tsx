@@ -8,7 +8,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Info,
-  Sparkles,
+  ClipboardList,
 } from "lucide-react";
 
 type InsightSeverity = "danger" | "warning" | "positive" | "info";
@@ -27,7 +27,7 @@ const SEVERITY_STYLES: Record<InsightSeverity, { border: string; icon: string; b
   danger:   { border: "hsl(0 70% 50%)",    icon: "hsl(0 70% 55%)",    badge: "hsl(0 70% 15%)" },
   warning:  { border: "hsl(38 90% 50%)",   icon: "hsl(38 90% 55%)",   badge: "hsl(38 90% 15%)" },
   positive: { border: "hsl(142 60% 45%)",  icon: "hsl(142 60% 50%)",  badge: "hsl(142 60% 12%)" },
-  info:     { border: "hsl(210 80% 55%)",  icon: "hsl(210 80% 60%)",  badge: "hsl(210 80% 15%)" },
+  info:     { border: "hsl(var(--border))",  icon: "hsl(var(--fg-2))",  badge: "hsl(var(--muted))" },
 };
 
 function severityIcon(severity: InsightSeverity, changePct?: number) {
@@ -95,7 +95,7 @@ function InsightCard({ insight }: { insight: Insight }) {
 export function InsightsWidget() {
   const { data: insights, isLoading } = useQuery<Insight[]>({
     queryKey: ["/api/insights"],
-    queryFn: api.getInsights,
+    queryFn: () => api.getInsights() as Promise<Insight[]>,
     refetchInterval: 5 * 60 * 1000,
     staleTime: 3 * 60 * 1000,
   });
@@ -115,9 +115,9 @@ export function InsightsWidget() {
         className="flex items-center gap-2 px-5 py-3"
         style={{ borderBottom: "1px solid hsl(var(--border))" }}
       >
-        <Sparkles style={{ width: 13, height: 13, color: "hsl(var(--fg-2))" }} />
+        <ClipboardList style={{ width: 13, height: 13, color: "hsl(var(--fg-2))" }} />
         <span style={{ fontSize: "13px", fontWeight: 500, color: "hsl(var(--fg))" }}>
-          Insights automáticos
+          Resumen operativo
         </span>
       </div>
 
@@ -127,7 +127,7 @@ export function InsightsWidget() {
         </div>
       ) : list.length === 0 ? (
         <div className="px-5 py-8 text-center" style={{ fontSize: "13px", color: "hsl(var(--fg-3))" }}>
-          Todo en orden — sin alertas por ahora.
+          Sin alertas operativas por ahora.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "1px", background: "hsl(var(--border))" }}>

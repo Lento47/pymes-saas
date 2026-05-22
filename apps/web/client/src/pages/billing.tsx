@@ -9,13 +9,19 @@ import { Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 
 async function fetchWorkspaceSubscription(workspaceSlug: string) {
-  const response = await fetch(`/api/workspaces/${workspaceSlug}/subscription`);
+  const token = localStorage.getItem("pymes_token");
+  const response = await fetch(`/api/workspaces/${workspaceSlug}/subscription`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
   if (!response.ok) throw new Error('Failed to fetch subscription');
   return response.json();
 }
 
 async function fetchBillingPortalLink() {
-  const response = await fetch('/api/billing/portal');
+  const token = localStorage.getItem("pymes_token");
+  const response = await fetch('/api/billing/portal', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
   if (!response.ok) throw new Error('Failed to fetch billing portal link');
   return response.json();
 }

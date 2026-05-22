@@ -1,47 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*
-  Token system — modeled after Cloudflare dashboard dark mode.
-  Warm-neutral blacks, no blue tint. Single accent. Tight borders.
-*/
+/* ── Dark theme (default) — sober operational palette ── */
 :root {
-  /* ── Backgrounds ── */
-  --bg:           224 7% 10%;    /* #181818 — app shell */
-  --bg-sidebar:   220 8% 9%;     /* #151517 — sidebar */
-  --bg-card:      220 7% 13%;    /* #1f2024 — card / panel */
-  --bg-elevated:  220 7% 16%;    /* #262729 — dialog, dropdown */
-  --bg-hover:     220 6% 18%;    /* #2b2c2f — row hover */
-  --bg-active:    220 7% 20%;    /* #303236 — active nav item bg */
-
-  /* ── Borders ── */
-  --border:       220 6% 22%;    /* single border color ~#333438 */
-
-  /* ── Text ── */
-  --fg:           0 0% 93%;      /* #ededed — primary */
-  --fg-2:         0 0% 62%;      /* #9e9e9e — secondary */
-  --fg-3:         0 0% 42%;      /* #6b6b6b — disabled / placeholder */
-
-  /* ── Accent ── */
-  --accent:       214 89% 52%;   /* #1a73e8 — CF-style blue */
+  --bg:           220 18% 8%;
+  --bg-sidebar:   220 20% 6%;
+  --bg-card:      220 16% 11%;
+  --bg-elevated:  220 15% 14%;
+  --bg-hover:     220 12% 17%;
+  --bg-active:    220 11% 19%;
+  --border:       220 12% 20%;
+  --fg:           220 12% 93%;
+  --fg-2:         220 8% 64%;
+  --fg-3:         220 7% 46%;
+  --accent:       38 95% 54%;    /* #F59E0B — amber */
   --accent-fg:    0 0% 100%;
-
-  /* ── Semantic ── */
   --danger:       0 72% 51%;
   --danger-fg:    0 0% 100%;
   --success:      145 63% 42%;
   --warning:      38 95% 54%;
 
-  /* ── Tailwind aliases ── */
   --background:        var(--bg);
   --foreground:        var(--fg);
   --card:              var(--bg-card);
   --card-foreground:   var(--fg);
   --popover:           var(--bg-elevated);
   --popover-foreground: var(--fg);
-  --border-color:      var(--border);
   --primary:           var(--accent);
   --primary-foreground: var(--accent-fg);
   --secondary:         var(--bg-card);
@@ -54,6 +39,8 @@
   --destructive-foreground: var(--danger-fg);
   --input:             var(--border);
   --ring:              var(--accent);
+  --button-outline:    hsl(var(--border));
+  --badge-outline:     hsl(var(--border));
   --elevated:          var(--bg-elevated);
   --sidebar:           var(--bg-sidebar);
   --sidebar-foreground: var(--fg);
@@ -63,18 +50,59 @@
   --sidebar-accent:    var(--bg-active);
   --sidebar-accent-foreground: var(--fg);
   --sidebar-ring:      var(--accent);
-  --chart-1:           var(--accent);
-  --chart-2:           var(--success);
-  --chart-3:           var(--warning);
-  --chart-4:           262 60% 62%;
-  --chart-5:           var(--danger);
+  --chart-1:           38 95% 54%;   /* amber */
+  --chart-2:           220 8% 58%;   /* neutral */
+  --chart-3:           145 63% 42%;  /* green */
+  --chart-4:           210 10% 62%;  /* cool gray */
+  --chart-5:           0 72% 51%;    /* red */
+  --radius: 0.25rem;
 
+  /* ── Status semantic tokens ── */
+  --status-open:     145 63% 42%;   /* green */
+  --status-resolved: 228 65% 55%;   /* indigo */
+  --status-pending:  38 95% 54%;    /* amber */
+  --status-overdue:  0 72% 51%;     /* red */
+
+  /* ── shadcn/ui component tokens ── */
+  --bg-2:              220 16% 10%;
+  --primary-fg:        var(--accent-fg);
+  --sidebar-width:     16rem;
+  --sidebar-width-icon: 3rem;
+  --skeleton-width:    5rem;
+  --spacing-4:         1rem;
+}
+
+/* ── Light theme (opt-in) ── */
+html.light {
+  --bg:           220 14% 96%;
+  --bg-sidebar:   220 14% 93%;
+  --bg-card:      0 0% 100%;
+  --bg-elevated:  0 0% 100%;
+  --bg-hover:     220 14% 94%;
+  --bg-active:    220 14% 90%;
+  --border:       220 13% 91%;
+  --fg:           220 10% 15%;
+  --fg-2:         220 8% 46%;
+  --fg-3:         220 6% 65%;
+  --accent:       240 65% 52%;
+  --accent-fg:    0 0% 100%;
+  --danger:       0 72% 45%;
+  --danger-fg:    0 0% 100%;
+  --success:      145 63% 38%;
+  --warning:      35 90% 48%;
+  --bg-2:         220 14% 88%;
+}
+
+:root {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, monospace;
-  --radius: 0.25rem; /* 4px — CF uses tight radius */
+  --font-marketing-sans: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-marketing-serif: 'Cormorant Garamond', Georgia, serif;
 }
 
 * { -webkit-font-smoothing: antialiased; }
+
+html { scroll-behavior: auto; /* Safari doesn't support smooth */ }
 
 body {
   background: hsl(var(--bg));
@@ -82,14 +110,266 @@ body {
   font-family: var(--font-sans);
   font-size: 13px;
   line-height: 1.5;
+  overflow-x: hidden;
 }
 
-/* Thin, dark scrollbars */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(var(--fg-3)); }
+/* ── Global interactive transition base ── */
+@layer base {
+  button, a, input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"]) {
+    transition-property: background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
+}
 
-::selection { background: hsl(var(--accent) / 0.2); }
+/* ── Interactive elevation utilities ── */
+.hover-elevate {
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.hover-elevate:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.active-elevate-2:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
 
+/* Safari scrollbar fix: webkit-scrollbar not supported, removed */
+
+::selection { background: hsl(var(--accent) / 0.2); color: inherit; }
 :focus-visible { outline: 2px solid hsl(var(--accent)); outline-offset: 2px; }
+
+.font-marketing { font-family: var(--font-marketing-sans); }
+.font-editorial { font-family: var(--font-marketing-serif); }
+
+/* ── Glass panels ── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.light .glass-panel {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: none;
+}
+
+.glass-panel-soft {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.light .glass-panel-soft {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  box-shadow: none;
+}
+
+html.light .marketing-grid {
+  background-image:
+    linear-gradient(to right, rgba(78, 98, 214, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(78, 98, 214, 0.08) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.65) 18%, black 60%, transparent);
+}
+.marketing-grid {
+  background: none;
+}
+
+.marketing-canvas {
+  background:
+    radial-gradient(circle at 18% 10%, rgba(87, 113, 255, 0.24), transparent 28rem),
+    radial-gradient(circle at 86% 18%, rgba(245, 158, 11, 0.12), transparent 24rem),
+    linear-gradient(180deg, #05091d 0%, #060a20 42%, #040817 100%);
+  color: #fff;
+}
+
+.marketing-surface {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: none;
+}
+
+.marketing-surface-quiet {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: none;
+}
+
+.luminous-border { position: relative; }
+
+.glow-button { box-shadow: 0 0 24px rgba(245, 158, 11, 0.30), 0 0 48px rgba(245, 158, 11, 0.10); }
+.soft-glow { text-shadow: 0 0 20px rgba(251, 191, 36, 0.40); }
+
+.app-surface {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+}
+
+.app-surface-subtle {
+  background: hsl(var(--muted) / 0.35);
+  border: 1px solid hsl(var(--border) / 0.7);
+}
+
+.auth-ui * {
+  letter-spacing: 0;
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); will-change: transform; }
+  50% { transform: translateY(-10px); }
+}
+@keyframes drift-x {
+  0%, 100% { transform: translateX(0); will-change: transform; }
+  50% { transform: translateX(12px); }
+}
+@keyframes pulse-halo {
+  0%, 100% { opacity: 0.45; transform: scale(1) translateZ(0); will-change: opacity, transform; }
+  50% { opacity: 0.8; transform: scale(1.04) translateZ(0); }
+}
+@keyframes marquee {
+  0% { transform: translateX(0); will-change: transform; }
+  100% { transform: translateX(-50%); }
+}
+.animate-float-y { animation: float-y 7s ease-in-out infinite; will-change: transform; transform: translateZ(0); }
+.animate-drift-x { animation: drift-x 11s ease-in-out infinite; will-change: transform; transform: translateZ(0); }
+.animate-pulse-halo { animation: pulse-halo 6s ease-in-out infinite; will-change: opacity, transform; transform: translateZ(0); }
+.animate-marquee { animation: marquee 30s linear infinite; will-change: transform; transform: translateZ(0); }
+
+/* Safari compatibility: translate with webkit prefix for negative values */
+.hover\:translate-y-negative-1:hover {
+  -webkit-transform: translateY(-1px);
+  transform: translateY(-1px);
+  transition: transform 0.2s ease-out;
+}
+.hover\:translate-y-negative-2:hover {
+  -webkit-transform: translateY(-2px);
+  transform: translateY(-2px);
+  transition: transform 0.2s ease-out;
+}
+
+/* Backface visibility for smoother transforms */
+.smooth-transform {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* ── Dashboard card elevation in light theme ── */
+html.light .dash-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Safe area insets for notched phones */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* Minimal scrollbars for app shell surfaces */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--fg-3) / 0.28) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--fg-3) / 0.22);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--fg-3) / 0.42);
+}
+
+.minimal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--fg-3) / 0.22) transparent;
+}
+
+.minimal-scrollbar::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+/* ── WhatsApp-style message entry animation ── */
+@keyframes message-entry-inbound {
+  from {
+    opacity: 0;
+    transform: translate3d(-8px, 10px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes message-entry-outbound {
+  from {
+    opacity: 0;
+    transform: translate3d(8px, 10px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes message-entry-system {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.animate-slide-up-in {
+  animation: message-entry-system 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.message-entry-inbound,
+.message-entry-outbound,
+.message-entry-system {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.message-entry-inbound {
+  animation: message-entry-inbound 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: left bottom;
+}
+
+.message-entry-outbound {
+  animation: message-entry-outbound 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: right bottom;
+}
+
+.message-entry-system {
+  animation: message-entry-system 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: center bottom;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up-in,
+  .message-entry-inbound,
+  .message-entry-outbound,
+  .message-entry-system {
+    animation: none;
+  }
+}

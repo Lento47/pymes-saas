@@ -1,0 +1,162 @@
+import { ArrowLeft, UserPlus, CheckCircle2, MoreVertical, RefreshCw, Receipt, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ChannelBadge } from "@/components/shared/channel-badge";
+import { SensitiveText } from "@/components/shared/sensitive-text";
+
+interface ConversationHeaderProps {
+  contactName: string;
+  contactAvatarInitials: string;
+  contactAvatarUrl?: string | null;
+  channelType?: string;
+  statusLabel?: string;
+  assigneeName?: string | null;
+  statusDotClass?: string;
+  onBack?: () => void;
+  onAssign?: (userId: string) => void;
+  onResolve?: () => void;
+  onRefresh?: () => void;
+  onInvoice?: () => void;
+  onDelete?: () => void;
+  onAddContact?: () => void;
+  members?: Array<{ user?: { id: string; name?: string }; id: string; name?: string; email?: string }>;
+  canResolve?: boolean;
+  canSendInvoice?: boolean;
+  canAddContact?: boolean;
+  className?: string;
+}
+
+export function ConversationHeader({
+  contactName,
+  contactAvatarInitials,
+  contactAvatarUrl,
+  channelType,
+  statusLabel,
+  assigneeName,
+  statusDotClass = "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse",
+  onBack,
+  onAssign,
+  onResolve,
+  onRefresh,
+  onInvoice,
+  onDelete,
+  onAddContact,
+  members,
+  canResolve,
+  canSendInvoice,
+  canAddContact,
+  className,
+}: ConversationHeaderProps) {
+  return (
+    <div className={`flex items-center gap-2.5 border-b border-border bg-background/95 px-3 py-2.5 backdrop-blur-sm sm:px-4 shrink-0 ${className ?? ""}`}>
+      {onBack && (
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onBack} aria-label="Volver">
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+      )}
+
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border/50" aria-hidden="true">
+        {contactAvatarUrl ? (
+          <img src={contactAvatarUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-[11px] font-semibold text-muted-foreground">{contactAvatarInitials}</span>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="truncate text-[13px] font-semibold leading-tight text-foreground">
+          <SensitiveText text={contactName} />
+        </div>
+        <div className="flex items-center gap-1 mt-px flex-wrap">
+          {channelType && <ChannelBadge channel={channelType} />}
+          {statusLabel && (
+            <>
+              <span className={statusDotClass} />
+              <span className="text-[10px] text-muted-foreground">{statusLabel}</span>
+            </>
+          )}
+          <span className="text-muted-foreground/40">·</span>
+          <span className="text-[10px] text-muted-foreground">
+            <SensitiveText text={assigneeName ?? "Sin asignar"} />
+          </span>
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1 border-l border-border/50 pl-1.5 ml-0.5">
+        {members && onAssign && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Select onValueChange={onAssign}>
+                  <SelectTrigger className="h-9 w-9 border-0 bg-transparent p-0 hover:bg-accent sm:w-auto sm:gap-1.5 sm:px-2.5" aria-label="Asignar conversación">
+                    <UserPlus className="h-4 w-4 text-muted-foreground" />
+                    <span className="hidden text-xs font-medium text-muted-foreground sm:inline">Asignar</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {members.map((m) => {
+                      const name = m.user?.name ?? m.name ?? m.email ?? "Sin nombre";
+                      return <SelectItem key={m.id} value={m.user?.id ?? m.id}><SensitiveText text={name} /></SelectItem>;
+                    })}
+                  </SelectContent>
+                </Select>
+              </TooltipTrigger>
+              <TooltipContent side="bottom"><p className="text-xs">Asignar</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
+        {onResolve && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-9 w-9 rounded-md p-0 text-emerald-500 hover:text-emerald-500 sm:w-auto sm:gap-1.5 sm:px-2.5" disabled={!canResolve} onClick={onResolve} aria-label="Marcar como resuelta">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span className="hidden text-xs font-medium sm:inline">Resolver</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom"><p className="text-xs">Resolver</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
+        <TooltipProvider>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-md" aria-label="Más opciones">
+                <MoreVertical className="w-4 h-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {onAddContact && canAddContact && (
+                <DropdownMenuItem onClick={onAddContact}>
+                  <UserPlus className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                  Agregar contacto
+                </DropdownMenuItem>
+              )}
+              {onRefresh && (
+                <DropdownMenuItem onClick={onRefresh}>
+                  <RefreshCw className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                  Actualizar
+                </DropdownMenuItem>
+              )}
+              {onInvoice && canSendInvoice && (
+                <DropdownMenuItem onClick={onInvoice}>
+                  <Receipt className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                  Crear factura
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                  <Trash2 className="w-3.5 h-3.5 mr-2" />
+                  Eliminar
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TooltipProvider>
+      </div>
+    </div>
+  );
+}

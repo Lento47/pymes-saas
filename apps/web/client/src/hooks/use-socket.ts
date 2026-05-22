@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 import { getAuthToken } from '@/lib/api';
 
 // Socket singleton — una sola conexión para toda la app
@@ -12,28 +12,52 @@ export function getSocket(): Socket | null {
 /**
  * Inicializa la conexión WebSocket con el token JWT actual.
  * Llamar una sola vez al hacer login (en App.tsx o en el hook useAuth).
+ *
+ * Seguro para llamar múltiples veces: si el socket está healthy lo reusa,
+ * si está desconectado/reconectando lo reemplaza por uno nuevo.
  */
-// In dev the Vite server runs on :5000 but the NestJS backend (and its
-// Socket.io server) runs on :4000. Connect directly to avoid proxy issues.
-// In production the WS server is co-located so we use a relative path.
-const WS_URL =
-  import.meta.env.DEV
-    ? `${window.location.protocol}//${window.location.hostname}:4000`
-    : window.location.origin;
+// ───────────────────────────────────────────────────────────────────────────
+// IMPORTANTE — URL DEL WEBSOCKET
+//
+// DEV: backend NestJS corre en :4000 en el mismo host.
+//
+// PROD: por defecto usa `window.location.origin` (pymeshub.lat).
+//       El Worker de Cloudflare en pymeshub.lat proxyfica /socket.io
+//       a Railway con soporte WebSocket completo (WebSocketPair + 101 upgrade).
+//       Si se necesita otra URL, setear VITE_WS_URL en Cloudflare Pages env vars.
+// ───────────────────────────────────────────────────────────────────────────
+const WS_URL = import.meta.env.DEV
+  ? `${window.location.protocol}//${window.location.hostname}:4000`
+  : (import.meta.env.VITE_WS_URL as string | undefined)
+    ?? window.location.origin;
 
 export function connectSocket() {
-  if (_socket?.connected) return _socket;
+  // If socket exists and is healthy (connected or actively reconnecting), reuse it
+  if (_socket?.connected || _socket?.active) return _socket;
+
+  // If socket exists but is dead, clean it up first
+  if (_socket) {
+    _socket.removeAllListeners();
+    _socket.disconnect();
+    _socket = null;
+  }
 
   const token = getAuthToken();
   if (!token) return null;
 
+  // Exponential backoff with jitter so an upstream outage doesn't cause every
+  // tab in every browser to slam the backend with synchronized retries.
+  // socket.io's algorithm: min(reconnectionDelay * 2^attempt, reconnectionDelayMax)
+  // ± randomizationFactor.
   _socket = io(`${WS_URL}/ws`, {
     path: '/socket.io',
     auth: { token },
     transports: ['websocket', 'polling'],
     reconnection: true,
-    reconnectionAttempts: 10,
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
+    reconnectionDelayMax: 30_000,
+    randomizationFactor: 0.5,
   });
 
   _socket.on('connect', () => {
@@ -55,6 +79,7 @@ export function connectSocket() {
  * Desconectar y limpiar el socket (llamar al hacer logout).
  */
 export function disconnectSocket() {
+  _socket?.removeAllListeners();
   _socket?.disconnect();
   _socket = null;
 }

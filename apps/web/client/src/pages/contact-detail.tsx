@@ -182,7 +182,7 @@ export default function ContactDetailPage() {
                     return (
                       <Link key={conv.id} href={`/inbox/${conv.id}`}>
                         <div
-                          className="px-4 py-3 hover:bg-white/[0.02] cursor-pointer transition-colors flex items-center gap-3"
+                          className="px-4 py-3 hover:bg-foreground/[0.015] cursor-pointer transition-colors flex items-center gap-3"
                           data-testid={`contact-conversation-${conv.id}`}
                         >
                           <PriorityDot priority={conv.priority} />
@@ -198,7 +198,7 @@ export default function ContactDetailPage() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <StatusBadge status={conv.status} type="conversation" />
-                            <ExternalLink className="w-3 h-3 text-muted-foreground/50" />
+                            <ExternalLink className="w-3 h-3 text-muted-foreground/80" />
                           </div>
                         </div>
                       </Link>
