@@ -29,7 +29,13 @@ import Invoices from "@/pages/invoices";
 import Automations from "@/pages/automations";
 import Notifications from "@/pages/notifications";
 import Pipeline from "@/pages/pipeline";
-import Settings from "@/pages/settings";
+import WorkspaceSettingsPage from "@/pages/settings/workspace";
+import MembersSettingsPage from "@/pages/settings/members";
+import ChannelsSettingsPage from "@/pages/settings/channels";
+import DepartmentsSettingsPage from "@/pages/settings/departments";
+import IntegrationsSettingsPage from "@/pages/settings/integrations";
+import AiSettingsPage from "@/pages/settings/ai";
+import PlatformSettingsPage from "@/pages/settings/platform";
 import Billing from "@/pages/billing";
 import HelpPage from "@/pages/help";
 import HelpDocumentPage from "@/pages/help-document";
@@ -199,7 +205,28 @@ function AppRouter() {
         {() => <ProtectedLayout><Pipeline /></ProtectedLayout>}
       </Route>
       <Route path="/settings">
-        {() => <ProtectedLayout><Settings /></ProtectedLayout>}
+        {() => <Redirect to="/settings/workspace" />}
+      </Route>
+      <Route path="/settings/workspace">
+        {() => <ProtectedLayout><WorkspaceSettingsPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/settings/members">
+        {() => <ProtectedLayout><MembersSettingsPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/settings/channels">
+        {() => <ProtectedLayout><ChannelsSettingsPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/settings/departments">
+        {() => <ProtectedLayout><DepartmentsSettingsPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/settings/integrations">
+        {() => <ProtectedLayout><IntegrationsSettingsPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/settings/ai">
+        {() => <ProtectedLayout><AiSettingsPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/settings/platform">
+        {() => <ProtectedLayout><PlatformSettingsPage /></ProtectedLayout>}
       </Route>
       <Route path="/settings/billing">
         {() => <ProtectedLayout><Billing /></ProtectedLayout>}
