@@ -4,6 +4,7 @@ import { CloudflareAiService, AssistantMessage } from "./cloudflare-ai.service";
 import { EmrendeAiService } from "./emprende-ai.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
+import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
 
 export type AgentIntent = "ORDER" | "APPOINTMENT" | "QUOTE" | "COMPLAINT";
 
@@ -81,7 +82,11 @@ const INTENT_FLOWS: Record<AgentIntent, IntentFlow> = {
   },
 };
 
-type ConvShape = { metadata_json: unknown; contact: { phone: string | null } | null; channel_id: string | null };
+type ConvShape = {
+  metadata_json: unknown;
+  contact: { phone: string | null; telegram_chat_id: string | null } | null;
+  channel_id: string | null;
+};
 
 @Injectable()
 export class AgentRunService {
@@ -95,6 +100,7 @@ export class AgentRunService {
     private readonly events: EventsGateway,
     @Inject(forwardRef(() => WhatsAppService))
     private readonly whatsapp: WhatsAppService,
+    private readonly telegramOutbound: TelegramOutboundService,
   ) {}
 
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -104,7 +110,11 @@ export class AgentRunService {
 
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
-      select: { metadata_json: true, contact: { select: { phone: true } }, channel_id: true },
+      select: {
+        metadata_json: true,
+        contact: { select: { phone: true, telegram_chat_id: true } },
+        channel_id: true,
+      },
     });
     if (!conv) return null;
 
@@ -167,7 +177,11 @@ export class AgentRunService {
   async processMessage(workspaceId: string, conversationId: string, inboundText: string): Promise<boolean> {
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
-      select: { metadata_json: true, contact: { select: { phone: true } }, channel_id: true },
+      select: {
+        metadata_json: true,
+        contact: { select: { phone: true, telegram_chat_id: true } },
+        channel_id: true,
+      },
     });
     if (!conv) return false;
 
@@ -329,13 +343,22 @@ Si indica que no tiene la información, responde "N/A".`;
       media_status: "none",
     });
 
-    if (conv.channel_id && conv.contact?.phone) {
-      const channel = await this.prisma.channel.findUnique({ where: { id: conv.channel_id } });
-      const to = conv.contact.phone.replace(/\D/g, "");
-      if (channel?.type === "WHATSAPP" && to) {
+    if (conv.channel_id) {
+      const channel = await this.prisma.channel.findUnique({
+        where: { id: conv.channel_id },
+        select: { id: true, type: true, config_json: true },
+      });
+      if (channel?.type === "WHATSAPP" && conv.contact?.phone) {
+        const to = conv.contact.phone.replace(/\D/g, "");
+        if (!to) return;
         this.whatsapp.sendMessage(channel as Record<string, any>, to, text).catch((err) =>
           this.logger.error("AgentRun WA dispatch failed", err),
         );
+      }
+      if (channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
+        this.telegramOutbound
+          .sendMessage(channel.id, conv.contact.telegram_chat_id, text)
+          .catch((err) => this.logger.error("AgentRun Telegram dispatch failed", err));
       }
     }
   }

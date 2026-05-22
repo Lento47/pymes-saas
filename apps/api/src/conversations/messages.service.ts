@@ -13,6 +13,7 @@ import { Contact, Priority } from "@prisma/client";
 import { AutomationsService } from "../automations/automations.service";
 import { RoutingService } from "../routing/routing.service";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
+import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
 import { StorageService } from "../common/storage/storage.service";
 import { parseJsonValue } from "../common/prisma/json";
 
@@ -45,6 +46,7 @@ export class MessagesService {
     private readonly routingService: RoutingService,
     @Inject(forwardRef(() => WhatsAppService))
     private readonly whatsappService: WhatsAppService,
+    private readonly telegramOutbound: TelegramOutboundService,
     private readonly storage: StorageService,
   ) {}
 
@@ -1096,7 +1098,11 @@ export class MessagesService {
     // Check conversation ai_state — skip if human has taken over
     const conv = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
-      select: { metadata_json: true, channel_id: true, contact: { select: { phone: true } } },
+      select: {
+        metadata_json: true,
+        channel_id: true,
+        contact: { select: { phone: true, telegram_chat_id: true } },
+      },
     });
     if (!conv) return;
 
@@ -1147,14 +1153,22 @@ export class MessagesService {
 
     this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessageForClient(aiMessage));
 
-    // Dispatch via WhatsApp channel if applicable
-    if (conv.channel_id && conv.contact?.phone) {
-      const channel = await this.prisma.channel.findUnique({ where: { id: conv.channel_id } });
-      const to = conv.contact.phone.replace(/\D/g, "");
-      if (channel?.type === "WHATSAPP" && to) {
+    // Dispatch through the external channel when applicable.
+    if (conv.channel_id) {
+      const channel = await this.prisma.channel.findUnique({
+        where: { id: conv.channel_id },
+        select: { id: true, type: true, config_json: true },
+      });
+      if (channel?.type === "WHATSAPP" && conv.contact?.phone) {
+        const to = conv.contact.phone.replace(/\D/g, "");
         this.whatsappService.sendMessage(channel as any, to, replyText).catch((err) =>
           this.logger.error("EmrendeAI WA dispatch failed", err),
         );
+      }
+      if (channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
+        this.telegramOutbound
+          .sendMessage(channel.id, conv.contact.telegram_chat_id, replyText)
+          .catch((err) => this.logger.error("EmrendeAI Telegram dispatch failed", err));
       }
     }
 
