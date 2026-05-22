@@ -139,7 +139,6 @@ export default function Landing() {
 
   const revealCards  = useReveal();
   const revealTrust  = useReveal();
-  const revealStats  = useReveal();
   const revealHow    = useReveal();
   const revealCta    = useReveal();
 
@@ -206,13 +205,6 @@ export default function Landing() {
     if (activeMenu) setActiveMenu(null);
     if (mobileMenuOpen) setMobileMenuOpen(false);
   };
-
-  const STATS = [
-    { value: "200+",   label: "SMBs en LATAM" },
-    { value: "2.4M",   label: "Conversaciones" },
-    { value: "94%",    label: "SLA promedio" },
-    { value: "< 6 min", label: "Resp. promedio" },
-  ];
 
   const PROBLEMS = [
     { icon: MessageCircle, color: "#25D366", title: "WhatsApp sin control", body: "Conversaciones perdidas en el celular personal. Sin historial, sin asignación, sin trazabilidad." },
@@ -529,30 +521,6 @@ export default function Landing() {
 
             </div>
           </section>
-
-          {/* ══════════════════════════════════════════════════
-              STATS STRIP
-          ══════════════════════════════════════════════════ */}
-          <div ref={revealStats} className="reveal-up border-y px-4 py-10 md:px-8" style={{ borderColor: "rgba(139,92,246,0.12)", background: "rgba(124,58,237,0.04)" }}>
-            <div className="mx-auto max-w-5xl grid grid-cols-2 gap-8 md:grid-cols-4">
-              {STATS.map(({ value, label }) => (
-                <div key={label} className="text-center">
-                  <div
-                    className="font-marketing text-3xl font-bold tracking-[-0.04em] md:text-4xl"
-                    style={{
-                      background: "linear-gradient(135deg, #e9d5ff 20%, #818cf8 100%)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                      backgroundClip: "text",
-                    }}
-                  >
-                    {value}
-                  </div>
-                  <div className="mt-1 text-sm text-white/40">{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* ══════════════════════════════════════════════════
               THE PROBLEM
