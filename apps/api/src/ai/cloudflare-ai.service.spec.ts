@@ -47,6 +47,33 @@ describe("CloudflareAiService", () => {
     expect(body.model).toBeUndefined();
   });
 
+  it("replaces the Workers AI run endpoint model when an override is provided", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        result: {
+          choices: [{ message: { content: "ok from kimi" } }],
+        },
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const service = makeService(
+      "https://api.cloudflare.com/client/v4/accounts/account/ai/run/@cf/meta/llama-3.1-8b-instruct",
+    );
+
+    const reply = await service.chatCompletion(
+      [{ role: "user", content: "hola" }],
+      { model: "@cf/moonshotai/kimi-k2.6" },
+    );
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://api.cloudflare.com/client/v4/accounts/account/ai/run/@cf/moonshotai/kimi-k2.6",
+    );
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).model).toBeUndefined();
+    expect(reply).toBe("ok from kimi");
+  });
+
   it("includes model for OpenAI-compatible Cloudflare chat endpoints", async () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,

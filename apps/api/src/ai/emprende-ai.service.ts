@@ -27,6 +27,8 @@ interface BusinessContext {
   productsServices: string | null;
   policies: string | null;
   tone: string | null;
+  aiAgentProvider: string;
+  aiAgentModel: string | null;
   recentConversations: { contactName: string; lastMessage: string }[];
   pendingTasks: { title: string; priority: string }[];
 }
@@ -88,6 +90,11 @@ export class EmrendeAiService {
       productsServices: this.cleanContextText(settings.ai_business_products_services),
       policies: this.cleanContextText(settings.ai_business_policies),
       tone: this.cleanContextText(settings.ai_business_tone),
+      aiAgentProvider:
+        typeof settings.ai_agent_provider === "string"
+          ? settings.ai_agent_provider
+          : "workers_ai",
+      aiAgentModel: this.cleanAgentModel(settings.ai_agent_model),
       recentConversations: recentConvs.map((c) => ({
         contactName: c.contact?.full_name ?? "Cliente",
         lastMessage: c.messages[0]?.body_text ?? "",
@@ -161,6 +168,13 @@ export class EmrendeAiService {
     return trimmed ? trimmed.slice(0, 2000) : null;
   }
 
+  private cleanAgentModel(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    if (!trimmed || !trimmed.startsWith("@cf/") || /\s/.test(trimmed)) return null;
+    return trimmed.slice(0, 160);
+  }
+
   async generateReply(
     workspaceId: string,
     conversationId: string | null,
@@ -199,7 +213,9 @@ export class EmrendeAiService {
     ];
 
     try {
-      const result = await this.cloudflare.chatCompletion(messages);
+      const result = await this.cloudflare.chatCompletion(messages, {
+        model: ctx.aiAgentProvider === "workers_ai" ? ctx.aiAgentModel : null,
+      });
       return result ?? "Gracias por tu mensaje. Un agente te atenderá pronto.";
     } catch (err) {
       this.logger.warn("EmrendeAI generateReply failed", err);
@@ -245,6 +261,7 @@ export class EmrendeAiService {
     const transcript = messages
       .map((m) => `[${m.direction === "INBOUND" ? "Cliente" : "Negocio"}]: ${m.body_text ?? ""}`)
       .join("\n");
+    const ctx = await this.buildBusinessContext(workspaceId);
 
     const prompt = `Analiza esta conversación de un cliente con un negocio y extrae un perfil de comportamiento.
 Responde SOLO con un JSON válido con este formato exacto:
@@ -259,9 +276,10 @@ NO incluyas datos sensibles como ubicación exacta o datos financieros.
 Conversación:
 ${transcript.slice(0, 3000)}`;
 
-    const responseText = await this.cloudflare.chatCompletion([
-      { role: "user", content: prompt },
-    ] as AssistantMessage[]);
+    const responseText = await this.cloudflare.chatCompletion(
+      [{ role: "user", content: prompt }] as AssistantMessage[],
+      { model: ctx.aiAgentProvider === "workers_ai" ? ctx.aiAgentModel : null },
+    );
 
     let insights: ContactProfileInsights;
     try {
@@ -315,9 +333,10 @@ Formato: [{"title": "título máx 80 chars", "priority": "LOW|MEDIUM|HIGH", "des
 No incluyas explicaciones, solo el JSON.`;
 
     try {
-      const responseText = await this.cloudflare.chatCompletion([
-        { role: "user", content: prompt },
-      ] as AssistantMessage[]);
+      const responseText = await this.cloudflare.chatCompletion(
+        [{ role: "user", content: prompt }] as AssistantMessage[],
+        { model: ctx.aiAgentProvider === "workers_ai" ? ctx.aiAgentModel : null },
+      );
 
       const jsonMatch = responseText.match(/\[[\s\S]*\]/);
       if (!jsonMatch) return [];

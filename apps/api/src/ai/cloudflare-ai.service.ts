@@ -11,6 +11,10 @@ export interface AssistantResponse {
   sources: { title: string; url?: string; snippet?: string }[];
 }
 
+export interface CloudflareChatOptions {
+  model?: string | null;
+}
+
 @Injectable()
 export class CloudflareAiService {
   private readonly logger = new Logger(CloudflareAiService.name);
@@ -108,8 +112,16 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
     }
   }
 
-  async chatCompletion(messages: AssistantMessage[]): Promise<string> {
+  async chatCompletion(
+    messages: AssistantMessage[],
+    options: CloudflareChatOptions = {},
+  ): Promise<string> {
     const isWorkersAiRunEndpoint = this.chatUrl?.includes("/ai/run/");
+    const modelOverride = this.normalizeWorkersAiModel(options.model);
+    const chatUrl =
+      isWorkersAiRunEndpoint && modelOverride
+        ? this.withWorkersAiRunModel(this.chatUrl!, modelOverride)
+        : this.chatUrl!;
     const body = isWorkersAiRunEndpoint
       ? {
           messages,
@@ -117,13 +129,13 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
           temperature: 0.3,
         }
       : {
-          model: this.model,
+          model: modelOverride ?? this.model,
           messages,
           max_tokens: 1024,
           temperature: 0.3,
         };
 
-    const res = await fetch(this.chatUrl!, {
+    const res = await fetch(chatUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -139,6 +151,26 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
 
     const data = (await res.json()) as any;
     // OpenAI-compatible response shape
-    return data.choices?.[0]?.message?.content ?? data.result?.response ?? "";
+    return (
+      data.choices?.[0]?.message?.content ??
+      data.result?.choices?.[0]?.message?.content ??
+      data.result?.response ??
+      ""
+    );
+  }
+
+  private normalizeWorkersAiModel(model: string | null | undefined): string | null {
+    if (typeof model !== "string") return null;
+    const trimmed = model.trim();
+    if (!trimmed || !trimmed.startsWith("@cf/") || /\s/.test(trimmed)) return null;
+    return trimmed.slice(0, 160);
+  }
+
+  private withWorkersAiRunModel(chatUrl: string, model: string): string {
+    const marker = "/ai/run/";
+    const markerIndex = chatUrl.indexOf(marker);
+    if (markerIndex < 0) return chatUrl;
+
+    return chatUrl.slice(0, markerIndex + marker.length) + model;
   }
 }

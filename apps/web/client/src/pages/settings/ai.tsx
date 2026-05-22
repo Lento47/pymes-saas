@@ -17,6 +17,41 @@ const AI_PROVIDERS = [
   { id: "moonshot",  label: "Moonshot (Kimi)",      models: ["moonshot-v1-8k", "moonshot-v1-32k"] },
 ];
 
+const AGENT_PROVIDERS = [
+  { id: "workers_ai", label: "Workers AI", enabled: true },
+  { id: "amazon_bedrock", label: "Amazon Bedrock", enabled: false },
+  { id: "anthropic", label: "Anthropic", enabled: false },
+  { id: "azure_openai", label: "Azure OpenAI", enabled: false },
+  { id: "baseten", label: "Baseten", enabled: false },
+  { id: "cartesia", label: "Cartesia", enabled: false },
+  { id: "cerebras", label: "Cerebras", enabled: false },
+  { id: "cohere", label: "Cohere", enabled: false },
+  { id: "deepgram", label: "Deepgram", enabled: false },
+  { id: "deepseek", label: "DeepSeek", enabled: false },
+  { id: "elevenlabs", label: "ElevenLabs", enabled: false },
+  { id: "fal_ai", label: "Fal AI", enabled: false },
+  { id: "google_ai_studio", label: "Google AI Studio", enabled: false },
+  { id: "google_vertex_ai", label: "Google Vertex AI", enabled: false },
+  { id: "groq", label: "Groq", enabled: false },
+  { id: "huggingface", label: "HuggingFace", enabled: false },
+  { id: "ideogram", label: "Ideogram", enabled: false },
+  { id: "mistral_ai", label: "Mistral AI", enabled: false },
+  { id: "openai", label: "OpenAI", enabled: false },
+  { id: "openrouter", label: "OpenRouter", enabled: false },
+  { id: "parallel", label: "Parallel", enabled: false },
+  { id: "perplexity", label: "Perplexity", enabled: false },
+  { id: "replicate", label: "Replicate", enabled: false },
+  { id: "xai", label: "xAI", enabled: false },
+];
+
+const WORKERS_AI_AGENT_MODELS = [
+  { id: "global", label: "Modelo configurado en Railway" },
+  { id: "@cf/moonshotai/kimi-k2.6", label: "Kimi K2.6" },
+  { id: "@cf/meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B Instruct" },
+  { id: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", label: "Llama 3.3 70B Instruct Fast" },
+  { id: "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", label: "DeepSeek R1 Distill Qwen 32B" },
+];
+
 export default function AiSettingsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -31,6 +66,8 @@ export default function AiSettingsPage() {
   const [productsServices, setProductsServices] = useState("");
   const [policies, setPolicies] = useState("");
   const [tone, setTone] = useState("");
+  const [agentProvider, setAgentProvider] = useState("workers_ai");
+  const [agentModel, setAgentModel] = useState("global");
   const [assignmentMode, setAssignmentMode] = useState("conversation_assignee");
   const [defaultAssigneeId, setDefaultAssigneeId] = useState("");
   const [intentAssignees, setIntentAssignees] = useState<Record<string, string>>({});
@@ -48,6 +85,8 @@ export default function AiSettingsPage() {
       setProductsServices(workspace.ai_business_products_services ?? "");
       setPolicies(workspace.ai_business_policies ?? "");
       setTone(workspace.ai_business_tone ?? "");
+      setAgentProvider(workspace.ai_agent_provider ?? "workers_ai");
+      setAgentModel(workspace.ai_agent_model || "global");
       setAssignmentMode(workspace.ai_agent_assignment_mode ?? "conversation_assignee");
       setDefaultAssigneeId(workspace.ai_agent_default_assignee_id ?? "");
       setIntentAssignees(workspace.ai_agent_intent_assignees ?? {});
@@ -59,6 +98,8 @@ export default function AiSettingsPage() {
     workspace?.ai_business_products_services,
     workspace?.ai_business_policies,
     workspace?.ai_business_tone,
+    workspace?.ai_agent_provider,
+    workspace?.ai_agent_model,
     workspace?.ai_agent_assignment_mode,
     workspace?.ai_agent_default_assignee_id,
     workspace?.ai_agent_intent_assignees,
@@ -78,6 +119,8 @@ export default function AiSettingsPage() {
         ai_business_products_services: productsServices,
         ai_business_policies: policies,
         ai_business_tone: tone,
+        ai_agent_provider: agentProvider,
+        ai_agent_model: agentProvider === "workers_ai" && agentModel !== "global" ? agentModel : "",
         ai_agent_assignment_mode: assignmentMode,
         ai_agent_default_assignee_id: defaultAssigneeId || "",
         ai_agent_intent_assignees: intentAssignees,
@@ -298,6 +341,42 @@ export default function AiSettingsPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label className="text-xs mb-1 block">Proveedor del agente</Label>
+              <Select value={agentProvider} onValueChange={setAgentProvider}>
+                <SelectTrigger className="bg-[hsl(var(--elevated))] border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  {AGENT_PROVIDERS.map((provider) => (
+                    <SelectItem key={provider.id} value={provider.id} disabled={!provider.enabled}>
+                      {provider.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-xs mb-1 block">Modelo del agente</Label>
+              <Select
+                value={agentModel}
+                onValueChange={setAgentModel}
+                disabled={agentProvider !== "workers_ai"}
+              >
+                <SelectTrigger className="bg-[hsl(var(--elevated))] border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  {WORKERS_AI_AGENT_MODELS.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div>
               <Label className="text-xs mb-1 block">Asignacion de tareas creadas por IA</Label>
               <Select value={assignmentMode} onValueChange={setAssignmentMode}>

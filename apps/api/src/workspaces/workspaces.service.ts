@@ -51,6 +51,8 @@ export class WorkspacesService {
       ai_message_finance_opt_in: settings.ai_message_finance_opt_in === true,
       ai_provider: settings.ai_provider ?? null,
       ai_model: settings.ai_model ?? null,
+      ai_agent_provider: settings.ai_agent_provider ?? "workers_ai",
+      ai_agent_model: settings.ai_agent_model ?? "",
       ai_business_prompt: settings.ai_business_prompt ?? "",
       ai_business_products_services: settings.ai_business_products_services ?? "",
       ai_business_policies: settings.ai_business_policies ?? "",
