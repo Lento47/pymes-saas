@@ -14,3 +14,6 @@ enabled = true
 directory = "apps/web/dist/public"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+
+[vars]
+VITE_PAYPAL_CLIENT_ID = "AWLZKdmWHYdnDnif0OP6AiSlvUzS52dcW2YMmRWzChJbgZk56g8shj9jrFladrlR2i3_82qDfAyj2rg4"
