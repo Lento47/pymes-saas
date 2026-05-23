@@ -1,6 +1,7 @@
 import { Injectable, Logger, Inject, forwardRef, Optional } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CloudflareAiService, AssistantMessage } from "./cloudflare-ai.service";
+import { AiProviderBalancerService } from "./ai-provider-balancer.service";
 import { EmrendeAiService } from "./emprende-ai.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
@@ -106,6 +107,7 @@ export class AgentRunService {
     private readonly telegramOutbound: TelegramOutboundService,
     private readonly planLimits: PlanLimitsService,
     @Optional() private readonly contactMemory?: ContactMemoryService,
+    @Optional() private readonly balancer?: AiProviderBalancerService,
   ) {}
 
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -117,7 +119,7 @@ export class AgentRunService {
       return null;
     }
 
-    if (!this.cloudflare.isConfigured) return null;
+    if (!this.cloudflare.isConfigured && !this.balancer) return null;
 
     const conv = await this.prisma.conversation.findFirst({
       where: { id: conversationId, workspace_id: workspaceId },
@@ -141,12 +143,12 @@ export class AgentRunService {
       ? await this.contactMemory.getActiveProfile(conv.contact.id).catch(() => null)
       : null;
 
-    const agentModel = ctx.aiAgentProvider === "workers_ai" ? ctx.aiAgentModel : null;
+    const providers = ctx.aiAgentProviders;
     const detection = await this.detectIntent(
       triggerText,
       ctx.workspaceName,
       ctx.categories,
-      agentModel,
+      providers,
       contactMemoryProfile,
     );
     if (!detection) return null;
@@ -214,7 +216,7 @@ export class AgentRunService {
     const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
     const run = meta.agent_run as AgentRun | undefined;
     if (!run || run.status !== "RUNNING") return false;
-    const agentModel = await this.getAgentModel(workspaceId);
+    const providers = await this.getAgentProviders(workspaceId);
 
     const currentField = run.pending_fields[0];
     if (!currentField) {
@@ -228,7 +230,7 @@ export class AgentRunService {
       currentField,
       q ?? currentField,
       inboundText,
-      agentModel,
+      providers,
     );
     run.collected[currentField] = value ?? inboundText.trim().slice(0, 200);
     run.steps.push({
@@ -286,10 +288,10 @@ export class AgentRunService {
     text: string,
     businessName: string,
     categories: string[],
-    agentModel: string | null,
+    providers: string[],
     memory?: import("../memory/contact-memory.service").ContactMemoryProfile | null,
   ): Promise<{ intent: AgentIntent; extracted: Record<string, string> } | null> {
-    if (!this.cloudflare.isConfigured) return null;
+    if (!this.cloudflare.isConfigured && !this.balancer) return null;
 
     const businessType = categories.length > 0 ? categories.join(", ") : "servicios generales";
     const memoryContext = memory
@@ -311,10 +313,15 @@ Reglas:
 - null: saludo genérico, pregunta informativa simple, o no aplica ningún flujo.`;
 
     try {
-      const response = await this.cloudflare.chatCompletion(
-        [{ role: "user", content: prompt }] as AssistantMessage[],
-        { model: agentModel },
-      );
+      const response = this.balancer
+        ? await this.balancer.chatCompletion(
+            [{ role: "user", content: prompt }] as AssistantMessage[],
+            providers,
+          )
+        : await this.cloudflare.chatCompletion(
+            [{ role: "user", content: prompt }] as AssistantMessage[],
+            { model: providers[0]?.startsWith("workers-ai/") ? providers[0].slice("workers-ai/".length) : null },
+          );
       const match = response.match(/\{[\s\S]*\}/);
       if (!match) return null;
       const parsed = JSON.parse(match[0]);
@@ -376,9 +383,9 @@ Reglas:
     field: string,
     question: string,
     answer: string,
-    agentModel: string | null,
+    providers: string[],
   ): Promise<string | null> {
-    if (!this.cloudflare.isConfigured) return answer.trim().slice(0, 200);
+    if (!this.cloudflare.isConfigured && !this.balancer) return answer.trim().slice(0, 200);
 
     const prompt = `Extrae el valor de "${this.fieldLabel(field)}" de esta respuesta.
 Pregunta: "${question}"
@@ -389,10 +396,15 @@ Si es delivery_type, responde exactamente "delivery" o "pickup".
 Si indica que no tiene la información, responde "N/A".`;
 
     try {
-      const response = await this.cloudflare.chatCompletion(
-        [{ role: "user", content: prompt }] as AssistantMessage[],
-        { model: agentModel },
-      );
+      const response = this.balancer
+        ? await this.balancer.chatCompletion(
+            [{ role: "user", content: prompt }] as AssistantMessage[],
+            providers,
+          )
+        : await this.cloudflare.chatCompletion(
+            [{ role: "user", content: prompt }] as AssistantMessage[],
+            { model: providers[0]?.startsWith("workers-ai/") ? providers[0].slice("workers-ai/".length) : null },
+          );
       return response.trim().slice(0, 200) || null;
     } catch {
       return answer.trim().slice(0, 200);
@@ -588,7 +600,7 @@ Si indica que no tiene la información, responde "N/A".`;
     return null;
   }
 
-  private async getAgentModel(workspaceId: string): Promise<string | null> {
+  private async getAgentProviders(workspaceId: string): Promise<string[]> {
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { settings_json: true },
@@ -599,12 +611,21 @@ Si indica que no tiene la información, responde "N/A".`;
         ? (workspace.settings_json as Record<string, any>)
         : {};
 
-    if (settings.ai_agent_provider && settings.ai_agent_provider !== "workers_ai") return null;
-    if (typeof settings.ai_agent_model !== "string") return null;
+    // New format: explicit ordered list
+    const explicit = settings.ai_agent_providers;
+    if (Array.isArray(explicit) && explicit.length > 0) {
+      return (explicit as unknown[]).filter(
+        (s): s is string => typeof s === "string" && s.trim().length > 0,
+      );
+    }
+
+    // Legacy: single provider + model
+    if (settings.ai_agent_provider && settings.ai_agent_provider !== "workers_ai") return [];
+    if (typeof settings.ai_agent_model !== "string") return [];
 
     const model = settings.ai_agent_model.trim();
-    if (!model || !model.startsWith("@cf/") || /\s/.test(model)) return null;
-    return model.slice(0, 160);
+    if (!model || !model.startsWith("@cf/") || /\s/.test(model)) return [];
+    return [`workers-ai/${model.slice(0, 160)}`];
   }
 
   private computePending(intent: AgentIntent, collected: Record<string, string | null>): string[] {

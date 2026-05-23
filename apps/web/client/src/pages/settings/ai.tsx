@@ -25,39 +25,33 @@ const AI_PROVIDERS = [
   { id: "moonshot",        label: "Moonshot (Kimi)",        models: ["moonshot-v1-8k", "moonshot-v1-32k"] },
 ];
 
-const AGENT_PROVIDERS = [
-  { id: "workers_ai", label: "Workers AI", enabled: true },
-  { id: "amazon_bedrock", label: "Amazon Bedrock", enabled: false },
-  { id: "anthropic", label: "Anthropic", enabled: false },
-  { id: "azure_openai", label: "Azure OpenAI", enabled: false },
-  { id: "baseten", label: "Baseten", enabled: false },
-  { id: "cartesia", label: "Cartesia", enabled: false },
-  { id: "cerebras", label: "Cerebras", enabled: false },
-  { id: "cohere", label: "Cohere", enabled: false },
-  { id: "deepgram", label: "Deepgram", enabled: false },
-  { id: "deepseek", label: "DeepSeek", enabled: false },
-  { id: "elevenlabs", label: "ElevenLabs", enabled: false },
-  { id: "fal_ai", label: "Fal AI", enabled: false },
-  { id: "google_ai_studio", label: "Google AI Studio", enabled: false },
-  { id: "google_vertex_ai", label: "Google Vertex AI", enabled: false },
-  { id: "groq", label: "Groq", enabled: false },
-  { id: "huggingface", label: "HuggingFace", enabled: false },
-  { id: "ideogram", label: "Ideogram", enabled: false },
-  { id: "mistral_ai", label: "Mistral AI", enabled: false },
-  { id: "openai", label: "OpenAI", enabled: false },
-  { id: "openrouter", label: "OpenRouter", enabled: false },
-  { id: "parallel", label: "Parallel", enabled: false },
-  { id: "perplexity", label: "Perplexity", enabled: false },
-  { id: "replicate", label: "Replicate", enabled: false },
-  { id: "xai", label: "xAI", enabled: false },
-];
-
-const WORKERS_AI_AGENT_MODELS = [
-  { id: "global", label: "Modelo configurado en Railway" },
-  { id: "@cf/moonshotai/kimi-k2.6", label: "Kimi K2.6" },
-  { id: "@cf/meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B Instruct" },
-  { id: "@cf/meta/llama-3.3-70b-instruct-fp8-fast", label: "Llama 3.3 70B Instruct Fast" },
-  { id: "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", label: "DeepSeek R1 Distill Qwen 32B" },
+const GATEWAY_MODELS = [
+  { id: "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast", label: "Llama 3.3 70B Fast", provider: "Workers AI", badge: "Gratis" },
+  { id: "workers-ai/@cf/meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B", provider: "Workers AI", badge: "Gratis" },
+  { id: "workers-ai/@cf/moonshotai/kimi-k2.6", label: "Kimi K2.6", provider: "Workers AI", badge: "Gratis" },
+  { id: "openai/gpt-5", label: "GPT-5", provider: "OpenAI" },
+  { id: "openai/gpt-4o", label: "GPT-4o", provider: "OpenAI" },
+  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini", provider: "OpenAI" },
+  { id: "anthropic/claude-sonnet-4-5", label: "Claude Sonnet 4.5", provider: "Anthropic" },
+  { id: "anthropic/claude-haiku-4-5-20251001", label: "Claude Haiku 4.5", provider: "Anthropic" },
+  { id: "google-ai-studio/gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "Google" },
+  { id: "google-ai-studio/gemini-2.0-flash", label: "Gemini 2.0 Flash", provider: "Google" },
+  { id: "grok/grok-4", label: "Grok 4", provider: "xAI" },
+  { id: "grok/grok-3", label: "Grok 3", provider: "xAI" },
+  { id: "groq/llama-3.3-70b-versatile", label: "Llama 3.3 70B", provider: "Groq" },
+  { id: "groq/llama-3.1-8b-instant", label: "Llama 3.1 8B Instant", provider: "Groq" },
+  { id: "deepseek/deepseek-chat", label: "DeepSeek Chat", provider: "DeepSeek" },
+  { id: "deepseek/deepseek-reasoner", label: "DeepSeek Reasoner", provider: "DeepSeek" },
+  { id: "cerebras/llama3.1-8b", label: "Llama 3.1 8B", provider: "Cerebras" },
+  { id: "cerebras/llama3.3-70b", label: "Llama 3.3 70B", provider: "Cerebras" },
+  { id: "mistral/mistral-large-latest", label: "Mistral Large", provider: "Mistral" },
+  { id: "mistral/mistral-small-latest", label: "Mistral Small", provider: "Mistral" },
+  { id: "cohere/command-r-plus", label: "Command R+", provider: "Cohere" },
+  { id: "cohere/command-r", label: "Command R", provider: "Cohere" },
+  { id: "perplexity-ai/llama-3.1-sonar-large-128k-online", label: "Sonar Large (online)", provider: "Perplexity" },
+  { id: "baseten/openai/gpt-oss-120b", label: "GPT-OSS 120B", provider: "Baseten" },
+  { id: "parallel/speed", label: "Speed", provider: "Parallel" },
+  { id: "moonshot/moonshot-v1-8k", label: "Moonshot V1 8K", provider: "Moonshot" },
 ];
 
 export default function AiSettingsPage() {
@@ -74,8 +68,8 @@ export default function AiSettingsPage() {
   const [productsServices, setProductsServices] = useState("");
   const [policies, setPolicies] = useState("");
   const [tone, setTone] = useState("");
-  const [agentProvider, setAgentProvider] = useState("workers_ai");
-  const [agentModel, setAgentModel] = useState("global");
+  const [agentProviders, setAgentProviders] = useState<string[]>(["workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"]);
+  const [addingModel, setAddingModel] = useState("");
   const [assignmentMode, setAssignmentMode] = useState("conversation_assignee");
   const [defaultAssigneeId, setDefaultAssigneeId] = useState("");
   const [intentAssignees, setIntentAssignees] = useState<Record<string, string>>({});
@@ -93,8 +87,20 @@ export default function AiSettingsPage() {
       setProductsServices(workspace.ai_business_products_services ?? "");
       setPolicies(workspace.ai_business_policies ?? "");
       setTone(workspace.ai_business_tone ?? "");
-      setAgentProvider(workspace.ai_agent_provider ?? "workers_ai");
-      setAgentModel(workspace.ai_agent_model || "global");
+      // Load ai_agent_providers (new format) or fall back from legacy single provider
+      const savedProviders = workspace.ai_agent_providers;
+      if (Array.isArray(savedProviders) && savedProviders.length > 0) {
+        setAgentProviders(savedProviders);
+      } else {
+        // Legacy: convert old ai_agent_provider + ai_agent_model
+        const legacyProvider = workspace.ai_agent_provider ?? "workers_ai";
+        const legacyModel = workspace.ai_agent_model;
+        if (legacyProvider === "workers_ai" && legacyModel && legacyModel !== "global") {
+          setAgentProviders([`workers-ai/${legacyModel}`]);
+        } else {
+          setAgentProviders(["workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"]);
+        }
+      }
       setAssignmentMode(workspace.ai_agent_assignment_mode ?? "conversation_assignee");
       setDefaultAssigneeId(workspace.ai_agent_default_assignee_id ?? "");
       setIntentAssignees(workspace.ai_agent_intent_assignees ?? {});
@@ -106,6 +112,7 @@ export default function AiSettingsPage() {
     workspace?.ai_business_products_services,
     workspace?.ai_business_policies,
     workspace?.ai_business_tone,
+    workspace?.ai_agent_providers,
     workspace?.ai_agent_provider,
     workspace?.ai_agent_model,
     workspace?.ai_agent_assignment_mode,
@@ -127,8 +134,9 @@ export default function AiSettingsPage() {
         ai_business_products_services: productsServices,
         ai_business_policies: policies,
         ai_business_tone: tone,
-        ai_agent_provider: agentProvider,
-        ai_agent_model: agentProvider === "workers_ai" && agentModel !== "global" ? agentModel : "",
+        ai_agent_providers: agentProviders,
+        ai_agent_provider: "workers_ai", // keep for backwards compat
+        ai_agent_model: "",
         ai_agent_assignment_mode: assignmentMode,
         ai_agent_default_assignee_id: defaultAssigneeId || "",
         ai_agent_intent_assignees: intentAssignees,
@@ -349,40 +357,110 @@ export default function AiSettingsPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label className="text-xs mb-1 block">Proveedor del agente</Label>
-              <Select value={agentProvider} onValueChange={setAgentProvider}>
-                <SelectTrigger className="bg-[hsl(var(--elevated))] border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  {AGENT_PROVIDERS.map((provider) => (
-                    <SelectItem key={provider.id} value={provider.id} disabled={!provider.enabled}>
-                      {provider.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="md:col-span-2">
+              <Label className="text-xs mb-2 block">Proveedores del Agente IA · Load Balancer</Label>
+              <p className="text-[11px] text-muted-foreground mb-3">
+                El agente intentará los proveedores en orden. Si uno falla, pasa al siguiente automáticamente.
+              </p>
 
-            <div>
-              <Label className="text-xs mb-1 block">Modelo del agente</Label>
-              <Select
-                value={agentModel}
-                onValueChange={setAgentModel}
-                disabled={agentProvider !== "workers_ai"}
-              >
-                <SelectTrigger className="bg-[hsl(var(--elevated))] border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  {WORKERS_AI_AGENT_MODELS.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      {model.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Ordered list of selected providers */}
+              <div className="space-y-2 mb-3">
+                {agentProviders.map((modelId, index) => {
+                  const info = GATEWAY_MODELS.find(m => m.id === modelId);
+                  return (
+                    <div key={modelId} className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/40 px-3 py-2">
+                      <span className="text-[10px] text-muted-foreground font-mono w-4 text-center">{index + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">
+                          {info?.label ?? modelId}
+                          {info?.badge && (
+                            <span className="ml-1.5 text-[9px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded-full">
+                              {info.badge}
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">{info?.provider ?? ""} · {modelId}</p>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setAgentProviders(prev => {
+                            if (index === 0) return prev;
+                            const next = [...prev];
+                            [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                            return next;
+                          })}
+                          disabled={index === 0}
+                          className="p-1 rounded hover:bg-sidebar-accent/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Subir"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAgentProviders(prev => {
+                            if (index === prev.length - 1) return prev;
+                            const next = [...prev];
+                            [next[index], next[index + 1]] = [next[index + 1], next[index]];
+                            return next;
+                          })}
+                          disabled={index === agentProviders.length - 1}
+                          className="p-1 rounded hover:bg-sidebar-accent/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Bajar"
+                        >
+                          ▼
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAgentProviders(prev => prev.filter((_, i) => i !== index))}
+                          className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                          title="Quitar"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {agentProviders.length === 0 && (
+                  <p className="text-[11px] text-amber-400 py-2">Sin proveedores configurados — el agente no responderá.</p>
+                )}
+              </div>
+
+              {/* Add provider selector */}
+              <div className="flex gap-2">
+                <Select
+                  value={addingModel}
+                  onValueChange={setAddingModel}
+                >
+                  <SelectTrigger className="bg-[hsl(var(--elevated))] border-border text-xs h-8 flex-1">
+                    <SelectValue placeholder="Agregar proveedor..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {GATEWAY_MODELS.filter(m => !agentProviders.includes(m.id)).map(m => (
+                      <SelectItem key={m.id} value={m.id} className="text-xs">
+                        <span className="font-medium">{m.provider}</span> · {m.label}
+                        {m.badge && <span className="ml-1.5 text-[9px] text-emerald-400">({m.badge})</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs shrink-0"
+                  disabled={!addingModel}
+                  onClick={() => {
+                    if (addingModel && !agentProviders.includes(addingModel)) {
+                      setAgentProviders(prev => [...prev, addingModel]);
+                      setAddingModel("");
+                    }
+                  }}
+                >
+                  Agregar
+                </Button>
+              </div>
             </div>
 
             <div>

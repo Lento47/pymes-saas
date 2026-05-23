@@ -25,6 +25,7 @@ import { EmrendeAiService } from "./emprende-ai.service";
 import { EmrendeAiController } from "./emprende-ai.controller";
 import { AgentRunService } from "./agent-run.service";
 import { AiConversationControlService } from "./ai-conversation-control.service";
+import { AiProviderBalancerService } from "./ai-provider-balancer.service";
 import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { TelegramModule } from "../telegram/telegram.module";
 import { PlanLimitsModule } from "../common/plan-limits/plan-limits.module";
@@ -67,6 +68,7 @@ import { AiTriageService } from "./ai-triage.service";
     CaseCommentsService,
     CloudflareAiService,
     AiGatewayService,
+    AiProviderBalancerService,
     AiTriageService,
     EmrendeAiService,
     AgentRunService,
@@ -87,6 +89,7 @@ import { AiTriageService } from "./ai-triage.service";
     KnowledgeBaseService,
     CloudflareAiService,
     AiGatewayService,
+    AiProviderBalancerService,
     AiTriageService,
     EmrendeAiService,
     AgentRunService,
