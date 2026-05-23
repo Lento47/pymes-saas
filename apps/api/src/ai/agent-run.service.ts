@@ -611,12 +611,15 @@ Si indica que no tiene la información, responde "N/A".`;
         ? (workspace.settings_json as Record<string, any>)
         : {};
 
-    // New format: explicit ordered list
+    // New format: explicit ordered list — only workers-ai models are currently supported
     const explicit = settings.ai_agent_providers;
     if (Array.isArray(explicit) && explicit.length > 0) {
-      return (explicit as unknown[]).filter(
-        (s): s is string => typeof s === "string" && s.trim().length > 0,
+      const valid = (explicit as unknown[]).filter(
+        (s): s is string =>
+          typeof s === "string" && s.trim().length > 0 && s.startsWith("workers-ai/"),
       );
+      if (valid.length > 0) return valid;
+      return ["workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"];
     }
 
     // Legacy: single provider + model

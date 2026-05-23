@@ -185,9 +185,12 @@ export class EmrendeAiService {
     // New format: explicit ordered list from settings
     const explicit = settings.ai_agent_providers;
     if (Array.isArray(explicit) && explicit.length > 0) {
-      return (explicit as unknown[]).filter(
-        (s): s is string => typeof s === "string" && s.trim().length > 0,
+      const valid = (explicit as unknown[]).filter(
+        (s): s is string =>
+          typeof s === "string" && s.trim().length > 0 && s.startsWith("workers-ai/"),
       );
+      if (valid.length > 0) return valid;
+      return ["workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"];
     }
     // Legacy: convert single ai_agent_provider + ai_agent_model
     const isWorkersAi =
