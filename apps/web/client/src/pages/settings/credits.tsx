@@ -233,7 +233,7 @@ function TransactionRow({ tx }: { tx: any }) {
 }
 
 function AiTokenTransactionRow({ tx }: { tx: any }) {
-  const isPositive = tx.amount > 0;
+  const isPositive = tx.type !== "CONSUMPTION";
   const usage = tx.total_tokens
     ? `${tx.total_tokens.toLocaleString()} token${tx.total_tokens !== 1 ? "s" : ""}${tx.estimated ? " estimados" : ""}`
     : null;
@@ -267,7 +267,7 @@ function AiTokenTransactionRow({ tx }: { tx: any }) {
           isPositive ? "text-emerald-400" : "text-muted-foreground",
         )}
       >
-        {isPositive ? "+" : ""}{formatTokens(tx.amount)}
+        {isPositive ? "+" : "-"}{formatTokens(tx.amount)}
       </span>
     </div>
   );
