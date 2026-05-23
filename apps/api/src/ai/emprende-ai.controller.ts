@@ -6,6 +6,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
@@ -43,6 +44,8 @@ export class EmrendeAiController {
     @Body() dto: ReplyDto,
   ) {
     await this.planLimits.enforcePlanTier(user.workspace_id, "EMPRENDE", "IA de respuestas");
+    const quota = await this.planLimits.evaluatePlanLimit(user.workspace_id, "ai_chat_messages_per_day");
+    if (!quota.allowed) throw new ForbiddenException(quota.message);
     const reply = await this.emprendeAi.generateReply(
       user.workspace_id,
       dto.conversationId,
@@ -58,6 +61,8 @@ export class EmrendeAiController {
     @Body() dto: ChatDto,
   ) {
     await this.planLimits.enforcePlanTier(user.workspace_id, "EMPRENDE", "Asistente IA Emprende");
+    const quota = await this.planLimits.evaluatePlanLimit(user.workspace_id, "ai_chat_messages_per_day");
+    if (!quota.allowed) throw new ForbiddenException(quota.message);
     const ctx = await this.emprendeAi.buildBusinessContext(user.workspace_id);
     const systemPrompt = this.emprendeAi.buildSystemPrompt(ctx);
     const reply = dto.conversationId

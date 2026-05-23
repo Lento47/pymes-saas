@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { AiGatewayService } from "./ai-gateway.service";
 
 export interface AssistantMessage {
   role: "user" | "assistant" | "system";
@@ -24,7 +25,10 @@ export class CloudflareAiService {
   private readonly chatUrl: string | null;
   private readonly model: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    @Optional() private readonly aiGateway?: AiGatewayService,
+  ) {
     this.token = config.get<string>("CLOUDFLARE_AI_TOKEN") ?? null;
     this.searchUrl = config.get<string>("CLOUDFLARE_AI_SEARCH_URL") ?? null;
     this.chatUrl = config.get<string>("CLOUDFLARE_AI_CHAT_URL") ?? null;
@@ -116,24 +120,25 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
     messages: AssistantMessage[],
     options: CloudflareChatOptions = {},
   ): Promise<string> {
-    const isWorkersAiRunEndpoint = this.chatUrl?.includes("/ai/run/");
+    // Delegate to AiGatewayService when available — supports all CF Gateway providers
+    if (this.aiGateway?.isConfigured) {
+      const modelOverride = this.normalizeWorkersAiModel(options.model);
+      const model = modelOverride ? `workers-ai/${modelOverride}` : undefined;
+      return this.aiGateway.chatCompletion(messages, { model });
+    }
+
+    // Fallback: direct Workers AI call via legacy CLOUDFLARE_AI_CHAT_URL
+    if (!this.chatUrl) throw new Error("Cloudflare AI is not configured");
+
+    const isWorkersAiRunEndpoint = this.chatUrl.includes("/ai/run/");
     const modelOverride = this.normalizeWorkersAiModel(options.model);
     const chatUrl =
       isWorkersAiRunEndpoint && modelOverride
-        ? this.withWorkersAiRunModel(this.chatUrl!, modelOverride)
-        : this.chatUrl!;
+        ? this.withWorkersAiRunModel(this.chatUrl, modelOverride)
+        : this.chatUrl;
     const body = isWorkersAiRunEndpoint
-      ? {
-          messages,
-          max_tokens: 1024,
-          temperature: 0.3,
-        }
-      : {
-          model: modelOverride ?? this.model,
-          messages,
-          max_tokens: 1024,
-          temperature: 0.3,
-        };
+      ? { messages, max_tokens: 1024, temperature: 0.3 }
+      : { model: modelOverride ?? this.model, messages, max_tokens: 1024, temperature: 0.3 };
 
     const res = await fetch(chatUrl, {
       method: "POST",
@@ -150,7 +155,6 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
     }
 
     const data = (await res.json()) as any;
-    // OpenAI-compatible response shape
     return (
       data.choices?.[0]?.message?.content ??
       data.result?.choices?.[0]?.message?.content ??

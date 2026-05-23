@@ -5,6 +5,7 @@ import { EmrendeAiService } from "./emprende-ai.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
+import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 
 export type AgentIntent = "ORDER" | "APPOINTMENT" | "QUOTE" | "COMPLAINT";
 
@@ -102,11 +103,18 @@ export class AgentRunService {
     @Inject(forwardRef(() => WhatsAppService))
     private readonly whatsapp: WhatsAppService,
     private readonly telegramOutbound: TelegramOutboundService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
   async startRun(workspaceId: string, conversationId: string, triggerText: string): Promise<AgentRun | null> {
+    const quota = await this.planLimits.evaluatePlanLimit(workspaceId, "agent_executions_per_day");
+    if (!quota.allowed) {
+      this.logger.warn(`Agent run blocked for workspace ${workspaceId}: ${quota.message}`);
+      return null;
+    }
+
     if (!this.cloudflare.isConfigured) return null;
 
     const conv = await this.prisma.conversation.findFirst({

@@ -20,11 +20,13 @@ import { SupportNotificationService } from "./support-notification.service";
 import { KnowledgeBaseService } from "./knowledge-base.service";
 import { CaseCommentsService } from "./case-comments.service";
 import { CloudflareAiService } from "./cloudflare-ai.service";
+import { AiGatewayService } from "./ai-gateway.service";
 import { EmrendeAiService } from "./emprende-ai.service";
 import { EmrendeAiController } from "./emprende-ai.controller";
 import { AgentRunService } from "./agent-run.service";
 import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { TelegramModule } from "../telegram/telegram.module";
+import { PlanLimitsModule } from "../common/plan-limits/plan-limits.module";
 
 import { AiTriageService } from "./ai-triage.service";
 
@@ -46,6 +48,7 @@ import { AiTriageService } from "./ai-triage.service";
     forwardRef(() => NotificationsModule),
     forwardRef(() => WhatsAppModule),
     forwardRef(() => TelegramModule),
+    PlanLimitsModule,
   ],
   providers: [
     AiService,
@@ -58,6 +61,7 @@ import { AiTriageService } from "./ai-triage.service";
     KnowledgeBaseService,
     CaseCommentsService,
     CloudflareAiService,
+    AiGatewayService,
     AiTriageService,
     EmrendeAiService,
     AgentRunService,
@@ -76,6 +80,7 @@ import { AiTriageService } from "./ai-triage.service";
     SupportNotificationService,
     KnowledgeBaseService,
     CloudflareAiService,
+    AiGatewayService,
     AiTriageService,
     EmrendeAiService,
     AgentRunService,

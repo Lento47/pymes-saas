@@ -11,10 +11,18 @@ import { Eye, EyeOff, CheckCircle2, Bot, ClipboardList } from "lucide-react";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 
 const AI_PROVIDERS = [
-  { id: "openai",    label: "OpenAI",              models: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"] },
-  { id: "anthropic", label: "Anthropic (Claude)",  models: ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-7"] },
-  { id: "gemini",    label: "Google Gemini",        models: ["gemini-2.0-flash", "gemini-1.5-pro"] },
-  { id: "moonshot",  label: "Moonshot (Kimi)",      models: ["moonshot-v1-8k", "moonshot-v1-32k"] },
+  { id: "openai",          label: "OpenAI",                 models: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-5"] },
+  { id: "anthropic",       label: "Anthropic (Claude)",     models: ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-7"] },
+  { id: "google-ai-studio",label: "Google Gemini",          models: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"] },
+  { id: "groq",            label: "Groq",                   models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"] },
+  { id: "grok",            label: "Grok (xAI)",             models: ["grok-4", "grok-3", "grok-2"] },
+  { id: "mistral",         label: "Mistral",                models: ["mistral-large-latest", "mistral-small-latest", "open-mistral-7b"] },
+  { id: "cohere",          label: "Cohere",                 models: ["command-r-plus", "command-r", "command"] },
+  { id: "deepseek",        label: "DeepSeek",               models: ["deepseek-chat", "deepseek-reasoner"] },
+  { id: "perplexity-ai",   label: "Perplexity",             models: ["llama-3.1-sonar-large-128k-online", "llama-3.1-sonar-small-128k-online"] },
+  { id: "cerebras",        label: "Cerebras",               models: ["llama3.1-8b", "llama3.3-70b"] },
+  { id: "workers-ai",      label: "Workers AI (gratis)",    models: ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct", "@cf/moonshotai/kimi-k2.6"] },
+  { id: "moonshot",        label: "Moonshot (Kimi)",        models: ["moonshot-v1-8k", "moonshot-v1-32k"] },
 ];
 
 const AGENT_PROVIDERS = [
