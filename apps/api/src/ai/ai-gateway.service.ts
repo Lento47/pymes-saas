@@ -2,9 +2,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AssistantMessage, ChatCompletionWithUsage } from "./cloudflare-ai.service";
 
-// All CF-supported providers work via the /compat universal endpoint per official docs.
-// Legacy paths remain as fallback when compatUrl/compatToken are not configured.
-const COMPAT_UNSUPPORTED = new Set<string>();
+// Workers AI uses its own /workers-ai/run/{model} legacy path (no external API key needed).
+// Other CF-supported providers work via the /compat endpoint but require their API keys
+// configured in the CF AI Gateway dashboard (or passed via Authorization header).
+const COMPAT_UNSUPPORTED = new Set(["workers-ai"]);
 
 @Injectable()
 export class AiGatewayService {
@@ -108,11 +109,13 @@ export class AiGatewayService {
     const providerPrefix = modelStr.split("/")[0];
     const useLegacy = COMPAT_UNSUPPORTED.has(providerPrefix);
     if (this.compatUrl && this.compatToken && !useLegacy) {
+      const providerApiKey = options?.apiKey ?? null;
       const res = await fetch(this.compatUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.compatToken}`,
+          "cf-aig-authorization": `Bearer ${this.compatToken}`,
+          ...(providerApiKey ? { Authorization: `Bearer ${providerApiKey}` } : {}),
         },
         body: JSON.stringify({
           model: modelStr,
