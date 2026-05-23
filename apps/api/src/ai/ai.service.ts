@@ -61,6 +61,7 @@ export class AiService {
     const s = parseJsonValue<Record<string, any>>(ws?.settings_json, {});
 
     if (s.ai_provider && s.ai_api_key_enc) {
+      if (s.ai_custom_api_enabled === false) return null;
       try {
         const api_key = this.crypto.decrypt(s.ai_api_key_enc);
         const provider = s.ai_provider as AiProvider;

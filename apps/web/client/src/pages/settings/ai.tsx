@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, CheckCircle2, Bot, ClipboardList } from "lucide-react";
 import { SettingsLayout } from "@/components/settings/settings-layout";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 const AI_PROVIDERS = [
   { id: "openai",          label: "OpenAI",                 models: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-5"] },
@@ -29,29 +31,6 @@ const GATEWAY_MODELS = [
   { id: "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast", label: "Llama 3.3 70B Fast", provider: "Workers AI", badge: "Gratis" },
   { id: "workers-ai/@cf/meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B", provider: "Workers AI", badge: "Gratis" },
   { id: "workers-ai/@cf/moonshotai/kimi-k2.6", label: "Kimi K2.6", provider: "Workers AI", badge: "Gratis" },
-  { id: "openai/gpt-5", label: "GPT-5", provider: "OpenAI" },
-  { id: "openai/gpt-4o", label: "GPT-4o", provider: "OpenAI" },
-  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini", provider: "OpenAI" },
-  { id: "anthropic/claude-sonnet-4-5", label: "Claude Sonnet 4.5", provider: "Anthropic" },
-  { id: "anthropic/claude-haiku-4-5-20251001", label: "Claude Haiku 4.5", provider: "Anthropic" },
-  { id: "google-ai-studio/gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "Google" },
-  { id: "google-ai-studio/gemini-2.0-flash", label: "Gemini 2.0 Flash", provider: "Google" },
-  { id: "grok/grok-4", label: "Grok 4", provider: "xAI" },
-  { id: "grok/grok-3", label: "Grok 3", provider: "xAI" },
-  { id: "groq/llama-3.3-70b-versatile", label: "Llama 3.3 70B", provider: "Groq" },
-  { id: "groq/llama-3.1-8b-instant", label: "Llama 3.1 8B Instant", provider: "Groq" },
-  { id: "deepseek/deepseek-chat", label: "DeepSeek Chat", provider: "DeepSeek" },
-  { id: "deepseek/deepseek-reasoner", label: "DeepSeek Reasoner", provider: "DeepSeek" },
-  { id: "cerebras/llama3.1-8b", label: "Llama 3.1 8B", provider: "Cerebras" },
-  { id: "cerebras/llama3.3-70b", label: "Llama 3.3 70B", provider: "Cerebras" },
-  { id: "mistral/mistral-large-latest", label: "Mistral Large", provider: "Mistral" },
-  { id: "mistral/mistral-small-latest", label: "Mistral Small", provider: "Mistral" },
-  { id: "cohere/command-r-plus", label: "Command R+", provider: "Cohere" },
-  { id: "cohere/command-r", label: "Command R", provider: "Cohere" },
-  { id: "perplexity-ai/llama-3.1-sonar-large-128k-online", label: "Sonar Large (online)", provider: "Perplexity" },
-  { id: "baseten/openai/gpt-oss-120b", label: "GPT-OSS 120B", provider: "Baseten" },
-  { id: "parallel/speed", label: "Speed", provider: "Parallel" },
-  { id: "moonshot/moonshot-v1-8k", label: "Moonshot V1 8K", provider: "Moonshot" },
 ];
 
 export default function AiSettingsPage() {
@@ -68,6 +47,7 @@ export default function AiSettingsPage() {
   const [productsServices, setProductsServices] = useState("");
   const [policies, setPolicies] = useState("");
   const [tone, setTone] = useState("");
+  const [customApiEnabled, setCustomApiEnabled] = useState(true);
   const [agentProviders, setAgentProviders] = useState<string[]>(["workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"]);
   const [addingModel, setAddingModel] = useState("");
   const [assignmentMode, setAssignmentMode] = useState("conversation_assignee");
@@ -81,6 +61,7 @@ export default function AiSettingsPage() {
 
   useEffect(() => {
     if (workspace) {
+      setCustomApiEnabled(workspace.ai_custom_api_enabled !== false);
       setProvider(workspace.ai_provider ?? "");
       setModel(workspace.ai_model ?? "");
       setBusinessPrompt(workspace.ai_business_prompt ?? "");
@@ -89,8 +70,14 @@ export default function AiSettingsPage() {
       setTone(workspace.ai_business_tone ?? "");
       // Load ai_agent_providers (new format) or fall back from legacy single provider
       const savedProviders = workspace.ai_agent_providers;
+      const validIds = new Set(GATEWAY_MODELS.map((m) => m.id));
       if (Array.isArray(savedProviders) && savedProviders.length > 0) {
-        setAgentProviders(savedProviders);
+        const filtered = savedProviders.filter((p: string) => validIds.has(p));
+        setAgentProviders(
+          filtered.length > 0
+            ? filtered
+            : ["workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"],
+        );
       } else {
         // Legacy: convert old ai_agent_provider + ai_agent_model
         const legacyProvider = workspace.ai_agent_provider ?? "workers_ai";
@@ -106,6 +93,7 @@ export default function AiSettingsPage() {
       setIntentAssignees(workspace.ai_agent_intent_assignees ?? {});
     }
   }, [
+    workspace?.ai_custom_api_enabled,
     workspace?.ai_provider,
     workspace?.ai_model,
     workspace?.ai_business_prompt,
@@ -130,6 +118,7 @@ export default function AiSettingsPage() {
       ai_model:    model    || undefined,
       ai_api_key:  apiKey   || undefined,
       settings_json: {
+        ai_custom_api_enabled: customApiEnabled,
         ai_business_prompt: businessPrompt,
         ai_business_products_services: productsServices,
         ai_business_policies: policies,
@@ -225,6 +214,15 @@ export default function AiSettingsPage() {
         )}
 
         <div className="space-y-4 max-w-lg">
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs font-medium">Activar API personalizada</p>
+              <p className="text-[11px] text-muted-foreground">Análisis de conversaciones con tu clave de IA</p>
+            </div>
+            <Switch checked={customApiEnabled} onCheckedChange={setCustomApiEnabled} />
+          </div>
+
+          <div className={cn("space-y-4", !customApiEnabled && "opacity-40 pointer-events-none")}>
           <div>
             <Label className="text-xs mb-1 block">Proveedor de IA</Label>
             <Select value={provider} onValueChange={v => { setProvider(v); setModel(""); }}>
@@ -277,12 +275,14 @@ export default function AiSettingsPage() {
             </div>
           </div>
 
+          </div>{/* end opacity wrapper */}
+
           <div className="flex gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => testConnection.mutate()}
-              disabled={!canTest || testConnection.isPending}
+              disabled={!canTest || testConnection.isPending || !customApiEnabled}
               className="h-8 text-xs border-border"
             >
               {testConnection.isPending ? "Probando..." : "Probar conexion"}
