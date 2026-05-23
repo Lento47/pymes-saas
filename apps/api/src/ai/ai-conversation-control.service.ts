@@ -1,6 +1,8 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CloudflareAiService, AssistantMessage, ChatCompletionWithUsage } from "./cloudflare-ai.service";
+import { AiProviderBalancerService } from "./ai-provider-balancer.service";
+import { AiGatewayService } from "./ai-gateway.service";
 import { EmrendeAiService } from "./emprende-ai.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
@@ -78,6 +80,8 @@ export class AiConversationControlService {
     private readonly planLimits: PlanLimitsService,
     private readonly contactMemory: ContactMemoryService,
     private readonly aiTokens: AiTokenMeteringService,
+    private readonly balancer: AiProviderBalancerService,
+    private readonly gateway: AiGatewayService,
   ) {}
 
   async startControl(workspaceId: string, conversationId: string) {
@@ -131,7 +135,7 @@ export class AiConversationControlService {
     ai_state?: string;
   }> {
     await this.planLimits.enforcePlanTier(workspaceId, "EMPRENDE", "Agente IA conversacional");
-    if (!this.cloudflare.isConfigured) {
+    if (!this.cloudflare.isConfigured && !this.gateway.isConfigured) {
       return { ok: false, error: "AI_NOT_CONFIGURED", balance: await this.aiTokens.getBalance(workspaceId) };
     }
 
@@ -165,8 +169,7 @@ export class AiConversationControlService {
 
     let completion: ChatCompletionWithUsage;
     try {
-      completion = await this.cloudflare.chatCompletionWithUsage(context.messages, {
-        model: context.model,
+      completion = await this.balancer.chatCompletionWithUsage(context.messages, context.providers, {
         maxTokens: this.maxTokens,
         temperature: 0.2,
       });
@@ -330,7 +333,7 @@ ${recent}
 ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más útil)"}`;
 
     return {
-      model: ctx.aiAgentProvider === "workers_ai" ? ctx.aiAgentModel : null,
+      providers: ctx.aiAgentProviders,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },

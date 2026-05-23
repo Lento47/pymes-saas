@@ -1,6 +1,8 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CloudflareAiService, AssistantMessage } from "./cloudflare-ai.service";
+import { AiProviderBalancerService } from "./ai-provider-balancer.service";
+import { AiGatewayService } from "./ai-gateway.service";
 import { parseJsonValue } from "../common/prisma/json";
 
 export interface ContactProfileInsights {
@@ -29,6 +31,7 @@ interface BusinessContext {
   tone: string | null;
   aiAgentProvider: string;
   aiAgentModel: string | null;
+  aiAgentProviders: string[];
   recentConversations: { contactName: string; lastMessage: string }[];
   pendingTasks: { title: string; priority: string }[];
 }
@@ -40,6 +43,8 @@ export class EmrendeAiService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudflare: CloudflareAiService,
+    @Optional() private readonly balancer?: AiProviderBalancerService,
+    @Optional() private readonly gateway?: AiGatewayService,
   ) {}
 
   async buildBusinessContext(workspaceId: string): Promise<BusinessContext> {
@@ -95,6 +100,7 @@ export class EmrendeAiService {
           ? settings.ai_agent_provider
           : "workers_ai",
       aiAgentModel: this.cleanAgentModel(settings.ai_agent_model),
+      aiAgentProviders: this.buildProviderList(settings),
       recentConversations: recentConvs.map((c) => ({
         contactName: c.contact?.full_name ?? "Cliente",
         lastMessage: c.messages[0]?.body_text ?? "",
@@ -175,12 +181,46 @@ export class EmrendeAiService {
     return trimmed.slice(0, 160);
   }
 
+  private buildProviderList(settings: Record<string, any>): string[] {
+    // New format: explicit ordered list from settings
+    const explicit = settings.ai_agent_providers;
+    if (Array.isArray(explicit) && explicit.length > 0) {
+      return (explicit as unknown[]).filter(
+        (s): s is string => typeof s === "string" && s.trim().length > 0,
+      );
+    }
+    // Legacy: convert single ai_agent_provider + ai_agent_model
+    const isWorkersAi =
+      !settings.ai_agent_provider || settings.ai_agent_provider === "workers_ai";
+    if (isWorkersAi) {
+      const model = this.cleanAgentModel(settings.ai_agent_model);
+      if (model) return [`workers-ai/${model}`];
+    }
+    // Default empty list — gateway uses SYSTEM_AI_MODEL
+    return [];
+  }
+
+  private async aiChat(
+    messages: AssistantMessage[],
+    providers: string[],
+    options?: { maxTokens?: number; temperature?: number },
+  ): Promise<string> {
+    if (this.balancer) {
+      return this.balancer.chatCompletion(messages, providers, options);
+    }
+    // Fallback to cloudflare (for backwards compat)
+    const model = providers[0]; // just use first provider string as-is
+    return this.cloudflare.chatCompletion(messages, {
+      model: model?.startsWith("workers-ai/") ? model.slice("workers-ai/".length) : null,
+    });
+  }
+
   async generateReply(
     workspaceId: string,
     conversationId: string | null,
     lastMessageText: string,
   ): Promise<string> {
-    if (!this.cloudflare.isConfigured) {
+    if (!this.cloudflare.isConfigured && !this.gateway?.isConfigured) {
       return "Gracias por tu mensaje. Un agente te atenderá en breve.";
     }
 
@@ -213,9 +253,7 @@ export class EmrendeAiService {
     ];
 
     try {
-      const result = await this.cloudflare.chatCompletion(messages, {
-        model: ctx.aiAgentProvider === "workers_ai" ? ctx.aiAgentModel : null,
-      });
+      const result = await this.aiChat(messages, ctx.aiAgentProviders, { maxTokens: 1024, temperature: 0.3 });
       return result ?? "Gracias por tu mensaje. Un agente te atenderá pronto.";
     } catch (err) {
       this.logger.warn("EmrendeAI generateReply failed", err);
@@ -227,7 +265,7 @@ export class EmrendeAiService {
     workspaceId: string,
     contactId: string,
   ): Promise<ContactProfileInsights> {
-    if (!this.cloudflare.isConfigured) {
+    if (!this.cloudflare.isConfigured && !this.gateway?.isConfigured) {
       throw new Error("Cloudflare AI is not configured");
     }
 
@@ -276,9 +314,10 @@ NO incluyas datos sensibles como ubicación exacta o datos financieros.
 Conversación:
 ${transcript.slice(0, 3000)}`;
 
-    const responseText = await this.cloudflare.chatCompletion(
+    const responseText = await this.aiChat(
       [{ role: "user", content: prompt }] as AssistantMessage[],
-      { model: ctx.aiAgentProvider === "workers_ai" ? ctx.aiAgentModel : null },
+      ctx.aiAgentProviders,
+      { maxTokens: 1024, temperature: 0.3 },
     );
 
     let insights: ContactProfileInsights;
@@ -320,7 +359,7 @@ ${transcript.slice(0, 3000)}`;
     workspaceId: string,
     messageText: string,
   ): Promise<TaskSuggestion[]> {
-    if (!this.cloudflare.isConfigured) return [];
+    if (!this.cloudflare.isConfigured && !this.gateway?.isConfigured) return [];
 
     const ctx = await this.buildBusinessContext(workspaceId);
 
@@ -333,9 +372,10 @@ Formato: [{"title": "título máx 80 chars", "priority": "LOW|MEDIUM|HIGH", "des
 No incluyas explicaciones, solo el JSON.`;
 
     try {
-      const responseText = await this.cloudflare.chatCompletion(
+      const responseText = await this.aiChat(
         [{ role: "user", content: prompt }] as AssistantMessage[],
-        { model: ctx.aiAgentProvider === "workers_ai" ? ctx.aiAgentModel : null },
+        ctx.aiAgentProviders,
+        { maxTokens: 1024, temperature: 0.3 },
       );
 
       const jsonMatch = responseText.match(/\[[\s\S]*\]/);
