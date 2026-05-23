@@ -93,7 +93,8 @@ export class ConversationsService {
           sla_target_hours: true,
           created_at: true,
           updated_at: true,
-          contact: { select: { id: true, full_name: true, company_name: true, email: true } },
+          metadata_json: true,
+          contact: { select: { id: true, full_name: true, company_name: true, email: true, phone: true } },
           channel: { select: { id: true, name: true, type: true } },
           assigned_user: { select: { id: true, name: true, avatar_url: true } },
           _count: { select: { messages: true, tasks: true } },
@@ -183,6 +184,7 @@ export class ConversationsService {
         sla_target_hours: true,
         created_at: true,
         updated_at: true,
+        metadata_json: true,
         channel: { select: { id: true, name: true, type: true, provider: true } },
         contact: {
           select: { id: true, full_name: true, company_name: true, email: true, phone: true },

@@ -347,6 +347,9 @@ model Workspace {
   orders             Order[]
   credit_balance      WorkspaceCreditBalance?
   credit_transactions  CreditTransaction[]
+  ai_token_balance      WorkspaceAiTokenBalance?
+  ai_token_transactions AiTokenTransaction[]
+  ai_token_reservations AiTokenReservation[]
   contact_ai_memories  ContactAiMemory[]
   paypal_payment_orders PaypalPaymentOrder[]
 
@@ -2284,6 +2287,8 @@ model PaypalPaymentOrder {
   capture_id   String?
   amount       Decimal            @db.Decimal(12, 2)
   credits      Int
+  tokens       Int?
+  purchase_type PaypalPurchaseType @default(MEMORY_CREDITS)
   status       PaypalPaymentStatus @default(CREATED)
   created_at   DateTime           @default(now())
   updated_at   DateTime           @updatedAt
@@ -2293,4 +2298,90 @@ model PaypalPaymentOrder {
   @@index([workspace_id])
   @@index([status])
   @@map("paypal_payment_orders")
+}
+
+enum PaypalPurchaseType {
+  MEMORY_CREDITS
+  AI_TOKENS
+}
+
+// ── AI Token Balance ─────────────────────────────────────────────────────────
+
+model WorkspaceAiTokenBalance {
+  id           String   @id @default(cuid())
+  workspace_id String   @unique
+  balance      Int      @default(0)
+  reserved     Int      @default(0)
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace            @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  transactions AiTokenTransaction[]
+  reservations AiTokenReservation[]
+
+  @@map("workspace_ai_token_balances")
+}
+
+model AiTokenTransaction {
+  id              String                 @id @default(cuid())
+  workspace_id    String
+  amount          Int
+  type            AiTokenTransactionType
+  description     String?
+  paypal_order_id String?
+  reservation_id  String?
+  conversation_id String?
+  message_id      String?
+  prompt_tokens   Int?
+  completion_tokens Int?
+  total_tokens    Int?
+  estimated       Boolean                @default(false)
+  provider        String?
+  model           String?
+  metadata_json   Json?                  @db.JsonB
+  created_at      DateTime               @default(now())
+
+  workspace Workspace               @relation(fields: [workspace_id], references: [id], onDelete: Cascade, map: "ai_token_transactions_workspace_id_fkey")
+  balance   WorkspaceAiTokenBalance @relation(fields: [workspace_id], references: [workspace_id], map: "ai_token_transactions_workspace_id_balance_fkey")
+
+  @@index([workspace_id])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@index([conversation_id])
+  @@index([message_id])
+  @@index([reservation_id])
+  @@map("ai_token_transactions")
+}
+
+model AiTokenReservation {
+  id              String                   @id @default(cuid())
+  workspace_id    String
+  amount          Int
+  status          AiTokenReservationStatus @default(ACTIVE)
+  description     String?
+  conversation_id String?
+  message_id      String?
+  metadata_json   Json?                    @db.JsonB
+  created_at      DateTime                 @default(now())
+  completed_at    DateTime?
+
+  workspace Workspace               @relation(fields: [workspace_id], references: [id], onDelete: Cascade, map: "ai_token_reservations_workspace_id_fkey")
+  balance   WorkspaceAiTokenBalance @relation(fields: [workspace_id], references: [workspace_id], map: "ai_token_reservations_workspace_id_balance_fkey")
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([conversation_id])
+  @@map("ai_token_reservations")
+}
+
+enum AiTokenTransactionType {
+  PURCHASE
+  CONSUMPTION
+  REFUND
+  BONUS
+  ADJUSTMENT
+}
+
+enum AiTokenReservationStatus {
+  ACTIVE
+  CONSUMED
+  RELEASED
 }

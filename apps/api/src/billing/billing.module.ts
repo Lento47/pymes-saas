@@ -7,9 +7,10 @@ import { PaypalService } from "./paypal.service";
 import { PaypalController } from "./paypal.controller";
 import { PaypalWebhookController } from "./paypal-webhook.controller";
 import { MemoryModule } from "../memory/memory.module";
+import { AiTokensModule } from "../ai-tokens/ai-tokens.module";
 
 @Module({
-  imports: [MemoryModule],
+  imports: [MemoryModule, AiTokensModule],
   controllers: [BillingController, PaypalController, PaypalWebhookController],
   providers: [PlanLimitsService, BillingInvoiceService, PaddleSdkService, PaypalService],
   exports: [PlanLimitsService],

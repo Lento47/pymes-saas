@@ -24,10 +24,12 @@ import { AiGatewayService } from "./ai-gateway.service";
 import { EmrendeAiService } from "./emprende-ai.service";
 import { EmrendeAiController } from "./emprende-ai.controller";
 import { AgentRunService } from "./agent-run.service";
+import { AiConversationControlService } from "./ai-conversation-control.service";
 import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { TelegramModule } from "../telegram/telegram.module";
 import { PlanLimitsModule } from "../common/plan-limits/plan-limits.module";
 import { MemoryModule } from "../memory/memory.module";
+import { AiTokensModule } from "../ai-tokens/ai-tokens.module";
 
 import { AiTriageService } from "./ai-triage.service";
 
@@ -51,6 +53,7 @@ import { AiTriageService } from "./ai-triage.service";
     forwardRef(() => TelegramModule),
     PlanLimitsModule,
     MemoryModule,
+    AiTokensModule,
   ],
   providers: [
     AiService,
@@ -67,6 +70,7 @@ import { AiTriageService } from "./ai-triage.service";
     AiTriageService,
     EmrendeAiService,
     AgentRunService,
+    AiConversationControlService,
   ],
   controllers: [
     AgentController,
@@ -86,6 +90,7 @@ import { AiTriageService } from "./ai-triage.service";
     AiTriageService,
     EmrendeAiService,
     AgentRunService,
+    AiConversationControlService,
   ],
 })
 export class AiModule {}

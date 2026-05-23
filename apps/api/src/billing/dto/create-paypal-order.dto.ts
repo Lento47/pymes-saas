@@ -1,6 +1,10 @@
-import { IsOptional, IsString, IsNumber, Min } from "class-validator";
+import { IsIn, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export class CreatePaypalOrderDto {
+  @IsOptional()
+  @IsIn(["MEMORY_CREDITS", "AI_TOKENS"])
+  purchase_type?: "MEMORY_CREDITS" | "AI_TOKENS";
+
   @IsOptional()
   @IsString()
   packId?: string;
@@ -9,6 +13,11 @@ export class CreatePaypalOrderDto {
   @IsNumber()
   @Min(1)
   credits?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  tokens?: number;
 
   @IsOptional()
   @IsNumber()

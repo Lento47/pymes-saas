@@ -14,6 +14,21 @@ export interface AssistantResponse {
 
 export interface CloudflareChatOptions {
   model?: string | null;
+  maxTokens?: number;
+  temperature?: number;
+}
+
+export interface ChatTokenUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  estimated: boolean;
+  provider: string;
+  model: string;
+}
+
+export interface ChatCompletionWithUsage extends ChatTokenUsage {
+  text: string;
 }
 
 @Injectable()
@@ -120,11 +135,23 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
     messages: AssistantMessage[],
     options: CloudflareChatOptions = {},
   ): Promise<string> {
+    const result = await this.chatCompletionWithUsage(messages, options);
+    return result.text;
+  }
+
+  async chatCompletionWithUsage(
+    messages: AssistantMessage[],
+    options: CloudflareChatOptions = {},
+  ): Promise<ChatCompletionWithUsage> {
     // Delegate to AiGatewayService when available — supports all CF Gateway providers
     if (this.aiGateway?.isConfigured) {
       const modelOverride = this.normalizeWorkersAiModel(options.model);
       const model = modelOverride ? `workers-ai/${modelOverride}` : undefined;
-      return this.aiGateway.chatCompletion(messages, { model });
+      return this.aiGateway.chatCompletionWithUsage(messages, {
+        model,
+        maxTokens: options.maxTokens,
+        temperature: options.temperature,
+      });
     }
 
     // Fallback: direct Workers AI call via legacy CLOUDFLARE_AI_CHAT_URL
@@ -132,13 +159,18 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
 
     const isWorkersAiRunEndpoint = this.chatUrl.includes("/ai/run/");
     const modelOverride = this.normalizeWorkersAiModel(options.model);
+    const maxTokens = options.maxTokens ?? 1024;
+    const temperature = options.temperature ?? 0.3;
     const chatUrl =
       isWorkersAiRunEndpoint && modelOverride
         ? this.withWorkersAiRunModel(this.chatUrl, modelOverride)
         : this.chatUrl;
+    const resolvedModel = isWorkersAiRunEndpoint
+      ? modelOverride ?? this.extractWorkersAiRunModel(chatUrl) ?? this.model
+      : modelOverride ?? this.model;
     const body = isWorkersAiRunEndpoint
-      ? { messages, max_tokens: 1024, temperature: 0.3 }
-      : { model: modelOverride ?? this.model, messages, max_tokens: 1024, temperature: 0.3 };
+      ? { messages, max_tokens: maxTokens, temperature }
+      : { model: resolvedModel, messages, max_tokens: maxTokens, temperature };
 
     const res = await fetch(chatUrl, {
       method: "POST",
@@ -155,12 +187,17 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
     }
 
     const data = (await res.json()) as any;
-    return (
+    const text = (
       data.choices?.[0]?.message?.content ??
       data.result?.choices?.[0]?.message?.content ??
       data.result?.response ??
       ""
     );
+    return this.withUsage(text.trim(), data.usage ?? data.result?.usage, {
+      provider: isWorkersAiRunEndpoint ? "workers-ai" : "cloudflare-openai-compatible",
+      model: resolvedModel,
+      messages,
+    });
   }
 
   private normalizeWorkersAiModel(model: string | null | undefined): string | null {
@@ -177,4 +214,62 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
 
     return chatUrl.slice(0, markerIndex + marker.length) + model;
   }
+
+  private extractWorkersAiRunModel(chatUrl: string): string | null {
+    const marker = "/ai/run/";
+    const markerIndex = chatUrl.indexOf(marker);
+    if (markerIndex < 0) return null;
+    return chatUrl.slice(markerIndex + marker.length).split(/[?#]/)[0] || null;
+  }
+
+  private withUsage(
+    text: string,
+    usage: any,
+    context: { provider: string; model: string; messages: AssistantMessage[] },
+  ): ChatCompletionWithUsage {
+    const prompt = Number(usage?.prompt_tokens ?? usage?.input_tokens);
+    const completion = Number(usage?.completion_tokens ?? usage?.output_tokens);
+    const explicitTotal = Number(usage?.total_tokens);
+    const total =
+      Number.isFinite(explicitTotal) && explicitTotal > 0
+        ? explicitTotal
+        : Number.isFinite(prompt) && prompt >= 0 && Number.isFinite(completion) && completion >= 0
+          ? prompt + completion
+          : NaN;
+
+    if (Number.isFinite(total) && total > 0) {
+      const promptTokens = Number.isFinite(prompt) && prompt >= 0 ? prompt : 0;
+      const completionTokens =
+        Number.isFinite(completion) && completion >= 0
+          ? completion
+          : Math.max(0, total - promptTokens);
+      return {
+        text,
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: total,
+        estimated: false,
+        provider: context.provider,
+        model: context.model,
+      };
+    }
+
+    const promptTokens = estimateTextTokens(context.messages.map((m) => m.content).join("\n"));
+    const completionTokens = estimateTextTokens(text);
+    return {
+      text,
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      total_tokens: Math.max(1, promptTokens + completionTokens),
+      estimated: true,
+      provider: context.provider,
+      model: context.model,
+    };
+  }
+}
+
+export function estimateTextTokens(text: string | null | undefined): number {
+  const value = typeof text === "string" ? text : "";
+  if (!value.trim()) return 0;
+  return Math.max(1, Math.ceil(value.length / 3));
 }

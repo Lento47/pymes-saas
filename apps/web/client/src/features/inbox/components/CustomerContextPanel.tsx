@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ClipboardList, TrendingUp, MessageCircle, Receipt, Target,
   Loader2, ChevronDown, ChevronUp, User, Hash, Copy, ExternalLink, UserPlus,
+  Bot, PauseCircle, CreditCard,
 } from "lucide-react";
 
 const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
@@ -31,6 +32,12 @@ function DataRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function formatTokens(value: number) {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
+  if (value >= 1_000) return `${Math.round(value / 1_000)}k`;
+  return value.toLocaleString();
+}
+
 export function CustomerContextPanel({
   conversation,
   onAddContact,
@@ -41,6 +48,53 @@ export function CustomerContextPanel({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [showMetrics, setShowMetrics] = useState(false);
+  const conversationId = conversation?.id ?? "";
+
+  const tokensQuery = useQuery({
+    queryKey: ["/api/ai-tokens"],
+    queryFn: () => api.getAiTokens(),
+    enabled: !!conversation,
+    staleTime: 30_000,
+  });
+
+  const startAiMut = useMutation({
+    mutationFn: () => api.startAiControl(conversationId),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-tokens"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      if (result?.message) {
+        queryClient.setQueryData(["/api/conversations", conversationId, "messages"], (old: any) => {
+          const dataArray = Array.isArray(old) ? old : old?.data ?? [];
+          const byId = new Map<string, any>();
+          for (const item of [...dataArray, result.message]) byId.set(String(item.id), item);
+          const data = Array.from(byId.values());
+          return Array.isArray(old) ? data : { ...old, data };
+        });
+      } else if (result?.error === "INSUFFICIENT_AI_TOKENS") {
+        toast({
+          title: "Tokens IA insuficientes",
+          description: "Comprá tokens IA para que el agente pueda responder.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (err: any) => {
+      toast({ title: "Error al activar IA", description: err?.message, variant: "destructive" });
+    },
+  });
+
+  const stopAiMut = useMutation({
+    mutationFn: () => api.stopAiControl(conversationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      toast({ title: "IA pausada" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error al pausar IA", description: err?.message, variant: "destructive" });
+    },
+  });
 
   if (!conversation) {
     return (
@@ -57,6 +111,11 @@ export function CustomerContextPanel({
   const status = conversation.status ?? "OPEN";
   const statusStyle = STATUS_STYLES[status] ?? { label: status, cls: "bg-muted text-muted-foreground" };
   const assignedUser = (conversation as any)?.assigned_user;
+  const meta = (conversation as any)?.metadata_json ?? {};
+  const aiState = meta.ai_state ?? "IDLE";
+  const aiUsage = meta.ai_control?.last_usage;
+  const tokenAvailable = Number(tokensQuery.data?.available ?? 0);
+  const hasTokens = tokenAvailable > 0;
 
   return (
     <aside className="min-h-0 overflow-y-auto bg-background border-l border-border">
@@ -110,6 +169,70 @@ export function CustomerContextPanel({
             <span className="font-mono truncate">{(conversation as any).external_id}</span>
           </div>
         )}
+      </div>
+
+      <div className="px-4 py-3 border-b border-border/40 space-y-3">
+        <SectionHeader label="Agente IA" />
+        <div className="rounded-lg border border-border/50 bg-muted/15 p-3 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                <Bot className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[12px] font-medium text-foreground">Control conversacional</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {aiState === "AI_ACTIVE" ? "IA activa" : aiState === "HUMAN_ACTIVE" ? "Humano activo" : "Inactivo"}
+                </p>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-[12px] font-semibold text-foreground tabular-nums">
+                {tokensQuery.isLoading ? "..." : formatTokens(tokenAvailable)}
+              </p>
+              <p className="text-[9px] text-muted-foreground">tokens IA</p>
+            </div>
+          </div>
+
+          {aiUsage && (
+            <div className="rounded-md bg-background/35 px-2.5 py-2 text-[10px] text-muted-foreground">
+              Última respuesta: <span className="text-foreground">{formatTokens(aiUsage.total_tokens ?? 0)}</span> tokens
+              {aiUsage.estimated ? " estimados" : ""}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-1.5">
+            <button
+              type="button"
+              onClick={() => startAiMut.mutate()}
+              disabled={startAiMut.isPending || !hasTokens}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-2 text-[11px] font-medium text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {startAiMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}
+              Tomar control y responder
+            </button>
+            {aiState === "AI_ACTIVE" && (
+              <button
+                type="button"
+                onClick={() => stopAiMut.mutate()}
+                disabled={stopAiMut.isPending}
+                className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border/50 bg-background/30 px-2.5 py-1.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-50"
+              >
+                {stopAiMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <PauseCircle className="w-3 h-3" />}
+                Pausar IA
+              </button>
+            )}
+            {!hasTokens && !tokensQuery.isLoading && (
+              <a
+                href="/settings/credits"
+                className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border/50 bg-background/30 px-2.5 py-1.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+              >
+                <CreditCard className="w-3 h-3" />
+                Comprar tokens IA
+              </a>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Quick actions */}

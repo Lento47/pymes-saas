@@ -39,6 +39,7 @@ import { UpdateConversationDto } from "./dto/update-conversation.dto";
 import { FilterConversationsDto } from "./dto/filter-conversations.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { AgentRunService } from "../ai/agent-run.service";
+import { AiConversationControlService } from "../ai/ai-conversation-control.service";
 import { EventsGateway } from "../gateways/events.gateway";
 
 class StartAgentRunDto {
@@ -66,6 +67,8 @@ export class ConversationsController {
     private readonly events: EventsGateway,
     @Inject(forwardRef(() => AgentRunService))
     private readonly agentRunService: AgentRunService,
+    @Inject(forwardRef(() => AiConversationControlService))
+    private readonly aiConversationControl: AiConversationControlService,
   ) {}
 
   // ── Conversations ──────────────────────────────────────────────────────────
@@ -549,6 +552,24 @@ export class ConversationsController {
       select: { id: true },
     });
     return { ok: true, ai_state: "AI_ACTIVE" };
+  }
+
+  @Post(":id/ai-control/start")
+  @Roles(WorkspaceUserRole.AGENT)
+  async startAiControl(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) conversationId: string,
+  ) {
+    return this.aiConversationControl.startControl(workspaceId, conversationId);
+  }
+
+  @Post(":id/ai-control/stop")
+  @Roles(WorkspaceUserRole.AGENT)
+  async stopAiControl(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) conversationId: string,
+  ) {
+    return this.aiConversationControl.stopControl(workspaceId, conversationId);
   }
 
   // ── AI Agent endpoints ─────────────────────────────────────────────────────

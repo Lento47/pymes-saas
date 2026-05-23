@@ -62,6 +62,7 @@ import { UsageMeteringModule } from "./usage-metering/usage-metering.module";
 import { MessageTemplatesModule } from "./message-templates/message-templates.module";
 import { ProductMetricsModule } from "./common/metrics/product-metrics.module";
 import { InventoryModule } from "./inventory/inventory.module";
+import { AiTokensModule } from "./ai-tokens/ai-tokens.module";
 
 @Module({
   imports: [
@@ -131,6 +132,7 @@ import { InventoryModule } from "./inventory/inventory.module";
     UsageMeteringModule,
     MessageTemplatesModule,
     InventoryModule,
+    AiTokensModule,
 
     // Metrics
     ProductMetricsModule,

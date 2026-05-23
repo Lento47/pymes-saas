@@ -94,4 +94,55 @@ describe("CloudflareAiService", () => {
     expect(body.model).toBe("@cf/openai/gpt-oss-20b");
     expect(body.messages).toEqual([{ role: "user", content: "hola" }]);
   });
+
+  it("returns Workers AI usage from result.usage", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        result: {
+          choices: [{ message: { content: "respuesta" } }],
+          usage: { prompt_tokens: 4, completion_tokens: 6, total_tokens: 10 },
+        },
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const service = makeService(
+      "https://api.cloudflare.com/client/v4/accounts/account/ai/run/@cf/meta/llama-3.1-8b-instruct",
+    );
+
+    const result = await service.chatCompletionWithUsage([{ role: "user", content: "hola" }]);
+
+    expect(result).toMatchObject({
+      text: "respuesta",
+      prompt_tokens: 4,
+      completion_tokens: 6,
+      total_tokens: 10,
+      estimated: false,
+      provider: "workers-ai",
+      model: "@cf/meta/llama-3.1-8b-instruct",
+    });
+  });
+
+  it("estimates usage when the provider does not return token usage", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        choices: [{ message: { content: "respuesta larga" } }],
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const service = makeService(
+      "https://api.cloudflare.com/client/v4/accounts/account/ai/v1/chat/completions",
+      "@cf/openai/gpt-oss-20b",
+    );
+
+    const result = await service.chatCompletionWithUsage([{ role: "user", content: "hola" }]);
+
+    expect(result.text).toBe("respuesta larga");
+    expect(result.total_tokens).toBeGreaterThan(0);
+    expect(result.estimated).toBe(true);
+    expect(result.provider).toBe("cloudflare-openai-compatible");
+  });
 });

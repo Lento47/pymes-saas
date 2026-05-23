@@ -5,8 +5,8 @@ import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { ConversationsService } from "./conversations.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { AiService } from "../ai/ai.service";
-import { EmrendeAiService } from "../ai/emprende-ai.service";
 import { AgentRunService } from "../ai/agent-run.service";
+import { AiConversationControlService } from "../ai/ai-conversation-control.service";
 import { TasksService } from "../tasks/tasks.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { Contact, Priority } from "@prisma/client";
@@ -36,10 +36,10 @@ export class MessagesService {
     private readonly conversationsService: ConversationsService,
     private readonly events: EventsGateway,
     private readonly aiService: AiService,
-    @Inject(forwardRef(() => EmrendeAiService))
-    private readonly emprendeAiService: EmrendeAiService,
     @Inject(forwardRef(() => AgentRunService))
     private readonly agentRunService: AgentRunService,
+    @Inject(forwardRef(() => AiConversationControlService))
+    private readonly aiConversationControl: AiConversationControlService,
     private readonly tasksService: TasksService,
     private readonly notificationsService: NotificationsService,
     private readonly automationsService: AutomationsService,
@@ -1090,9 +1090,6 @@ export class MessagesService {
     });
     if (!workspace) return;
 
-    const settings = (workspace.settings_json as Record<string, unknown>) ?? {};
-    if (!settings.ai_auto_reply_enabled) return;
-
     // Only EMPRENDE+ plans
     const EMPRENDE_PLUS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
     if (!EMPRENDE_PLUS.includes(workspace.plan)) return;
@@ -1110,70 +1107,23 @@ export class MessagesService {
 
     const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
     if (meta.ai_state === "HUMAN_ACTIVE") return;
+    if (meta.ai_state !== "AI_ACTIVE") return;
 
     // Throttle: don't reply again within 30 seconds
     const lastAiReply = meta.last_ai_reply_at as string | undefined;
     if (lastAiReply && Date.now() - new Date(lastAiReply).getTime() < 30_000) return;
 
-    const replyText = await this.emprendeAiService.generateReply(
+    const result = await this.aiConversationControl.replyToInbound(
       workspaceId,
       conversationId,
       inboundText,
+      { source: "auto_reply" },
     );
-    if (!replyText) return;
-
-    // Store AI reply as outbound message
-    const aiMessage = await this.prisma.message.create({
-      data: {
-        workspace_id: workspaceId,
-        conversation_id: conversationId,
-        direction: "OUTBOUND",
-        sender_name: "Asistente IA",
-        sender_ref: "ai@emprende",
-        body_text: replyText,
-        sent_at: new Date(),
-        delivery_status: "SENT",
-        message_type: "TEXT",
-        has_media: false,
-        media_status: "NONE",
-      },
-    });
-
-    await this.prisma.conversation.update({
-      where: { id: conversationId },
-      data: {
-        last_message_at: new Date(),
-        updated_at: new Date(),
-        metadata_json: {
-          ...meta,
-          ai_state: "AI_ACTIVE",
-          last_ai_reply_at: new Date().toISOString(),
-        },
-      },
-      select: { id: true },
-    });
-
-    this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessageForClient(aiMessage));
-
-    // Dispatch through the external channel when applicable.
-    if (conv.channel_id) {
-      const channel = await this.prisma.channel.findUnique({
-        where: { id: conv.channel_id },
-        select: { id: true, type: true, config_json: true },
-      });
-      if (channel?.type === "WHATSAPP" && conv.contact?.phone) {
-        const to = conv.contact.phone.replace(/\D/g, "");
-        this.whatsappService.sendMessage(channel as any, to, replyText).catch((err) =>
-          this.logger.error("EmrendeAI WA dispatch failed", err),
-        );
-      }
-      if (channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
-        this.telegramOutbound
-          .sendMessage(channel.id, conv.contact.telegram_chat_id, replyText)
-          .catch((err) => this.logger.error("EmrendeAI Telegram dispatch failed", err));
-      }
+    if (!result.ok) {
+      this.logger.warn(`AI control auto-reply skipped: ${result.error ?? "unknown"}`);
+      return;
     }
 
-    this.logger.log(`EmrendeAI auto-reply sent to conversation ${conversationId}`);
+    this.logger.log(`AI control auto-reply sent to conversation ${conversationId}`);
   }
 }

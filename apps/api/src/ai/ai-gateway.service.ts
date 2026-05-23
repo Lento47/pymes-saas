@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { AssistantMessage } from "./cloudflare-ai.service";
+import type { AssistantMessage, ChatCompletionWithUsage } from "./cloudflare-ai.service";
 
 // Providers using OpenAI-compatible format
 const OPENAI_COMPAT_PROVIDERS = new Set([
@@ -50,6 +50,19 @@ export class AiGatewayService {
       temperature?: number;
     },
   ): Promise<string> {
+    const result = await this.chatCompletionWithUsage(messages, options);
+    return result.text;
+  }
+
+  async chatCompletionWithUsage(
+    messages: AssistantMessage[],
+    options?: {
+      model?: string;
+      apiKey?: string;
+      maxTokens?: number;
+      temperature?: number;
+    },
+  ): Promise<ChatCompletionWithUsage> {
     const modelStr = options?.model ?? this.defaultModel;
     const { provider, model } = this.parseModel(modelStr);
     const url = this.buildGatewayUrl(provider, model);
@@ -86,7 +99,7 @@ export class AiGatewayService {
     }
 
     const json = (await res.json()) as any;
-    return this.extractResponse(provider, json);
+    return this.extractResponse(provider, model, json, messages);
   }
 
   private parseModel(modelStr: string): { provider: string; model: string } {
@@ -171,23 +184,34 @@ export class AiGatewayService {
     return { model, messages, max_tokens: maxTokens, temperature };
   }
 
-  private extractResponse(provider: string, json: any): string {
+  private extractResponse(
+    provider: string,
+    model: string,
+    json: any,
+    messages: AssistantMessage[],
+  ): ChatCompletionWithUsage {
+    let text = "";
+    let usage: any = json.usage ?? json.result?.usage;
+
     if (provider === "anthropic") {
-      return json.content?.[0]?.text?.trim() ?? "";
-    }
-    if (provider === "google-ai-studio") {
-      return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
-    }
-    if (provider === "workers-ai") {
-      return (
+      text = json.content?.[0]?.text?.trim() ?? "";
+      usage = json.usage;
+    } else if (provider === "google-ai-studio") {
+      text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+      usage = json.usageMetadata;
+    } else if (provider === "workers-ai") {
+      text = (
         json.result?.response?.trim() ??
         json.result?.choices?.[0]?.message?.content?.trim() ??
         json.choices?.[0]?.message?.content?.trim() ??
         ""
       );
+      usage = json.result?.usage ?? json.usage;
+    } else {
+      text = json.choices?.[0]?.message?.content?.trim() ?? "";
     }
-    // OpenAI-compatible
-    return json.choices?.[0]?.message?.content?.trim() ?? "";
+
+    return this.withUsage(text, usage, { provider, model, messages });
   }
 
   private getProviderApiKey(provider: string, override?: string): string | null {
@@ -196,4 +220,63 @@ export class AiGatewayService {
     const envKey = `GATEWAY_KEY_${provider.toUpperCase().replace(/-/g, "_")}`;
     return this.config.get<string>(envKey) ?? null;
   }
+
+  private withUsage(
+    text: string,
+    usage: any,
+    context: { provider: string; model: string; messages: AssistantMessage[] },
+  ): ChatCompletionWithUsage {
+    const prompt = Number(
+      usage?.prompt_tokens ??
+        usage?.input_tokens ??
+        usage?.promptTokenCount,
+    );
+    const completion = Number(
+      usage?.completion_tokens ??
+        usage?.output_tokens ??
+        usage?.candidatesTokenCount,
+    );
+    const explicitTotal = Number(usage?.total_tokens ?? usage?.totalTokenCount);
+    const total =
+      Number.isFinite(explicitTotal) && explicitTotal > 0
+        ? explicitTotal
+        : Number.isFinite(prompt) && prompt >= 0 && Number.isFinite(completion) && completion >= 0
+          ? prompt + completion
+          : NaN;
+
+    if (Number.isFinite(total) && total > 0) {
+      const promptTokens = Number.isFinite(prompt) && prompt >= 0 ? prompt : 0;
+      const completionTokens =
+        Number.isFinite(completion) && completion >= 0
+          ? completion
+          : Math.max(0, total - promptTokens);
+      return {
+        text,
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: total,
+        estimated: false,
+        provider: context.provider,
+        model: context.model,
+      };
+    }
+
+    const promptTokens = estimateGatewayTokens(context.messages.map((m) => m.content).join("\n"));
+    const completionTokens = estimateGatewayTokens(text);
+    return {
+      text,
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      total_tokens: Math.max(1, promptTokens + completionTokens),
+      estimated: true,
+      provider: context.provider,
+      model: context.model,
+    };
+  }
+}
+
+function estimateGatewayTokens(text: string | null | undefined): number {
+  const value = typeof text === "string" ? text : "";
+  if (!value.trim()) return 0;
+  return Math.max(1, Math.ceil(value.length / 3));
 }

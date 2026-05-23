@@ -34,6 +34,7 @@ export interface InboxConversation {
   priority?: string | null;
   last_message_at?: string | null;
   updated_at?: string | null;
+  metadata_json?: Record<string, any> | null;
   is_service_window_open?: boolean;
   service_window_expires_at?: string | null;
   assigned_user?: {

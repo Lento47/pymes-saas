@@ -15,6 +15,7 @@ import { PaypalService } from "./paypal.service";
 import { CreditsService } from "../memory/credits.service";
 import { CreatePaypalOrderDto } from "./dto/create-paypal-order.dto";
 import { CREDIT_PACKS } from "../memory/credits.service";
+import { AiTokenMeteringService, AI_TOKEN_PACKS } from "../ai-tokens/ai-token-metering.service";
 
 @Controller("billing/paypal")
 export class PaypalController {
@@ -23,6 +24,7 @@ export class PaypalController {
   constructor(
     private readonly paypal: PaypalService,
     private readonly credits: CreditsService,
+    private readonly aiTokens: AiTokenMeteringService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -32,8 +34,22 @@ export class PaypalController {
     try {
       let price: number;
       let creditAmount: number;
+      let tokenAmount: number | null = null;
+      const purchaseType = dto.purchase_type ?? "MEMORY_CREDITS";
 
-      if (dto.credits && dto.price) {
+      if (purchaseType === "AI_TOKENS" && dto.tokens && dto.price) {
+        price = dto.price;
+        creditAmount = 0;
+        tokenAmount = dto.tokens;
+      } else if (purchaseType === "AI_TOKENS" && dto.packId) {
+        const pack = AI_TOKEN_PACKS.find((p) => p.id === dto.packId);
+        if (!pack) {
+          throw new BadRequestException(`Pack "${dto.packId}" no encontrado`);
+        }
+        price = pack.price_usd;
+        creditAmount = 0;
+        tokenAmount = pack.tokens;
+      } else if (dto.credits && dto.price) {
         price = dto.price;
         creditAmount = dto.credits;
       } else if (dto.packId) {
@@ -55,6 +71,8 @@ export class PaypalController {
           order_id: orderId,
           amount: price,
           credits: creditAmount,
+          tokens: tokenAmount,
+          purchase_type: purchaseType,
           status: "CREATED",
         },
       });
@@ -75,9 +93,46 @@ export class PaypalController {
         throw new BadRequestException("orderId es requerido");
       }
 
-      const { captureId, status, amount } = await this.paypal.captureOrder(body.orderId);
-      const creditAmount = this.amountToCredits(amount);
+      const { captureId, amount } = await this.paypal.captureOrder(body.orderId);
+      const order = await this.prisma.paypalPaymentOrder.findFirst({
+        where: { order_id: body.orderId, workspace_id: user.workspace_id },
+      });
+      const purchaseType = order?.purchase_type ?? "MEMORY_CREDITS";
 
+      if (purchaseType === "AI_TOKENS") {
+        const tokenAmount = order?.tokens ?? this.amountToTokens(amount);
+        const newBalance = await this.aiTokens.addTokens(
+          user.workspace_id,
+          tokenAmount,
+          "PURCHASE",
+          `Compra de ${tokenAmount} tokens IA vía PayPal`,
+          body.orderId,
+        );
+
+        await this.prisma.paypalPaymentOrder.updateMany({
+          where: { order_id: body.orderId, workspace_id: user.workspace_id },
+          data: {
+            capture_id: captureId,
+            status: "COMPLETED",
+            tokens: tokenAmount,
+            purchase_type: "AI_TOKENS",
+          },
+        });
+
+        this.logger.log(
+          `AI tokens added: workspace=${user.workspace_id} tokens=${tokenAmount} order=${body.orderId} capture=${captureId}`,
+        );
+
+        return {
+          success: true,
+          credits: 0,
+          tokens: tokenAmount,
+          newBalance: newBalance.available,
+          tokenBalance: newBalance,
+        };
+      }
+
+      const creditAmount = order?.credits ?? this.amountToCredits(amount);
       const newBalance = await this.credits.addCredits(
         user.workspace_id,
         creditAmount,
@@ -92,6 +147,7 @@ export class PaypalController {
           capture_id: captureId,
           status: "COMPLETED",
           credits: creditAmount,
+          purchase_type: "MEMORY_CREDITS",
         },
       });
 
@@ -99,11 +155,11 @@ export class PaypalController {
         `Credits added: workspace=${user.workspace_id} credits=${creditAmount} order=${body.orderId} capture=${captureId}`,
       );
 
-      return { success: true, credits: creditAmount, newBalance };
+      return { success: true, credits: creditAmount, tokens: 0, newBalance };
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`PayPal captureOrder failed for workspace=${user.workspace_id}:`, error);
-      throw new InternalServerErrorException("No se pudo completar la compra de créditos");
+      throw new InternalServerErrorException("No se pudo completar la compra");
     }
   }
 
@@ -113,5 +169,13 @@ export class PaypalController {
     if (amountUsd >= 9.99) return 500;
     if (amountUsd >= 2.99) return 100;
     return Math.round(amountUsd / 0.03);
+  }
+
+  private amountToTokens(amountUsd: number): number {
+    if (amountUsd >= 69.99) return 5_000_000;
+    if (amountUsd >= 24.99) return 1_500_000;
+    if (amountUsd >= 9.99) return 500_000;
+    if (amountUsd >= 2.99) return 100_000;
+    return Math.round(amountUsd * 33_445);
   }
 }

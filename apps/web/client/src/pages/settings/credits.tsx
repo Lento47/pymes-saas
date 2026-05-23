@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { useToast } from "@/hooks/use-toast";
-import { Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders, Loader2 } from "lucide-react";
+import { Bot, Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +42,13 @@ const PACK_ICONS: Record<string, string> = {
 };
 
 const PACK_POPULAR = "pack_500";
+const AI_TOKEN_PACK_POPULAR = "ai_tokens_500k";
+
+function formatTokens(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (value >= 1_000) return `${Math.round(value / 1_000)}k`;
+  return value.toLocaleString();
+}
 
 function CreditPackCard({
   pack,
@@ -115,6 +122,80 @@ function CreditPackCard({
   );
 }
 
+function AiTokenPackCard({
+  pack,
+  onBuy,
+  isPending,
+}: {
+  pack: { id: string; tokens: number; price_usd: number; label: string };
+  onBuy: (packId: string) => void;
+  isPending: boolean;
+}) {
+  const isPopular = pack.id === AI_TOKEN_PACK_POPULAR;
+  const tokensPerDollar = Math.round(pack.tokens / pack.price_usd);
+
+  return (
+    <div
+      className={cn(
+        "relative rounded-xl border p-5 flex flex-col gap-3 transition-all",
+        isPopular
+          ? "border-primary/40 bg-primary/[0.06]"
+          : "border-border/60 bg-card/40 hover:border-border",
+      )}
+    >
+      {isPopular && (
+        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+          <span className="bg-primary text-primary-foreground text-[10px] font-semibold px-2.5 py-0.5 rounded-full">
+            Popular
+          </span>
+        </div>
+      )}
+
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Bot className="w-6 h-6 text-primary" />
+          <p className="text-sm font-semibold text-foreground mt-2">{pack.label}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {tokensPerDollar.toLocaleString()} tokens / USD
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-xl font-bold text-foreground">${pack.price_usd}</p>
+          <p className="text-[10px] text-muted-foreground">USD</p>
+        </div>
+      </div>
+
+      <ul className="space-y-1 text-[11px] text-muted-foreground">
+        <li className="flex items-center gap-1.5">
+          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+          {formatTokens(pack.tokens)} tokens para respuestas IA
+        </li>
+        <li className="flex items-center gap-1.5">
+          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+          Consumo por tokens reales del proveedor
+        </li>
+        <li className="flex items-center gap-1.5">
+          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+          Saldo separado de créditos de memoria
+        </li>
+      </ul>
+
+      <Button
+        onClick={() => onBuy(pack.id)}
+        disabled={isPending}
+        className={cn(
+          "w-full h-8 text-xs mt-auto",
+          isPopular ? "bg-primary hover:bg-primary/90" : "bg-card border border-border hover:bg-sidebar-accent/40 text-foreground",
+        )}
+        variant={isPopular ? "default" : "outline"}
+      >
+        <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
+        Comprar tokens IA
+      </Button>
+    </div>
+  );
+}
+
 function TransactionRow({ tx }: { tx: any }) {
   const isPositive = tx.amount > 0;
   return (
@@ -146,6 +227,47 @@ function TransactionRow({ tx }: { tx: any }) {
         )}
       >
         {isPositive ? "+" : ""}{tx.amount.toLocaleString()}
+      </span>
+    </div>
+  );
+}
+
+function AiTokenTransactionRow({ tx }: { tx: any }) {
+  const isPositive = tx.amount > 0;
+  const usage = tx.total_tokens
+    ? `${tx.total_tokens.toLocaleString()} token${tx.total_tokens !== 1 ? "s" : ""}${tx.estimated ? " estimados" : ""}`
+    : null;
+
+  return (
+    <div className="flex items-center justify-between py-2.5 border-b border-border/30 last:border-0">
+      <div className="flex items-center gap-2.5">
+        <div
+          className={cn(
+            "w-7 h-7 rounded-full flex items-center justify-center shrink-0",
+            isPositive ? "bg-emerald-500/10" : "bg-zinc-500/10",
+          )}
+        >
+          {isPositive ? (
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+          ) : (
+            <Bot className="w-3.5 h-3.5 text-zinc-400" />
+          )}
+        </div>
+        <div>
+          <p className="text-xs text-foreground">{tx.description ?? tx.type}</p>
+          <p className="text-[10px] text-muted-foreground">
+            {format(new Date(tx.created_at), "d MMM yyyy · HH:mm", { locale: es })}
+            {usage ? ` · ${usage}` : ""}
+          </p>
+        </div>
+      </div>
+      <span
+        className={cn(
+          "text-sm font-semibold tabular-nums",
+          isPositive ? "text-emerald-400" : "text-muted-foreground",
+        )}
+      >
+        {isPositive ? "+" : ""}{formatTokens(tx.amount)}
       </span>
     </div>
   );
@@ -270,7 +392,7 @@ function PayPalCheckoutDialog({
   open: boolean;
   onClose: () => void;
   orderId: string | null;
-  onSuccess: (result: { credits: number; newBalance: number }) => void;
+  onSuccess: (result: { credits: number; tokens?: number; newBalance: number }) => void;
 }) {
   const { toast } = useToast();
   const [capturing, setCapturing] = useState(false);
@@ -304,7 +426,12 @@ function PayPalCheckoutDialog({
                   try {
                     const result = await api.capturePayPalOrder({ orderId });
                     onSuccess(result);
-                    if (result.credits > 0) {
+                    if (result.tokens && result.tokens > 0) {
+                      toast({
+                        title: "Tokens IA agregados",
+                        description: `Se agregaron ${formatTokens(result.tokens)} tokens IA a tu cuenta.`,
+                      });
+                    } else if (result.credits > 0) {
                       toast({
                         title: "¡Créditos agregados!",
                         description: `Se agregaron ${result.credits} créditos a tu cuenta.`,
@@ -362,9 +489,21 @@ export default function CreditsSettingsPage() {
     queryFn: () => api.getCredits(),
   });
 
+  const { data: aiTokenData, isLoading: isLoadingAiTokens } = useQuery({
+    queryKey: ["/api/ai-tokens"],
+    queryFn: () => api.getAiTokens(),
+  });
+
   const balance: number = data?.balance ?? 0;
   const history: any[] = data?.history ?? [];
   const packs: any[] = data?.packs ?? [];
+  const tokenBalance = {
+    balance: Number(aiTokenData?.balance ?? 0),
+    reserved: Number(aiTokenData?.reserved ?? 0),
+    available: Number(aiTokenData?.available ?? 0),
+  };
+  const tokenHistory: any[] = aiTokenData?.history ?? [];
+  const tokenPacks: any[] = aiTokenData?.packs ?? [];
 
   const handleBuy = useCallback(async (packId: string, credits?: number, price?: number) => {
     setBuyingPack(packId);
@@ -385,8 +524,28 @@ export default function CreditsSettingsPage() {
     }
   }, [toast]);
 
-  const handlePayPalSuccess = useCallback((result: { credits: number; newBalance: number }) => {
+  const handleBuyTokens = useCallback(async (packId: string) => {
+    setBuyingPack(packId);
+    setIsCreatingOrder(true);
+    try {
+      const { orderId } = await api.createPayPalOrder({ packId, purchase_type: "AI_TOKENS" });
+      setCurrentOrderId(orderId);
+      setShowPayPal(true);
+    } catch (err: any) {
+      toast({
+        title: "Error al crear la orden",
+        description: err?.message || "No se pudo iniciar el pago con PayPal.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingOrder(false);
+      setBuyingPack(null);
+    }
+  }, [toast]);
+
+  const handlePayPalSuccess = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/memory/credits"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/ai-tokens"] });
   }, [queryClient]);
 
   const closePayPal = useCallback(() => {
@@ -401,6 +560,86 @@ export default function CreditsSettingsPage() {
   return (
     <SettingsLayout>
       <div className="space-y-8 max-w-3xl">
+
+        {/* AI token balance */}
+        <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-6 flex items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+              <Bot className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-0.5">
+                Tokens IA
+              </p>
+              <p className="text-3xl font-bold text-foreground tabular-nums">
+                {isLoadingAiTokens ? "—" : formatTokens(tokenBalance.available)}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Disponible para Agente IA
+                {tokenBalance.reserved > 0 ? ` · ${formatTokens(tokenBalance.reserved)} reservados` : ""}
+              </p>
+              {tokenBalance.available === 0 && !isLoadingAiTokens && (
+                <p className="text-[11px] text-amber-400 mt-0.5">
+                  Sin tokens IA — el agente no responderá hasta recargar saldo
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="text-right shrink-0 hidden sm:block">
+            <p className="text-[10px] text-muted-foreground">Cobro por uso real</p>
+            <p className="text-xs text-foreground font-medium">Prompt + respuesta</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Separado de memoria</p>
+          </div>
+        </div>
+
+        {/* AI token packs */}
+        <div>
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Bot className="w-4 h-4 text-primary" />
+            Comprar tokens IA
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {tokenPacks.map((pack) => (
+              <AiTokenPackCard
+                key={pack.id}
+                pack={pack}
+                onBuy={handleBuyTokens}
+                isPending={buyingPack === pack.id || isCreatingOrder}
+              />
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-3">
+            Los tokens IA se consumen solo cuando el modelo genera una respuesta. Si el proveedor no reporta uso,
+            PymesHub registra una estimación marcada como estimada.
+          </p>
+        </div>
+
+        {/* AI token history */}
+        <div>
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <History className="w-4 h-4 text-primary" />
+            Historial de tokens IA
+          </h2>
+          {isLoadingAiTokens ? (
+            <div className="rounded-xl border border-border/60 bg-card/40 p-8 text-center">
+              <p className="text-xs text-muted-foreground">Cargando...</p>
+            </div>
+          ) : tokenHistory.length === 0 ? (
+            <div className="rounded-xl border border-border/60 bg-card/40 p-8 text-center">
+              <Bot className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Sin consumo de tokens aún</p>
+              <p className="text-[11px] text-muted-foreground/60 mt-1">
+                Aquí aparecerán las compras y respuestas generadas por el Agente IA.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border/60 bg-card/40 px-4 py-1">
+              {tokenHistory.map((tx) => (
+                <AiTokenTransactionRow key={tx.id} tx={tx} />
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Balance card */}
         <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-6 flex items-center justify-between gap-6">

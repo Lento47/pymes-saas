@@ -495,12 +495,21 @@ export const api = {
   getContactMemory: (contactId: string) => request<any>("GET", `/api/memory/contacts/${contactId}`),
   extendContactMemory: (contactId: string, days: number) => request<any>("POST", `/api/memory/contacts/${contactId}/extend`, { days }),
   getCredits: () => request<any>("GET", "/api/memory/credits"),
-  createPayPalOrder: (dto: { packId?: string; credits?: number; price?: number }) =>
+  getAiTokens: () => request<any>("GET", "/api/ai-tokens"),
+  createPayPalOrder: (dto: { packId?: string; credits?: number; tokens?: number; price?: number; purchase_type?: "MEMORY_CREDITS" | "AI_TOKENS" }) =>
     request<{ orderId: string }>("POST", "/api/billing/paypal/create-order", dto),
   capturePayPalOrder: (dto: { orderId: string }) =>
-    request<{ success: boolean; credits: number; newBalance: number }>("POST", "/api/billing/paypal/capture-order", dto),
+    request<{
+      success: boolean;
+      credits: number;
+      tokens?: number;
+      newBalance: number;
+      tokenBalance?: { balance: number; reserved: number; available: number };
+    }>("POST", "/api/billing/paypal/capture-order", dto),
   emprendeSuggestTasks: (messageText: string, contactId?: string) => request<any[]>("POST", "/api/ai/emprende/suggest-tasks", { messageText, contactId }),
   delegateConversationToAi: (id: string) => request<{ ok: boolean; ai_state: string }>("PATCH", `/api/conversations/${id}/delegate-to-ai`, {}),
+  startAiControl: (id: string) => request<any>("POST", `/api/conversations/${id}/ai-control/start`, {}),
+  stopAiControl: (id: string) => request<any>("POST", `/api/conversations/${id}/ai-control/stop`, {}),
   getAgentRun: (id: string) => request<any>("GET", `/api/conversations/${id}/agent-run`),
   startAgentRun: (id: string, triggerText?: string) => request<{ ok: boolean; run: any }>("POST", `/api/conversations/${id}/start-agent`, { trigger_text: triggerText }),
   stopAgentRun: (id: string) => request<{ ok: boolean }>("DELETE", `/api/conversations/${id}/agent-run`, {}),
