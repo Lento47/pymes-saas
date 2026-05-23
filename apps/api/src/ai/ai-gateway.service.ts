@@ -35,6 +35,35 @@ export class AiGatewayService {
     this.defaultModel =
       config.get<string>("SYSTEM_AI_MODEL") ??
       "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+
+    // Auto-detect gateway credentials from CLOUDFLARE_AI_CHAT_URL when explicit vars are absent.
+    // Handles the case where the URL is set to a CF AI Gateway URL (gateway.ai.cloudflare.com)
+    // but CF_GATEWAY_ACCOUNT_ID / CF_GATEWAY_ID were never set separately.
+    if (!this.accountId || !this.gatewayId) {
+      const chatUrl = config.get<string>("CLOUDFLARE_AI_CHAT_URL") ?? "";
+      const gatewayMatch = chatUrl.match(
+        /gateway\.ai\.cloudflare\.com\/v1\/([^/?#]+)\/([^/?#]+)/,
+      );
+      if (gatewayMatch) {
+        this.accountId = this.accountId ?? gatewayMatch[1];
+        this.gatewayId = this.gatewayId ?? gatewayMatch[2];
+        // Use CLOUDFLARE_AI_TOKEN as the gateway auth token when CF_GATEWAY_TOKEN is absent
+        if (!this.gatewayToken) {
+          this.gatewayToken = config.get<string>("CLOUDFLARE_AI_TOKEN") ?? null;
+        }
+        // Extract embedded model from the URL when SYSTEM_AI_MODEL is not set
+        if (!config.get<string>("SYSTEM_AI_MODEL")) {
+          const modelMatch = chatUrl.match(/\/workers-ai\/run\/(.+)/);
+          if (modelMatch) {
+            const extracted = modelMatch[1].split(/[?#]/)[0];
+            if (extracted) this.defaultModel = `workers-ai/${extracted}`;
+          }
+        }
+        this.logger.log(
+          `AiGateway: auto-detected account=${this.accountId} gateway=${this.gatewayId} from CLOUDFLARE_AI_CHAT_URL`,
+        );
+      }
+    }
   }
 
   get isConfigured(): boolean {
