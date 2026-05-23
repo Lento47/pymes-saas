@@ -1,5 +1,7 @@
-const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
+const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? import.meta.env.API_URL ??
+  ("__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__");
 const LS_SLUG_KEY = "pymes_slug";
+const LS_TOKEN_KEY = "pymes_token";
 const LS_USER_KEY = "pymes_user";
 const SESSION_KEY = "pymes_error_session";
 
@@ -39,6 +41,14 @@ function getWorkspaceSlug() {
   }
 }
 
+function getAuthToken() {
+  try {
+    return localStorage.getItem(LS_TOKEN_KEY) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function getUserSnapshot() {
   try {
     const raw = localStorage.getItem(LS_USER_KEY);
@@ -73,15 +83,15 @@ export async function reportClientError(payload: ErrorReportPayload) {
   const url = `${API_BASE}/api/error-reports/client`;
 
   try {
-    if (navigator.sendBeacon) {
-      const blob = new Blob([body], { type: "application/json" });
-      navigator.sendBeacon(url, blob);
-      return;
-    }
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const token = getAuthToken();
+    const workspaceSlug = getWorkspaceSlug();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (workspaceSlug) headers["x-workspace-slug"] = workspaceSlug;
 
     await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body,
       keepalive: true,
     });

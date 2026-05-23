@@ -57,14 +57,16 @@ export class MessagesService {
     });
     if (!conv) throw new NotFoundException("Conversación no encontrada.");
 
-    const skip = (page - 1) * limit;
+    const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 200) : 100;
+    const skip = (safePage - 1) * safeLimit;
 
     const [data, total] = await Promise.all([
       this.prisma.message.findMany({
         where: { conversation_id: conversationId, workspace_id: workspaceId },
         skip,
-        take: limit,
-        orderBy: { sent_at: "asc" },
+        take: safeLimit,
+        orderBy: [{ sent_at: "desc" }, { created_at: "desc" }],
         include: {
           sender_user: { select: { id: true, name: true, avatar_url: true } },
         },
@@ -74,7 +76,7 @@ export class MessagesService {
       }),
     ]);
 
-    const enriched = data.map((msg) => this.serializeMessageForClient(msg));
+    const enriched = data.reverse().map((msg) => this.serializeMessageForClient(msg));
 
     this.logger.log(
       `findAll messages: conv=${conversationId}, count=${total}, returned=${enriched.length}`,
@@ -82,7 +84,7 @@ export class MessagesService {
 
     return {
       data: enriched,
-      meta: { total, page, limit, pages: Math.ceil(total / limit) },
+      meta: { total, page: safePage, limit: safeLimit, pages: Math.ceil(total / safeLimit) },
     };
   }
 

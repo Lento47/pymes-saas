@@ -169,6 +169,23 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
       return { previousMessages, optimisticId };
     },
+    onSuccess: (serverMessage: Record<string, any>, _newMessage, context: any) => {
+      if (!context?.optimisticId || !serverMessage?.id) return;
+      qc.setQueryData(["/api/conversations", id, "messages"], (old: any) => {
+        if (!old) return old;
+        const dataArray = Array.isArray(old) ? old : old?.data ?? [];
+        const replaced = dataArray.map((m: any) =>
+          m.id === context.optimisticId ? serverMessage : m,
+        );
+        if (!replaced.some((m: any) => m.id === serverMessage.id)) {
+          replaced.push(serverMessage);
+        }
+        const byId = new Map<string, any>();
+        for (const item of replaced) byId.set(String(item.id), item);
+        const deduped = Array.from(byId.values());
+        return Array.isArray(old) ? deduped : { ...old, data: deduped };
+      });
+    },
     onError: (err: any, _newMessage, context: any) => {
       // Rollback on failure
       if (context?.previousMessages) {

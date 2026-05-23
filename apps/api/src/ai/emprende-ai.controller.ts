@@ -8,6 +8,7 @@ import {
   HttpStatus,
   ForbiddenException,
 } from "@nestjs/common";
+import { IsOptional, IsString, MaxLength } from "class-validator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
@@ -15,17 +16,34 @@ import { EmrendeAiService } from "./emprende-ai.service";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 
 class ReplyDto {
+  @IsString()
+  @MaxLength(100)
   conversationId!: string;
+
+  @IsString()
+  @MaxLength(4000)
   messageText!: string;
 }
 
 class ChatDto {
+  @IsString()
+  @MaxLength(4000)
   message!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
   conversationId?: string;
 }
 
 class SuggestTasksDto {
+  @IsString()
+  @MaxLength(4000)
   messageText!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
   contactId?: string;
 }
 

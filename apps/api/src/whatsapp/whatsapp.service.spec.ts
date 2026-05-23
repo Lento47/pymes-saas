@@ -27,6 +27,10 @@ describe("WhatsAppService — channel resolution", () => {
       findFirst: jest.fn(),
       findMany: jest.fn(),
     },
+    message: {
+      findMany: jest.fn(),
+      updateMany: jest.fn(),
+    },
   });
 
   const mockMessages = () => ({
@@ -61,12 +65,38 @@ describe("WhatsAppService — channel resolution", () => {
         { provide: WebhookEventsService, useValue: mockWebhookEvents() },
         {
           provide: require("../gateways/events.gateway").EventsGateway,
-          useValue: { emitToWorkspace: jest.fn(), emitToUser: jest.fn() },
+          useValue: { emitToWorkspace: jest.fn(), emitToUser: jest.fn(), emitMessageStatus: jest.fn() },
         },
       ],
     }).compile();
 
     service = module.get<WhatsAppService>(WhatsAppService);
+  });
+
+  describe("processStatuses", () => {
+    it("updates WhatsApp read status and emits message:status", async () => {
+      const events = (service as any).events;
+      prisma.message.findMany.mockResolvedValue([{ id: "msg-1", conversation_id: "conv-1" }]);
+      prisma.message.updateMany.mockResolvedValue({ count: 1 });
+
+      await (service as any).processStatuses("ws-1", [{ id: "wamid.1", status: "read" }]);
+
+      expect(prisma.message.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { workspace_id: "ws-1", external_message_id: "wamid.1" },
+          data: { delivery_status: "READ" },
+        }),
+      );
+      expect(events.emitMessageStatus).toHaveBeenCalledWith({
+        message_id: "msg-1",
+        conversation_id: "conv-1",
+        workspace_id: "ws-1",
+        delivery_status: "READ",
+        delivery_error: null,
+        external_message_id: "wamid.1",
+        provider_message_id: "wamid.1",
+      });
+    });
   });
 
   describe("findActiveWhatsappChannelByPhoneNumberId", () => {

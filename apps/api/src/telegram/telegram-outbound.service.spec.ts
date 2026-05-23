@@ -1,15 +1,13 @@
 import { NotFoundException } from "@nestjs/common";
 import { CryptoService } from "../common/crypto/crypto.service";
 import { PrismaService } from "../common/prisma/prisma.service";
+import { Telegraf } from "telegraf";
 import { TelegramOutboundService } from "./telegram-outbound.service";
 
 const mockSendMessage = jest.fn();
-const mockTelegraf = jest.fn().mockImplementation(() => ({
-  telegram: { sendMessage: mockSendMessage },
-}));
 
 jest.mock("telegraf", () => ({
-  Telegraf: mockTelegraf,
+  Telegraf: jest.fn(),
 }), { virtual: true });
 
 describe("TelegramOutboundService", () => {
@@ -27,6 +25,9 @@ describe("TelegramOutboundService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (Telegraf as unknown as jest.Mock).mockImplementation(() => ({
+      telegram: { sendMessage: mockSendMessage },
+    }));
     service = new TelegramOutboundService(
       prisma as unknown as PrismaService,
       crypto as unknown as CryptoService,
@@ -48,7 +49,7 @@ describe("TelegramOutboundService", () => {
       select: { config_json: true },
     });
     expect(crypto.decrypt).toHaveBeenCalledWith("enc-token");
-    expect(mockTelegraf).toHaveBeenCalledWith("plain-token");
+    expect(Telegraf).toHaveBeenCalledWith("plain-token");
     expect(mockSendMessage).toHaveBeenCalledWith("987654321", "Hola", {
       parse_mode: "HTML",
     });

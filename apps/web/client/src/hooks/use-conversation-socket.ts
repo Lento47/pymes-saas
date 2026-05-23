@@ -23,6 +23,16 @@ interface MessagesCache {
   meta?: { total?: number };
 }
 
+interface MessageStatusPayload {
+  message_id: string;
+  conversation_id: string;
+  delivery_status: string;
+  delivery_error?: string | null;
+  external_message_id?: string | null;
+  provider_message_id?: string | null;
+  telegram_message_id?: string | null;
+}
+
 /**
  * Hook para mensajes en tiempo real dentro de una conversación.
  * Entra al room cuando se monta y sale cuando se desmonta.
@@ -126,6 +136,32 @@ export function useConversationSocket(conversationId: string) {
     [qc, conversationId],
   );
 
+  const handleMessageStatus = useCallback(
+    (payload: MessageStatusPayload) => {
+      if (payload.conversation_id !== conversationId) return;
+
+      qc.setQueryData(MESSAGES_KEY, (old: MessagesCache | Message[] | undefined) => {
+        if (!old) return old;
+        const dataArray = Array.isArray(old) ? old : (Array.isArray(old.data) ? old.data : []);
+        if (dataArray.length === 0) return old;
+        const updated = dataArray.map((m) =>
+          m.id === payload.message_id
+            ? {
+                ...m,
+                delivery_status: payload.delivery_status,
+                delivery_error: payload.delivery_error ?? null,
+                external_message_id: payload.external_message_id ?? m.external_message_id,
+                provider_message_id: payload.provider_message_id ?? m.provider_message_id,
+                telegram_message_id: payload.telegram_message_id ?? m.telegram_message_id,
+              }
+            : m,
+        );
+        return Array.isArray(old) ? updated : { ...old, data: updated };
+      });
+    },
+    [qc, conversationId],
+  );
+
   const handleConversationUpdated = useCallback(
     (update: Record<string, unknown>) => {
       qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
@@ -153,6 +189,7 @@ export function useConversationSocket(conversationId: string) {
     socket.emit('join:conversation', conversationId);
     socket.on('message:new', handleNewMessage);
     socket.on('message:media-ready', handleMediaReady);
+    socket.on('message:status', handleMessageStatus);
     socket.on('conversation:updated', handleConversationUpdated);
     socket.on('agent:updated', handleAgentUpdated);
 
@@ -160,8 +197,9 @@ export function useConversationSocket(conversationId: string) {
       socket.emit('leave:conversation', conversationId);
       socket.off('message:new', handleNewMessage);
       socket.off('message:media-ready', handleMediaReady);
+      socket.off('message:status', handleMessageStatus);
       socket.off('conversation:updated', handleConversationUpdated);
       socket.off('agent:updated', handleAgentUpdated);
     };
-  }, [conversationId, handleNewMessage, handleMediaReady, handleConversationUpdated, handleAgentUpdated]);
+  }, [conversationId, handleNewMessage, handleMediaReady, handleMessageStatus, handleConversationUpdated, handleAgentUpdated]);
 }

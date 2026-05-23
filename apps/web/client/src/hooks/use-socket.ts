@@ -21,14 +21,23 @@ export function getSocket(): Socket | null {
 //
 // DEV: backend NestJS corre en :4000 en el mismo host.
 //
-// PROD: por defecto usa `window.location.origin` (pymeshub.lat).
-//       El Worker de Cloudflare en pymeshub.lat proxyfica /socket.io
-//       a Railway con soporte WebSocket completo (WebSocketPair + 101 upgrade).
-//       Si se necesita otra URL, setear VITE_WS_URL en Cloudflare Pages env vars.
+// PROD: usa `VITE_WS_URL`; si no existe, deriva desde el API host configurado.
 // ───────────────────────────────────────────────────────────────────────────
+const API_BASE = import.meta.env.VITE_PYMESHUB_API_URL ?? import.meta.env.VITE_API_URL ?? import.meta.env.API_URL;
+
+function originFromUrl(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value, window.location.origin).origin;
+  } catch {
+    return null;
+  }
+}
+
 const WS_URL = import.meta.env.DEV
   ? `${window.location.protocol}//${window.location.hostname}:4000`
   : (import.meta.env.VITE_WS_URL as string | undefined)
+    ?? originFromUrl(API_BASE as string | undefined)
     ?? window.location.origin;
 
 export function connectSocket() {

@@ -1465,19 +1465,34 @@ export class WhatsAppService {
       if (!wamid) continue;
 
       try {
+        const messages = await this.prisma.message.findMany({
+          where: {
+            workspace_id: workspaceId,
+            external_message_id: wamid,
+          },
+          select: { id: true, conversation_id: true },
+        });
+        if (messages.length === 0) {
+          this.logger.warn(`No local message matched WhatsApp status for ${wamid}`);
+        }
+
+        const deliveryError = status.errors?.length
+          ? status.errors
+              .map((e: any) => `${e.code}: ${e.title ?? e.message}`)
+              .join('; ')
+          : null;
+        const finalStatus = deliveryError ? MessageDeliveryStatus.FAILED : deliveryStatus;
+
         const updated = await this.prisma.message.updateMany({
           where: {
             workspace_id: workspaceId,
             external_message_id: wamid,
           },
           data: {
-            delivery_status: deliveryStatus,
-            ...(status.errors?.length
+            delivery_status: finalStatus,
+            ...(deliveryError
               ? {
-                  delivery_error: status.errors
-                    .map((e: any) => `${e.code}: ${e.title ?? e.message}`)
-                    .join('; '),
-                  delivery_status: MessageDeliveryStatus.FAILED,
+                  delivery_error: deliveryError,
                 }
               : {}),
           },
@@ -1485,8 +1500,19 @@ export class WhatsAppService {
 
         if (updated.count > 0) {
           this.logger.debug(
-            `Updated message ${wamid} status → ${deliveryStatus} (${updated.count} rows)`,
+            `Updated message ${wamid} status → ${finalStatus} (${updated.count} rows)`,
           );
+          for (const message of messages) {
+            this.events.emitMessageStatus({
+              message_id: message.id,
+              conversation_id: message.conversation_id,
+              workspace_id: workspaceId,
+              delivery_status: finalStatus,
+              delivery_error: deliveryError,
+              external_message_id: wamid,
+              provider_message_id: wamid,
+            });
+          }
         }
       } catch (err: any) {
         this.logger.error(`Error updating status for ${wamid}: ${err?.message}`);

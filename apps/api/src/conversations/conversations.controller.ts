@@ -1,4 +1,5 @@
 import { WorkspaceUserRole } from "@prisma/client";
+import { IsOptional, IsString, MaxLength } from "class-validator";
 import {
   BadGatewayException,
   Body,
@@ -38,6 +39,14 @@ import { UpdateConversationDto } from "./dto/update-conversation.dto";
 import { FilterConversationsDto } from "./dto/filter-conversations.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { AgentRunService } from "../ai/agent-run.service";
+import { EventsGateway } from "../gateways/events.gateway";
+
+class StartAgentRunDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  trigger_text?: string;
+}
 
 @Controller("conversations")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -54,6 +63,7 @@ export class ConversationsController {
     private readonly telegramService: TelegramService,
     private readonly templatesService: MessageTemplatesService,
     private readonly prisma: PrismaService,
+    private readonly events: EventsGateway,
     @Inject(forwardRef(() => AgentRunService))
     private readonly agentRunService: AgentRunService,
   ) {}
@@ -180,7 +190,7 @@ export class ConversationsController {
     }
 
     const sendDto = { ...dto, body_text: bodyText, body_html: bodyHtml };
-    const message = await this.messagesService.send(
+    let message = await this.messagesService.send(
       user.workspace_id,
       conversationId,
       user,
@@ -299,23 +309,42 @@ export class ConversationsController {
 
         // Update with external message ID for status tracking
         if (externalId) {
-          await this.prisma.message.update({
+          message = await this.prisma.message.update({
             where: { id: message.id },
             data: {
+              provider: "whatsapp",
+              provider_message_id: externalId,
               external_message_id: externalId,
               delivery_status: "SENT",
             },
+            include: { sender_user: { select: { id: true, name: true, avatar_url: true } } },
+          });
+          this.events.emitMessageStatus({
+            message_id: message.id,
+            conversation_id: conversationId,
+            workspace_id: user.workspace_id,
+            delivery_status: "SENT",
+            external_message_id: externalId,
+            provider_message_id: externalId,
           });
         }
       } catch (err: any) {
         this.logger.error(`WhatsApp dispatch failed: ${err?.message}`);
         // Update message delivery status to failed
-        await this.prisma.message.update({
+        message = await this.prisma.message.update({
           where: { id: message.id },
           data: {
             delivery_status: "DISPATCH_FAILED",
             delivery_error: err?.message?.slice(0, 500) ?? "Unknown dispatch error",
           },
+          include: { sender_user: { select: { id: true, name: true, avatar_url: true } } },
+        });
+        this.events.emitMessageStatus({
+          message_id: message.id,
+          conversation_id: conversationId,
+          workspace_id: user.workspace_id,
+          delivery_status: "DISPATCH_FAILED",
+          delivery_error: (message as any).delivery_error ?? null,
         });
       }
     }
@@ -326,24 +355,59 @@ export class ConversationsController {
         this.logger.log(
           `[DIAG] Telegram dispatch: conv=${conversationId}, channel=${conv.channel.id}, hasMedia=${!!dto.media_url}, mediaType=${dto.media_type ?? "none"}`,
         );
-        if (dto.media_url && dto.media_type) {
-          await this.telegramService.sendMedia(
+        const result = dto.media_url && dto.media_type
+          ? await this.telegramService.sendMedia(
             conv.channel.id,
             chatId,
             dto.media_url,
             dto.media_type,
             bodyText || undefined,
-          );
-        } else {
-          await this.telegramService.sendMessage(conv.channel.id, chatId, bodyText);
-        }
-      } catch (err) {
+          )
+          : await this.telegramService.sendMessage(conv.channel.id, chatId, bodyText);
+
+        const telegramMessageId = result?.message_id != null ? String(result.message_id) : null;
+        message = await this.prisma.message.update({
+          where: { id: message.id },
+          data: {
+            provider: "telegram",
+            telegram_chat_id: String(chatId),
+            telegram_message_id: telegramMessageId,
+            provider_message_id: telegramMessageId,
+            external_message_id: telegramMessageId,
+            delivery_status: "SENT",
+          },
+          include: { sender_user: { select: { id: true, name: true, avatar_url: true } } },
+        });
+        this.events.emitMessageStatus({
+          message_id: message.id,
+          conversation_id: conversationId,
+          workspace_id: user.workspace_id,
+          delivery_status: "SENT",
+          external_message_id: telegramMessageId,
+          provider_message_id: telegramMessageId,
+          telegram_message_id: telegramMessageId,
+        });
+      } catch (err: any) {
         this.logger.error(`Telegram dispatch failed: ${err?.message}`);
-        throw new BadGatewayException(err?.message ?? "No se pudo enviar el mensaje por Telegram.");
+        message = await this.prisma.message.update({
+          where: { id: message.id },
+          data: {
+            delivery_status: "DISPATCH_FAILED",
+            delivery_error: err?.message?.slice(0, 500) ?? "Unknown dispatch error",
+          },
+          include: { sender_user: { select: { id: true, name: true, avatar_url: true } } },
+        });
+        this.events.emitMessageStatus({
+          message_id: message.id,
+          conversation_id: conversationId,
+          workspace_id: user.workspace_id,
+          delivery_status: "DISPATCH_FAILED",
+          delivery_error: (message as any).delivery_error ?? null,
+        });
       }
     }
 
-    return message;
+    return this.messagesService.serializeMessageForClient(message);
   }
 
   private resolveTemplate(body: string, vars: Record<string, string>): string {
@@ -508,16 +572,21 @@ export class ConversationsController {
   async startAgentRun(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) conversationId: string,
-    @Body("trigger_text") triggerText?: string,
+    @Body() dto: StartAgentRunDto,
   ) {
     const lastMsg = await this.prisma.message.findFirst({
       where: { conversation_id: conversationId, workspace_id: workspaceId, direction: "INBOUND" },
       orderBy: { sent_at: "desc" },
       select: { body_text: true },
     });
-    const text = triggerText || lastMsg?.body_text || "";
-    const run = await this.agentRunService.startRun(workspaceId, conversationId, text);
-    return { ok: !!run, run };
+    const text = dto.trigger_text || lastMsg?.body_text || "";
+    try {
+      const run = await this.agentRunService.startRun(workspaceId, conversationId, text);
+      return { ok: !!run, run };
+    } catch (err: any) {
+      this.logger.error(`Agent run failed: ${err?.message}`, err?.stack);
+      return { ok: false, run: null, error: "AGENT_RUN_FAILED" };
+    }
   }
 
   @Delete(":id/agent-run")

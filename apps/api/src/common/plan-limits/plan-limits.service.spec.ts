@@ -64,6 +64,8 @@ describe("PlanLimitsService", () => {
         product_categories: 20,
         diagnostics_per_day: 10,
         media_messages_per_day: 0,
+        ai_chat_messages_per_day: 50,
+        agent_executions_per_day: 5,
       });
     });
 
@@ -81,6 +83,8 @@ describe("PlanLimitsService", () => {
         product_categories: 50,
         diagnostics_per_day: 40,
         media_messages_per_day: 10,
+        ai_chat_messages_per_day: 100,
+        agent_executions_per_day: 15,
       });
     });
 
@@ -98,6 +102,8 @@ describe("PlanLimitsService", () => {
         product_categories: 200,
         diagnostics_per_day: 100,
         media_messages_per_day: 50,
+        ai_chat_messages_per_day: 250,
+        agent_executions_per_day: 50,
       });
     });
 
@@ -119,6 +125,7 @@ describe("PlanLimitsService", () => {
     it("has correct hierarchy", () => {
       expect(PLAN_ORDER).toEqual([
         "FREE",
+        "EMPRENDE",
         "STARTER",
         "GROWTH",
         "BUSINESS",
@@ -131,8 +138,8 @@ describe("PlanLimitsService", () => {
   // ─── getUpgradePlan ────────────────────────────────────────────────────
 
   describe("getUpgradePlan", () => {
-    it("FREE → STARTER", () => {
-      expect(service.getUpgradePlan("FREE")).toBe("STARTER");
+    it("FREE → EMPRENDE", () => {
+      expect(service.getUpgradePlan("FREE")).toBe("EMPRENDE");
     });
 
     it("STARTER → GROWTH", () => {

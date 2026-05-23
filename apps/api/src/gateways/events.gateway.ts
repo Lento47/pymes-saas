@@ -14,6 +14,7 @@ import { PrismaService } from "../common/prisma/prisma.service";
 
 // ─── Eventos emitidos al cliente ─────────────────────────────────────────────
 // message:new          → nuevo mensaje en una conversación (DTO enriquecido)
+// message:status       → cambio de estado de entrega de un mensaje
 // message:media-ready  → media descargada y almacenada, actualizar UI
 // conversation:updated → cambio de estado/prioridad/asignación
 // notification:new     → nueva notificación para el usuario
@@ -159,6 +160,22 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     media_caption: string | null;
   }) {
     this.server.to(`conversation:${payload.conversation_id}`).emit("message:media-ready", payload);
+  }
+
+  /**
+   * Emitir cambio de estado de entrega de un mensaje.
+   */
+  emitMessageStatus(payload: {
+    message_id: string;
+    conversation_id: string;
+    workspace_id: string;
+    delivery_status: string;
+    delivery_error?: string | null;
+    external_message_id?: string | null;
+    provider_message_id?: string | null;
+    telegram_message_id?: string | null;
+  }) {
+    this.server.to(`conversation:${payload.conversation_id}`).emit("message:status", payload);
   }
 
   /**

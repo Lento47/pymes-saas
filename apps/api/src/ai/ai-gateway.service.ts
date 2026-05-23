@@ -181,6 +181,7 @@ export class AiGatewayService {
     if (provider === "workers-ai") {
       return (
         json.result?.response?.trim() ??
+        json.result?.choices?.[0]?.message?.content?.trim() ??
         json.choices?.[0]?.message?.content?.trim() ??
         ""
       );
