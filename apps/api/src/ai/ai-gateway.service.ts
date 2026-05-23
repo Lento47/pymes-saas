@@ -2,21 +2,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AssistantMessage, ChatCompletionWithUsage } from "./cloudflare-ai.service";
 
-// Providers using OpenAI-compatible format
-const OPENAI_COMPAT_PROVIDERS = new Set([
-  "openai",
-  "groq",
-  "mistral",
-  "cohere",
-  "perplexity-ai",
-  "deepseek",
-  "cerebras",
-  "workers-ai",
-  "baseten",
-  "dynamic",
-  "parallel",
-  "grok",
-  "moonshot",
+// Providers that do NOT support the /compat universal endpoint — must use legacy paths
+const COMPAT_UNSUPPORTED = new Set([
+  "workers-ai", // has its own /workers-ai/run/{model} endpoint
+  "cerebras",   // CF AI Gateway routes cerebras via its own legacy endpoint
 ]);
 
 @Injectable()
@@ -118,9 +107,9 @@ export class AiGatewayService {
     const modelStr = options?.model ?? this.defaultModel;
 
     // ── Compat mode (preferred): single endpoint, single token, all providers ──
-    // workers-ai models must use the legacy provider-specific URL — compat doesn't support them
-    const isWorkersAi = modelStr.startsWith("workers-ai/") || (!modelStr.includes("/") && !OPENAI_COMPAT_PROVIDERS.has(modelStr.split("/")[0]));
-    if (this.compatUrl && this.compatToken && !isWorkersAi) {
+    const providerPrefix = modelStr.split("/")[0];
+    const useLegacy = COMPAT_UNSUPPORTED.has(providerPrefix);
+    if (this.compatUrl && this.compatToken && !useLegacy) {
       const res = await fetch(this.compatUrl, {
         method: "POST",
         headers: {
