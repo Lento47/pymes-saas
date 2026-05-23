@@ -28,6 +28,10 @@ export class AiGatewayService {
   private readonly gatewayToken: string | null;
   private readonly defaultModel: string;
 
+  // Compat mode: single OpenAI-compatible endpoint for ALL providers
+  private readonly compatUrl: string | null;
+  private readonly compatToken: string | null;
+
   constructor(private readonly config: ConfigService) {
     this.accountId = config.get<string>("CF_GATEWAY_ACCOUNT_ID") ?? null;
     this.gatewayId = config.get<string>("CF_GATEWAY_ID") ?? null;
@@ -36,9 +40,23 @@ export class AiGatewayService {
       config.get<string>("SYSTEM_AI_MODEL") ??
       "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
-    // Auto-detect gateway credentials from CLOUDFLARE_AI_CHAT_URL when explicit vars are absent.
-    // Handles the case where the URL is set to a CF AI Gateway URL (gateway.ai.cloudflare.com)
-    // but CF_GATEWAY_ACCOUNT_ID / CF_GATEWAY_ID were never set separately.
+    // CF_AIG_TOKEN is the single token for the /compat universal endpoint
+    this.compatToken =
+      config.get<string>("CF_AIG_TOKEN") ??
+      config.get<string>("CF_GATEWAY_TOKEN") ??
+      null;
+
+    // Compat URL: explicit var or auto-built from account+gateway IDs
+    const explicitCompat = config.get<string>("CF_GATEWAY_COMPAT_URL") ?? null;
+    if (explicitCompat) {
+      this.compatUrl = explicitCompat;
+    } else if (this.accountId && this.gatewayId) {
+      this.compatUrl = `https://gateway.ai.cloudflare.com/v1/${this.accountId}/${this.gatewayId}/compat`;
+    } else {
+      this.compatUrl = null;
+    }
+
+    // Auto-detect account/gateway from CLOUDFLARE_AI_CHAT_URL when explicit vars are absent
     if (!this.accountId || !this.gatewayId) {
       const chatUrl = config.get<string>("CLOUDFLARE_AI_CHAT_URL") ?? "";
       const gatewayMatch = chatUrl.match(
@@ -47,11 +65,12 @@ export class AiGatewayService {
       if (gatewayMatch) {
         this.accountId = this.accountId ?? gatewayMatch[1];
         this.gatewayId = this.gatewayId ?? gatewayMatch[2];
-        // Use CLOUDFLARE_AI_TOKEN as the gateway auth token when CF_GATEWAY_TOKEN is absent
+        if (!this.compatUrl) {
+          this.compatUrl = `https://gateway.ai.cloudflare.com/v1/${this.accountId}/${this.gatewayId}/compat`;
+        }
         if (!this.gatewayToken) {
           this.gatewayToken = config.get<string>("CLOUDFLARE_AI_TOKEN") ?? null;
         }
-        // Extract embedded model from the URL when SYSTEM_AI_MODEL is not set
         if (!config.get<string>("SYSTEM_AI_MODEL")) {
           const modelMatch = chatUrl.match(/\/workers-ai\/run\/(.+)/);
           if (modelMatch) {
@@ -60,14 +79,18 @@ export class AiGatewayService {
           }
         }
         this.logger.log(
-          `AiGateway: auto-detected account=${this.accountId} gateway=${this.gatewayId} from CLOUDFLARE_AI_CHAT_URL`,
+          `AiGateway: auto-detected account=${this.accountId} gateway=${this.gatewayId}`,
         );
       }
+    }
+
+    if (this.compatUrl && this.compatToken) {
+      this.logger.log(`AiGateway: compat mode enabled → ${this.compatUrl}`);
     }
   }
 
   get isConfigured(): boolean {
-    return !!(this.accountId && this.gatewayId);
+    return !!(this.compatUrl && this.compatToken) || !!(this.accountId && this.gatewayId);
   }
 
   async chatCompletion(
@@ -93,6 +116,36 @@ export class AiGatewayService {
     },
   ): Promise<ChatCompletionWithUsage> {
     const modelStr = options?.model ?? this.defaultModel;
+
+    // ── Compat mode (preferred): single endpoint, single token, all providers ──
+    if (this.compatUrl && this.compatToken) {
+      const res = await fetch(this.compatUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.compatToken}`,
+        },
+        body: JSON.stringify({
+          model: modelStr,
+          messages,
+          max_tokens: options?.maxTokens ?? 1024,
+          temperature: options?.temperature ?? 0.3,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        this.logger.error(`AI Gateway compat error [${modelStr}] ${res.status}: ${text}`);
+        throw new Error(`AI Gateway request failed: ${res.status}`);
+      }
+
+      const json = (await res.json()) as any;
+      const text = json.choices?.[0]?.message?.content?.trim() ?? "";
+      const provider = modelStr.split("/")[0] ?? "unknown";
+      return this.withUsage(text, json.usage, { provider, model: modelStr, messages });
+    }
+
+    // ── Legacy mode: provider-specific URLs and auth headers ──
     const { provider, model } = this.parseModel(modelStr);
     const url = this.buildGatewayUrl(provider, model);
     const body = this.buildRequestBody(provider, model, messages, options);
@@ -102,7 +155,6 @@ export class AiGatewayService {
       "Content-Type": "application/json",
     };
 
-    // CF AI Gateway auth header (required for all requests through the gateway)
     if (this.gatewayToken) {
       headers["cf-aig-authorization"] = `Bearer ${this.gatewayToken}`;
     }
@@ -113,7 +165,6 @@ export class AiGatewayService {
     } else if (provider !== "workers-ai") {
       if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
     }
-    // workers-ai uses only the gateway-level cf-aig-authorization (free tier, no per-provider key)
 
     const res = await fetch(url, {
       method: "POST",
