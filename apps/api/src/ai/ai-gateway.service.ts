@@ -131,9 +131,20 @@ export class AiGatewayService {
       }
 
       const json = (await res.json()) as any;
-      const text = json.choices?.[0]?.message?.content?.trim() ?? "";
+      // CF AI Gateway compat endpoint may return text in different locations
+      // depending on the underlying provider's response format
+      const text = (
+        json.choices?.[0]?.message?.content?.trim() ||
+        json.result?.response?.trim() ||
+        json.result?.choices?.[0]?.message?.content?.trim() ||
+        (typeof json.response === "string" ? json.response.trim() : "") ||
+        ""
+      );
+      if (!text) {
+        this.logger.warn(`AI Gateway compat [${modelStr}] returned empty text. Raw keys: ${Object.keys(json).join(", ")}`);
+      }
       const provider = modelStr.split("/")[0] ?? "unknown";
-      return this.withUsage(text, json.usage, { provider, model: modelStr, messages });
+      return this.withUsage(text, json.usage ?? json.result?.usage, { provider, model: modelStr, messages });
     }
 
     // ── Legacy mode: provider-specific URLs and auth headers ──
