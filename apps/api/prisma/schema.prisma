@@ -2253,8 +2253,8 @@ model CreditTransaction {
   paypal_order_id String?
   created_at      DateTime              @default(now())
 
-  workspace Workspace              @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
-  balance   WorkspaceCreditBalance @relation(fields: [workspace_id], references: [workspace_id])
+  workspace Workspace              @relation(fields: [workspace_id], references: [id], onDelete: Cascade, map: "credit_transactions_workspace_fkey")
+  balance   WorkspaceCreditBalance @relation(fields: [workspace_id], references: [workspace_id], map: "credit_transactions_balance_fkey")
 
   @@index([workspace_id])
   @@index([workspace_id, created_at(sort: Desc)])
