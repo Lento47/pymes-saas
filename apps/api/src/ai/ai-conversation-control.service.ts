@@ -68,7 +68,7 @@ interface ReplyOptions {
 @Injectable()
 export class AiConversationControlService {
   private readonly logger = new Logger(AiConversationControlService.name);
-  private readonly maxTokens = 700;
+  private readonly maxTokens = 1200;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -185,6 +185,7 @@ export class AiConversationControlService {
 
     const action = this.parseAction(completion.text);
     if (!action.reply_text.trim()) {
+      this.logger.warn(`EMPTY_AI_REPLY raw completion: "${completion.text?.slice(0, 500)}"`);
       await this.aiTokens.releaseReservation(workspaceId, reservation.reservationId);
       return {
         ok: false,
@@ -342,18 +343,25 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
   }
 
   private parseAction(text: string): AiControlAction {
+    const raw = text?.trim() ?? "";
     try {
-      const match = text.match(/\{[\s\S]*\}/);
-      const parsed = JSON.parse(match?.[0] ?? text);
-      return {
-        reply_text: String(parsed.reply_text ?? parsed.text ?? "").slice(0, 4000),
-        interactive: parsed.interactive ?? null,
-        memory_updates: parsed.memory_updates ?? null,
-        handoff_reason: parsed.handoff_reason ?? null,
-      };
+      const match = raw.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match?.[0] ?? raw);
+      const replyText = String(parsed.reply_text ?? parsed.text ?? parsed.message ?? parsed.response ?? "").slice(0, 4000);
+      // If JSON parsed but reply_text empty, fall through to plain-text extraction
+      if (replyText) {
+        return {
+          reply_text: replyText,
+          interactive: parsed.interactive ?? null,
+          memory_updates: parsed.memory_updates ?? null,
+          handoff_reason: parsed.handoff_reason ?? null,
+        };
+      }
     } catch {
-      return { reply_text: text.slice(0, 4000), interactive: null, memory_updates: null, handoff_reason: null };
+      // not JSON — fall through
     }
+    // Use raw text (model didn't follow JSON format)
+    return { reply_text: raw.slice(0, 4000), interactive: null, memory_updates: null, handoff_reason: null };
   }
 
   private normalizeInteractive(value: unknown, conv: ConversationShape): SupportedInteractive | null {
