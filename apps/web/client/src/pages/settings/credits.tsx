@@ -83,7 +83,7 @@ function CreditPackCard({
         <div>
           <span className="text-2xl">{PACK_ICONS[pack.id] ?? "✦"}</span>
           <p className="text-sm font-semibold text-foreground mt-1">{pack.label}</p>
-          <p className="text-[11px] text-muted-foreground">${pricePerCredit} USD / día</p>
+          <p className="text-[11px] text-muted-foreground">${pricePerCredit} USD / mes</p>
         </div>
         <div className="text-right">
           <p className="text-xl font-bold text-foreground">${pack.price_usd}</p>
@@ -94,11 +94,11 @@ function CreditPackCard({
       <ul className="space-y-1 text-[11px] text-muted-foreground">
         <li className="flex items-center gap-1.5">
           <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-          {pack.credits.toLocaleString()} días de memoria
+          {pack.credits.toLocaleString()} contactos/mes
         </li>
         <li className="flex items-center gap-1.5">
           <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-          1 crédito = 1 contacto activo por día
+          1 crédito = 1 contacto activo por mes
         </li>
         <li className="flex items-center gap-1.5">
           <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
@@ -340,7 +340,7 @@ function CustomPackSection({
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Estimado</span>
               <span className="text-[11px] text-foreground">
-                ~{credits.toLocaleString()} días · 1 contacto activo
+                ~{credits.toLocaleString()} contactos/mes
               </span>
             </div>
           </div>
@@ -817,7 +817,7 @@ export default function CreditsSettingsPage() {
           </div>
           <div className="text-right shrink-0 hidden sm:block">
             <p className="text-[10px] text-muted-foreground">1 crédito =</p>
-            <p className="text-xs text-foreground font-medium">1 contacto activo por día</p>
+            <p className="text-xs text-foreground font-medium">1 contacto activo por mes</p>
             <p className="text-[10px] text-muted-foreground mt-1">Sin vencimiento del saldo</p>
           </div>
         </div>

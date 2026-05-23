@@ -1,13 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 
-const CREDITS_PER_CONTACT_DAY = 1;
+const CREDITS_PER_CONTACT_MONTH = 1;
 
 export const CREDIT_PACKS = [
-  { id: "pack_100",  credits: 100,  price_usd: 2.99,  label: "100 días de memoria" },
-  { id: "pack_500",  credits: 500,  price_usd: 9.99,  label: "500 días de memoria" },
-  { id: "pack_1500", credits: 1500, price_usd: 24.99, label: "1,500 días de memoria" },
-  { id: "pack_5000", credits: 5000, price_usd: 69.99, label: "5,000 días de memoria" },
+  { id: "pack_100",  credits: 100,  price_usd: 2.99,  label: "100 contactos/mes" },
+  { id: "pack_500",  credits: 500,  price_usd: 9.99,  label: "500 contactos/mes" },
+  { id: "pack_1500", credits: 1500, price_usd: 24.99, label: "1,500 contactos/mes" },
+  { id: "pack_5000", credits: 5000, price_usd: 69.99, label: "5,000 contactos/mes" },
 ];
 
 @Injectable()

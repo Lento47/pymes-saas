@@ -14,10 +14,10 @@ export class MemoryTtlJob {
     private readonly credits: CreditsService,
   ) {}
 
-  // Runs every day at 02:00 UTC
-  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  // Runs on the 1st of every month at 02:00 UTC
+  @Cron("0 2 1 * *")
   async runDailyTtlCheck(): Promise<void> {
-    this.logger.log("Starting daily memory TTL check...");
+    this.logger.log("Starting monthly memory TTL check...");
 
     // 1. Get all workspaces that have any memory records
     const workspaces = await this.prisma.contactAiMemory.groupBy({
@@ -64,7 +64,7 @@ export class MemoryTtlJob {
     }
 
     this.logger.log(
-      `Daily TTL check complete. Paused: ${totalPaused}, Credits deducted: ${totalDeducted}`,
+      `Monthly TTL check complete. Paused: ${totalPaused}, Credits deducted: ${totalDeducted}`,
     );
   }
 }
