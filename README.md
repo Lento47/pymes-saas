@@ -2,14 +2,19 @@
 
 # PymesHub
 
-**La plataforma de operaciones todo-en-uno para pequeñas y medianas empresas.**  
-Gestiona conversaciones, tareas, documentos y clientes — con Insights Automáticos que te dicen exactamente qué está pasando en tu negocio.
+**La plataforma de operaciones inteligente para pequeñas y medianas empresas.**  
+Inbox unificado multicanal, CRM, facturación electrónica, pipeline de pedidos, y AI que sabe tu negocio.
 
-[![NestJS](https://img.shields.io/badge/NestJS-10-E0234E?style=flat-square&logo=nestjs&logoColor=white)](https://nestjs.com)
+[![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?style=flat-square&logo=nestjs&logoColor=white)](https://nestjs.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://prisma.io)
+[![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma&logoColor=white)](https://prisma.io)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io)
+[![Railway](https://img.shields.io/badge/Railway-deploy-0B0D0E?style=flat-square&logo=railway&logoColor=white)](https://railway.app)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-Pages-F38020?style=flat-square&logo=cloudflare&logoColor=white)](https://pages.cloudflare.com)
 [![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?style=flat-square&logo=tauri&logoColor=black)](https://tauri.app)
+[![WhatsApp](https://img.shields.io/badge/WhatsApp-API-25D366?style=flat-square&logo=whatsapp&logoColor=white)](https://developers.facebook.com/docs/whatsapp/cloud-api)
 
 </div>
 
@@ -17,131 +22,52 @@ Gestiona conversaciones, tareas, documentos y clientes — con Insights Automát
 
 ## ¿Qué es PymesHub?
 
-PymesHub es un SaaS multi-tenant diseñado para que los dueños de PyMEs tengan **un solo lugar** donde ver todo lo que pasa en su negocio: conversaciones con clientes, tareas del equipo, documentos, automatizaciones — y encima de todo eso, **Insights Automáticos** que analizan tus datos mes a mes y te dicen directamente qué ajustar.
+PymesHub es un SaaS multi-tenant diseñado para dueños de PyMEs latinoamericanas. Centraliza conversaciones de **WhatsApp, Email, Telegram y formularios** en un solo inbox, gestiona contactos y pedidos, y ofrece **insights automáticos** que analizan tus datos y te dicen qué ajustar — en español, sin gráficas complicadas.
 
-No es solo un software de gestión. Es el socio inteligente que le dice al dueño de la tienda:
-
-> *"Oye, este mes tienes un 35% más de conversaciones sin resolver. Te sugiero activar respuestas automáticas o reforzar tu equipo de atención."*
-
----
-
-## Features principales
-
-### Insights Automáticos
-El motor de análisis compara el mes actual contra el anterior y genera alertas accionables en español:
-
-| Severidad | Ejemplo |
-|-----------|---------|
-| **Peligro** | "El 42% de tus tareas activas están vencidas — redistribuye la carga." |
-| **Alerta** | "Hay 7 conversaciones abiertas sin agente asignado." |
-| **Positivo** | "¡Completaste un 22% más de tareas que el mes pasado!" |
-| **Info** | "El volumen de mensajes subió un 28% — considera respuestas rápidas." |
-
-### Inbox Unificado
-- Centraliza Email, WhatsApp, formularios y API en un solo inbox
-- Recepción de email inbound configurable por canal con Resend webhook
-- Asignación de conversaciones a agentes o departamentos
-- Prioridades (LOW / MEDIUM / HIGH / URGENT) con badges visuales
-- Resolución y archivado con trazabilidad completa
-
-### Gestión de Tareas
-- Crea tareas desde conversaciones, documentos o manualmente
-- Fechas límite, prioridades y asignación por agente
-- Detección automática de tareas vencidas
-
-### Gestión de Documentos
-- Upload a S3/MinIO con OCR automático
-- Vinculación a contactos o conversaciones
-- Límites de almacenamiento por plan
-
-### Automatizaciones
-- Reglas con triggers: mensaje recibido, conversación creada, tarea vencida, etc.
-- Condiciones configurables via JSON
-- Historial de ejecución con logs de errores
-
-### CRM de Contactos
-- Clientes, proveedores, leads y otros
-- Última interacción, etiquetas libres, historial completo
-- Conversaciones, tareas y documentos vinculados por contacto
-
-### Resúmenes IA Diarios
-- Resumen en español generado automáticamente al cierre del día
-- Métricas de conversaciones, mensajes, tareas y documentos
-
-### Cobro y Facturación
-- Recordatorios y envío de facturas desde la conversación
-- Facturación electrónica CR (Hacienda) integrada desde el workspace
-- Base de billing por workspace para desbloqueo por plan
-
-### Departamentos & Roles
-- Organiza canales y conversaciones por departamento
-- Roles granulares: OWNER / ADMIN / AGENT / VIEWER
-- Visibilidad filtrada por departamento para los agentes
-
-### Notificaciones en Tiempo Real
-- WebSockets (Socket.IO) para actualizaciones instantáneas
-- Notificaciones in-app: tarea vencida, mensaje recibido, mención, etc.
+> *"Oye, este mes tienes un 35% más de conversaciones sin resolver. Te sugiero activar respuestas automáticas o reforzar tu equipo."*
 
 ---
 
 ## Arquitectura
 
-PymesHub es un **monorepo pnpm** con un backend canónico (NestJS + PostgreSQL) y múltiples clientes que lo consumen:
+Monorepo **pnpm** con un backend canónico (NestJS + PostgreSQL + Redis/BullMQ) y múltiples clientes. **Unified `master` branch** — backend y frontend comparten el mismo trunk. Deploy automático: Railway (API) + Cloudflare Pages (frontend).
 
 ```
 pymes-saas/
 ├── apps/
-│   ├── api/                    # Backend — NestJS 10 + PostgreSQL (fuente de verdad)
-│   ├── web/                    # Cliente SaaS — React 18 + Vite (proxy → API)
-│   └── desktop/                # Cliente Windows — Tauri 2 + React (conecta al mismo API)
+│   ├── api/                    # Backend — NestJS 11 + Prisma 7 + BullMQ
+│   ├── web/                    # Frontend SaaS — React 18 + Vite 7 + Tailwind 3
+│   ├── desktop/                # Desktop Windows — Tauri 2 + React
+│   └── flutter_app/            # Mobile — Flutter
 ├── packages/
-│   └── shared-types/           # Enums de dominio compartidos entre apps
-├── docs/                       # Documentación de negocio, legal, seguridad, operaciones
-├── .github/
-│   └── workflows/              # CI/CD — build, tests, deploy
-├── package.json                # Workspace root (scripts de monorepo)
-└── pnpm-workspace.yaml
+│   └── shared-types/           # Tipos y enums compartidos (11 archivos)
+├── scripts/                    # pre-push-check.sh, CI helpers
+├── docs/                       # Arquitectura, negocio, legal, operaciones
+└── wrangler.toml               # Cloudflare Worker (WS proxy + KV cache)
 ```
 
 ### Flujo de datos
 
 ```
 Usuario (navegador)
-  └── puerto 5000 (apps/web — Express)
-        ├── /           → React SPA (Vite build)
-        └── /api/*      → proxy → NestJS en puerto 4000
+  └── Cloudflare Pages (pymeshub.lat)
+        ├── Static assets (React SPA)
+        ├── /api/* → Worker proxy → Railway (api.pymeshub.lat)
+        └── /socket.io/* → Worker WebSocket → Railway
 
 Usuario (Windows)
-  └── apps/desktop (Tauri shell nativo)
-        └── fetch /api/* → NestJS en la nube
+  └── Tauri 2 shell nativo → Railway API
+
+Usuario (WhatsApp/Telegram)
+  └── Cloud API / Bot API → Webhook → Railway API
 ```
 
-Una sola base de datos PostgreSQL es la fuente de verdad para ambos clientes.
+### Deploy automático
 
-### Módulos del API (`apps/api/src/`)
-
-| Módulo | Responsabilidad |
-|--------|----------------|
-| `auth` | JWT + refresh token rotation |
-| `workspaces` | Multi-tenancy, stats, miembros, billing |
-| `contacts` | CRM: clientes, proveedores, leads |
-| `channels` | Configuración de canales (Email, WhatsApp, Form, API) |
-| `conversations` | Threads + mensajes + inbox |
-| `tasks` | Gestión de tareas con deadlines |
-| `documents` | Upload a S3/MinIO + OCR |
-| `automations` | Reglas, triggers, historial de ejecución |
-| `insights` | Motor de Insights Automáticos |
-| `summaries` | Resúmenes IA diarios |
-| `departments` | Equipos y enrutamiento |
-| `notifications` | In-app + WebSockets |
-| `invoices` | Facturación + recordatorios |
-| `hacienda` | Facturación electrónica CR (Ministerio de Hacienda) |
-| `pipeline` | Gestión de pipeline de ventas |
-| `workers` | BullMQ — jobs asíncronos (OCR, IA, email, sync) |
-| `ai` | Adaptadores de proveedores IA (OpenAI, Anthropic, Gemini) |
-| `audit` | Logs de auditoría por workspace |
-| `search` | Búsqueda full-text vía Prisma |
-| `common` | PrismaService, CryptoService, PlanLimitsService |
+| Plataforma | Rama | Excluye | Mecanismo |
+|-----------|------|---------|-----------|
+| **Railway** | `master` | `apps/web/client/`, `dist/` | `.dockerignore` |
+| **Cloudflare Pages** | `master` | `apps/api/`, `packages/` | `.cloudflareignore` |
 
 ---
 
@@ -149,22 +75,182 @@ Una sola base de datos PostgreSQL es la fuente de verdad para ambos clientes.
 
 | Capa | Tecnología |
 |------|-----------|
-| **Backend** | NestJS 10 — DI, Guards, Decorators, WebSockets |
-| **Base de datos** | PostgreSQL 16 + Prisma ORM |
-| **Jobs async** | BullMQ + Redis 7 |
-| **Storage** | AWS S3 / MinIO |
-| **Cliente web** | React 18 + Vite + TypeScript |
-| **UI web** | Radix UI + TailwindCSS + Lucide React |
-| **Routing web** | Wouter |
-| **Estado servidor** | TanStack Query (React Query) |
-| **Formularios** | React Hook Form + Zod |
-| **Cliente desktop** | Tauri 2 + React + Vite (Windows nativo) |
-| **Auth** | JWT + Refresh Token Rotation (reuse detection) |
-| **Real-time** | Socket.IO |
+| **Backend** | NestJS 11 — DI, Guards, Interceptors, WebSockets |
+| **ORM** | Prisma 7 + PostgreSQL 16 |
+| **Jobs** | BullMQ + Redis 7 (classifier, summaries, email, OCR, sync) |
+| **Storage** | MinIO / Cloudflare R2 |
+| **Frontend** | React 18 + Vite 7 + TypeScript 5 |
+| **UI** | Radix UI (shadcn/ui) + Tailwind CSS 3 + Lucide React |
+| **Routing** | Wouter (pathname-based, no hashes) |
+| **Estado** | TanStack Query 5 |
+| **Formularios** | React Hook Form 7 + Zod |
+| **Tiempo real** | Socket.IO 4 (WebSocket via Cloudflare Worker) |
+| **Desktop** | Tauri 2 (Windows nativo) |
+| **Mobile** | Flutter |
 | **Email** | Resend (outbound + inbound webhook) |
-| **AI** | OpenAI, Anthropic, Gemini, Moonshot |
+| **Mensajería** | WhatsApp Cloud API, Telegram Bot API |
+| **Pagos** | Paddle + PayPal |
+| **Auth** | JWT + Refresh Token Rotation + SAML SSO |
+| **AI** | OpenAI / Anthropic / Gemini / DeepSeek (via multi-provider adapter) |
 | **Observabilidad** | OpenTelemetry + Jaeger |
-| **Tipos compartidos** | `packages/shared-types` — enums de dominio |
+| **Edge** | Cloudflare Worker (WebSocket proxy, KV cache) |
+| **Hosting** | Railway (backend) + Cloudflare Pages (frontend) |
+
+---
+
+## Features principales
+
+### Inbox Unificado
+WhatsApp, Email, Telegram, formularios web y API — todo en una bandeja unificada con UX tipo mensajería:
+- Burbujas de chat con estados de entrega (enviado ✓, entregado ✓✓, leído ✓✓ azul)
+- WhatsApp: mensajes de texto, imágenes, video, audio, stickers, documentos, ubicación, contactos, interactivos (botones/listas)
+- Adjuntos con lightbox, media viewer y preview inline
+- Composición de mensajes con soporte de attachments + emoji + plantillas
+- Optimistic send, auto-scroll, slide-up animations
+- Indicadores de typing y recibos de lectura bidireccionales
+- Asignación de conversaciones a agentes
+- Prioridades (LOW / MEDIUM / HIGH / URGENT)
+- Resolución, archivado y trazabilidad completa
+
+### CRM de Contactos
+- Clientes, proveedores, leads con historial completo
+- Última interacción, etiquetas libres, notas privadas
+- Conversaciones, tareas, documentos y pedidos vinculados por contacto
+- Búsqueda y filtros avanzados
+
+### Pipeline de Pedidos
+- Ciclo completo: RECIBIDO → EN PROCESO → COMPLETADO → CANCELADO
+- Transiciones con reglas de estado válidas
+- Dashboard con métricas de volumen por estado
+- Integración con CRM e inbox
+
+### Facturación Electrónica (Hacienda CR)
+- Facturación electrónica integrada con Ministerio de Hacienda de Costa Rica
+- Catálogo CABYS de productos
+- Generación de PDF y envío por WhatsApp/Email desde el inbox
+
+### Insights Automáticos
+Motor de análisis mes-a-mes que genera alertas accionables en español:
+
+| Severidad | Ejemplo |
+|-----------|---------|
+| **Peligro** | "El 42% de tus tareas activas están vencidas — redistribuye la carga." |
+| **Alerta** | "Hay 7 conversaciones abiertas sin agente asignado." |
+| **Positivo** | "¡Completaste un 22% más de pedidos que el mes pasado!" |
+
+### Automatizaciones
+- Triggers: mensaje recibido, conversación creada, tarea vencida, pedido completado
+- Condiciones configurables con editor visual
+- Acciones: enviar mensaje, crear tarea, asignar agente, mover pipeline
+- Historial de ejecución con logs
+
+### Gestión de Tareas
+- Creación desde conversaciones, documentos o manual
+- Deadlines, prioridades, asignación por agente
+- Vista kanban y lista
+- Detección automática de tareas vencidas
+
+### Inventario
+- Catálogo de productos con categorías, stock y precios
+- Alertas de stock bajo
+- Movimientos de inventario (entradas/salidas)
+- Integración con facturación y pipeline de pedidos
+
+### Departamentos & Roles
+- Organización por departamento con visibilidad filtrada
+- Roles: OWNER / ADMIN / AGENT / VIEWER
+- SAML SSO para empresas
+- Feature flags por perfil (EMPRENDE / BUSINESS)
+
+### Notificaciones en Tiempo Real
+- WebSockets para actualizaciones instantáneas
+- Notificaciones in-app: mensaje nuevo, tarea vencida, mención
+- Campana de notificaciones con badge
+
+### AI Agent integrado
+- Resúmenes diarios automáticos en español
+- Clasificación de conversaciones por urgencia y categoría
+- Sugerencias de respuestas y productos
+- Extracción de datos de facturas (OCR + AI)
+
+---
+
+## Módulos del API (`apps/api/src/`)
+
+### Módulos de negocio (33)
+
+| Módulo | Responsabilidad |
+|--------|----------------|
+| `auth` | JWT + refresh rotation + SAML SSO |
+| `workspaces` | Multi-tenancy, stats, miembros, facturación |
+| `contacts` | CRM: clientes, proveedores, leads |
+| `conversations` | Threads + mensajes + inbox unificado |
+| `whatsapp` | WhatsApp Cloud API (send/receive/templates/media/interactive) |
+| `channels` | Configuración de canales (Email, WhatsApp, Telegram, Form, API) |
+| `tasks` | Gestión de tareas con deadlines |
+| `documents` | Upload a S3/MinIO + OCR automático |
+| `automations` | Reglas, triggers, condiciones, historial |
+| `invoices` | Facturación + recordatorios + pagos |
+| `hacienda` | Facturación electrónica CR (Hacienda) |
+| `pipeline` | Pipeline de ventas (stages + deals) |
+| `orders` | Pipeline de pedidos (RECEIVED→COMPLETED→CANCELLED) |
+| `inventory` | Catálogo de productos, stock, movimientos |
+| `insights` | Motor de Insights Automáticos |
+| `summaries` | Resúmenes IA diarios |
+| `notifications` | In-app + WebSockets + push |
+| `departments` | Equipos y enrutamiento |
+| `templates` | Plantillas de mensajes reutilizables |
+| `message-templates` | Plantillas WhatsApp Cloud API (UTILITY, MARKETING) |
+| `email` | Envío y recepción de email (Resend) |
+| `routing` | Reglas de enrutamiento de conversaciones |
+| `ai` | Multi-provider AI adapter (OpenAI, Anthropic, Gemini, DeepSeek) |
+| `feature-flags` | Feature gating por perfil (EMPRENDE/BUSINESS) |
+| `billing` | Paddle subscriptions + usage metering |
+| `import` | Importación CSV de contactos y productos |
+| `onboarding` | Wizard de configuración inicial |
+| `search` | Búsqueda full-text via Prisma |
+| `sla` | Service Level Agreements y métricas |
+| `enterprise` | Funcionalidades enterprise (SSO, audit avanzado) |
+| `platform` | Admin panel multi-workspace |
+| `demo` | Generación de datos demo para evaluación |
+| `insights` | Métricas de negocio accionables |
+
+### Módulos transversales (10)
+
+| Módulo | Responsabilidad |
+|--------|----------------|
+| `common/prisma` | PrismaService — singleton ORM |
+| `common/crypto` | AES-256-GCM encryption |
+| `common/storage` | S3/MinIO/R2 abstraction |
+| `common/sanitize` | HTML/Markdown sanitization |
+| `common/plan-limits` | Enforcement de límites por plan |
+| `common/i18n` | Traducciones y localización |
+| `common/telemetry` | OpenTelemetry tracing |
+| `common/metrics` | Métricas de producto y negocio |
+| `gateways/events` | Socket.IO gateway (WebSocket events) |
+| `health` | Health checks y memory monitoring |
+
+### Workers BullMQ
+
+| Worker | Propósito |
+|--------|-----------|
+| Classifier | Clasificación AI de conversaciones |
+| Summaries | Resúmenes diarios |
+| Email | Envío y procesamiento async |
+| OCR | Extracción de texto de documentos |
+| Sync | Sincronización con servicios externos |
+
+---
+
+## Planes
+
+| Plan | Usuarios | Contactos | Canales | Funcionalidades clave |
+|------|----------|-----------|---------|----------------------|
+| **FREE** | 1 | 100 | 2 | Inbox básico, contactos, tareas |
+| **EMPRENDE** | 1 | 500 | 3 | WhatsApp, pipeline de pedidos, facturación, AI inbox |
+| **BUSINESS** | 15 | Ilimitado | Ilimitado | Automatizaciones, SAML SSO, API, reportes avanzados |
+
+Los límites se aplican en tiempo real via `PlanLimitsService`. Los perfiles (EMPRENDE / BUSINESS) controlan qué features se muestran via `FeatureFlagsService`.
 
 ---
 
@@ -178,20 +264,15 @@ Una sola base de datos PostgreSQL es la fuente de verdad para ambos clientes.
 - Redis 7
 - (Opcional) MinIO para storage local
 
-### 1. Clona el repositorio
+### 1. Clonar e instalar
 
 ```bash
 git clone https://github.com/lento47/pymes-saas.git
 cd pymes-saas
-```
-
-### 2. Instala dependencias
-
-```bash
 pnpm install
 ```
 
-### 3. Variables de entorno
+### 2. Variables de entorno
 
 ```bash
 cp apps/api/.env.example apps/api/.env
@@ -200,10 +281,10 @@ cp apps/api/.env.example apps/api/.env
 Variables requeridas en `apps/api/.env`:
 
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/pymeshub"
-
+DATABASE_URL="postgresql://user:pass@localhost:5432/pymeshub"
 JWT_SECRET="tu-secreto-super-seguro"
 JWT_REFRESH_SECRET="otro-secreto-para-refresh"
+ENCRYPTION_KEY="clave-larga-de-64-caracteres-hex"
 
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -215,15 +296,15 @@ MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin
 MINIO_BUCKET=pymeshub
 
-ENCRYPTION_KEY="clave-larga-para-cifrar-secretos"
-
-# Opcional — habilita IA e email
+# Opcional — habilita IA, email y mensajería
 OPENAI_API_KEY=sk-...
 RESEND_API_KEY=re_...
-RESEND_WEBHOOK_SECRET=whsec_...
+WHATSAPP_PHONE_NUMBER_ID=...
+WHATSAPP_ACCESS_TOKEN=...
+TELEGRAM_BOT_TOKEN=...
 ```
 
-### 4. Base de datos
+### 3. Base de datos
 
 ```bash
 cd apps/api
@@ -231,16 +312,7 @@ pnpm exec prisma migrate dev
 pnpm exec prisma db seed
 ```
 
-### 5. Levanta el stack completo (Docker — recomendado)
-
-```bash
-cd apps/api
-docker compose up -d
-```
-
-Esto levanta PostgreSQL 16, Redis 7, MinIO y el API de NestJS con health checks.
-
-### 6. Levanta en modo desarrollo (sin Docker)
+### 4. Levantar en desarrollo
 
 ```bash
 # Terminal 1 — API (puerto 4000)
@@ -250,143 +322,82 @@ pnpm dev:api
 pnpm dev:web
 ```
 
-Abre [http://localhost:5000](http://localhost:5000) y regístrate con tu workspace.
+Abre [http://localhost:5000](http://localhost:5000).
 
----
-
-## App Desktop (Windows)
-
-PymesHub tiene una app nativa para Windows basada en [Tauri 2](https://tauri.app). Consume el mismo API de NestJS — no tiene base de datos propia.
-
-### Prerrequisitos adicionales
-
-- Rust (https://rustup.rs)
-- Dependencias de Tauri para tu OS: https://tauri.app/start/prerequisites
-
-### Desarrollo
-
-```bash
-cd apps/desktop
-cp .env.example .env
-# Edita VITE_API_URL=http://localhost:4000
-pnpm install
-pnpm tauri:dev
-```
-
-### Build para distribución
-
-```bash
-cd apps/desktop
-pnpm tauri:build
-# El instalador queda en src-tauri/target/release/bundle/
-```
-
----
-
-## Modelos de datos
-
-```
-Workspace (tenant)
-  ├── Users + WorkspaceUsers (roles)
-  ├── WorkspaceTaxProfile (datos fiscales CR)
-  ├── WorkspaceSubscription (billing)
-  ├── Contacts (customers, vendors, leads)
-  ├── Channels (Email, WhatsApp, Form, API)
-  ├── Conversations → Messages
-  │     ├── Tasks
-  │     └── Documents
-  ├── AutomationRules → AutomationExecutions
-  ├── DailySummaries
-  ├── Insights
-  ├── Departments → DepartmentMembers
-  ├── Notifications
-  ├── Invoices → InvoicePayments
-  ├── HaciendaDocuments
-  ├── PipelineStages → Deals
-  ├── RefreshTokens
-  └── AuditLogs
-```
-
-Cada modelo está aislado por `workspace_id` — multi-tenancy completo a nivel de base de datos.
-
----
-
-## Planes
-
-| Plan | Descripción |
-|------|-------------|
-| **FREE** | Funcionalidades básicas, límites estrictos |
-| **STARTER** | Más miembros, canales y almacenamiento |
-| **GROWTH** | Automatizaciones avanzadas, más integraciones |
-| **ENTERPRISE** | Sin límites, soporte dedicado |
-
-Los límites se aplican en tiempo real via `PlanLimitsService` antes de cada operación de creación.
-
----
-
-## API Reference (resumen)
-
-```
-POST   /api/auth/:workspace/login
-POST   /api/auth/register
-GET    /api/auth/me
-
-GET    /api/workspaces/current
-GET    /api/workspaces/current/stats
-GET    /api/workspaces/current/stats/today
-GET    /api/workspaces/current/members
-
-GET    /api/insights
-GET    /api/conversations
-POST   /api/conversations/:id/messages
-GET    /api/contacts
-GET    /api/tasks
-POST   /api/documents/upload
-GET    /api/automations
-POST   /api/summaries/generate
-GET    /api/notifications
-GET    /api/invoices
-GET    /api/pipeline/stages
-```
-
-Todos los endpoints requieren `Authorization: Bearer <token>`.
-
----
-
-## Email Inbound con Resend
-
-1. Ve a `Configuración > Canales`
-2. Crea o abre un canal `EMAIL`
-3. Configura API Key, email remitente y nombre
-4. Copia la `Webhook URL`, `X-Workspace-Id` y `X-Channel-Id` generados
-5. Configura esos valores en Resend inbound webhook
-
-Los mensajes inbound crean o reutilizan contacto y entran al inbox como conversación real.
-
----
-
-## Tests
+O con Docker:
 
 ```bash
 cd apps/api
-pnpm test           # unit tests
-pnpm test:watch     # modo watch
-pnpm test:cov       # con coverage
+docker compose up -d   # PostgreSQL + Redis + MinIO
+pnpm dev:api           # API en modo dev apuntando a Docker
 ```
 
-Los tests unitarios usan mocks de `PrismaService` — no requieren base de datos.
+---
+
+## Estructura del Frontend (`apps/web/`)
+
+```
+apps/web/
+├── client/src/
+│   ├── pages/              # 53 páginas (~50 rutas)
+│   │   ├── landing.tsx     # Landing page (no-auth) / dashboard (auth)
+│   │   ├── login.tsx, register.tsx, pricing.tsx, product.tsx
+│   │   ├── inbox.tsx, contacts.tsx, tasks.tsx, documents.tsx
+│   │   ├── invoices.tsx, pipeline.tsx, inventory.tsx
+│   │   ├── automations.tsx, notifications.tsx, agent.tsx
+│   │   ├── settings/       # workspace, members, channels, billing, AI, integrations
+│   │   ├── admin/          # Platform admin panel (multi-workspace)
+│   │   └── onboarding.tsx, help.tsx, support.tsx
+│   ├── components/         # 123 componentes en 15 directorios
+│   │   ├── ui/             # 45 shadcn/ui primitives
+│   │   ├── layout/         # Sidebar, header, mobile nav
+│   │   ├── shared/         # 25 componentes transversales
+│   │   └── settings/, automations/, inventory/, marketing/
+│   ├── features/
+│   │   └── inbox/          # 42 archivos — arquitectura modular de inbox
+│   │       ├── components/conversation/   # MessageBubble, Timeline, Composer
+│   │       ├── components/media/          # Image, Video, Audio, Sticker, Document
+│   │       └── components/composer/       # ServiceWindowGuard, InteractiveToolbar
+│   └── hooks/              # 14 custom hooks (auth, socket, feature-flags, etc.)
+├── server/                 # Express proxy (Vite dev → API)
+├── cloudflare-worker.js    # Edge Worker (WebSocket proxy + deploy monitoring)
+├── tailwind.config.ts      # Design system: dark theme, fintech institucional
+└── vite.config.ts
+```
+
+---
+
+## Pruebas
+
+```bash
+# API (unit tests con Jest + mocks de PrismaService)
+cd apps/api
+pnpm test
+pnpm test:watch
+pnpm test:cov
+
+# Frontend (Vitest + Testing Library)
+cd apps/web
+pnpm test
+pnpm test:watch
+
+# Pre-push safety check
+bash scripts/pre-push-check.sh    # tsc + lint + Prisma + critical modules
+```
 
 ---
 
 ## CI/CD
 
-Los workflows están en `.github/workflows/`:
+Deploy automático desde `master`:
 
-| Workflow | Trigger | Qué hace |
-|----------|---------|----------|
-| `api-ci.yml` | push/PR a `main` | lint, build, tests con PostgreSQL real |
-| `pr-checks.yml` | apertura de PR | valida descripción + build TypeScript |
-| `api-deploy.yml` | push a `main` | build imagen Docker → push a ghcr.io → deploy SSH |
+| Plataforma | Trigger | Pipeline |
+|-----------|---------|----------|
+| **Railway** | Push a `master` | Docker build → deploy automático |
+| **Cloudflare Pages** | Push a `master` | `pnpm build` → deploy automático |
+| **Hermes webhook** | Railway deploy event | POST a `hermes.pymeshub.lat/webhooks/railway-deploy` |
+
+Pre-push safety: `scripts/pre-push-check.sh` valida TypeScript, Prisma, módulos críticos y conflict markers antes de cada push.
 
 ---
 
@@ -395,22 +406,28 @@ Los workflows están en `.github/workflows/`:
 ```
 docs/
 ├── architecture/     # Decisiones de arquitectura
-├── business/         # Modelo de negocio, pricing
+├── business/         # Modelo de negocio, pricing, planes
 ├── legal/            # Términos, privacidad, compliance
 ├── operations/       # Runbooks, deployment, backups
 ├── security/         # Políticas y controles de seguridad
-├── product-compliance/
-└── templates/
+└── product-compliance/
 ```
+
+Referencias técnicas en el repo:
+- `AGENTS.md` — Contexto canónico para el agente Hermes
+- `repo-constitution.md` — Invariantes del proyecto
+- `verification-recipes.md` — Comandos de verificación
+- `incident-memory.md` — Incidentes y lecciones aprendidas
 
 ---
 
 ## Contribuir
 
-1. Fork del repo
-2. Crea tu rama: `git checkout -b feat/mi-feature`
-3. Commit con mensaje descriptivo
-4. Push y abre un Pull Request — usa el template provisto
+1. Trabajá directamente en `master` — branch unificado
+2. Commit con mensaje descriptivo: `feat(api):`, `fix(web):`, `refactor(shared):`
+3. `git pull --rebase` antes de push — nunca force-push
+4. Ejecutá `scripts/pre-push-check.sh` antes de cada push
+5. El usuario maneja PRs y merges desde branches temporales
 
 ---
 
