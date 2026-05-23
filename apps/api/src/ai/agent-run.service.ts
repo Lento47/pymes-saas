@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from "@nestjs/common";
+import { Injectable, Logger, Inject, forwardRef, Optional } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CloudflareAiService, AssistantMessage } from "./cloudflare-ai.service";
 import { EmrendeAiService } from "./emprende-ai.service";
@@ -6,6 +6,7 @@ import { EventsGateway } from "../gateways/events.gateway";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { ContactMemoryService } from "../memory/contact-memory.service";
 
 export type AgentIntent = "ORDER" | "APPOINTMENT" | "QUOTE" | "COMPLAINT";
 
@@ -85,7 +86,7 @@ const INTENT_FLOWS: Record<AgentIntent, IntentFlow> = {
 
 type ConvShape = {
   metadata_json: unknown;
-  contact: { phone: string | null; telegram_chat_id: string | null } | null;
+  contact: { id?: string; phone: string | null; telegram_chat_id: string | null } | null;
   channel_id: string | null;
   assigned_user_id?: string | null;
 };
@@ -104,6 +105,7 @@ export class AgentRunService {
     private readonly whatsapp: WhatsAppService,
     private readonly telegramOutbound: TelegramOutboundService,
     private readonly planLimits: PlanLimitsService,
+    @Optional() private readonly contactMemory?: ContactMemoryService,
   ) {}
 
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -121,7 +123,7 @@ export class AgentRunService {
       where: { id: conversationId, workspace_id: workspaceId },
       select: {
         metadata_json: true,
-        contact: { select: { phone: true, telegram_chat_id: true } },
+        contact: { select: { id: true, phone: true, telegram_chat_id: true } },
         channel_id: true,
         assigned_user_id: true,
       },
@@ -133,11 +135,19 @@ export class AgentRunService {
     if (existingRun?.status === "RUNNING") return existingRun;
 
     const ctx = await this.emprendeAi.buildBusinessContext(workspaceId);
+
+    // Load contact memory to personalize the agent's context
+    const contactMemoryProfile = conv.contact?.id && this.contactMemory
+      ? await this.contactMemory.getActiveProfile(conv.contact.id).catch(() => null)
+      : null;
+
+    const agentModel = ctx.aiAgentProvider === "workers_ai" ? ctx.aiAgentModel : null;
     const detection = await this.detectIntent(
       triggerText,
       ctx.workspaceName,
       ctx.categories,
-      ctx.aiAgentProvider === "workers_ai" ? ctx.aiAgentModel : null,
+      agentModel,
+      contactMemoryProfile,
     );
     if (!detection) return null;
 
@@ -194,7 +204,7 @@ export class AgentRunService {
       where: { id: conversationId, workspace_id: workspaceId },
       select: {
         metadata_json: true,
-        contact: { select: { phone: true, telegram_chat_id: true } },
+        contact: { select: { id: true, phone: true, telegram_chat_id: true } },
         channel_id: true,
         assigned_user_id: true,
       },
@@ -277,11 +287,16 @@ export class AgentRunService {
     businessName: string,
     categories: string[],
     agentModel: string | null,
+    memory?: import("../memory/contact-memory.service").ContactMemoryProfile | null,
   ): Promise<{ intent: AgentIntent; extracted: Record<string, string> } | null> {
     if (!this.cloudflare.isConfigured) return null;
 
     const businessType = categories.length > 0 ? categories.join(", ") : "servicios generales";
-    const prompt = `Eres el asistente de "${businessName}" (${businessType}).
+    const memoryContext = memory
+      ? `\nContexto del cliente: suele pedir "${(memory.common_requests ?? []).slice(-3).join(", ")}". Último pedido: ${memory.last_intent ?? "desconocido"}. Preferencias: ${JSON.stringify(memory.preferences ?? {})}.`
+      : "";
+
+    const prompt = `Eres el asistente de "${businessName}" (${businessType}).${memoryContext}
 Un cliente envió este mensaje: "${text.slice(0, 500)}"
 
 Analiza la intención real de la frase por su sintaxis y semántica. No uses palabras clave hardcodeadas.
@@ -510,6 +525,13 @@ Si indica que no tiene la información, responde "N/A".`;
       has_media: false,
       media_status: "none",
     });
+
+    // Enrich contact memory with data collected during this run
+    if (this.contactMemory && conv.contact?.id) {
+      this.contactMemory
+        .enrichFromAgentRun(workspaceId, conv.contact.id, run.intent, run.collected)
+        .catch((err) => this.logger.warn("Failed to enrich contact memory", err));
+    }
   }
 
   private async saveRun(conversationId: string, meta: Record<string, unknown>, run: AgentRun): Promise<void> {
