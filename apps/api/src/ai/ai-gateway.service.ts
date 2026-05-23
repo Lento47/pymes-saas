@@ -285,17 +285,29 @@ export class AiGatewayService {
       text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
       usage = json.usageMetadata;
     } else if (provider === "workers-ai") {
+      const r = json.response;
       text = (
-        json.result?.response?.trim() ??
-        json.result?.choices?.[0]?.message?.content?.trim() ??
-        json.choices?.[0]?.message?.content?.trim() ??
+        json.result?.response?.trim() ||
+        json.result?.choices?.[0]?.message?.content?.trim() ||
+        json.choices?.[0]?.message?.content?.trim() ||
+        (typeof r === "string" ? r.trim() : "") ||
+        (r && typeof r === "object" ? JSON.stringify(r) : "") ||
         ""
       );
       usage = json.result?.usage ?? json.usage;
     } else {
-      text = json.choices?.[0]?.message?.content?.trim() ?? "";
+      const r = json.response;
+      text = (
+        json.choices?.[0]?.message?.content?.trim() ||
+        (typeof r === "string" ? r.trim() : "") ||
+        (r && typeof r === "object" ? JSON.stringify(r) : "") ||
+        ""
+      );
     }
 
+    if (!text) {
+      this.logger.warn(`AI Gateway legacy [${provider}/${model}] empty text. Raw keys: ${Object.keys(json).join(", ")}`);
+    }
     return this.withUsage(text, usage, { provider, model, messages });
   }
 
