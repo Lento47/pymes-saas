@@ -65,7 +65,7 @@ function getWhatsAppMessage(rawPayload: Record<string, any> | null): Record<stri
 }
 
 function isGenericInteractiveText(text: string): boolean {
-  return /mensaje de tipo interactive/i.test(text);
+  return /mensaje (de tipo interactive|interactivo de whatsapp)/i.test(text);
 }
 
 type InteractiveAttachmentData = Pick<
