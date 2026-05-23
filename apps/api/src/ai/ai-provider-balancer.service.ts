@@ -16,7 +16,19 @@ export class AiProviderBalancerService {
   ): Promise<ChatCompletionWithUsage> {
     const targets = providers.length > 0 ? providers : [undefined as unknown as string];
     const errors: string[] = [];
+    // Track quota-exhausted provider prefixes (e.g. "workers-ai") so we skip
+    // sibling models that share the same daily/rate limit pool.
+    const exhaustedPools = new Set<string>();
+
     for (const model of targets) {
+      const prefix = model?.split("/")[0] ?? "default";
+
+      if (exhaustedPools.has(prefix)) {
+        this.logger.warn(`Skipping ${model} — quota pool "${prefix}" already exhausted`);
+        errors.push(`${model}: quota pool exhausted (skipped)`);
+        continue;
+      }
+
       try {
         return await this.gateway.chatCompletionWithUsage(messages, {
           model,
@@ -25,7 +37,14 @@ export class AiProviderBalancerService {
         });
       } catch (err) {
         const msg = (err as Error).message ?? String(err);
-        this.logger.warn(`Provider ${model ?? "default"} failed, trying next: ${msg}`);
+        // 429 = rate-limit / quota exhausted — mark the whole provider pool
+        const isQuotaError = msg.includes("429") || msg.toLowerCase().includes("rate limit") || msg.toLowerCase().includes("neurons");
+        if (isQuotaError) {
+          exhaustedPools.add(prefix);
+          this.logger.warn(`Provider pool "${prefix}" quota exhausted — skipping remaining ${prefix} models`);
+        } else {
+          this.logger.warn(`Provider ${model ?? "default"} failed, trying next: ${msg}`);
+        }
         errors.push(`${model ?? "default"}: ${msg}`);
       }
     }
