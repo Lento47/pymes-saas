@@ -70,8 +70,14 @@ export default function AiSettingsPage() {
       setTone(workspace.ai_business_tone ?? "");
       // Load ai_agent_providers (new format) or fall back from legacy single provider
       const savedProviders = workspace.ai_agent_providers;
+      const validIds = new Set(GATEWAY_MODELS.map((m) => m.id));
       if (Array.isArray(savedProviders) && savedProviders.length > 0) {
-        setAgentProviders(savedProviders);
+        const filtered = savedProviders.filter((p: string) => validIds.has(p));
+        setAgentProviders(
+          filtered.length > 0
+            ? filtered
+            : ["workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"],
+        );
       } else {
         // Legacy: convert old ai_agent_provider + ai_agent_model
         const legacyProvider = workspace.ai_agent_provider ?? "workers_ai";
