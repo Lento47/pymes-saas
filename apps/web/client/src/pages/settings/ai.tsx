@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, CheckCircle2, Bot, ClipboardList } from "lucide-react";
 import { SettingsLayout } from "@/components/settings/settings-layout";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 const AI_PROVIDERS = [
   { id: "openai",          label: "OpenAI",                 models: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-5"] },
@@ -51,7 +53,6 @@ const GATEWAY_MODELS = [
   { id: "perplexity-ai/llama-3.1-sonar-large-128k-online", label: "Sonar Large (online)", provider: "Perplexity" },
   { id: "baseten/openai/gpt-oss-120b", label: "GPT-OSS 120B", provider: "Baseten" },
   { id: "parallel/speed", label: "Speed", provider: "Parallel" },
-  { id: "moonshot/moonshot-v1-8k", label: "Moonshot V1 8K", provider: "Moonshot" },
 ];
 
 export default function AiSettingsPage() {
@@ -68,6 +69,7 @@ export default function AiSettingsPage() {
   const [productsServices, setProductsServices] = useState("");
   const [policies, setPolicies] = useState("");
   const [tone, setTone] = useState("");
+  const [customApiEnabled, setCustomApiEnabled] = useState(true);
   const [agentProviders, setAgentProviders] = useState<string[]>(["workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"]);
   const [addingModel, setAddingModel] = useState("");
   const [assignmentMode, setAssignmentMode] = useState("conversation_assignee");
@@ -81,6 +83,7 @@ export default function AiSettingsPage() {
 
   useEffect(() => {
     if (workspace) {
+      setCustomApiEnabled(workspace.ai_custom_api_enabled !== false);
       setProvider(workspace.ai_provider ?? "");
       setModel(workspace.ai_model ?? "");
       setBusinessPrompt(workspace.ai_business_prompt ?? "");
@@ -106,6 +109,7 @@ export default function AiSettingsPage() {
       setIntentAssignees(workspace.ai_agent_intent_assignees ?? {});
     }
   }, [
+    workspace?.ai_custom_api_enabled,
     workspace?.ai_provider,
     workspace?.ai_model,
     workspace?.ai_business_prompt,
@@ -130,6 +134,7 @@ export default function AiSettingsPage() {
       ai_model:    model    || undefined,
       ai_api_key:  apiKey   || undefined,
       settings_json: {
+        ai_custom_api_enabled: customApiEnabled,
         ai_business_prompt: businessPrompt,
         ai_business_products_services: productsServices,
         ai_business_policies: policies,
@@ -225,6 +230,15 @@ export default function AiSettingsPage() {
         )}
 
         <div className="space-y-4 max-w-lg">
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs font-medium">Activar API personalizada</p>
+              <p className="text-[11px] text-muted-foreground">Análisis de conversaciones con tu clave de IA</p>
+            </div>
+            <Switch checked={customApiEnabled} onCheckedChange={setCustomApiEnabled} />
+          </div>
+
+          <div className={cn("space-y-4", !customApiEnabled && "opacity-40 pointer-events-none")}>
           <div>
             <Label className="text-xs mb-1 block">Proveedor de IA</Label>
             <Select value={provider} onValueChange={v => { setProvider(v); setModel(""); }}>
@@ -277,12 +291,14 @@ export default function AiSettingsPage() {
             </div>
           </div>
 
+          </div>{/* end opacity wrapper */}
+
           <div className="flex gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => testConnection.mutate()}
-              disabled={!canTest || testConnection.isPending}
+              disabled={!canTest || testConnection.isPending || !customApiEnabled}
               className="h-8 text-xs border-border"
             >
               {testConnection.isPending ? "Probando..." : "Probar conexion"}

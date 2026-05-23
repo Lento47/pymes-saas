@@ -2,11 +2,9 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AssistantMessage, ChatCompletionWithUsage } from "./cloudflare-ai.service";
 
-// Providers that do NOT support the /compat universal endpoint — must use legacy paths
-const COMPAT_UNSUPPORTED = new Set([
-  "workers-ai", // has its own /workers-ai/run/{model} endpoint
-  "cerebras",   // CF AI Gateway routes cerebras via its own legacy endpoint
-]);
+// All CF-supported providers work via the /compat universal endpoint per official docs.
+// Legacy paths remain as fallback when compatUrl/compatToken are not configured.
+const COMPAT_UNSUPPORTED = new Set<string>();
 
 @Injectable()
 export class AiGatewayService {

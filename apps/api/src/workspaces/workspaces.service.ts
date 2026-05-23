@@ -54,6 +54,7 @@ export class WorkspacesService {
       ai_agent_provider: settings.ai_agent_provider ?? "workers_ai",
       ai_agent_model: settings.ai_agent_model ?? "",
       ai_agent_providers: Array.isArray(settings.ai_agent_providers) ? settings.ai_agent_providers : null,
+      ai_custom_api_enabled: settings.ai_custom_api_enabled !== false,
       ai_business_prompt: settings.ai_business_prompt ?? "",
       ai_business_products_services: settings.ai_business_products_services ?? "",
       ai_business_policies: settings.ai_business_policies ?? "",
