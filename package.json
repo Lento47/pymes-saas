@@ -20,6 +20,12 @@
     "pnpm": ">=10"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["tesseract.js", "sharp", "bcrypt"]
+    "onlyBuiltDependencies": ["tesseract.js", "sharp", "bcrypt"],
+    "overrides": {
+      "protobufjs": ">=7.5.8",
+      "@protobufjs/utf8": ">=1.1.1",
+      "ws": ">=8.20.1",
+      "qs": ">=6.15.2"
+    }
   }
 }
