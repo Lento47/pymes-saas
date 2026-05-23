@@ -495,6 +495,10 @@ export const api = {
   getContactMemory: (contactId: string) => request<any>("GET", `/api/memory/contacts/${contactId}`),
   extendContactMemory: (contactId: string, days: number) => request<any>("POST", `/api/memory/contacts/${contactId}/extend`, { days }),
   getCredits: () => request<any>("GET", "/api/memory/credits"),
+  createPayPalOrder: (dto: { packId?: string; credits?: number; price?: number }) =>
+    request<{ orderId: string }>("POST", "/api/billing/paypal/create-order", dto),
+  capturePayPalOrder: (dto: { orderId: string }) =>
+    request<{ success: boolean; credits: number; newBalance: number }>("POST", "/api/billing/paypal/capture-order", dto),
   emprendeSuggestTasks: (messageText: string, contactId?: string) => request<any[]>("POST", "/api/ai/emprende/suggest-tasks", { messageText, contactId }),
   delegateConversationToAi: (id: string) => request<{ ok: boolean; ai_state: string }>("PATCH", `/api/conversations/${id}/delegate-to-ai`, {}),
   getAgentRun: (id: string) => request<any>("GET", `/api/conversations/${id}/agent-run`),

@@ -19,6 +19,7 @@
     "@nestjs/platform-socket.io": "^11.1.19",
     "@nestjs/websockets": "^11.1.19",
     "@paddle/paddle-js": "^1.6.4",
+    "@paypal/react-paypal-js": "^9.2.0",
     "@radix-ui/react-accordion": "^1.2.4",
     "@radix-ui/react-alert-dialog": "^1.1.7",
     "@radix-ui/react-aspect-ratio": "^1.1.3",

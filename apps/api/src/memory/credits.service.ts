@@ -102,6 +102,12 @@ export class CreditsService {
     });
   }
 
+  async findTransactionByPaypalOrderId(orderId: string) {
+    return this.prisma.creditTransaction.findFirst({
+      where: { paypal_order_id: orderId },
+    });
+  }
+
   getCreditPacks() {
     return CREDIT_PACKS;
   }

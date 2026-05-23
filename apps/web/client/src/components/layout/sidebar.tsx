@@ -246,9 +246,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               style={{
                 borderColor: wsMenuOpen ? "rgba(139,92,246,0.3)" : "rgba(139,92,246,0.18)",
                 background: wsMenuOpen ? "rgba(139,92,246,0.08)" : "rgba(139,92,246,0.04)",
+                cursor: multipleWorkspaces ? "pointer" : "default",
               }}
               onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
-              style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
               aria-expanded={multipleWorkspaces ? wsMenuOpen : undefined}
             >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/70 bg-sidebar-accent/40">

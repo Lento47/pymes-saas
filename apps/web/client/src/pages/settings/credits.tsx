@@ -1,12 +1,20 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { useToast } from "@/hooks/use-toast";
-import { Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders } from "lucide-react";
+import { Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -251,9 +259,96 @@ function CustomPackSection({
   );
 }
 
+const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID || "";
+
+function PayPalCheckoutDialog({
+  open,
+  onClose,
+  orderId,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  orderId: string | null;
+  onSuccess: (result: { credits: number; newBalance: number }) => void;
+}) {
+  const { toast } = useToast();
+  const [capturing, setCapturing] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v && !capturing) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Completar pago con PayPal</DialogTitle>
+          <DialogDescription>
+            Revisá los detalles y aprobá el pago en la ventana de PayPal.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4 min-h-[200px] flex items-center justify-center">
+          {capturing ? (
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <p className="text-xs">Procesando pago...</p>
+            </div>
+          ) : !PAYPAL_CLIENT_ID ? (
+            <p className="text-xs text-amber-400 text-center">
+              PayPal no está configurado. VITE_PAYPAL_CLIENT_ID no está definido.
+            </p>
+          ) : orderId ? (
+            <PayPalScriptProvider options={{ clientId: PAYPAL_CLIENT_ID, currency: "USD" }}>
+              <PayPalButtons
+                style={{ layout: "vertical", shape: "rect", label: "pay" }}
+                createOrder={() => Promise.resolve(orderId)}
+                onApprove={async () => {
+                  setCapturing(true);
+                  try {
+                    const result = await api.capturePayPalOrder({ orderId });
+                    onSuccess(result);
+                    toast({
+                      title: "¡Créditos agregados!",
+                      description: `Se agregaron ${result.credits} créditos a tu cuenta.`,
+                    });
+                  } catch (err: any) {
+                    toast({
+                      title: "Error al procesar el pago",
+                      description: err?.message || "Ocurrió un error inesperado.",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setCapturing(false);
+                    onClose();
+                  }
+                }}
+                onError={() => {
+                  toast({
+                    title: "Error de PayPal",
+                    description: "Ocurrió un error al procesar el pago.",
+                    variant: "destructive",
+                  });
+                  onClose();
+                }}
+                onCancel={() => {
+                  toast({ title: "Pago cancelado", description: "No se realizó ningún cargo." });
+                  onClose();
+                }}
+              />
+            </PayPalScriptProvider>
+          ) : (
+            <p className="text-xs text-muted-foreground">Creando orden...</p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function CreditsSettingsPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [buyingPack, setBuyingPack] = useState<string | null>(null);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [showPayPal, setShowPayPal] = useState(false);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["/api/memory/credits"],
@@ -264,14 +359,33 @@ export default function CreditsSettingsPage() {
   const history: any[] = data?.history ?? [];
   const packs: any[] = data?.packs ?? [];
 
-  function handleBuy(packId: string, _credits?: number, _price?: number) {
+  const handleBuy = useCallback(async (packId: string, credits?: number, price?: number) => {
     setBuyingPack(packId);
-    toast({
-      title: "PayPal próximamente",
-      description: "La integración con PayPal está en camino. Pronto podrás comprar créditos aquí.",
-    });
-    setTimeout(() => setBuyingPack(null), 2000);
-  }
+    setIsCreatingOrder(true);
+    try {
+      const { orderId } = await api.createPayPalOrder({ packId, credits, price });
+      setCurrentOrderId(orderId);
+      setShowPayPal(true);
+    } catch (err: any) {
+      toast({
+        title: "Error al crear la orden",
+        description: err?.message || "No se pudo iniciar el pago con PayPal.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingOrder(false);
+      setBuyingPack(null);
+    }
+  }, [toast]);
+
+  const handlePayPalSuccess = useCallback((result: { credits: number; newBalance: number }) => {
+    queryClient.invalidateQueries({ queryKey: ["/api/memory/credits"] });
+  }, [queryClient]);
+
+  const closePayPal = useCallback(() => {
+    setShowPayPal(false);
+    setCurrentOrderId(null);
+  }, []);
 
   const daysEstimate = balance > 0
     ? `~${balance} día${balance !== 1 ? "s" : ""} para 1 contacto activo`
@@ -325,20 +439,20 @@ export default function CreditsSettingsPage() {
                 key={pack.id}
                 pack={pack}
                 onBuy={handleBuy}
-                isPending={buyingPack === pack.id}
+                isPending={buyingPack === pack.id || isCreatingOrder}
               />
             ))}
           </div>
           <p className="text-[11px] text-muted-foreground mt-3">
             Los créditos se comparten entre todos los contactos del workspace. No tienen fecha de vencimiento.
-            Pagos procesados con PayPal — próximamente disponible.
+            Pagos procesados con PayPal.
           </p>
         </div>
 
         {/* Custom pack */}
         <CustomPackSection
           onBuy={handleBuy}
-          isPending={buyingPack === "custom"}
+          isPending={buyingPack === "custom" || isCreatingOrder}
         />
 
         {/* Transaction history */}
@@ -392,6 +506,13 @@ export default function CreditsSettingsPage() {
         </div>
 
       </div>
+
+      <PayPalCheckoutDialog
+        open={showPayPal}
+        onClose={closePayPal}
+        orderId={currentOrderId}
+        onSuccess={handlePayPalSuccess}
+      />
     </SettingsLayout>
   );
 }

@@ -28,6 +28,7 @@ export interface AuthUser {
     timezone?: string;
     locale?: string;
     status?: string;
+    logo_url?: string;
   };
 }
 
@@ -55,6 +56,7 @@ type WorkspaceUpdatePayload = {
   timezone?: string;
   locale?: string;
   status?: string;
+  logo_url?: string;
 };
 
 let _wsUpdatedAttached = false;
@@ -75,6 +77,7 @@ function attachWorkspaceUpdateListener() {
         timezone: workspace.timezone ?? _user.workspace.timezone,
         locale: workspace.locale ?? _user.workspace.locale,
         status: workspace.status ?? _user.workspace.status,
+        logo_url: workspace.logo_url ?? _user.workspace.logo_url,
       },
     };
     notifyListeners();
