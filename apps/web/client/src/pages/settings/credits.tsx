@@ -1,13 +1,30 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { useToast } from "@/hooks/use-toast";
-import { Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock } from "lucide-react";
+import { Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+
+// Price tiers: the more you buy, the cheaper per credit
+function calcCustomPrice(credits: number): number {
+  if (credits >= 5000) return credits * 0.014;
+  if (credits >= 1500) return credits * 0.0166;
+  if (credits >= 500)  return credits * 0.02;
+  return credits * 0.03;
+}
+
+function calcPricePerCredit(credits: number): number {
+  if (credits >= 5000) return 0.014;
+  if (credits >= 1500) return 0.0166;
+  if (credits >= 500)  return 0.02;
+  return 0.03;
+}
 
 const PACK_ICONS: Record<string, string> = {
   pack_100:  "⚡",
@@ -126,6 +143,114 @@ function TransactionRow({ tx }: { tx: any }) {
   );
 }
 
+function CustomPackSection({
+  onBuy,
+  isPending,
+}: {
+  onBuy: (packId: string, credits: number, price: number) => void;
+  isPending: boolean;
+}) {
+  const [rawInput, setRawInput] = useState("");
+  const credits = useMemo(() => {
+    const n = parseInt(rawInput, 10);
+    return isNaN(n) ? 0 : Math.max(0, n);
+  }, [rawInput]);
+
+  const price = credits > 0 ? calcCustomPrice(credits) : 0;
+  const ppc   = credits > 0 ? calcPricePerCredit(credits) : 0;
+  const tier  = credits >= 5000 ? "5000+" : credits >= 1500 ? "1500+" : credits >= 500 ? "500+" : "base";
+
+  const tierLabel: Record<string, string> = {
+    "5000+": "Precio máximo descuento",
+    "1500+": "Descuento avanzado",
+    "500+":  "Descuento estándar",
+    "base":  "Precio base",
+  };
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/40 p-5">
+      <h3 className="text-xs font-semibold text-foreground mb-1 flex items-center gap-2">
+        <Sliders className="w-3.5 h-3.5 text-primary" />
+        Cantidad personalizada
+      </h3>
+      <p className="text-[11px] text-muted-foreground mb-4">
+        Comprá la cantidad exacta que necesitás. Mejor precio a mayor volumen.
+      </p>
+
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1 space-y-1.5">
+          <Label htmlFor="custom-credits" className="text-[11px] text-muted-foreground">
+            Cantidad de créditos
+          </Label>
+          <Input
+            id="custom-credits"
+            type="number"
+            min={1}
+            placeholder="ej. 800"
+            value={rawInput}
+            onChange={(e) => setRawInput(e.target.value)}
+            className="h-9 text-sm bg-background/50"
+          />
+        </div>
+
+        {credits > 0 && (
+          <div className="flex-1 rounded-lg border border-border/40 bg-background/30 px-4 py-3 space-y-1.5">
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-muted-foreground">Total</span>
+              <span className="text-sm font-bold text-foreground">${price.toFixed(2)} USD</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-muted-foreground">Por crédito</span>
+              <span className="text-[11px] text-foreground">${ppc.toFixed(4)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-muted-foreground">Nivel</span>
+              <span className="text-[10px] text-primary font-medium">{tierLabel[tier]}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-muted-foreground">Estimado</span>
+              <span className="text-[11px] text-foreground">
+                ~{credits.toLocaleString()} días · 1 contacto activo
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <Button
+          onClick={() => onBuy("custom", credits, price)}
+          disabled={isPending || credits < 1}
+          className="h-8 text-xs px-4"
+        >
+          <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
+          Comprar con PayPal
+          {credits > 0 && <span className="ml-1.5 opacity-70">· ${price.toFixed(2)}</span>}
+        </Button>
+
+        {/* Tier threshold hints */}
+        <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground/60">
+          {credits < 500 && (
+            <span>
+              +{(500 - credits).toLocaleString()} para ${(0.02).toFixed(3)}/créd
+            </span>
+          )}
+          {credits >= 500 && credits < 1500 && (
+            <span>
+              +{(1500 - credits).toLocaleString()} para ${(0.0166).toFixed(4)}/créd
+            </span>
+          )}
+          {credits >= 1500 && credits < 5000 && (
+            <span>
+              +{(5000 - credits).toLocaleString()} para ${(0.014).toFixed(3)}/créd
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CreditsSettingsPage() {
   const { toast } = useToast();
   const [buyingPack, setBuyingPack] = useState<string | null>(null);
@@ -139,8 +264,7 @@ export default function CreditsSettingsPage() {
   const history: any[] = data?.history ?? [];
   const packs: any[] = data?.packs ?? [];
 
-  function handleBuy(packId: string) {
-    // PayPal integration coming — show toast for now
+  function handleBuy(packId: string, _credits?: number, _price?: number) {
     setBuyingPack(packId);
     toast({
       title: "PayPal próximamente",
@@ -210,6 +334,12 @@ export default function CreditsSettingsPage() {
             Pagos procesados con PayPal — próximamente disponible.
           </p>
         </div>
+
+        {/* Custom pack */}
+        <CustomPackSection
+          onBuy={handleBuy}
+          isPending={buyingPack === "custom"}
+        />
 
         {/* Transaction history */}
         <div>
