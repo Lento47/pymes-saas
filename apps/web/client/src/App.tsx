@@ -35,6 +35,7 @@ import ChannelsSettingsPage from "@/pages/settings/channels";
 import DepartmentsSettingsPage from "@/pages/settings/departments";
 import IntegrationsSettingsPage from "@/pages/settings/integrations";
 import AiSettingsPage from "@/pages/settings/ai";
+import CreditsSettingsPage from "@/pages/settings/credits";
 import PlatformSettingsPage from "@/pages/settings/platform";
 import Billing from "@/pages/billing";
 import HelpPage from "@/pages/help";
@@ -224,6 +225,9 @@ function AppRouter() {
       </Route>
       <Route path="/settings/ai">
         {() => <ProtectedLayout><AiSettingsPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/settings/credits">
+        {() => <ProtectedLayout><CreditsSettingsPage /></ProtectedLayout>}
       </Route>
       <Route path="/settings/platform">
         {() => <ProtectedLayout><PlatformSettingsPage /></ProtectedLayout>}
