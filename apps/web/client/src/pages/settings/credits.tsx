@@ -707,13 +707,30 @@ export default function CreditsSettingsPage() {
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-0.5">
                 Tokens IA
               </p>
-              <p className="text-3xl font-bold text-foreground tabular-nums">
+              <p className={cn(
+                "text-3xl font-bold tabular-nums",
+                isLoadingAiTokens ? "text-foreground" :
+                tokenBalance.available > 10_000 ? "text-emerald-400" :
+                tokenBalance.available > 1_000 ? "text-amber-400" :
+                "text-red-400"
+              )}>
                 {isLoadingAiTokens ? "—" : formatTokens(tokenBalance.available)}
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Disponible para Agente IA
                 {tokenBalance.reserved > 0 ? ` · ${formatTokens(tokenBalance.reserved)} reservados` : ""}
               </p>
+              {(() => {
+                const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+                const weeklyUsed = tokenHistory
+                  .filter((tx: any) => tx.type === "CONSUMPTION" && new Date(tx.created_at).getTime() >= cutoff)
+                  .reduce((sum: number, tx: any) => sum + (Number(tx.total_tokens) || Number(tx.amount) || 0), 0);
+                return weeklyUsed > 0 ? (
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {formatTokens(weeklyUsed)} tokens usados (últimos 7 días)
+                  </p>
+                ) : null;
+              })()}
               {tokenBalance.available === 0 && !isLoadingAiTokens && (
                 <p className="text-[11px] text-amber-400 mt-0.5">
                   Sin tokens IA — el agente no responderá hasta recargar saldo
