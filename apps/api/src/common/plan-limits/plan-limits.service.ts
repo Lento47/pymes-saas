@@ -58,7 +58,8 @@ interface PlanLimits {
   product_categories: number | "custom";
   diagnostics_per_day: number | "custom";
   media_messages_per_day: number | "custom";
-  ai_chat_messages_per_day?: number | "custom";
+  ai_chat_messages_per_day: number | "custom";
+  agent_executions_per_day: number | "custom";
 }
 
 export type { PlanLimits };
@@ -77,6 +78,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     product_categories: 5,
     diagnostics_per_day: 4,
     media_messages_per_day: 0,
+    ai_chat_messages_per_day: 0,
+    agent_executions_per_day: 0,
   },
   STARTER: {
     users: 1,
@@ -91,6 +94,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     product_categories: 20,
     diagnostics_per_day: 10,
     media_messages_per_day: 0,
+    ai_chat_messages_per_day: 50,
+    agent_executions_per_day: 5,
   },
   GROWTH: {
     users: 5,
@@ -105,6 +110,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     product_categories: 50,
     diagnostics_per_day: 40,
     media_messages_per_day: 10,
+    ai_chat_messages_per_day: 100,
+    agent_executions_per_day: 15,
   },
   EMPRENDE: {
     users: 1,
@@ -120,6 +127,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     diagnostics_per_day: 10,
     media_messages_per_day: 10,
     ai_chat_messages_per_day: 100,
+    agent_executions_per_day: 25,
   },
   BUSINESS: {
     users: 15,
@@ -134,6 +142,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     product_categories: 200,
     diagnostics_per_day: 100,
     media_messages_per_day: 50,
+    ai_chat_messages_per_day: 250,
+    agent_executions_per_day: 50,
   },
   ENTERPRISE: {
     users: 15,
@@ -148,6 +158,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     product_categories: 200,
     diagnostics_per_day: 100,
     media_messages_per_day: 200,
+    ai_chat_messages_per_day: 500,
+    agent_executions_per_day: "custom",
   },
   BUSINESS_PLUS: {
     users: "custom",
@@ -162,6 +174,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     product_categories: "custom",
     diagnostics_per_day: "custom",
     media_messages_per_day: "custom",
+    ai_chat_messages_per_day: "custom",
+    agent_executions_per_day: "custom",
   },
 };
 
@@ -388,16 +402,27 @@ export class PlanLimitsService {
   ): Promise<PlanLimitEvaluation> {
     const plan = await this.getWorkspacePlan(workspaceId);
     const limits = await this.getEffectiveLimits(workspaceId);
-    const limit = limits[resourceKey];
+    let limit: number | "custom" = limits[resourceKey] as number | "custom";
 
-    // Custom / unlimited → always allow
-    if (limit === "custom" || limit === Infinity) {
-      return {
-        allowed: true,
-        currentUsage: 0,
-        limit: "custom",
-        planKey: plan,
-      };
+    // Resolve "custom" limits from limits_json overrides (ENTERPRISE / BUSINESS_PLUS)
+    if (limit === "custom") {
+      const ws = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { limits_json: true },
+      });
+      const overrides = (ws?.limits_json as Record<string, any>) ?? {};
+      const customValue = overrides[`custom_${resourceKey}`];
+      if (typeof customValue === "number" && customValue > 0) {
+        limit = customValue;
+      } else {
+        // No override set → unlimited
+        return { allowed: true, currentUsage: 0, limit: "custom", planKey: plan };
+      }
+    }
+
+    // Unlimited → always allow
+    if ((limit as number) === Infinity) {
+      return { allowed: true, currentUsage: 0, limit: "custom", planKey: plan };
     }
 
     const currentUsage = await this.getCurrentUsage(workspaceId, resourceKey);
@@ -473,6 +498,31 @@ export class PlanLimitsService {
             message_type: { not: null },
           },
         });
+      }
+      case "ai_chat_messages_per_day": {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return this.prisma.message.count({
+          where: {
+            workspace_id: workspaceId,
+            direction: "OUTBOUND",
+            sender_ref: { in: ["ai@emprende", "ai-agent@emprende"] },
+            sent_at: { gte: today },
+          },
+        });
+      }
+      case "agent_executions_per_day": {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const result = await this.prisma.$queryRaw<[{ count: bigint }]>`
+          SELECT COUNT(DISTINCT conversation_id)::bigint AS count
+          FROM "Message"
+          WHERE workspace_id = ${workspaceId}
+            AND sender_ref = 'ai-agent@emprende'
+            AND direction = 'OUTBOUND'
+            AND sent_at >= ${today}
+        `;
+        return Number(result[0]?.count ?? 0);
       }
       default:
         return 0;
@@ -706,6 +756,8 @@ function resourceKeyToString(key: keyof PlanLimits): string {
     storage_bytes: "almacenamiento",
     locations: "ubicaciones",
     media_messages_per_day: "archivos multimedia por día",
+    ai_chat_messages_per_day: "mensajes IA por día",
+    agent_executions_per_day: "ejecuciones del agente IA por día",
   };
   return map[key] || key;
 }

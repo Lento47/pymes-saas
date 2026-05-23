@@ -22,11 +22,16 @@ jest.mock("../telegram/telegram-outbound.service", () => ({
   TelegramOutboundService: class TelegramOutboundService {},
 }));
 
+jest.mock("../common/plan-limits/plan-limits.service", () => ({
+  PlanLimitsService: class PlanLimitsService {},
+}));
+
 import { AgentRunService } from "./agent-run.service";
 
 describe("AgentRunService", () => {
   function makeService() {
     return new AgentRunService(
+      {} as any,
       {} as any,
       {} as any,
       {} as any,

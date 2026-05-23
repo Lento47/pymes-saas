@@ -277,6 +277,25 @@ export default function AdminWorkspaceDetail() {
               </div>
             </div>
 
+            <div className="border-t border-border pt-3">
+              <h4 className="text-[10px] font-medium text-muted-foreground mb-2">Límites IA custom (ENTERPRISE / BUSINESS_PLUS)</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[9px]">Ejecuciones agente/día</Label>
+                  <Input type="number" className="h-7 text-xs" placeholder="ilimitado"
+                    value={(edit.lim as any).custom_agent_executions_per_day ?? ""}
+                    onChange={e => setEdit({...edit, lim: {...edit.lim, custom_agent_executions_per_day: e.target.value ? Number(e.target.value) : undefined}})} />
+                </div>
+                <div>
+                  <Label className="text-[9px]">Mensajes IA chat/día</Label>
+                  <Input type="number" className="h-7 text-xs" placeholder="ilimitado"
+                    value={(edit.lim as any).custom_ai_chat_messages_per_day ?? ""}
+                    onChange={e => setEdit({...edit, lim: {...edit.lim, custom_ai_chat_messages_per_day: e.target.value ? Number(e.target.value) : undefined}})} />
+                </div>
+              </div>
+              <p className="text-[9px] text-muted-foreground mt-1">Solo aplica cuando el plan tiene límite "custom". Se guarda en settings_json.</p>
+            </div>
+
             <div>
               <Label className="text-[10px]">Motivo (audit log)</Label>
               <Input className="h-8 text-xs" value={edit.reason} onChange={e => setEdit({...edit, reason: e.target.value})} placeholder="Ej: Cliente aprobado para PymesHub Emprende" />

@@ -137,6 +137,8 @@ describe("WorkspacesService", () => {
       const result = await service.getCurrent("w1");
 
       expect(result.ai_message_finance_opt_in).toBe(true);
+      expect(result.ai_agent_provider).toBe("workers_ai");
+      expect(result.ai_agent_model).toBe("");
       expect(result.name).toBe("Acme");
     });
   });

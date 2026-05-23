@@ -1,5 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { AiGatewayService } from "./ai-gateway.service";
 
 export interface AssistantMessage {
   role: "user" | "assistant" | "system";
@@ -11,6 +12,10 @@ export interface AssistantResponse {
   sources: { title: string; url?: string; snippet?: string }[];
 }
 
+export interface CloudflareChatOptions {
+  model?: string | null;
+}
+
 @Injectable()
 export class CloudflareAiService {
   private readonly logger = new Logger(CloudflareAiService.name);
@@ -20,7 +25,10 @@ export class CloudflareAiService {
   private readonly chatUrl: string | null;
   private readonly model: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    @Optional() private readonly aiGateway?: AiGatewayService,
+  ) {
     this.token = config.get<string>("CLOUDFLARE_AI_TOKEN") ?? null;
     this.searchUrl = config.get<string>("CLOUDFLARE_AI_SEARCH_URL") ?? null;
     this.chatUrl = config.get<string>("CLOUDFLARE_AI_CHAT_URL") ?? null;
@@ -108,22 +116,31 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
     }
   }
 
-  async chatCompletion(messages: AssistantMessage[]): Promise<string> {
-    const isWorkersAiRunEndpoint = this.chatUrl?.includes("/ai/run/");
-    const body = isWorkersAiRunEndpoint
-      ? {
-          messages,
-          max_tokens: 1024,
-          temperature: 0.3,
-        }
-      : {
-          model: this.model,
-          messages,
-          max_tokens: 1024,
-          temperature: 0.3,
-        };
+  async chatCompletion(
+    messages: AssistantMessage[],
+    options: CloudflareChatOptions = {},
+  ): Promise<string> {
+    // Delegate to AiGatewayService when available — supports all CF Gateway providers
+    if (this.aiGateway?.isConfigured) {
+      const modelOverride = this.normalizeWorkersAiModel(options.model);
+      const model = modelOverride ? `workers-ai/${modelOverride}` : undefined;
+      return this.aiGateway.chatCompletion(messages, { model });
+    }
 
-    const res = await fetch(this.chatUrl!, {
+    // Fallback: direct Workers AI call via legacy CLOUDFLARE_AI_CHAT_URL
+    if (!this.chatUrl) throw new Error("Cloudflare AI is not configured");
+
+    const isWorkersAiRunEndpoint = this.chatUrl.includes("/ai/run/");
+    const modelOverride = this.normalizeWorkersAiModel(options.model);
+    const chatUrl =
+      isWorkersAiRunEndpoint && modelOverride
+        ? this.withWorkersAiRunModel(this.chatUrl, modelOverride)
+        : this.chatUrl;
+    const body = isWorkersAiRunEndpoint
+      ? { messages, max_tokens: 1024, temperature: 0.3 }
+      : { model: modelOverride ?? this.model, messages, max_tokens: 1024, temperature: 0.3 };
+
+    const res = await fetch(chatUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -138,7 +155,26 @@ ${fullContext ? `Relevant context from our knowledge base:\n\n${fullContext}` : 
     }
 
     const data = (await res.json()) as any;
-    // OpenAI-compatible response shape
-    return data.choices?.[0]?.message?.content ?? data.result?.response ?? "";
+    return (
+      data.choices?.[0]?.message?.content ??
+      data.result?.choices?.[0]?.message?.content ??
+      data.result?.response ??
+      ""
+    );
+  }
+
+  private normalizeWorkersAiModel(model: string | null | undefined): string | null {
+    if (typeof model !== "string") return null;
+    const trimmed = model.trim();
+    if (!trimmed || !trimmed.startsWith("@cf/") || /\s/.test(trimmed)) return null;
+    return trimmed.slice(0, 160);
+  }
+
+  private withWorkersAiRunModel(chatUrl: string, model: string): string {
+    const marker = "/ai/run/";
+    const markerIndex = chatUrl.indexOf(marker);
+    if (markerIndex < 0) return chatUrl;
+
+    return chatUrl.slice(0, markerIndex + marker.length) + model;
   }
 }

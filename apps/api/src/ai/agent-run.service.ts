@@ -5,6 +5,7 @@ import { EmrendeAiService } from "./emprende-ai.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
+import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 
 export type AgentIntent = "ORDER" | "APPOINTMENT" | "QUOTE" | "COMPLAINT";
 
@@ -102,11 +103,18 @@ export class AgentRunService {
     @Inject(forwardRef(() => WhatsAppService))
     private readonly whatsapp: WhatsAppService,
     private readonly telegramOutbound: TelegramOutboundService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
   async startRun(workspaceId: string, conversationId: string, triggerText: string): Promise<AgentRun | null> {
+    const quota = await this.planLimits.evaluatePlanLimit(workspaceId, "agent_executions_per_day");
+    if (!quota.allowed) {
+      this.logger.warn(`Agent run blocked for workspace ${workspaceId}: ${quota.message}`);
+      return null;
+    }
+
     if (!this.cloudflare.isConfigured) return null;
 
     const conv = await this.prisma.conversation.findFirst({
@@ -125,7 +133,12 @@ export class AgentRunService {
     if (existingRun?.status === "RUNNING") return existingRun;
 
     const ctx = await this.emprendeAi.buildBusinessContext(workspaceId);
-    const detection = await this.detectIntent(triggerText, ctx.workspaceName, ctx.categories);
+    const detection = await this.detectIntent(
+      triggerText,
+      ctx.workspaceName,
+      ctx.categories,
+      ctx.aiAgentProvider === "workers_ai" ? ctx.aiAgentModel : null,
+    );
     if (!detection) return null;
 
     const { intent, extracted } = detection;
@@ -191,6 +204,7 @@ export class AgentRunService {
     const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
     const run = meta.agent_run as AgentRun | undefined;
     if (!run || run.status !== "RUNNING") return false;
+    const agentModel = await this.getAgentModel(workspaceId);
 
     const currentField = run.pending_fields[0];
     if (!currentField) {
@@ -200,7 +214,12 @@ export class AgentRunService {
     }
 
     const q = this.getQuestion(run.intent, currentField);
-    const value = await this.extractFieldValue(currentField, q ?? currentField, inboundText);
+    const value = await this.extractFieldValue(
+      currentField,
+      q ?? currentField,
+      inboundText,
+      agentModel,
+    );
     run.collected[currentField] = value ?? inboundText.trim().slice(0, 200);
     run.steps.push({
       type: "FIELD_COLLECTED",
@@ -257,6 +276,7 @@ export class AgentRunService {
     text: string,
     businessName: string,
     categories: string[],
+    agentModel: string | null,
   ): Promise<{ intent: AgentIntent; extracted: Record<string, string> } | null> {
     if (!this.cloudflare.isConfigured) return null;
 
@@ -276,7 +296,10 @@ Reglas:
 - null: saludo genérico, pregunta informativa simple, o no aplica ningún flujo.`;
 
     try {
-      const response = await this.cloudflare.chatCompletion([{ role: "user", content: prompt }] as AssistantMessage[]);
+      const response = await this.cloudflare.chatCompletion(
+        [{ role: "user", content: prompt }] as AssistantMessage[],
+        { model: agentModel },
+      );
       const match = response.match(/\{[\s\S]*\}/);
       if (!match) return null;
       const parsed = JSON.parse(match[0]);
@@ -334,7 +357,12 @@ Reglas:
     };
   }
 
-  private async extractFieldValue(field: string, question: string, answer: string): Promise<string | null> {
+  private async extractFieldValue(
+    field: string,
+    question: string,
+    answer: string,
+    agentModel: string | null,
+  ): Promise<string | null> {
     if (!this.cloudflare.isConfigured) return answer.trim().slice(0, 200);
 
     const prompt = `Extrae el valor de "${this.fieldLabel(field)}" de esta respuesta.
@@ -346,7 +374,10 @@ Si es delivery_type, responde exactamente "delivery" o "pickup".
 Si indica que no tiene la información, responde "N/A".`;
 
     try {
-      const response = await this.cloudflare.chatCompletion([{ role: "user", content: prompt }] as AssistantMessage[]);
+      const response = await this.cloudflare.chatCompletion(
+        [{ role: "user", content: prompt }] as AssistantMessage[],
+        { model: agentModel },
+      );
       return response.trim().slice(0, 200) || null;
     } catch {
       return answer.trim().slice(0, 200);
@@ -533,6 +564,25 @@ Si indica que no tiene la información, responde "N/A".`;
     }
 
     return null;
+  }
+
+  private async getAgentModel(workspaceId: string): Promise<string | null> {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+
+    const settings =
+      workspace?.settings_json && typeof workspace.settings_json === "object"
+        ? (workspace.settings_json as Record<string, any>)
+        : {};
+
+    if (settings.ai_agent_provider && settings.ai_agent_provider !== "workers_ai") return null;
+    if (typeof settings.ai_agent_model !== "string") return null;
+
+    const model = settings.ai_agent_model.trim();
+    if (!model || !model.startsWith("@cf/") || /\s/.test(model)) return null;
+    return model.slice(0, 160);
   }
 
   private computePending(intent: AgentIntent, collected: Record<string, string | null>): string[] {
