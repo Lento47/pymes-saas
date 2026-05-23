@@ -196,7 +196,7 @@ export class AiTokenMeteringService {
       await tx.aiTokenTransaction.create({
         data: {
           workspace_id: workspaceId,
-          amount: -chargedTokens,
+          amount: chargedTokens,
           type: "CONSUMPTION",
           description: context.description,
           reservation_id: reservation.id,
