@@ -118,7 +118,9 @@ export class AiGatewayService {
     const modelStr = options?.model ?? this.defaultModel;
 
     // ── Compat mode (preferred): single endpoint, single token, all providers ──
-    if (this.compatUrl && this.compatToken) {
+    // workers-ai models must use the legacy provider-specific URL — compat doesn't support them
+    const isWorkersAi = modelStr.startsWith("workers-ai/") || (!modelStr.includes("/") && !OPENAI_COMPAT_PROVIDERS.has(modelStr.split("/")[0]));
+    if (this.compatUrl && this.compatToken && !isWorkersAi) {
       const res = await fetch(this.compatUrl, {
         method: "POST",
         headers: {
