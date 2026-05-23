@@ -31,6 +31,10 @@ export class CreditsService {
     description?: string,
     paypalOrderId?: string,
   ): Promise<number> {
+    if (amount <= 0) {
+      this.logger.warn(`addCredits called with amount=${amount} for workspace=${workspaceId}, skipping`);
+      return this.getBalance(workspaceId);
+    }
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.workspaceCreditBalance.upsert({
         where: { workspace_id: workspaceId },

@@ -7,7 +7,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { Request } from "express";
-import { PaypalService } from "./paypal.service";
+import { PrismaService } from "../common/prisma/prisma.service";
 import { CreditsService } from "../memory/credits.service";
 
 @Controller("payments/paypal")
@@ -15,25 +15,12 @@ export class PaypalWebhookController {
   private readonly logger = new Logger(PaypalWebhookController.name);
 
   constructor(
-    private readonly paypal: PaypalService,
+    private readonly prisma: PrismaService,
     private readonly credits: CreditsService,
   ) {}
 
   @Post("webhook")
   async handleWebhook(@Req() request: RawBodyRequest<Request>) {
-    const headers = {
-      "paypal-auth-algo": request.headers["paypal-auth-algo"] as string,
-      "paypal-cert-url": request.headers["paypal-cert-url"] as string,
-      "paypal-transmission-id": request.headers["paypal-transmission-id"] as string,
-      "paypal-transmission-sig": request.headers["paypal-transmission-sig"] as string,
-      "paypal-transmission-time": request.headers["paypal-transmission-time"] as string,
-    };
-
-    const webhookId = process.env.PAYPAL_WEBHOOK_ID;
-    if (!webhookId) {
-      this.logger.warn("PAYPAL_WEBHOOK_ID not configured, skipping verification");
-    }
-
     const rawBody = request.rawBody?.toString() || JSON.stringify(request.body);
     let event: any;
     try {
@@ -44,45 +31,101 @@ export class PaypalWebhookController {
 
     this.logger.log(`PayPal webhook received: ${event.event_type} (${event.id})`);
 
-    const eventType = event.event_type || "";
-
-    if (eventType === "PAYMENT.CAPTURE.COMPLETED" || eventType === "CHECKOUT.ORDER.APPROVED") {
-      await this.processPaymentEvent(event);
+    switch (event.event_type) {
+      case "PAYMENT.CAPTURE.COMPLETED":
+        await this.handleCaptureCompleted(event);
+        break;
+      case "CHECKOUT.ORDER.DECLINED":
+        await this.handleOrderDeclined(event);
+        break;
+      default:
+        break;
     }
 
     return { received: true };
   }
 
-  private async processPaymentEvent(event: any) {
+  private async handleCaptureCompleted(event: any) {
     try {
       const resource = event.resource || {};
-      let orderId: string | null = null;
-      let amount: number = 0;
-      let workspaceId: string | null = null;
-
-      if (event.event_type === "PAYMENT.CAPTURE.COMPLETED") {
-        orderId = resource.supplementary_data?.related_ids?.order_id || resource.custom_id || null;
-        amount = parseFloat(resource.amount?.value || "0");
-      } else if (event.event_type === "CHECKOUT.ORDER.APPROVED") {
-        const purchaseUnit = resource.purchase_units?.[0];
-        orderId = resource.id;
-        amount = parseFloat(purchaseUnit?.amount?.value || "0");
-      }
+      const orderId = resource.supplementary_data?.related_ids?.order_id;
+      const captureId = resource.id;
+      const amount = parseFloat(resource.amount?.value || "0");
 
       if (!orderId || amount <= 0) {
-        this.logger.warn(`Cannot process webhook event ${event.id}: missing orderId or amount`);
+        this.logger.warn(`Webhook ${event.id}: missing orderId or invalid amount`);
+        return;
+      }
+
+      const paymentOrder = await this.prisma.paypalPaymentOrder.findUnique({
+        where: { order_id: orderId },
+      });
+
+      if (!paymentOrder) {
+        this.logger.warn(`Webhook ${event.id}: no payment order found for ${orderId}`);
+        return;
+      }
+
+      if (paymentOrder.status === "COMPLETED") {
+        this.logger.log(`Webhook ${event.id}: order ${orderId} already completed, skipping`);
         return;
       }
 
       const existingTx = await this.credits.findTransactionByPaypalOrderId(orderId);
-      if (existingTx) {
-        this.logger.log(`Order ${orderId} already processed, skipping`);
+      if (existingTx && existingTx.amount > 0) {
+        this.logger.log(`Webhook ${event.id}: order ${orderId} already has credits, marking completed`);
+        await this.prisma.paypalPaymentOrder.update({
+          where: { id: paymentOrder.id },
+          data: { status: "COMPLETED", capture_id: captureId },
+        });
         return;
       }
 
-      this.logger.log(`Webhook deferred — order ${orderId} will be captured on frontend callback`);
+      const creditAmount = this.amountToCredits(amount);
+      await this.credits.addCredits(
+        paymentOrder.workspace_id,
+        creditAmount,
+        "PURCHASE",
+        `Compra de ${creditAmount} créditos vía PayPal (webhook)`,
+        orderId,
+      );
+
+      await this.prisma.paypalPaymentOrder.update({
+        where: { id: paymentOrder.id },
+        data: { status: "COMPLETED", capture_id: captureId },
+      });
+
+      this.logger.log(
+        `Webhook ${event.id}: credits ${creditAmount} added for order ${orderId} via webhook`,
+      );
     } catch (error) {
-      this.logger.error(`Error processing webhook event ${event.id}:`, error);
+      this.logger.error(`Error processing webhook PAYMENT.CAPTURE.COMPLETED ${event.id}:`, error);
     }
+  }
+
+  private async handleOrderDeclined(event: any) {
+    try {
+      const resource = event.resource || {};
+      const orderId = resource.id;
+
+      if (!orderId) return;
+
+      await this.prisma.paypalPaymentOrder.updateMany({
+        where: { order_id: orderId, status: "CREATED" },
+        data: { status: "FAILED" },
+      });
+
+      this.logger.log(`Webhook ${event.id}: order ${orderId} marked as FAILED`);
+    } catch (error) {
+      this.logger.error(`Error processing webhook CHECKOUT.ORDER.DECLINED ${event.id}:`, error);
+    }
+  }
+
+  private amountToCredits(amountUsd: number): number {
+    if (amountUsd >= 69.99) return 5000;
+    if (amountUsd >= 24.99) return 1500;
+    if (amountUsd >= 9.99) return 500;
+    if (amountUsd >= 2.99) return 100;
+    return Math.round(amountUsd / 0.03);
   }
 }

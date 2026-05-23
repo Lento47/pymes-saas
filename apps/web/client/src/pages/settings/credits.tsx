@@ -304,10 +304,17 @@ function PayPalCheckoutDialog({
                   try {
                     const result = await api.capturePayPalOrder({ orderId });
                     onSuccess(result);
-                    toast({
-                      title: "¡Créditos agregados!",
-                      description: `Se agregaron ${result.credits} créditos a tu cuenta.`,
-                    });
+                    if (result.credits > 0) {
+                      toast({
+                        title: "¡Créditos agregados!",
+                        description: `Se agregaron ${result.credits} créditos a tu cuenta.`,
+                      });
+                    } else {
+                      toast({
+                        title: "Pago recibido",
+                        description: "Tus créditos se activarán en unos segundos.",
+                      });
+                    }
                   } catch (err: any) {
                     toast({
                       title: "Error al procesar el pago",

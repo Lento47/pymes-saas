@@ -6,11 +6,19 @@ const PAYPAL_API_BASE = {
   live: "https://api-m.paypal.com",
 };
 
-interface PayPalOrder {
+interface PayPalCaptureResponse {
   id: string;
   status: string;
-  links: { href: string; rel: string; method: string }[];
-  purchase_units?: { amount: { value: string; currency_code: string } }[];
+  purchase_units?: {
+    payments?: {
+      captures?: {
+        id: string;
+        status: string;
+        amount: { value: string; currency_code: string };
+        status_details?: { reason?: string };
+      }[];
+    };
+  }[];
 }
 
 @Injectable()
@@ -82,12 +90,12 @@ export class PaypalService {
       throw new BadRequestException("No se pudo crear la orden de PayPal");
     }
 
-    const order: PayPalOrder = await res.json();
+    const order = await res.json();
     this.logger.log(`PayPal order created: ${order.id} status=${order.status}`);
     return { orderId: order.id };
   }
 
-  async captureOrder(orderId: string): Promise<{ status: string; amount: number }> {
+  async captureOrder(orderId: string): Promise<{ captureId: string; status: string; amount: number }> {
     const token = await this.getAccessToken();
 
     const res = await fetch(`${this.apiBase}/v2/checkout/orders/${orderId}/capture`, {
@@ -104,15 +112,23 @@ export class PaypalService {
       throw new BadRequestException("No se pudo capturar el pago de PayPal");
     }
 
-    const order: PayPalOrder = await res.json();
+    const order: PayPalCaptureResponse = await res.json();
 
-    if (order.status !== "COMPLETED") {
-      this.logger.warn(`PayPal order ${orderId} status=${order.status} (not COMPLETED)`);
-      throw new BadRequestException(`El pago no fue completado (estado: ${order.status})`);
+    const capture = order.purchase_units?.[0]?.payments?.captures?.[0];
+    if (!capture) {
+      throw new BadRequestException("No se encontró el capture en la respuesta de PayPal");
     }
 
-    const amount = parseFloat(order.purchase_units?.[0]?.amount?.value || "0");
-    this.logger.log(`PayPal order captured: ${orderId} amount=${amount}`);
-    return { status: order.status, amount };
+    if (capture.status !== "COMPLETED" && this.environment !== "sandbox") {
+      this.logger.warn(`PayPal capture ${capture.id} status=${capture.status}, reason=${capture.status_details?.reason}`);
+      throw new BadRequestException(
+        `El pago no fue completado (${capture.status})` +
+        (capture.status_details?.reason ? `: ${capture.status_details.reason}` : ""),
+      );
+    }
+
+    const amount = parseFloat(capture.amount?.value || "0");
+    this.logger.log(`PayPal order captured: ${orderId} capture=${capture.id} amount=${amount} status=${capture.status}`);
+    return { captureId: capture.id, status: capture.status, amount };
   }
 }
