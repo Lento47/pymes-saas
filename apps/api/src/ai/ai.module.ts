@@ -27,6 +27,7 @@ import { AgentRunService } from "./agent-run.service";
 import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { TelegramModule } from "../telegram/telegram.module";
 import { PlanLimitsModule } from "../common/plan-limits/plan-limits.module";
+import { MemoryModule } from "../memory/memory.module";
 
 import { AiTriageService } from "./ai-triage.service";
 
@@ -49,6 +50,7 @@ import { AiTriageService } from "./ai-triage.service";
     forwardRef(() => WhatsAppModule),
     forwardRef(() => TelegramModule),
     PlanLimitsModule,
+    MemoryModule,
   ],
   providers: [
     AiService,

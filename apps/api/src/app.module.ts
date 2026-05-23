@@ -56,6 +56,7 @@ import { EnterpriseModule } from "./enterprise/enterprise.module";
 import { FeatureFlagsModule } from "./feature-flags/feature-flags.module";
 import { SlaModule } from "./sla/sla.module";
 import { OnboardingModule } from "./onboarding/onboarding.module";
+import { MemoryModule } from "./memory/memory.module";
 import { ContactSalesModule } from "./contact-sales/contact-sales.module";
 import { UsageMeteringModule } from "./usage-metering/usage-metering.module";
 import { MessageTemplatesModule } from "./message-templates/message-templates.module";
@@ -125,6 +126,7 @@ import { InventoryModule } from "./inventory/inventory.module";
     FeatureFlagsModule,
     SlaModule,
     OnboardingModule,
+    MemoryModule,
     ContactSalesModule,
     UsageMeteringModule,
     MessageTemplatesModule,

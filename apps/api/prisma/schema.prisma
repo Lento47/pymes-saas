@@ -345,6 +345,9 @@ model Workspace {
   hacienda_token_cache HaciendaTokenCache[]
   business_profile   WorkspaceBusinessProfile?
   orders             Order[]
+  credit_balance     WorkspaceCreditBalance?
+  credit_transactions CreditTransaction[]
+  contact_ai_memories ContactAiMemory[]
 
   @@index([slug])
   @@index([status])
@@ -531,6 +534,7 @@ model Contact {
   invoices      Invoice[]
   deals         Deal[]
   orders        Order[]
+  ai_memory     ContactAiMemory?
 
   @@index([workspace_id])
   @@index([workspace_id, email])
@@ -2194,4 +2198,72 @@ model WorkspaceBusinessProfile {
 
   @@index([workspace_id])
   @@map("workspace_business_profiles")
+}
+
+// ── Contact AI Memory ────────────────────────────────────────────────────────
+
+model ContactAiMemory {
+  id           String            @id @default(cuid())
+  contact_id   String
+  workspace_id String
+  profile_json Json              @db.JsonB
+  status       AiMemoryStatus    @default(ACTIVE)
+  created_at   DateTime          @default(now())
+  expires_at   DateTime
+  extended_until DateTime?
+
+  contact   Contact   @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([contact_id])
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([expires_at])
+  @@map("contact_ai_memories")
+}
+
+enum AiMemoryStatus {
+  ACTIVE
+  PAUSED
+  EXTENDED
+}
+
+// ── Workspace Credit Balance ─────────────────────────────────────────────────
+
+model WorkspaceCreditBalance {
+  id           String   @id @default(cuid())
+  workspace_id String   @unique
+  balance      Int      @default(0)
+  updated_at   DateTime @updatedAt
+
+  workspace    Workspace          @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  transactions CreditTransaction[]
+
+  @@map("workspace_credit_balances")
+}
+
+// ── Credit Transaction ───────────────────────────────────────────────────────
+
+model CreditTransaction {
+  id              String                @id @default(cuid())
+  workspace_id    String
+  amount          Int
+  type            CreditTransactionType
+  description     String?
+  paypal_order_id String?
+  created_at      DateTime              @default(now())
+
+  workspace Workspace              @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  balance   WorkspaceCreditBalance @relation(fields: [workspace_id], references: [workspace_id])
+
+  @@index([workspace_id])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@map("credit_transactions")
+}
+
+enum CreditTransactionType {
+  PURCHASE
+  CONSUMPTION
+  REFUND
+  BONUS
 }

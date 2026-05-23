@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, MessageSquare, CheckSquare, FileText, Mail, Phone, Building2, Calendar, ExternalLink, FileImage, FileSpreadsheet, Sparkles, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ArrowLeft, MessageSquare, CheckSquare, FileText, Mail, Phone, Building2, Calendar, ExternalLink, FileImage, FileSpreadsheet, Sparkles, ChevronDown, ChevronUp, RefreshCw, Brain, Clock, PlusCircle } from "lucide-react";
 import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -63,6 +63,21 @@ function AiProfileCard({ contactId }: { contactId: string }) {
   const plan: string = workspace?.plan ?? "FREE";
   const aiProfile = (contact?.extracted_data_json as any)?.ai_profile;
 
+  const { data: memoryData, refetch: refetchMemory } = useQuery({
+    queryKey: ["/api/memory/contacts", contactId],
+    queryFn: () => api.getContactMemory(contactId),
+    enabled: !!contactId && EMPRENDE_PLANS.includes(plan),
+  });
+
+  const extendMemory = useMutation({
+    mutationFn: (days: number) => api.extendContactMemory(contactId, days),
+    onSuccess: (res: any) => {
+      refetchMemory();
+      toast({ title: res.ok ? `Memoria extendida ${res.days_extended} días` : res.message });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   const analyze = useMutation({
     mutationFn: () => api.emprendeAnalyzeContact(contactId),
     onSuccess: () => {
@@ -73,6 +88,15 @@ function AiProfileCard({ contactId }: { contactId: string }) {
   });
 
   if (!EMPRENDE_PLANS.includes(plan)) return null;
+
+  const memoryStatus = memoryData?.status;
+  const memoryStatusLabel = memoryStatus?.status === "ACTIVE" ? "Activa"
+    : memoryStatus?.status === "EXTENDED" ? "Extendida"
+    : memoryStatus?.status === "PAUSED" ? "Pausada"
+    : null;
+  const memoryStatusColor = memoryStatus?.status === "ACTIVE" || memoryStatus?.status === "EXTENDED"
+    ? "text-emerald-400"
+    : "text-amber-400";
 
   return (
     <div className="bg-card border border-primary/20 rounded-xl p-4">
@@ -150,6 +174,43 @@ function AiProfileCard({ contactId }: { contactId: string }) {
       {aiProfile && !open && aiProfile.summary && (
         <p className="text-[11px] text-muted-foreground line-clamp-2 mt-1">{aiProfile.summary}</p>
       )}
+
+      {/* Memory status */}
+      <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Brain className="w-3 h-3 text-muted-foreground" />
+          <span className="text-[10px] text-muted-foreground">Memoria</span>
+          {memoryStatusLabel && (
+            <span className={cn("text-[10px] font-medium", memoryStatusColor)}>
+              {memoryStatusLabel}
+            </span>
+          )}
+          {memoryStatus?.expires_at && memoryStatus.status !== "PAUSED" && (
+            <span className="text-[10px] text-muted-foreground/60 flex items-center gap-0.5">
+              <Clock className="w-2.5 h-2.5" />
+              {Math.max(0, Math.ceil((new Date(memoryStatus.extended_until ?? memoryStatus.expires_at).getTime() - Date.now()) / 86400000))}d
+            </span>
+          )}
+          {memoryStatus?.status === "PAUSED" && (
+            <span className="text-[10px] text-amber-400/80">Pausada — comprá créditos para reactivar</span>
+          )}
+          {!memoryStatus && (
+            <span className="text-[10px] text-muted-foreground/60">Sin perfil aún</span>
+          )}
+        </div>
+        {memoryStatus?.status === "PAUSED" && (
+          <button
+            type="button"
+            onClick={() => extendMemory.mutate(30)}
+            disabled={extendMemory.isPending}
+            className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
+            title="Extender 30 días (consume 30 créditos)"
+          >
+            <PlusCircle className="w-3 h-3" />
+            +30 días
+          </button>
+        )}
+      </div>
     </div>
   );
 }
