@@ -131,13 +131,16 @@ export class AiGatewayService {
       }
 
       const json = (await res.json()) as any;
-      // CF AI Gateway compat endpoint may return text in different locations
-      // depending on the underlying provider's response format
+      // CF AI Gateway compat endpoint returns text in different locations.
+      // When the model outputs JSON, the gateway pre-parses it into json.response (object).
+      // Re-serialize so parseAction downstream can extract reply_text / interactive / etc.
+      const responseField = json.response;
       const text = (
         json.choices?.[0]?.message?.content?.trim() ||
         json.result?.response?.trim() ||
         json.result?.choices?.[0]?.message?.content?.trim() ||
-        (typeof json.response === "string" ? json.response.trim() : "") ||
+        (typeof responseField === "string" ? responseField.trim() : "") ||
+        (responseField && typeof responseField === "object" ? JSON.stringify(responseField) : "") ||
         ""
       );
       if (!text) {
