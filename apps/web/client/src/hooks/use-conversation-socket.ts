@@ -33,6 +33,25 @@ interface MessageStatusPayload {
   telegram_message_id?: string | null;
 }
 
+function messageTimeMs(message: Message): number | null {
+  const raw = message.sent_at ?? message.created_at;
+  if (!raw) return null;
+  const parsed = new Date(raw as string | number | Date).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isMatchingOptimisticMessage(candidate: Message, incoming: Message): boolean {
+  if (!String(candidate.id).startsWith('temp-')) return false;
+  if (candidate.direction !== 'OUTBOUND' || incoming.direction !== 'OUTBOUND') return false;
+  if ((candidate.body_text ?? '') !== (incoming.body_text ?? '')) return false;
+  if (candidate.conversation_id && incoming.conversation_id && candidate.conversation_id !== incoming.conversation_id) return false;
+
+  const candidateMs = messageTimeMs(candidate);
+  const incomingMs = messageTimeMs(incoming);
+  if (candidateMs == null || incomingMs == null) return true;
+  return Math.abs(incomingMs - candidateMs) < 30_000;
+}
+
 /**
  * Hook para mensajes en tiempo real dentro de una conversación.
  * Entra al room cuando se monta y sale cuando se desmonta.
@@ -78,6 +97,12 @@ export function useConversationSocket(conversationId: string) {
 
         if (exists) {
           const updated = dataArray.map((m) => m.id === message.id ? { ...m, ...message } : m);
+          return Array.isArray(old) ? updated : { ...old, data: updated };
+        }
+
+        const optimisticIndex = dataArray.findIndex((m) => isMatchingOptimisticMessage(m, message));
+        if (optimisticIndex >= 0) {
+          const updated = dataArray.map((m, index) => index === optimisticIndex ? message : m);
           return Array.isArray(old) ? updated : { ...old, data: updated };
         }
 
