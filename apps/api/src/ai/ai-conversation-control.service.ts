@@ -185,7 +185,7 @@ export class AiConversationControlService {
 
     const action = this.parseAction(completion.text);
     if (!action.reply_text.trim()) {
-      this.logger.warn(`EMPTY_AI_REPLY raw completion: "${completion.text?.slice(0, 500)}"`);
+      this.logger.warn(`EMPTY_AI_REPLY provider=${completion.provider} model=${completion.model} raw: "${completion.text?.slice(0, 500)}"`);
       await this.aiTokens.releaseReservation(workspaceId, reservation.reservationId);
       return {
         ok: false,
