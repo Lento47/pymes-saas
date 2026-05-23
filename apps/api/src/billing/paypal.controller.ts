@@ -30,14 +30,14 @@ export class PaypalController {
     try {
       let price: number;
 
-      if (dto.packId) {
+      if (dto.credits && dto.price) {
+        price = dto.price;
+      } else if (dto.packId) {
         const pack = CREDIT_PACKS.find((p) => p.id === dto.packId);
         if (!pack) {
           throw new BadRequestException(`Pack "${dto.packId}" no encontrado`);
         }
         price = pack.price_usd;
-      } else if (dto.credits && dto.price) {
-        price = dto.price;
       } else {
         throw new BadRequestException("Debe enviar packId o credits+price");
       }
