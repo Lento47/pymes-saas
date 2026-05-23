@@ -33,7 +33,7 @@ export class ContactMemoryService {
     const effectiveExpiry = memory.extended_until ?? memory.expires_at;
     if (effectiveExpiry < now) return null;
 
-    return memory.profile_json as ContactMemoryProfile;
+    return memory.profile_json as unknown as ContactMemoryProfile;
   }
 
   async upsertProfile(
@@ -178,7 +178,7 @@ export class ContactMemoryService {
       where: { contact_id: contactId },
       select: { profile_json: true },
     });
-    return memory ? (memory.profile_json as ContactMemoryProfile) : null;
+    return memory ? (memory.profile_json as unknown as ContactMemoryProfile) : null;
   }
 
   private mergeProfile(
