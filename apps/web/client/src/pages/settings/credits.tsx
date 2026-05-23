@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders, Loader2 } from "lucide-react";
+import { Bot, Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders, Loader2, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -381,6 +381,141 @@ function CustomPackSection({
   );
 }
 
+const TOKENS_PER_CREDIT = 1_000;
+
+function TransferCreditsDialog({
+  open,
+  onClose,
+  creditBalance,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  creditBalance: number;
+  onSuccess: () => void;
+}) {
+  const { toast } = useToast();
+  const [rawInput, setRawInput] = useState("");
+  const [isTransferring, setIsTransferring] = useState(false);
+
+  const credits = useMemo(() => {
+    const n = parseInt(rawInput, 10);
+    return isNaN(n) || n < 0 ? 0 : n;
+  }, [rawInput]);
+
+  const tokensToGet = credits * TOKENS_PER_CREDIT;
+  const isValid = credits >= 1 && credits <= creditBalance;
+
+  const handleTransfer = async () => {
+    if (!isValid) return;
+    setIsTransferring(true);
+    try {
+      const result = await api.transferCreditsToTokens(credits);
+      toast({
+        title: "Transferencia exitosa",
+        description: `Se convirtieron ${result.credits_used} créditos en ${formatTokens(result.tokens_added)} tokens IA.`,
+      });
+      onSuccess();
+      onClose();
+      setRawInput("");
+    } catch (err: any) {
+      toast({
+        title: "Error en la transferencia",
+        description: err?.message || "No se pudo completar la transferencia.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v && !isTransferring) { onClose(); setRawInput(""); } }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ArrowRightLeft className="w-4 h-4 text-primary" />
+            Transferir créditos a tokens IA
+          </DialogTitle>
+          <DialogDescription>
+            Convertí tus créditos de memoria en tokens IA. Tasa: 1 crédito = 1,000 tokens.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="flex items-center justify-between rounded-lg border border-border/40 bg-background/40 px-4 py-3">
+            <span className="text-xs text-muted-foreground">Créditos disponibles</span>
+            <span className="text-sm font-semibold text-foreground tabular-nums">
+              {creditBalance.toLocaleString()}
+            </span>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="transfer-credits" className="text-[11px] text-muted-foreground">
+              Créditos a transferir
+            </Label>
+            <Input
+              id="transfer-credits"
+              type="number"
+              min={1}
+              max={creditBalance}
+              placeholder="ej. 100"
+              value={rawInput}
+              onChange={(e) => setRawInput(e.target.value)}
+              className="h-9 text-sm bg-background/50"
+              disabled={isTransferring}
+            />
+          </div>
+
+          {credits > 0 && (
+            <div className="rounded-lg border border-primary/20 bg-primary/[0.04] px-4 py-3 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] text-muted-foreground">Créditos a descontar</span>
+                <span className="text-sm font-semibold text-foreground tabular-nums">
+                  -{credits.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] text-muted-foreground">Tokens IA a recibir</span>
+                <span className="text-sm font-semibold text-emerald-400 tabular-nums">
+                  +{formatTokens(tokensToGet)}
+                </span>
+              </div>
+              {credits > creditBalance && (
+                <p className="text-[11px] text-destructive">
+                  No tenés suficientes créditos.
+                </p>
+              )}
+            </div>
+          )}
+
+          <Button
+            onClick={handleTransfer}
+            disabled={!isValid || isTransferring}
+            className="w-full"
+          >
+            {isTransferring ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                Transfiriendo...
+              </>
+            ) : (
+              <>
+                <ArrowRightLeft className="w-3.5 h-3.5 mr-2" />
+                Transferir {credits > 0 ? `${credits.toLocaleString()} créditos` : ""}
+              </>
+            )}
+          </Button>
+
+          <p className="text-[10px] text-muted-foreground/60 text-center">
+            Esta acción no tiene reversión. Los créditos se convertirán de inmediato.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID || "";
 
 function PayPalCheckoutDialog({
@@ -483,6 +618,7 @@ export default function CreditsSettingsPage() {
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [showPayPal, setShowPayPal] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["/api/memory/credits"],
@@ -585,10 +721,23 @@ export default function CreditsSettingsPage() {
               )}
             </div>
           </div>
-          <div className="text-right shrink-0 hidden sm:block">
-            <p className="text-[10px] text-muted-foreground">Cobro por uso real</p>
-            <p className="text-xs text-foreground font-medium">Prompt + respuesta</p>
-            <p className="text-[10px] text-muted-foreground mt-1">Separado de memoria</p>
+          <div className="flex flex-col items-end gap-3 shrink-0">
+            <div className="text-right hidden sm:block">
+              <p className="text-[10px] text-muted-foreground">Cobro por uso real</p>
+              <p className="text-xs text-foreground font-medium">Prompt + respuesta</p>
+              <p className="text-[10px] text-muted-foreground mt-1">Separado de memoria</p>
+            </div>
+            {balance > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={() => setShowTransfer(true)}
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                Transferir créditos
+              </Button>
+            )}
           </div>
         </div>
 
@@ -758,6 +907,16 @@ export default function CreditsSettingsPage() {
         onClose={closePayPal}
         orderId={currentOrderId}
         onSuccess={handlePayPalSuccess}
+      />
+
+      <TransferCreditsDialog
+        open={showTransfer}
+        onClose={() => setShowTransfer(false)}
+        creditBalance={balance}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/memory/credits"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/ai-tokens"] });
+        }}
       />
     </SettingsLayout>
   );

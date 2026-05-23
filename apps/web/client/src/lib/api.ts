@@ -496,6 +496,12 @@ export const api = {
   extendContactMemory: (contactId: string, days: number) => request<any>("POST", `/api/memory/contacts/${contactId}/extend`, { days }),
   getCredits: () => request<any>("GET", "/api/memory/credits"),
   getAiTokens: () => request<any>("GET", "/api/ai-tokens"),
+  transferCreditsToTokens: (credits: number) =>
+    request<{ ok: boolean; credits_used: number; tokens_added: number; new_credit_balance: number; token_balance: any }>(
+      "POST",
+      "/api/memory/transfer-to-tokens",
+      { credits },
+    ),
   createPayPalOrder: (dto: { packId?: string; credits?: number; tokens?: number; price?: number; purchase_type?: "MEMORY_CREDITS" | "AI_TOKENS" }) =>
     request<{ orderId: string }>("POST", "/api/billing/paypal/create-order", dto),
   capturePayPalOrder: (dto: { orderId: string }) =>
