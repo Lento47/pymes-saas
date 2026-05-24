@@ -34,6 +34,7 @@ import { MemoryModule } from "../memory/memory.module";
 import { AiTokensModule } from "../ai-tokens/ai-tokens.module";
 
 import { AiTriageService } from "./ai-triage.service";
+import { ElevenLabsService } from "./elevenlabs.service";
 
 // NOTE: do NOT import EmailModule here. Adding it creates a cycle
 // AiModule → EmailModule → ConversationsModule → AiModule (the last
@@ -75,6 +76,7 @@ import { AiTriageService } from "./ai-triage.service";
     EmrendeAiService,
     AgentRunService,
     AiConversationControlService,
+    ElevenLabsService,
   ],
   controllers: [
     AgentController,
@@ -96,6 +98,7 @@ import { AiTriageService } from "./ai-triage.service";
     EmrendeAiService,
     AgentRunService,
     AiConversationControlService,
+    ElevenLabsService,
   ],
 })
 export class AiModule {}

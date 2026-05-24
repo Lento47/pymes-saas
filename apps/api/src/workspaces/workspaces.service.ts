@@ -85,6 +85,9 @@ export class WorkspacesService {
         settings.hacienda_certificate_pin_enc || settings.hacienda_certificate_pin
       ),
       hacienda_signing_enabled: settings.hacienda_signing_enabled === true,
+      ai_voice_enabled: settings.ai_voice_enabled === true,
+      ai_voice_id: (settings.ai_voice_id as string) ?? "",
+      elevenlabs_api_key: settings.elevenlabs_api_key_enc ? "[configurada]" : "",
     };
   }
 
@@ -175,6 +178,7 @@ export class WorkspacesService {
       hacienda_certificate_pin,
       hacienda_signing_enabled,
       tax_profile,
+      elevenlabs_api_key,
       ...rest
     } = dto;
 
@@ -235,6 +239,7 @@ export class WorkspacesService {
       "hacienda_certificate_pin_enc",
       hacienda_certificate_pin,
     );
+    setOrUnsetEnc("elevenlabs_api_key", "elevenlabs_api_key_enc", elevenlabs_api_key);
 
     if (hacienda_signing_enabled !== undefined) {
       nextSettings.hacienda_signing_enabled = hacienda_signing_enabled === "true";
@@ -255,7 +260,8 @@ export class WorkspacesService {
       hacienda_callback_url !== undefined ||
       hacienda_certificate_path !== undefined ||
       hacienda_certificate_pin !== undefined ||
-      hacienda_signing_enabled !== undefined;
+      hacienda_signing_enabled !== undefined ||
+      elevenlabs_api_key !== undefined;
 
     const workspace = await this.prisma.workspace.update({
       where: { id: workspaceId },

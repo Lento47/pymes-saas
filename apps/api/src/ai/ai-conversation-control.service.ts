@@ -13,8 +13,10 @@ import { TelegramService } from "../telegram/telegram.service";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { ContactMemoryService } from "../memory/contact-memory.service";
 import { AiTokenMeteringService, AiTokenBalanceSnapshot } from "../ai-tokens/ai-token-metering.service";
+import { CryptoService } from "../common/crypto/crypto.service";
 import { parseJsonValue } from "../common/prisma/json";
 import { generateWorkspaceInvoicePdf } from "../invoices/invoice-pdf.service";
+import { ElevenLabsService } from "./elevenlabs.service";
 
 type SupportedInteractive =
   | {
@@ -101,6 +103,8 @@ export class AiConversationControlService {
     private readonly balancer: AiProviderBalancerService,
     private readonly gateway: AiGatewayService,
     private readonly storage: StorageService,
+    private readonly crypto: CryptoService,
+    private readonly elevenLabs: ElevenLabsService,
   ) {}
 
   async startControl(workspaceId: string, conversationId: string) {
@@ -257,6 +261,13 @@ export class AiConversationControlService {
     if (action.invoice_action && conv.contact?.id && supportsInvoice) {
       this.handleInvoiceAction(workspaceId, conv, action.invoice_action).catch((err: Error) =>
         this.logger.warn(`[invoice_action] failed: ${err.message}`),
+      );
+    }
+
+    const supportsVoice = conv.channel?.type === "WHATSAPP" || conv.channel?.type === "TELEGRAM";
+    if (supportsVoice && !normalizedInteractive) {
+      this.handleVoiceDispatch(workspaceId, conv, action.reply_text, message.id).catch(
+        (err: Error) => this.logger.warn(`[voice] TTS failed: ${err.message}`),
       );
     }
 
@@ -497,6 +508,42 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
         } as any,
       },
     });
+  }
+
+  private async handleVoiceDispatch(
+    workspaceId: string,
+    conv: ConversationShape,
+    replyText: string,
+    outboundMessageId: string,
+  ): Promise<void> {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const s = (ws?.settings_json as Record<string, any>) ?? {};
+    if (s.ai_voice_enabled !== true) return;
+
+    const cleanText = replyText.replace(/[*_`~#>\[\]!]/g, "").trim();
+    if (!cleanText) return;
+
+    const voiceId = (s.ai_voice_id as string) || undefined;
+    const apiKeyEnc = s.elevenlabs_api_key_enc as string | undefined;
+    const apiKey = apiKeyEnc ? this.crypto.decrypt(apiKeyEnc) : undefined;
+
+    const buffer = await this.elevenLabs.textToSpeech(cleanText, apiKey, voiceId);
+
+    const key = `voice/${workspaceId}/${outboundMessageId}.mp3`;
+    await this.storage.upload(key, buffer, "audio/mpeg");
+    const url = await this.storage.getPresignedUrl(key, 1800);
+
+    if (conv.channel?.type === "WHATSAPP" && conv.contact?.phone) {
+      const to = conv.contact.phone.replace(/\D/g, "");
+      await this.whatsapp.sendMedia(conv.channel as any, to, url, "audio");
+    } else if (conv.channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
+      await this.telegramService.sendVoice(conv.channel.id, conv.contact.telegram_chat_id, url);
+    }
+
+    this.logger.log(`[voice] TTS sent for message=${outboundMessageId} workspace=${workspaceId}`);
   }
 
   private async handleInvoiceAction(
