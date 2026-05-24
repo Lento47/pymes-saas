@@ -55,6 +55,7 @@ export default function AiSettingsPage() {
   const [assignmentMode, setAssignmentMode] = useState("conversation_assignee");
   const [defaultAssigneeId, setDefaultAssigneeId] = useState("");
   const [intentAssignees, setIntentAssignees] = useState<Record<string, string>>({});
+  const [agentAutoActive, setAgentAutoActive] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceId, setVoiceId] = useState("");
   const [elevenlabsApiKey, setElevenlabsApiKey] = useState("");
@@ -96,6 +97,7 @@ export default function AiSettingsPage() {
       setAssignmentMode(workspace.ai_agent_assignment_mode ?? "conversation_assignee");
       setDefaultAssigneeId(workspace.ai_agent_default_assignee_id ?? "");
       setIntentAssignees(workspace.ai_agent_intent_assignees ?? {});
+      setAgentAutoActive(workspace.ai_agent_auto_active ?? false);
       setVoiceEnabled(workspace.ai_voice_enabled ?? false);
       setVoiceId(workspace.ai_voice_id ?? "");
       // never pre-fill the API key
@@ -114,6 +116,7 @@ export default function AiSettingsPage() {
     workspace?.ai_agent_assignment_mode,
     workspace?.ai_agent_default_assignee_id,
     workspace?.ai_agent_intent_assignees,
+    workspace?.ai_agent_auto_active,
     workspace?.ai_voice_enabled,
     workspace?.ai_voice_id,
   ]);
@@ -140,6 +143,7 @@ export default function AiSettingsPage() {
         ai_agent_assignment_mode: assignmentMode,
         ai_agent_default_assignee_id: defaultAssigneeId || "",
         ai_agent_intent_assignees: intentAssignees,
+        ai_agent_auto_active: agentAutoActive,
         ai_voice_enabled: voiceEnabled,
         ai_voice_id: voiceId,
       },
@@ -368,6 +372,16 @@ export default function AiSettingsPage() {
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Agente y tareas</h2>
+          </div>
+
+          <div className="flex items-center justify-between py-1 mb-4">
+            <div>
+              <p className="text-xs font-medium">Agente IA activo por defecto</p>
+              <p className="text-[11px] text-muted-foreground">
+                El agente responde automáticamente en todas las conversaciones. Se activa al comprar tokens.
+              </p>
+            </div>
+            <Switch checked={agentAutoActive} onCheckedChange={setAgentAutoActive} />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">

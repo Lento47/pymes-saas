@@ -252,6 +252,7 @@ export class AiConversationControlService {
         metadata: { source: options.source ?? "auto_reply" },
       },
     );
+    this.events.emitTokenBalanceUpdated(workspaceId, balance);
 
     await this.persistActionMemory(workspaceId, conv, action);
     const dispatched = await this.dispatchMessage(conv, message, action.reply_text, normalizedInteractive);

@@ -143,7 +143,7 @@ export default function ContactsPage() {
           />
         </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[130px] h-8 text-xs bg-card border-border" data-testid="select-type-filter">
+          <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs bg-card border-border" data-testid="select-type-filter">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

@@ -1110,7 +1110,9 @@ export class MessagesService {
 
     const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
     if (meta.ai_state === "HUMAN_ACTIVE") return;
-    if (meta.ai_state !== "AI_ACTIVE") return;
+    const wsSettings = (workspace.settings_json as Record<string, any>) ?? {};
+    const wsAutoActive = wsSettings.ai_agent_auto_active === true;
+    if (!wsAutoActive && meta.ai_state !== "AI_ACTIVE") return;
 
     // Throttle: don't reply again within 30 seconds (skip for interactive/button replies —
     // those are intentional responses to AI prompts and must always be answered)
