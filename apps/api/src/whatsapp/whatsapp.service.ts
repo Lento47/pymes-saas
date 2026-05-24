@@ -1170,6 +1170,7 @@ export class WhatsAppService {
             messageId,
             senderName,
             bodyText,
+            isInteractive: msg.type === "button" || msg.type === "interactive",
           })
           .catch((err) =>
             this.logger.error(

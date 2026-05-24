@@ -636,8 +636,9 @@ export class MessagesService {
     messageId: string;
     senderName: string;
     bodyText: string;
+    isInteractive?: boolean;
   }): Promise<void> {
-    const { workspaceId, conversationId, contactId, messageId, senderName, bodyText } = params;
+    const { workspaceId, conversationId, contactId, messageId, senderName, bodyText, isInteractive } = params;
 
     try {
       const message = await this.prisma.message.findUnique({
@@ -696,7 +697,7 @@ export class MessagesService {
       .processMessage(workspaceId, conversationId, bodyText)
       .then((consumedByAgent) => {
         if (consumedByAgent) return;
-        this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText).catch((err) =>
+        this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch((err) =>
           this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
         );
       })
@@ -1083,6 +1084,7 @@ export class MessagesService {
     workspaceId: string,
     conversationId: string,
     inboundText: string,
+    isInteractive?: boolean,
   ): Promise<void> {
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
@@ -1109,9 +1111,10 @@ export class MessagesService {
     if (meta.ai_state === "HUMAN_ACTIVE") return;
     if (meta.ai_state !== "AI_ACTIVE") return;
 
-    // Throttle: don't reply again within 30 seconds
+    // Throttle: don't reply again within 30 seconds (skip for interactive/button replies —
+    // those are intentional responses to AI prompts and must always be answered)
     const lastAiReply = meta.last_ai_reply_at as string | undefined;
-    if (lastAiReply && Date.now() - new Date(lastAiReply).getTime() < 30_000) return;
+    if (!isInteractive && lastAiReply && Date.now() - new Date(lastAiReply).getTime() < 30_000) return;
 
     const result = await this.aiConversationControl.replyToInbound(
       workspaceId,
