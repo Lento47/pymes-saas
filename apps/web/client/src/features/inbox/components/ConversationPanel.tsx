@@ -333,6 +333,12 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const stopAiMut = useMutation({
+    mutationFn: () => api.stopAiControl(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/conversations", id] }),
+    onError: (e: any) => toast({ title: "Error al pausar IA", description: e.message, variant: "destructive" }),
+  });
+
   const { data: agentRun } = useQuery({
     queryKey: ["agent-run", id],
     queryFn: () => api.getAgentRun(id),
@@ -479,6 +485,8 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         canAddContact={!conversation?.contact?.id}
         onDelegateToAi={isEmprendePlus && aiState === "HUMAN_ACTIVE" ? () => delegateToAiMut.mutate() : undefined}
         isDelegatingToAi={delegateToAiMut.isPending}
+        onPauseAi={isEmprendePlus && aiState === "AI_ACTIVE" ? () => stopAiMut.mutate() : undefined}
+        isPausingAi={stopAiMut.isPending}
         onStartAgent={isEmprendePlus && (agentRun as AgentRun | null | undefined)?.status !== "RUNNING" ? () => startAgentMut.mutate() : undefined}
         isStartingAgent={startAgentMut.isPending}
       />
