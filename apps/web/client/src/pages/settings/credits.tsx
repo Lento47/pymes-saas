@@ -1,9 +1,9 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders, Loader2, ArrowRightLeft } from "lucide-react";
+import { Bot, Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders, Loader2, ArrowRightLeft, Flame, Gem, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,11 +35,11 @@ function calcPricePerCredit(credits: number): number {
   return 0.03;
 }
 
-const PACK_ICONS: Record<string, string> = {
-  pack_100:  "⚡",
-  pack_500:  "🔥",
-  pack_1500: "💎",
-  pack_5000: "🚀",
+const PACK_ICONS: Record<string, React.ElementType> = {
+  pack_100:  Zap,
+  pack_500:  Flame,
+  pack_1500: Gem,
+  pack_5000: Rocket,
 };
 
 const PACK_POPULAR = "pack_500";
@@ -66,10 +66,10 @@ function CreditPackCard({
   return (
     <div
       className={cn(
-        "relative rounded-xl border p-5 flex flex-col gap-3 transition-all",
+        "relative rounded-xl border p-5 flex flex-col gap-3 transition-all duration-200",
         isPopular
-          ? "border-primary/40 bg-primary/[0.06]"
-          : "border-border/60 bg-card/40 hover:border-border",
+          ? "border-primary/40 bg-primary/[0.06] shadow-sm shadow-primary/10"
+          : "border-border/60 bg-card/40 hover:border-primary/30 hover:bg-primary/[0.04] hover:shadow-sm",
       )}
     >
       {isPopular && (
@@ -82,8 +82,8 @@ function CreditPackCard({
 
       <div className="flex items-start justify-between">
         <div>
-          <span className="text-2xl">{PACK_ICONS[pack.id] ?? "✦"}</span>
-          <p className="text-sm font-semibold text-foreground mt-1">{pack.label}</p>
+          {(() => { const PackIcon = PACK_ICONS[pack.id] ?? Zap; return <PackIcon className="w-5 h-5 text-primary" />; })()}
+          <p className="text-sm font-semibold text-foreground mt-1.5">{pack.label}</p>
           <p className="text-[11px] text-muted-foreground">${pricePerCredit} USD / mes</p>
         </div>
         <div className="text-right">
@@ -138,10 +138,10 @@ function AiTokenPackCard({
   return (
     <div
       className={cn(
-        "relative rounded-xl border p-5 flex flex-col gap-3 transition-all",
+        "relative rounded-xl border p-5 flex flex-col gap-3 transition-all duration-200",
         isPopular
-          ? "border-primary/40 bg-primary/[0.06]"
-          : "border-border/60 bg-card/40 hover:border-border",
+          ? "border-primary/40 bg-primary/[0.06] shadow-sm shadow-primary/10"
+          : "border-border/60 bg-card/40 hover:border-primary/30 hover:bg-primary/[0.04] hover:shadow-sm",
       )}
     >
       {isPopular && (
@@ -154,7 +154,7 @@ function AiTokenPackCard({
 
       <div className="flex items-start justify-between gap-3">
         <div>
-          <Bot className="w-6 h-6 text-primary" />
+          <Bot className="w-5 h-5 text-primary" />
           <p className="text-sm font-semibold text-foreground mt-2">{pack.label}</p>
           <p className="text-[11px] text-muted-foreground">
             {tokensPerDollar.toLocaleString()} tokens / USD

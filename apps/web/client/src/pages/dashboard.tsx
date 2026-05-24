@@ -107,14 +107,14 @@ function toneConfig(tone: Tone) {
       };
     default:
       return {
-        dot: "bg-muted-foreground/40",
-        text: "text-muted-foreground",
-        accent: "rgba(139,92,246,0.5)",
-        cardBg: "rgba(139,92,246,0.04)",
-        cardBorder: "rgba(139,92,246,0.14)",
-        pillBg: "rgba(139,92,246,0.08)",
-        pillBorder: "rgba(139,92,246,0.2)",
-        pillText: "#c4b5fd",
+        dot: "bg-primary/50",
+        text: "text-primary/70",
+        accent: "hsl(var(--primary) / 0.5)",
+        cardBg: "hsl(var(--primary) / 0.04)",
+        cardBorder: "hsl(var(--primary) / 0.14)",
+        pillBg: "hsl(var(--primary) / 0.08)",
+        pillBorder: "hsl(var(--primary) / 0.2)",
+        pillText: "hsl(var(--primary) / 0.9)",
       };
   }
 }
@@ -146,24 +146,20 @@ function DashboardSection({
   className?: string;
 }) {
   const header = (
-    <div
-      className="flex items-center justify-between gap-3 border-b px-4 py-3"
-      style={{ borderColor: "rgba(139,92,246,0.12)", background: "rgba(139,92,246,0.03)" }}
-    >
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+    <div className="flex items-center justify-between gap-3 border-b border-primary/[0.12] bg-primary/[0.03] px-4 py-3">
+      <h2 className="text-xs font-semibold text-foreground/60">
         {title}
         {count != null && (
-          <span className="ml-2 font-normal" style={{ color: "rgba(196,181,253,0.5)" }}>{count}</span>
+          <span className="ml-2 font-normal text-primary/40">{count}</span>
         )}
       </h2>
-      {linkTo && <ArrowUpRight className="h-3.5 w-3.5 shrink-0" style={{ color: "rgba(139,92,246,0.5)" }} />}
+      {linkTo && <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-primary/50" />}
     </div>
   );
 
   return (
     <section
-      className={`overflow-hidden rounded-card ${className}`}
-      style={{ border: "1px solid rgba(139,92,246,0.14)", background: "hsl(var(--bg-card))" }}
+      className={`overflow-hidden rounded-card border border-primary/[0.14] bg-[hsl(var(--bg-card))] ${className}`}
     >
       {linkTo ? (
         <Link href={linkTo} className="block transition-colors" style={{ display: "block" }}>
@@ -221,15 +217,14 @@ function OperationalMetric({
         <Skeleton className="h-8 w-24" />
       ) : (
         <div
-          className="text-[28px] font-bold leading-none tracking-[-0.03em] tabular-nums"
-          style={{ color: tone === "neutral" || tone === "success" ? "rgba(255,255,255,0.9)" : t.pillText }}
+          className="text-[28px] font-bold leading-none tracking-[-0.03em] tabular-nums text-foreground"
         >
           {value}
         </div>
       )}
 
       {detail && (
-        <p className="mt-2 truncate text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+        <p className="mt-2 truncate text-xs text-muted-foreground/60">
           {detail}
         </p>
       )}
@@ -255,7 +250,7 @@ function AttentionList({
   if (isEmpty) {
     return (
       <div className="flex min-h-[120px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-        <Icon className="h-4 w-4" style={{ color: "rgba(139,92,246,0.4)" }} />
+        <Icon className="h-5 w-5 text-primary/40" />
         <span className="text-sm text-muted-foreground">{emptyText}</span>
         {emptyCta && emptyHref && (
           <Link href={emptyHref} className="text-xs font-medium text-primary hover:text-primary/80">
@@ -267,7 +262,7 @@ function AttentionList({
   }
 
   return (
-    <div className="divide-y" style={{ borderColor: "rgba(139,92,246,0.08)" }}>
+    <div className="divide-y divide-primary/[0.08]">
       {children}
     </div>
   );
@@ -277,8 +272,6 @@ function RowStatus({ tone }: { tone: Tone }) {
   const t = toneConfig(tone);
   return <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${t.dot}`} />;
 }
-
-const ROW_HOVER_STYLE = { "--row-hover-bg": "rgba(139,92,246,0.06)" } as React.CSSProperties;
 
 function PipelineBand({ stages }: { stages: PipelineStage[] }) {
   if (stages.length === 0) return null;
@@ -291,7 +284,7 @@ function PipelineBand({ stages }: { stages: PipelineStage[] }) {
       count={stages.reduce((sum, stage) => sum + stage.deals.length, 0)}
       linkTo="/pipeline"
     >
-      <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-4" style={{ background: "rgba(139,92,246,0.08)" }}>
+      <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-4 bg-primary/[0.08]">
         {stages.slice(0, 4).map((stage) => {
           const count = stage.deals.length;
           const value = stage.deals.reduce((sum, deal) => sum + (Number(deal.value) || 0), 0);
@@ -299,32 +292,23 @@ function PipelineBand({ stages }: { stages: PipelineStage[] }) {
 
           return (
             <Link key={stage.id} href="/pipeline">
-              <div
-                className="px-4 py-3 transition-colors duration-150 cursor-pointer"
-                style={{ background: "hsl(var(--bg-card))" }}
-              >
+              <div className="px-4 py-3 transition-colors duration-150 cursor-pointer bg-[hsl(var(--bg-card))] hover:bg-primary/[0.04]">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: "rgba(139,92,246,0.5)", border: "1px solid rgba(139,92,246,0.3)" }}
-                      />
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-primary/50 border border-primary/30" />
                       <span className="truncate text-sm font-medium text-foreground">{stage.name}</span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">{crc(value)}</p>
                   </div>
-                  <span
-                    className="text-2xl font-bold tabular-nums tracking-[-0.03em]"
-                    style={{ color: "rgba(255,255,255,0.88)" }}
-                  >
+                  <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-foreground">
                     {count}
                   </span>
                 </div>
-                <div className="mt-3 h-1 overflow-hidden rounded-full" style={{ background: "rgba(139,92,246,0.12)" }}>
+                <div className="mt-3 h-1 overflow-hidden rounded-full bg-primary/[0.12]">
                   <div
-                    className="h-full rounded-full"
-                    style={{ width, background: "linear-gradient(90deg, #7c3aed, #6366f1)" }}
+                    className="h-full rounded-full bg-primary/70"
+                    style={{ width }}
                   />
                 </div>
               </div>
@@ -430,22 +414,12 @@ export default function DashboardPage() {
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 md:px-6 lg:px-8">
 
         {/* Header */}
-        <header
-          className="flex flex-col gap-4 border-b pb-5 md:flex-row md:items-end md:justify-between"
-          style={{ borderColor: "rgba(139,92,246,0.12)" }}
-        >
+        <header className="flex flex-col gap-4 border-b border-primary/[0.12] pb-5 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold tracking-[-0.03em] md:text-2xl" style={{ color: "rgba(255,255,255,0.92)" }}>
+              <h1 className="text-xl font-bold tracking-[-0.03em] text-foreground md:text-2xl">
                 {greeting()},{" "}
-                <span
-                  style={{
-                    background: "linear-gradient(135deg, #ffffff 30%, #c4b5fd 70%, #818cf8 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                  }}
-                >
+                <span className="text-primary">
                   {user?.name?.split(" ")[0] || "Usuario"}
                 </span>
               </h1>
@@ -468,12 +442,7 @@ export default function DashboardPage() {
           <Button
             variant="outline"
             size="sm"
-            className="h-8 w-fit gap-2 text-xs"
-            style={{
-              borderColor: "rgba(139,92,246,0.25)",
-              background: "rgba(139,92,246,0.06)",
-              color: "#c4b5fd",
-            }}
+            className="h-8 w-fit gap-2 border-primary/25 bg-primary/[0.06] text-primary hover:bg-primary/[0.10] text-xs"
             onClick={() => void generateMutation.mutate()}
             disabled={generateMutation.isPending}
           >
@@ -488,13 +457,7 @@ export default function DashboardPage() {
 
         {/* AI Summary card */}
         {(summaryLoading || statsLoading || todaySummary?.generated_text || generateMutation.isPending) && (
-          <section
-            className="rounded-card px-4 py-3"
-            style={{
-              border: "1px solid rgba(139,92,246,0.2)",
-              background: "rgba(139,92,246,0.05)",
-            }}
-          >
+          <section className="rounded-card border border-primary/20 bg-primary/[0.05] px-4 py-3">
             {summaryLoading || statsLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-3.5 w-full" />
@@ -502,13 +465,13 @@ export default function DashboardPage() {
               </div>
             ) : todaySummary?.generated_text ? (
               <div className="flex gap-3">
-                <BrainCircuit className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "#a78bfa" }} />
-                <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.82)" }}>
+                <BrainCircuit className="mt-0.5 h-4 w-4 shrink-0 text-primary/70" />
+                <p className="text-sm leading-relaxed text-foreground/80">
                   {todaySummary.generated_text}
                 </p>
               </div>
             ) : (
-              <div className="flex items-center gap-3 text-sm" style={{ color: "#c4b5fd" }}>
+              <div className="flex items-center gap-3 text-sm text-primary/80">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Generando resumen operativo...
               </div>
@@ -573,10 +536,7 @@ export default function DashboardPage() {
                   return (
                     <Link key={conv.id} href={`/inbox/${conv.id}`}>
                       <div
-                        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer"
-                        style={{ ["--hover-bg" as any]: "rgba(139,92,246,0.06)" }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(139,92,246,0.06)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "")}
+                        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer hover:bg-primary/[0.06]"
                       >
                         <RowStatus tone={statusTone} />
                         <div className="min-w-0">
@@ -620,9 +580,7 @@ export default function DashboardPage() {
                   return (
                     <Link key={inv.id} href="/invoices">
                       <div
-                        className="flex items-start gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer"
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(139,92,246,0.06)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "")}
+                        className="flex items-start gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer hover:bg-primary/[0.06]"
                       >
                         <RowStatus tone={tone} />
                         <div className="min-w-0 flex-1">
@@ -660,9 +618,7 @@ export default function DashboardPage() {
                   return (
                     <Link key={task.id} href="/tasks">
                       <div
-                        className="flex items-start gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer"
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(139,92,246,0.06)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "")}
+                        className="flex items-start gap-3 px-4 py-3 transition-colors duration-150 cursor-pointer hover:bg-primary/[0.06]"
                       >
                         <RowStatus tone={tone} />
                         <div className="min-w-0 flex-1">
