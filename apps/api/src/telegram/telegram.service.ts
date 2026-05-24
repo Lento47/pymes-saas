@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from "@nestjs/common";
+import { Injectable, Inject, Logger, BadRequestException, NotFoundException, forwardRef } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { randomBytes, timingSafeEqual } from "crypto";
 import { PrismaService } from "../common/prisma/prisma.service";
@@ -31,6 +31,7 @@ export class TelegramService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
+    @Inject(forwardRef(() => MessagesService))
     private readonly messagesService: MessagesService,
     private readonly config: ConfigService,
     private readonly storage: StorageService,
