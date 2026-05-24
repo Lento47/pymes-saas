@@ -1,4 +1,4 @@
-import { ArrowLeft, UserPlus, CheckCircle2, MoreVertical, RefreshCw, Receipt, Trash2, Sparkles, Loader2, PauseCircle } from "lucide-react";
+import { ArrowLeft, UserPlus, CheckCircle2, MoreVertical, RefreshCw, Receipt, Trash2, Sparkles, Bot, Loader2, PauseCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -123,8 +123,8 @@ export function ConversationHeader({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-9 w-9 rounded-md p-0 text-primary hover:text-primary sm:w-auto sm:gap-1.5 sm:px-2.5" onClick={onStartAgent} disabled={isStartingAgent} aria-label="Iniciar Agente IA">
-                  {isStartingAgent ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                <Button variant="ghost" size="sm" className="h-9 w-9 rounded-md p-0 text-violet-500 hover:text-violet-600 sm:w-auto sm:gap-1.5 sm:px-2.5" onClick={onStartAgent} disabled={isStartingAgent} aria-label="Iniciar Agente IA">
+                  {isStartingAgent ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
                   <span className="hidden text-xs font-medium sm:inline">Agente IA</span>
                 </Button>
               </TooltipTrigger>

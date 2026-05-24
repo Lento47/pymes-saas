@@ -348,8 +348,11 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
 
   const startAgentMut = useMutation({
     mutationFn: () => {
-      const lastInbound = [...msgList].reverse().find((m: any) => m.direction === "INBOUND");
-      return api.startAgentRun(id, lastInbound?.body_text ?? "");
+      const lastInbound = [...msgList].reverse().find(
+        (m: any) => m.direction === "INBOUND" && (m.body_text || m.caption)
+      );
+      const text = lastInbound?.body_text || lastInbound?.caption || "";
+      return api.startAgentRun(id, text);
     },
     onSuccess: (data) => {
       if (data?.run) qc.setQueryData(["agent-run", id], data.run);
