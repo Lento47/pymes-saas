@@ -48,4 +48,82 @@ export class TelegramOutboundService {
       throw new BadRequestException(`Failed to send Telegram message: ${(err as Error).message}`);
     }
   }
+
+  async sendTyping(channelId: string, chatId: string): Promise<void> {
+    const token = await this.getBotToken(channelId);
+    if (!token) return;
+    try {
+      const bot = new Telegraf(token);
+      await bot.telegram.sendChatAction(chatId, "typing");
+    } catch {
+      // Best-effort
+    }
+  }
+
+  async sendReplyText(
+    channelId: string,
+    chatId: string,
+    text: string,
+    replyToMessageId: string | null,
+  ): Promise<{ message_id: string }> {
+    const token = await this.getBotToken(channelId);
+    if (!token) throw new NotFoundException("No bot token configured");
+
+    const bot = new Telegraf(token);
+    const result = await bot.telegram.sendMessage(chatId, text, {
+      parse_mode: "HTML",
+      ...(replyToMessageId
+        ? { reply_parameters: { message_id: Number(replyToMessageId) } }
+        : {}),
+    });
+    return { message_id: String(result.message_id) };
+  }
+
+  async sendWithInlineKeyboard(
+    channelId: string,
+    chatId: string,
+    text: string,
+    buttons: Array<{ id: string; title: string }>,
+    replyToMessageId?: string | null,
+  ): Promise<{ message_id: string }> {
+    const token = await this.getBotToken(channelId);
+    if (!token) throw new NotFoundException("No bot token configured");
+
+    const bot = new Telegraf(token);
+    const inlineKeyboard = buttons.map((b) => [
+      { text: b.title, callback_data: b.title.slice(0, 64) },
+    ]);
+    const result = await bot.telegram.sendMessage(chatId, text, {
+      parse_mode: "HTML",
+      reply_markup: { inline_keyboard: inlineKeyboard },
+      ...(replyToMessageId
+        ? { reply_parameters: { message_id: Number(replyToMessageId) } }
+        : {}),
+    });
+    return { message_id: String(result.message_id) };
+  }
+
+  async sendListAsKeyboard(
+    channelId: string,
+    chatId: string,
+    text: string,
+    rows: Array<{ id: string; title: string }>,
+    replyToMessageId?: string | null,
+  ): Promise<{ message_id: string }> {
+    const token = await this.getBotToken(channelId);
+    if (!token) throw new NotFoundException("No bot token configured");
+
+    const bot = new Telegraf(token);
+    const inlineKeyboard = rows.slice(0, 8).map((r) => [
+      { text: r.title, callback_data: r.title.slice(0, 64) },
+    ]);
+    const result = await bot.telegram.sendMessage(chatId, text, {
+      parse_mode: "HTML",
+      reply_markup: { inline_keyboard: inlineKeyboard },
+      ...(replyToMessageId
+        ? { reply_parameters: { message_id: Number(replyToMessageId) } }
+        : {}),
+    });
+    return { message_id: String(result.message_id) };
+  }
 }

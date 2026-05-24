@@ -9,6 +9,7 @@ import { EmrendeAiService } from "./emprende-ai.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
+import { TelegramService } from "../telegram/telegram.service";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { ContactMemoryService } from "../memory/contact-memory.service";
 import { AiTokenMeteringService, AiTokenBalanceSnapshot } from "../ai-tokens/ai-token-metering.service";
@@ -93,6 +94,7 @@ export class AiConversationControlService {
     private readonly events: EventsGateway,
     private readonly whatsapp: WhatsAppService,
     private readonly telegramOutbound: TelegramOutboundService,
+    private readonly telegramService: TelegramService,
     private readonly planLimits: PlanLimitsService,
     private readonly contactMemory: ContactMemoryService,
     private readonly aiTokens: AiTokenMeteringService,
@@ -173,6 +175,10 @@ export class AiConversationControlService {
       }
     }
 
+    if (conv.channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
+      this.telegramOutbound.sendTyping(conv.channel.id, conv.contact.telegram_chat_id).catch(() => {});
+    }
+
     await this.persistInboundMemory(workspaceId, conv, inboundText);
 
     const context = await this.buildPrompt(workspaceId, conv, inboundText);
@@ -247,7 +253,8 @@ export class AiConversationControlService {
     const dispatched = await this.dispatchMessage(conv, message, action.reply_text, normalizedInteractive);
     const finalMessage = dispatched ?? message;
 
-    if (action.invoice_action && conv.contact?.id && conv.channel?.type === "WHATSAPP") {
+    const supportsInvoice = conv.channel?.type === "WHATSAPP" || conv.channel?.type === "TELEGRAM";
+    if (action.invoice_action && conv.contact?.id && supportsInvoice) {
       this.handleInvoiceAction(workspaceId, conv, action.invoice_action).catch((err: Error) =>
         this.logger.warn(`[invoice_action] failed: ${err.message}`),
       );
@@ -325,7 +332,7 @@ export class AiConversationControlService {
     ]);
 
     const channelType = conv.channel?.type ?? "UNKNOWN";
-    const supportsWhatsAppRich = channelType === "WHATSAPP";
+    const supportsRichInteractive = channelType === "WHATSAPP" || channelType === "TELEGRAM";
     const recent = recentMessages
       .reverse()
       .map((m) => `${m.direction === "INBOUND" ? "Cliente" : "Negocio"}: ${m.body_text ?? ""}`)
@@ -338,7 +345,7 @@ export class AiConversationControlService {
 
 Toma control conversacional de esta conversación. Responde el primer mensaje aunque sea un saludo.
 No dependas de detectar intención estructurada. Tu trabajo es avanzar la conversación y pedir la siguiente información útil.
-Si el canal es WhatsApp puedes usar botones, listas o solicitud de ubicación cuando ayude.
+Si el canal es WhatsApp o Telegram puedes usar botones o listas cuando ayude. Solo usa location_request en WhatsApp.
 Si no sabes algo, no inventes precios, inventario ni disponibilidad.
 Responde SOLO JSON válido con este shape:
 {
@@ -358,10 +365,10 @@ Reglas de invoice_action:
 - Solo genera invoice_action cuando el cliente haya CONFIRMADO explícitamente su pedido o servicio.
 - Debes conocer la descripción, cantidad y precio exacto de cada ítem; si no los tienes, no uses invoice_action.
 - reply_text debe anunciar brevemente que se enviará la factura (ej: "En un momento te envío tu factura.").
-- invoice_action solo aplica en WhatsApp; en otros canales usa null.`;
+- invoice_action aplica en WhatsApp y Telegram; en otros canales usa null.`;
 
     const user = `Canal: ${channelType}
-Rich WhatsApp disponible: ${supportsWhatsAppRich ? "sí" : "no"}
+Interactivo disponible: ${supportsRichInteractive ? "sí (botones, listas)" : "no"}
 Cliente: ${conv.contact?.full_name ?? "Cliente"}
 Memoria previa: ${memory ? JSON.stringify(memory).slice(0, 1200) : "Sin memoria activa"}
 Templates aprobados:
@@ -405,7 +412,8 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
   }
 
   private normalizeInteractive(value: unknown, conv: ConversationShape): SupportedInteractive | null {
-    if (conv.channel?.type !== "WHATSAPP" || !value || typeof value !== "object") return null;
+    const richChannels = new Set(["WHATSAPP", "TELEGRAM"]);
+    if (!richChannels.has(conv.channel?.type ?? "") || !value || typeof value !== "object") return null;
     const raw = value as Record<string, any>;
     if (raw.type === "button" && Array.isArray(raw.buttons)) {
       const buttons = raw.buttons
@@ -496,7 +504,10 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
     conv: ConversationShape,
     invoiceAction: NonNullable<AiControlAction["invoice_action"]>,
   ): Promise<void> {
-    if (!conv.contact?.id || !conv.contact.phone || conv.channel?.type !== "WHATSAPP") return;
+    const channelSupported = conv.channel?.type === "WHATSAPP" || conv.channel?.type === "TELEGRAM";
+    if (!conv.contact?.id || !channelSupported) return;
+    const hasContactAddress = conv.contact.phone || conv.contact.telegram_chat_id;
+    if (!hasContactAddress) return;
 
     const currency = invoiceAction.currency ?? "USD";
     const dueDays = Math.max(1, Math.min(365, invoiceAction.due_days ?? 30));
@@ -575,10 +586,17 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
     await this.storage.upload(storageKey, pdfBuffer, "application/pdf");
     const pdfUrl = await this.storage.getPresignedUrl(storageKey, 3600);
 
-    // Send via WhatsApp
-    const to = conv.contact.phone.replace(/\D/g, "");
-    await this.whatsapp.sendMedia(conv.channel as any, to, pdfUrl, "document", `Factura ${number}`);
-    this.logger.log(`[invoice_action] invoice=${invoice.id} number=${number} sent to ${to}`);
+    // Send document via channel
+    if (conv.channel.type === "WHATSAPP" && conv.contact.phone) {
+      const to = conv.contact.phone.replace(/\D/g, "");
+      await this.whatsapp.sendMedia(conv.channel as any, to, pdfUrl, "document", `Factura ${number}`);
+    } else if (conv.channel.type === "TELEGRAM") {
+      const chatId = conv.contact.telegram_chat_id ?? conv.contact.phone ?? "";
+      if (chatId) {
+        await this.telegramService.sendDocument(conv.channel.id, chatId, pdfUrl, `Factura ${number}`);
+      }
+    }
+    this.logger.log(`[invoice_action] invoice=${invoice.id} number=${number} channel=${conv.channel.type}`);
   }
 
   private async dispatchMessage(
@@ -644,12 +662,38 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
 
     if (conv.channel.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
       try {
-        const result = await this.telegramOutbound.sendMessage(
-          conv.channel.id,
-          conv.contact.telegram_chat_id,
-          replyText,
-        );
-        const externalId = result?.message_id ? String(result.message_id) : null;
+        const chatId = conv.contact.telegram_chat_id;
+        let externalId: string | null = null;
+
+        if (interactive?.type === "button") {
+          externalId = (await this.telegramOutbound.sendWithInlineKeyboard(
+            conv.channel.id,
+            chatId,
+            interactive.body || replyText,
+            interactive.buttons,
+          )).message_id;
+        } else if (interactive?.type === "list") {
+          const rows = interactive.sections.flatMap((s) => s.rows);
+          externalId = (await this.telegramOutbound.sendListAsKeyboard(
+            conv.channel.id,
+            chatId,
+            interactive.body || replyText,
+            rows,
+          )).message_id;
+        } else {
+          const lastInbound = await this.prisma.message.findFirst({
+            where: { conversation_id: conv.id, direction: "INBOUND", telegram_message_id: { not: null } },
+            orderBy: { sent_at: "desc" },
+            select: { telegram_message_id: true },
+          });
+          externalId = (await this.telegramOutbound.sendReplyText(
+            conv.channel.id,
+            chatId,
+            replyText,
+            lastInbound?.telegram_message_id ?? null,
+          )).message_id;
+        }
+
         return this.markSent(message.id, {
           provider: "telegram",
           provider_message_id: externalId,

@@ -188,6 +188,11 @@ export class TelegramService {
         return { processed: false };
       }
 
+      // Handle inline keyboard button presses
+      if (update.callback_query) {
+        return this.handleCallbackQuery(channel, update.callback_query);
+      }
+
       const message = update?.message || update?.edited_message;
       if (!message) return { processed: false };
 
@@ -305,6 +310,45 @@ export class TelegramService {
       return { processed: true };
     } catch (err) {
       this.logger.error(`Telegram inbound error: ${(err as Error).message}`);
+      return { processed: false };
+    }
+  }
+
+  private async handleCallbackQuery(
+    channel: { id: string; workspace_id: string; config_json: unknown },
+    cq: Record<string, any>,
+  ): Promise<{ processed: boolean }> {
+    try {
+      const from = cq.from;
+      const chat = cq.message?.chat;
+      const data: string = cq.data ?? "";
+      if (!from || !chat || !data) return { processed: false };
+
+      // Acknowledge callback query immediately so Telegram removes the loading spinner
+      const token = await this.getBotToken(channel.id);
+      if (token) {
+        const bot = new Telegraf(token);
+        await bot.telegram.answerCbQuery(cq.id).catch(() => {});
+      }
+
+      const senderName = from.first_name
+        ? `${from.first_name}${from.last_name ? " " + from.last_name : ""}`
+        : from.username || `Telegram User ${from.id}`;
+
+      await this.messagesService.receiveInbound("telegram", channel.workspace_id, {
+        channel_id: channel.id,
+        sender_ref: `tg:${from.id}`,
+        sender_name: senderName,
+        body_text: data,
+        telegram_chat_id: String(chat.id),
+        telegram_user_id: from.id ? String(from.id) : undefined,
+        telegram_message_id: `cq_${cq.id}`,
+        is_interactive: true,
+      });
+
+      return { processed: true };
+    } catch (err) {
+      this.logger.error(`Callback query error: ${(err as Error).message}`);
       return { processed: false };
     }
   }

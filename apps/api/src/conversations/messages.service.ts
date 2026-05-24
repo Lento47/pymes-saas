@@ -476,11 +476,12 @@ export class MessagesService {
       this.logger.error("Error en análisis de IA", err?.stack ?? err),
     );
 
+    const isInteractivePayload = payload.is_interactive === true;
     this.agentRunService
       .processMessage(workspaceId, conversationId, bodyText)
       .then((consumedByAgent) => {
         if (consumedByAgent) return;
-        this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText).catch((err) =>
+        this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractivePayload).catch((err) =>
           this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
         );
       })
