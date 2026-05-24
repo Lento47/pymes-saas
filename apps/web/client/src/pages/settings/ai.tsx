@@ -31,6 +31,8 @@ const GATEWAY_MODELS = [
   { id: "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast", label: "Llama 3.3 70B Fast", provider: "Workers AI", badge: "Gratis" },
   { id: "workers-ai/@cf/meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B", provider: "Workers AI", badge: "Gratis" },
   { id: "workers-ai/@cf/moonshotai/kimi-k2.6", label: "Kimi K2.6", provider: "Workers AI", badge: "Gratis" },
+  { id: "deepseek/deepseek-v4-pro", label: "DeepSeek V4 Pro", provider: "DeepSeek" },
+  { id: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash", provider: "DeepSeek" },
 ];
 
 export default function AiSettingsPage() {
