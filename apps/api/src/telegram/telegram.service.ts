@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from "@nestjs/common";
+import { Injectable, Inject, Logger, BadRequestException, NotFoundException, forwardRef } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { randomBytes, timingSafeEqual } from "crypto";
 import { PrismaService } from "../common/prisma/prisma.service";
@@ -31,6 +31,7 @@ export class TelegramService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
+    @Inject(forwardRef(() => MessagesService))
     private readonly messagesService: MessagesService,
     private readonly config: ConfigService,
     private readonly storage: StorageService,
@@ -513,6 +514,33 @@ export class TelegramService {
   }
 
   /**
+   * Send a voice note to a Telegram chat (appears as voice message bubble).
+   * Accepts MP3, OGG/Opus.
+   */
+  async sendVoice(
+    channelId: string,
+    chatId: string,
+    mediaUrl: string,
+    caption?: string,
+  ): Promise<any> {
+    const token = await this.getBotToken(channelId);
+    if (!token) throw new NotFoundException("No bot token configured");
+
+    try {
+      const bot = new Telegraf(token);
+      const { source } = await this.resolveFileInput(mediaUrl);
+      const result = await bot.telegram.sendVoice(chatId, { source } as any, {
+        caption,
+      });
+      this.logger.log(`Voice sent to chat ${chatId} in channel ${channelId}`);
+      return result;
+    } catch (err) {
+      this.logger.error(`Failed to send voice: ${(err as Error).message}`);
+      throw new BadRequestException(`Failed to send voice: ${(err as Error).message}`);
+    }
+  }
+
+  /**
    * Send a document (any file type) to a Telegram chat.
    */
   async sendDocument(
@@ -557,6 +585,8 @@ export class TelegramService {
         return this.sendVideo(channelId, chatId, mediaUrl, caption);
       case "audio":
         return this.sendAudio(channelId, chatId, mediaUrl, caption);
+      case "voice":
+        return this.sendVoice(channelId, chatId, mediaUrl, caption);
       default:
         return this.sendDocument(channelId, chatId, mediaUrl, caption);
     }

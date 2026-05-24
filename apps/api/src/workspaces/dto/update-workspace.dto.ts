@@ -107,4 +107,8 @@ export class UpdateWorkspaceDto {
   @ValidateNested()
   @Type(() => WorkspaceTaxProfileDto)
   tax_profile?: WorkspaceTaxProfileDto;
+
+  @IsOptional()
+  @IsString()
+  elevenlabs_api_key?: string;
 }

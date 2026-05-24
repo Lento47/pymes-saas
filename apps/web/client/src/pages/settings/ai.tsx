@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, CheckCircle2, Bot, ClipboardList } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2, Bot, ClipboardList, Volume2 } from "lucide-react";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -55,6 +55,9 @@ export default function AiSettingsPage() {
   const [assignmentMode, setAssignmentMode] = useState("conversation_assignee");
   const [defaultAssigneeId, setDefaultAssigneeId] = useState("");
   const [intentAssignees, setIntentAssignees] = useState<Record<string, string>>({});
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceId, setVoiceId] = useState("");
+  const [elevenlabsApiKey, setElevenlabsApiKey] = useState("");
 
   const { data: members } = useQuery({
     queryKey: ["/api/workspaces/current/members"],
@@ -93,6 +96,9 @@ export default function AiSettingsPage() {
       setAssignmentMode(workspace.ai_agent_assignment_mode ?? "conversation_assignee");
       setDefaultAssigneeId(workspace.ai_agent_default_assignee_id ?? "");
       setIntentAssignees(workspace.ai_agent_intent_assignees ?? {});
+      setVoiceEnabled(workspace.ai_voice_enabled ?? false);
+      setVoiceId(workspace.ai_voice_id ?? "");
+      // never pre-fill the API key
     }
   }, [
     workspace?.ai_custom_api_enabled,
@@ -108,6 +114,8 @@ export default function AiSettingsPage() {
     workspace?.ai_agent_assignment_mode,
     workspace?.ai_agent_default_assignee_id,
     workspace?.ai_agent_intent_assignees,
+    workspace?.ai_voice_enabled,
+    workspace?.ai_voice_id,
   ]);
 
   useEffect(() => {
@@ -119,6 +127,7 @@ export default function AiSettingsPage() {
       ai_provider: provider || undefined,
       ai_model:    model    || undefined,
       ai_api_key:  apiKey   || undefined,
+      ...(elevenlabsApiKey ? { elevenlabs_api_key: elevenlabsApiKey } : {}),
       settings_json: {
         ai_custom_api_enabled: customApiEnabled,
         ai_business_prompt: businessPrompt,
@@ -131,11 +140,14 @@ export default function AiSettingsPage() {
         ai_agent_assignment_mode: assignmentMode,
         ai_agent_default_assignee_id: defaultAssigneeId || "",
         ai_agent_intent_assignees: intentAssignees,
+        ai_voice_enabled: voiceEnabled,
+        ai_voice_id: voiceId,
       },
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/workspaces/current"] });
       setApiKey("");
+      setElevenlabsApiKey("");
       toast({ title: "Configuración de IA guardada" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -530,6 +542,57 @@ export default function AiSettingsPage() {
             className="bg-primary hover:bg-primary/90 h-8 text-xs"
           >
             {save.isPending ? "Guardando..." : "Guardar reglas del agente"}
+          </Button>
+        </div>
+
+        {/* ── Voz IA ── */}
+        <div className="border-t border-border pt-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Volume2 className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold text-foreground">Voz para el Agente IA</h2>
+          </div>
+
+          <p className="text-[11px] text-muted-foreground">
+            El agente enviará un mensaje de voz después de cada respuesta de texto (WhatsApp y Telegram).
+            Requiere una clave ElevenLabs activa — el sistema usa la clave global si no se ingresa una propia.
+          </p>
+
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs font-medium">Activar respuestas de voz</p>
+              <p className="text-[11px] text-muted-foreground">Solo para respuestas de texto, no para botones o listas</p>
+            </div>
+            <Switch checked={voiceEnabled} onCheckedChange={setVoiceEnabled} />
+          </div>
+
+          <div className={cn("space-y-3", !voiceEnabled && "opacity-40 pointer-events-none")}>
+            <div className="space-y-1">
+              <Label className="text-xs">ID de voz (ElevenLabs)</Label>
+              <Input
+                className="text-xs h-8 bg-[hsl(var(--elevated))] border-border"
+                placeholder="U9TSK9KHMlMU2qkeXlQP"
+                value={voiceId}
+                onChange={(e) => setVoiceId(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">API Key ElevenLabs <span className="text-muted-foreground">(opcional — usa la del sistema si se deja vacía)</span></Label>
+              <Input
+                className="text-xs h-8 bg-[hsl(var(--elevated))] border-border font-mono"
+                type="password"
+                placeholder="sk_..."
+                value={elevenlabsApiKey}
+                onChange={(e) => setElevenlabsApiKey(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={() => save.mutate()}
+            disabled={!canSave || save.isPending}
+            className="bg-primary hover:bg-primary/90 h-8 text-xs"
+          >
+            {save.isPending ? "Guardando..." : "Guardar configuración de voz"}
           </Button>
         </div>
       </div>
