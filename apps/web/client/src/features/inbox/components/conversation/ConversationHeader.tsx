@@ -1,4 +1,4 @@
-import { ArrowLeft, UserPlus, CheckCircle2, MoreVertical, RefreshCw, Receipt, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, UserPlus, CheckCircle2, MoreVertical, RefreshCw, Receipt, Trash2, Sparkles, Loader2, PauseCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -29,6 +29,8 @@ interface ConversationHeaderProps {
   isDelegatingToAi?: boolean;
   onStartAgent?: () => void;
   isStartingAgent?: boolean;
+  onPauseAi?: () => void;
+  isPausingAi?: boolean;
   className?: string;
 }
 
@@ -55,6 +57,8 @@ export function ConversationHeader({
   isDelegatingToAi,
   onStartAgent,
   isStartingAgent,
+  onPauseAi,
+  isPausingAi,
   className,
 }: ConversationHeaderProps) {
   return (
@@ -139,6 +143,20 @@ export function ConversationHeader({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom"><p className="text-xs">Devolver control a la IA</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
+        {onPauseAi && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-9 w-9 rounded-md p-0 text-amber-500 hover:text-amber-500 sm:w-auto sm:gap-1.5 sm:px-2.5" onClick={onPauseAi} disabled={isPausingAi} aria-label="Pausar agente IA">
+                  {isPausingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <PauseCircle className="h-4 w-4" />}
+                  <span className="hidden text-xs font-medium sm:inline">Pausar IA</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom"><p className="text-xs">Pausar agente IA</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
         )}

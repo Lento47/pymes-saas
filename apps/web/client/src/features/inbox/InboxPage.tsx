@@ -77,7 +77,7 @@ export default function InboxPage() {
       </div>
 
       {/* Mobile: list or conversation detail */}
-      <div className="md:hidden flex-1 min-h-0">
+      <div className="md:hidden flex-1 min-h-0 pb-14">
         {selectedId ? (
           <ConversationPanel
             conversationId={selectedId}
