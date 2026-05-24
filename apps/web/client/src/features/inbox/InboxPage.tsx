@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useRequireAuth, useAuth } from "@/hooks/use-auth";
 import { useInboxSocket } from "@/hooks/use-inbox-socket";
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { InboxToolbar } from "./components/InboxToolbar";
 import { ConversationList } from "./components/ConversationList";
 import { ConversationPanel } from "./components/ConversationPanel";
@@ -19,14 +19,14 @@ export default function InboxPage() {
   useInboxSocket();
   const { user } = useAuth();
 
-  // Support direct URL navigation to /inbox/:id
+  // URL-based conversation selection — supports direct navigation to /inbox/:id
   const [, params] = useRoute("/inbox/:id");
-  const urlConversationId = params?.id ?? null;
+  const [, navigate] = useLocation();
+  const selectedId = params?.id ?? null;
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ConversationStatusFilter>("ALL");
   const [channelTab, setChannelTab] = useState<ChannelTab>("ALL");
-  const [selectedId, setSelectedId] = useState<string | null>(urlConversationId);
   const [showAddContact, setShowAddContact] = useState(false);
 
   const queryParams = buildConversationQueryParams({ search, statusFilter, channelTab, assignedUserId: user?.id });
@@ -57,7 +57,7 @@ export default function InboxPage() {
           conversations={conversations}
           isLoading={conversationsQuery.isLoading}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={(id) => navigate(`/inbox/${id}`)}
           channelTab={channelTab}
         />
         {selectedId ? (
@@ -77,18 +77,18 @@ export default function InboxPage() {
       </div>
 
       {/* Mobile: list or conversation detail */}
-      <div className="md:hidden flex-1 min-h-0 pb-14">
+      <div className="md:hidden flex-1 min-h-0">
         {selectedId ? (
           <ConversationPanel
             conversationId={selectedId}
-            onBack={() => setSelectedId(null)}
+            onBack={() => navigate("/inbox")}
           />
         ) : (
           <ConversationList
             conversations={conversations}
             isLoading={conversationsQuery.isLoading}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={(id) => navigate(`/inbox/${id}`)}
             channelTab={channelTab}
           />
         )}
