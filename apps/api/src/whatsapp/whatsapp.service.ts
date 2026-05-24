@@ -1092,6 +1092,17 @@ export class WhatsAppService {
         bodyText = msg.video?.caption ? `🎬 ${msg.video.caption}` : "🎬 Video";
       } else if (msg.type === "sticker") {
         bodyText = "💬 Sticker";
+      } else if (msg.type === "button") {
+        bodyText = msg.button?.text ?? msg.button?.payload ?? "📩 Botón";
+      } else if (msg.type === "interactive") {
+        const ir = msg.interactive;
+        if (ir?.button_reply) {
+          bodyText = ir.button_reply.title ?? ir.button_reply.id ?? "📩 Botón";
+        } else if (ir?.list_reply) {
+          bodyText = ir.list_reply.title ?? ir.list_reply.id ?? "📩 Opción";
+        } else {
+          bodyText = "📩 Mensaje interactivo";
+        }
       } else if (msg.type === "contacts") {
         const contactNames = (msg.contacts || [])
           .map((c: Record<string, any>) => c.name?.formatted_name ?? "Contacto")
