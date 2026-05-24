@@ -19,6 +19,9 @@ export function MobileBottomNav({
 }) {
   const [location] = useLocation();
   const { messages } = useI18n();
+
+  // Hide nav when viewing a conversation — the header's back button handles navigation
+  if (/^\/inbox\/.+/.test(location)) return null;
   const copy = messages.sidebar;
   const visibleTabs = TABS.filter((tab) => !isItemVisible || isItemVisible(tab.label));
 
