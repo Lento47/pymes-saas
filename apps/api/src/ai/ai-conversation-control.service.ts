@@ -145,6 +145,17 @@ export class AiConversationControlService {
       return { ok: false, error: "AI_NOT_ACTIVE", balance: await this.aiTokens.getBalance(workspaceId) };
     }
 
+    if (conv.channel?.type === "WHATSAPP") {
+      const lastInbound = await this.prisma.message.findFirst({
+        where: { conversation_id: conversationId, direction: "INBOUND", provider_message_id: { not: null } },
+        orderBy: { sent_at: "desc" },
+        select: { provider_message_id: true },
+      });
+      if (lastInbound?.provider_message_id) {
+        this.whatsapp.markAsRead(conv.channel, lastInbound.provider_message_id, true).catch(() => {});
+      }
+    }
+
     await this.persistInboundMemory(workspaceId, conv, inboundText);
 
     const context = await this.buildPrompt(workspaceId, conv, inboundText);
@@ -458,6 +469,17 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
     interactive: SupportedInteractive | null,
   ) {
     if (!conv.channel) return this.markSent(message.id, {});
+
+    let replyToWamid: string | null = null;
+    if (conv.channel.type === "WHATSAPP") {
+      const lastInbound = await this.prisma.message.findFirst({
+        where: { conversation_id: conv.id, direction: "INBOUND", provider_message_id: { not: null } },
+        orderBy: { sent_at: "desc" },
+        select: { provider_message_id: true },
+      });
+      replyToWamid = lastInbound?.provider_message_id ?? null;
+    }
+
     if (conv.channel.type === "WHATSAPP" && conv.contact?.phone) {
       try {
         const to = conv.contact.phone.replace(/\D/g, "");
@@ -487,7 +509,9 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
             interactive.body || replyText,
           )).message_id;
         } else {
-          externalId = (await this.whatsapp.sendMessage(conv.channel, to, replyText)).message_id;
+          externalId = replyToWamid
+            ? (await this.whatsapp.sendReply(conv.channel, to, replyText, replyToWamid)).message_id
+            : (await this.whatsapp.sendMessage(conv.channel, to, replyText)).message_id;
         }
         return this.markSent(message.id, {
           provider: "whatsapp",

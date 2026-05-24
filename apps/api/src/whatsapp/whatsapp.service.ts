@@ -490,6 +490,7 @@ export class WhatsAppService {
   async markAsRead(
     channel: any,
     messageId: string,
+    withTypingIndicator = false,
   ): Promise<void> {
     const cfg = channel.config_json as any;
     const accessToken = this.crypto.decrypt(cfg.access_token_encrypted);
@@ -505,6 +506,7 @@ export class WhatsAppService {
         messaging_product: 'whatsapp',
         status: 'read',
         message_id: messageId,
+        ...(withTypingIndicator ? { typing_indicator: { type: 'text' } } : {}),
       }),
     });
 
