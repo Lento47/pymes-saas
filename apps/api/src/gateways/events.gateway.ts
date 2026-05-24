@@ -211,6 +211,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`workspace:${workspaceId}`).emit("workspace:updated", workspace);
   }
 
+  emitTokenBalanceUpdated(workspaceId: string, balance: unknown) {
+    this.server.to(`workspace:${workspaceId}`).emit("ai_token_balance_updated", balance);
+  }
+
   emitAgentUpdated(conversationId: string, workspaceId: string, run: unknown) {
     this.server.to(`conversation:${conversationId}`).emit("agent:updated", {
       conversationId,

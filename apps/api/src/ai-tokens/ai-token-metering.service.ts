@@ -13,6 +13,7 @@ export interface AiTokenBalanceSnapshot {
   balance: number;
   reserved: number;
   available: number;
+  totalPurchased: number;
 }
 
 export interface TokenReservationResult {
@@ -41,11 +42,17 @@ export class AiTokenMeteringService {
   }
 
   async getBalance(workspaceId: string): Promise<AiTokenBalanceSnapshot> {
-    const balance = await this.prisma.workspaceAiTokenBalance.findUnique({
-      where: { workspace_id: workspaceId },
-      select: { balance: true, reserved: true },
-    });
-    return this.toSnapshot(balance?.balance ?? 0, balance?.reserved ?? 0);
+    const [balance, purchased] = await Promise.all([
+      this.prisma.workspaceAiTokenBalance.findUnique({
+        where: { workspace_id: workspaceId },
+        select: { balance: true, reserved: true },
+      }),
+      this.prisma.aiTokenTransaction.aggregate({
+        where: { workspace_id: workspaceId, type: "PURCHASE" },
+        _sum: { amount: true },
+      }),
+    ]);
+    return this.toSnapshot(balance?.balance ?? 0, balance?.reserved ?? 0, purchased._sum.amount ?? 0);
   }
 
   async addTokens(
@@ -263,11 +270,12 @@ export class AiTokenMeteringService {
     return AI_TOKEN_PACKS;
   }
 
-  private toSnapshot(balance: number, reserved: number): AiTokenBalanceSnapshot {
+  private toSnapshot(balance: number, reserved: number, totalPurchased = 0): AiTokenBalanceSnapshot {
     return {
       balance,
       reserved,
       available: Math.max(0, balance - reserved),
+      totalPurchased,
     };
   }
 }

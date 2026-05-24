@@ -254,9 +254,9 @@ export default function ContactDetailPage() {
         <span className="text-xs text-foreground truncate">{contactName}</span>
       </div>
 
-      <div className="flex gap-5">
+      <div className="flex flex-col md:flex-row gap-5">
         {/* Left panel — Contact info */}
-        <div className="w-[220px] shrink-0 flex flex-col gap-3">
+        <div className="w-full md:w-[220px] shrink-0 flex flex-col gap-3">
           {/* Avatar + name */}
           <div className="bg-card border border-border rounded-xl p-4 flex flex-col items-center text-center gap-2">
             <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-lg font-semibold text-primary">

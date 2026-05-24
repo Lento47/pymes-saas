@@ -85,6 +85,7 @@ export class WorkspacesService {
         settings.hacienda_certificate_pin_enc || settings.hacienda_certificate_pin
       ),
       hacienda_signing_enabled: settings.hacienda_signing_enabled === true,
+      ai_agent_auto_active: settings.ai_agent_auto_active === true,
       ai_voice_enabled: settings.ai_voice_enabled === true,
       ai_voice_id: (settings.ai_voice_id as string) ?? "",
       elevenlabs_api_key: settings.elevenlabs_api_key_enc ? "[configurada]" : "",

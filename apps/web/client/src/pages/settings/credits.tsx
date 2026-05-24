@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { SettingsLayout } from "@/components/settings/settings-layout";
@@ -18,6 +18,7 @@ import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { connectSocket, getSocket } from "@/hooks/use-socket";
 
 // Price tiers: the more you buy, the cheaper per credit
 function calcCustomPrice(credits: number): number {
@@ -633,13 +634,37 @@ export default function CreditsSettingsPage() {
   const balance: number = data?.balance ?? 0;
   const history: any[] = data?.history ?? [];
   const packs: any[] = data?.packs ?? [];
-  const tokenBalance = {
+  const [liveTokenBalance, setLiveTokenBalance] = useState<{
+    balance: number; reserved: number; available: number; totalPurchased: number;
+  } | null>(null);
+
+  const tokenBalance = liveTokenBalance ?? {
     balance: Number(aiTokenData?.balance ?? 0),
     reserved: Number(aiTokenData?.reserved ?? 0),
     available: Number(aiTokenData?.available ?? 0),
+    totalPurchased: Number(aiTokenData?.totalPurchased ?? 0),
   };
   const tokenHistory: any[] = aiTokenData?.history ?? [];
   const tokenPacks: any[] = aiTokenData?.packs ?? [];
+
+  useEffect(() => {
+    if (aiTokenData) setLiveTokenBalance(null);
+  }, [aiTokenData]);
+
+  useEffect(() => {
+    const socket = getSocket() ?? connectSocket();
+    if (!socket) return;
+    const handler = (data: any) => {
+      setLiveTokenBalance({
+        balance: Number(data.balance ?? 0),
+        reserved: Number(data.reserved ?? 0),
+        available: Number(data.available ?? 0),
+        totalPurchased: Number(data.totalPurchased ?? tokenBalance.totalPurchased ?? 0),
+      });
+    };
+    socket.on("ai_token_balance_updated", handler);
+    return () => { socket.off("ai_token_balance_updated", handler); };
+  }, []);
 
   const handleBuy = useCallback(async (packId: string, credits?: number, price?: number) => {
     setBuyingPack(packId);
@@ -698,7 +723,7 @@ export default function CreditsSettingsPage() {
       <div className="space-y-8 max-w-3xl">
 
         {/* AI token balance */}
-        <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-6 flex items-center justify-between gap-6">
+        <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
               <Bot className="w-6 h-6 text-primary" />
@@ -730,6 +755,25 @@ export default function CreditsSettingsPage() {
                     {formatTokens(weeklyUsed)} tokens usados (últimos 7 días)
                   </p>
                 ) : null;
+              })()}
+              {tokenBalance.totalPurchased > 0 && !isLoadingAiTokens && (() => {
+                const pct = Math.min(100, Math.round((tokenBalance.available / tokenBalance.totalPurchased) * 100));
+                return (
+                  <div className="w-full mt-2.5">
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-500",
+                          pct > 50 ? "bg-emerald-500" : pct > 20 ? "bg-amber-500" : "bg-red-500"
+                        )}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {formatTokens(tokenBalance.available)} de {formatTokens(tokenBalance.totalPurchased)} restantes ({pct}%)
+                    </p>
+                  </div>
+                );
               })()}
               {tokenBalance.available === 0 && !isLoadingAiTokens && (
                 <p className="text-[11px] text-amber-400 mt-0.5">
@@ -808,7 +852,7 @@ export default function CreditsSettingsPage() {
         </div>
 
         {/* Balance card */}
-        <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-6 flex items-center justify-between gap-6">
+        <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
               <Coins className="w-6 h-6 text-primary" />

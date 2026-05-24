@@ -119,6 +119,37 @@ export class PaypalController {
           },
         });
 
+        const ws = await this.prisma.workspace.findUnique({
+          where: { id: user.workspace_id },
+          select: { settings_json: true },
+        });
+        const currentSettings =
+          ws?.settings_json && typeof ws.settings_json === "object"
+            ? (ws.settings_json as Record<string, any>)
+            : {};
+        if (!currentSettings.ai_agent_auto_active) {
+          await this.prisma.workspace.update({
+            where: { id: user.workspace_id },
+            data: {
+              settings_json: { ...currentSettings, ai_agent_auto_active: true },
+            },
+          });
+        }
+
+        await this.prisma.$executeRawUnsafe(
+          `UPDATE conversations
+           SET metadata_json = jsonb_set(
+             COALESCE(metadata_json, '{}')::jsonb,
+             '{ai_state}',
+             '"AI_ACTIVE"'
+           ),
+           updated_at = NOW()
+           WHERE workspace_id = $1
+           AND status IN ('NEW', 'OPEN')
+           AND (metadata_json->>'ai_state' IS NULL OR metadata_json->>'ai_state' != 'HUMAN_ACTIVE')`,
+          user.workspace_id,
+        );
+
         this.logger.log(
           `AI tokens added: workspace=${user.workspace_id} tokens=${tokenAmount} order=${body.orderId} capture=${captureId}`,
         );
