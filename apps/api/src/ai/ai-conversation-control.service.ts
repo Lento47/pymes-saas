@@ -1,5 +1,7 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { HaciendaStatus, InvoiceDocumentType, InvoiceIssuanceMode, InvoiceStatus } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
+import { StorageService } from "../common/storage/storage.service";
 import { CloudflareAiService, AssistantMessage, ChatCompletionWithUsage } from "./cloudflare-ai.service";
 import { AiProviderBalancerService } from "./ai-provider-balancer.service";
 import { AiGatewayService } from "./ai-gateway.service";
@@ -11,6 +13,7 @@ import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { ContactMemoryService } from "../memory/contact-memory.service";
 import { AiTokenMeteringService, AiTokenBalanceSnapshot } from "../ai-tokens/ai-token-metering.service";
 import { parseJsonValue } from "../common/prisma/json";
+import { generateWorkspaceInvoicePdf } from "../invoices/invoice-pdf.service";
 
 type SupportedInteractive =
   | {
@@ -34,6 +37,13 @@ type SupportedInteractive =
       body: string;
     };
 
+interface InvoiceActionLine {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  tax_rate?: number;
+}
+
 interface AiControlAction {
   reply_text: string;
   interactive?: SupportedInteractive | null;
@@ -44,6 +54,12 @@ interface AiControlAction {
     preferences?: Record<string, string>;
   } | null;
   handoff_reason?: string | null;
+  invoice_action?: {
+    lines: InvoiceActionLine[];
+    currency?: string;
+    due_days?: number;
+    notes?: string;
+  } | null;
 }
 
 interface ConversationShape {
@@ -82,6 +98,7 @@ export class AiConversationControlService {
     private readonly aiTokens: AiTokenMeteringService,
     private readonly balancer: AiProviderBalancerService,
     private readonly gateway: AiGatewayService,
+    private readonly storage: StorageService,
   ) {}
 
   async startControl(workspaceId: string, conversationId: string) {
@@ -230,6 +247,12 @@ export class AiConversationControlService {
     const dispatched = await this.dispatchMessage(conv, message, action.reply_text, normalizedInteractive);
     const finalMessage = dispatched ?? message;
 
+    if (action.invoice_action && conv.contact?.id && conv.channel?.type === "WHATSAPP") {
+      this.handleInvoiceAction(workspaceId, conv, action.invoice_action).catch((err: Error) =>
+        this.logger.warn(`[invoice_action] failed: ${err.message}`),
+      );
+    }
+
     const now = new Date().toISOString();
     await this.prisma.conversation.update({
       where: { id: conversationId },
@@ -322,14 +345,20 @@ Responde SOLO JSON válido con este shape:
   "reply_text": "texto que se enviará al cliente",
   "interactive": null | { "type": "button", "body": "...", "buttons": [{"id":"...", "title":"..."}] } | { "type": "list", "body":"...", "buttonText":"Ver opciones", "sections":[{"title":"...", "rows":[{"id":"...", "title":"...", "description":"..."}]}] } | { "type": "location_request", "body":"..." },
   "memory_updates": null | { "summary": "...", "common_requests": ["..."], "communication_style": "...", "preferences": {"clave":"valor"} },
-  "handoff_reason": null
+  "handoff_reason": null,
+  "invoice_action": null | { "lines": [{"description":"...", "quantity":1, "unit_price":0.00}], "currency":"USD", "due_days":30, "notes":"..." }
 }
 Reglas de interactive:
 - Usa interactive solo si el canal lo soporta.
 - Botones: máximo 3, títulos cortos.
 - Listas: opciones claras, máximo 8 filas.
 - Location request: solo si necesitas ubicación para entrega, visita o servicio a domicilio.
-- No incluyas markdown fuera del JSON.`;
+- No incluyas markdown fuera del JSON.
+Reglas de invoice_action:
+- Solo genera invoice_action cuando el cliente haya CONFIRMADO explícitamente su pedido o servicio.
+- Debes conocer la descripción, cantidad y precio exacto de cada ítem; si no los tienes, no uses invoice_action.
+- reply_text debe anunciar brevemente que se enviará la factura (ej: "En un momento te envío tu factura.").
+- invoice_action solo aplica en WhatsApp; en otros canales usa null.`;
 
     const user = `Canal: ${channelType}
 Rich WhatsApp disponible: ${supportsWhatsAppRich ? "sí" : "no"}
@@ -460,6 +489,96 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
         } as any,
       },
     });
+  }
+
+  private async handleInvoiceAction(
+    workspaceId: string,
+    conv: ConversationShape,
+    invoiceAction: NonNullable<AiControlAction["invoice_action"]>,
+  ): Promise<void> {
+    if (!conv.contact?.id || !conv.contact.phone || conv.channel?.type !== "WHATSAPP") return;
+
+    const currency = invoiceAction.currency ?? "USD";
+    const dueDays = Math.max(1, Math.min(365, invoiceAction.due_days ?? 30));
+    const dueDate = new Date(Date.now() + dueDays * 24 * 60 * 60 * 1000);
+
+    // Compute totals
+    const lines = (invoiceAction.lines ?? []).filter(
+      (l) => l.description && l.quantity > 0 && l.unit_price >= 0,
+    );
+    if (lines.length === 0) return;
+
+    const lineData = lines.map((l, idx) => ({
+      line_number: idx + 1,
+      description: String(l.description).slice(0, 500),
+      quantity: Number(l.quantity),
+      unit_price: Number(l.unit_price),
+      subtotal: Number(l.quantity) * Number(l.unit_price),
+      total_line_amount: Number(l.quantity) * Number(l.unit_price),
+      discount_amount: 0,
+      tax_amount: 0,
+      workspace_id: workspaceId,
+    }));
+    const subtotal = lineData.reduce((s, l) => s + l.subtotal, 0);
+
+    // Auto-generate invoice number
+    const count = await this.prisma.invoice.count({ where: { workspace_id: workspaceId } });
+    const year = new Date().getFullYear();
+    const number = `IA-${year}-${String(count + 1).padStart(4, "0")}`;
+
+    // Workspace name
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { name: true },
+    });
+
+    // Create invoice in DB
+    const invoice = await this.prisma.invoice.create({
+      data: {
+        workspace_id: workspaceId,
+        contact_id: conv.contact.id,
+        conversation_id: conv.id,
+        number,
+        amount: subtotal,
+        subtotal,
+        currency,
+        due_date: dueDate,
+        issue_date: new Date(),
+        status: InvoiceStatus.SENT,
+        document_type: InvoiceDocumentType.FACTURA_ELECTRONICA,
+        issuance_mode: InvoiceIssuanceMode.MANUAL_ONLY,
+        hacienda_status: HaciendaStatus.DRAFT,
+        description: invoiceAction.notes,
+        lines: { create: lineData },
+      },
+      select: { id: true },
+    });
+
+    // Generate PDF
+    const pdfBuffer = await generateWorkspaceInvoicePdf({
+      number,
+      status: "ENVIADA",
+      workspaceName: ws?.name ?? "Negocio",
+      contactName: conv.contact.full_name ?? conv.contact.phone,
+      contactPhone: conv.contact.phone,
+      currency,
+      lines: lineData,
+      subtotal,
+      total: subtotal,
+      issueDate: new Date(),
+      dueDate,
+      notes: invoiceAction.notes,
+    });
+
+    // Upload to storage
+    const storageKey = `invoices/${workspaceId}/${invoice.id}.pdf`;
+    await this.storage.upload(storageKey, pdfBuffer, "application/pdf");
+    const pdfUrl = await this.storage.getPresignedUrl(storageKey, 3600);
+
+    // Send via WhatsApp
+    const to = conv.contact.phone.replace(/\D/g, "");
+    await this.whatsapp.sendMedia(conv.channel as any, to, pdfUrl, "document", `Factura ${number}`);
+    this.logger.log(`[invoice_action] invoice=${invoice.id} number=${number} sent to ${to}`);
   }
 
   private async dispatchMessage(

@@ -1,4 +1,5 @@
 import { Module, forwardRef } from "@nestjs/common";
+import { StorageModule } from "../common/storage/storage.module";
 import { AiService } from "./ai.service";
 import { AgentService } from "./agent.service";
 import { AgentToolsService } from "./agent-tools.service";
@@ -55,6 +56,7 @@ import { AiTriageService } from "./ai-triage.service";
     PlanLimitsModule,
     MemoryModule,
     AiTokensModule,
+    StorageModule,
   ],
   providers: [
     AiService,
