@@ -62,13 +62,13 @@ function ConversationListItemImpl({
       onClick={onClick}
       className={[
         "relative w-full px-4 py-3.5 text-left transition-colors border-b border-border/40 last:border-0",
-        selected ? "bg-primary/[0.06]" : "hover:bg-muted/30",
+        selected ? "bg-primary/[0.10]" : "hover:bg-muted/50",
       ].join(" ")}
     >
       {selected && (
         <span
           aria-hidden
-          className="absolute bottom-3 left-0 top-3 w-[3px] rounded-r-full bg-primary shadow-sm"
+          className="absolute bottom-3 left-0 top-3 w-1 rounded-r-full bg-primary"
         />
       )}
 
@@ -99,7 +99,7 @@ function ConversationListItemImpl({
           <div className="mt-0.5 flex flex-wrap items-center gap-1">
             <ChannelBadge channel={conversation.channel?.type} />
             {!conversation.assigned_user && (
-              <span className="rounded-full bg-amber-500/[0.06] px-1.5 py-px text-[10px] font-medium text-amber-400/60">
+              <span className="rounded-full bg-amber-500/15 px-1.5 py-px text-[10px] font-medium text-amber-500">
                 Sin asignar
               </span>
             )}

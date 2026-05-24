@@ -206,10 +206,9 @@ export default function AiSettingsPage() {
         </div>
 
         {hasKey && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded"
-            style={{ background: "hsl(142 60% 12%)", border: "1px solid hsl(142 60% 25%)" }}>
-            <CheckCircle2 style={{ width: 13, height: 13, color: "hsl(142 60% 50%)" }} />
-            <span style={{ fontSize: "12px", color: "hsl(142 60% 60%)" }}>
+          <div className="flex items-center gap-2 px-3 py-2 rounded border border-emerald-500/25 bg-emerald-500/10">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="text-xs text-emerald-300">
               API key configurada · {AI_PROVIDERS.find(p => p.id === workspace.ai_provider)?.label ?? workspace.ai_provider}
               {workspace.ai_model ? ` · ${workspace.ai_model}` : ""}
             </span>
@@ -315,10 +314,10 @@ export default function AiSettingsPage() {
           </div>
         </div>
 
-        <div className="border-t border-border pt-6 space-y-4">
+        <div className="pt-6 space-y-4">
           <div className="flex items-center gap-2">
             <Bot className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Contexto del negocio</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">Contexto del negocio</h2>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -368,10 +367,10 @@ export default function AiSettingsPage() {
           </div>
         </div>
 
-        <div className="border-t border-border pt-6 space-y-4">
+        <div className="pt-6 space-y-4">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Agente y tareas</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">Agente y tareas</h2>
           </div>
 
           <div className="flex items-center justify-between py-1 mb-4">
@@ -560,10 +559,10 @@ export default function AiSettingsPage() {
         </div>
 
         {/* ── Voz IA ── */}
-        <div className="border-t border-border pt-6 space-y-4">
+        <div className="pt-6 space-y-4">
           <div className="flex items-center gap-2">
             <Volume2 className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Voz para el Agente IA</h2>
+            <h2 className="text-[15px] font-semibold text-foreground">Voz para el Agente IA</h2>
           </div>
 
           <p className="text-[11px] text-muted-foreground">

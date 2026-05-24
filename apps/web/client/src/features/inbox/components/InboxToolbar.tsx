@@ -30,7 +30,7 @@ export function InboxToolbar({
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Buscar conversaciones..."
-              className="w-full h-8 pl-8 pr-3 rounded-md border-0 border-b border-border/60 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:border-primary/40 transition-colors"
+              className="w-full h-8 pl-8 pr-3 rounded-md border border-border/50 bg-muted/30 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50 focus:bg-muted/50 transition-colors"
             />
           </div>
 
