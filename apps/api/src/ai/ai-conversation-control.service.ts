@@ -386,7 +386,7 @@ export class AiConversationControlService {
       this.prisma.message.findMany({
         where: { workspace_id: workspaceId, conversation_id: conv.id },
         orderBy: { sent_at: "desc" },
-        take: 6,
+        take: 20,
         select: { direction: true, body_text: true },
       }),
       conv.contact?.id ? this.contactMemory.getActiveProfile(conv.contact.id).catch(() => null) : null,
