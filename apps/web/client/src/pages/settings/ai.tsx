@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,47 @@ import { Eye, EyeOff, CheckCircle2, Bot, ClipboardList, Volume2, ShoppingCart, U
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+
+function usePromptAssist(field: string, value: string, minLen = 30) {
+  const [suggestion, setSuggestion] = useState("");
+  const [loading, setLoading] = useState(false);
+  const dismiss = useCallback(() => setSuggestion(""), []);
+
+  useEffect(() => {
+    setSuggestion("");
+    if (value.trim().length < minLen) return;
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await api.askAssistant(field, value);
+        const text = res.suggestion || res.reply || "";
+        if (text && text.trim() !== value.trim()) setSuggestion(text.trim());
+      } catch { /* silent */ } finally { setLoading(false); }
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [field, value, minLen]);
+
+  return { suggestion, loading, dismiss };
+}
+
+function PromptSuggestion({
+  suggestion, loading, onApply, onDismiss,
+}: { suggestion: string; loading: boolean; onApply: () => void; onDismiss: () => void }) {
+  if (loading) {
+    return <p className="mt-1 text-[11px] text-muted-foreground animate-pulse">✨ Generando sugerencia...</p>;
+  }
+  if (!suggestion) return null;
+  return (
+    <div className="mt-1.5 rounded-md border border-primary/20 bg-primary/5 p-2.5 text-[11px]">
+      <p className="font-medium text-primary mb-1">✨ Sugerencia IA</p>
+      <p className="text-foreground/80 whitespace-pre-wrap leading-4">{suggestion}</p>
+      <div className="mt-2 flex gap-3">
+        <button onClick={onApply} className="font-medium text-primary hover:underline">Aplicar</button>
+        <button onClick={onDismiss} className="text-muted-foreground hover:text-foreground transition-colors">Descartar</button>
+      </div>
+    </div>
+  );
+}
 
 type ProfileFields = {
   ai_business_prompt: string;
@@ -201,6 +242,8 @@ export default function AiSettingsPage() {
   const [sensitiveInfo, setSensitiveInfo] = useState("");
   const [supportedLanguages, setSupportedLanguages] = useState("");
   const [maxResponseTime, setMaxResponseTime] = useState("");
+  const [intentPositiveExamples, setIntentPositiveExamples] = useState("");
+  const [intentNegativeExamples, setIntentNegativeExamples] = useState("");
 
   const { data: members } = useQuery({
     queryKey: ["/api/workspaces/current/members"],
@@ -248,6 +291,8 @@ export default function AiSettingsPage() {
       setSensitiveInfo(workspace.ai_sensitive_info ?? "");
       setSupportedLanguages(workspace.ai_supported_languages ?? "");
       setMaxResponseTime(workspace.ai_max_response_time ?? "");
+      setIntentPositiveExamples(workspace.ai_intent_positive_examples ?? "");
+      setIntentNegativeExamples(workspace.ai_intent_negative_examples ?? "");
       // never pre-fill the API key
     }
   }, [
@@ -273,6 +318,8 @@ export default function AiSettingsPage() {
     workspace?.ai_sensitive_info,
     workspace?.ai_supported_languages,
     workspace?.ai_max_response_time,
+    workspace?.ai_intent_positive_examples,
+    workspace?.ai_intent_negative_examples,
   ]);
 
   useEffect(() => {
@@ -306,6 +353,8 @@ export default function AiSettingsPage() {
         ai_sensitive_info: sensitiveInfo,
         ai_supported_languages: supportedLanguages,
         ai_max_response_time: maxResponseTime,
+        ai_intent_positive_examples: intentPositiveExamples,
+        ai_intent_negative_examples: intentNegativeExamples,
       },
     }),
     onSuccess: () => {
@@ -354,6 +403,13 @@ export default function AiSettingsPage() {
     setSupportedLanguages(profile.fields.ai_supported_languages);
     setMaxResponseTime(profile.fields.ai_max_response_time);
   };
+
+  const assistBusinessPrompt = usePromptAssist("ai_business_prompt", businessPrompt);
+  const assistProducts       = usePromptAssist("ai_business_products_services", productsServices);
+  const assistPolicies       = usePromptAssist("ai_business_policies", policies);
+  const assistObjective      = usePromptAssist("ai_main_objective", mainObjective);
+  const assistCannotDo       = usePromptAssist("ai_cannot_do", cannotDo);
+  const assistEscalation     = usePromptAssist("ai_escalation_conditions", escalationConditions);
 
   const intentOptions = [
     { id: "ORDER", label: "Pedidos" },
@@ -533,6 +589,12 @@ export default function AiSettingsPage() {
                 className="min-h-[110px] bg-[hsl(var(--elevated))] border-border text-sm"
                 placeholder="Ej: Somos una cafeteria de especialidad. Responde de forma calida, ofrece opciones disponibles y escala a humano si preguntan por eventos grandes."
               />
+              <PromptSuggestion
+                suggestion={assistBusinessPrompt.suggestion}
+                loading={assistBusinessPrompt.loading}
+                onApply={() => { setBusinessPrompt(assistBusinessPrompt.suggestion); assistBusinessPrompt.dismiss(); }}
+                onDismiss={assistBusinessPrompt.dismiss}
+              />
             </div>
 
             <div>
@@ -544,6 +606,12 @@ export default function AiSettingsPage() {
                 className="min-h-[96px] bg-[hsl(var(--elevated))] border-border text-sm"
                 placeholder="Lista breve de productos, servicios, paquetes, zonas o especialidades."
               />
+              <PromptSuggestion
+                suggestion={assistProducts.suggestion}
+                loading={assistProducts.loading}
+                onApply={() => { setProductsServices(assistProducts.suggestion); assistProducts.dismiss(); }}
+                onDismiss={assistProducts.dismiss}
+              />
             </div>
 
             <div>
@@ -554,6 +622,12 @@ export default function AiSettingsPage() {
                 maxLength={2000}
                 className="min-h-[96px] bg-[hsl(var(--elevated))] border-border text-sm"
                 placeholder="Horarios, tiempos de respuesta, reglas de entrega, reservas, devoluciones o que nunca debe prometer."
+              />
+              <PromptSuggestion
+                suggestion={assistPolicies.suggestion}
+                loading={assistPolicies.loading}
+                onApply={() => { setPolicies(assistPolicies.suggestion); assistPolicies.dismiss(); }}
+                onDismiss={assistPolicies.dismiss}
               />
             </div>
 
@@ -582,6 +656,12 @@ export default function AiSettingsPage() {
                   className="min-h-[72px] bg-[hsl(var(--elevated))] border-border text-sm"
                   placeholder="Ej: Convertir consultas en ventas. Tomar pedidos y confirmar disponibilidad."
                 />
+                <PromptSuggestion
+                  suggestion={assistObjective.suggestion}
+                  loading={assistObjective.loading}
+                  onApply={() => { setMainObjective(assistObjective.suggestion); assistObjective.dismiss(); }}
+                  onDismiss={assistObjective.dismiss}
+                />
               </div>
 
               <div className="md:col-span-2">
@@ -593,6 +673,12 @@ export default function AiSettingsPage() {
                   className="min-h-[90px] bg-[hsl(var(--elevated))] border-border text-sm"
                   placeholder="Ej: No puede confirmar pagos. No puede cambiar precios. No puede dar diagnósticos médicos."
                 />
+                <PromptSuggestion
+                  suggestion={assistCannotDo.suggestion}
+                  loading={assistCannotDo.loading}
+                  onApply={() => { setCannotDo(assistCannotDo.suggestion); assistCannotDo.dismiss(); }}
+                  onDismiss={assistCannotDo.dismiss}
+                />
               </div>
 
               <div>
@@ -603,6 +689,12 @@ export default function AiSettingsPage() {
                   maxLength={500}
                   className="min-h-[80px] bg-[hsl(var(--elevated))] border-border text-sm"
                   placeholder="Ej: Pedidos perdidos, disputas de pago, urgencias médicas."
+                />
+                <PromptSuggestion
+                  suggestion={assistEscalation.suggestion}
+                  loading={assistEscalation.loading}
+                  onApply={() => { setEscalationConditions(assistEscalation.suggestion); assistEscalation.dismiss(); }}
+                  onDismiss={assistEscalation.dismiss}
                 />
               </div>
 
@@ -636,6 +728,37 @@ export default function AiSettingsPage() {
                   maxLength={120}
                   className="bg-[hsl(var(--elevated))] border-border text-sm"
                   placeholder="Ej: Responder en menos de 1 hora en horario laboral."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Calibración de intenciones */}
+          <div className="pt-2">
+            <p className="text-xs font-semibold text-foreground mb-1">Calibración de intenciones</p>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              Escribe frases ejemplo para que el agente aprenda cuándo iniciar un flujo estructurado
+              (pedido, cita, cotización, reclamo) y cuándo responder de forma conversacional.
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label className="text-xs mb-1 block">Frases que SÍ deben iniciar un flujo</Label>
+                <Textarea
+                  value={intentPositiveExamples}
+                  onChange={(e) => setIntentPositiveExamples(e.target.value)}
+                  maxLength={500}
+                  className="min-h-[90px] bg-[hsl(var(--elevated))] border-border text-sm"
+                  placeholder={"Quiero hacer un pedido\nNecesito agendar una cita\nMe pueden cotizar...\nQuiero reservar una mesa"}
+                />
+              </div>
+              <div>
+                <Label className="text-xs mb-1 block">Frases que NO deben iniciar un flujo</Label>
+                <Textarea
+                  value={intentNegativeExamples}
+                  onChange={(e) => setIntentNegativeExamples(e.target.value)}
+                  maxLength={500}
+                  className="min-h-[90px] bg-[hsl(var(--elevated))] border-border text-sm"
+                  placeholder={"¿Cuáles son sus horarios?\n¿Tienen estacionamiento?\nHola buenos días\n¿Dónde están ubicados?"}
                 />
               </div>
             </div>

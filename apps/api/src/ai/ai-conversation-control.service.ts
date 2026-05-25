@@ -381,7 +381,7 @@ Reglas de intent_detected:
 - Úsalo SOLO cuando el cliente exprese claramente una intención de acción (hacer un pedido, agendar cita, solicitar cotización, presentar un reclamo).
 - Si el mensaje es un saludo, pregunta, consulta informativa o conversación general: intent_detected debe ser null.
 - Cuando intent_detected no es null, tu reply_text debe ser un breve reconocimiento (ej: "¡Claro! Con gusto te ayudo con tu pedido." o "Perfecto, agendamos tu cita."). No hagas preguntas de recolección — el sistema estructurado se encarga.
-- Cuando intent_detected es null, avanza la conversación y pide la siguiente información útil de forma natural.
+- Cuando intent_detected es null, avanza la conversación y pide la siguiente información útil de forma natural.${ctx.intentPositiveExamples ? `\nEjemplos de mensajes que SÍ deben activar intent_detected:\n${ctx.intentPositiveExamples}` : ""}${ctx.intentNegativeExamples ? `\nEjemplos de mensajes que NO deben activar intent_detected:\n${ctx.intentNegativeExamples}` : ""}
 Reglas de interactive:
 - Usa interactive solo si el canal lo soporta.
 - Botones: máximo 3, títulos cortos.
