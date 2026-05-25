@@ -346,6 +346,13 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     staleTime: 10_000,
   });
 
+  const { data: approvedTemplates } = useQuery({
+    queryKey: ["approved-templates", channelType],
+    queryFn: () => api.getApprovedTemplates(channelType?.toUpperCase() || "WHATSAPP"),
+    enabled: !!id && !!channelType,
+    staleTime: 5 * 60_000,
+  });
+
   const startAgentMut = useMutation({
     mutationFn: () => {
       const lastInbound = [...msgList].reverse().find(
@@ -526,6 +533,9 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
         channelType={channelType}
         isServiceWindowOpen={isServiceWindowOpen}
         disabled={!id}
+        availableTemplates={Array.isArray(approvedTemplates) ? approvedTemplates : []}
+        onInsertTemplate={(body) => setMessage(body)}
+        onInsertProduct={(text) => setMessage(text)}
         onAiSuggest={isEmprendePlus ? async () => {
           const lastInbound = [...msgList].reverse().find((m: any) => m.direction === "INBOUND");
           const result = await api.emprendeReply(id, lastInbound?.body_text ?? "");
