@@ -14,6 +14,9 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { EmrendeAiService } from "./emprende-ai.service";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { EmprendePlaybooksService } from "./emprende-playbooks.service";
+import { PlaybookExecutionService } from "./playbook-execution.service";
+import { ProductMetricsService } from "../common/metrics/product-metrics.service";
 
 class ReplyDto {
   @IsString()
@@ -47,12 +50,31 @@ class SuggestTasksDto {
   contactId?: string;
 }
 
+class RunPlaybookDto {
+  @IsString()
+  @MaxLength(3000)
+  message!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  conversationId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  contactId?: string;
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller("ai/emprende")
 export class EmrendeAiController {
   constructor(
     private readonly emprendeAi: EmrendeAiService,
     private readonly planLimits: PlanLimitsService,
+    private readonly emprendePlaybooks: EmprendePlaybooksService,
+    private readonly playbookExecution: PlaybookExecutionService,
+    private readonly productMetrics: ProductMetricsService,
   ) {}
 
   @Post("reply")
@@ -114,5 +136,52 @@ export class EmrendeAiController {
   ) {
     await this.planLimits.enforcePlanTier(user.workspace_id, "EMPRENDE", "Sugerencia de tareas IA");
     return this.emprendeAi.suggestTasksFromMessage(user.workspace_id, dto.messageText);
+  }
+
+  @Post("playbooks/run")
+  @HttpCode(HttpStatus.OK)
+  async runPlaybook(@CurrentUser() user: { workspace_id: string }, @Body() dto: RunPlaybookDto) {
+    await this.planLimits.enforcePlanTier(
+      user.workspace_id,
+      "EMPRENDE",
+      "Playbooks operativos de agentes",
+    );
+    const quota = await this.planLimits.evaluatePlanLimit(
+      user.workspace_id,
+      "agent_executions_per_day",
+    );
+    if (!quota.allowed) throw new ForbiddenException(quota.message);
+    const ctx = await this.emprendeAi.buildBusinessContext(user.workspace_id);
+    const output = this.emprendePlaybooks.run({
+      businessName: ctx.workspaceName,
+      message: dto.message,
+      planKey: quota.planKey,
+    });
+    const audit = await this.playbookExecution.persistExecution({
+      workspaceId: user.workspace_id,
+      message: dto.message,
+      conversationId: dto.conversationId,
+      contactId: dto.contactId,
+      output,
+    });
+    const escalationTask = await this.playbookExecution.createEscalationTask({
+      workspaceId: user.workspace_id,
+      message: dto.message,
+      conversationId: dto.conversationId,
+      contactId: dto.contactId,
+      output,
+    });
+    await this.productMetrics.track({
+      event: "playbook_run",
+      category: "ai_playbooks",
+      workspace_plan: quota.planKey,
+      metadata: {
+        intent: output.intent,
+        capability_tier: output.capabilityTier,
+        escalation: output.escalationRequired ? "true" : "false",
+        playbook_version: output.playbookVersion,
+      },
+    });
+    return { ...output, audit, escalationTask };
   }
 }
