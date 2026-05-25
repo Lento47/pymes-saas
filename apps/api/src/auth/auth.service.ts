@@ -132,11 +132,16 @@ export class AuthService {
     }
 
     if (dto.invite_token) {
-      return this.acceptInvite({
+      const result = await this.acceptInvite({
         token: dto.invite_token,
         name: dto.name,
         password: dto.password,
       });
+      await this.prisma.user.update({
+        where: { id: result.user.id },
+        data: { terms_accepted_at: new Date() },
+      });
+      return result;
     }
 
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
