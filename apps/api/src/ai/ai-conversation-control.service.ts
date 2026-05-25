@@ -89,7 +89,14 @@ interface ReplyOptions {
 @Injectable()
 export class AiConversationControlService {
   private readonly logger = new Logger(AiConversationControlService.name);
-  private readonly maxTokens = 1200;
+
+  private estimateMaxTokens(inboundText: string): number {
+    const len = inboundText.trim().length;
+    if (len < 20)  return 150;
+    if (len < 80)  return 400;
+    if (len < 300) return 800;
+    return 1200;
+  }
 
   constructor(
     private readonly prisma: PrismaService,
@@ -182,16 +189,34 @@ export class AiConversationControlService {
       }
     }
 
-    if (conv.channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
-      this.telegramOutbound.sendTyping(conv.channel.id, conv.contact.telegram_chat_id).catch(() => {});
+    // Typing indicators — keep visible for the full LLM wait time
+    const isWhatsApp = conv.channel?.type === "WHATSAPP";
+    const isTelegram = conv.channel?.type === "TELEGRAM";
+    const waPhone = conv.contact?.phone?.replace(/\D/g, "") ?? null;
+    const tgChatId = conv.contact?.telegram_chat_id ?? null;
+
+    if (isTelegram && tgChatId) {
+      this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
+    }
+    if (isWhatsApp && waPhone) {
+      this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_on").catch(() => {});
+    }
+
+    // Telegram typing expires after ~5s — refresh every 4s
+    let typingInterval: ReturnType<typeof setInterval> | null = null;
+    if (isTelegram && tgChatId) {
+      typingInterval = setInterval(() => {
+        this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
+      }, 4000);
     }
 
     await this.persistInboundMemory(workspaceId, conv, inboundText);
 
+    const maxTokens = this.estimateMaxTokens(inboundText);
     const context = await this.buildPrompt(workspaceId, conv, inboundText);
     const reservation = await this.aiTokens.reserveTokens(
       workspaceId,
-      this.aiTokens.estimateMessagesTokens(context.messages, this.maxTokens),
+      this.aiTokens.estimateMessagesTokens(context.messages, maxTokens),
       {
         conversationId,
         description: "Reserva Agente IA conversacional",
@@ -200,6 +225,10 @@ export class AiConversationControlService {
     );
 
     if (!reservation.success || !reservation.reservationId) {
+      if (typingInterval) clearInterval(typingInterval);
+      if (isWhatsApp && waPhone) {
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
+      }
       return {
         ok: false,
         error: "INSUFFICIENT_AI_TOKENS",
@@ -211,10 +240,14 @@ export class AiConversationControlService {
     let completion: ChatCompletionWithUsage;
     try {
       completion = await this.balancer.chatCompletionWithUsage(context.messages, context.providers, {
-        maxTokens: this.maxTokens,
+        maxTokens,
         temperature: 0.2,
       });
     } catch (err) {
+      if (typingInterval) clearInterval(typingInterval);
+      if (isWhatsApp && waPhone) {
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
+      }
       await this.aiTokens.releaseReservation(workspaceId, reservation.reservationId);
       this.logger.warn(`AI control provider failed: ${(err as Error).message}`);
       return {
@@ -222,6 +255,11 @@ export class AiConversationControlService {
         error: "AI_PROVIDER_FAILED",
         balance: await this.aiTokens.getBalance(workspaceId),
       };
+    } finally {
+      if (typingInterval) clearInterval(typingInterval);
+      if (isWhatsApp && waPhone) {
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
+      }
     }
 
     const action = this.parseAction(completion.text);
@@ -341,13 +379,13 @@ export class AiConversationControlService {
       this.prisma.message.findMany({
         where: { workspace_id: workspaceId, conversation_id: conv.id },
         orderBy: { sent_at: "desc" },
-        take: 10,
+        take: 6,
         select: { direction: true, body_text: true },
       }),
       conv.contact?.id ? this.contactMemory.getActiveProfile(conv.contact.id).catch(() => null) : null,
       this.prisma.messageTemplate.findMany({
         where: { workspace_id: workspaceId, channel: "WHATSAPP", status: "APPROVED" as any },
-        take: 5,
+        take: 3,
         orderBy: { updated_at: "desc" },
         select: { name: true, external_template_id: true, body: true },
       }),
@@ -366,6 +404,9 @@ export class AiConversationControlService {
     const system = `${this.emprendeAi.buildSystemPrompt(ctx)}
 
 Toma control conversacional de esta conversación. Responde el primer mensaje aunque sea un saludo.
+Mantén cada reply_text corto y enfocado en UNA sola acción: saluda, o pregunta, o confirma — nunca todo en un mensaje.
+Si el cliente saluda o es el primer contacto, responde solo con un saludo cálido y una sola pregunta breve.
+Respuestas ideales: 1-3 frases. Evita listas largas o explicaciones extensas salvo que el cliente lo pida explícitamente.
 Si el canal es WhatsApp o Telegram puedes usar botones o listas cuando ayude. Solo usa location_request en WhatsApp.
 Si no sabes algo, no inventes precios, inventario ni disponibilidad.
 Responde SOLO JSON válido con este shape:
