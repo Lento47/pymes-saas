@@ -7,10 +7,145 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, CheckCircle2, Bot, ClipboardList, Volume2 } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2, Bot, ClipboardList, Volume2, ShoppingCart, UtensilsCrossed, Zap, Stethoscope, Megaphone, Briefcase, Store, LayoutGrid } from "lucide-react";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+
+type ProfileFields = {
+  ai_business_prompt: string;
+  ai_business_products_services: string;
+  ai_business_policies: string;
+  ai_business_tone: string;
+  ai_main_objective: string;
+  ai_cannot_do: string;
+  ai_escalation_conditions: string;
+  ai_sensitive_info: string;
+  ai_supported_languages: string;
+  ai_max_response_time: string;
+};
+
+const BUSINESS_PROFILES: { id: string; label: string; Icon: React.ElementType; fields: ProfileFields }[] = [
+  {
+    id: "ecommerce",
+    label: "Tienda / Ecommerce",
+    Icon: ShoppingCart,
+    fields: {
+      ai_business_prompt: "Soy el asistente virtual de esta tienda online. Ayudo a los clientes con información sobre productos, estado de pedidos, opciones de envío y política de devoluciones.",
+      ai_business_products_services: "Catálogo de productos físicos con entrega a domicilio. Incluye variantes de talla, color y modelo.",
+      ai_business_policies: "Envíos en 3-5 días hábiles. Devoluciones en 30 días con producto sin uso. Pago con tarjeta, transferencia o contra entrega.",
+      ai_business_tone: "Amigable, entusiasta, orientado a la venta",
+      ai_main_objective: "Convertir consultas en ventas. Atender pedidos, catálogo, envíos y devoluciones.",
+      ai_cannot_do: "No puede confirmar pagos. No puede cancelar pedidos sin validación del sistema. No puede cambiar precios. No puede acceder a datos de tarjetas.",
+      ai_escalation_conditions: "Pedidos perdidos, disputas de pago, solicitudes de reembolso, reclamos sin resolver en 48h.",
+      ai_sensitive_info: "No compartir información de otros clientes ni datos internos de inventario o proveedores.",
+      ai_supported_languages: "Español",
+      ai_max_response_time: "Responder en menos de 1 hora en horario laboral (lunes-sábado 8am-6pm).",
+    },
+  },
+  {
+    id: "restaurante",
+    label: "Restaurante / Cafetería",
+    Icon: UtensilsCrossed,
+    fields: {
+      ai_business_prompt: "Soy el asistente del restaurante. Ayudo con el menú, horarios, reservas y pedidos para delivery.",
+      ai_business_products_services: "Menú de comidas y bebidas. Servicio en local y delivery. Carta especial para eventos.",
+      ai_business_policies: "Reservas con mínimo 2h de anticipación. Delivery en radio de 5km. Menú actualizado semanalmente.",
+      ai_business_tone: "Cálido, hospitalario, apetitoso",
+      ai_main_objective: "Gestionar reservas, informar menú del día y horarios, tomar pedidos para delivery.",
+      ai_cannot_do: "No puede confirmar reservas en horarios ya llenos sin consultar disponibilidad. No puede cambiar precios del menú. No puede procesar pagos.",
+      ai_escalation_conditions: "Quejas sobre calidad de alimentos, solicitudes de grupos grandes (+10 personas), alergias o necesidades dietéticas especiales.",
+      ai_sensitive_info: "No compartir fórmulas de recetas, datos de proveedores ni información interna del negocio.",
+      ai_supported_languages: "Español",
+      ai_max_response_time: "Responder en menos de 30 minutos durante horario de atención.",
+    },
+  },
+  {
+    id: "comidas_rapidas",
+    label: "Comidas Rápidas",
+    Icon: Zap,
+    fields: {
+      ai_business_prompt: "Soy el asistente de atención rápida. Tomo pedidos, informo tiempos de espera y gestiono delivery y recogida.",
+      ai_business_products_services: "Combos, hamburguesas, wraps, bebidas. Personalización básica de ingredientes. Delivery y para llevar.",
+      ai_business_policies: "Tiempo promedio de preparación 15-20 minutos. Sin reservas, servicio por orden de llegada. Delivery mínimo $5.",
+      ai_business_tone: "Rápido, directo, energético",
+      ai_main_objective: "Tomar pedidos, informar disponibilidad y tiempo de espera, confirmar pickup o delivery.",
+      ai_cannot_do: "No puede modificar precios ni aplicar descuentos sin código válido. No puede garantizar tiempos exactos. No puede procesar pagos.",
+      ai_escalation_conditions: "Pedidos incorrectos, quejas de calidad, demoras de más de 30 minutos, solicitudes de reembolso.",
+      ai_sensitive_info: "No compartir datos de otros pedidos ni información interna de operaciones.",
+      ai_supported_languages: "Español",
+      ai_max_response_time: "Responder en menos de 10 minutos.",
+    },
+  },
+  {
+    id: "clinica",
+    label: "Clínica / Estética",
+    Icon: Stethoscope,
+    fields: {
+      ai_business_prompt: "Soy el asistente de la clínica. Ayudo a agendar citas, informar sobre tratamientos disponibles y recopilar datos del paciente para la consulta.",
+      ai_business_products_services: "Consultas médicas, tratamientos estéticos, exámenes. Atención presencial y telemedicina.",
+      ai_business_policies: "Citas con 24h de anticipación mínimo. Cancelación con 12h de aviso. Se requiere nombre completo, cédula y motivo de consulta.",
+      ai_business_tone: "Profesional, empático, tranquilizador",
+      ai_main_objective: "Agendar citas, informar sobre tratamientos y precios, recopilar datos iniciales del paciente.",
+      ai_cannot_do: "No puede dar diagnósticos médicos ni recomendaciones de tratamiento. No puede confirmar disponibilidad sin verificar la agenda del médico. No puede acceder a historial clínico.",
+      ai_escalation_conditions: "Urgencias médicas o síntomas graves. Solicitudes de historial clínico. Quejas sobre procedimientos o efectos adversos.",
+      ai_sensitive_info: "Datos de salud e historial médico son estrictamente confidenciales. No confirmar ni divulgar información de pacientes a terceros.",
+      ai_supported_languages: "Español",
+      ai_max_response_time: "Responder en menos de 2 horas en horario de atención.",
+    },
+  },
+  {
+    id: "agencia_marketing",
+    label: "Agencia de Marketing",
+    Icon: Megaphone,
+    fields: {
+      ai_business_prompt: "Soy el asistente de ventas de la agencia. Califico leads, presento nuestros servicios y agendo reuniones de descubrimiento.",
+      ai_business_products_services: "Social media management, publicidad digital, SEO, diseño gráfico, desarrollo web, email marketing.",
+      ai_business_policies: "Reuniones de diagnóstico gratuitas de 30 minutos. Propuestas personalizadas en 3-5 días hábiles. Contratos mínimos de 3 meses.",
+      ai_business_tone: "Estratégico, creativo, orientado a resultados",
+      ai_main_objective: "Calificar leads, agendar reuniones de descubrimiento, presentar casos de éxito y servicios.",
+      ai_cannot_do: "No puede cotizar sin entender el alcance completo del proyecto. No puede comprometer fechas de entrega ni garantizar resultados específicos.",
+      ai_escalation_conditions: "Clientes con presupuesto mensual mayor a $3000. Solicitudes urgentes de campañas activas. Clientes de marcas reconocidas.",
+      ai_sensitive_info: "No compartir estrategias de campañas activas, datos de performance de otros clientes ni información de contratos.",
+      ai_supported_languages: "Español, Inglés",
+      ai_max_response_time: "Responder en menos de 4 horas en días hábiles (lunes-viernes 9am-5pm).",
+    },
+  },
+  {
+    id: "servicios_profesionales",
+    label: "Servicios Profesionales",
+    Icon: Briefcase,
+    fields: {
+      ai_business_prompt: "Soy el asistente del despacho profesional. Agendo consultas iniciales, informo sobre servicios y áreas de práctica, y califico casos potenciales.",
+      ai_business_products_services: "Consultoría y asesoría profesional especializada. Consulta inicial gratuita de 20 minutos.",
+      ai_business_policies: "Consultas con cita previa. Respuesta en 24 horas hábiles. Honorarios definidos caso por caso.",
+      ai_business_tone: "Formal, confiable, experto",
+      ai_main_objective: "Captar clientes potenciales, informar sobre servicios, agendar consultas iniciales.",
+      ai_cannot_do: "No puede dar asesoría legal, contable o técnica directa. No puede comprometer honorarios sin consulta con el profesional. No puede emitir documentos oficiales.",
+      ai_escalation_conditions: "Casos urgentes o con plazos legales próximos. Montos o complejidad que requieren evaluación directa del profesional.",
+      ai_sensitive_info: "Toda información de clientes es estrictamente confidencial por secreto profesional. Nunca divulgar datos de casos a terceros.",
+      ai_supported_languages: "Español",
+      ai_max_response_time: "Responder en menos de 24 horas hábiles.",
+    },
+  },
+  {
+    id: "retail",
+    label: "Tienda Física / Retail",
+    Icon: Store,
+    fields: {
+      ai_business_prompt: "Soy el asistente de la tienda. Informo sobre productos disponibles, precios, horarios y ubicación.",
+      ai_business_products_services: "Productos físicos disponibles en local. Consultas de stock, precios y disponibilidad.",
+      ai_business_policies: "Horario de atención lunes a sábado. Cambios y devoluciones en 15 días con ticket de compra. No se aceptan devoluciones de artículos en oferta.",
+      ai_business_tone: "Servicial, amable, local",
+      ai_main_objective: "Informar disponibilidad de productos, horarios y ubicación. Generar visitas a la tienda.",
+      ai_cannot_do: "No puede reservar productos por más de 24h sin pago. No puede confirmar precios sin verificar stock actualizado. No puede procesar pagos.",
+      ai_escalation_conditions: "Quejas de productos defectuosos, solicitudes de garantía, pedidos mayoristas.",
+      ai_sensitive_info: "No compartir información de proveedores ni márgenes de precio.",
+      ai_supported_languages: "Español",
+      ai_max_response_time: "Responder en menos de 2 horas en horario de atención.",
+    },
+  },
+];
 
 const AI_PROVIDERS = [
   { id: "openai",          label: "OpenAI",                 models: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-5"] },
@@ -59,6 +194,13 @@ export default function AiSettingsPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceId, setVoiceId] = useState("");
   const [elevenlabsApiKey, setElevenlabsApiKey] = useState("");
+  const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
+  const [mainObjective, setMainObjective] = useState("");
+  const [cannotDo, setCannotDo] = useState("");
+  const [escalationConditions, setEscalationConditions] = useState("");
+  const [sensitiveInfo, setSensitiveInfo] = useState("");
+  const [supportedLanguages, setSupportedLanguages] = useState("");
+  const [maxResponseTime, setMaxResponseTime] = useState("");
 
   const { data: members } = useQuery({
     queryKey: ["/api/workspaces/current/members"],
@@ -100,6 +242,12 @@ export default function AiSettingsPage() {
       setAgentAutoActive(workspace.ai_agent_auto_active ?? false);
       setVoiceEnabled(workspace.ai_voice_enabled ?? false);
       setVoiceId(workspace.ai_voice_id ?? "");
+      setMainObjective(workspace.ai_main_objective ?? "");
+      setCannotDo(workspace.ai_cannot_do ?? "");
+      setEscalationConditions(workspace.ai_escalation_conditions ?? "");
+      setSensitiveInfo(workspace.ai_sensitive_info ?? "");
+      setSupportedLanguages(workspace.ai_supported_languages ?? "");
+      setMaxResponseTime(workspace.ai_max_response_time ?? "");
       // never pre-fill the API key
     }
   }, [
@@ -119,6 +267,12 @@ export default function AiSettingsPage() {
     workspace?.ai_agent_auto_active,
     workspace?.ai_voice_enabled,
     workspace?.ai_voice_id,
+    workspace?.ai_main_objective,
+    workspace?.ai_cannot_do,
+    workspace?.ai_escalation_conditions,
+    workspace?.ai_sensitive_info,
+    workspace?.ai_supported_languages,
+    workspace?.ai_max_response_time,
   ]);
 
   useEffect(() => {
@@ -146,6 +300,12 @@ export default function AiSettingsPage() {
         ai_agent_auto_active: agentAutoActive,
         ai_voice_enabled: voiceEnabled,
         ai_voice_id: voiceId,
+        ai_main_objective: mainObjective,
+        ai_cannot_do: cannotDo,
+        ai_escalation_conditions: escalationConditions,
+        ai_sensitive_info: sensitiveInfo,
+        ai_supported_languages: supportedLanguages,
+        ai_max_response_time: maxResponseTime,
       },
     }),
     onSuccess: () => {
@@ -181,6 +341,20 @@ export default function AiSettingsPage() {
   const assignableMembers = memberList
     .map((member: any) => member.user ?? member)
     .filter((member: any) => member?.id);
+  const applyProfile = (profile: typeof BUSINESS_PROFILES[0]) => {
+    setSelectedProfile(profile.id);
+    setBusinessPrompt(profile.fields.ai_business_prompt);
+    setProductsServices(profile.fields.ai_business_products_services);
+    setPolicies(profile.fields.ai_business_policies);
+    setTone(profile.fields.ai_business_tone);
+    setMainObjective(profile.fields.ai_main_objective);
+    setCannotDo(profile.fields.ai_cannot_do);
+    setEscalationConditions(profile.fields.ai_escalation_conditions);
+    setSensitiveInfo(profile.fields.ai_sensitive_info);
+    setSupportedLanguages(profile.fields.ai_supported_languages);
+    setMaxResponseTime(profile.fields.ai_max_response_time);
+  };
+
   const intentOptions = [
     { id: "ORDER", label: "Pedidos" },
     { id: "APPOINTMENT", label: "Citas" },
@@ -314,6 +488,35 @@ export default function AiSettingsPage() {
           </div>
         </div>
 
+        {/* ── Perfil de negocio ── */}
+        <div className="pt-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <LayoutGrid className="h-4 w-4 text-primary" />
+            <h2 className="text-[15px] font-semibold text-foreground">Perfil de negocio</h2>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Seleccioná una plantilla para configurar el agente automáticamente. Podés editarla después.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {BUSINESS_PROFILES.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => applyProfile(BUSINESS_PROFILES.find(p => p.id === id)!)}
+                className={cn(
+                  "flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-center transition-colors",
+                  selectedProfile === id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-card/40 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                )}
+              >
+                <Icon className="h-5 w-5 shrink-0" strokeWidth={1.8} />
+                <span className="text-[11px] font-medium leading-tight">{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="pt-6 space-y-4">
           <div className="flex items-center gap-2">
             <Bot className="h-4 w-4 text-primary" />
@@ -363,6 +566,78 @@ export default function AiSettingsPage() {
                 className="bg-[hsl(var(--elevated))] border-border text-sm"
                 placeholder="Ej: cercano, profesional, conciso, sin emojis, estilo premium."
               />
+            </div>
+          </div>
+
+          {/* Restricciones y escalado */}
+          <div className="pt-2">
+            <p className="text-xs font-semibold text-foreground mb-3">Restricciones y escalado</p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <Label className="text-xs mb-1 block">Objetivo principal de la IA</Label>
+                <Textarea
+                  value={mainObjective}
+                  onChange={(e) => setMainObjective(e.target.value)}
+                  maxLength={500}
+                  className="min-h-[72px] bg-[hsl(var(--elevated))] border-border text-sm"
+                  placeholder="Ej: Convertir consultas en ventas. Tomar pedidos y confirmar disponibilidad."
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <Label className="text-xs mb-1 block">Lo que la IA NO puede hacer</Label>
+                <Textarea
+                  value={cannotDo}
+                  onChange={(e) => setCannotDo(e.target.value)}
+                  maxLength={1000}
+                  className="min-h-[90px] bg-[hsl(var(--elevated))] border-border text-sm"
+                  placeholder="Ej: No puede confirmar pagos. No puede cambiar precios. No puede dar diagnósticos médicos."
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs mb-1 block">Cuándo escalar a humano</Label>
+                <Textarea
+                  value={escalationConditions}
+                  onChange={(e) => setEscalationConditions(e.target.value)}
+                  maxLength={500}
+                  className="min-h-[80px] bg-[hsl(var(--elevated))] border-border text-sm"
+                  placeholder="Ej: Pedidos perdidos, disputas de pago, urgencias médicas."
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs mb-1 block">Información sensible (no divulgar)</Label>
+                <Textarea
+                  value={sensitiveInfo}
+                  onChange={(e) => setSensitiveInfo(e.target.value)}
+                  maxLength={500}
+                  className="min-h-[80px] bg-[hsl(var(--elevated))] border-border text-sm"
+                  placeholder="Ej: No compartir datos de otros clientes ni información de proveedores."
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs mb-1 block">Idiomas soportados</Label>
+                <Input
+                  value={supportedLanguages}
+                  onChange={(e) => setSupportedLanguages(e.target.value)}
+                  maxLength={120}
+                  className="bg-[hsl(var(--elevated))] border-border text-sm"
+                  placeholder="Ej: Español, Inglés"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs mb-1 block">Tiempo de respuesta objetivo</Label>
+                <Input
+                  value={maxResponseTime}
+                  onChange={(e) => setMaxResponseTime(e.target.value)}
+                  maxLength={120}
+                  className="bg-[hsl(var(--elevated))] border-border text-sm"
+                  placeholder="Ej: Responder en menos de 1 hora en horario laboral."
+                />
+              </div>
             </div>
           </div>
         </div>
