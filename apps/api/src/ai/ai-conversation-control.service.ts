@@ -425,6 +425,7 @@ Reglas de intent_detected:
 - Cuando intent_detected es null, avanza la conversación y pide la siguiente información útil de forma natural.${ctx.intentPositiveExamples ? `\nEjemplos de mensajes que SÍ deben activar intent_detected:\n${ctx.intentPositiveExamples}` : ""}${ctx.intentNegativeExamples ? `\nEjemplos de mensajes que NO deben activar intent_detected:\n${ctx.intentNegativeExamples}` : ""}
 Reglas de interactive:
 - Usa interactive solo si el canal lo soporta.
+- Si el canal no soporta interactivo, interactive debe ser null.
 - Botones: máximo 3, títulos cortos.
 - Listas: opciones claras, máximo 8 filas.
 - Location request: solo si necesitas ubicación para entrega, visita o servicio a domicilio.
@@ -433,7 +434,12 @@ Reglas de invoice_action:
 - Solo genera invoice_action cuando el cliente haya CONFIRMADO explícitamente su pedido o servicio.
 - Debes conocer la descripción, cantidad y precio exacto de cada ítem; si no los tienes, no uses invoice_action.
 - reply_text debe anunciar brevemente que se enviará la factura (ej: "En un momento te envío tu factura.").
-- invoice_action aplica en WhatsApp y Telegram; en otros canales usa null.`;
+- invoice_action aplica en WhatsApp y Telegram; en otros canales usa null.
+- Si invoice_action no es null, valida SIEMPRE: lines.length > 0, cada line.quantity > 0, cada line.unit_price > 0 y currency dentro de: USD, EUR, MXN, COP, ARS, CLP, PEN, GTQ, CRC, DOP.
+Invariantes globales del JSON:
+- Si intent_detected !== null, entonces handoff_reason === null y reply_text debe ser un reconocimiento corto; memory_updates puede ser null o un objeto válido.
+- Prohibido agregar campos extra fuera del schema indicado.
+- Si tu primer borrador viola el schema o cualquier invariante, corrígelo antes de responder.`;
 
     const user = `Canal: ${channelType}
 Interactivo disponible: ${supportsRichInteractive ? "sí (botones, listas)" : "no"}
