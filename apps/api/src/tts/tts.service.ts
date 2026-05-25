@@ -13,7 +13,9 @@ export class TtsService {
     this.baseUrl =
       config.get<string>("ELEVENLABS_BASE_URL") ?? "https://api.elevenlabs.io";
     this.apiKey = config.get<string>("ELEVENLABS_API_KEY") ?? null;
+    // Support both ELEVENLABS_VOICE_ID (Railway) and ELEVENLABS_DEFAULT_VOICE_ID
     this.defaultVoiceId =
+      config.get<string>("ELEVENLABS_VOICE_ID") ??
       config.get<string>("ELEVENLABS_DEFAULT_VOICE_ID") ??
       "JBFqnCBsd6RMkjVDRZzb";
     this.modelId =
