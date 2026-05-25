@@ -16,6 +16,7 @@ import { EmrendeAiService } from "./emprende-ai.service";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { EmprendePlaybooksService } from "./emprende-playbooks.service";
 import { PlaybookExecutionService } from "./playbook-execution.service";
+import { ProductMetricsService } from "../common/metrics/product-metrics.service";
 
 class ReplyDto {
   @IsString()
@@ -73,6 +74,7 @@ export class EmrendeAiController {
     private readonly planLimits: PlanLimitsService,
     private readonly emprendePlaybooks: EmprendePlaybooksService,
     private readonly playbookExecution: PlaybookExecutionService,
+    private readonly productMetrics: ProductMetricsService,
   ) {}
 
   @Post("reply")
@@ -168,6 +170,17 @@ export class EmrendeAiController {
       conversationId: dto.conversationId,
       contactId: dto.contactId,
       output,
+    });
+    await this.productMetrics.track({
+      event: "playbook_run",
+      category: "ai_playbooks",
+      workspace_plan: quota.planKey,
+      metadata: {
+        intent: output.intent,
+        capability_tier: output.capabilityTier,
+        escalation: output.escalationRequired ? "true" : "false",
+        playbook_version: output.playbookVersion,
+      },
     });
     return { ...output, audit, escalationTask };
   }

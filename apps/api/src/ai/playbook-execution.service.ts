@@ -27,6 +27,7 @@ export class PlaybookExecutionService {
           message: input.message,
           conversation_id: input.conversationId ?? null,
           contact_id: input.contactId ?? null,
+          playbook_version: input.output.playbookVersion,
         },
         result_json: input.output as unknown as Prisma.InputJsonValue,
         completed_at: new Date(),
@@ -64,6 +65,7 @@ export class PlaybookExecutionService {
           metadata_json: {
             playbook_dedupe_key: dedupeKey,
             escalation_state: "PENDING_HUMAN",
+            playbook_version: input.output.playbookVersion,
             intent: input.output.intent,
             capability_tier: input.output.capabilityTier,
             required_fields: input.output.requiredFields,
@@ -88,6 +90,7 @@ export class PlaybookExecutionService {
         metadata_json: {
           playbook_dedupe_key: dedupeKey,
           escalation_state: "PENDING_HUMAN",
+          playbook_version: input.output.playbookVersion,
           intent: input.output.intent,
           capability_tier: input.output.capabilityTier,
           required_fields: input.output.requiredFields,

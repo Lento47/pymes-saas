@@ -4,6 +4,7 @@ import { EmprendePlaybookOutput } from "./emprende-playbooks.service";
 describe("PlaybookExecutionService", () => {
   function makeOutput(overrides: Partial<EmprendePlaybookOutput> = {}): EmprendePlaybookOutput {
     return {
+      playbookVersion: "v1.1.0",
       intent: "support_faq",
       reply: "Respuesta",
       requiredFields: ["question_context"],

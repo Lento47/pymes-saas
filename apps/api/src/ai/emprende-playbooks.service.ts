@@ -16,6 +16,7 @@ export interface EmprendePlaybookInput {
 }
 
 export interface EmprendePlaybookOutput {
+  playbookVersion: string;
   intent: EmprendeIntent;
   reply: string;
   requiredFields: string[];
@@ -27,6 +28,8 @@ export interface EmprendePlaybookOutput {
 
 @Injectable()
 export class EmprendePlaybooksService {
+  static readonly PLAYBOOK_VERSION = "v1.1.0";
+
   run(input: EmprendePlaybookInput): EmprendePlaybookOutput {
     const intent = this.detectIntent(input.message);
     const tier = this.resolveCapabilityTier(input.planKey);
@@ -35,6 +38,7 @@ export class EmprendePlaybooksService {
     switch (intent) {
       case "sales_quote":
         return {
+          playbookVersion: EmprendePlaybooksService.PLAYBOOK_VERSION,
           intent,
           reply:
             "¡Con gusto! Te ayudo con la cotización. Para darte una opción precisa, cuéntame qué necesitas y para cuándo lo ocupas.",
@@ -46,6 +50,7 @@ export class EmprendePlaybooksService {
         };
       case "support_faq":
         return {
+          playbookVersion: EmprendePlaybooksService.PLAYBOOK_VERSION,
           intent,
           reply:
             "Claro, te ayudo. Si no tengo el dato exacto aquí, lo escalo al equipo para confirmarte por este mismo medio.",
@@ -57,6 +62,7 @@ export class EmprendePlaybooksService {
         };
       case "booking":
         return {
+          playbookVersion: EmprendePlaybooksService.PLAYBOOK_VERSION,
           intent,
           reply:
             "Perfecto, te apoyo con la reserva. ¿Qué fecha, hora y servicio necesitas?",
@@ -68,6 +74,7 @@ export class EmprendePlaybooksService {
         };
       case "order_status":
         return {
+          playbookVersion: EmprendePlaybooksService.PLAYBOOK_VERSION,
           intent,
           reply:
             "Te ayudo a revisar el estado de tu pedido. Compárteme el número de orden o el nombre con el que lo realizaste.",
@@ -79,6 +86,7 @@ export class EmprendePlaybooksService {
         };
       case "payment_reported":
         return {
+          playbookVersion: EmprendePlaybooksService.PLAYBOOK_VERSION,
           intent,
           reply:
             "Perfecto, gracias. Puedes enviar el comprobante por aquí y lo registro para validación del equipo.",
@@ -90,6 +98,7 @@ export class EmprendePlaybooksService {
         };
       case "human_handoff":
         return {
+          playbookVersion: EmprendePlaybooksService.PLAYBOOK_VERSION,
           intent,
           reply:
             "Con gusto. Te paso con el equipo para que te atiendan por este mismo medio lo antes posible.",
@@ -102,6 +111,7 @@ export class EmprendePlaybooksService {
       case "off_topic":
       default:
         return {
+          playbookVersion: EmprendePlaybooksService.PLAYBOOK_VERSION,
           intent: "off_topic",
           reply: `Este canal está enfocado en ayudarte con ${input.businessName}. Te puedo apoyar con ventas, soporte, pedidos, pagos o agenda. ¿Qué necesitas gestionar?`,
           requiredFields: capabilities.requiredFields,
