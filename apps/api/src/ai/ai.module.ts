@@ -36,6 +36,7 @@ import { AiTokensModule } from "../ai-tokens/ai-tokens.module";
 import { AiTriageService } from "./ai-triage.service";
 import { ElevenLabsService } from "./elevenlabs.service";
 import { EmprendePlaybooksService } from "./emprende-playbooks.service";
+import { PlaybookExecutionService } from "./playbook-execution.service";
 
 // NOTE: do NOT import EmailModule here. Adding it creates a cycle
 // AiModule → EmailModule → ConversationsModule → AiModule (the last
@@ -79,6 +80,7 @@ import { EmprendePlaybooksService } from "./emprende-playbooks.service";
     AiConversationControlService,
     ElevenLabsService,
     EmprendePlaybooksService,
+    PlaybookExecutionService,
   ],
   controllers: [
     AgentController,
@@ -102,6 +104,7 @@ import { EmprendePlaybooksService } from "./emprende-playbooks.service";
     AiConversationControlService,
     ElevenLabsService,
     EmprendePlaybooksService,
+    PlaybookExecutionService,
   ],
 })
 export class AiModule {}

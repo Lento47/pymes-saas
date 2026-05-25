@@ -15,6 +15,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { EmrendeAiService } from "./emprende-ai.service";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { EmprendePlaybooksService } from "./emprende-playbooks.service";
+import { PlaybookExecutionService } from "./playbook-execution.service";
 
 class ReplyDto {
   @IsString()
@@ -52,6 +53,16 @@ class RunPlaybookDto {
   @IsString()
   @MaxLength(3000)
   message!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  conversationId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  contactId?: string;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -61,6 +72,7 @@ export class EmrendeAiController {
     private readonly emprendeAi: EmrendeAiService,
     private readonly planLimits: PlanLimitsService,
     private readonly emprendePlaybooks: EmprendePlaybooksService,
+    private readonly playbookExecution: PlaybookExecutionService,
   ) {}
 
   @Post("reply")
@@ -138,10 +150,25 @@ export class EmrendeAiController {
     );
     if (!quota.allowed) throw new ForbiddenException(quota.message);
     const ctx = await this.emprendeAi.buildBusinessContext(user.workspace_id);
-    return this.emprendePlaybooks.run({
+    const output = this.emprendePlaybooks.run({
       businessName: ctx.workspaceName,
       message: dto.message,
       planKey: quota.planKey,
     });
+    const audit = await this.playbookExecution.persistExecution({
+      workspaceId: user.workspace_id,
+      message: dto.message,
+      conversationId: dto.conversationId,
+      contactId: dto.contactId,
+      output,
+    });
+    const escalationTask = await this.playbookExecution.createEscalationTask({
+      workspaceId: user.workspace_id,
+      message: dto.message,
+      conversationId: dto.conversationId,
+      contactId: dto.contactId,
+      output,
+    });
+    return { ...output, audit, escalationTask };
   }
 }
