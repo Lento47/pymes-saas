@@ -14,6 +14,7 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { EmrendeAiService } from "./emprende-ai.service";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { EmprendePlaybooksService } from "./emprende-playbooks.service";
 
 class ReplyDto {
   @IsString()
@@ -47,12 +48,19 @@ class SuggestTasksDto {
   contactId?: string;
 }
 
+class RunPlaybookDto {
+  @IsString()
+  @MaxLength(3000)
+  message!: string;
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller("ai/emprende")
 export class EmrendeAiController {
   constructor(
     private readonly emprendeAi: EmrendeAiService,
     private readonly planLimits: PlanLimitsService,
+    private readonly emprendePlaybooks: EmprendePlaybooksService,
   ) {}
 
   @Post("reply")
@@ -114,5 +122,26 @@ export class EmrendeAiController {
   ) {
     await this.planLimits.enforcePlanTier(user.workspace_id, "EMPRENDE", "Sugerencia de tareas IA");
     return this.emprendeAi.suggestTasksFromMessage(user.workspace_id, dto.messageText);
+  }
+
+  @Post("playbooks/run")
+  @HttpCode(HttpStatus.OK)
+  async runPlaybook(@CurrentUser() user: { workspace_id: string }, @Body() dto: RunPlaybookDto) {
+    await this.planLimits.enforcePlanTier(
+      user.workspace_id,
+      "EMPRENDE",
+      "Playbooks operativos de agentes",
+    );
+    const quota = await this.planLimits.evaluatePlanLimit(
+      user.workspace_id,
+      "agent_executions_per_day",
+    );
+    if (!quota.allowed) throw new ForbiddenException(quota.message);
+    const ctx = await this.emprendeAi.buildBusinessContext(user.workspace_id);
+    return this.emprendePlaybooks.run({
+      businessName: ctx.workspaceName,
+      message: dto.message,
+      planKey: quota.planKey,
+    });
   }
 }
