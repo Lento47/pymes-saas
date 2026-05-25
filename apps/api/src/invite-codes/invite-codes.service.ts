@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
@@ -97,9 +98,10 @@ export class InviteCodesService {
 
   private generateCode(): string {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const entropy = randomBytes(12);
     let result = "";
-    for (let i = 0; i < 6; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    for (let i = 0; i < 12; i++) {
+      result += chars.charAt(entropy[i] % chars.length);
     }
     return result;
   }
