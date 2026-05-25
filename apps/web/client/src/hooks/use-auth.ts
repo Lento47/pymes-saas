@@ -201,7 +201,7 @@ export function useAuth() {
     return res;
   };
 
-  const register = async (data: { name: string; email: string; password: string }) => {
+  const register = async (data: { name: string; email: string; password: string; terms_accepted: boolean; invite_token?: string }) => {
     const res = await api.register(data);
     applyAuthResult(res as unknown as { access_token: string; refresh_token?: string; user: AuthUser });
     return res;

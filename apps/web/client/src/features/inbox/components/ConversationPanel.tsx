@@ -343,7 +343,12 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     queryKey: ["agent-run", id],
     queryFn: () => api.getAgentRun(id),
     enabled: !!id && isEmprendePlus,
-    staleTime: 10_000,
+    staleTime: 2_000,
+    retry: 2,
+    refetchInterval: (query) => {
+      const run = query.state.data as AgentRun | null | undefined;
+      return run?.status === "RUNNING" ? 2_000 : false;
+    },
   });
 
   const { data: approvedTemplates } = useQuery({
@@ -364,6 +369,7 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
     onSuccess: (data) => {
       if (data?.run) qc.setQueryData(["agent-run", id], data.run);
       else toast({ title: "No se detectó intención", description: "El agente no pudo interpretar el último mensaje.", variant: "destructive" });
+      qc.invalidateQueries({ queryKey: ["/api/conversations", id, "messages"] });
     },
     onError: (e: any) => toast({ title: "Error al iniciar agente", description: e.message, variant: "destructive" }),
   });
