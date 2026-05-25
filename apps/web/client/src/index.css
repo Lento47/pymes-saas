@@ -113,7 +113,11 @@ html.light {
 
 * { -webkit-font-smoothing: antialiased; }
 
-html { scroll-behavior: auto; /* Safari doesn't support smooth */ }
+html {
+  scroll-behavior: auto; /* Safari doesn't support smooth */
+  /* Prevent iOS elastic dead-zone bounce at page edges */
+  overscroll-behavior: none;
+}
 
 body {
   background: hsl(var(--bg));
@@ -122,6 +126,26 @@ body {
   font-size: 13px;
   line-height: 1.5;
   overflow-x: hidden;
+  /* Stop iOS long-press context menu on images/links */
+  -webkit-touch-callout: none;
+}
+
+/* Remove Android blue/grey tap flash on all elements */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* App chrome should not be text-selectable (native feel) */
+nav, aside, header, [role="navigation"], [role="banner"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Touch press feedback — only on touch devices to avoid mouse jitter */
+@media (hover: none) {
+  button:active, a:active, [role="button"]:active {
+    opacity: 0.75;
+    transform: scale(0.97);
+    transition: opacity 80ms ease, transform 80ms ease;
+  }
 }
 
 /* ── Global interactive transition base ── */
@@ -321,6 +345,19 @@ html.light .marketing-grid {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
+
+/* ── Sidebar slide animation: GPU-composited translate for mobile ── */
+.sidebar-slide-in {
+  transform: translateX(0);
+  transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+.sidebar-slide-out {
+  transform: translateX(-100%);
+  transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+.will-change-opacity { will-change: opacity; }
 
 /* ── Dashboard card elevation in light theme ── */
 html.light .dash-card {

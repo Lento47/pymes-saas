@@ -49,7 +49,7 @@ export function NotificationBell() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative p-1.5 rounded hover:bg-white/5 transition-colors"
+        className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md hover:bg-white/5 transition-colors"
         title="Notificaciones"
         style={{ color: "hsl(var(--fg-2))" }}
       >
