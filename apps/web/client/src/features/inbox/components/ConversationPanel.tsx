@@ -347,9 +347,9 @@ export function ConversationPanel({ conversationId, onBack, embedded }: Props) {
   });
 
   const { data: approvedTemplates } = useQuery({
-    queryKey: ["approved-templates", channelType],
-    queryFn: () => api.getApprovedTemplates(channelType?.toUpperCase() || "WHATSAPP"),
-    enabled: !!id && !!channelType,
+    queryKey: ["approved-templates", conv?.channel?.type],
+    queryFn: () => api.getApprovedTemplates((conv?.channel?.type as string)?.toUpperCase() || "WHATSAPP"),
+    enabled: !!id && !!conv?.channel?.type,
     staleTime: 5 * 60_000,
   });
 
