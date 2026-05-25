@@ -352,6 +352,9 @@ model Workspace {
   ai_token_reservations AiTokenReservation[]
   contact_ai_memories  ContactAiMemory[]
   paypal_payment_orders PaypalPaymentOrder[]
+  agent_instances             AgentInstance[]
+  agent_conversation_sessions AgentConversationSession[]
+  agent_usage_events          AgentUsageEvent[]
 
   @@index([slug])
   @@index([status])
@@ -2385,4 +2388,121 @@ enum AiTokenReservationStatus {
   ACTIVE
   CONSUMED
   RELEASED
+}
+
+// ============================================================
+// FLOWISE AGENTS — External chatflow orchestration
+// ============================================================
+
+enum AgentProvider {
+  FLOWISE
+  INTERNAL
+}
+
+enum AgentStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  DRAFT
+}
+
+enum AgentChannelScope {
+  ALL
+  WHATSAPP
+  TELEGRAM
+  EMAIL
+  WEB
+  MANUAL
+}
+
+model AgentInstance {
+  id            String            @id @default(cuid())
+  workspace_id  String
+  name          String
+  description   String?           @db.Text
+  provider      AgentProvider     @default(FLOWISE)
+  chatflow_id   String            @default("")
+  status        AgentStatus       @default(DRAFT)
+  channel_scope AgentChannelScope @default(ALL)
+  config_json   Json?             @db.JsonB
+  template_id   String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace    Workspace              @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  template     AgentTemplate?         @relation(fields: [template_id], references: [id], onDelete: SetNull)
+  sessions     AgentConversationSession[]
+  usage_events AgentUsageEvent[]
+
+  @@index([workspace_id])
+  @@index([workspace_id, status])
+  @@index([workspace_id, channel_scope])
+  @@map("agent_instances")
+}
+
+model AgentConversationSession {
+  id                 String            @id @default(cuid())
+  workspace_id       String
+  agent_instance_id  String
+  conversation_id    String?
+  flowise_session_id String
+  channel            AgentChannelScope @default(WEB)
+  metadata_json      Json?             @db.JsonB
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace      Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  agent_instance AgentInstance @relation(fields: [agent_instance_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([agent_instance_id])
+  @@index([conversation_id])
+  @@index([flowise_session_id])
+  @@map("agent_conversation_sessions")
+}
+
+model AgentUsageEvent {
+  id                String            @id @default(cuid())
+  workspace_id      String
+  agent_instance_id String
+  session_id        String?
+  channel           AgentChannelScope @default(WEB)
+  input_chars       Int               @default(0)
+  output_chars      Int               @default(0)
+  latency_ms        Int?
+  cost_usd          Decimal?          @db.Decimal(12, 8)
+  metadata_json     Json?             @db.JsonB
+
+  created_at DateTime @default(now())
+
+  workspace      Workspace     @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  agent_instance AgentInstance @relation(fields: [agent_instance_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@index([agent_instance_id])
+  @@map("agent_usage_events")
+}
+
+model AgentTemplate {
+  id            String            @id @default(cuid())
+  slug          String            @unique
+  name          String
+  description   String?           @db.Text
+  provider      AgentProvider     @default(FLOWISE)
+  channel_scope AgentChannelScope @default(ALL)
+  config_json   Json?             @db.JsonB
+  thumbnail_url String?
+  is_published  Boolean           @default(true)
+  sort_order    Int               @default(0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  instances AgentInstance[]
+
+  @@index([is_published])
+  @@map("agent_templates")
 }

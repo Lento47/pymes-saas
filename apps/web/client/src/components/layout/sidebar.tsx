@@ -16,10 +16,10 @@ import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
   Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, MessageSquareText,
   Sun, Moon, Search, Menu, X,
-  ShieldCheck, LayoutTemplate,
+  ShieldCheck, LayoutTemplate, Bot,
 } from "lucide-react";
 
-type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "notifications" | "settings" | "help";
+type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "agents" | "notifications" | "settings" | "help";
 type NavItem = { path: string; icon: React.ElementType; key: NavKey; badge?: "unread" | "overdue" };
 
 const BETA_LABELS: Partial<Record<NavKey, string>> = {
@@ -73,6 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: "assistants",
     items: [
+      { path: "/agents",        icon: Bot,               key: "agents" },
       { path: "/agent",         icon: MessageSquareText, key: "agent" },
       { path: "/help",          icon: CircleHelp,       key: "help" },
       { path: "/notifications", icon: BellRing,        key: "notifications", badge: "unread" },
@@ -120,7 +121,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       inbox: "whatsapp_inbox", tasks: "orders", pipeline: "contacts",
       contacts: "contacts", documents: "contacts", invoices: "billing",
       automations: "automations", inventory: "orders", agent: "ai_assistant",
-      notifications: "conversations",
+      agents: "ai_assistant", notifications: "conversations",
     };
     const fk = map[key] || key;
     return features?.features?.[fk] !== false;

@@ -1,0 +1,132 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
+import { WorkspaceUserRole, AgentChannelScope } from "@prisma/client";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
+import { AgentsService } from "./agents.service";
+import { AgentRuntimeService } from "./runtime/agent-runtime.service";
+import { CreateAgentDto } from "./dto/create-agent.dto";
+import { UpdateAgentDto } from "./dto/update-agent.dto";
+import { TestAgentDto } from "./dto/test-agent.dto";
+
+@Controller("agents")
+@UseGuards(JwtAuthGuard, RolesGuard)
+export class AgentsController {
+  constructor(
+    private readonly agentsService: AgentsService,
+    private readonly runtime: AgentRuntimeService,
+  ) {}
+
+  @Get()
+  @Roles(
+    WorkspaceUserRole.VIEWER,
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
+  listAgents(@CurrentUser("workspace_id") workspaceId: string) {
+    return this.agentsService.listAgents(workspaceId);
+  }
+
+  @Post()
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  createAgent(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Body() dto: CreateAgentDto,
+  ) {
+    return this.agentsService.createAgent(workspaceId, dto);
+  }
+
+  // NOTE: /templates must be declared before /:id to avoid route shadowing
+  @Get("templates")
+  @Roles(
+    WorkspaceUserRole.VIEWER,
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
+  listTemplates() {
+    return this.agentsService.listTemplates();
+  }
+
+  @Post("templates/:id/install")
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  installTemplate(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
+  ) {
+    return this.agentsService.installTemplate(workspaceId, id);
+  }
+
+  @Get(":id")
+  @Roles(
+    WorkspaceUserRole.VIEWER,
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
+  getAgent(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
+  ) {
+    return this.agentsService.getAgent(workspaceId, id);
+  }
+
+  @Patch(":id")
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  updateAgent(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
+    @Body() dto: UpdateAgentDto,
+  ) {
+    return this.agentsService.updateAgent(workspaceId, id, dto);
+  }
+
+  @Post(":id/test")
+  @Roles(
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
+  testAgent(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
+    @Body() dto: TestAgentDto,
+  ) {
+    return this.runtime.run({
+      agent_instance_id: id,
+      workspace_id: workspaceId,
+      question: dto.question,
+      channel: dto.channel ?? AgentChannelScope.WEB,
+      flowise_session_id: dto.flowise_session_id,
+    });
+  }
+
+  @Post(":id/activate")
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  activate(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
+  ) {
+    return this.agentsService.setStatus(workspaceId, id, "ACTIVE");
+  }
+
+  @Post(":id/deactivate")
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  deactivate(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
+  ) {
+    return this.agentsService.setStatus(workspaceId, id, "INACTIVE");
+  }
+}

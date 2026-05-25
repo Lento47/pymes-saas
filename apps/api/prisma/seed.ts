@@ -146,6 +146,28 @@ async function main() {
   });
   console.log(`✅ Contacto: ${contact.full_name}`);
 
+  // ─── Agent Template ──────────────────────────────────────────────────────
+  const agentTemplate = await prisma.agentTemplate.upsert({
+    where: { slug: 'soporte-pyme' },
+    update: {},
+    create: {
+      slug: 'soporte-pyme',
+      name: 'Soporte PyME',
+      description:
+        'Agente de atención al cliente para pequeñas empresas. Responde preguntas frecuentes, gestiona pedidos y escala a un humano cuando es necesario.',
+      provider: 'FLOWISE',
+      channel_scope: 'ALL',
+      config_json: {
+        system_prompt:
+          'Eres un asistente de soporte amigable para una pequeña empresa. Responde en español de forma clara y profesional. Si detectas un reclamo, pago, dato sensible o solicitud delicada, deriva al equipo humano.',
+        temperature: 0.3,
+      },
+      is_published: true,
+      sort_order: 1,
+    },
+  });
+  console.log(`✅ AgentTemplate: ${agentTemplate.name} (${agentTemplate.slug})`);
+
   console.log('\n🎉 Seed completado exitosamente.\n');
   console.log('Workspace slug: demo-workspace');
   console.log('Note: Default demo passwords are NOT logged for security.');
