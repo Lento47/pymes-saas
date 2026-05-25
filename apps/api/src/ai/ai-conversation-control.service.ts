@@ -552,29 +552,75 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
   private parseAction(text: string): AiControlAction {
     const raw = text?.trim() ?? "";
     const VALID_INTENTS: AgentIntent[] = ["ORDER", "APPOINTMENT", "QUOTE", "COMPLAINT"];
+    const fallbackReply = "Disculpa, tuve un problema preparando la respuesta. ¿Me puedes repetir brevemente qué necesitas?";
+
+    const normalize = (parsed: Record<string, any>): AiControlAction => {
+      const replyText = String(parsed.reply_text ?? parsed.text ?? parsed.message ?? parsed.response ?? "").slice(0, 4000);
+      const intentRaw = parsed.intent_detected as string | null | undefined;
+      const intentDetected: AgentIntent | null =
+        intentRaw && VALID_INTENTS.includes(intentRaw as AgentIntent) ? (intentRaw as AgentIntent) : null;
+
+      return {
+        reply_text: replyText || fallbackReply,
+        interactive: parsed.interactive ?? null,
+        memory_updates: parsed.memory_updates ?? null,
+        handoff_reason: parsed.handoff_reason ?? null,
+        invoice_action: parsed.invoice_action ?? null,
+        intent_detected: intentDetected,
+      };
+    };
+
     try {
       const match = raw.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(match?.[0] ?? raw);
-      const replyText = String(parsed.reply_text ?? parsed.text ?? parsed.message ?? parsed.response ?? "").slice(0, 4000);
-      // If JSON parsed but reply_text empty, fall through to plain-text extraction
-      if (replyText) {
-        const intentRaw = parsed.intent_detected as string | null | undefined;
-        const intentDetected: AgentIntent | null =
-          intentRaw && VALID_INTENTS.includes(intentRaw as AgentIntent) ? (intentRaw as AgentIntent) : null;
+      if (parsed && typeof parsed === "object") return normalize(parsed);
+    } catch {
+      // malformed JSON — handled below
+    }
+
+    const replyMatch = raw.match(/"reply_text"\s*:\s*"((?:\\.|[^"\\])*)"/);
+    if (replyMatch?.[1]) {
+      try {
         return {
-          reply_text: replyText,
-          interactive: parsed.interactive ?? null,
-          memory_updates: parsed.memory_updates ?? null,
-          handoff_reason: parsed.handoff_reason ?? null,
-          invoice_action: parsed.invoice_action ?? null,
-          intent_detected: intentDetected,
+          reply_text: JSON.parse(`"${replyMatch[1]}"`).slice(0, 4000),
+          interactive: null,
+          memory_updates: null,
+          handoff_reason: null,
+          invoice_action: null,
+          intent_detected: null,
+        };
+      } catch {
+        return {
+          reply_text: replyMatch[1].slice(0, 4000),
+          interactive: null,
+          memory_updates: null,
+          handoff_reason: null,
+          invoice_action: null,
+          intent_detected: null,
         };
       }
-    } catch {
-      // not JSON — fall through
     }
-    // Use raw text (model didn't follow JSON format)
-    return { reply_text: raw.slice(0, 4000), interactive: null, memory_updates: null, handoff_reason: null, intent_detected: null };
+
+    if (/^\s*[\{\[]/.test(raw) || raw.includes("\"reply_text\"") || raw.includes("\"interactive\"")) {
+      this.logger.warn(`AI_OUTPUT_CONTRACT_FAILED raw=${raw.slice(0, 500)}`);
+      return {
+        reply_text: fallbackReply,
+        interactive: null,
+        memory_updates: null,
+        handoff_reason: null,
+        invoice_action: null,
+        intent_detected: null,
+      };
+    }
+
+    return {
+      reply_text: raw.slice(0, 4000) || fallbackReply,
+      interactive: null,
+      memory_updates: null,
+      handoff_reason: null,
+      invoice_action: null,
+      intent_detected: null,
+    };
   }
 
   private normalizeInteractive(value: unknown, conv: ConversationShape): SupportedInteractive | null {
