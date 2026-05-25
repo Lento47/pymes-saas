@@ -5,7 +5,6 @@ import {
   Logger,
   Param,
   Post,
-  Query,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -40,7 +39,6 @@ export class HaciendaWebhookController {
   async receiveCallback(
     @Param("workspaceId") workspaceId: string,
     @Headers("x-PymesHub-webhook-token") headerToken: string | undefined,
-    @Query("token") queryToken: string | undefined,
     @Body() payload: Record<string, any>,
     @Headers("user-agent") userAgent?: string,
   ) {
@@ -49,8 +47,7 @@ export class HaciendaWebhookController {
       this.logger.error("HACIENDA_WEBHOOK_SECRET no configurado — rechazando webhook");
       throw new UnauthorizedException("Webhook secret not configured");
     }
-    const supplied = headerToken || queryToken;
-    if (!supplied || !safeEqual(supplied, expectedSecret)) {
+    if (!headerToken || !safeEqual(headerToken, expectedSecret)) {
       throw new UnauthorizedException("Invalid webhook token");
     }
 

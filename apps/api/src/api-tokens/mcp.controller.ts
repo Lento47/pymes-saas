@@ -9,6 +9,7 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
+import { createHash } from "crypto";
 import { Request, Response } from "express";
 import { ApiTokenGuard } from "../api-tokens/api-token.guard";
 import { PrismaService } from "../common/prisma/prisma.service";
@@ -300,7 +301,8 @@ export class McpController {
     req: Request,
   ) {
     const auth = req.headers?.authorization || "";
-    const sessionKey = auth.replace(/^Bearer /, "").slice(0, 32);
+    const bearerToken = auth.replace(/^Bearer /i, "").trim();
+    const sessionKey = this.createSessionKey(bearerToken);
     try {
       const result = await this.executeTool(
         workspaceId,
@@ -316,6 +318,11 @@ export class McpController {
     } catch (err) {
       return { jsonrpc: "2.0", id, error: { code: -32000, message: err.message } };
     }
+  }
+
+  private createSessionKey(token: string): string {
+    if (!token) return "";
+    return createHash("sha256").update(token).digest("hex");
   }
 
   private async executeTool(
@@ -349,30 +356,30 @@ export class McpController {
     switch (name) {
       case "get_workspace": {
         const ws = await this.prisma.workspace.findUnique({
-          where: { id: workspaceId },
+          where: { id: effectiveWorkspaceId },
           select: { id: true, name: true, slug: true, plan: true, status: true, created_at: true },
         });
         return { workspace: ws };
       }
       case "get_stats": {
         const [contacts, tasks, invoices, conversations] = await Promise.all([
-          this.prisma.contact.count({ where: { workspace_id: workspaceId } }),
-          this.prisma.task.count({ where: { workspace_id: workspaceId } }),
-          this.prisma.invoice.count({ where: { workspace_id: workspaceId } }),
-          this.prisma.conversation.count({ where: { workspace_id: workspaceId } }),
+          this.prisma.contact.count({ where: { workspace_id: effectiveWorkspaceId } }),
+          this.prisma.task.count({ where: { workspace_id: effectiveWorkspaceId } }),
+          this.prisma.invoice.count({ where: { workspace_id: effectiveWorkspaceId } }),
+          this.prisma.conversation.count({ where: { workspace_id: effectiveWorkspaceId } }),
         ]);
         return { stats: { contacts, tasks, invoices, conversations } };
       }
       case "list_contacts": {
         const contacts = await this.prisma.contact.findMany({
-          where: { workspace_id: workspaceId },
+          where: { workspace_id: effectiveWorkspaceId },
           select: { id: true, full_name: true, email: true, phone: true, type: true },
           take: 50,
         });
         return { contacts };
       }
       case "list_tasks": {
-        const where: Record<string, any> = { workspace_id: workspaceId };
+        const where: Record<string, any> = { workspace_id: effectiveWorkspaceId };
         if (args.status) where.status = args.status;
         const tasks = await this.prisma.task.findMany({
           where,
@@ -385,7 +392,7 @@ export class McpController {
       case "create_task": {
         const task = await this.prisma.task.create({
           data: {
-            workspace_id: workspaceId,
+            workspace_id: effectiveWorkspaceId,
             title: args.title,
             description: args.description || "",
             priority: args.priority || "MEDIUM",
@@ -397,7 +404,7 @@ export class McpController {
       }
       case "list_invoices": {
         const invoices = await this.prisma.invoice.findMany({
-          where: { workspace_id: workspaceId },
+          where: { workspace_id: effectiveWorkspaceId },
           select: { id: true, number: true, amount: true, status: true, due_date: true },
           take: 50,
           orderBy: { created_at: "desc" },
@@ -405,7 +412,7 @@ export class McpController {
         return { invoices };
       }
       case "list_conversations": {
-        const where: Record<string, any> = { workspace_id: workspaceId };
+        const where: Record<string, any> = { workspace_id: effectiveWorkspaceId };
         if (args.status) where.status = args.status;
         const conversations = await this.prisma.conversation.findMany({
           where,
@@ -417,7 +424,7 @@ export class McpController {
       }
       case "list_automations": {
         const automations = await this.prisma.automationRule.findMany({
-          where: { workspace_id: workspaceId },
+          where: { workspace_id: effectiveWorkspaceId },
           select: { id: true, name: true, enabled: true, trigger_type: true },
           take: 50,
         });
@@ -425,7 +432,7 @@ export class McpController {
       }
       case "get_billing": {
         const sub = await this.prisma.workspaceSubscription.findFirst({
-          where: { workspace_id: workspaceId },
+          where: { workspace_id: effectiveWorkspaceId },
           select: {
             plan: true,
             status: true,
@@ -435,14 +442,14 @@ export class McpController {
           },
         });
         const ws = await this.prisma.workspace.findUnique({
-          where: { id: workspaceId },
+          where: { id: effectiveWorkspaceId },
           select: { plan: true },
         });
         return { subscription: sub, workspace_plan: ws?.plan };
       }
       case "get_billing_invoices": {
         const invoices = await this.prisma.billingInvoice.findMany({
-          where: { workspace_id: workspaceId },
+          where: { workspace_id: effectiveWorkspaceId },
           select: {
             id: true,
             number: true,
@@ -459,7 +466,7 @@ export class McpController {
       }
       case "list_pipeline_deals": {
         const deals = await this.prisma.deal.findMany({
-          where: { workspace_id: workspaceId },
+          where: { workspace_id: effectiveWorkspaceId },
           select: { id: true, title: true, stage_id: true, value: true, status: true },
           take: 50,
           orderBy: { created_at: "desc" },
@@ -469,7 +476,7 @@ export class McpController {
       case "get_settings": {
         const [ws, members] = await Promise.all([
           this.prisma.workspace.findUnique({
-            where: { id: workspaceId },
+            where: { id: effectiveWorkspaceId },
             select: {
               id: true,
               name: true,
@@ -481,7 +488,7 @@ export class McpController {
             },
           }),
           this.prisma.workspaceUser.findMany({
-            where: { workspace_id: workspaceId },
+            where: { workspace_id: effectiveWorkspaceId },
             select: {
               id: true,
               role: true,

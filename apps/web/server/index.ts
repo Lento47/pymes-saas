@@ -19,7 +19,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'https:'],
       connectSrc: ["'self'", 'wss:', 'ws:'],
@@ -57,17 +57,6 @@ app.use(
 
 app.use(express.urlencoded({ limit: '10mb', extended: false }));
 
-const SENSITIVE_FIELDS = new Set(['token', 'password', 'access_token', 'refresh_token', 'api_key', 'secret', 'authorization']);
-
-function sanitizeResponseForLog(obj: Record<string, any> | undefined): Record<string, any> | undefined {
-  if (!obj || typeof obj !== 'object') return obj;
-  const sanitized: Record<string, any> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    sanitized[k] = SENSITIVE_FIELDS.has(k.toLowerCase()) ? '[REDACTED]' : v;
-  }
-  return sanitized;
-}
-
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -82,23 +71,10 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        // Sanitize sensitive fields before logging
-        logLine += ` :: ${JSON.stringify(sanitizeResponseForLog(capturedJsonResponse))}`;
-      }
-
       log(logLine);
     }
   });
