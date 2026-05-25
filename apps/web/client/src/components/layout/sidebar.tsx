@@ -204,17 +204,20 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     <div className="auth-ui flex h-screen overflow-hidden bg-background premium-ambient">
       {isMobile && sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/45 transition-opacity duration-200 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/45 transition-opacity duration-200 will-change-opacity lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       <aside
         className={cn(
-          "flex flex-col shrink-0 transition-all duration-200 ease-out overflow-hidden bg-sidebar border-r border-border",
-          sidebarOpen ? "w-[260px]" : "w-0 border-r-0",
-          isMobile && "fixed left-0 top-0 z-50 h-[100dvh]",
-          isMobile && sidebarOpen && "w-[260px] border-r",
+          "flex flex-col shrink-0 overflow-hidden bg-sidebar border-r border-border",
+          // Desktop: animate via width (pushes main content)
+          !isMobile && "transition-all duration-200 ease-out",
+          !isMobile && (sidebarOpen ? "w-[260px]" : "w-0 border-r-0"),
+          // Mobile: fixed overlay, GPU-composited translate
+          isMobile && "fixed left-0 top-0 z-50 h-[100dvh] w-[260px]",
+          isMobile && (sidebarOpen ? "sidebar-slide-in" : "sidebar-slide-out"),
         )}
       >
         {isMobile && (
@@ -483,7 +486,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
-              "p-2 rounded-md transition-colors shrink-0",
+              "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-colors shrink-0",
               "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             )}
             title={sidebarOpen ? copy.closeMenu : copy.openMenu}
@@ -521,7 +524,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           <NotificationBell />
 
-          <span className="hidden rounded-md border px-2.5 py-1 text-xs font-medium sm:inline-block" style={{ background: "rgba(139,92,246,0.08)", borderColor: "rgba(139,92,246,0.2)", color: "#c4b5fd" }}>
+          <span className="hidden rounded-md border px-2.5 py-1 text-xs font-medium lg:inline-block" style={{ background: "rgba(139,92,246,0.08)", borderColor: "rgba(139,92,246,0.2)", color: "#c4b5fd" }}>
             {user?.role}
           </span>
         </header>
@@ -533,7 +536,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      <MobileBottomNav onMenuClick={() => setSidebarOpen(true)} isItemVisible={canShowNavItem} />
+      <MobileBottomNav
+        onMenuClick={() => setSidebarOpen(true)}
+        isItemVisible={canShowNavItem}
+        unreadCount={unreadCount}
+        overdueCount={overdueCount}
+      />
 
     </div>
   );

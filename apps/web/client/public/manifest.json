@@ -1,0 +1,43 @@
+{
+  "name": "PymesHub",
+  "short_name": "PymesHub",
+  "description": "CRM, facturación electrónica y automatización para PYMEs",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070B14",
+  "theme_color": "#070B14",
+  "lang": "es",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/images/appIcon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/Lento47/pymeshub-invoice/refs/heads/master/pymesHubic.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Bandeja de entrada",
+      "short_name": "Bandeja",
+      "description": "Abrir bandeja de mensajes",
+      "url": "/inbox",
+      "icons": [{ "src": "/images/appIcon.png", "sizes": "512x512" }]
+    },
+    {
+      "name": "Facturación",
+      "short_name": "Facturas",
+      "description": "Ir a facturación",
+      "url": "/invoices",
+      "icons": [{ "src": "/images/appIcon.png", "sizes": "512x512" }]
+    }
+  ]
+}
