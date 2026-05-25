@@ -2423,9 +2423,10 @@ model AgentInstance {
   provider      AgentProvider     @default(FLOWISE)
   chatflow_id   String            @default("")
   status        AgentStatus       @default(DRAFT)
-  channel_scope AgentChannelScope @default(ALL)
-  config_json   Json?             @db.JsonB
-  template_id   String?
+  channel_scope        AgentChannelScope @default(ALL)
+  system_instructions  String?           @db.Text
+  config_json          Json?             @db.JsonB
+  template_id          String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

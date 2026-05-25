@@ -34,6 +34,7 @@ export class AgentsService {
         chatflow_id: dto.chatflow_id ?? "",
         provider: dto.provider,
         channel_scope: dto.channel_scope,
+        system_instructions: dto.system_instructions,
         config_json: dto.config_json ?? undefined,
         template_id: dto.template_id,
       },
@@ -51,6 +52,9 @@ export class AgentsService {
         ...(dto.provider !== undefined && { provider: dto.provider }),
         ...(dto.channel_scope !== undefined && {
           channel_scope: dto.channel_scope,
+        }),
+        ...(dto.system_instructions !== undefined && {
+          system_instructions: dto.system_instructions,
         }),
         ...(dto.config_json !== undefined && { config_json: dto.config_json }),
       },
@@ -75,6 +79,7 @@ export class AgentsService {
     });
     if (!template) throw new NotFoundException("Template not found");
 
+    const cfg = (template.config_json ?? {}) as Record<string, unknown>;
     return this.prisma.agentInstance.create({
       data: {
         workspace_id: workspaceId,
@@ -83,6 +88,8 @@ export class AgentsService {
         provider: template.provider,
         chatflow_id: "",
         channel_scope: template.channel_scope,
+        system_instructions:
+          typeof cfg.system_prompt === "string" ? cfg.system_prompt : null,
         config_json: template.config_json ?? undefined,
         template_id: template.id,
         status: "DRAFT",

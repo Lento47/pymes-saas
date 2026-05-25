@@ -112,6 +112,21 @@ export default function AgentDetailPage({ id }: Props) {
               rows={3}
             />
           </div>
+          <div>
+            <Label className="text-xs">Instrucciones del sistema (prompt)</Label>
+            <p className="text-[10px] text-muted-foreground mb-1">
+              Define el comportamiento, tono y límites del agente. Se envía a Flowise como contexto de sistema en cada mensaje.
+            </p>
+            <Textarea
+              defaultValue={agent.system_instructions ?? ""}
+              onBlur={(e) =>
+                updateMut.mutate({ system_instructions: e.target.value })
+              }
+              className="mt-1 text-xs font-mono resize-y"
+              rows={8}
+              placeholder={`Eres un asistente de soporte para [nombre del negocio].\nResponde de forma clara y profesional en español.\nSi el cliente pregunta por precios, consultas legales o temas delicados, deriva al equipo humano.`}
+            />
+          </div>
         </div>
       </div>
 

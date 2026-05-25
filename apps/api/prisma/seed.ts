@@ -158,8 +158,6 @@ async function main() {
       provider: 'FLOWISE',
       channel_scope: 'ALL',
       config_json: {
-        system_prompt:
-          'Eres un asistente de soporte amigable para una pequeña empresa. Responde en español de forma clara y profesional. Si detectas un reclamo, pago, dato sensible o solicitud delicada, deriva al equipo humano.',
         temperature: 0.3,
       },
       is_published: true,

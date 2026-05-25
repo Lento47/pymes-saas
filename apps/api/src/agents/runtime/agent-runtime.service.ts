@@ -101,9 +101,15 @@ export class AgentRuntimeService {
       );
     }
 
+    const overrideConfig: Record<string, unknown> = {};
+    if (instance.system_instructions) {
+      overrideConfig.systemMessagePrompt = instance.system_instructions;
+    }
+
     const flowiseResponse = await this.flowise.predict(instance.chatflow_id, {
       question: opts.question,
       sessionId: session.flowise_session_id,
+      ...(Object.keys(overrideConfig).length > 0 && { overrideConfig }),
     });
 
     // 6. Apply guardrails

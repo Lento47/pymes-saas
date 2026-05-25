@@ -16,6 +16,10 @@ export class CreateAgentDto {
   chatflow_id?: string;
 
   @IsOptional()
+  @IsString()
+  system_instructions?: string;
+
+  @IsOptional()
   @IsEnum(AgentProvider)
   provider?: AgentProvider;
 
