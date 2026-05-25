@@ -46,7 +46,7 @@ describe("EmprendePlaybooksService", () => {
     });
 
     expect(output.intent).toBe("off_topic");
-    expect(output.reply).toContain("GUARDRAIL_OFF_TOPIC");
+    expect(output.reply).toBe("");
     expect(output.escalationRequired).toBe(false);
   });
 });
