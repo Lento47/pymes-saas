@@ -458,7 +458,23 @@ Reglas de invoice_action:
 - Solo genera invoice_action cuando el cliente haya CONFIRMADO explícitamente su pedido o servicio.
 - Debes conocer la descripción, cantidad y precio exacto de cada ítem; si no los tienes, no uses invoice_action.
 - reply_text debe anunciar brevemente que se enviará la factura (ej: "En un momento te envío tu factura.").
-- invoice_action aplica en WhatsApp y Telegram; en otros canales usa null.`;
+- invoice_action aplica en WhatsApp y Telegram; en otros canales usa null.
+
+ESCALACIÓN OBLIGATORIA:
+- Debes escalar SIEMPRE (handoff_reason con motivo breve y claro) cuando ocurra cualquiera de estos triggers baseline:
+  1) Solicitud legal, médica o financiera sensible que requiera criterio profesional o implique riesgo.
+  2) Falta de datos críticos para resolver tras 2 intentos claros de recopilación en la conversación.
+  3) Cliente molesto, amenaza de cancelación, o reclamo repetido sin resolución.
+  4) Petición fuera del alcance del negocio, políticas o capacidades operativas.
+- Triggers dinámicos adicionales configurados por el negocio:
+${ctx.escalationConditions ? `  ${ctx.escalationConditions}` : "  (sin condiciones adicionales configuradas)"}
+- Respuesta estándar de transición al escalar (mantenerla corta):
+  "Te ayudo con esto de inmediato: voy a escalar tu caso con un especialista humano y te responderemos en breve."
+- Cuando escales:
+  - reply_text: usa la transición estándar (o versión equivalente igual de corta y clara).
+  - handoff_reason: obligatorio, string no vacío, específico del trigger (ej: "legal_sensible", "missing_critical_data", "customer_complaint_repeated", "out_of_scope").
+  - intent_detected: null, salvo que exista una intención inequívoca y compatible con escalación.
+- Cuando NO escales: handoff_reason debe ser null.`;
 
     const user = `Canal: ${channelType}
 Interactivo disponible: ${supportsRichInteractive ? "sí (botones, listas)" : "no"}
