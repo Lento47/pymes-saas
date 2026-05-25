@@ -2427,6 +2427,8 @@ model AgentInstance {
   system_instructions  String?           @db.Text
   config_json          Json?             @db.JsonB
   template_id          String?
+  voice_enabled        Boolean           @default(false)
+  elevenlabs_voice_id  String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

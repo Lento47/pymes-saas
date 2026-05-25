@@ -5,9 +5,10 @@ import { FlowiseClient } from "./flowise/flowise.client";
 import { AgentRuntimeService } from "./runtime/agent-runtime.service";
 import { AgentGuardrailsService } from "./runtime/agent-guardrails.service";
 import { AgentUsageService } from "./runtime/agent-usage.service";
+import { TtsModule } from "../tts/tts.module";
 
 @Module({
-  imports: [],
+  imports: [TtsModule],
   controllers: [AgentsController],
   providers: [
     AgentsService,

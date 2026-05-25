@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Loader2, SendHorizonal, ChevronDown } from "lucide-react";
+import { Loader2, SendHorizonal, ChevronDown, Mic } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { AgentStatusBadge } from "@/components/agents/AgentStatusBadge";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +31,7 @@ export default function AgentDetailPage({ id }: Props) {
   const [testMsg, setTestMsg] = useState("");
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [conversation, setConversation] = useState<
-    { role: string; text: string }[]
+    { role: string; text: string; audio_url?: string }[]
   >([]);
 
   const updateMut = useMutation({
@@ -55,7 +56,7 @@ export default function AgentDetailPage({ id }: Props) {
       setConversation((prev) => [
         ...prev,
         { role: "user", text: question },
-        { role: "assistant", text: res.text },
+        { role: "assistant", text: res.text, audio_url: res.audio_url },
       ]);
       setTestMsg("");
     },
@@ -144,6 +145,44 @@ Si el cliente está enojado, tiene un reclamo de pago o una consulta legal, deri
         </div>
       </div>
 
+      {/* Voice config */}
+      <div className="rounded-xl border bg-card p-5 flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <Mic className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold text-foreground">Voz del agente</h2>
+        </div>
+        <p className="text-[11px] text-muted-foreground -mt-2">
+          Cuando está activado, el agente responde con notas de voz (ElevenLabs).
+          Funciona en WhatsApp y en la consola de prueba.
+        </p>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Activar notas de voz</Label>
+          <Switch
+            checked={!!agent.voice_enabled}
+            onCheckedChange={(checked) =>
+              updateMut.mutate({ voice_enabled: checked })
+            }
+          />
+        </div>
+        {agent.voice_enabled && (
+          <div>
+            <Label className="text-xs">Voice ID de ElevenLabs</Label>
+            <p className="text-[10px] text-muted-foreground mb-1">
+              Deja vacío para usar la voz por defecto del sistema. Obtén IDs
+              desde tu cuenta de ElevenLabs → Voice Library.
+            </p>
+            <Input
+              defaultValue={agent.elevenlabs_voice_id ?? ""}
+              onBlur={(e) =>
+                updateMut.mutate({ elevenlabs_voice_id: e.target.value || null })
+              }
+              className="text-xs font-mono"
+              placeholder="Ej: JBFqnCBsd6RMkjVDRZzb (Rachel)"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Advanced: chatflow ID (read-only by default, editable for power users) */}
       <div className="rounded-xl border bg-card/50">
         <button
@@ -210,7 +249,10 @@ Si el cliente está enojado, tiene un reclamo de pago o una consulta legal, deri
               {conversation.map((m, i) => (
                 <div
                   key={i}
-                  className={m.role === "user" ? "text-right" : "text-left"}
+                  className={cn(
+                    "flex flex-col gap-1",
+                    m.role === "user" ? "items-end" : "items-start",
+                  )}
                 >
                   <span
                     className={`inline-block px-3 py-1.5 rounded-xl max-w-[80%] ${
@@ -221,6 +263,13 @@ Si el cliente está enojado, tiene un reclamo de pago o una consulta legal, deri
                   >
                     {m.text}
                   </span>
+                  {m.audio_url && (
+                    <audio
+                      controls
+                      src={m.audio_url}
+                      className="h-8 max-w-[80%]"
+                    />
+                  )}
                 </div>
               ))}
             </div>

@@ -69,6 +69,10 @@ export class AgentsService {
           system_instructions: dto.system_instructions,
         }),
         ...(dto.config_json !== undefined && { config_json: dto.config_json }),
+        ...(dto.voice_enabled !== undefined && { voice_enabled: dto.voice_enabled }),
+        ...(dto.elevenlabs_voice_id !== undefined && {
+          elevenlabs_voice_id: dto.elevenlabs_voice_id,
+        }),
       },
     });
   }

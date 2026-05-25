@@ -9,9 +9,11 @@ import { ConfigService } from "@nestjs/config";
 import { randomUUID } from "crypto";
 import { AgentChannelScope, AgentStatus } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { StorageService } from "../../common/storage/storage.service";
 import { FlowiseClient } from "../flowise/flowise.client";
 import { AgentGuardrailsService } from "./agent-guardrails.service";
 import { AgentUsageService } from "./agent-usage.service";
+import { TtsService } from "../../tts/tts.service";
 
 export interface AgentRunOptions {
   agent_instance_id: string;
@@ -26,6 +28,8 @@ export interface AgentRunResult {
   text: string;
   flowise_session_id: string;
   session_id: string;
+  audio_key?: string;
+  audio_url?: string;
 }
 
 @Injectable()
@@ -39,6 +43,8 @@ export class AgentRuntimeService {
     private readonly guardrails: AgentGuardrailsService,
     private readonly usage: AgentUsageService,
     private readonly config: ConfigService,
+    private readonly tts: TtsService,
+    private readonly storage: StorageService,
   ) {
     this.maxOutputChars =
       this.config.get<number>("FLOWISE_MAX_OUTPUT_CHARS") ?? 4000;
@@ -130,10 +136,32 @@ export class AgentRuntimeService {
       latency_ms,
     });
 
+    // 8. TTS — synthesize voice note if enabled (non-fatal)
+    let audio_key: string | undefined;
+    let audio_url: string | undefined;
+
+    if (instance.voice_enabled && this.tts.isEnabled) {
+      try {
+        const audioBuffer = await this.tts.synthesize(
+          safeText,
+          instance.elevenlabs_voice_id ?? undefined,
+        );
+        const key = `voice-notes/${opts.workspace_id}/${session.id}-${Date.now()}.mp3`;
+        await this.storage.upload(key, audioBuffer, "audio/mpeg");
+        audio_key = key;
+        audio_url = await this.storage.getPresignedUrl(key, 3600);
+      } catch (err) {
+        this.logger.error(
+          `TTS synthesis failed for agent ${instance.id}: ${(err as Error).message}`,
+        );
+      }
+    }
+
     return {
       text: safeText,
       flowise_session_id: session.flowise_session_id,
       session_id: session.id,
+      ...(audio_key && { audio_key, audio_url }),
     };
   }
 }

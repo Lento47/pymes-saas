@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
 import { AgentChannelScope, AgentProvider } from "@prisma/client";
 
 export class CreateAgentDto {
@@ -33,4 +33,13 @@ export class CreateAgentDto {
   @IsOptional()
   @IsString()
   template_id?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  voice_enabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  elevenlabs_voice_id?: string;
 }
