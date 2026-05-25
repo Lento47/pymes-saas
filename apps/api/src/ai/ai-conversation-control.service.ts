@@ -80,6 +80,13 @@ interface ConversationShape {
   channel: { id: string; type: string; config_json: unknown } | null;
 }
 
+
+interface BusinessContextForPlaybook {
+  categories: string[];
+  needs: string[];
+  tone: string | null;
+}
+
 interface ReplyOptions {
   activate?: boolean;
   triggerText?: string;
@@ -401,7 +408,21 @@ export class AiConversationControlService {
       ? templates.map((t) => `- ${t.name}: ${t.body.slice(0, 180)}`).join("\n")
       : "Sin templates aprobados disponibles.";
 
+    const businessProfileLabel = this.resolveBusinessProfileLabel({
+      categories: ctx.categories,
+      needs: ctx.needs,
+      tone: ctx.tone,
+    });
+    const playbookSection = this.buildMasterPrompt({
+      categories: ctx.categories,
+      needs: ctx.needs,
+      tone: ctx.tone,
+    });
+
     const system = `${this.emprendeAi.buildSystemPrompt(ctx)}
+
+Perfil inferido del negocio: ${businessProfileLabel}.
+${playbookSection}
 
 Toma control conversacional de esta conversación. Responde el primer mensaje aunque sea un saludo.
 Mantén cada reply_text corto y enfocado en UNA sola acción: saluda, o pregunta, o confirma — nunca todo en un mensaje.
@@ -459,6 +480,50 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
         { role: "user", content: user },
       ] as AssistantMessage[],
     };
+  }
+
+  private resolveBusinessProfileLabel(ctx: BusinessContextForPlaybook): string {
+    const signal = `${ctx.categories.join(" ")} ${ctx.needs.join(" ")} ${ctx.tone ?? ""}`.toLowerCase();
+    const has = (...terms: string[]) => terms.some((term) => signal.includes(term));
+
+    if (has("salud_bienestar", "clin", "medic", "odont", "psico", "terap")) return "salud y bienestar";
+    if (has("belleza_cuidado", "spa", "barber", "uñas", "manicure", "estética")) return "belleza y cuidado personal";
+    if (has("alimentacion_bebidas", "restaur", "cafeter", "comida", "delivery", "menu")) return "alimentos y bebidas";
+    if (has("transporte_logistica", "envío", "mensaj", "logística", "paquete", "flete")) return "transporte y logística";
+    if (has("comercio_ventas", "ecommerce", "tienda", "venta", "catálogo", "inventario")) return "comercio y ventas";
+    if (has("servicios_profesionales", "asesor", "consult", "legal", "contable", "agencia")) return "servicios profesionales";
+    if (has("educacion", "curso", "clase", "academ", "tutor", "capacit")) return "educación";
+    if (has("tecnologia", "software", "saas", "soporte técnico", "automatización")) return "tecnología";
+
+    return "negocio general";
+  }
+
+  private buildMasterPrompt(ctx: BusinessContextForPlaybook): string {
+    const profile = this.resolveBusinessProfileLabel(ctx);
+    const objectiveMap: Record<string, string> = {
+      "salud y bienestar": "captar pacientes elegibles, agendar citas y orientar alcances sin diagnóstico clínico",
+      "belleza y cuidado personal": "cerrar reservas, confirmar disponibilidad y estimular recompra",
+      "alimentos y bebidas": "convertir consultas en pedidos completos con dirección/entrega confirmada",
+      "transporte y logística": "levantar origen-destino-restricciones para cotizar o programar servicio",
+      "comercio y ventas": "calificar necesidad, recomendar producto y llevar a confirmación de compra",
+      "servicios profesionales": "entender caso, definir alcance y agendar descubrimiento/cotización",
+      "educación": "identificar nivel/interés y mover a inscripción o sesión informativa",
+      "tecnología": "levantar problema técnico/objetivo y llevar a demo, trial o propuesta",
+      "negocio general": "entender necesidad principal, resolver dudas y escalar a acción concreta",
+    };
+
+    return `PLAYBOOK DEL PERFIL
+- Perfil detectado: ${profile}.
+- Objetivos típicos por vertical: ${objectiveMap[profile] ?? objectiveMap["negocio general"]}.
+- Datos mínimos por intención:
+  - ORDER: producto/servicio, cantidad, variantes, dirección o modalidad de entrega/retiro, forma de pago.
+  - APPOINTMENT: servicio requerido, fecha/hora preferida, nombre y teléfono de contacto, sede/modalidad.
+  - QUOTE: qué necesita, alcance/cantidad, presupuesto o rango esperado, plazo requerido.
+  - COMPLAINT: resumen del problema, evidencia o referencia de orden/cita, impacto y resultado esperado.
+- Riesgos frecuentes:
+  - Salud y bienestar: no dar consejo clínico, diagnóstico ni indicaciones médicas personalizadas.
+  - Comercio/logística: no prometer stock, tiempos o precios sin confirmación del negocio.
+  - General: evitar lenguaje legal/financiero concluyente y escalar cuando haya riesgo o ambigüedad.`;
   }
 
   private parseAction(text: string): AiControlAction {
