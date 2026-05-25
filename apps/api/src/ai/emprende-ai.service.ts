@@ -35,6 +35,8 @@ interface BusinessContext {
   sensitiveInfo: string | null;
   supportedLanguages: string | null;
   maxResponseTime: string | null;
+  intentPositiveExamples: string | null;
+  intentNegativeExamples: string | null;
   aiAgentProvider: string;
   aiAgentModel: string | null;
   aiAgentProviders: string[];
@@ -107,6 +109,8 @@ export class EmrendeAiService {
       sensitiveInfo: this.cleanContextText(settings.ai_sensitive_info, 500),
       supportedLanguages: this.cleanContextText(settings.ai_supported_languages, 120),
       maxResponseTime: this.cleanContextText(settings.ai_max_response_time, 120),
+      intentPositiveExamples: this.cleanContextText(settings.ai_intent_positive_examples, 500),
+      intentNegativeExamples: this.cleanContextText(settings.ai_intent_negative_examples, 500),
       aiAgentProvider:
         typeof settings.ai_agent_provider === "string"
           ? settings.ai_agent_provider
