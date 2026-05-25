@@ -9,7 +9,7 @@ export class InviteCodesAuthController {
   @Post("invite-code-preview")
   @Throttle({ auth: { limit: 5, ttl: 15 * 60_000 } })
   async preview(@Body() dto: { code: string }) {
-    const redeem = await this.service.redeem(dto.code);
+    await this.service.redeem(dto.code);
     return {
       valid: true,
     };

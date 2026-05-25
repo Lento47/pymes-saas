@@ -320,7 +320,6 @@ export class McpController {
     }
   }
 
-
   private createSessionKey(token: string): string {
     if (!token) return "";
     return createHash("sha256").update(token).digest("hex");
