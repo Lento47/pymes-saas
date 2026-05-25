@@ -131,7 +131,7 @@ export class EmrendeAiService {
 
     let contextLines = [
       `Eres el asistente de atención al cliente de "${ctx.workspaceName}"${country}, un negocio de ${businessType}.`,
-      `Responde siempre en español, con un tono amigable, directo y profesional, como lo haría un emprendedor latinoamericano.`,
+      `Responde en el idioma del cliente cuando sea posible, con un tono amigable, directo y profesional. Si el negocio tiene idiomas configurados, prioriza esos idiomas; si no puedes responder en el idioma del cliente, usa español y explícalo brevemente.`,
       `Sé conciso. Evita respuestas largas. Si el cliente pregunta por precios, disponibilidad o servicios específicos, responde con lo que sabes del negocio.`,
     ];
 

@@ -80,6 +80,14 @@ interface ConversationShape {
   channel: { id: string; type: string; config_json: unknown } | null;
 }
 
+
+interface MasterPromptContext {
+  workspaceName: string;
+  channelType: string;
+  profileLabel: string;
+  businessContext: string;
+}
+
 interface ReplyOptions {
   activate?: boolean;
   triggerText?: string;
@@ -373,6 +381,49 @@ export class AiConversationControlService {
     return conv as ConversationShape;
   }
 
+  private resolveBusinessProfileLabel(categories: string[]): string {
+    const byPriority: Array<[string, string]> = [
+      ["alimentacion_bebidas", "restaurante/comida y bebidas"],
+      ["salud_bienestar", "salud y bienestar"],
+      ["comercio_ventas", "comercio/retail"],
+      ["servicios_profesionales", "servicios profesionales"],
+    ];
+    for (const [key, label] of byPriority) {
+      if (categories.includes(key)) return label;
+    }
+    return "negocio general";
+  }
+
+  private buildMasterPrompt(ctx: MasterPromptContext): string {
+    return `PROMPT MAESTRO — ADAPTACIÓN POR PERFIL
+Eres el agente conversacional oficial de ${ctx.workspaceName}.
+Canal actual: ${ctx.channelType}.
+Perfil del negocio detectado: ${ctx.profileLabel}.
+
+OBJETIVO
+- Responder en el idioma del cliente con tono humano, profesional y directo.
+- Si el idioma del cliente no está en los idiomas soportados por el negocio, responde en español y acláralo brevemente antes de continuar.
+- Mantenerte SIEMPRE dentro del contexto del negocio y su perfil.
+- Avanzar la conversación con la mínima fricción posible.
+
+ADAPTACIÓN POR PERFIL (OBLIGATORIA)
+- Ajusta vocabulario, ejemplos y siguientes pasos al perfil detectado.
+- Prioriza lo relevante para ese perfil (ej: pedidos/entregas, citas, cotizaciones, soporte).
+- No uses respuestas genéricas de bot ni desvíos automáticos al menú.
+
+REGLA ESPECIAL: PREGUNTAS SOBRE CAPACIDADES
+- Si el cliente pregunta "qué puedes hacer" o "cuáles son tus capacidades como IA", responde en 1-3 frases explicando capacidades reales del negocio para este perfil.
+- Cierra con una sola pregunta útil para continuar.
+- No fuerces botones/listas ni flujo de compra si el cliente no lo pidió.
+
+LÍMITES
+- No inventes precios, inventario, tiempos ni disponibilidad.
+- Si falta un dato crítico, dilo y pide solo el siguiente dato útil.
+
+CONTEXTO DEL NEGOCIO
+${ctx.businessContext}`;
+  }
+
   private async buildPrompt(workspaceId: string, conv: ConversationShape, inboundText: string) {
     const [ctx, recentMessages, memory, templates] = await Promise.all([
       this.emprendeAi.buildBusinessContext(workspaceId),
@@ -401,7 +452,15 @@ export class AiConversationControlService {
       ? templates.map((t) => `- ${t.name}: ${t.body.slice(0, 180)}`).join("\n")
       : "Sin templates aprobados disponibles.";
 
-    const system = `${this.emprendeAi.buildSystemPrompt(ctx)}
+    const profileLabel = this.resolveBusinessProfileLabel(ctx.categories);
+    const businessContextPrompt = this.emprendeAi.buildSystemPrompt(ctx);
+
+    const system = `${this.buildMasterPrompt({
+      workspaceName: ctx.workspaceName,
+      channelType,
+      profileLabel,
+      businessContext: businessContextPrompt,
+    })}
 
 Toma control conversacional de esta conversación. Responde el primer mensaje aunque sea un saludo.
 Mantén cada reply_text corto y enfocado en UNA sola acción: saluda, o pregunta, o confirma — nunca todo en un mensaje.
