@@ -6,6 +6,7 @@ import { CloudflareAiService, AssistantMessage, ChatCompletionWithUsage } from "
 import { AiProviderBalancerService } from "./ai-provider-balancer.service";
 import { AiGatewayService } from "./ai-gateway.service";
 import { EmrendeAiService } from "./emprende-ai.service";
+import { AgentRunService, AgentIntent } from "./agent-run.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
@@ -63,6 +64,7 @@ interface AiControlAction {
     due_days?: number;
     notes?: string;
   } | null;
+  intent_detected?: AgentIntent | null;
 }
 
 interface ConversationShape {
@@ -93,6 +95,7 @@ export class AiConversationControlService {
     private readonly prisma: PrismaService,
     private readonly cloudflare: CloudflareAiService,
     private readonly emprendeAi: EmrendeAiService,
+    private readonly agentRun: AgentRunService,
     private readonly events: EventsGateway,
     private readonly whatsapp: WhatsAppService,
     private readonly telegramOutbound: TelegramOutboundService,
@@ -301,6 +304,13 @@ export class AiConversationControlService {
 
     const serialized = this.serializeMessage(finalMessage);
     this.events.emitNewMessage(conversationId, workspaceId, serialized);
+
+    if (action.intent_detected && !action.handoff_reason) {
+      this.agentRun
+        .startRun(workspaceId, conversationId, inboundText, action.intent_detected)
+        .catch((err: Error) => this.logger.warn(`[auto_agent_run] failed: ${err.message}`));
+    }
+
     return {
       ok: true,
       message: serialized,
@@ -356,7 +366,6 @@ export class AiConversationControlService {
     const system = `${this.emprendeAi.buildSystemPrompt(ctx)}
 
 Toma control conversacional de esta conversación. Responde el primer mensaje aunque sea un saludo.
-No dependas de detectar intención estructurada. Tu trabajo es avanzar la conversación y pedir la siguiente información útil.
 Si el canal es WhatsApp o Telegram puedes usar botones o listas cuando ayude. Solo usa location_request en WhatsApp.
 Si no sabes algo, no inventes precios, inventario ni disponibilidad.
 Responde SOLO JSON válido con este shape:
@@ -365,8 +374,14 @@ Responde SOLO JSON válido con este shape:
   "interactive": null | { "type": "button", "body": "...", "buttons": [{"id":"...", "title":"..."}] } | { "type": "list", "body":"...", "buttonText":"Ver opciones", "sections":[{"title":"...", "rows":[{"id":"...", "title":"...", "description":"..."}]}] } | { "type": "location_request", "body":"..." },
   "memory_updates": null | { "summary": "...", "common_requests": ["..."], "communication_style": "...", "preferences": {"clave":"valor"} },
   "handoff_reason": null,
-  "invoice_action": null | { "lines": [{"description":"...", "quantity":1, "unit_price":0.00}], "currency":"USD", "due_days":30, "notes":"..." }
+  "invoice_action": null | { "lines": [{"description":"...", "quantity":1, "unit_price":0.00}], "currency":"USD", "due_days":30, "notes":"..." },
+  "intent_detected": null | "ORDER" | "APPOINTMENT" | "QUOTE" | "COMPLAINT"
 }
+Reglas de intent_detected:
+- Úsalo SOLO cuando el cliente exprese claramente una intención de acción (hacer un pedido, agendar cita, solicitar cotización, presentar un reclamo).
+- Si el mensaje es un saludo, pregunta, consulta informativa o conversación general: intent_detected debe ser null.
+- Cuando intent_detected no es null, tu reply_text debe ser un breve reconocimiento (ej: "¡Claro! Con gusto te ayudo con tu pedido." o "Perfecto, agendamos tu cita."). No hagas preguntas de recolección — el sistema estructurado se encarga.
+- Cuando intent_detected es null, avanza la conversación y pide la siguiente información útil de forma natural.
 Reglas de interactive:
 - Usa interactive solo si el canal lo soporta.
 - Botones: máximo 3, títulos cortos.
@@ -403,24 +418,30 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
 
   private parseAction(text: string): AiControlAction {
     const raw = text?.trim() ?? "";
+    const VALID_INTENTS: AgentIntent[] = ["ORDER", "APPOINTMENT", "QUOTE", "COMPLAINT"];
     try {
       const match = raw.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(match?.[0] ?? raw);
       const replyText = String(parsed.reply_text ?? parsed.text ?? parsed.message ?? parsed.response ?? "").slice(0, 4000);
       // If JSON parsed but reply_text empty, fall through to plain-text extraction
       if (replyText) {
+        const intentRaw = parsed.intent_detected as string | null | undefined;
+        const intentDetected: AgentIntent | null =
+          intentRaw && VALID_INTENTS.includes(intentRaw as AgentIntent) ? (intentRaw as AgentIntent) : null;
         return {
           reply_text: replyText,
           interactive: parsed.interactive ?? null,
           memory_updates: parsed.memory_updates ?? null,
           handoff_reason: parsed.handoff_reason ?? null,
+          invoice_action: parsed.invoice_action ?? null,
+          intent_detected: intentDetected,
         };
       }
     } catch {
       // not JSON — fall through
     }
     // Use raw text (model didn't follow JSON format)
-    return { reply_text: raw.slice(0, 4000), interactive: null, memory_updates: null, handoff_reason: null };
+    return { reply_text: raw.slice(0, 4000), interactive: null, memory_updates: null, handoff_reason: null, intent_detected: null };
   }
 
   private normalizeInteractive(value: unknown, conv: ConversationShape): SupportedInteractive | null {
