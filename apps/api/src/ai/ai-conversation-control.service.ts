@@ -856,13 +856,15 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
     if (!conv.channel) return this.markSent(message.id, {});
 
     let replyToWamid: string | null = null;
+    let shouldUseContextualReply = false;
     if (conv.channel.type === "WHATSAPP") {
       const lastInbound = await this.prisma.message.findFirst({
         where: { conversation_id: conv.id, direction: "INBOUND", provider_message_id: { not: null } },
         orderBy: { sent_at: "desc" },
-        select: { provider_message_id: true },
+        select: { provider_message_id: true, reply_to_message_id: true },
       });
       replyToWamid = lastInbound?.provider_message_id ?? null;
+      shouldUseContextualReply = !!lastInbound?.reply_to_message_id;
     }
 
     if (conv.channel.type === "WHATSAPP" && conv.contact?.phone) {
@@ -894,7 +896,7 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
             interactive.body || replyText,
           )).message_id;
         } else {
-          externalId = replyToWamid
+          externalId = replyToWamid && shouldUseContextualReply
             ? (await this.whatsapp.sendReply(conv.channel, to, replyText, replyToWamid)).message_id
             : (await this.whatsapp.sendMessage(conv.channel, to, replyText)).message_id;
         }
