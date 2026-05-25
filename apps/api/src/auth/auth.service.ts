@@ -127,6 +127,10 @@ export class AuthService {
   // ── Register (primer usuario = owner del nuevo workspace) ─────────────────
 
   async register(dto: RegisterDto) {
+    if (!dto.terms_accepted) {
+      throw new BadRequestException("Debés aceptar los Términos de Servicio para registrarte.");
+    }
+
     if (dto.invite_token) {
       return this.acceptInvite({
         token: dto.invite_token,
@@ -146,6 +150,7 @@ export class AuthService {
         name: dto.name,
         status: "ACTIVE",
         ...(password_hash && { password_hash }),
+        terms_accepted_at: new Date(),
       },
     });
 

@@ -1,4 +1,5 @@
-import { IsEmail, IsString, MinLength, IsOptional, Matches } from "class-validator";
+import { IsEmail, IsString, MinLength, IsOptional, Matches, IsBoolean } from "class-validator";
+import { Transform } from "class-transformer";
 
 export class RegisterDto {
   @IsEmail()
@@ -22,4 +23,8 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   invite_token?: string;
+
+  @IsBoolean()
+  @Transform(({ value }) => value === true || value === "true")
+  terms_accepted: boolean;
 }

@@ -39,3 +39,7 @@ export function trackEvent(name: string, params?: Record<string, unknown>) {
   if (typeof window.gtag !== 'function') return;
   window.gtag('event', name, params ?? {});
 }
+
+export function openCookiePreferences(): void {
+  window.dispatchEvent(new CustomEvent("open-cookie-preferences"));
+}

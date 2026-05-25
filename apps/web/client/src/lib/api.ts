@@ -453,7 +453,7 @@ export const api = {
   getMyWorkspaces: () => request<Record<string, any>>("GET", "/api/auth/my-workspaces"),
   switchWorkspace: (workspace_slug: string) =>
     request<Record<string, any>>("POST", "/api/auth/switch-workspace", { workspace_slug }),
-  register: (data: { email: string; name: string; password: string }) =>
+  register: (data: { email: string; name: string; password: string; terms_accepted: boolean; invite_token?: string }) =>
     request<Record<string, any>>("POST", "/api/auth/register", data),
   platformListWorkspaces: () => request<any[]>("GET", "/api/platform/workspaces"),
   platformGetWorkspaceBilling: (slug: string) => request<Record<string, any>>("GET", `/api/platform/workspaces/${slug}/billing`),

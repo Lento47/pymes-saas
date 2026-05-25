@@ -37,6 +37,12 @@ export function CookieBanner() {
     }
   }, []);
 
+  useEffect(() => {
+    const handler = () => setVisible(true);
+    window.addEventListener("open-cookie-preferences", handler);
+    return () => window.removeEventListener("open-cookie-preferences", handler);
+  }, []);
+
   const apply = (choice: "accept_all" | "reject_non_essential" | "custom") => {
     const finalPrefs: Prefs =
       choice === "accept_all" ? { essential: true, analytics: true, product_improvement: true }
