@@ -32,7 +32,8 @@ describe("PlaybookExecutionService", () => {
 
   it("creates escalation task only when escalation is required", async () => {
     const create = jest.fn().mockResolvedValue({ id: "task_1" });
-    const prisma = { task: { create } } as any;
+    const findFirst = jest.fn().mockResolvedValue(null);
+    const prisma = { task: { create, findFirst } } as any;
     const service = new PlaybookExecutionService(prisma);
 
     const withEscalation = await service.createEscalationTask({
@@ -51,5 +52,25 @@ describe("PlaybookExecutionService", () => {
     expect(withEscalation).toEqual({ taskId: "task_1" });
     expect(withoutEscalation).toBeNull();
     expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("updates existing open escalation task instead of creating duplicates", async () => {
+    const findFirst = jest.fn().mockResolvedValue({ id: "task_existing" });
+    const update = jest.fn().mockResolvedValue({ id: "task_existing" });
+    const create = jest.fn();
+    const prisma = { task: { findFirst, update, create } } as any;
+    const service = new PlaybookExecutionService(prisma);
+
+    const result = await service.createEscalationTask({
+      workspaceId: "ws_1",
+      message: "quiero humano",
+      conversationId: "conv_1",
+      output: makeOutput({ intent: "human_handoff", escalationRequired: true }),
+    });
+
+    expect(result).toEqual({ taskId: "task_existing" });
+    expect(findFirst).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(create).not.toHaveBeenCalled();
   });
 });
