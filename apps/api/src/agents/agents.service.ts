@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { AgentStatus } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
+import { FlowiseClient } from "./flowise/flowise.client";
 import { CreateAgentDto } from "./dto/create-agent.dto";
 import { UpdateAgentDto } from "./dto/update-agent.dto";
 
@@ -8,7 +9,10 @@ import { UpdateAgentDto } from "./dto/update-agent.dto";
 export class AgentsService {
   private readonly logger = new Logger(AgentsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly flowise: FlowiseClient,
+  ) {}
 
   listAgents(workspaceId: string) {
     return this.prisma.agentInstance.findMany({
@@ -25,8 +29,9 @@ export class AgentsService {
     return agent;
   }
 
-  createAgent(workspaceId: string, dto: CreateAgentDto) {
-    return this.prisma.agentInstance.create({
+  async createAgent(workspaceId: string, dto: CreateAgentDto) {
+    // 1. Persist in DB immediately
+    const agent = await this.prisma.agentInstance.create({
       data: {
         workspace_id: workspaceId,
         name: dto.name,
@@ -39,6 +44,13 @@ export class AgentsService {
         template_id: dto.template_id,
       },
     });
+
+    // 2. Auto-provision chatflow in Flowise if not provided manually
+    if (this.flowise.isEnabled && !dto.chatflow_id) {
+      return this.provisionChatflow(agent.id, dto.name);
+    }
+
+    return agent;
   }
 
   async updateAgent(workspaceId: string, id: string, dto: UpdateAgentDto) {
@@ -80,7 +92,9 @@ export class AgentsService {
     if (!template) throw new NotFoundException("Template not found");
 
     const cfg = (template.config_json ?? {}) as Record<string, unknown>;
-    return this.prisma.agentInstance.create({
+
+    // 1. Create in DB
+    const agent = await this.prisma.agentInstance.create({
       data: {
         workspace_id: workspaceId,
         name: template.name,
@@ -95,5 +109,32 @@ export class AgentsService {
         status: "DRAFT",
       },
     });
+
+    // 2. Auto-provision chatflow in Flowise
+    if (this.flowise.isEnabled) {
+      return this.provisionChatflow(agent.id, template.name);
+    }
+
+    return agent;
+  }
+
+  // ── Internal helpers ─────────────────────────────────────────────────────
+
+  private async provisionChatflow(agentId: string, name: string) {
+    try {
+      const chatflowId = await this.flowise.createChatflow(name);
+      return this.prisma.agentInstance.update({
+        where: { id: agentId },
+        data: { chatflow_id: chatflowId },
+      });
+    } catch (err) {
+      this.logger.error(
+        `Auto-provision Flowise chatflow failed for agent ${agentId}: ${(err as Error).message}`,
+      );
+      // Return agent with empty chatflow_id — user can retry or set manually
+      return this.prisma.agentInstance.findUniqueOrThrow({
+        where: { id: agentId },
+      });
+    }
   }
 }

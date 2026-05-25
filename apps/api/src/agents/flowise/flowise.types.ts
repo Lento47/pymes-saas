@@ -16,3 +16,19 @@ export interface FlowisePredictResponse {
     toolOutput: unknown;
   }>;
 }
+
+export interface FlowiseChatflowCreateBody {
+  name: string;
+  flowData: string;
+  deployed: boolean;
+  isPublic: boolean;
+  type: "CHATFLOW";
+}
+
+export interface FlowiseChatflowResponse {
+  id: string;
+  name: string;
+  deployed: boolean;
+  createdDate: string;
+  updatedDate: string;
+}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Loader2, SendHorizonal } from "lucide-react";
+import { Loader2, SendHorizonal, ChevronDown } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/use-auth";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AgentStatusBadge } from "@/components/agents/AgentStatusBadge";
+import { cn } from "@/lib/utils";
 
 interface Props {
   id: string;
@@ -18,6 +19,7 @@ interface Props {
 export default function AgentDetailPage({ id }: Props) {
   useRequireAuth();
   const { toast } = useToast();
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const { data: agent, isLoading } = useQuery({
     queryKey: ["/api/agents", id],
@@ -79,55 +81,112 @@ export default function AgentDetailPage({ id }: Props) {
     );
   }
 
+  const chatflowProvisioned = !!agent.chatflow_id;
+
   return (
     <div className="flex flex-col gap-6 p-6 max-w-3xl">
       <div className="flex items-center gap-3">
         <h1 className="text-xl font-bold text-foreground">{agent.name}</h1>
         <AgentStatusBadge status={agent.status} />
+        {!chatflowProvisioned && (
+          <span className="text-[10px] text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">
+            Sin chatflow — activa Flowise
+          </span>
+        )}
       </div>
 
-      {/* Config */}
+      {/* Main config */}
       <div className="rounded-xl border bg-card p-5 flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground">Configuración</h2>
-        <div className="grid gap-3">
+        <h2 className="text-sm font-semibold text-foreground">Configuración del agente</h2>
+        <div className="grid gap-4">
           <div>
-            <Label className="text-xs">Chatflow ID (Flowise)</Label>
+            <Label className="text-xs">Nombre</Label>
             <Input
-              defaultValue={agent.chatflow_id}
-              onBlur={(e) =>
-                updateMut.mutate({ chatflow_id: e.target.value })
-              }
-              className="mt-1 text-xs font-mono"
-              placeholder="UUID del chatflow en Flowise"
+              defaultValue={agent.name}
+              onBlur={(e) => updateMut.mutate({ name: e.target.value })}
+              className="mt-1 text-xs"
             />
           </div>
+
           <div>
             <Label className="text-xs">Descripción</Label>
-            <Textarea
+            <Input
               defaultValue={agent.description ?? ""}
-              onBlur={(e) =>
-                updateMut.mutate({ description: e.target.value })
-              }
-              className="mt-1 text-xs resize-none"
-              rows={3}
+              onBlur={(e) => updateMut.mutate({ description: e.target.value })}
+              className="mt-1 text-xs"
+              placeholder="Breve descripción del propósito del agente"
             />
           </div>
+
           <div>
-            <Label className="text-xs">Instrucciones del sistema (prompt)</Label>
-            <p className="text-[10px] text-muted-foreground mb-1">
-              Define el comportamiento, tono y límites del agente. Se envía a Flowise como contexto de sistema en cada mensaje.
+            <Label className="text-xs font-medium">
+              Instrucciones del sistema (prompt del negocio)
+            </Label>
+            <p className="text-[10px] text-muted-foreground mt-0.5 mb-1.5">
+              Define el comportamiento, tono y límites del agente. Se envía a
+              Flowise como contexto en cada mensaje. Puedes modificarlo en
+              cualquier momento sin tocar Flowise.
             </p>
             <Textarea
               defaultValue={agent.system_instructions ?? ""}
               onBlur={(e) =>
                 updateMut.mutate({ system_instructions: e.target.value })
               }
-              className="mt-1 text-xs font-mono resize-y"
-              rows={8}
-              placeholder={`Eres un asistente de soporte para [nombre del negocio].\nResponde de forma clara y profesional en español.\nSi el cliente pregunta por precios, consultas legales o temas delicados, deriva al equipo humano.`}
+              className="text-xs font-mono resize-y"
+              rows={10}
+              placeholder={`Eres el asistente virtual de [nombre del negocio].
+Respondes en español, de forma clara y amigable.
+Tu objetivo es ayudar al cliente con preguntas sobre productos, precios y pedidos.
+No inventes precios ni hagas promesas que el negocio no haya confirmado.
+Si el cliente está enojado, tiene un reclamo de pago o una consulta legal, deriva al equipo humano.`}
             />
           </div>
         </div>
+      </div>
+
+      {/* Advanced: chatflow ID (read-only by default, editable for power users) */}
+      <div className="rounded-xl border bg-card/50">
+        <button
+          className="w-full flex items-center justify-between p-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => setShowAdvanced((v) => !v)}
+        >
+          <span>Opciones avanzadas (Flowise)</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 transition-transform",
+              showAdvanced && "rotate-180",
+            )}
+          />
+        </button>
+        {showAdvanced && (
+          <div className="px-5 pb-5 flex flex-col gap-3 border-t pt-4">
+            <div>
+              <Label className="text-xs">Chatflow ID</Label>
+              <p className="text-[10px] text-muted-foreground mb-1">
+                Generado automáticamente al crear el agente. Solo modifica si
+                quieres apuntar a un chatflow personalizado en Flowise.
+              </p>
+              <Input
+                defaultValue={agent.chatflow_id ?? ""}
+                onBlur={(e) =>
+                  updateMut.mutate({ chatflow_id: e.target.value })
+                }
+                className="text-xs font-mono"
+                placeholder="Auto-generado por Flowise"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Canal</Label>
+              <Input
+                defaultValue={agent.channel_scope ?? "ALL"}
+                onBlur={(e) =>
+                  updateMut.mutate({ channel_scope: e.target.value })
+                }
+                className="text-xs"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Test console */}
@@ -135,55 +194,72 @@ export default function AgentDetailPage({ id }: Props) {
         <h2 className="text-sm font-semibold text-foreground">
           Consola de prueba
         </h2>
-        <div className="min-h-[120px] max-h-[300px] overflow-y-auto flex flex-col gap-2 text-xs">
-          {conversation.map((m, i) => (
-            <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
-              <span
-                className={`inline-block px-3 py-1.5 rounded-xl max-w-[80%] ${
-                  m.role === "user"
-                    ? "bg-primary/20 text-foreground"
-                    : "bg-muted/50 text-muted-foreground"
-                }`}
-              >
-                {m.text}
-              </span>
+        {!chatflowProvisioned ? (
+          <p className="text-xs text-amber-400/80">
+            El agente aún no tiene un chatflow asignado. Activa el agente para
+            que PymesHub lo cree en Flowise automáticamente.
+          </p>
+        ) : (
+          <>
+            <div className="min-h-[120px] max-h-[300px] overflow-y-auto flex flex-col gap-2 text-xs">
+              {conversation.length === 0 && (
+                <p className="text-muted-foreground/40 text-center py-4">
+                  Escribe un mensaje para probar el agente
+                </p>
+              )}
+              {conversation.map((m, i) => (
+                <div
+                  key={i}
+                  className={m.role === "user" ? "text-right" : "text-left"}
+                >
+                  <span
+                    className={`inline-block px-3 py-1.5 rounded-xl max-w-[80%] ${
+                      m.role === "user"
+                        ? "bg-primary/20 text-foreground"
+                        : "bg-muted/50 text-muted-foreground"
+                    }`}
+                  >
+                    {m.text}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <Input
-            value={testMsg}
-            onChange={(e) => setTestMsg(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && testMsg.trim()) {
-                testMut.mutate(testMsg);
-              }
-            }}
-            placeholder="Escribe un mensaje de prueba…"
-            className="text-xs"
-          />
-          <Button
-            size="sm"
-            disabled={!testMsg.trim() || testMut.isPending}
-            onClick={() => testMut.mutate(testMsg)}
-          >
-            {testMut.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <SendHorizonal className="h-4 w-4" />
+            <div className="flex gap-2">
+              <Input
+                value={testMsg}
+                onChange={(e) => setTestMsg(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && testMsg.trim()) {
+                    testMut.mutate(testMsg);
+                  }
+                }}
+                placeholder="Escribe un mensaje de prueba…"
+                className="text-xs"
+              />
+              <Button
+                size="sm"
+                disabled={!testMsg.trim() || testMut.isPending}
+                onClick={() => testMut.mutate(testMsg)}
+              >
+                {testMut.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <SendHorizonal className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            {sessionId && (
+              <button
+                className="text-[10px] text-muted-foreground/40 text-left hover:underline"
+                onClick={() => {
+                  setSessionId(undefined);
+                  setConversation([]);
+                }}
+              >
+                Nueva conversación
+              </button>
             )}
-          </Button>
-        </div>
-        {sessionId && (
-          <button
-            className="text-[10px] text-muted-foreground/40 text-left hover:underline"
-            onClick={() => {
-              setSessionId(undefined);
-              setConversation([]);
-            }}
-          >
-            Nueva conversación
-          </button>
+          </>
         )}
       </div>
     </div>
