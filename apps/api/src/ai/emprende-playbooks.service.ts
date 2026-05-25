@@ -113,7 +113,8 @@ export class EmprendePlaybooksService {
         return {
           playbookVersion: EmprendePlaybooksService.PLAYBOOK_VERSION,
           intent: "off_topic",
-          reply: `Este canal está enfocado en ayudarte con ${input.businessName}. Te puedo apoyar con ventas, soporte, pedidos, pagos o agenda. ¿Qué necesitas gestionar?`,
+          reply:
+            "GUARDRAIL_OFF_TOPIC: responde de forma natural y breve a la consulta off-topic sin inventar datos; si la información es sensible al tiempo o no verificable, dilo explícitamente. Luego reconduce en una sola frase a cómo ayudar con el negocio y cierra con una pregunta concreta para continuar.",
           requiredFields: capabilities.requiredFields,
           escalationRequired: capabilities.escalationRequired,
           capabilityTier: tier,
