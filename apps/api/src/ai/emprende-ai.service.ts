@@ -35,8 +35,6 @@ interface BusinessContext {
   sensitiveInfo: string | null;
   supportedLanguages: string | null;
   maxResponseTime: string | null;
-  intentPositiveExamples: string | null;
-  intentNegativeExamples: string | null;
   aiAgentProvider: string;
   aiAgentModel: string | null;
   aiAgentProviders: string[];
@@ -109,8 +107,6 @@ export class EmrendeAiService {
       sensitiveInfo: this.cleanContextText(settings.ai_sensitive_info, 500),
       supportedLanguages: this.cleanContextText(settings.ai_supported_languages, 120),
       maxResponseTime: this.cleanContextText(settings.ai_max_response_time, 120),
-      intentPositiveExamples: this.cleanContextText(settings.ai_intent_positive_examples, 500),
-      intentNegativeExamples: this.cleanContextText(settings.ai_intent_negative_examples, 500),
       aiAgentProvider:
         typeof settings.ai_agent_provider === "string"
           ? settings.ai_agent_provider
@@ -131,11 +127,8 @@ export class EmrendeAiService {
 
     let contextLines = [
       `Eres el asistente de atención al cliente de "${ctx.workspaceName}"${country}, un negocio de ${businessType}.`,
+      `Responde siempre en español, con un tono amigable, directo y profesional, como lo haría un emprendedor latinoamericano.`,
       `Sé conciso. Evita respuestas largas. Si el cliente pregunta por precios, disponibilidad o servicios específicos, responde con lo que sabes del negocio.`,
-      `Idioma de conversación: detecta el idioma activo de conversación como el último idioma dominante del cliente.`,
-      `Si el idioma activo no está dentro de los idiomas soportados del negocio, responde en el idioma fallback del negocio (español por defecto) y haz una sola aclaración inicial; no repitas esa aclaración en cada turno.`,
-      `Si el cliente cambia de idioma de forma explícita (ej: "háblame en inglés"), permite el cambio y guarda la preferencia en memory_updates.preferences.language con el código o nombre del idioma solicitado.`,
-      `No mezcles idiomas en una misma respuesta, salvo que el cliente lo pida explícitamente.`,
     ];
 
     if (ctx.businessPrompt) {
@@ -171,9 +164,7 @@ export class EmrendeAiService {
     }
 
     if (ctx.supportedLanguages) {
-      contextLines.push(`\nIdiomas soportados del negocio: ${ctx.supportedLanguages}`);
-    } else {
-      contextLines.push(`\nIdioma fallback del negocio: español.`);
+      contextLines.push(`\nIdiomas en los que puedes responder: ${ctx.supportedLanguages}`);
     }
 
     if (ctx.maxResponseTime) {
@@ -280,7 +271,7 @@ export class EmrendeAiService {
         ? this.prisma.message.findMany({
             where: { conversation_id: conversationId, workspace_id: workspaceId },
             orderBy: { sent_at: "desc" },
-            take: 20,
+            take: 5,
             select: { body_text: true, direction: true },
           })
         : Promise.resolve([]),
