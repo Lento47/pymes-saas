@@ -29,6 +29,14 @@ interface BusinessContext {
   productsServices: string | null;
   policies: string | null;
   tone: string | null;
+  mainObjective: string | null;
+  cannotDo: string | null;
+  escalationConditions: string | null;
+  sensitiveInfo: string | null;
+  supportedLanguages: string | null;
+  maxResponseTime: string | null;
+  intentPositiveExamples: string | null;
+  intentNegativeExamples: string | null;
   aiAgentProvider: string;
   aiAgentModel: string | null;
   aiAgentProviders: string[];
@@ -95,6 +103,14 @@ export class EmrendeAiService {
       productsServices: this.cleanContextText(settings.ai_business_products_services),
       policies: this.cleanContextText(settings.ai_business_policies),
       tone: this.cleanContextText(settings.ai_business_tone),
+      mainObjective: this.cleanContextText(settings.ai_main_objective, 500),
+      cannotDo: this.cleanContextText(settings.ai_cannot_do, 1000),
+      escalationConditions: this.cleanContextText(settings.ai_escalation_conditions, 500),
+      sensitiveInfo: this.cleanContextText(settings.ai_sensitive_info, 500),
+      supportedLanguages: this.cleanContextText(settings.ai_supported_languages, 120),
+      maxResponseTime: this.cleanContextText(settings.ai_max_response_time, 120),
+      intentPositiveExamples: this.cleanContextText(settings.ai_intent_positive_examples, 500),
+      intentNegativeExamples: this.cleanContextText(settings.ai_intent_negative_examples, 500),
       aiAgentProvider:
         typeof settings.ai_agent_provider === "string"
           ? settings.ai_agent_provider
@@ -135,6 +151,30 @@ export class EmrendeAiService {
       contextLines.push(`\nTono de marca solicitado:\n${ctx.tone}`);
     }
 
+    if (ctx.mainObjective) {
+      contextLines.push(`\nObjetivo principal:\n${ctx.mainObjective}`);
+    }
+
+    if (ctx.cannotDo) {
+      contextLines.push(`\nLo que NO debes hacer (restricciones estrictas):\n${ctx.cannotDo}`);
+    }
+
+    if (ctx.escalationConditions) {
+      contextLines.push(`\nCuándo debes escalar a un agente humano:\n${ctx.escalationConditions}`);
+    }
+
+    if (ctx.sensitiveInfo) {
+      contextLines.push(`\nInformación sensible — no divulgar bajo ninguna circunstancia:\n${ctx.sensitiveInfo}`);
+    }
+
+    if (ctx.supportedLanguages) {
+      contextLines.push(`\nIdiomas en los que puedes responder: ${ctx.supportedLanguages}`);
+    }
+
+    if (ctx.maxResponseTime) {
+      contextLines.push(`\nObjetivo de tiempo de respuesta: ${ctx.maxResponseTime}`);
+    }
+
     if (ctx.categories.includes("alimentacion_bebidas")) {
       contextLines.push(
         `El negocio ofrece productos de comida/bebida. Puedes responder consultas sobre pedidos, menú, horarios de entrega e ingredientes.`,
@@ -168,10 +208,10 @@ export class EmrendeAiService {
     return contextLines.join("\n");
   }
 
-  private cleanContextText(value: unknown): string | null {
+  private cleanContextText(value: unknown, maxLen = 2000): string | null {
     if (typeof value !== "string") return null;
     const trimmed = value.trim();
-    return trimmed ? trimmed.slice(0, 2000) : null;
+    return trimmed ? trimmed.slice(0, maxLen) : null;
   }
 
   private cleanAgentModel(value: unknown): string | null {

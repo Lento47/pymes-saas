@@ -112,7 +112,12 @@ export class AgentRunService {
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
-  async startRun(workspaceId: string, conversationId: string, triggerText: string): Promise<AgentRun | null> {
+  async startRun(
+    workspaceId: string,
+    conversationId: string,
+    triggerText: string,
+    knownIntent?: AgentIntent,
+  ): Promise<AgentRun | null> {
     const quota = await this.planLimits.evaluatePlanLimit(workspaceId, "agent_executions_per_day");
     if (!quota.allowed) {
       this.logger.warn(`Agent run blocked for workspace ${workspaceId}: ${quota.message}`);
@@ -138,22 +143,31 @@ export class AgentRunService {
 
     const ctx = await this.emprendeAi.buildBusinessContext(workspaceId);
 
-    // Load contact memory to personalize the agent's context
-    const contactMemoryProfile = conv.contact?.id && this.contactMemory
-      ? await this.contactMemory.getActiveProfile(conv.contact.id).catch(() => null)
-      : null;
+    let intent: AgentIntent;
+    let extracted: Record<string, string | null> = {};
 
-    const providers = ctx.aiAgentProviders;
-    const detection = await this.detectIntent(
-      triggerText,
-      ctx.workspaceName,
-      ctx.categories,
-      providers,
-      contactMemoryProfile,
-    );
-    if (!detection) return null;
+    if (knownIntent) {
+      // Intent already detected by the conversational LLM — skip redundant detection call
+      intent = knownIntent;
+    } else {
+      // Load contact memory to personalize the agent's context
+      const contactMemoryProfile = conv.contact?.id && this.contactMemory
+        ? await this.contactMemory.getActiveProfile(conv.contact.id).catch(() => null)
+        : null;
 
-    const { intent, extracted } = detection;
+      const providers = ctx.aiAgentProviders;
+      const detection = await this.detectIntent(
+        triggerText,
+        ctx.workspaceName,
+        ctx.categories,
+        providers,
+        contactMemoryProfile,
+      );
+      if (!detection) return null;
+      intent = detection.intent;
+      extracted = detection.extracted;
+    }
+
     const flow = INTENT_FLOWS[intent];
 
     const collected: Record<string, string | null> = {};

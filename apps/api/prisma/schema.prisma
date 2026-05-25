@@ -368,7 +368,8 @@ model User {
   facebook_id       String?   @unique
   telegram_id       String?   @unique
   status            UserStatus @default(ACTIVE)
-  is_platform_admin Boolean    @default(false)
+  is_platform_admin  Boolean   @default(false)
+  terms_accepted_at  DateTime?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

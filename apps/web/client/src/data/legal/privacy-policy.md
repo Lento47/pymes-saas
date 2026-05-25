@@ -130,9 +130,15 @@ No obstante, ninguna medida tecnica garantiza seguridad absoluta. Por ello, el s
 
 Si se detecta un incidente que pueda comprometer datos personales, `Otnel S.A.` activara el proceso previsto en [`../security/incident-response-policy.md`](../security/incident-response-policy.md), evaluara el alcance y notificara cuando corresponda por ley, contrato o riesgo razonable para los afectados.
 
-## 16. Menores de edad
+## 16. Edad mínima de uso
 
-PymesHub no esta diseñado como servicio principal para menores de edad. Los clientes no deben utilizar el servicio para tratar datos de menores sin base legal suficiente, controles adecuados y necesidad operativa licita.
+PymesHub está dirigido exclusivamente a personas mayores de **18 años**. Al registrarte, confirmás que tenés 18 años o más y que estás legalmente capacitado para celebrar contratos en tu jurisdicción (Código Civil de Costa Rica, Artículo 37).
+
+Los clientes no deben utilizar el servicio para tratar datos de menores sin base legal suficiente, controles adecuados y necesidad operativa lícita.
+
+Si PRODHAB o el titular afectado nos notifica que un menor de edad ha creado una cuenta, eliminaremos los datos personales asociados en un plazo de **72 horas**. Para reportar un caso, escribí a: privacidad@pymeshub.lat
+
+**Base legal (Ley 8968, Costa Rica):** El tratamiento de datos de menores requiere consentimiento de los padres o tutores legales. Al no estar este servicio diseñado para menores, no se recolectan ni tratan datos de personas menores de 18 años.
 
 ## 17. Cambios a esta politica
 

@@ -437,6 +437,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
+        <div className="shrink-0 px-3 pb-1">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("open-cookie-preferences"))}
+            className="w-full text-center text-[10px] text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors"
+          >
+            Preferencias de cookies
+          </button>
+        </div>
+
         <div className="shrink-0 space-y-2 border-t border-border bg-sidebar px-3 py-3 pb-safe">
           <div className="grid grid-cols-2 gap-2">
             <button

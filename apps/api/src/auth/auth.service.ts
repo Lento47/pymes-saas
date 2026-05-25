@@ -127,12 +127,21 @@ export class AuthService {
   // ── Register (primer usuario = owner del nuevo workspace) ─────────────────
 
   async register(dto: RegisterDto) {
+    if (!dto.terms_accepted) {
+      throw new BadRequestException("Debés aceptar los Términos de Servicio para registrarte.");
+    }
+
     if (dto.invite_token) {
-      return this.acceptInvite({
+      const result = await this.acceptInvite({
         token: dto.invite_token,
         name: dto.name,
         password: dto.password,
       });
+      await this.prisma.user.update({
+        where: { id: result.user.id },
+        data: { terms_accepted_at: new Date() },
+      });
+      return result;
     }
 
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
@@ -146,6 +155,7 @@ export class AuthService {
         name: dto.name,
         status: "ACTIVE",
         ...(password_hash && { password_hash }),
+        terms_accepted_at: new Date(),
       },
     });
 

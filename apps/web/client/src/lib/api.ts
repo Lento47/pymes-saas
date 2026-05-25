@@ -453,7 +453,7 @@ export const api = {
   getMyWorkspaces: () => request<Record<string, any>>("GET", "/api/auth/my-workspaces"),
   switchWorkspace: (workspace_slug: string) =>
     request<Record<string, any>>("POST", "/api/auth/switch-workspace", { workspace_slug }),
-  register: (data: { email: string; name: string; password: string }) =>
+  register: (data: { email: string; name: string; password: string; terms_accepted: boolean; invite_token?: string }) =>
     request<Record<string, any>>("POST", "/api/auth/register", data),
   platformListWorkspaces: () => request<any[]>("GET", "/api/platform/workspaces"),
   platformGetWorkspaceBilling: (slug: string) => request<Record<string, any>>("GET", `/api/platform/workspaces/${slug}/billing`),
@@ -488,7 +488,7 @@ export const api = {
   platformGetPlanLimits: () => request<Record<string, any>>("GET", "/api/platform/plan-limits"),
   platformUpdatePlanLimits: (overrides: { plan: string; resource: string; value: number }[]) => request<Record<string, any>>("PATCH", "/api/platform/plan-limits", { overrides }),
   getCurrentFeatures: () => request<Record<string, any>>("GET", "/api/workspaces/current/features"),
-  askAssistant: (prompt: string) => request<Record<string, any>>("POST", "/api/workspaces/current/ai/assist", { prompt }),
+  askAssistant: (field: string, content: string) => request<{ suggestion: string; reply: string }>("POST", "/api/workspaces/current/ai/assist", { field, content }),
   emprendeChat: (message: string, conversationId?: string) => request<{ reply: string; context?: any }>("POST", "/api/ai/emprende/chat", { message, conversationId }),
   emprendeReply: (conversationId: string, messageText: string) => request<{ reply: string }>("POST", "/api/ai/emprende/reply", { conversationId, messageText }),
   emprendeAnalyzeContact: (contactId: string) => request<Record<string, any>>("POST", `/api/ai/emprende/analyze-contact/${contactId}`, {}),

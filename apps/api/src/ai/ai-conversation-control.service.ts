@@ -6,6 +6,7 @@ import { CloudflareAiService, AssistantMessage, ChatCompletionWithUsage } from "
 import { AiProviderBalancerService } from "./ai-provider-balancer.service";
 import { AiGatewayService } from "./ai-gateway.service";
 import { EmrendeAiService } from "./emprende-ai.service";
+import { AgentRunService, AgentIntent } from "./agent-run.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
@@ -63,6 +64,7 @@ interface AiControlAction {
     due_days?: number;
     notes?: string;
   } | null;
+  intent_detected?: AgentIntent | null;
 }
 
 interface ConversationShape {
@@ -87,12 +89,20 @@ interface ReplyOptions {
 @Injectable()
 export class AiConversationControlService {
   private readonly logger = new Logger(AiConversationControlService.name);
-  private readonly maxTokens = 1200;
+
+  private estimateMaxTokens(inboundText: string): number {
+    const len = inboundText.trim().length;
+    if (len < 20)  return 150;
+    if (len < 80)  return 400;
+    if (len < 300) return 800;
+    return 1200;
+  }
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudflare: CloudflareAiService,
     private readonly emprendeAi: EmrendeAiService,
+    private readonly agentRun: AgentRunService,
     private readonly events: EventsGateway,
     private readonly whatsapp: WhatsAppService,
     private readonly telegramOutbound: TelegramOutboundService,
@@ -179,16 +189,34 @@ export class AiConversationControlService {
       }
     }
 
-    if (conv.channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
-      this.telegramOutbound.sendTyping(conv.channel.id, conv.contact.telegram_chat_id).catch(() => {});
+    // Typing indicators — keep visible for the full LLM wait time
+    const isWhatsApp = conv.channel?.type === "WHATSAPP";
+    const isTelegram = conv.channel?.type === "TELEGRAM";
+    const waPhone = conv.contact?.phone?.replace(/\D/g, "") ?? null;
+    const tgChatId = conv.contact?.telegram_chat_id ?? null;
+
+    if (isTelegram && tgChatId) {
+      this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
+    }
+    if (isWhatsApp && waPhone) {
+      this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_on").catch(() => {});
+    }
+
+    // Telegram typing expires after ~5s — refresh every 4s
+    let typingInterval: ReturnType<typeof setInterval> | null = null;
+    if (isTelegram && tgChatId) {
+      typingInterval = setInterval(() => {
+        this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
+      }, 4000);
     }
 
     await this.persistInboundMemory(workspaceId, conv, inboundText);
 
+    const maxTokens = this.estimateMaxTokens(inboundText);
     const context = await this.buildPrompt(workspaceId, conv, inboundText);
     const reservation = await this.aiTokens.reserveTokens(
       workspaceId,
-      this.aiTokens.estimateMessagesTokens(context.messages, this.maxTokens),
+      this.aiTokens.estimateMessagesTokens(context.messages, maxTokens),
       {
         conversationId,
         description: "Reserva Agente IA conversacional",
@@ -197,6 +225,10 @@ export class AiConversationControlService {
     );
 
     if (!reservation.success || !reservation.reservationId) {
+      if (typingInterval) clearInterval(typingInterval);
+      if (isWhatsApp && waPhone) {
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
+      }
       return {
         ok: false,
         error: "INSUFFICIENT_AI_TOKENS",
@@ -208,10 +240,14 @@ export class AiConversationControlService {
     let completion: ChatCompletionWithUsage;
     try {
       completion = await this.balancer.chatCompletionWithUsage(context.messages, context.providers, {
-        maxTokens: this.maxTokens,
+        maxTokens,
         temperature: 0.2,
       });
     } catch (err) {
+      if (typingInterval) clearInterval(typingInterval);
+      if (isWhatsApp && waPhone) {
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
+      }
       await this.aiTokens.releaseReservation(workspaceId, reservation.reservationId);
       this.logger.warn(`AI control provider failed: ${(err as Error).message}`);
       return {
@@ -219,6 +255,11 @@ export class AiConversationControlService {
         error: "AI_PROVIDER_FAILED",
         balance: await this.aiTokens.getBalance(workspaceId),
       };
+    } finally {
+      if (typingInterval) clearInterval(typingInterval);
+      if (isWhatsApp && waPhone) {
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
+      }
     }
 
     const action = this.parseAction(completion.text);
@@ -301,6 +342,13 @@ export class AiConversationControlService {
 
     const serialized = this.serializeMessage(finalMessage);
     this.events.emitNewMessage(conversationId, workspaceId, serialized);
+
+    if (action.intent_detected && !action.handoff_reason) {
+      this.agentRun
+        .startRun(workspaceId, conversationId, inboundText, action.intent_detected)
+        .catch((err: Error) => this.logger.warn(`[auto_agent_run] failed: ${err.message}`));
+    }
+
     return {
       ok: true,
       message: serialized,
@@ -331,13 +379,13 @@ export class AiConversationControlService {
       this.prisma.message.findMany({
         where: { workspace_id: workspaceId, conversation_id: conv.id },
         orderBy: { sent_at: "desc" },
-        take: 10,
+        take: 6,
         select: { direction: true, body_text: true },
       }),
       conv.contact?.id ? this.contactMemory.getActiveProfile(conv.contact.id).catch(() => null) : null,
       this.prisma.messageTemplate.findMany({
         where: { workspace_id: workspaceId, channel: "WHATSAPP", status: "APPROVED" as any },
-        take: 5,
+        take: 3,
         orderBy: { updated_at: "desc" },
         select: { name: true, external_template_id: true, body: true },
       }),
@@ -356,7 +404,9 @@ export class AiConversationControlService {
     const system = `${this.emprendeAi.buildSystemPrompt(ctx)}
 
 Toma control conversacional de esta conversación. Responde el primer mensaje aunque sea un saludo.
-No dependas de detectar intención estructurada. Tu trabajo es avanzar la conversación y pedir la siguiente información útil.
+Mantén cada reply_text corto y enfocado en UNA sola acción: saluda, o pregunta, o confirma — nunca todo en un mensaje.
+Si el cliente saluda o es el primer contacto, responde solo con un saludo cálido y una sola pregunta breve.
+Respuestas ideales: 1-3 frases. Evita listas largas o explicaciones extensas salvo que el cliente lo pida explícitamente.
 Si el canal es WhatsApp o Telegram puedes usar botones o listas cuando ayude. Solo usa location_request en WhatsApp.
 Si no sabes algo, no inventes precios, inventario ni disponibilidad.
 Responde SOLO JSON válido con este shape:
@@ -365,8 +415,14 @@ Responde SOLO JSON válido con este shape:
   "interactive": null | { "type": "button", "body": "...", "buttons": [{"id":"...", "title":"..."}] } | { "type": "list", "body":"...", "buttonText":"Ver opciones", "sections":[{"title":"...", "rows":[{"id":"...", "title":"...", "description":"..."}]}] } | { "type": "location_request", "body":"..." },
   "memory_updates": null | { "summary": "...", "common_requests": ["..."], "communication_style": "...", "preferences": {"clave":"valor"} },
   "handoff_reason": null,
-  "invoice_action": null | { "lines": [{"description":"...", "quantity":1, "unit_price":0.00}], "currency":"USD", "due_days":30, "notes":"..." }
+  "invoice_action": null | { "lines": [{"description":"...", "quantity":1, "unit_price":0.00}], "currency":"USD", "due_days":30, "notes":"..." },
+  "intent_detected": null | "ORDER" | "APPOINTMENT" | "QUOTE" | "COMPLAINT"
 }
+Reglas de intent_detected:
+- Úsalo SOLO cuando el cliente exprese claramente una intención de acción (hacer un pedido, agendar cita, solicitar cotización, presentar un reclamo).
+- Si el mensaje es un saludo, pregunta, consulta informativa o conversación general: intent_detected debe ser null.
+- Cuando intent_detected no es null, tu reply_text debe ser un breve reconocimiento (ej: "¡Claro! Con gusto te ayudo con tu pedido." o "Perfecto, agendamos tu cita."). No hagas preguntas de recolección — el sistema estructurado se encarga.
+- Cuando intent_detected es null, avanza la conversación y pide la siguiente información útil de forma natural.${ctx.intentPositiveExamples ? `\nEjemplos de mensajes que SÍ deben activar intent_detected:\n${ctx.intentPositiveExamples}` : ""}${ctx.intentNegativeExamples ? `\nEjemplos de mensajes que NO deben activar intent_detected:\n${ctx.intentNegativeExamples}` : ""}
 Reglas de interactive:
 - Usa interactive solo si el canal lo soporta.
 - Botones: máximo 3, títulos cortos.
@@ -403,24 +459,30 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
 
   private parseAction(text: string): AiControlAction {
     const raw = text?.trim() ?? "";
+    const VALID_INTENTS: AgentIntent[] = ["ORDER", "APPOINTMENT", "QUOTE", "COMPLAINT"];
     try {
       const match = raw.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(match?.[0] ?? raw);
       const replyText = String(parsed.reply_text ?? parsed.text ?? parsed.message ?? parsed.response ?? "").slice(0, 4000);
       // If JSON parsed but reply_text empty, fall through to plain-text extraction
       if (replyText) {
+        const intentRaw = parsed.intent_detected as string | null | undefined;
+        const intentDetected: AgentIntent | null =
+          intentRaw && VALID_INTENTS.includes(intentRaw as AgentIntent) ? (intentRaw as AgentIntent) : null;
         return {
           reply_text: replyText,
           interactive: parsed.interactive ?? null,
           memory_updates: parsed.memory_updates ?? null,
           handoff_reason: parsed.handoff_reason ?? null,
+          invoice_action: parsed.invoice_action ?? null,
+          intent_detected: intentDetected,
         };
       }
     } catch {
       // not JSON — fall through
     }
     // Use raw text (model didn't follow JSON format)
-    return { reply_text: raw.slice(0, 4000), interactive: null, memory_updates: null, handoff_reason: null };
+    return { reply_text: raw.slice(0, 4000), interactive: null, memory_updates: null, handoff_reason: null, intent_detected: null };
   }
 
   private normalizeInteractive(value: unknown, conv: ConversationShape): SupportedInteractive | null {

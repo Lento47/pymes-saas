@@ -57,11 +57,13 @@ function Field({ id, label, type = "text", placeholder, value, onChange, require
 export default function RegisterPage() {
   const { toast } = useToast();
   const { refreshUser } = useAuth();
-  const [name, setName]       = useState("");
-  const [email, setEmail]     = useState("");
-  const [pass, setPass]       = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [name, setName]             = useState("");
+  const [email, setEmail]           = useState("");
+  const [pass, setPass]             = useState("");
+  const [confirm, setConfirm]       = useState("");
+  const [ageConfirmed, setAgeConfirmed]   = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [loading, setLoading]       = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +73,7 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      const res = await api.register({ email, name, password: pass });
+      const res = await api.register({ email, name, password: pass, terms_accepted: termsAccepted });
       // store tokens using the same keys as lib/api.ts (setAuthState)
       localStorage.setItem("pymes_token", res.access_token);
       localStorage.setItem("pymes_refresh_token", res.refresh_token);
@@ -112,9 +114,43 @@ export default function RegisterPage() {
           <Field id="password" label="Contraseña" type="password" placeholder="Mín. 12 caracteres" value={pass} onChange={setPass} required />
           <Field id="confirm" label="Confirmar contraseña" type="password" placeholder="••••••••••••" value={confirm} onChange={setConfirm} required />
 
+          <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              required
+              checked={ageConfirmed}
+              onChange={e => setAgeConfirmed(e.target.checked)}
+              style={{ marginTop: "2px", width: "14px", height: "14px", flexShrink: 0, accentColor: "hsl(var(--accent))" }}
+            />
+            <span style={{ fontSize: "11px", color: "hsl(var(--fg-2))", lineHeight: "1.5" }}>
+              Confirmo que tengo <strong>18 años o más</strong>. PymesHub es un servicio profesional no apto para menores de edad.
+            </span>
+          </label>
+
+          <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              required
+              checked={termsAccepted}
+              onChange={e => setTermsAccepted(e.target.checked)}
+              style={{ marginTop: "2px", width: "14px", height: "14px", flexShrink: 0, accentColor: "hsl(var(--accent))" }}
+            />
+            <span style={{ fontSize: "11px", color: "hsl(var(--fg-2))", lineHeight: "1.5" }}>
+              Acepto los{" "}
+              <a href="/legal/terms-of-service" target="_blank" style={{ color: "hsl(var(--accent))", textDecoration: "underline" }}>
+                Términos de Servicio
+              </a>{" "}
+              y la{" "}
+              <a href="/legal/privacy-policy" target="_blank" style={{ color: "hsl(var(--accent))", textDecoration: "underline" }}>
+                Política de Privacidad
+              </a>
+              .
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !ageConfirmed || !termsAccepted}
             className="mt-2 flex h-9 items-center justify-center gap-2 rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading && <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} />}

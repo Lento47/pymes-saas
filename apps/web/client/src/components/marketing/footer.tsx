@@ -176,6 +176,12 @@ export function Footer({ className }: { className?: string }) {
                 {f[key]}
               </a>
             ))}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("open-cookie-preferences"))}
+              className="text-xs text-white/36 transition hover:text-white/70"
+            >
+              Preferencias de cookies
+            </button>
           </div>
         </div>
       </div>

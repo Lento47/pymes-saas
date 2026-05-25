@@ -32,9 +32,21 @@ export function CookieBanner() {
     const stored = getStored();
     if (!stored) {
       setVisible(true);
-    } else if (stored.prefs?.analytics) {
-      grantAnalyticsConsent();
+    } else {
+      if (stored.prefs) setPrefs(stored.prefs);
+      if (stored.prefs?.analytics) grantAnalyticsConsent();
     }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      const stored = getStored();
+      if (stored?.prefs) setPrefs(stored.prefs);
+      setSettingsOpen(true);
+      setVisible(true);
+    };
+    window.addEventListener("open-cookie-preferences", handler);
+    return () => window.removeEventListener("open-cookie-preferences", handler);
   }, []);
 
   const apply = (choice: "accept_all" | "reject_non_essential" | "custom") => {
