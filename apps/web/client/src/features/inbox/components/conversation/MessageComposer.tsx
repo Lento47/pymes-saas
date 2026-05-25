@@ -1,10 +1,19 @@
 import { useState } from "react";
-import { FileText, List, Loader2, MapPin, MessageSquare, Paperclip, Plus, Send, Sparkles } from "lucide-react";
+import { FileText, List, Loader2, MapPin, MessageSquare, Paperclip, Plus, Send, ShoppingBag, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ComposerAttachmentPreview } from "./ComposerAttachmentPreview";
 import { InteractiveToolbar, type InteractiveState } from "../composer/InteractiveToolbar";
+import { ProductPicker } from "@/components/inventory/ProductPicker";
+
+interface MessageTemplate {
+  id: string;
+  name: string;
+  body: string;
+  channel: string;
+}
 
 interface MessageComposerProps {
   value: string;
@@ -20,6 +29,9 @@ interface MessageComposerProps {
   isServiceWindowOpen?: boolean;
   onSelectTemplate?: () => void;
   onAiSuggest?: () => Promise<string>;
+  availableTemplates?: MessageTemplate[];
+  onInsertTemplate?: (body: string) => void;
+  onInsertProduct?: (text: string) => void;
   disabled?: boolean;
   className?: string;
 }
@@ -38,11 +50,17 @@ export function MessageComposer({
   isServiceWindowOpen = true,
   onSelectTemplate,
   onAiSuggest,
+  availableTemplates,
+  onInsertTemplate,
+  onInsertProduct,
   disabled,
   className,
 }: MessageComposerProps) {
   const [interactive, setInteractive] = useState<InteractiveState>({ type: null });
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState("");
 
   const isWhatsApp = channelType?.toUpperCase() === "WHATSAPP";
   const windowClosed = isWhatsApp && !isServiceWindowOpen;
@@ -112,6 +130,10 @@ export function MessageComposer({
       setInteractive({ type, buttons: [{ id: "", title: "" }] });
     }
   };
+
+  const filteredTemplates = templateSearch
+    ? (availableTemplates ?? []).filter(t => t.name.toLowerCase().includes(templateSearch.toLowerCase()) || t.body.toLowerCase().includes(templateSearch.toLowerCase()))
+    : (availableTemplates ?? []);
 
   return (
     <div className={`shrink-0 border-t border-border bg-background/95 backdrop-blur-sm ${className ?? ""}`}>
@@ -210,6 +232,83 @@ export function MessageComposer({
             />
           </label>
 
+          {/* Template picker button */}
+          {availableTemplates && availableTemplates.length > 0 && onInsertTemplate && (
+            <Popover open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  disabled={freeFormDisabled}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-45"
+                  title="Insertar plantilla"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" side="top" className="w-72 p-2">
+                <div className="mb-2">
+                  <input
+                    className="w-full text-xs bg-muted/30 border border-border rounded-md px-2 py-1.5 outline-none placeholder:text-muted-foreground/50"
+                    placeholder="Buscar plantilla..."
+                    value={templateSearch}
+                    onChange={e => setTemplateSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="max-h-52 overflow-y-auto space-y-0.5">
+                  {filteredTemplates.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">Sin resultados</p>
+                  ) : filteredTemplates.map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      className="w-full text-left rounded-md px-2 py-2 hover:bg-muted transition-colors"
+                      onClick={() => {
+                        onInsertTemplate(tpl.body);
+                        setTemplatePickerOpen(false);
+                        setTemplateSearch("");
+                      }}
+                    >
+                      <div className="text-xs font-medium text-foreground">{tpl.name}</div>
+                      <div className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{tpl.body}</div>
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+
+          {/* Product picker button */}
+          {onInsertProduct && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setProductPickerOpen(v => !v)}
+                disabled={freeFormDisabled}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-45"
+                title="Insertar producto"
+              >
+                <ShoppingBag className="w-4 h-4" />
+              </button>
+              {productPickerOpen && (
+                <div className="absolute bottom-10 left-0 z-50 w-72">
+                  <ProductPicker
+                    open={productPickerOpen}
+                    onOpenChange={setProductPickerOpen}
+                    onSelect={(p) => {
+                      const price = new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", maximumFractionDigits: 0 }).format(p.unit_price);
+                      const text = [p.name, p.description && p.description !== p.name ? p.description : null, `Precio: ${price}`]
+                        .filter(Boolean)
+                        .join("\n");
+                      onInsertProduct(text);
+                      setProductPickerOpen(false);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* AI Suggest button — EMPRENDE+ only, shown when onAiSuggest is provided */}
           {onAiSuggest && (
             <button
@@ -259,11 +358,6 @@ export function MessageComposer({
             )}
           </Button>
         </div>
-        {channelLabel && (
-          <p className="text-[10px] text-muted-foreground/50 mt-1.5 ml-1 select-none">
-            Enviando por {channelLabel}
-          </p>
-        )}
       </div>
     </div>
   );

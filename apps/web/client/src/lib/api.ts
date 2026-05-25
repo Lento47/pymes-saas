@@ -572,12 +572,22 @@ export const api = {
   deleteCategory: (id: string) => request<Record<string, any>>("DELETE", `/api/inventory/categories/${id}`),
   getWorkspaceFeatureFlags: (workspaceId: string) => request<Record<string, any>>("GET", `/api/feature-flags/check/${workspaceId}`),
   getUsage: (workspaceId: string) => request<Record<string, any>>("GET", `/api/usage/${workspaceId}`),
-  getMessageTemplates: (workspaceId: string, channel?: string) => {
+  getMessageTemplates: (channel?: string) => {
     const qs = channel ? `?channel=${encodeURIComponent(channel)}` : "";
-    return request<Record<string, any>>("GET", `/api/message-templates/${workspaceId}${qs}`);
+    return request<any[]>("GET", `/api/message-templates${qs}`);
   },
-  getApprovedTemplates: (workspaceId: string, channel?: string) =>
-    request<Record<string, any>>("GET", `/api/message-templates/${workspaceId}/approved?channel=${channel ?? 'WHATSAPP'}`),
+  getApprovedTemplates: (channel?: string) => {
+    const qs = channel ? `?channel=${encodeURIComponent(channel)}` : "";
+    return request<any[]>("GET", `/api/message-templates/approved${qs}`);
+  },
+  createMessageTemplate: (data: Record<string, any>) =>
+    request<Record<string, any>>("POST", "/api/message-templates", data),
+  updateMessageTemplate: (id: string, data: Record<string, any>) =>
+    request<Record<string, any>>("PUT", `/api/message-templates/${id}`, data),
+  deleteMessageTemplate: (id: string) =>
+    request<Record<string, any>>("DELETE", `/api/message-templates/${id}`),
+  syncTemplatesFromMeta: () =>
+    request<{ synced: number; created: number; updated: number }>("POST", "/api/message-templates/sync"),
   getSlaPolicies: () => request<Record<string, any>>("GET", "/api/sla/policies"),
   getSlaAssignment: (workspaceId: string) => request<Record<string, any>>("GET", `/api/sla/assignment/${workspaceId}`),
   assignSlaPolicy: (workspaceId: string, data: Record<string, any>) => request<Record<string, any>>("POST", `/api/sla/assignment/${workspaceId}`, data),

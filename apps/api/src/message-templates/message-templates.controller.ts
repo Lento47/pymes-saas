@@ -17,10 +17,8 @@ export class MessageTemplatesController {
     return this.templates.list(workspaceId, channel);
   }
 
+  // NOTE: NestJS resolves static routes before parameterized ones — keep static routes before ':id'.
   @Get("approved")
-  // NOTE: NestJS resolves static routes ('approved') before parameterized ones
-  // (':id'), so this does NOT conflict with getById below. Keep this route
-  // before :id in file order as a defensive practice.
   async getApproved(
     @CurrentUser("workspace_id") workspaceId: string,
     @Query("channel") channel?: string,
@@ -40,6 +38,12 @@ export class MessageTemplatesController {
   @RequireFeature("message_templates")
   async create(@CurrentUser() user: AuthUser, @Body() data: Record<string, any>) {
     return this.templates.create(user.workspace_id, user.id, data);
+  }
+
+  @Post("sync")
+  @RequireFeature("message_templates")
+  async syncFromMeta(@CurrentUser("workspace_id") workspaceId: string) {
+    return this.templates.syncFromMeta(workspaceId);
   }
 
   @Put(":id")

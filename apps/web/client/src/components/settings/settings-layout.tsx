@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/shared/page-header";
-import { Building2, Users, PlugZap, Layers, Plug, BrainCircuit, ShieldCheck, Coins } from "lucide-react";
+import { Building2, Users, PlugZap, Layers, Plug, BrainCircuit, ShieldCheck, Coins, FileText } from "lucide-react";
 
 const SETTINGS_NAV = [
   { path: "/settings/workspace",    label: "Workspace",               icon: Building2 },
@@ -12,6 +12,7 @@ const SETTINGS_NAV = [
   { path: "/settings/integrations", label: "Integraciones",           icon: Plug },
   { path: "/settings/ai",           label: "Inteligencia Artificial", icon: BrainCircuit },
   { path: "/settings/credits",      label: "Créditos IA",             icon: Coins },
+  { path: "/settings/templates",    label: "Plantillas",              icon: FileText },
 ] as const;
 
 const PLATFORM_ITEM = { path: "/settings/platform", label: "Plataforma", icon: ShieldCheck } as const;
