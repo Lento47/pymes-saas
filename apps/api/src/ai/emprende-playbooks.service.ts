@@ -113,7 +113,7 @@ export class EmprendePlaybooksService {
         return {
           playbookVersion: EmprendePlaybooksService.PLAYBOOK_VERSION,
           intent: "off_topic",
-          reply: "",
+          reply: `¡Buena pregunta! También puedo conversar de eso brevemente, y además estoy para ayudarte con ${input.businessName}. Si quieres, te apoyo con ventas, soporte, pedidos, pagos o agenda. ¿Qué te gustaría resolver ahora?`,
           requiredFields: capabilities.requiredFields,
           escalationRequired: capabilities.escalationRequired,
           capabilityTier: tier,
