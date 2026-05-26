@@ -464,7 +464,7 @@ export class AiConversationControlService {
       select: { id: true },
     });
 
-    const serialized = this.serializeMessage(finalMessage);
+    const serialized = this.serializeMessage(message);
     this.events.emitNewMessage(conversationId, workspaceId, serialized);
 
     if (action.intent_detected && !action.handoff_reason) {
