@@ -28,7 +28,7 @@ const INTENT_OPTIONS = [
 export function AgentGlobalConfig() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   const { data: workspace } = useQuery({ queryKey: ["/api/workspaces/current"], queryFn: api.getWorkspace });
   const { data: membersData } = useQuery({ queryKey: ["/api/workspaces/current/members"], queryFn: api.getMembers, enabled: open });
@@ -109,6 +109,11 @@ export function AgentGlobalConfig() {
         <div className="flex items-center gap-2">
           <Settings2 className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium text-foreground">Configuración global del agente</span>
+          {voiceEnabled && (
+            <span className="ml-2 text-[10px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded-full">
+              Voz activa
+            </span>
+          )}
         </div>
         {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
       </button>

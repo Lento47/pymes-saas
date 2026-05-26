@@ -41,7 +41,7 @@ export function AgentCard({ agent, onActivate, onDeactivate }: AgentCardProps) {
           {agent.channel_scope} · {agent.provider}
         </p>
       </div>
-      <div className="absolute top-3 right-3 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute top-3 right-3 flex gap-0.5">
         <Link href={`/agents/${agent.id}`}>
           <button
             className="p-1.5 rounded-lg bg-card border border-border hover:bg-accent transition-colors"

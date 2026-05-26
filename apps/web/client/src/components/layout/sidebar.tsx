@@ -243,14 +243,11 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               className={cn(
                 "group w-full flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-all duration-200",
                 wsMenuOpen
-                  ? "bg-[rgba(139,92,246,0.08)]"
-                  : "hover:bg-[rgba(139,92,246,0.06)]"
+                  ? "bg-primary/[0.08] border-primary/30"
+                  : "bg-primary/[0.04] border-primary/20 hover:bg-primary/[0.07]"
               )}
-              style={{
-                borderColor: wsMenuOpen ? "rgba(139,92,246,0.3)" : "rgba(139,92,246,0.18)",
-                background: wsMenuOpen ? "rgba(139,92,246,0.08)" : "rgba(139,92,246,0.04)",
-                cursor: multipleWorkspaces ? "pointer" : "default",
-              }}
+              style={{ cursor: multipleWorkspaces ? "pointer" : "default" }}
+              data-open={wsMenuOpen || undefined}
               onClick={() => multipleWorkspaces && setWsMenuOpen(o => !o)}
               aria-expanded={multipleWorkspaces ? wsMenuOpen : undefined}
             >
@@ -491,7 +488,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="relative z-40 flex shrink-0 items-center gap-3 border-b px-3 py-2.5 pt-safe lg:px-5" style={{ background: "hsl(var(--bg-sidebar))", borderColor: "rgba(139,92,246,0.12)" }}>
+        <header className="relative z-40 flex shrink-0 items-center gap-3 border-b border-primary/15 bg-[hsl(var(--bg-sidebar))] px-3 py-2.5 pt-safe lg:px-5">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
@@ -509,8 +506,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           <button
             onClick={() => setSearchOpen(true)}
-            className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border px-3 text-left text-xs text-muted-foreground transition-all duration-200 hover:text-foreground md:flex"
-            style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(139,92,246,0.18)" }}
+            className="hidden h-8 min-w-[260px] max-w-[360px] flex-1 items-center gap-2 rounded-md border border-primary/20 bg-white/[0.04] px-3 text-left text-xs text-muted-foreground transition-all duration-200 hover:text-foreground md:flex"
             title="Buscar (Ctrl+K)"
           >
             <Search className="w-3.5 h-3.5" />
@@ -533,7 +529,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
           <NotificationBell />
 
-          <span className="hidden rounded-md border px-2.5 py-1 text-xs font-medium lg:inline-block" style={{ background: "rgba(139,92,246,0.08)", borderColor: "rgba(139,92,246,0.2)", color: "#c4b5fd" }}>
+          <span className="hidden rounded-md border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-xs font-medium text-primary/80 lg:inline-block">
             {user?.role}
           </span>
         </header>
