@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { AgentStatus } from "@prisma/client";
+import { AgentStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { FlowiseClient } from "./flowise/flowise.client";
 import { CreateAgentDto } from "./dto/create-agent.dto";
@@ -40,7 +40,7 @@ export class AgentsService {
         provider: dto.provider,
         channel_scope: dto.channel_scope,
         system_instructions: dto.system_instructions,
-        config_json: dto.config_json ?? undefined,
+        config_json: dto.config_json as Prisma.InputJsonValue,
         template_id: dto.template_id,
       },
     });
@@ -68,7 +68,7 @@ export class AgentsService {
         ...(dto.system_instructions !== undefined && {
           system_instructions: dto.system_instructions,
         }),
-        ...(dto.config_json !== undefined && { config_json: dto.config_json }),
+        ...(dto.config_json !== undefined && { config_json: dto.config_json as Prisma.InputJsonValue }),
         ...(dto.voice_enabled !== undefined && { voice_enabled: dto.voice_enabled }),
         ...(dto.elevenlabs_voice_id !== undefined && {
           elevenlabs_voice_id: dto.elevenlabs_voice_id,
@@ -108,7 +108,7 @@ export class AgentsService {
         channel_scope: template.channel_scope,
         system_instructions:
           typeof cfg.system_prompt === "string" ? cfg.system_prompt : null,
-        config_json: template.config_json ?? undefined,
+        config_json: template.config_json as Prisma.InputJsonValue,
         template_id: template.id,
         status: "DRAFT",
       },
