@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, CheckCircle2, Bot, ShoppingCart, UtensilsCrossed, Zap, Stethoscope, Megaphone, Briefcase, Store, LayoutGrid } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2, Bot, ClipboardList, Volume2, ShoppingCart, UtensilsCrossed, Zap, Stethoscope, Megaphone, Briefcase, Store, LayoutGrid } from "lucide-react";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -203,6 +203,13 @@ const AI_PROVIDERS = [
   { id: "moonshot",        label: "Moonshot (Kimi)",        models: ["moonshot-v1-8k", "moonshot-v1-32k"] },
 ];
 
+const GATEWAY_MODELS = [
+  { id: "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast", label: "Llama 3.3 70B Fast", provider: "Workers AI", badge: "Gratis" },
+  { id: "workers-ai/@cf/meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B", provider: "Workers AI", badge: "Gratis" },
+  { id: "workers-ai/@cf/moonshotai/kimi-k2.6", label: "Kimi K2.6", provider: "Workers AI", badge: "Gratis" },
+  { id: "deepseek/deepseek-v4-pro", label: "DeepSeek V4 Pro", provider: "DeepSeek" },
+  { id: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash", provider: "DeepSeek" },
+];
 
 export default function AiSettingsPage() {
   const { toast } = useToast();
@@ -219,6 +226,15 @@ export default function AiSettingsPage() {
   const [policies, setPolicies] = useState("");
   const [tone, setTone] = useState("");
   const [customApiEnabled, setCustomApiEnabled] = useState(true);
+  const [agentProviders, setAgentProviders] = useState<string[]>(["workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"]);
+  const [addingModel, setAddingModel] = useState("");
+  const [assignmentMode, setAssignmentMode] = useState("conversation_assignee");
+  const [defaultAssigneeId, setDefaultAssigneeId] = useState("");
+  const [intentAssignees, setIntentAssignees] = useState<Record<string, string>>({});
+  const [agentAutoActive, setAgentAutoActive] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceId, setVoiceId] = useState("");
+  const [elevenlabsApiKey, setElevenlabsApiKey] = useState("");
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [mainObjective, setMainObjective] = useState("");
   const [cannotDo, setCannotDo] = useState("");
@@ -229,6 +245,11 @@ export default function AiSettingsPage() {
   const [intentPositiveExamples, setIntentPositiveExamples] = useState("");
   const [intentNegativeExamples, setIntentNegativeExamples] = useState("");
 
+  const { data: members } = useQuery({
+    queryKey: ["/api/workspaces/current/members"],
+    queryFn: api.getMembers,
+  });
+
   useEffect(() => {
     if (workspace) {
       setCustomApiEnabled(workspace.ai_custom_api_enabled !== false);
@@ -238,6 +259,32 @@ export default function AiSettingsPage() {
       setProductsServices(workspace.ai_business_products_services ?? "");
       setPolicies(workspace.ai_business_policies ?? "");
       setTone(workspace.ai_business_tone ?? "");
+      // Load ai_agent_providers (new format) or fall back from legacy single provider
+      const savedProviders = workspace.ai_agent_providers;
+      const validIds = new Set(GATEWAY_MODELS.map((m) => m.id));
+      if (Array.isArray(savedProviders) && savedProviders.length > 0) {
+        const filtered = savedProviders.filter((p: string) => validIds.has(p));
+        setAgentProviders(
+          filtered.length > 0
+            ? filtered
+            : ["workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"],
+        );
+      } else {
+        // Legacy: convert old ai_agent_provider + ai_agent_model
+        const legacyProvider = workspace.ai_agent_provider ?? "workers_ai";
+        const legacyModel = workspace.ai_agent_model;
+        if (legacyProvider === "workers_ai" && legacyModel && legacyModel !== "global") {
+          setAgentProviders([`workers-ai/${legacyModel}`]);
+        } else {
+          setAgentProviders(["workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"]);
+        }
+      }
+      setAssignmentMode(workspace.ai_agent_assignment_mode ?? "conversation_assignee");
+      setDefaultAssigneeId(workspace.ai_agent_default_assignee_id ?? "");
+      setIntentAssignees(workspace.ai_agent_intent_assignees ?? {});
+      setAgentAutoActive(workspace.ai_agent_auto_active ?? false);
+      setVoiceEnabled(workspace.ai_voice_enabled ?? false);
+      setVoiceId(workspace.ai_voice_id ?? "");
       setMainObjective(workspace.ai_main_objective ?? "");
       setCannotDo(workspace.ai_cannot_do ?? "");
       setEscalationConditions(workspace.ai_escalation_conditions ?? "");
@@ -256,6 +303,15 @@ export default function AiSettingsPage() {
     workspace?.ai_business_products_services,
     workspace?.ai_business_policies,
     workspace?.ai_business_tone,
+    workspace?.ai_agent_providers,
+    workspace?.ai_agent_provider,
+    workspace?.ai_agent_model,
+    workspace?.ai_agent_assignment_mode,
+    workspace?.ai_agent_default_assignee_id,
+    workspace?.ai_agent_intent_assignees,
+    workspace?.ai_agent_auto_active,
+    workspace?.ai_voice_enabled,
+    workspace?.ai_voice_id,
     workspace?.ai_main_objective,
     workspace?.ai_cannot_do,
     workspace?.ai_escalation_conditions,
@@ -275,12 +331,22 @@ export default function AiSettingsPage() {
       ai_provider: provider || undefined,
       ai_model:    model    || undefined,
       ai_api_key:  apiKey   || undefined,
+      ...(elevenlabsApiKey ? { elevenlabs_api_key: elevenlabsApiKey } : {}),
       settings_json: {
         ai_custom_api_enabled: customApiEnabled,
         ai_business_prompt: businessPrompt,
         ai_business_products_services: productsServices,
         ai_business_policies: policies,
         ai_business_tone: tone,
+        ai_agent_providers: agentProviders,
+        ai_agent_provider: "workers_ai", // keep for backwards compat
+        ai_agent_model: "",
+        ai_agent_assignment_mode: assignmentMode,
+        ai_agent_default_assignee_id: defaultAssigneeId || "",
+        ai_agent_intent_assignees: intentAssignees,
+        ai_agent_auto_active: agentAutoActive,
+        ai_voice_enabled: voiceEnabled,
+        ai_voice_id: voiceId,
         ai_main_objective: mainObjective,
         ai_cannot_do: cannotDo,
         ai_escalation_conditions: escalationConditions,
@@ -294,6 +360,7 @@ export default function AiSettingsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/workspaces/current"] });
       setApiKey("");
+      setElevenlabsApiKey("");
       toast({ title: "Configuración de IA guardada" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -319,6 +386,10 @@ export default function AiSettingsPage() {
   const hasKey  = !!workspace?.ai_provider;
   const canSave = !provider || apiKey || hasKey;
   const canTest = provider && (apiKey || hasKey);
+  const memberList = Array.isArray(members) ? members : members?.data ?? [];
+  const assignableMembers = memberList
+    .map((member: any) => member.user ?? member)
+    .filter((member: any) => member?.id);
   const applyProfile = (profile: typeof BUSINESS_PROFILES[0]) => {
     setSelectedProfile(profile.id);
     setBusinessPrompt(profile.fields.ai_business_prompt);
@@ -339,6 +410,21 @@ export default function AiSettingsPage() {
   const assistObjective      = usePromptAssist("ai_main_objective", mainObjective);
   const assistCannotDo       = usePromptAssist("ai_cannot_do", cannotDo);
   const assistEscalation     = usePromptAssist("ai_escalation_conditions", escalationConditions);
+
+  const intentOptions = [
+    { id: "ORDER", label: "Pedidos" },
+    { id: "APPOINTMENT", label: "Citas" },
+    { id: "QUOTE", label: "Cotizaciones" },
+    { id: "COMPLAINT", label: "Reclamos" },
+  ];
+  const updateIntentAssignee = (intent: string, userId: string) => {
+    setIntentAssignees((current) => {
+      const next = { ...current };
+      if (!userId || userId === "none") delete next[intent];
+      else next[intent] = userId;
+      return next;
+    });
+  };
 
   return (
     <SettingsLayout>
@@ -679,6 +765,247 @@ export default function AiSettingsPage() {
           </div>
         </div>
 
+        <div className="pt-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-primary" />
+            <h2 className="text-[15px] font-semibold text-foreground">Agente y tareas</h2>
+          </div>
+
+          <div className="flex items-center justify-between py-1 mb-4">
+            <div>
+              <p className="text-xs font-medium">Agente IA activo por defecto</p>
+              <p className="text-[11px] text-muted-foreground">
+                El agente responde automáticamente en todas las conversaciones. Se activa al comprar tokens.
+              </p>
+            </div>
+            <Switch checked={agentAutoActive} onCheckedChange={setAgentAutoActive} />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <Label className="text-xs mb-2 block">Proveedores del Agente IA · Load Balancer</Label>
+              <p className="text-[11px] text-muted-foreground mb-3">
+                El agente intentará los proveedores en orden. Si uno falla, pasa al siguiente automáticamente.
+              </p>
+
+              {/* Ordered list of selected providers */}
+              <div className="space-y-2 mb-3">
+                {agentProviders.map((modelId, index) => {
+                  const info = GATEWAY_MODELS.find(m => m.id === modelId);
+                  return (
+                    <div key={modelId} className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/40 px-3 py-2">
+                      <span className="text-[10px] text-muted-foreground font-mono w-4 text-center">{index + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">
+                          {info?.label ?? modelId}
+                          {info?.badge && (
+                            <span className="ml-1.5 text-[9px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded-full">
+                              {info.badge}
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">{info?.provider ?? ""} · {modelId}</p>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setAgentProviders(prev => {
+                            if (index === 0) return prev;
+                            const next = [...prev];
+                            [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                            return next;
+                          })}
+                          disabled={index === 0}
+                          className="p-1 rounded hover:bg-sidebar-accent/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Subir"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAgentProviders(prev => {
+                            if (index === prev.length - 1) return prev;
+                            const next = [...prev];
+                            [next[index], next[index + 1]] = [next[index + 1], next[index]];
+                            return next;
+                          })}
+                          disabled={index === agentProviders.length - 1}
+                          className="p-1 rounded hover:bg-sidebar-accent/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Bajar"
+                        >
+                          ▼
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAgentProviders(prev => prev.filter((_, i) => i !== index))}
+                          className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                          title="Quitar"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {agentProviders.length === 0 && (
+                  <p className="text-[11px] text-amber-400 py-2">Sin proveedores configurados — el agente no responderá.</p>
+                )}
+              </div>
+
+              {/* Add provider selector */}
+              <div className="flex gap-2">
+                <Select
+                  value={addingModel}
+                  onValueChange={setAddingModel}
+                >
+                  <SelectTrigger className="bg-[hsl(var(--elevated))] border-border text-xs h-8 flex-1">
+                    <SelectValue placeholder="Agregar proveedor..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {GATEWAY_MODELS.filter(m => !agentProviders.includes(m.id)).map(m => (
+                      <SelectItem key={m.id} value={m.id} className="text-xs">
+                        <span className="font-medium">{m.provider}</span> · {m.label}
+                        {m.badge && <span className="ml-1.5 text-[9px] text-emerald-400">({m.badge})</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs shrink-0"
+                  disabled={!addingModel}
+                  onClick={() => {
+                    if (addingModel && !agentProviders.includes(addingModel)) {
+                      setAgentProviders(prev => [...prev, addingModel]);
+                      setAddingModel("");
+                    }
+                  }}
+                >
+                  Agregar
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs mb-1 block">Asignacion de tareas creadas por IA</Label>
+              <Select value={assignmentMode} onValueChange={setAssignmentMode}>
+                <SelectTrigger className="bg-[hsl(var(--elevated))] border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="conversation_assignee">Usar agente asignado a la conversacion</SelectItem>
+                  <SelectItem value="default_user">Usar responsable predeterminado</SelectItem>
+                  <SelectItem value="unassigned">Dejar sin asignar</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-xs mb-1 block">Responsable predeterminado</Label>
+              <Select
+                value={defaultAssigneeId || "none"}
+                onValueChange={(value) => setDefaultAssigneeId(value === "none" ? "" : value)}
+              >
+                <SelectTrigger className="bg-[hsl(var(--elevated))] border-border">
+                  <SelectValue placeholder="Sin responsable" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="none">Sin responsable</SelectItem>
+                  {assignableMembers.map((member: any) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.name ?? member.email ?? member.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {intentOptions.map((intent) => (
+              <div key={intent.id}>
+                <Label className="text-xs mb-1 block">{intent.label}</Label>
+                <Select
+                  value={intentAssignees[intent.id] ?? "none"}
+                  onValueChange={(value) => updateIntentAssignee(intent.id, value)}
+                >
+                  <SelectTrigger className="bg-[hsl(var(--elevated))] border-border">
+                    <SelectValue placeholder="Usar regla general" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="none">Usar regla general</SelectItem>
+                    {assignableMembers.map((member: any) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name ?? member.email ?? member.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+
+          <Button
+            onClick={() => save.mutate()}
+            disabled={!canSave || save.isPending}
+            className="bg-primary hover:bg-primary/90 h-8 text-xs"
+          >
+            {save.isPending ? "Guardando..." : "Guardar reglas del agente"}
+          </Button>
+        </div>
+
+        {/* ── Voz IA ── */}
+        <div className="pt-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Volume2 className="h-4 w-4 text-primary" />
+            <h2 className="text-[15px] font-semibold text-foreground">Voz para el Agente IA</h2>
+          </div>
+
+          <p className="text-[11px] text-muted-foreground">
+            El agente enviará un mensaje de voz después de cada respuesta de texto (WhatsApp y Telegram).
+            Requiere una clave ElevenLabs activa — el sistema usa la clave global si no se ingresa una propia.
+          </p>
+
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs font-medium">Activar respuestas de voz</p>
+              <p className="text-[11px] text-muted-foreground">Solo para respuestas de texto, no para botones o listas</p>
+            </div>
+            <Switch checked={voiceEnabled} onCheckedChange={setVoiceEnabled} />
+          </div>
+
+          <div className={cn("space-y-3", !voiceEnabled && "opacity-40 pointer-events-none")}>
+            <div className="space-y-1">
+              <Label className="text-xs">ID de voz (ElevenLabs)</Label>
+              <Input
+                className="text-xs h-8 bg-[hsl(var(--elevated))] border-border"
+                placeholder="U9TSK9KHMlMU2qkeXlQP"
+                value={voiceId}
+                onChange={(e) => setVoiceId(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">API Key ElevenLabs <span className="text-muted-foreground">(opcional — usa la del sistema si se deja vacía)</span></Label>
+              <Input
+                className="text-xs h-8 bg-[hsl(var(--elevated))] border-border font-mono"
+                type="password"
+                placeholder="sk_..."
+                value={elevenlabsApiKey}
+                onChange={(e) => setElevenlabsApiKey(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={() => save.mutate()}
+            disabled={!canSave || save.isPending}
+            className="bg-primary hover:bg-primary/90 h-8 text-xs"
+          >
+            {save.isPending ? "Guardando..." : "Guardar configuración de voz"}
+          </Button>
+        </div>
       </div>
     </SettingsLayout>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import type { LucideIcon } from "lucide-react";
+type LucideIcon = any;
 import {
   ArrowRight,
   BookOpen,
@@ -36,9 +36,8 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
-const VIOLET  = "#8B5CF6";
+const VIOLET  = "#7C3AED";
 const INDIGO  = "#6366F1";
-const BG_DEEP = "#030712";
 
 const navItems = [
   { id: "platform",  key: "platform"  },
@@ -71,24 +70,24 @@ function MarketingMenuAction({
       className={cn(
         "group block rounded-xl px-4 py-3 text-left transition-all duration-200",
         featured
-          ? "bg-violet-500/[0.07] hover:bg-violet-500/[0.12] border border-violet-400/[0.12]"
-          : "hover:bg-white/[0.04]"
+          ? "bg-violet-50 hover:bg-violet-100/60 border border-violet-200/60"
+          : "hover:bg-gray-50"
       )}
     >
       <div className="flex items-start gap-3">
         <div className={cn(
           "flex h-8 w-8 items-center justify-center rounded-lg shrink-0",
           featured
-            ? "bg-violet-500/15 text-violet-300"
-            : "bg-white/[0.06] text-white/50 group-hover:text-white/80"
+            ? "bg-violet-100 text-violet-600"
+            : "bg-gray-100 text-gray-500 group-hover:text-gray-700"
         )}>
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-marketing text-sm font-semibold tracking-[-0.01em] text-white group-hover:text-white/90">
+          <h3 className="font-marketing text-sm font-semibold tracking-[-0.01em] text-gray-800 group-hover:text-gray-900">
             {title}
           </h3>
-          <p className="mt-0.5 text-xs leading-5 text-white/40">{description}</p>
+          <p className="mt-0.5 text-xs leading-5 text-gray-400">{description}</p>
         </div>
       </div>
     </Link>
@@ -111,7 +110,6 @@ function useReveal() {
 }
 
 // Subtle dot grid SVG background
-const DOT_GRID_SVG = `data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='rgba(139%2C92%2C246%2C0.18)'/%3E%3C/svg%3E`;
 
 export default function Landing() {
   const { messages } = useI18n();
@@ -232,32 +230,22 @@ export default function Landing() {
       </script>
 
       {/* ── Root wrapper ── */}
-      <div
-        className="relative overflow-hidden text-white"
-        style={{ background: BG_DEEP }}
-      >
+      <div className="marketing-light-theme relative overflow-hidden">
 
-        {/* ── Global ambient glow ── */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 overflow-hidden"
-          style={{ zIndex: 0 }}
-        >
-          {/* Dot grid */}
-          <div
-            className="absolute inset-0 opacity-100"
-            style={{ backgroundImage: `url("${DOT_GRID_SVG}")`, backgroundSize: "32px 32px" }}
-          />
-          {/* Top violet radial glow */}
-          <div
-            className="absolute -top-40 left-1/2 -translate-x-1/2 h-[600px] w-[900px] rounded-full blur-[120px]"
-            style={{ background: "radial-gradient(ellipse, rgba(124,58,237,0.22) 0%, transparent 70%)" }}
-          />
-          {/* Bottom-right indigo glow */}
-          <div
-            className="absolute bottom-0 right-0 h-[400px] w-[600px] blur-[100px]"
-            style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.12) 0%, transparent 70%)" }}
-          />
+        {/* ── Aurora background blobs ── */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: 0 }}>
+          {/* Lavanda top-right */}
+          <div className="absolute -top-32 -right-32 h-[500px] w-[700px] rounded-full blur-[140px]"
+            style={{ background: "radial-gradient(ellipse, rgba(167,139,250,0.22) 0%, transparent 70%)" }} />
+          {/* Índigo top-left */}
+          <div className="absolute top-0 -left-40 h-[400px] w-[600px] rounded-full blur-[120px]"
+            style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.13) 0%, transparent 70%)" }} />
+          {/* Punto de calor hero (rosa-lila) */}
+          <div className="absolute top-60 left-1/2 -translate-x-1/2 h-[400px] w-[600px] rounded-full blur-[100px]"
+            style={{ background: "radial-gradient(ellipse, rgba(225,190,255,0.18) 0%, transparent 70%)" }} />
+          {/* Violeta suave bottom */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[300px] w-[800px] rounded-full blur-[100px]"
+            style={{ background: "radial-gradient(ellipse, rgba(124,58,237,0.07) 0%, transparent 70%)" }} />
         </div>
 
         <main className="relative" style={{ zIndex: 1 }}>
@@ -278,8 +266,8 @@ export default function Landing() {
                   className={cn(
                     "flex items-center justify-between rounded-2xl px-5 py-4 md:px-7 transition-all duration-500",
                     scrolled
-                      ? "bg-black/70 backdrop-blur-2xl border border-violet-400/[0.1] shadow-[0_0_0_1px_rgba(139,92,246,0.08)]"
-                      : "bg-white/[0.03] backdrop-blur-xl border border-white/[0.04]"
+                      ? "bg-white/90 backdrop-blur-2xl border border-gray-200/80 shadow-sm"
+                      : "bg-white/70 backdrop-blur-md border border-gray-100"
                   )}
                 >
                   <BrandLockup compact />
@@ -291,20 +279,20 @@ export default function Landing() {
                         type="button"
                         data-nav-button
                         onClick={() => setActiveMenu((c) => (c === item.key ? null : item.key))}
-                        className="font-marketing text-sm font-medium text-white/70 transition hover:text-white"
+                        className="font-marketing text-sm font-medium text-gray-600 transition hover:text-gray-900"
                       >
                         {copy.nav[item.key]}
-                        <ChevronDown className={cn("ml-1 inline h-3.5 w-3.5 text-white/40 transition", activeMenu === item.key && "rotate-180 text-white")} />
+                        <ChevronDown className={cn("ml-1 inline h-3.5 w-3.5 text-gray-400 transition", activeMenu === item.key && "rotate-180 text-gray-700")} />
                       </button>
                     ))}
                   </div>
 
                   <div className="flex items-center gap-1 md:gap-4 flex-shrink-0">
                     <div className="hidden md:flex items-center gap-4">
-                      <Link href="/pricing" className="font-marketing text-sm font-medium text-white/70 transition hover:text-white">{copy.nav.pricing}</Link>
-                      <Link href="/documentation" className="font-marketing text-sm font-medium text-white/70 transition hover:text-white">{copy.nav.documentation}</Link>
+                      <Link href="/pricing" className="font-marketing text-sm font-medium text-gray-600 transition hover:text-gray-900">{copy.nav.pricing}</Link>
+                      <Link href="/documentation" className="font-marketing text-sm font-medium text-gray-600 transition hover:text-gray-900">{copy.nav.documentation}</Link>
                     </div>
-                    <Link href="/login" className="font-marketing hidden sm:block text-sm font-medium text-white/70 transition hover:text-white">{copy.nav.logIn}</Link>
+                    <Link href="/login" className="font-marketing hidden sm:block text-sm font-medium text-gray-600 transition hover:text-gray-900">{copy.nav.logIn}</Link>
                     <Link
                       href="/register"
                       className="font-marketing hidden sm:inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 sm:gap-2 sm:px-5 sm:py-2.5"
@@ -316,7 +304,7 @@ export default function Landing() {
                     <button
                       type="button"
                       onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                      className="md:hidden text-white/70 transition hover:text-white flex-shrink-0"
+                      className="md:hidden text-gray-600 transition hover:text-gray-900 flex-shrink-0"
                     >
                       {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                     </button>
@@ -325,7 +313,7 @@ export default function Landing() {
 
                 {/* Mobile menu */}
                 {mobileMenuOpen && (
-                  <div className="md:hidden mt-2 rounded-xl border border-white/[0.06] bg-black/80 backdrop-blur-xl p-4" data-mobile-menu>
+                  <div className="md:hidden mt-2 rounded-xl border border-gray-200 bg-white/98 backdrop-blur-lg p-4" data-mobile-menu>
                     <div className="space-y-1">
                       {[
                         { href: "/product",  label: copy.nav.platform },
@@ -333,14 +321,14 @@ export default function Landing() {
                         { href: "/insights", label: copy.nav.insights },
                         { href: "/security", label: copy.nav.security },
                       ].map(({ href, label }) => (
-                        <Link key={label} href={href} className="block w-full text-left px-4 py-2.5 font-marketing text-sm font-medium text-white/70 transition hover:text-white hover:bg-white/[0.04] rounded-lg">
+                        <Link key={label} href={href} className="block w-full text-left px-4 py-2.5 font-marketing text-sm font-medium text-gray-600 transition hover:text-gray-900 hover:bg-gray-50 rounded-lg">
                           {label}
                         </Link>
                       ))}
-                      <div className="border-t border-white/[0.06] my-2" />
-                      <Link href="/pricing"       className="block w-full text-left px-4 py-2.5 font-marketing text-sm font-medium text-white/70 transition hover:text-white hover:bg-white/[0.04] rounded-lg">{copy.nav.pricing}</Link>
-                      <Link href="/documentation" className="block w-full text-left px-4 py-2.5 font-marketing text-sm font-medium text-white/70 transition hover:text-white hover:bg-white/[0.04] rounded-lg">{copy.nav.documentation}</Link>
-                      <Link href="/login"         className="block w-full text-left px-4 py-2.5 font-marketing text-sm font-medium text-white/70 transition hover:text-white hover:bg-white/[0.04] rounded-lg">{copy.nav.logIn}</Link>
+                      <div className="border-t border-gray-200 my-2" />
+                      <Link href="/pricing"       className="block w-full text-left px-4 py-2.5 font-marketing text-sm font-medium text-gray-600 transition hover:text-gray-900 hover:bg-gray-50 rounded-lg">{copy.nav.pricing}</Link>
+                      <Link href="/documentation" className="block w-full text-left px-4 py-2.5 font-marketing text-sm font-medium text-gray-600 transition hover:text-gray-900 hover:bg-gray-50 rounded-lg">{copy.nav.documentation}</Link>
+                      <Link href="/login"         className="block w-full text-left px-4 py-2.5 font-marketing text-sm font-medium text-gray-600 transition hover:text-gray-900 hover:bg-gray-50 rounded-lg">{copy.nav.logIn}</Link>
                       <Link
                         href="/register"
                         className="font-marketing mt-1 block w-full text-center rounded-full px-4 py-2.5 text-sm font-semibold text-white"
@@ -355,14 +343,14 @@ export default function Landing() {
                 {/* Dropdown */}
                 {activeMenu && (
                   <div className="absolute inset-x-0 top-full z-20 pt-3 pointer-events-auto" data-nav-dropdown>
-                    <div className="bg-[#0a0b1a]/96 backdrop-blur-xl border border-violet-400/[0.08] rounded-2xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.6)]">
+                    <div className="bg-white/98 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-xl">
                       <div className="px-6 pt-5 pb-2">
-                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300/50">{dropdownMenus[activeMenu].eyebrow}</p>
-                        <h2 className="font-marketing mt-1 text-xl font-semibold tracking-[-0.02em] text-white">{dropdownMenus[activeMenu].title}</h2>
+                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-500">{dropdownMenus[activeMenu].eyebrow}</p>
+                        <h2 className="font-marketing mt-1 text-xl font-semibold tracking-[-0.02em] text-gray-900">{dropdownMenus[activeMenu].title}</h2>
                       </div>
                       <div className="grid gap-3 p-4 pt-2 lg:grid-cols-[1fr_1.5fr]">
                         <div>
-                          <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-white/25 px-1 pb-2">{copy.menus[activeMenu].featuredLabel}</p>
+                          <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400 px-1 pb-2">{copy.menus[activeMenu].featuredLabel}</p>
                           <MarketingMenuAction {...dropdownMenus[activeMenu].featured} featured onNavigate={() => setActiveMenu(null)} />
                         </div>
                         <div className="space-y-1">
@@ -380,26 +368,19 @@ export default function Landing() {
               <div className="mx-auto max-w-4xl pt-20 text-center md:pt-28">
 
                 {/* Badge */}
-                <div
-                  className="inline-flex items-center gap-2.5 rounded-full px-4 py-2 text-sm font-medium"
-                  style={{
-                    background: "rgba(124,58,237,0.1)",
-                    border: "1px solid rgba(139,92,246,0.25)",
-                    color: "#c4b5fd",
-                  }}
-                >
+                <div className="landing-badge inline-flex items-center gap-2.5 rounded-full px-4 py-2 text-sm font-medium">
                   <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ background: VIOLET, boxShadow: `0 0 10px ${VIOLET}` }}
+                    className="h-2 w-2 rounded-full bg-violet-500"
+                    style={{ boxShadow: "0 0 8px rgba(124,58,237,0.6)" }}
                   />
                   {copy.intro}
                 </div>
 
-                {/* Main headline — gradient */}
+                {/* Main headline — dark-to-violet gradient */}
                 <h1
                   className="font-marketing mt-6 md:mt-8 text-[2.25rem] leading-[1.04] tracking-[-0.04em] font-bold sm:text-[3rem] md:text-[3.75rem] lg:text-[4.5rem]"
                   style={{
-                    background: "linear-gradient(135deg, #ffffff 30%, #c4b5fd 65%, #818cf8 100%)",
+                    background: "linear-gradient(135deg, #111827 0%, #7C3AED 60%, #6366F1 100%)",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     backgroundClip: "text",
@@ -413,13 +394,13 @@ export default function Landing() {
                 {/* Subheadline */}
                 <p
                   className="font-marketing mt-3 md:mt-4 text-xl font-semibold leading-[1.15] tracking-[-0.03em] sm:text-2xl md:text-[1.75rem]"
-                  style={{ color: "#a78bfa" }}
+                  style={{ color: VIOLET }}
                 >
                   {copy.subtitle}
                 </p>
 
                 {/* Description */}
-                <p className="mx-auto mt-6 md:mt-7 max-w-2xl text-base leading-7 text-white/55 md:text-lg md:leading-8">
+                <p className="mx-auto mt-6 md:mt-7 max-w-2xl text-base leading-7 text-gray-500 md:text-lg md:leading-8">
                   {copy.description}
                 </p>
 
@@ -430,7 +411,7 @@ export default function Landing() {
                     className="font-marketing inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold text-white transition hover:opacity-90 md:px-8 md:py-4 md:text-base"
                     style={{
                       background: "linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)",
-                      boxShadow: "0 0 32px rgba(124,58,237,0.45), 0 1px 3px rgba(0,0,0,0.4)",
+                      boxShadow: "0 0 28px rgba(124,58,237,0.35), 0 1px 3px rgba(0,0,0,0.15)",
                     }}
                   >
                     {copy.primaryCta}
@@ -438,24 +419,24 @@ export default function Landing() {
                   </Link>
                   <Link
                     href="/product"
-                    className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white/80 transition hover:border-violet-400/30 hover:bg-white/[0.07] md:px-7 md:py-4"
+                    className="font-marketing inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-3.5 text-sm font-semibold text-gray-700 transition hover:border-violet-300 hover:shadow-sm md:px-7 md:py-4"
                   >
                     {copy.secondaryCta}
                   </Link>
                 </div>
 
                 {/* Note */}
-                <p className="mt-5 text-sm text-white/35">{copy.note}</p>
+                <p className="mt-5 text-sm text-gray-400">{copy.note}</p>
 
                 {/* Social proof avatars */}
                 <div className="mt-8 flex items-center justify-center gap-3">
                   <div className="flex -space-x-2">
                     {["#7C3AED","#6366F1","#4F46E5","#8B5CF6"].map((c, i) => (
-                      <span key={i} className="h-7 w-7 rounded-full border-2 flex items-center justify-center text-[9px] font-bold text-white" style={{ background: c, borderColor: BG_DEEP }}>{["AR","BM","CS","DL"][i]}</span>
+                      <span key={i} className="h-7 w-7 rounded-full border-2 flex items-center justify-center text-[9px] font-bold text-white" style={{ background: c, borderColor: "#F8F9FF" }}>{["AR","BM","CS","DL"][i]}</span>
                     ))}
                   </div>
-                  <p className="text-sm text-white/50">
-                    {copy.trustedByPrefix}<span className="font-semibold text-white/75">{copy.trustedByCount}</span>{copy.trustedBySuffix}
+                  <p className="text-sm text-gray-500">
+                    {copy.trustedByPrefix}<span className="font-semibold text-gray-700">{copy.trustedByCount}</span>{copy.trustedBySuffix}
                   </p>
                 </div>
 
@@ -464,7 +445,7 @@ export default function Landing() {
                   <div
                     className="rounded-2xl p-px"
                     style={{
-                      background: "linear-gradient(135deg, rgba(139,92,246,0.4) 0%, rgba(99,102,241,0.15) 50%, transparent 100%)",
+                      background: "linear-gradient(135deg, rgba(124,58,237,0.30) 0%, rgba(99,102,241,0.16) 50%, rgba(167,139,250,0.08) 100%)",
                     }}
                   >
                     <div
@@ -528,19 +509,13 @@ export default function Landing() {
           <section className="px-4 py-24 md:px-8">
             <div className="mx-auto max-w-7xl">
               <div className="text-center mb-16">
-                <p className="font-marketing text-xs font-semibold uppercase tracking-[0.28em] mb-3" style={{ color: "#a78bfa" }}>El problema</p>
+                <p className="landing-eyebrow font-marketing mb-3">El problema</p>
                 <h2
-                  className="font-marketing text-3xl font-bold tracking-[-0.04em] sm:text-4xl md:text-5xl"
-                  style={{
-                    background: "linear-gradient(135deg, #fff 40%, #c4b5fd 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                  }}
+                  className="font-marketing text-3xl font-bold tracking-[-0.04em] text-gray-900 sm:text-4xl md:text-5xl"
                 >
                   Tu equipo ya hace el trabajo.<br />El problema es la visibilidad.
                 </h2>
-                <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-white/45 md:text-lg">
+                <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-gray-500 md:text-lg">
                   Las PYMEs pierden horas — y clientes — cada semana porque la información está dispersa en cinco herramientas sin conexión.
                 </p>
               </div>
@@ -549,19 +524,13 @@ export default function Landing() {
                 {PROBLEMS.map(({ icon: Icon, color, title, body }) => (
                   <div
                     key={title}
-                    className="rounded-2xl p-px"
-                    style={{ background: `linear-gradient(135deg, ${color}22 0%, transparent 60%)` }}
+                    className="landing-card h-full rounded-2xl p-6 space-y-4"
                   >
-                    <div
-                      className="h-full rounded-2xl p-6 space-y-4"
-                      style={{ background: "rgba(8,9,28,0.9)" }}
-                    >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: color + "15" }}>
-                        <Icon className="h-5 w-5" style={{ color }} />
-                      </div>
-                      <h3 className="font-marketing text-base font-semibold text-white">{title}</h3>
-                      <p className="text-sm leading-6 text-white/45">{body}</p>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: color + "12" }}>
+                      <Icon className="h-5 w-5" style={{ color }} />
                     </div>
+                    <h3 className="font-marketing text-base font-semibold text-gray-900">{title}</h3>
+                    <p className="text-sm leading-6 text-gray-500">{body}</p>
                   </div>
                 ))}
               </div>
@@ -574,16 +543,8 @@ export default function Landing() {
           <section className="px-4 py-8 md:px-8 md:py-16">
             <div className="mx-auto max-w-7xl">
               <div className="text-center mb-14">
-                <p className="font-marketing text-xs font-semibold uppercase tracking-[0.28em] mb-3" style={{ color: "#a78bfa" }}>La plataforma</p>
-                <h2
-                  className="font-marketing text-3xl font-bold tracking-[-0.04em] sm:text-4xl"
-                  style={{
-                    background: "linear-gradient(135deg, #fff 40%, #c4b5fd 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                  }}
-                >
+                <p className="landing-eyebrow font-marketing mb-3">La plataforma</p>
+                <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-gray-900 sm:text-4xl">
                   Todo lo que tu equipo necesita,<br className="hidden sm:block" /> en un solo lugar
                 </h2>
               </div>
@@ -618,16 +579,8 @@ export default function Landing() {
           <section className="px-4 py-24 md:px-8">
             <div ref={revealHow} className="reveal-up mx-auto max-w-5xl">
               <div className="text-center mb-16">
-                <p className="font-marketing text-xs font-semibold uppercase tracking-[0.28em] mb-3" style={{ color: "#a78bfa" }}>Cómo funciona</p>
-                <h2
-                  className="font-marketing text-3xl font-bold tracking-[-0.04em] sm:text-4xl"
-                  style={{
-                    background: "linear-gradient(135deg, #fff 40%, #c4b5fd 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                  }}
-                >
+                <p className="landing-eyebrow font-marketing mb-3">Cómo funciona</p>
+                <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-gray-900 sm:text-4xl">
                   De 5 apps a 1 workspace.<br className="hidden sm:block" /> En menos de una hora.
                 </h2>
               </div>
@@ -639,26 +592,13 @@ export default function Landing() {
                     {idx < HOW_STEPS.length - 1 && (
                       <div
                         className="absolute top-6 left-full z-10 hidden h-px w-full md:block"
-                        style={{ background: "linear-gradient(to right, rgba(139,92,246,0.35), transparent)", width: "calc(100% - 3rem)", left: "calc(100% - 1.5rem)" }}
+                        style={{ background: "linear-gradient(to right, rgba(124,58,237,0.25), transparent)", width: "calc(100% - 3rem)", left: "calc(100% - 1.5rem)" }}
                       />
                     )}
-                    <div
-                      className="rounded-2xl p-px"
-                      style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.2) 0%, transparent 60%)" }}
-                    >
-                      <div
-                        className="h-full rounded-2xl p-6 space-y-4"
-                        style={{ background: "rgba(8,9,28,0.9)" }}
-                      >
-                        <div
-                          className="font-mono text-2xl font-bold"
-                          style={{ color: "rgba(139,92,246,0.5)" }}
-                        >
-                          {n}
-                        </div>
-                        <h3 className="font-marketing text-base font-semibold text-white">{title}</h3>
-                        <p className="text-sm leading-6 text-white/45">{body}</p>
-                      </div>
+                    <div className="landing-card h-full rounded-2xl p-6 space-y-4">
+                      <div className="font-mono text-2xl font-bold text-violet-500">{n}</div>
+                      <h3 className="font-marketing text-base font-semibold text-gray-900">{title}</h3>
+                      <p className="text-sm leading-6 text-gray-500">{body}</p>
                     </div>
                   </div>
                 ))}
@@ -669,17 +609,17 @@ export default function Landing() {
           {/* ══════════════════════════════════════════════════
               TRUST MARQUEE
           ══════════════════════════════════════════════════ */}
-          <div className="border-t border-white/[0.05] py-14">
-            <p className="text-center text-xs font-semibold uppercase tracking-[0.32em] text-white/25 mb-8">
+          <div className="border-t border-gray-200 py-14">
+            <p className="text-center text-xs font-semibold uppercase tracking-[0.32em] text-gray-400 mb-8">
               {copy.trustTitle}
             </p>
             <div className="relative overflow-hidden">
-              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#030712] to-transparent" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#030712] to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#F8F9FF] to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#F8F9FF] to-transparent" />
               <div className="flex animate-marquee items-center gap-12 whitespace-nowrap">
                 {[...copy.trustSignals, ...copy.trustSignals].map((signal: string, i: number) => (
-                  <span key={i} className="font-marketing inline-flex items-center gap-2 text-lg font-semibold tracking-[-0.02em] text-white/25">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: VIOLET + "80" }} />
+                  <span key={i} className="font-marketing inline-flex items-center gap-2 text-lg font-semibold tracking-[-0.02em] text-gray-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
                     {signal}
                   </span>
                 ))}
@@ -694,54 +634,43 @@ export default function Landing() {
             <div ref={revealCta} className="reveal-up mx-auto max-w-4xl">
               <div
                 className="relative overflow-hidden rounded-3xl p-px"
-                style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.6) 0%, rgba(99,102,241,0.3) 50%, rgba(139,92,246,0.1) 100%)" }}
+                style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.40) 0%, rgba(99,102,241,0.20) 50%, rgba(167,139,250,0.08) 100%)" }}
               >
                 <div
                   className="relative rounded-3xl px-8 py-16 text-center md:px-16"
-                  style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.15) 0%, rgba(3,7,18,0.98) 60%)" }}
+                  style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.03) 0%, #FFFFFF 55%)" }}
                 >
-                  {/* Glow blob */}
+                  {/* Soft glow blob */}
                   <div
                     aria-hidden
-                    className="absolute top-0 left-1/2 -translate-x-1/2 h-64 w-64 rounded-full blur-[80px] pointer-events-none"
-                    style={{ background: "rgba(124,58,237,0.25)" }}
+                    className="absolute top-0 left-1/2 -translate-x-1/2 h-48 w-48 rounded-full blur-[80px] pointer-events-none"
+                    style={{ background: "rgba(124,58,237,0.12)" }}
                   />
 
                   <div className="relative">
-                    <div
-                      className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium mb-6"
-                      style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#c4b5fd" }}
-                    >
+                    <div className="landing-badge inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       Beta cerrada · Primeras 50 empresas
                     </div>
 
-                    <h2
-                      className="font-marketing text-3xl font-bold tracking-[-0.04em] sm:text-4xl md:text-5xl mb-5"
-                      style={{
-                        background: "linear-gradient(135deg, #ffffff 40%, #c4b5fd 100%)",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
-                        backgroundClip: "text",
-                      }}
-                    >
+                    <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-gray-900 sm:text-4xl md:text-5xl mb-5">
                       Empieza gratis hoy.
                     </h2>
-                    <p className="mx-auto max-w-lg text-base leading-7 text-white/50 mb-8 md:text-lg">
+                    <p className="mx-auto max-w-lg text-base leading-7 text-gray-500 mb-8 md:text-lg">
                       Sin tarjeta de crédito. Sin compromiso. Solo acceso temprano a la plataforma que tu equipo necesitaba desde hace meses.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                       <Link
                         href="/register"
                         className="font-marketing inline-flex items-center gap-2 rounded-full px-8 py-4 text-base font-semibold text-white transition hover:opacity-90"
-                        style={{ background: "linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)", boxShadow: "0 0 40px rgba(124,58,237,0.5)" }}
+                        style={{ background: "linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)", boxShadow: "0 0 30px rgba(124,58,237,0.35)" }}
                       >
                         Quiero acceso temprano
                         <ArrowRight className="h-5 w-5" />
                       </Link>
                       <Link
                         href="/product"
-                        className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-7 py-4 text-base font-semibold text-white/70 transition hover:border-violet-400/30 hover:bg-white/[0.07]"
+                        className="font-marketing inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-7 py-4 text-base font-semibold text-gray-700 transition hover:border-violet-300 hover:shadow-sm"
                       >
                         Ver la plataforma
                       </Link>
@@ -756,15 +685,15 @@ export default function Landing() {
 
         {/* ── SEO Hub ── */}
         {copy.seoHub && (
-          <section className="border-t px-4 py-20 md:px-8" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+          <section className="border-t border-gray-200 px-4 py-20 md:px-8">
             <div className="mx-auto max-w-7xl text-center">
-              <p className="font-marketing text-xs font-semibold uppercase tracking-[0.28em] mb-3" style={{ color: "#a78bfa" }}>
+              <p className="landing-eyebrow font-marketing mb-3">
                 {copy.seoHub.eyebrow}
               </p>
-              <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-white md:text-3xl">
+              <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-gray-900 md:text-3xl">
                 {copy.seoHub.title}
               </h2>
-              <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/40">
+              <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-gray-400">
                 {copy.seoHub.description}
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-2.5">
@@ -772,8 +701,7 @@ export default function Landing() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="rounded-full border border-white/8 px-4 py-2 text-sm text-white/55 transition hover:border-violet-400/30 hover:text-white/90"
-                    style={{ background: "rgba(255,255,255,0.025)" }}
+                    className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-500 transition hover:border-violet-300 hover:text-gray-800"
                   >
                     {link.label}
                   </Link>

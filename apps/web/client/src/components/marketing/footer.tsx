@@ -59,17 +59,16 @@ export function Footer({ className }: { className?: string }) {
   return (
     <footer
       className={cn(
-        "relative z-10 border-t border-white/[0.06] px-4 pb-8 pt-16 md:px-8 md:pb-12",
+        "relative z-10 border-t border-gray-200 bg-gray-50 px-4 pb-8 pt-16 md:px-8 md:pb-12",
         className,
       )}
-      style={{ background: "linear-gradient(180deg, rgba(5,9,29,0.4) 0%, rgba(5,9,29,0.96) 40%, #05091d 100%)" }}
     >
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-10 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1fr]">
           {/* Column 0 — Brand */}
           <div>
             <BrandLockup compact markClassName="h-7 w-7" textClassName="text-sm tracking-[0.18em]" />
-            <p className="mt-4 text-sm leading-relaxed text-white/50" style={{ maxWidth: "28ch" }}>
+            <p className="mt-4 text-sm leading-relaxed text-gray-500" style={{ maxWidth: "28ch" }}>
               {f.tagline}
             </p>
             <div className="mt-5 flex gap-3">
@@ -80,7 +79,7 @@ export function Footer({ className }: { className?: string }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-white/40 transition hover:border-white/30 hover:text-white/80"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-400 transition hover:border-gray-300 hover:text-gray-700"
                 >
                   <Icon className="h-3.5 w-3.5" />
                 </a>
@@ -90,14 +89,14 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Column 1 — Producto */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">
               {f.colProduct}
             </h3>
             <ul className="mt-4 space-y-3">
               {PRODUCT_LINKS.map(({ href, key }) => (
                 <li key={key}>
                   <Link href={href}>
-                    <a className="text-sm text-white/56 transition hover:text-white/90">
+                    <a className="text-sm text-gray-500 transition hover:text-gray-900">
                       {f[key]}
                     </a>
                   </Link>
@@ -108,14 +107,14 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Column 2 — Soluciones */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">
               {f.colSolutions}
             </h3>
             <ul className="mt-4 space-y-3">
               {SOLUTIONS_LINKS.map(({ href, key }) => (
                 <li key={key}>
                   <Link href={href}>
-                    <a className="text-sm text-white/56 transition hover:text-white/90">
+                    <a className="text-sm text-gray-500 transition hover:text-gray-900">
                       {f[key]}
                     </a>
                   </Link>
@@ -126,14 +125,14 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Column 3 — Empresa */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">
               {f.colCompany}
             </h3>
             <ul className="mt-4 space-y-3">
               {COMPANY_LINKS.map(({ href, key }) => (
                 <li key={key}>
                   <Link href={href}>
-                    <a className="text-sm text-white/56 transition hover:text-white/90">
+                    <a className="text-sm text-gray-500 transition hover:text-gray-900">
                       {f[key]}
                     </a>
                   </Link>
@@ -144,14 +143,14 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Column 4 — Recursos */}
           <div>
-            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
+            <h3 className="font-marketing text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">
               {f.colResources}
             </h3>
             <ul className="mt-4 space-y-3">
               {RESOURCES_LINKS.map(({ href, key }) => (
                 <li key={key}>
                   <Link href={href}>
-                    <a className="text-sm text-white/56 transition hover:text-white/90">
+                    <a className="text-sm text-gray-500 transition hover:text-gray-900">
                       {f[key]}
                     </a>
                   </Link>
@@ -162,8 +161,8 @@ export function Footer({ className }: { className?: string }) {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.05] pt-8">
-          <p className="text-xs text-white/30">
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 pt-8">
+          <p className="text-xs text-gray-400">
             &copy; 2025 PymesHub Inc. &middot; {f.builtIn}
           </p>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
@@ -171,14 +170,14 @@ export function Footer({ className }: { className?: string }) {
               <a
                 key={key}
                 href={href}
-                className="text-xs text-white/36 transition hover:text-white/70"
+                className="text-xs text-gray-400 transition hover:text-gray-700"
               >
                 {f[key]}
               </a>
             ))}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("open-cookie-preferences"))}
-              className="text-xs text-white/36 transition hover:text-white/70"
+              className="text-xs text-gray-400 transition hover:text-gray-700"
             >
               Preferencias de cookies
             </button>
