@@ -38,6 +38,8 @@ import { PipelineModule } from "./pipeline/pipeline.module";
 import { OrdersModule } from "./orders/orders.module";
 import { HealthModule } from "./health/health.module";
 import { AiModule } from "./ai/ai.module";
+import { AgentsModule } from "./agents/agents.module";
+import { TtsModule } from "./tts/tts.module";
 import { ApiTokensModule } from "./api-tokens/api-tokens.module";
 import { SanitizeModule } from "./common/sanitize/sanitize.module";
 import { BillingModule } from "./billing/billing.module";
@@ -105,6 +107,8 @@ import { AiTokensModule } from "./ai-tokens/ai-tokens.module";
     PipelineModule,
     OrdersModule,
     AiModule,
+    TtsModule,
+    AgentsModule,
     ErrorReportsModule,
     HealthModule,
     ApiTokensModule,

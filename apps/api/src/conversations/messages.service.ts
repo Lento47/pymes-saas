@@ -1114,10 +1114,10 @@ export class MessagesService {
     const wsAutoActive = wsSettings.ai_agent_auto_active === true;
     if (!wsAutoActive && meta.ai_state !== "AI_ACTIVE") return;
 
-    // Throttle: don't reply again within 30 seconds (skip for interactive/button replies —
-    // those are intentional responses to AI prompts and must always be answered)
+    // Throttle: 3s guard only to prevent duplicate processing of the exact same webhook.
+    // 30s was causing legitimate follow-up messages to be silently dropped.
     const lastAiReply = meta.last_ai_reply_at as string | undefined;
-    if (!isInteractive && lastAiReply && Date.now() - new Date(lastAiReply).getTime() < 30_000) return;
+    if (!isInteractive && lastAiReply && Date.now() - new Date(lastAiReply).getTime() < 3_000) return;
 
     const result = await this.aiConversationControl.replyToInbound(
       workspaceId,

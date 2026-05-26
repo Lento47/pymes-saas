@@ -381,12 +381,12 @@ export class AiConversationControlService {
   }
 
   private async buildPrompt(workspaceId: string, conv: ConversationShape, inboundText: string) {
-    const [ctx, recentMessages, memory, templates] = await Promise.all([
+    const [ctx, recentMessages, memory, templates, contextLimit] = await Promise.all([
       this.emprendeAi.buildBusinessContext(workspaceId),
       this.prisma.message.findMany({
         where: { workspace_id: workspaceId, conversation_id: conv.id },
         orderBy: { sent_at: "desc" },
-        take: 6,
+        take: 20, // will be sliced to contextLimit below
         select: { direction: true, body_text: true },
       }),
       conv.contact?.id ? this.contactMemory.getActiveProfile(conv.contact.id).catch(() => null) : null,
@@ -396,12 +396,14 @@ export class AiConversationControlService {
         orderBy: { updated_at: "desc" },
         select: { name: true, external_template_id: true, body: true },
       }),
+      this.planLimits.getAiContextMessages(workspaceId),
     ]);
 
     const channelType = conv.channel?.type ?? "UNKNOWN";
     const supportsRichInteractive = channelType === "WHATSAPP" || channelType === "TELEGRAM";
     const recent = recentMessages
       .reverse()
+      .slice(-contextLimit)
       .map((m) => `${m.direction === "INBOUND" ? "Cliente" : "Negocio"}: ${m.body_text ?? ""}`)
       .join("\n");
     const templateContext = templates.length

@@ -1,0 +1,46 @@
+services:
+  flowise-db:
+    image: postgres:16-alpine
+    container_name: flowise-pg
+    environment:
+      POSTGRES_USER: flowise
+      POSTGRES_PASSWORD: flowise123
+      POSTGRES_DB: flowise_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - flowise_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowise -d flowise_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  flowise:
+    image: flowiseai/flowise:latest
+    container_name: flowise-app
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DATABASE_TYPE: postgres
+      DATABASE_HOST: flowise-db
+      DATABASE_PORT: 5432
+      DATABASE_USER: flowise
+      DATABASE_PASSWORD: flowise123
+      DATABASE_NAME: flowise_db
+      APIKEY_STORAGE_TYPE: db
+      FLOWISE_USERNAME: ${FLOWISE_UI_USER:-admin}
+      FLOWISE_PASSWORD: ${FLOWISE_UI_PASSWORD:-changeme}
+      # Generate a real key: openssl rand -hex 32
+      FLOWISE_SECRETKEY_OVERWRITE: ${FLOWISE_SECRET_KEY:-change-this-in-production}
+    ports:
+      - "3001:3000"
+    depends_on:
+      flowise-db:
+        condition: service_healthy
+    volumes:
+      - flowise_uploads:/root/.flowise
+
+volumes:
+  flowise_pg_data:
+  flowise_uploads:

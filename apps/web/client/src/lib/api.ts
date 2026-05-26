@@ -602,6 +602,36 @@ export const api = {
   platformUpdateWorkspaceProfile: (slug: string, profile: string) =>
     request<any>("PATCH", `/api/platform/workspaces/${slug}/profile`, { profile }),
   getFeatureFlags: () => request<any>("GET", "/api/feature-flags/profile"),
+
+  // ── Agents (Flowise) ──────────────────────────────────────────────────────
+  listAgents: () =>
+    request<Record<string, any>[]>("GET", "/api/agents"),
+  getAgent: (id: string) =>
+    request<Record<string, any>>("GET", `/api/agents/${id}`),
+  createAgent: (data: Record<string, any>) =>
+    request<Record<string, any>>("POST", "/api/agents", data),
+  updateAgent: (id: string, data: Record<string, any>) =>
+    request<Record<string, any>>("PATCH", `/api/agents/${id}`, data),
+  testAgent: (
+    id: string,
+    data: { question: string; channel?: string; flowise_session_id?: string },
+  ) =>
+    request<{ text: string; flowise_session_id: string; session_id: string }>(
+      "POST",
+      `/api/agents/${id}/test`,
+      data,
+    ),
+  activateAgent: (id: string) =>
+    request<Record<string, any>>("POST", `/api/agents/${id}/activate`),
+  deactivateAgent: (id: string) =>
+    request<Record<string, any>>("POST", `/api/agents/${id}/deactivate`),
+  listAgentTemplates: () =>
+    request<Record<string, any>[]>("GET", "/api/agents/templates"),
+  installAgentTemplate: (templateId: string) =>
+    request<Record<string, any>>(
+      "POST",
+      `/api/agents/templates/${templateId}/install`,
+    ),
 };
 
 // ── Session activity tracking ────────────────────────────────────────────

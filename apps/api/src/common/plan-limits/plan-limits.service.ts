@@ -60,6 +60,8 @@ interface PlanLimits {
   media_messages_per_day: number | "custom";
   ai_chat_messages_per_day: number | "custom";
   agent_executions_per_day: number | "custom";
+  /** How many recent messages the AI can see as context (conversation memory window). */
+  ai_context_messages: number | "custom";
 }
 
 export type { PlanLimits };
@@ -80,6 +82,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: 0,
     ai_chat_messages_per_day: 0,
     agent_executions_per_day: 0,
+    ai_context_messages: 0,
   },
   STARTER: {
     users: 1,
@@ -96,6 +99,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: 0,
     ai_chat_messages_per_day: 50,
     agent_executions_per_day: 5,
+    ai_context_messages: 12,   // $25/mo — base window
   },
   GROWTH: {
     users: 5,
@@ -112,6 +116,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: 10,
     ai_chat_messages_per_day: 100,
     agent_executions_per_day: 15,
+    ai_context_messages: 25,   // $59/mo — 2.4× STARTER price → ~2× context
   },
   EMPRENDE: {
     users: 1,
@@ -128,6 +133,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: 10,
     ai_chat_messages_per_day: 100,
     agent_executions_per_day: 25,
+    ai_context_messages: 10,   // internal/beta plan
   },
   BUSINESS: {
     users: 15,
@@ -144,6 +150,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: 50,
     ai_chat_messages_per_day: 250,
     agent_executions_per_day: 50,
+    ai_context_messages: 40,   // $119/mo — 4.8× STARTER price → ~3× context
   },
   ENTERPRISE: {
     users: 15,
@@ -160,6 +167,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: 200,
     ai_chat_messages_per_day: 500,
     agent_executions_per_day: "custom",
+    ai_context_messages: 40,   // legacy alias for BUSINESS
   },
   BUSINESS_PLUS: {
     users: "custom",
@@ -176,6 +184,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: "custom",
     ai_chat_messages_per_day: "custom",
     agent_executions_per_day: "custom",
+    ai_context_messages: 60,   // custom/premium — max memory window
   },
 };
 
@@ -443,6 +452,15 @@ export class PlanLimitsService {
       upgradeTarget,
       message: `Has alcanzado el límite de ${resourceKeyToString(resourceKey)} (${currentUsage}/${limit}). Considera actualizar a ${PLAN_NAMES[upgradeTarget] || upgradeTarget}.`,
     };
+  }
+
+  /** Returns the number of recent messages the AI can see as conversation context. */
+  async getAiContextMessages(workspaceId: string): Promise<number> {
+    const plan = await this.getWorkspacePlan(workspaceId);
+    const limits = this.getLimits(plan);
+    const v = limits.ai_context_messages;
+    if (v === "custom" || typeof v !== "number") return 60;
+    return v > 0 ? v : 12; // never starve AI-enabled plans
   }
 
   // ── Private: resolve workspace plan ─────────────────────────────────────

@@ -280,7 +280,7 @@ export class EmrendeAiService {
         ? this.prisma.message.findMany({
             where: { conversation_id: conversationId, workspace_id: workspaceId },
             orderBy: { sent_at: "desc" },
-            take: 5,
+            take: 20,
             select: { body_text: true, direction: true },
           })
         : Promise.resolve([]),
