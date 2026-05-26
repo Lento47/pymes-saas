@@ -60,6 +60,7 @@ import InventoryMovementsPage from "@/pages/inventory-movements";
 import AgentsPage from "@/pages/agents/AgentsPage";
 import AgentDetailPage from "@/pages/agents/AgentDetailPage";
 import AgentTemplatesPage from "@/pages/agents/AgentTemplatesPage";
+import PlaybookSuggestionsPage from "@/pages/agents/PlaybookSuggestionsPage";
 import AdminDashboard from "@/pages/admin/dashboard";
 import { NoindexMeta } from "@/components/shared/noindex-meta";
 import AdminWorkspaces from "@/pages/admin/workspaces";
@@ -208,6 +209,9 @@ function AppRouter() {
       </Route>
       <Route path="/agents/templates">
         {() => <ProtectedLayout><AgentTemplatesPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/agents/playbooks">
+        {() => <ProtectedLayout><PlaybookSuggestionsPage /></ProtectedLayout>}
       </Route>
       <Route path="/agents/:id">
         {(params) => <ProtectedLayout><AgentDetailPage id={params.id!} /></ProtectedLayout>}

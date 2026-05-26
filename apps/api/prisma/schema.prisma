@@ -355,6 +355,10 @@ model Workspace {
   agent_instances             AgentInstance[]
   agent_conversation_sessions AgentConversationSession[]
   agent_usage_events          AgentUsageEvent[]
+  business_memory       BusinessMemory?
+  conversation_insights ConversationInsight[]
+  ai_feedback_events    AiFeedbackEvent[]
+  playbook_suggestions  PlaybookSuggestion[]
 
   @@index([slug])
   @@index([status])
@@ -628,6 +632,7 @@ model Conversation {
   documents Document[]
   invoices  Invoice[]
   orders    Order[]
+  insight   ConversationInsight?
 
   @@index([workspace_id])
   @@index([workspace_id, status])
@@ -2220,6 +2225,14 @@ model ContactAiMemory {
   expires_at   DateTime
   extended_until DateTime?
 
+  // Learning Engine extensions
+  objections_json    Json?    @db.JsonB
+  interests_json     Json?    @db.JsonB
+  lead_score         Int      @default(0)
+  risk_score         Int      @default(0)
+  next_best_action   String?
+  channel_preference String?
+
   contact   Contact   @relation(fields: [contact_id], references: [id], onDelete: Cascade)
   workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
 
@@ -2499,6 +2512,7 @@ model AgentTemplate {
   config_json   Json?             @db.JsonB
   thumbnail_url String?
   is_published  Boolean           @default(true)
+  is_free_tier  Boolean           @default(true)
   sort_order    Int               @default(0)
 
   created_at DateTime @default(now())
@@ -2508,4 +2522,79 @@ model AgentTemplate {
 
   @@index([is_published])
   @@map("agent_templates")
+}
+
+// ============================================================
+// LEARNING ENGINE — Memoria operacional por workspace
+// ============================================================
+
+model BusinessMemory {
+  id                       String   @id @default(cuid())
+  workspace_id             String   @unique
+  facts_json               Json?    @db.JsonB
+  policies_json            Json?    @db.JsonB
+  faq_json                 Json?    @db.JsonB
+  tone_rules_json          Json?    @db.JsonB
+  successful_patterns_json Json?    @db.JsonB
+  updated_at               DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@map("business_memories")
+}
+
+model ConversationInsight {
+  id                     String   @id @default(cuid())
+  workspace_id           String
+  conversation_id        String   @unique
+  intent                 String?
+  sentiment              String?
+  summary                String?  @db.Text
+  unresolved_items_json  Json?    @db.JsonB
+  suggested_actions_json Json?    @db.JsonB
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  workspace    Workspace    @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@map("conversation_insights")
+}
+
+model AiFeedbackEvent {
+  id              String   @id @default(cuid())
+  workspace_id    String
+  conversation_id String?
+  message_id      String?
+  contact_id      String?
+  event_type      String
+  original_json   Json?    @db.JsonB
+  corrected_json  Json?    @db.JsonB
+  outcome_json    Json?    @db.JsonB
+  created_at      DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, event_type])
+  @@index([workspace_id, contact_id])
+  @@map("ai_feedback_events")
+}
+
+model PlaybookSuggestion {
+  id           String   @id @default(cuid())
+  workspace_id String
+  title        String
+  reason       String?  @db.Text
+  trigger_json Json     @db.JsonB
+  actions_json Json     @db.JsonB
+  confidence   Float    @default(0)
+  status       String   @default("PENDING")
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, status])
+  @@map("playbook_suggestions")
 }

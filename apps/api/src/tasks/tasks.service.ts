@@ -6,6 +6,7 @@ import { FilterTasksDto } from "./dto/filter-tasks.dto";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { AutomationsService } from "../automations/automations.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { OutcomeTrackerService } from "../learning/outcome-tracker.service";
 
 @Injectable()
 export class TasksService {
@@ -14,6 +15,7 @@ export class TasksService {
     private readonly prisma: PrismaService,
     private readonly automationsService: AutomationsService,
     private readonly notificationsService: NotificationsService,
+    private readonly outcomeTracker: OutcomeTrackerService,
   ) {}
 
   // ── GET /tasks ─────────────────────────────────────────────────────────────
@@ -176,6 +178,20 @@ export class TasksService {
         updated_at: new Date(),
       },
     });
+
+    // Track outcome for learning (fire-and-forget)
+    const metadata = (task.metadata_json ?? {}) as Record<string, unknown>;
+    if (metadata["ai_suggested"]) {
+      this.outcomeTracker
+        .record({
+          workspace_id: workspaceId,
+          conversation_id: task.conversation_id ?? undefined,
+          contact_id: task.contact_id ?? undefined,
+          event_type: "TaskCompleted",
+          outcome_json: { title: task.title, source: task.source },
+        })
+        .catch(() => {});
+    }
 
     // Notificar al responsable
     if (task.assigned_user_id) {

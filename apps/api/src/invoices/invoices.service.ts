@@ -28,6 +28,7 @@ import { CreateInvoicePaymentDto } from "./dto/create-invoice-payment.dto";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { AiService } from "../ai/ai.service";
+import { OutcomeTrackerService } from "../learning/outcome-tracker.service";
 import {
   INVOICE_TEMPLATES,
   getTemplatesByIndustry,
@@ -49,6 +50,7 @@ export class InvoicesService {
     private readonly planLimits: PlanLimitsService,
     private readonly notificationsService: NotificationsService,
     private readonly ai: AiService,
+    private readonly outcomeTracker: OutcomeTrackerService,
   ) {}
 
   async findAll(workspaceId: string, filters: FilterInvoicesDto) {
@@ -482,13 +484,27 @@ export class InvoicesService {
       throw new BadRequestException("La factura ya está marcada como pagada.");
     }
 
-    return this.registerPayment(workspaceId, userId, id, {
+    const result = await this.registerPayment(workspaceId, userId, id, {
       amount: this.getBalanceDue(invoice),
       currency: invoice.currency,
       method: "MANUAL_FULL",
       notes: "Pago registrado desde acción rápida de marcar pagada.",
       paid_at: new Date().toISOString(),
     });
+
+    if (invoice.conversation_id) {
+      this.outcomeTracker
+        .record({
+          workspace_id: workspaceId,
+          conversation_id: invoice.conversation_id,
+          contact_id: invoice.contact_id,
+          event_type: "InvoicePaid",
+          outcome_json: { invoice_id: invoice.id, amount: String(invoice.amount) },
+        })
+        .catch(() => {});
+    }
+
+    return result;
   }
 
   async submitToHacienda(workspaceId: string, id: string) {

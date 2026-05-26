@@ -6,6 +6,7 @@ import { FilterConversationsDto } from "./dto/filter-conversations.dto";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
 import { AutomationsService } from "../automations/automations.service";
 import { SlaService } from "./sla.service";
+import { ConversationInsightService } from "../learning/conversation-insight.service";
 
 @Injectable()
 export class ConversationsService {
@@ -14,6 +15,7 @@ export class ConversationsService {
     private readonly prisma: PrismaService,
     private readonly automationsService: AutomationsService,
     private readonly slaService: SlaService,
+    private readonly conversationInsight: ConversationInsightService,
   ) {}
 
   // ── GET /conversations ─────────────────────────────────────────────────────
@@ -285,6 +287,11 @@ export class ConversationsService {
         this.slaService
           .trackResolution(id)
           .catch((err) => this.logger.warn(`SLA resolution error: ${(err as Error).message}`));
+        this.conversationInsight
+          .getOrCreate(workspaceId, id)
+          .catch((err) =>
+            this.logger.warn(`Insight init error on resolve: ${(err as Error).message}`),
+          );
         return updated;
       });
   }
