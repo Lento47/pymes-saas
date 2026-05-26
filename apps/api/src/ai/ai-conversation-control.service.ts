@@ -283,11 +283,29 @@ export class AiConversationControlService {
       });
       this.events.emitTokenBalanceUpdated(workspaceId, balance);
 
-      // Optionally send a brief transition message before the agent responds
-      if (action.reply_text?.trim()) {
-        const transMsg = await this.createAiMessage(workspaceId, conversationId, action.reply_text, null, completion);
-        const dispatched = await this.dispatchMessage(conv, transMsg, action.reply_text, null);
-        this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessage(dispatched ?? transMsg));
+      // Send interim / placeholder message
+      const interimText = action.reply_text?.trim() || "⏳ Un momento, consultando nuestro especialista…";
+      const interimMsg = await this.createAiMessage(workspaceId, conversationId, interimText, null, completion);
+      const interimDispatched = await this.dispatchMessage(conv, interimMsg, interimText, null);
+      const interimFinal = interimDispatched ?? interimMsg;
+      this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessage(interimFinal));
+
+      // For Telegram: capture provider_message_id to edit it later
+      const tgPlaceholderMsgId: string | null = isTelegram
+        ? (interimFinal as any).provider_message_id ?? null
+        : null;
+      const tgPlaceholderDbId: string | null = isTelegram ? interimFinal.id : null;
+
+      // Keep typing indicator alive during Flowise call
+      if (isWhatsApp && waPhone) {
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_on").catch(() => {});
+      }
+      let delegateTypingInterval: ReturnType<typeof setInterval> | null = null;
+      if (isTelegram && tgChatId) {
+        this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
+        delegateTypingInterval = setInterval(() => {
+          this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
+        }, 4000);
       }
 
       // Call the Flowise agent
@@ -303,15 +321,30 @@ export class AiConversationControlService {
         agentText = result.text ?? null;
       } catch (err) {
         this.logger.warn(`[delegate_to_agent] Flowise failed (${action.delegate_to_agent.instance_id}): ${(err as Error).message}`);
-        if (!action.reply_text?.trim()) {
-          agentText = "En breve te atenderá un especialista.";
+      } finally {
+        if (delegateTypingInterval) clearInterval(delegateTypingInterval);
+        if (isWhatsApp && waPhone) {
+          this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
         }
       }
 
       if (agentText?.trim()) {
-        const agentMsg = await this.createAiMessage(workspaceId, conversationId, agentText, null, completion);
-        const dispatched = await this.dispatchMessage(conv, agentMsg, agentText, null);
-        this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessage(dispatched ?? agentMsg));
+        if (isTelegram && tgPlaceholderMsgId && conv.channel?.id && tgChatId) {
+          // Telegram: edit the placeholder with the final Flowise response
+          await this.telegramOutbound.editMessage(conv.channel.id, tgChatId, tgPlaceholderMsgId, agentText);
+          if (tgPlaceholderDbId) {
+            await this.prisma.message.update({
+              where: { id: tgPlaceholderDbId },
+              data: { body_text: agentText },
+              select: { id: true },
+            });
+          }
+        } else {
+          // WhatsApp and others: send as a new message
+          const agentMsg = await this.createAiMessage(workspaceId, conversationId, agentText, null, completion);
+          const dispatched = await this.dispatchMessage(conv, agentMsg, agentText, null);
+          this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessage(dispatched ?? agentMsg));
+        }
       }
 
       const now = new Date().toISOString();

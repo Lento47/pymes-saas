@@ -60,6 +60,17 @@ export class TelegramOutboundService {
     }
   }
 
+  async editMessage(channelId: string, chatId: string, messageId: string | number, newText: string): Promise<void> {
+    const token = await this.getBotToken(channelId);
+    if (!token) return;
+    try {
+      const bot = new Telegraf(token);
+      await bot.telegram.editMessageText(chatId, Number(messageId), undefined, newText, { parse_mode: "HTML" });
+    } catch (err) {
+      this.logger.warn(`editMessage failed for msg ${messageId}: ${(err as Error).message}`);
+    }
+  }
+
   async sendReplyText(
     channelId: string,
     chatId: string,
