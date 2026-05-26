@@ -876,13 +876,13 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
     const cleanText = replyText.replace(/[*_`~#>\[\]!]/g, "").trim();
     if (!cleanText) return;
 
-    const voiceId = (s.ai_voice_id as string) || (this.elevenLabs as any)["defaultVoiceId"] || undefined;
     const apiKeyEnc = s.elevenlabs_api_key_enc as string | undefined;
     const apiKey = apiKeyEnc ? this.crypto.decrypt(apiKeyEnc) : undefined;
-    const hasApiKey = !!(apiKey || (this.elevenLabs as any)["defaultApiKey"]);
+    const voiceId = (s.ai_voice_id as string) || undefined;
 
-    if (!voiceId || !hasApiKey) {
-      const errMsg = !voiceId ? "Falta Voice ID de ElevenLabs" : "Falta API key de ElevenLabs";
+    // Si el workspace no tiene key/voice propios, verificar que el sistema los tenga
+    if (!apiKey && !voiceId && !this.elevenLabs.isConfigured()) {
+      const errMsg = "Falta API key y Voice ID de ElevenLabs (ni en workspace ni en sistema)";
       this.logger.warn(`[voice] config incompleta workspace=${workspaceId}: ${errMsg}`);
       await this.prisma.workspace.update({
         where: { id: workspaceId },
