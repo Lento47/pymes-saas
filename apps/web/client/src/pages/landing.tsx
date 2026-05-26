@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import type { LucideIcon } from "lucide-react";
+type LucideIcon = any;
 import {
   ArrowRight,
   BookOpen,
