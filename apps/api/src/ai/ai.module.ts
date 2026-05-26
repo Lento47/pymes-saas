@@ -1,4 +1,5 @@
 import { Module, forwardRef } from "@nestjs/common";
+import { AgentsModule } from "../agents/agents.module";
 import { StorageModule } from "../common/storage/storage.module";
 import { AiService } from "./ai.service";
 import { AgentService } from "./agent.service";
@@ -62,6 +63,7 @@ import { ProductMetricsModule } from "../common/metrics/product-metrics.module";
     AiTokensModule,
     StorageModule,
     ProductMetricsModule,
+    forwardRef(() => AgentsModule),
   ],
   providers: [
     AiService,
