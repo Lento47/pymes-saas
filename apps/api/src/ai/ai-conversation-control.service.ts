@@ -873,8 +873,8 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
 
     const buffer = await this.elevenLabs.textToSpeech(cleanText, apiKey, voiceId);
 
-    const key = `voice/${workspaceId}/${outboundMessageId}.ogg`;
-    await this.storage.upload(key, buffer, "audio/ogg");
+    const key = `voice/${workspaceId}/${outboundMessageId}.mp3`;
+    await this.storage.upload(key, buffer, "audio/mpeg");
     const url = await this.storage.getPresignedUrl(key, 1800);
 
     if (conv.channel?.type === "WHATSAPP" && conv.contact?.phone) {
