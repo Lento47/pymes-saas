@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 
 interface BusinessMemoryPatch {
@@ -31,12 +32,12 @@ export class BusinessMemoryService {
     return this.prisma.businessMemory.update({
       where: { workspace_id: workspaceId },
       data: {
-        ...(patch.facts_json !== undefined && { facts_json: patch.facts_json }),
-        ...(patch.policies_json !== undefined && { policies_json: patch.policies_json }),
-        ...(patch.faq_json !== undefined && { faq_json: patch.faq_json }),
-        ...(patch.tone_rules_json !== undefined && { tone_rules_json: patch.tone_rules_json }),
+        ...(patch.facts_json !== undefined && { facts_json: patch.facts_json as Prisma.InputJsonValue }),
+        ...(patch.policies_json !== undefined && { policies_json: patch.policies_json as Prisma.InputJsonValue }),
+        ...(patch.faq_json !== undefined && { faq_json: patch.faq_json as Prisma.InputJsonValue }),
+        ...(patch.tone_rules_json !== undefined && { tone_rules_json: patch.tone_rules_json as Prisma.InputJsonValue }),
         ...(patch.successful_patterns_json !== undefined && {
-          successful_patterns_json: patch.successful_patterns_json,
+          successful_patterns_json: patch.successful_patterns_json as Prisma.InputJsonValue,
         }),
       },
     });

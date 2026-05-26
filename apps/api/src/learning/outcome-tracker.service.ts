@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 
 export const FEEDBACK_EVENT_TYPES = {
@@ -38,9 +39,9 @@ export class OutcomeTrackerService {
           message_id: dto.message_id ?? null,
           contact_id: dto.contact_id ?? null,
           event_type: dto.event_type,
-          original_json: dto.original_json ?? null,
-          corrected_json: dto.corrected_json ?? null,
-          outcome_json: dto.outcome_json ?? null,
+          original_json: (dto.original_json ?? null) as Prisma.InputJsonValue | null,
+          corrected_json: (dto.corrected_json ?? null) as Prisma.InputJsonValue | null,
+          outcome_json: (dto.outcome_json ?? null) as Prisma.InputJsonValue | null,
         },
       });
     } catch (err) {

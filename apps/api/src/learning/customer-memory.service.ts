@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 
 interface CustomerMemoryPatch {
@@ -46,9 +47,9 @@ export class CustomerMemoryService {
     return this.prisma.contactAiMemory.update({
       where: { contact_id: contactId },
       data: {
-        ...(patch.profile_json !== undefined && { profile_json: patch.profile_json }),
-        ...(patch.objections_json !== undefined && { objections_json: patch.objections_json }),
-        ...(patch.interests_json !== undefined && { interests_json: patch.interests_json }),
+        ...(patch.profile_json !== undefined && { profile_json: patch.profile_json as Prisma.InputJsonValue }),
+        ...(patch.objections_json !== undefined && { objections_json: patch.objections_json as Prisma.InputJsonValue }),
+        ...(patch.interests_json !== undefined && { interests_json: patch.interests_json as Prisma.InputJsonValue }),
         ...(patch.lead_score !== undefined && { lead_score: patch.lead_score }),
         ...(patch.risk_score !== undefined && { risk_score: patch.risk_score }),
         ...(patch.next_best_action !== undefined && { next_best_action: patch.next_best_action }),
