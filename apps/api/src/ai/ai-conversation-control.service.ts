@@ -344,8 +344,16 @@ export class AiConversationControlService {
         } else {
           // WhatsApp and others: send as a new message
           const agentMsg = await this.createAiMessage(workspaceId, conversationId, agentText, null, completion);
-          const dispatched = await this.dispatchMessage(conv, agentMsg, agentText, null);
-          this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessage(dispatched ?? agentMsg));
+          const supportsVoiceAgent = conv.channel?.type === "WHATSAPP" || conv.channel?.type === "TELEGRAM";
+          let voiceOnlyAgent = false;
+          if (supportsVoiceAgent) {
+            const wsRow = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
+            voiceOnlyAgent = ((wsRow?.settings_json as Record<string, any>) ?? {}).ai_voice_enabled === true;
+          }
+          if (!voiceOnlyAgent) {
+            const dispatched = await this.dispatchMessage(conv, agentMsg, agentText, null);
+            this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessage(dispatched ?? agentMsg));
+          }
           agentMsgId = agentMsg.id;
         }
 
@@ -404,17 +412,25 @@ export class AiConversationControlService {
     this.events.emitTokenBalanceUpdated(workspaceId, balance);
 
     await this.persistActionMemory(workspaceId, conv, action);
-    const dispatched = await this.dispatchMessage(conv, message, action.reply_text, normalizedInteractive);
-    const finalMessage = dispatched ?? message;
 
-    const supportsInvoice = conv.channel?.type === "WHATSAPP" || conv.channel?.type === "TELEGRAM";
+    const supportsVoice = conv.channel?.type === "WHATSAPP" || conv.channel?.type === "TELEGRAM";
+    let voiceOnly = false;
+    if (supportsVoice && !normalizedInteractive) {
+      const wsRow = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { settings_json: true } });
+      voiceOnly = ((wsRow?.settings_json as Record<string, any>) ?? {}).ai_voice_enabled === true;
+    }
+
+    if (!voiceOnly) {
+      await this.dispatchMessage(conv, message, action.reply_text, normalizedInteractive);
+    }
+
+    const supportsInvoice = supportsVoice;
     if (action.invoice_action && conv.contact?.id && supportsInvoice) {
       this.handleInvoiceAction(workspaceId, conv, action.invoice_action).catch((err: Error) =>
         this.logger.warn(`[invoice_action] failed: ${err.message}`),
       );
     }
 
-    const supportsVoice = conv.channel?.type === "WHATSAPP" || conv.channel?.type === "TELEGRAM";
     if (supportsVoice && !normalizedInteractive) {
       this.handleVoiceDispatch(workspaceId, conv, action.reply_text, message.id).catch(
         (err: Error) => this.logger.warn(`[voice] TTS failed: ${err.message}`),
@@ -857,13 +873,13 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
 
     const buffer = await this.elevenLabs.textToSpeech(cleanText, apiKey, voiceId);
 
-    const key = `voice/${workspaceId}/${outboundMessageId}.mp3`;
-    await this.storage.upload(key, buffer, "audio/mpeg");
+    const key = `voice/${workspaceId}/${outboundMessageId}.ogg`;
+    await this.storage.upload(key, buffer, "audio/ogg");
     const url = await this.storage.getPresignedUrl(key, 1800);
 
     if (conv.channel?.type === "WHATSAPP" && conv.contact?.phone) {
       const to = conv.contact.phone.replace(/\D/g, "");
-      await this.whatsapp.sendMedia(conv.channel as any, to, url, "audio");
+      await this.whatsapp.sendMedia(conv.channel as any, to, url, "audio", undefined, true);
     } else if (conv.channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
       await this.telegramService.sendVoice(conv.channel.id, conv.contact.telegram_chat_id, url);
     }

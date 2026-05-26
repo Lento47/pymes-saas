@@ -12,13 +12,13 @@ export class ElevenLabsService {
     if (!key || !voice) throw new Error("ElevenLabs not configured: missing API key or voice ID");
 
     const res = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=opus_48000`,
       {
         method: "POST",
         headers: {
           "xi-api-key": key,
           "Content-Type": "application/json",
-          Accept: "audio/mpeg",
+          Accept: "audio/ogg",
         },
         body: JSON.stringify({
           text: text.slice(0, 500),

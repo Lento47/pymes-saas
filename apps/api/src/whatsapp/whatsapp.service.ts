@@ -95,6 +95,7 @@ export class WhatsAppService {
     mediaUrl: string,
     mediaType: "image" | "video" | "audio" | "document" | "sticker",
     caption?: string,
+    isVoice?: boolean,
   ): Promise<{ message_id: string }> {
     const raw = channel.config_json;
     const cfg: Record<string, any> = parseJsonValue<Record<string, any>>(raw, {});
@@ -201,13 +202,15 @@ export class WhatsAppService {
     const mediaId = uploadData.id;
 
     // Step 3: Send message with media_id
+    const mediaNode: Record<string, any> = { id: mediaId };
+    if (isVoice && mediaType === "audio") mediaNode.voice = true;
+    if (caption && mediaType !== "audio" && mediaType !== "sticker") mediaNode.caption = caption;
     const msgPayload: Record<string, any> = {
       messaging_product: "whatsapp",
       to,
       type: mediaType,
-      [mediaType]: { id: mediaId },
+      [mediaType]: mediaNode,
     };
-    if (caption) msgPayload[mediaType].caption = caption;
 
     const sendRes = await fetch(`${META_API_BASE}/${phoneNumberId}/messages`, {
       method: "POST",

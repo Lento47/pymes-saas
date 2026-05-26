@@ -32,14 +32,14 @@ export class TtsService {
     }
 
     const vid = voiceId ?? this.defaultVoiceId;
-    const url = `${this.baseUrl.replace(/\/$/, "")}/v1/text-to-speech/${vid}`;
+    const url = `${this.baseUrl.replace(/\/$/, "")}/v1/text-to-speech/${vid}?output_format=opus_48000`;
 
     const res = await fetch(url, {
       method: "POST",
       headers: {
         "xi-api-key": this.apiKey,
         "Content-Type": "application/json",
-        Accept: "audio/mpeg",
+        Accept: "audio/ogg",
       },
       body: JSON.stringify({
         text,
