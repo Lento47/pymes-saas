@@ -1123,7 +1123,7 @@ export class MessagesService {
       workspaceId,
       conversationId,
       inboundText,
-      { source: "auto_reply" },
+      { source: "auto_reply", activate: wsAutoActive },
     );
     if (!result.ok) {
       this.logger.warn(`AI control auto-reply skipped: ${result.error ?? "unknown"}`);
