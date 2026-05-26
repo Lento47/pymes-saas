@@ -616,7 +616,7 @@ export const api = {
     id: string,
     data: { question: string; channel?: string; flowise_session_id?: string },
   ) =>
-    request<{ text: string; flowise_session_id: string; session_id: string }>(
+    request<{ text: string; flowise_session_id: string; session_id: string; audio_url?: string }>(
       "POST",
       `/api/agents/${id}/test`,
       data,

@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AgentCard } from "@/components/agents/AgentCard";
+import { AgentGlobalConfig } from "@/components/agents/AgentGlobalConfig";
 
 export default function AgentsPage() {
   useRequireAuth();
@@ -81,6 +82,8 @@ export default function AgentsPage() {
           </Button>
         </div>
       </div>
+
+      <AgentGlobalConfig />
 
       {isLoading ? (
         <div className="flex justify-center py-16">
