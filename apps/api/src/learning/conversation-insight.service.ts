@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 
 interface InsightPatch {
@@ -35,10 +36,10 @@ export class ConversationInsightService {
         ...(patch.sentiment !== undefined && { sentiment: patch.sentiment }),
         ...(patch.summary !== undefined && { summary: patch.summary }),
         ...(patch.unresolved_items_json !== undefined && {
-          unresolved_items_json: patch.unresolved_items_json,
+          unresolved_items_json: patch.unresolved_items_json as Prisma.InputJsonValue,
         }),
         ...(patch.suggested_actions_json !== undefined && {
-          suggested_actions_json: patch.suggested_actions_json,
+          suggested_actions_json: patch.suggested_actions_json as Prisma.InputJsonValue,
         }),
       },
     });

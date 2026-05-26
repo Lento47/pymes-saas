@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 
 type PlaybookStatus = "PENDING" | "APPROVED" | "REJECTED" | "ACTIVE";
@@ -32,8 +33,8 @@ export class PlaybookEngineService {
         workspace_id: workspaceId,
         title,
         reason,
-        trigger_json: trigger,
-        actions_json: actions,
+        trigger_json: trigger as Prisma.InputJsonValue,
+        actions_json: actions as Prisma.InputJsonValue,
         confidence,
         status: "PENDING",
       },
