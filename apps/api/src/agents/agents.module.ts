@@ -7,9 +7,10 @@ import { AgentGuardrailsService } from "./runtime/agent-guardrails.service";
 import { AgentUsageService } from "./runtime/agent-usage.service";
 import { TtsModule } from "../tts/tts.module";
 import { LearningModule } from "../learning/learning.module";
+import { PlanLimitsModule } from "../common/plan-limits/plan-limits.module";
 
 @Module({
-  imports: [TtsModule, LearningModule],
+  imports: [TtsModule, LearningModule, PlanLimitsModule],
   controllers: [AgentsController],
   providers: [
     AgentsService,

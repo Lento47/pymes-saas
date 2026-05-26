@@ -2512,6 +2512,7 @@ model AgentTemplate {
   config_json   Json?             @db.JsonB
   thumbnail_url String?
   is_published  Boolean           @default(true)
+  is_free_tier  Boolean           @default(true)
   sort_order    Int               @default(0)
 
   created_at DateTime @default(now())

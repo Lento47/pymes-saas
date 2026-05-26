@@ -62,6 +62,8 @@ interface PlanLimits {
   agent_executions_per_day: number | "custom";
   /** How many recent messages the AI can see as context (conversation memory window). */
   ai_context_messages: number | "custom";
+  /** Max number of Flowise agent instances per workspace. */
+  agents: number | "custom";
 }
 
 export type { PlanLimits };
@@ -83,6 +85,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     ai_chat_messages_per_day: 0,
     agent_executions_per_day: 0,
     ai_context_messages: 0,
+    agents: 0,
   },
   STARTER: {
     users: 1,
@@ -99,7 +102,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: 0,
     ai_chat_messages_per_day: 50,
     agent_executions_per_day: 5,
-    ai_context_messages: 12,   // $25/mo — base window
+    ai_context_messages: 12,
+    agents: 1,
   },
   GROWTH: {
     users: 5,
@@ -116,7 +120,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: 10,
     ai_chat_messages_per_day: 100,
     agent_executions_per_day: 15,
-    ai_context_messages: 25,   // $59/mo — 2.4× STARTER price → ~2× context
+    ai_context_messages: 25,
+    agents: 3,
   },
   EMPRENDE: {
     users: 1,
@@ -133,7 +138,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: 10,
     ai_chat_messages_per_day: 100,
     agent_executions_per_day: 25,
-    ai_context_messages: 10,   // internal/beta plan
+    ai_context_messages: 10,
+    agents: 2,
   },
   BUSINESS: {
     users: 15,
@@ -150,7 +156,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: 50,
     ai_chat_messages_per_day: 250,
     agent_executions_per_day: 50,
-    ai_context_messages: 40,   // $119/mo — 4.8× STARTER price → ~3× context
+    ai_context_messages: 40,
+    agents: 10,
   },
   ENTERPRISE: {
     users: 15,
@@ -167,7 +174,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: 200,
     ai_chat_messages_per_day: 500,
     agent_executions_per_day: "custom",
-    ai_context_messages: 40,   // legacy alias for BUSINESS
+    ai_context_messages: 40,
+    agents: 10,
   },
   BUSINESS_PLUS: {
     users: "custom",
@@ -184,7 +192,8 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     media_messages_per_day: "custom",
     ai_chat_messages_per_day: "custom",
     agent_executions_per_day: "custom",
-    ai_context_messages: 60,   // custom/premium — max memory window
+    ai_context_messages: 60,
+    agents: "custom",
   },
 };
 
@@ -542,6 +551,8 @@ export class PlanLimitsService {
         `;
         return Number(result[0]?.count ?? 0);
       }
+      case "agents":
+        return this.prisma.agentInstance.count({ where: { workspace_id: workspaceId } });
       default:
         return 0;
     }
@@ -743,6 +754,22 @@ export class PlanLimitsService {
     }
   }
 
+  async checkAgentLimit(workspaceId: string): Promise<void> {
+    const plan = await this.getWorkspacePlan(workspaceId);
+    const limits = await this.getEffectiveLimits(workspaceId);
+    const limit = limits.agents;
+    if (limit === "custom" || limit === Infinity) return;
+    if ((limit as number) === 0) {
+      throw new QuotaExceededError("agentes IA", 0, 0, plan, this.getUpgradePlan(plan));
+    }
+    const current = await this.prisma.agentInstance.count({
+      where: { workspace_id: workspaceId },
+    });
+    if (current >= (limit as number)) {
+      throw new QuotaExceededError("agentes IA", current, limit, plan, this.getUpgradePlan(plan));
+    }
+  }
+
   async enforceDiagnosticLimit(workspaceId: string): Promise<void> {
     const plan = await this.getWorkspacePlan(workspaceId);
     const limits = await this.getEffectiveLimits(workspaceId);
@@ -776,6 +803,7 @@ function resourceKeyToString(key: keyof PlanLimits): string {
     media_messages_per_day: "archivos multimedia por día",
     ai_chat_messages_per_day: "mensajes IA por día",
     agent_executions_per_day: "ejecuciones del agente IA por día",
+    agents: "agentes IA",
   };
   return map[key] || key;
 }

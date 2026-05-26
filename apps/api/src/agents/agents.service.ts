@@ -1,9 +1,10 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { AgentStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { FlowiseClient } from "./flowise/flowise.client";
 import { CreateAgentDto } from "./dto/create-agent.dto";
 import { UpdateAgentDto } from "./dto/update-agent.dto";
+import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
 
 @Injectable()
 export class AgentsService {
@@ -12,6 +13,7 @@ export class AgentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly flowise: FlowiseClient,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   listAgents(workspaceId: string) {
@@ -30,7 +32,18 @@ export class AgentsService {
   }
 
   async createAgent(workspaceId: string, dto: CreateAgentDto) {
-    // 1. Persist in DB immediately
+    // 1. Enforce plan agent count limit
+    await this.planLimits.checkAgentLimit(workspaceId);
+
+    // 2. EMPRENDE restriction: no voice
+    const plan = await this.getWorkspacePlan(workspaceId);
+    if (plan === "EMPRENDE" && dto.voice_enabled) {
+      throw new ForbiddenException(
+        "El plan Emprende no incluye voz para agentes. Upgrade a STARTER o superior para habilitar esta función.",
+      );
+    }
+
+    // 3. Persist in DB immediately
     const agent = await this.prisma.agentInstance.create({
       data: {
         workspace_id: workspaceId,
@@ -55,6 +68,16 @@ export class AgentsService {
 
   async updateAgent(workspaceId: string, id: string, dto: UpdateAgentDto) {
     await this.getAgent(workspaceId, id);
+
+    if (dto.voice_enabled) {
+      const plan = await this.getWorkspacePlan(workspaceId);
+      if (plan === "EMPRENDE") {
+        throw new ForbiddenException(
+          "El plan Emprende no incluye voz para agentes. Upgrade a STARTER o superior para habilitar esta función.",
+        );
+      }
+    }
+
     return this.prisma.agentInstance.update({
       where: { id },
       data: {
@@ -90,10 +113,19 @@ export class AgentsService {
   }
 
   async installTemplate(workspaceId: string, templateId: string) {
+    await this.planLimits.checkAgentLimit(workspaceId);
+
     const template = await this.prisma.agentTemplate.findUnique({
       where: { id: templateId },
     });
     if (!template) throw new NotFoundException("Template not found");
+
+    const plan = await this.getWorkspacePlan(workspaceId);
+    if (plan === "EMPRENDE" && !template.is_free_tier) {
+      throw new ForbiddenException(
+        "El plan Emprende solo puede instalar plantillas gratuitas. Upgrade a STARTER o superior para acceder a plantillas premium.",
+      );
+    }
 
     const cfg = (template.config_json ?? {}) as Record<string, unknown>;
 
@@ -123,6 +155,14 @@ export class AgentsService {
   }
 
   // ── Internal helpers ─────────────────────────────────────────────────────
+
+  private async getWorkspacePlan(workspaceId: string): Promise<string> {
+    const ws = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { plan: true },
+    });
+    return ws.plan;
+  }
 
   private async provisionChatflow(agentId: string, name: string) {
     try {

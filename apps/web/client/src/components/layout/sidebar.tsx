@@ -47,8 +47,8 @@ interface NavGroup {
 
 const PLAN_MIN: Record<string, string> = {
   pipeline: 'STARTER',
-  agent:    'STARTER',
-  agents:   'STARTER',
+  agent:    'EMPRENDE',
+  agents:   'EMPRENDE',
 };
 
 const NAV_GROUPS: NavGroup[] = [
