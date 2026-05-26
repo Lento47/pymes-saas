@@ -18,6 +18,7 @@ import { CryptoService } from "../common/crypto/crypto.service";
 import { parseJsonValue } from "../common/prisma/json";
 import { generateWorkspaceInvoicePdf } from "../invoices/invoice-pdf.service";
 import { ElevenLabsService } from "./elevenlabs.service";
+import { AgentRuntimeService } from "../agents/runtime/agent-runtime.service";
 
 type SupportedInteractive =
   | {
@@ -65,6 +66,7 @@ interface AiControlAction {
     notes?: string;
   } | null;
   intent_detected?: AgentIntent | null;
+  delegate_to_agent?: { instance_id: string; reason: string } | null;
 }
 
 interface ConversationShape {
@@ -122,6 +124,7 @@ export class AiConversationControlService {
     private readonly storage: StorageService,
     private readonly crypto: CryptoService,
     private readonly elevenLabs: ElevenLabsService,
+    private readonly agentRuntime: AgentRuntimeService,
   ) {}
 
   async startControl(workspaceId: string, conversationId: string) {
@@ -270,6 +273,94 @@ export class AiConversationControlService {
     }
 
     const action = this.parseAction(completion.text);
+
+    // LLM-as-orchestrator: delegate to a Flowise agent instance
+    if (action.delegate_to_agent?.instance_id) {
+      const balance = await this.aiTokens.consumeReservation(workspaceId, reservation.reservationId, completion, {
+        conversationId,
+        description: "LLM orquestador → delegación a agente Flowise",
+        metadata: { source: options.source ?? "auto_reply" },
+      });
+      this.events.emitTokenBalanceUpdated(workspaceId, balance);
+
+      // Send interim / placeholder message
+      const interimText = action.reply_text?.trim() || "⏳ Un momento, consultando nuestro especialista…";
+      const interimMsg = await this.createAiMessage(workspaceId, conversationId, interimText, null, completion);
+      const interimDispatched = await this.dispatchMessage(conv, interimMsg, interimText, null);
+      const interimFinal = interimDispatched ?? interimMsg;
+      this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessage(interimFinal));
+
+      // For Telegram: capture provider_message_id to edit it later
+      const tgPlaceholderMsgId: string | null = isTelegram
+        ? (interimFinal as any).provider_message_id ?? null
+        : null;
+      const tgPlaceholderDbId: string | null = isTelegram ? interimFinal.id : null;
+
+      // Keep typing indicator alive during Flowise call
+      if (isWhatsApp && waPhone) {
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_on").catch(() => {});
+      }
+      let delegateTypingInterval: ReturnType<typeof setInterval> | null = null;
+      if (isTelegram && tgChatId) {
+        this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
+        delegateTypingInterval = setInterval(() => {
+          this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
+        }, 4000);
+      }
+
+      // Call the Flowise agent
+      let agentText: string | null = null;
+      try {
+        const result = await this.agentRuntime.run({
+          agent_instance_id: action.delegate_to_agent.instance_id,
+          workspace_id: workspaceId,
+          question: inboundText,
+          channel: (conv.channel?.type ?? "ALL") as any,
+          conversation_id: conversationId,
+        });
+        agentText = result.text ?? null;
+      } catch (err) {
+        this.logger.warn(`[delegate_to_agent] Flowise failed (${action.delegate_to_agent.instance_id}): ${(err as Error).message}`);
+      } finally {
+        if (delegateTypingInterval) clearInterval(delegateTypingInterval);
+        if (isWhatsApp && waPhone) {
+          this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_off").catch(() => {});
+        }
+      }
+
+      if (agentText?.trim()) {
+        if (isTelegram && tgPlaceholderMsgId && conv.channel?.id && tgChatId) {
+          // Telegram: edit the placeholder with the final Flowise response
+          await this.telegramOutbound.editMessage(conv.channel.id, tgChatId, tgPlaceholderMsgId, agentText);
+          if (tgPlaceholderDbId) {
+            await this.prisma.message.update({
+              where: { id: tgPlaceholderDbId },
+              data: { body_text: agentText },
+              select: { id: true },
+            });
+          }
+        } else {
+          // WhatsApp and others: send as a new message
+          const agentMsg = await this.createAiMessage(workspaceId, conversationId, agentText, null, completion);
+          const dispatched = await this.dispatchMessage(conv, agentMsg, agentText, null);
+          this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessage(dispatched ?? agentMsg));
+        }
+      }
+
+      const now = new Date().toISOString();
+      await this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: {
+          last_message_at: new Date(),
+          updated_at: new Date(),
+          metadata_json: { ...meta, ai_state: "AI_ACTIVE", last_ai_reply_at: now } as any,
+        },
+        select: { id: true },
+      });
+
+      return { ok: true, balance, ai_state: "AI_ACTIVE" };
+    }
+
     if (!action.reply_text.trim()) {
       this.logger.warn(`EMPTY_AI_REPLY provider=${completion.provider} model=${completion.model} raw: "${completion.text?.slice(0, 500)}"`);
       await this.aiTokens.releaseReservation(workspaceId, reservation.reservationId);
@@ -381,7 +472,8 @@ export class AiConversationControlService {
   }
 
   private async buildPrompt(workspaceId: string, conv: ConversationShape, inboundText: string) {
-    const [ctx, recentMessages, memory, templates, contextLimit] = await Promise.all([
+    const channelScopeFilter = (conv.channel?.type ?? "ALL").toUpperCase();
+    const [ctx, recentMessages, memory, templates, contextLimit, activeAgents] = await Promise.all([
       this.emprendeAi.buildBusinessContext(workspaceId),
       this.prisma.message.findMany({
         where: { workspace_id: workspaceId, conversation_id: conv.id },
@@ -397,9 +489,20 @@ export class AiConversationControlService {
         select: { name: true, external_template_id: true, body: true },
       }),
       this.planLimits.getAiContextMessages(workspaceId),
+      this.prisma.agentInstance.findMany({
+        where: {
+          workspace_id: workspaceId,
+          status: "ACTIVE",
+          channel_scope: { in: ["ALL", channelScopeFilter as any] },
+        },
+        select: { id: true, name: true, description: true },
+      }).catch(() => [] as Array<{ id: string; name: string; description: string | null }>),
     ]);
 
     const channelType = conv.channel?.type ?? "UNKNOWN";
+    const agentsBlock = activeAgents.length
+      ? `\nAGENTES ESPECIALIZADOS DISPONIBLES:\n${activeAgents.map((a) => `- "${a.name}" (instance_id: ${a.id}): ${a.description ?? "agente especializado"}`).join("\n")}\nSi el cliente necesita atención que uno de estos agentes maneje mejor, devuelve delegate_to_agent con el instance_id del agente y un reason breve. En ese caso reply_text puede ser una frase de transición corta o vacío.`
+      : "";
     const supportsRichInteractive = channelType === "WHATSAPP" || channelType === "TELEGRAM";
     const recent = recentMessages
       .reverse()
@@ -443,14 +546,16 @@ Si el cliente pide explícitamente cambiar de idioma, permite el cambio y persis
 No mezcles idiomas en una misma respuesta salvo que el cliente lo pida explícitamente.
 Si el canal es WhatsApp o Telegram puedes usar botones o listas cuando ayude. Solo usa location_request en WhatsApp.
 Si no sabes algo, no inventes precios, inventario ni disponibilidad.
+${agentsBlock}
 Responde SOLO JSON válido con este shape:
 {
-  "reply_text": "texto que se enviará al cliente",
+  "reply_text": "texto que se enviará al cliente (puede ser vacío si delegas a un agente)",
   "interactive": null | { "type": "button", "body": "...", "buttons": [{"id":"...", "title":"..."}] } | { "type": "list", "body":"...", "buttonText":"Ver opciones", "sections":[{"title":"...", "rows":[{"id":"...", "title":"...", "description":"..."}]}] } | { "type": "location_request", "body":"..." },
   "memory_updates": null | { "summary": "...", "common_requests": ["..."], "communication_style": "...", "preferences": {"clave":"valor"} },
   "handoff_reason": null,
   "invoice_action": null | { "lines": [{"description":"...", "quantity":1, "unit_price":0.00}], "currency":"USD", "due_days":30, "notes":"..." },
-  "intent_detected": null | "ORDER" | "APPOINTMENT" | "QUOTE" | "COMPLAINT"
+  "intent_detected": null | "ORDER" | "APPOINTMENT" | "QUOTE" | "COMPLAINT",
+  "delegate_to_agent": null | { "instance_id": "<id del agente>", "reason": "<por qué delegas>" }
 }
 Reglas de intent_detected:
 - Úsalo SOLO cuando el cliente exprese claramente una intención de acción (hacer un pedido, agendar cita, solicitar cotización, presentar un reclamo).
@@ -562,13 +667,20 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
       const intentDetected: AgentIntent | null =
         intentRaw && VALID_INTENTS.includes(intentRaw as AgentIntent) ? (intentRaw as AgentIntent) : null;
 
+      const delegateRaw = parsed.delegate_to_agent;
+      const delegateToAgent =
+        delegateRaw && typeof delegateRaw === "object" && typeof delegateRaw.instance_id === "string"
+          ? { instance_id: delegateRaw.instance_id as string, reason: String(delegateRaw.reason ?? "") }
+          : null;
+
       return {
-        reply_text: replyText || fallbackReply,
+        reply_text: replyText || (delegateToAgent ? "" : fallbackReply),
         interactive: parsed.interactive ?? null,
         memory_updates: parsed.memory_updates ?? null,
         handoff_reason: parsed.handoff_reason ?? null,
         invoice_action: parsed.invoice_action ?? null,
         intent_detected: intentDetected,
+        delegate_to_agent: delegateToAgent,
       };
     };
 
