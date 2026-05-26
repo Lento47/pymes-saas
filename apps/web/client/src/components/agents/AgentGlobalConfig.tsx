@@ -280,6 +280,11 @@ export function AgentGlobalConfig() {
               </div>
               <Switch checked={voiceEnabled} onCheckedChange={setVoiceEnabled} />
             </div>
+            {voiceEnabled && (workspace as any)?.voice_last_error && (
+              <p className="text-[11px] text-destructive bg-destructive/10 rounded px-2 py-1.5">
+                ⚠ {(workspace as any).voice_last_error}
+              </p>
+            )}
             <div className={cn("space-y-3", !voiceEnabled && "opacity-40 pointer-events-none")}>
               <div>
                 <Label className="text-xs mb-1 block">ID de voz (ElevenLabs)</Label>
