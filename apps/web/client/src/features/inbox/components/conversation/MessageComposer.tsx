@@ -136,7 +136,7 @@ export function MessageComposer({
     : (availableTemplates ?? []);
 
   return (
-    <div className={`shrink-0 border-t border-border bg-background/95 backdrop-blur-sm ${className ?? ""}`}>
+    <div className={`shrink-0 border-t border-border bg-background ${className ?? ""}`}>
       {/* Service window guard */}
       {windowClosed && (
         <div className="px-3 pt-2">

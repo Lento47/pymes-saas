@@ -214,13 +214,18 @@ nav, aside, header, [role="navigation"], [role="banner"] {
 .font-marketing { font-family: var(--font-marketing-sans); }
 .font-editorial { font-family: var(--font-marketing-serif); }
 
-/* ── Glass panels ── */
+/* ── Glass panels — flat solid treatment (ElevenLabs-inspired restraint) ── */
 .glass-panel {
   background: rgba(120, 80, 220, 0.07);
   border: 1px solid rgba(160, 100, 255, 0.18);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
 }
+html.light .glass-panel {
+  background: hsl(var(--bg-card));
+  border: 1px solid hsl(var(--border));
+}
+
 .glass-panel-soft {
   background: rgba(120, 80, 220, 0.04);
   border: 1px solid rgba(160, 100, 255, 0.10);
@@ -228,33 +233,32 @@ nav, aside, header, [role="navigation"], [role="banner"] {
   -webkit-backdrop-filter: blur(20px);
 }
 
-/* ── Elevated card (border-raised, subtle violet glow) ── */
+/* ── Elevated card ── */
 .glass-panel-raised {
   background: rgba(120, 80, 220, 0.08);
   border: 1px solid rgba(160, 100, 255, 0.20);
   box-shadow: 0 4px 32px rgba(120, 60, 220, 0.12), 0 1px 0 rgba(160, 100, 255, 0.08) inset;
 }
 
-/* ── Premium glow utilities ── */
+/* ── Glow utilities — reduced to subtle accents ── */
 .glow-violet {
-  box-shadow: 0 0 32px rgba(139, 92, 246, 0.28), 0 0 8px rgba(139, 92, 246, 0.15);
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.14), 0 0 3px rgba(139, 92, 246, 0.07);
 }
 .glow-violet-sm {
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.22), 0 0 4px rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.10);
 }
 .border-glow-violet {
-  border-color: rgba(139, 92, 246, 0.4);
-  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.2) inset;
+  border-color: hsl(var(--border));
 }
 .text-glow-violet {
-  text-shadow: 0 0 20px rgba(167, 139, 250, 0.5);
+  text-shadow: none;
 }
 
 /* ── Premium ambient background gradient ── */
 .premium-ambient {
   background-image:
-    radial-gradient(ellipse 60% 40% at 20% 0%, rgba(124, 58, 237, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 80% 100%, rgba(91, 92, 240, 0.06) 0%, transparent 60%);
+    radial-gradient(ellipse 60% 40% at 20% 0%, rgba(124, 58, 237, 0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 100%, rgba(91, 92, 240, 0.03) 0%, transparent 60%);
 }
 
 html.light .marketing-grid {
@@ -291,18 +295,19 @@ html.light .marketing-grid {
 
 .luminous-border {
   position: relative;
-  border-color: rgba(160, 100, 255, 0.25) !important;
-  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.12) inset;
+  border-color: hsl(var(--border)) !important;
+  box-shadow: none;
 }
 
+/* glow-button: subtle ambient for amber/gold CTAs — not violet */
 .glow-button {
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.35), 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.2);
   transition: box-shadow 200ms ease;
 }
 .glow-button:hover {
-  box-shadow: 0 0 28px rgba(139, 92, 246, 0.5), 0 2px 8px rgba(0,0,0,0.35);
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.25);
 }
-.soft-glow { text-shadow: 0 0 24px rgba(167, 139, 250, 0.4); }
+.soft-glow { text-shadow: none; }
 
 .app-surface {
   background: hsl(var(--card));

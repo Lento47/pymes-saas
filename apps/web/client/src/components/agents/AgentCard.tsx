@@ -15,11 +15,10 @@ export function AgentCard({ agent, onActivate, onDeactivate }: AgentCardProps) {
   return (
     <div
       className={cn(
-        "group relative rounded-xl border bg-card/60 overflow-hidden transition-all duration-200",
-        "hover:scale-[1.01] hover:shadow-lg hover:border-primary/20 hover:bg-card",
+        "group relative rounded-xl border bg-card/60 overflow-hidden transition-colors duration-150",
+        "hover:border-border/80 hover:bg-card",
       )}
     >
-      <div className="h-[3px] w-full bg-primary/40" />
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2">
