@@ -871,16 +871,21 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
     const apiKeyEnc = s.elevenlabs_api_key_enc as string | undefined;
     const apiKey = apiKeyEnc ? this.crypto.decrypt(apiKeyEnc) : undefined;
 
-    const buffer = await this.elevenLabs.textToSpeech(cleanText, apiKey, voiceId);
-
-    const key = `voice/${workspaceId}/${outboundMessageId}.mp3`;
-    await this.storage.upload(key, buffer, "audio/mpeg");
-    const url = await this.storage.getPresignedUrl(key, 1800);
+    const mp3Buffer = await this.elevenLabs.textToSpeech(cleanText, apiKey, voiceId);
 
     if (conv.channel?.type === "WHATSAPP" && conv.contact?.phone) {
+      // WhatsApp voice notes require OGG OPUS — convert in memory, never store MP3
+      const oggBuffer = await this.convertMp3ToOpusOgg(mp3Buffer);
+      const key = `voice/${workspaceId}/${outboundMessageId}.ogg`;
+      await this.storage.upload(key, oggBuffer, "audio/ogg");
+      const url = await this.storage.getPresignedUrl(key, 1800);
       const to = conv.contact.phone.replace(/\D/g, "");
       await this.whatsapp.sendMedia(conv.channel as any, to, url, "audio", undefined, true);
     } else if (conv.channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
+      // Telegram accepts MP3 directly
+      const key = `voice/${workspaceId}/${outboundMessageId}.mp3`;
+      await this.storage.upload(key, mp3Buffer, "audio/mpeg");
+      const url = await this.storage.getPresignedUrl(key, 1800);
       await this.telegramService.sendVoice(conv.channel.id, conv.contact.telegram_chat_id, url);
     }
 
@@ -1189,5 +1194,32 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
       raw_payload_json: msg.raw_payload_json,
       attachments: [],
     };
+  }
+
+  /** Convert an MP3 buffer to OGG OPUS using ffmpeg (required for WhatsApp voice notes). */
+  private convertMp3ToOpusOgg(mp3Buffer: Buffer): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const { spawn } = require("child_process");
+      const ff = spawn("ffmpeg", [
+        "-f", "mp3",
+        "-i", "pipe:0",
+        "-c:a", "libopus",
+        "-b:a", "48000",
+        "-ar", "48000",
+        "-ac", "1",
+        "-f", "ogg",
+        "pipe:1",
+      ]);
+      const chunks: Buffer[] = [];
+      ff.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
+      ff.on("close", (code: number) => {
+        if (code === 0) resolve(Buffer.concat(chunks));
+        else reject(new Error(`ffmpeg exited with code ${code}`));
+      });
+      ff.on("error", (err: Error) => reject(new Error(`ffmpeg spawn failed: ${err.message}`)));
+      ff.stderr.resume(); // drain stderr so process doesn't stall
+      ff.stdin.write(mp3Buffer);
+      ff.stdin.end();
+    });
   }
 }
