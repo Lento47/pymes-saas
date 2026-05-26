@@ -1087,6 +1087,7 @@ export class MessagesService {
     inboundText: string,
     isInteractive?: boolean,
   ): Promise<void> {
+    this.logger.debug(`[ai-auto] triggered — workspace=${workspaceId} conv=${conversationId}`);
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { plan: true, settings_json: true },
@@ -1095,7 +1096,10 @@ export class MessagesService {
 
     // Only EMPRENDE+ plans
     const EMPRENDE_PLUS = ["EMPRENDE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
-    if (!EMPRENDE_PLUS.includes(workspace.plan)) return;
+    if (!EMPRENDE_PLUS.includes(workspace.plan)) {
+      this.logger.warn(`[ai-auto] workspace ${workspaceId} plan=${workspace.plan} no permite IA — requiere EMPRENDE+`);
+      return;
+    }
 
     // Check conversation ai_state — skip if human has taken over
     const conv = await this.prisma.conversation.findUnique({
@@ -1109,15 +1113,24 @@ export class MessagesService {
     if (!conv) return;
 
     const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
-    if (meta.ai_state === "HUMAN_ACTIVE") return;
+    if (meta.ai_state === "HUMAN_ACTIVE") {
+      this.logger.debug(`[ai-auto] conv ${conversationId} ai_state=HUMAN_ACTIVE — skip`);
+      return;
+    }
     const wsSettings = (workspace.settings_json as Record<string, any>) ?? {};
     const wsAutoActive = wsSettings.ai_agent_auto_active === true;
-    if (!wsAutoActive && meta.ai_state !== "AI_ACTIVE") return;
+    if (!wsAutoActive && meta.ai_state !== "AI_ACTIVE") {
+      this.logger.warn(`[ai-auto] conv ${conversationId} wsAutoActive=${wsAutoActive} ai_state=${meta.ai_state ?? "IDLE"} — skip`);
+      return;
+    }
 
     // Throttle: 3s guard only to prevent duplicate processing of the exact same webhook.
     // 30s was causing legitimate follow-up messages to be silently dropped.
     const lastAiReply = meta.last_ai_reply_at as string | undefined;
-    if (!isInteractive && lastAiReply && Date.now() - new Date(lastAiReply).getTime() < 3_000) return;
+    if (!isInteractive && lastAiReply && Date.now() - new Date(lastAiReply).getTime() < 3_000) {
+      this.logger.debug(`[ai-auto] conv ${conversationId} throttled (3s)`);
+      return;
+    }
 
     const result = await this.aiConversationControl.replyToInbound(
       workspaceId,
