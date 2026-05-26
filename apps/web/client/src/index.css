@@ -473,3 +473,45 @@ html.light .dash-card {
     animation: none;
   }
 }
+
+/* ── Marketing light theme — scoped re-map of dark tokens ── */
+.marketing-light-theme {
+  --bg:           258 20% 98%;
+  --bg-sidebar:   258 16% 100%;
+  --bg-card:      0 0% 100%;
+  --bg-elevated:  0 0% 100%;
+  --bg-hover:     262 24% 96%;
+  --bg-active:    262 32% 93%;
+  --border:       258 18% 87%;
+  --fg:           258 12% 14%;
+  --fg-2:         258 8% 44%;
+  --fg-3:         258 6% 62%;
+  --accent:       262 83% 56%;
+  --accent-fg:    0 0% 100%;
+  --danger:       0 72% 45%;
+  --danger-fg:    0 0% 100%;
+  --success:      156 58% 34%;
+  --warning:      35 90% 48%;
+  background: #F8F9FF;
+  color: hsl(var(--fg));
+}
+
+.landing-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
+}
+
+.landing-badge {
+  background: rgba(124, 58, 237, 0.06);
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  color: #6D28D9;
+}
+
+.landing-eyebrow {
+  color: #7C3AED;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}

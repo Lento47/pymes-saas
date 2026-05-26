@@ -24,24 +24,24 @@ export default function PricingPage() {
   const earlyAccessHref = 'mailto:legal@pymeshub.lat?subject=Quiero%20acceso%20anticipado';
 
   return (
-    <div className="marketing-canvas relative min-h-screen text-foreground">
+    <div className="marketing-light-theme relative min-h-screen">
 
       <main className="relative z-10">
         {/* Navigation */}
         <section className="px-4 pb-8 pt-6 md:px-8">
           <div className="mx-auto max-w-7xl">
-            <nav className="glass-panel flex flex-wrap items-center justify-between gap-2 rounded-lg px-5 py-4 md:px-7">
+            <nav className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-md px-5 py-4 md:px-7">
               <Link href="/">
                 <BrandLockup compact />
               </Link>
               <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                 <LanguageSwitcher variant="marketing" />
-                <Link href="/login" className="whitespace-nowrap text-sm font-medium text-muted-foreground transition hover:text-foreground">
+                <Link href="/login" className="whitespace-nowrap text-sm font-medium text-gray-600 transition hover:text-gray-900">
                   Ingresar
                 </Link>
-                <Link href="/login" className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 sm:gap-2 sm:px-4 sm:py-3 sm:text-sm md:px-6">
+                <Link href="/login" className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 sm:gap-2 sm:px-5 sm:py-2.5" style={{ background: "linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)" }}>
                   Comenzar
-                  <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
             </nav>
@@ -51,10 +51,10 @@ export default function PricingPage() {
         {/* Hero Section */}
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-4xl text-center">
-            <h1 className="text-3xl font-semibold leading-[1.1] tracking-[-0.03em] text-foreground sm:text-4xl md:text-5xl">
+            <h1 className="font-marketing text-3xl font-bold leading-[1.1] tracking-[-0.04em] text-gray-900 sm:text-4xl md:text-5xl">
               {copy.hero?.title || 'Planes que crecen contigo'}
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
+            <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-500 md:text-xl">
               {copy.hero?.subtitle || 'Pagá solo por lo que usás. Cancelá cuando quieras.'}
             </p>
 
