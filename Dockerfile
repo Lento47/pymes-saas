@@ -3,7 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Install OpenSSL for Prisma + build tools for native addons (bcrypt)
-RUN apk add --no-cache openssl libc6-compat python3 make g++
+RUN apk add --no-cache openssl libc6-compat python3 make g++ ffmpeg
 
 # Install pnpm
 RUN npm install -g pnpm
