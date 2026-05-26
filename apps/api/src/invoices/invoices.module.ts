@@ -7,6 +7,7 @@ import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { FeaturesModule } from "../features/features.module";
 import { WorkersModule } from "../workers/workers.module";
 import { WhatsAppModule } from "../whatsapp/whatsapp.module";
+import { LearningModule } from "../learning/learning.module";
 import { InvoicesController } from "./invoices.controller";
 import { InvoicesService } from "./invoices.service";
 import { RemindersService } from "./reminders.service";
@@ -21,6 +22,7 @@ import { RemindersService } from "./reminders.service";
     FeaturesModule,
     WorkersModule,
     forwardRef(() => WhatsAppModule),
+    LearningModule,
   ],
   controllers: [InvoicesController],
   providers: [InvoicesService, RemindersService],

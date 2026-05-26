@@ -632,6 +632,25 @@ export const api = {
       "POST",
       `/api/agents/templates/${templateId}/install`,
     ),
+
+  // ── Learning Engine ──────────────────────────────────────────────────────
+  getCustomerMemory: (contactId: string) =>
+    request<Record<string, any>>("GET", `/api/learning/customer/${contactId}`),
+  getBusinessMemory: () =>
+    request<Record<string, any>>("GET", "/api/learning/business"),
+  updateBusinessMemory: (data: Record<string, any>) =>
+    request<Record<string, any>>("PATCH", "/api/learning/business", data),
+  getConversationInsight: (conversationId: string) =>
+    request<Record<string, any>>("GET", `/api/learning/conversations/${conversationId}/insight`),
+  recordFeedback: (data: Record<string, any>) =>
+    request<void>("POST", "/api/learning/feedback", data),
+  listPlaybooks: (status?: string) =>
+    request<Record<string, any>[]>(
+      "GET",
+      `/api/learning/playbooks${status ? `?status=${status}` : ""}`,
+    ),
+  updatePlaybookStatus: (id: string, status: string) =>
+    request<Record<string, any>>("PATCH", `/api/learning/playbooks/${id}`, { status }),
 };
 
 // ── Session activity tracking ────────────────────────────────────────────

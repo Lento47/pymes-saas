@@ -6,9 +6,10 @@ import { AgentRuntimeService } from "./runtime/agent-runtime.service";
 import { AgentGuardrailsService } from "./runtime/agent-guardrails.service";
 import { AgentUsageService } from "./runtime/agent-usage.service";
 import { TtsModule } from "../tts/tts.module";
+import { LearningModule } from "../learning/learning.module";
 
 @Module({
-  imports: [TtsModule],
+  imports: [TtsModule, LearningModule],
   controllers: [AgentsController],
   providers: [
     AgentsService,

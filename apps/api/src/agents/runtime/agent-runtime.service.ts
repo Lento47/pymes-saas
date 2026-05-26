@@ -14,6 +14,9 @@ import { FlowiseClient } from "../flowise/flowise.client";
 import { AgentGuardrailsService } from "./agent-guardrails.service";
 import { AgentUsageService } from "./agent-usage.service";
 import { TtsService } from "../../tts/tts.service";
+import { CustomerMemoryService } from "../../learning/customer-memory.service";
+import { BusinessMemoryService } from "../../learning/business-memory.service";
+import { ConversationInsightService } from "../../learning/conversation-insight.service";
 
 export interface AgentRunOptions {
   agent_instance_id: string;
@@ -45,6 +48,9 @@ export class AgentRuntimeService {
     private readonly config: ConfigService,
     private readonly tts: TtsService,
     private readonly storage: StorageService,
+    private readonly customerMemory: CustomerMemoryService,
+    private readonly businessMemory: BusinessMemoryService,
+    private readonly conversationInsight: ConversationInsightService,
   ) {
     this.maxOutputChars =
       this.config.get<number>("FLOWISE_MAX_OUTPUT_CHARS") ?? 4000;
@@ -107,9 +113,46 @@ export class AgentRuntimeService {
       );
     }
 
+    // Build memory context block (non-fatal)
+    let memoryBlock = "";
+    try {
+      const parts: string[] = [];
+
+      // Fetch contact from conversation if available
+      let contactId: string | undefined;
+      if (opts.conversation_id) {
+        const conv = await this.prisma.conversation.findFirst({
+          where: { id: opts.conversation_id, workspace_id: opts.workspace_id },
+          select: { contact_id: true },
+        });
+        contactId = conv?.contact_id ?? undefined;
+      }
+
+      const [customerCtx, businessCtx, insightCtx] = await Promise.all([
+        contactId
+          ? this.customerMemory.buildContextString(opts.workspace_id, contactId)
+          : Promise.resolve(""),
+        this.businessMemory.buildContextString(opts.workspace_id),
+        opts.conversation_id
+          ? this.conversationInsight.buildContextString(opts.workspace_id, opts.conversation_id)
+          : Promise.resolve(""),
+      ]);
+
+      if (customerCtx) parts.push(customerCtx);
+      if (businessCtx) parts.push(businessCtx);
+      if (insightCtx) parts.push(insightCtx);
+
+      if (parts.length) {
+        memoryBlock = `\n\n--- CONTEXTO OPERACIONAL ---\n${parts.join("\n\n")}\n---`;
+      }
+    } catch (err) {
+      this.logger.warn(`Memory context build failed: ${(err as Error).message}`);
+    }
+
     const overrideConfig: Record<string, unknown> = {};
-    if (instance.system_instructions) {
-      overrideConfig.systemMessagePrompt = instance.system_instructions;
+    const systemPrompt = `${instance.system_instructions ?? ""}${memoryBlock}`;
+    if (systemPrompt.trim()) {
+      overrideConfig.systemMessagePrompt = systemPrompt;
     }
 
     const flowiseResponse = await this.flowise.predict(instance.chatflow_id, {

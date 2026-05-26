@@ -65,6 +65,7 @@ import { MessageTemplatesModule } from "./message-templates/message-templates.mo
 import { ProductMetricsModule } from "./common/metrics/product-metrics.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { AiTokensModule } from "./ai-tokens/ai-tokens.module";
+import { LearningModule } from "./learning/learning.module";
 
 @Module({
   imports: [
@@ -137,6 +138,7 @@ import { AiTokensModule } from "./ai-tokens/ai-tokens.module";
     MessageTemplatesModule,
     InventoryModule,
     AiTokensModule,
+    LearningModule,
 
     // Metrics
     ProductMetricsModule,
