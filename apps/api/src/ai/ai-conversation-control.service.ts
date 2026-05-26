@@ -329,6 +329,7 @@ export class AiConversationControlService {
       }
 
       if (agentText?.trim()) {
+        let agentMsgId: string | undefined;
         if (isTelegram && tgPlaceholderMsgId && conv.channel?.id && tgChatId) {
           // Telegram: edit the placeholder with the final Flowise response
           await this.telegramOutbound.editMessage(conv.channel.id, tgChatId, tgPlaceholderMsgId, agentText);
@@ -338,12 +339,21 @@ export class AiConversationControlService {
               data: { body_text: agentText },
               select: { id: true },
             });
+            agentMsgId = tgPlaceholderDbId;
           }
         } else {
           // WhatsApp and others: send as a new message
           const agentMsg = await this.createAiMessage(workspaceId, conversationId, agentText, null, completion);
           const dispatched = await this.dispatchMessage(conv, agentMsg, agentText, null);
           this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessage(dispatched ?? agentMsg));
+          agentMsgId = agentMsg.id;
+        }
+
+        const supportsVoice = conv.channel?.type === "WHATSAPP" || conv.channel?.type === "TELEGRAM";
+        if (supportsVoice && agentMsgId) {
+          this.handleVoiceDispatch(workspaceId, conv, agentText, agentMsgId).catch(
+            (err: Error) => this.logger.warn(`[agent-voice] TTS failed: ${err.message}`),
+          );
         }
       }
 
