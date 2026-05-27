@@ -180,6 +180,7 @@ function OperationalMetric({
   tone = "neutral",
   loading,
   icon: Icon,
+  linkTo,
 }: {
   label: string;
   value: string;
@@ -187,15 +188,17 @@ function OperationalMetric({
   tone?: Tone;
   loading?: boolean;
   icon?: React.ElementType;
+  linkTo?: string;
 }) {
   const t = toneConfig(tone);
 
-  return (
+  const inner = (
     <div
-      className="relative overflow-hidden rounded-card px-4 py-4 transition-all duration-200"
+      className="relative overflow-hidden rounded-card px-4 py-4 transition-all duration-200 h-full"
       style={{
         border: `1px solid ${t.cardBorder}`,
         background: t.cardBg,
+        cursor: linkTo ? "pointer" : undefined,
       }}
     >
       {/* Left accent bar */}
@@ -228,7 +231,19 @@ function OperationalMetric({
           {detail}
         </p>
       )}
+
+      {linkTo && (
+        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <ArrowUpRight className="h-3 w-3 text-muted-foreground/40" />
+        </div>
+      )}
     </div>
+  );
+
+  return linkTo ? (
+    <Link href={linkTo} className="block group">{inner}</Link>
+  ) : (
+    inner
   );
 }
 
@@ -488,6 +503,7 @@ export default function DashboardPage() {
             tone={overdueInvoices.length > 0 ? "danger" : "neutral"}
             loading={statsLoading}
             icon={Wallet}
+            linkTo="/invoices"
           />
           <OperationalMetric
             label="Vencidas"
@@ -498,14 +514,16 @@ export default function DashboardPage() {
             tone={overdueInvoices.length > 0 ? "danger" : "neutral"}
             loading={statsLoading}
             icon={Receipt}
+            linkTo="/invoices"
           />
           <OperationalMetric
-            label="Pipeline abierto"
+            label="Ventas abiertas"
             value={String(pipelineTotalDeals)}
             detail={pipelineTotalDeals > 0 ? crc(pipelineTotalValue) : "Sin negocios activos"}
             tone="neutral"
             loading={pipelineLoading}
             icon={KanbanSquare}
+            linkTo="/pipeline"
           />
           <OperationalMetric
             label="Sin atender"
@@ -514,6 +532,7 @@ export default function DashboardPage() {
             tone={unreadCount > 0 ? "warning" : "neutral"}
             loading={statsLoading}
             icon={MessageCircle}
+            linkTo="/inbox"
           />
         </section>
 

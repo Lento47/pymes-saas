@@ -14,12 +14,12 @@ import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api } from "@/lib/api";
 import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
-  Settings, CircleHelp, LogOut, ChevronDown, Check, Shield, BellRing, MessageSquareText,
+  Settings, CircleHelp, LogOut, ChevronDown, Check, Shield,
   Sun, Moon, Search, Menu, X,
-  ShieldCheck, LayoutTemplate, Bot,
+  ShieldCheck, LayoutTemplate, Bot, Plug,
 } from "lucide-react";
 
-type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "documents" | "invoices" | "pipeline" | "automations" | "inventory" | "agent" | "agents" | "notifications" | "settings" | "help";
+type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "invoices" | "pipeline" | "agents" | "automations" | "integrations" | "documents" | "inventory" | "notifications" | "settings" | "help";
 type NavItem = { path: string; icon: React.ElementType; key: NavKey; badge?: "unread" | "overdue" };
 
 const BETA_LABELS: Partial<Record<NavKey, string>> = {
@@ -29,7 +29,7 @@ const BETA_LABELS: Partial<Record<NavKey, string>> = {
   automations: "Recordatorios",
   inbox: "Bandeja WS",
   invoices: "Facturación",
-  dashboard: "Resumen",
+  dashboard: "Inicio",
   inventory: "Inventario",
 };
 
@@ -41,43 +41,40 @@ function navLabel(copy: Record<string, any>, key: NavKey, isBeta?: boolean): str
 }
 
 interface NavGroup {
-  key: "work" | "operations" | "assistants";
+  key: "principal" | "automation" | "operations";
   items: NavItem[];
 }
 
 const PLAN_MIN: Record<string, string> = {
   pipeline: 'STARTER',
-  agent:    'EMPRENDE',
   agents:   'EMPRENDE',
 };
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    key: "work",
+    key: "principal",
     items: [
       { path: "/",              icon: LayoutDashboard, key: "dashboard" },
       { path: "/inbox",         icon: Inbox,           key: "inbox",       badge: "unread" },
-      { path: "/tasks",         icon: CheckSquare,      key: "tasks",       badge: "overdue" },
-      { path: "/pipeline",      icon: KanbanSquare,     key: "pipeline" },
+      { path: "/contacts",      icon: Users,           key: "contacts" },
+      { path: "/tasks",         icon: CheckSquare,     key: "tasks",       badge: "overdue" },
+      { path: "/pipeline",      icon: KanbanSquare,    key: "pipeline" },
+      { path: "/invoices",      icon: Receipt,         key: "invoices" },
+    ],
+  },
+  {
+    key: "automation",
+    items: [
+      { path: "/agents",            icon: Bot,    key: "agents" },
+      { path: "/automations",       icon: Zap,    key: "automations" },
+      { path: "/settings/channels", icon: Plug,   key: "integrations" },
     ],
   },
   {
     key: "operations",
     items: [
-      { path: "/contacts",      icon: Users,           key: "contacts" },
-      { path: "/documents",     icon: FileText,        key: "documents" },
-      { path: "/invoices",      icon: Receipt,         key: "invoices" },
-      { path: "/automations",   icon: Zap,             key: "automations" },
-      { path: "/inventory",     icon: Package,         key: "inventory" },
-    ],
-  },
-  {
-    key: "assistants",
-    items: [
-      { path: "/agents",        icon: Bot,               key: "agents" },
-      { path: "/agent",         icon: MessageSquareText, key: "agent" },
-      { path: "/help",          icon: CircleHelp,       key: "help" },
-      { path: "/notifications", icon: BellRing,        key: "notifications", badge: "unread" },
+      { path: "/documents",     icon: FileText, key: "documents" },
+      { path: "/inventory",     icon: Package,  key: "inventory" },
     ],
   },
 ];
@@ -121,8 +118,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     const map: Record<string, string> = {
       inbox: "whatsapp_inbox", tasks: "orders", pipeline: "contacts",
       contacts: "contacts", documents: "contacts", invoices: "billing",
-      automations: "automations", inventory: "orders", agent: "ai_assistant",
+      automations: "automations", inventory: "orders",
       agents: "ai_assistant", notifications: "conversations",
+      integrations: "whatsapp_inbox",
     };
     const fk = map[key] || key;
     return features?.features?.[fk] !== false;

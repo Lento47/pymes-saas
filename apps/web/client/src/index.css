@@ -80,28 +80,67 @@
 
 /* ── Light theme (opt-in) ── */
 html.light {
-  --bg:           258 20% 98%;
-  --bg-sidebar:   258 16% 100%;
+  /* Background: #F7F8FC — neutral cool-white */
+  --bg:           230 25% 97%;
+  --bg-sidebar:   0 0% 100%;
   --bg-card:      0 0% 100%;
   --bg-elevated:  0 0% 100%;
-  --bg-hover:     262 24% 96%;
-  --bg-active:    262 32% 93%;
-  --border:       258 18% 87%;
-  --fg:           258 12% 14%;
-  --fg-2:         258 8% 44%;
-  --fg-3:         258 6% 62%;
+  /* Hover/active: barely tinted */
+  --bg-hover:     220 14% 96%;
+  --bg-active:    220 14% 93%;
+  /* Borders: #E5E7EB neutral gray */
+  --border:       220 13% 91%;
+  --border-subtle: 220 13% 94%;
+  /* Text: #111827 dark gray */
+  --fg:           222 47% 11%;
+  /* Text secondary: #6B7280 */
+  --fg-2:         220 9% 46%;
+  /* Text tertiary: #9CA3AF */
+  --fg-3:         220 8% 64%;
+  /* Violet accent — same hue, good contrast on white */
   --accent:       262 83% 56%;
   --accent-fg:    0 0% 100%;
   --danger:       0 72% 45%;
   --danger-fg:    0 0% 100%;
   --success:      156 58% 34%;
   --warning:      35 90% 48%;
-  --bg-2:         258 16% 92%;
+  --bg-2:         220 13% 95%;
   --surface:      var(--bg-card);
-  --surface-subtle: 258 18% 97%;
+  --surface-subtle: 220 14% 97%;
   --surface-raised: 0 0% 100%;
-  --border-subtle: 258 16% 91%;
   --link:         262 83% 52%;
+}
+
+/* Light mode: glass panels become solid cards */
+html.light .glass-panel,
+html.light .glass-panel-soft,
+html.light .glass-panel-raised {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.light .glass-panel {
+  background: #ffffff;
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+html.light .glass-panel-soft {
+  background: hsl(var(--bg-card));
+  border: 1px solid hsl(var(--border-subtle));
+  box-shadow: none;
+}
+html.light .glass-panel-raised {
+  background: #ffffff;
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+/* Light mode: sidebar border clean, no glow */
+html.light aside {
+  border-right-color: hsl(var(--border));
+  box-shadow: none;
+}
+/* Light mode: no ambient gradient in app shell */
+html.light .premium-ambient {
+  background-image: none;
 }
 
 :root {
@@ -183,20 +222,11 @@ nav, aside, header, [role="navigation"], [role="banner"] {
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
 }
-html.light .glass-panel {
-  background: rgba(120, 60, 220, 0.03);
-  border: 1px solid rgba(120, 60, 220, 0.1);
-}
-
 .glass-panel-soft {
   background: rgba(120, 80, 220, 0.025);
   border: 1px solid rgba(160, 100, 255, 0.07);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-}
-html.light .glass-panel-soft {
-  background: rgba(120, 60, 220, 0.02);
-  border: 1px solid rgba(120, 60, 220, 0.06);
 }
 
 /* ── Elevated card (border-raised, subtle violet glow) ── */
@@ -204,10 +234,6 @@ html.light .glass-panel-soft {
   background: rgba(120, 80, 220, 0.05);
   border: 1px solid rgba(160, 100, 255, 0.14);
   box-shadow: 0 0 24px rgba(120, 60, 220, 0.08);
-}
-html.light .glass-panel-raised {
-  background: rgba(120, 60, 220, 0.03);
-  border: 1px solid rgba(120, 60, 220, 0.1);
 }
 
 /* ── Premium glow utilities ── */
