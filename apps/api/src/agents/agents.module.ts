@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, OnModuleInit } from "@nestjs/common";
 import { AgentsController } from "./agents.controller";
 import { AgentsService } from "./agents.service";
 import { FlowiseClient } from "./flowise/flowise.client";
@@ -8,6 +8,7 @@ import { AgentUsageService } from "./runtime/agent-usage.service";
 import { TtsModule } from "../tts/tts.module";
 import { LearningModule } from "../learning/learning.module";
 import { PlanLimitsModule } from "../common/plan-limits/plan-limits.module";
+import { SupportAgentTemplateSeed } from "./support-agent-template.seed";
 
 @Module({
   imports: [TtsModule, LearningModule, PlanLimitsModule],
@@ -18,7 +19,14 @@ import { PlanLimitsModule } from "../common/plan-limits/plan-limits.module";
     AgentRuntimeService,
     AgentGuardrailsService,
     AgentUsageService,
+    SupportAgentTemplateSeed,
   ],
   exports: [AgentRuntimeService],
 })
-export class AgentsModule {}
+export class AgentsModule implements OnModuleInit {
+  constructor(private readonly supportSeed: SupportAgentTemplateSeed) {}
+
+  async onModuleInit() {
+    await this.supportSeed.seed();
+  }
+}

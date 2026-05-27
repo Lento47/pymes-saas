@@ -651,6 +651,12 @@ export const api = {
     ),
   updatePlaybookStatus: (id: string, status: string) =>
     request<Record<string, any>>("PATCH", `/api/learning/playbooks/${id}`, { status }),
+
+  // ── Platform AI Config ───────────────────────────────────────────────────
+  platformGetAiConfig: () =>
+    request<Record<string, any>>("GET", "/api/platform/ai-config"),
+  platformUpdateAiConfig: (data: Record<string, any>) =>
+    request<Record<string, any>>("PATCH", "/api/platform/ai-config", data),
 };
 
 // ── Session activity tracking ────────────────────────────────────────────

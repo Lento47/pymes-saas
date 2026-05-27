@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { AiTriageService } from "./ai-triage.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -6,6 +6,7 @@ import { EngineeringFixService } from "./engineering-fix.service";
 import { SupportNotificationService } from "./support-notification.service";
 import { KnowledgeBaseService } from "./knowledge-base.service";
 import { Prisma } from "@prisma/client";
+import { AgentRuntimeService } from "../agents/runtime/agent-runtime.service";
 
 export interface DiagnosticInput {
   workspaceId: string;
@@ -60,6 +61,7 @@ export class DiagnosticService {
     private readonly supportNotifications: SupportNotificationService,
     private readonly knowledgeBase: KnowledgeBaseService,
     private readonly triage: AiTriageService,
+    @Optional() private readonly agentRuntime?: AgentRuntimeService,
   ) {}
 
   // ADMIN/platform-admin: full workspace view. Otherwise scope to caller's
@@ -288,6 +290,24 @@ export class DiagnosticService {
         );
     }
 
+    // Auto-dispatch support agent for critical/high bugs (fire-and-forget)
+    const AUTO_TRIGGER_CATEGORIES = ["PRODUCT_BUG", "PLATFORM_INCIDENT"];
+    const AUTO_TRIGGER_RISKS = ["critical", "high", "CRITICAL", "HIGH"];
+    if (
+      AUTO_TRIGGER_CATEGORIES.includes(classification.category) &&
+      AUTO_TRIGGER_RISKS.includes(classification.risk_level)
+    ) {
+      this.autoDispatchSupportAgent(
+        caseRecord.id,
+        input.workspaceId,
+        `Error detectado — ${classification.title}\n${classification.recommendation}\n${input.user_description ?? ""}`.trim(),
+      ).catch((err: unknown) =>
+        this.logger.warn(
+          `[support-agent] auto-dispatch failed: ${err instanceof Error ? err.message : String(err)}`,
+        ),
+      );
+    }
+
     return {
       case_id: caseRecord.id,
       category: classification.category,
@@ -303,6 +323,55 @@ export class DiagnosticService {
           }
         : undefined,
     };
+  }
+
+  /**
+   * Auto-dispatch a support agent session via Flowise when a critical error is detected.
+   * Looks for an AgentInstance with config_json.is_support_agent === true.
+   * Silently skips if no support agent is installed for the workspace.
+   */
+  private async autoDispatchSupportAgent(
+    diagnosticCaseId: string,
+    workspaceId: string,
+    errorContext: string,
+  ): Promise<void> {
+    if (!this.agentRuntime) return;
+
+    // Find a support agent instance in this workspace
+    const supportInstance = await this.prisma.agentInstance.findFirst({
+      where: { workspace_id: workspaceId, status: "ACTIVE" },
+    });
+    if (!supportInstance) return;
+
+    // Check the is_support_agent flag in config_json
+    const cfg = (supportInstance.config_json as Record<string, unknown>) ?? {};
+    if (!cfg.is_support_agent) return;
+
+    const question = `DIAGNÓSTICO AUTOMÁTICO — Case ID: ${diagnosticCaseId}\n\n${errorContext}\n\nAnaliza este error y propón un fix detallado en JSON: { "analysis": "...", "root_cause": "...", "fix_steps": ["..."], "files_to_check": ["..."] }`;
+
+    this.logger.log(`[support-agent] dispatching to instance ${supportInstance.id} for case ${diagnosticCaseId}`);
+
+    const result = await this.agentRuntime.run({
+      agent_instance_id: supportInstance.id,
+      workspace_id: workspaceId,
+      question,
+      channel: "ALL",
+      conversation_id: diagnosticCaseId, // use case ID as session key
+    });
+
+    if (result.text) {
+      // Store the agent's analysis in the diagnostic case evidence
+      await this.prisma.supportDiagnosticCase.update({
+        where: { id: diagnosticCaseId },
+        data: {
+          evidence_json: {
+            support_agent_analysis: result.text.slice(0, 4000),
+            support_agent_dispatched_at: new Date().toISOString(),
+          } as any,
+        },
+      });
+      this.logger.log(`[support-agent] analysis stored for case ${diagnosticCaseId}`);
+    }
   }
 
   private classify(

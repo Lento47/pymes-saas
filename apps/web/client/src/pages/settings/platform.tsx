@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Building2, UserPlus, UserMinus } from "lucide-react";
+import { Search, Building2, UserPlus, UserMinus, Bot, Github, KeyRound, Phone } from "lucide-react";
 import { SettingsLayout } from "@/components/settings/settings-layout";
+import { SecretInput } from "@/components/settings/secret-input";
 
 const ROLE_COLORS: Record<string, string> = {
   OWNER: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
@@ -26,6 +27,188 @@ export default function PlatformSettingsPage() {
   if (!user?.is_platform_admin) return <Redirect to="/settings/workspace" />;
 
   return <PlatformContent />;
+}
+
+// ── Platform AI & GitHub Config ──────────────────────────────────────────────
+function PlatformAiConfigSection() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const AI_MODELS = [
+    "mimo/mimo-v2.5-pro",
+    "mimo/mimo-v2.5",
+    "deepseek/deepseek-chat",
+    "deepseek/deepseek-r1",
+    "mistral/mistral-large-latest",
+    "anthropic/claude-3-5-sonnet",
+    "openai/gpt-4o",
+    "openai/gpt-4o-mini",
+  ];
+
+  const [mimoKey, setMimoKey] = useState("");
+  const [adminPhones, setAdminPhones] = useState("");
+  const [adminModel, setAdminModel] = useState("mimo/mimo-v2.5-pro");
+  const [githubToken, setGithubToken] = useState("");
+  const [githubOwner, setGithubOwner] = useState("");
+  const [githubRepo, setGithubRepo] = useState("");
+
+  // Masks used when the server returns "••••••" (field is set but hidden)
+  const MASKED = "••••••";
+  const isMasked = (v: string) => v === MASKED || v?.startsWith("••");
+
+  const { data: cfg, isLoading } = useQuery({
+    queryKey: ["/api/platform/ai-config"],
+    queryFn: () => api.platformGetAiConfig(),
+  });
+
+  useEffect(() => {
+    if (!cfg) return;
+    // Server returns _set flags (bool) for secrets, never the raw values
+    setMimoKey(cfg.mimo_api_key_set ? MASKED : "");
+    setAdminPhones(cfg.admin_phones ?? "");
+    setAdminModel(cfg.admin_ai_model ?? "mimo/mimo-v2.5-pro");
+    setGithubToken(cfg.github_token_set ? MASKED : "");
+    setGithubOwner(cfg.github_repo_owner ?? "");
+    setGithubRepo(cfg.github_repo_name ?? "");
+  }, [cfg]);
+
+  const save = useMutation({
+    mutationFn: () => {
+      const payload: Record<string, any> = {
+        admin_phones: adminPhones || undefined,
+        admin_ai_model: adminModel || undefined,
+        github_repo_owner: githubOwner || undefined,
+        github_repo_name: githubRepo || undefined,
+      };
+      // Only send secrets if the user actually changed them (not the mask)
+      if (mimoKey && !isMasked(mimoKey)) payload.mimo_api_key = mimoKey;
+      if (githubToken && !isMasked(githubToken)) payload.github_token = githubToken;
+      return api.platformUpdateAiConfig(payload);
+    },
+    onSuccess: () => {
+      toast({ title: "Configuración de IA guardada" });
+      qc.invalidateQueries({ queryKey: ["/api/platform/ai-config"] });
+    },
+    onError: (e: any) =>
+      toast({ title: "Error al guardar", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-[hsl(var(--elevated))] p-4 space-y-4">
+      {/* MiMo API Key */}
+      <div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label className="text-xs">MiMo API Key</Label>
+          {cfg?.mimo_api_key_set && (
+            <Badge variant="outline" className="text-[10px] border-green-500/30 text-green-400 bg-green-500/10 ml-1">Configurada</Badge>
+          )}
+        </div>
+        <SecretInput
+          value={mimoKey}
+          onChange={setMimoKey}
+          placeholder="Ingresá tu MiMo API Key…"
+        />
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Usada para el admin de plataforma y modelos MiMo. Base URL: <code className="text-xs">token-plan-cn.xiaomimimo.com/v1</code>
+        </p>
+      </div>
+
+      {/* Admin AI Model */}
+      <div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <Bot className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label className="text-xs">Modelo IA del Administrador</Label>
+        </div>
+        <Select value={adminModel} onValueChange={setAdminModel}>
+          <SelectTrigger className="bg-[hsl(var(--elevated))] border-border text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-card border-border">
+            {AI_MODELS.map((m) => (
+              <SelectItem key={m} value={m} className="text-xs font-mono">{m}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Modelo que responde cuando el admin de plataforma escribe en cualquier WhatsApp/Telegram del sistema.
+        </p>
+      </div>
+
+      {/* Admin Phones */}
+      <div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label className="text-xs">Teléfonos del Administrador</Label>
+        </div>
+        <Input
+          value={adminPhones}
+          onChange={(e) => setAdminPhones(e.target.value)}
+          placeholder="+50688888888, +50677777777"
+          className="bg-[hsl(var(--elevated))] border-border text-sm"
+        />
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Números separados por coma. Cualquier mensaje desde estos teléfonos activa el modo admin (sin restricciones de negocio).
+        </p>
+      </div>
+
+      <div className="h-px bg-border" />
+
+      {/* GitHub Token */}
+      <div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <Github className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label className="text-xs">GitHub Personal Access Token</Label>
+          {cfg?.github_token_set && (
+            <Badge variant="outline" className="text-[10px] border-green-500/30 text-green-400 bg-green-500/10 ml-1">Configurado</Badge>
+          )}
+        </div>
+        <SecretInput
+          value={githubToken}
+          onChange={setGithubToken}
+          placeholder="ghp_xxxxxxxxxxxxxxxx"
+        />
+        <p className="text-[11px] text-muted-foreground mt-1">
+          PAT con permisos <code className="text-xs">repo</code>. Se usa para crear PRs automáticos al aprobar un fix de soporte.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs">GitHub Owner</Label>
+          <Input
+            value={githubOwner}
+            onChange={(e) => setGithubOwner(e.target.value)}
+            placeholder="lento47"
+            className="mt-1 bg-[hsl(var(--elevated))] border-border text-sm"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">GitHub Repo</Label>
+          <Input
+            value={githubRepo}
+            onChange={(e) => setGithubRepo(e.target.value)}
+            placeholder="pymes-saas"
+            className="mt-1 bg-[hsl(var(--elevated))] border-border text-sm"
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between pt-1">
+        <p className="text-[11px] text-muted-foreground">
+          Los secretos se cifran con AES-256-GCM antes de guardarse en la base de datos.
+        </p>
+        <Button
+          size="sm"
+          onClick={() => save.mutate()}
+          disabled={save.isPending || isLoading}
+          className="bg-primary hover:bg-primary/90 min-w-[110px]"
+        >
+          {save.isPending ? "Guardando…" : "Guardar config"}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function PlatformContent() {
@@ -137,6 +320,20 @@ function PlatformContent() {
   return (
     <SettingsLayout>
       <div className="space-y-6">
+
+        {/* ── IA de Plataforma ──────────────────────────────────────────── */}
+        <div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Bot className="h-4 w-4" />IA de Plataforma
+          </h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Configuración de la IA del administrador, teléfonos de acceso directo y GitHub para auto-PRs de soporte.
+          </p>
+          <PlatformAiConfigSection />
+        </div>
+
+        <div className="h-px bg-border" />
+
         <div>
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <Search className="h-4 w-4" />Buscar usuarios
