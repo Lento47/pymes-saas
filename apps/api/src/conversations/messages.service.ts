@@ -1104,11 +1104,7 @@ export class MessagesService {
         },
       });
       const senderPhone = convForAdmin?.contact?.phone ?? "";
-<<<<<<< HEAD
-      if (senderPhone && this.platformAdmin.isPlatformAdmin(senderPhone)) {
-=======
       if (senderPhone && await this.platformAdmin.isPlatformAdmin(senderPhone)) {
->>>>>>> 1f1ade0 (feat(platform): admin AI config UI + GitHub PR support + agent seed)
         this.logger.log(`[platform-admin] admin message detected — conv=${conversationId}`);
         const channel = convForAdmin?.channel_id
           ? await this.prisma.channel.findUnique({
@@ -1130,10 +1126,6 @@ export class MessagesService {
       }
     }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 1f1ade0 (feat(platform): admin AI config UI + GitHub PR support + agent seed)
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { plan: true, settings_json: true },

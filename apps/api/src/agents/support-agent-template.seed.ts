@@ -50,7 +50,7 @@ export class SupportAgentTemplateSeed {
           name: "Agente de Soporte Técnico",
           description:
             "Detecta errores de plataforma, analiza causas raíz y propone fixes estructurados con diffs de código. Se activa automáticamente en errores PRODUCT_BUG y PLATFORM_INCIDENT de severidad HIGH/CRITICAL.",
-          provider: "NATIVE",
+          provider: "INTERNAL",
           channel_scope: "ALL",
           is_published: true,
           is_free_tier: false,
