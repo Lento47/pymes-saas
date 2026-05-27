@@ -203,10 +203,10 @@ export class PaypalController {
   }
 
   private amountToTokens(amountUsd: number): number {
-    if (amountUsd >= 69.99) return 5_000_000;
-    if (amountUsd >= 24.99) return 1_500_000;
-    if (amountUsd >= 9.99) return 500_000;
-    if (amountUsd >= 2.99) return 100_000;
+    if (amountUsd >= 49.99) return 5_000_000;
+    if (amountUsd >= 19.99) return 1_500_000;
+    if (amountUsd >= 9.99)  return 500_000;
+    if (amountUsd >= 2.99)  return 100_000;
     return Math.round(amountUsd * 33_445);
   }
 }

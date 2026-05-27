@@ -12,6 +12,7 @@ import { PrismaService } from "../common/prisma/prisma.service";
 import { Paddle, Environment, LogLevel, type EventEntity } from "@paddle/paddle-node-sdk";
 import { BillingInvoiceService } from "./billing-invoice.service";
 import { PLAN_ORDER } from "../common/plan-limits/plan-limits.service";
+import { AiTokenMeteringService } from "../ai-tokens/ai-token-metering.service";
 import { Resend } from "resend";
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ export class PaddleSdkService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly billingInvoice: BillingInvoiceService,
+    private readonly aiTokens: AiTokenMeteringService,
   ) {
     const apiKey = this.configService.get<string>("PADDLE_API_KEY");
     const environment = this.configService.get<string>("PADDLE_ENVIRONMENT", "sandbox");
@@ -787,6 +789,21 @@ export class PaddleSdkService {
           data: { settings_json: settings as Prisma.InputJsonValue },
         });
         this.logger.log(`Add-on activated: ${addonKey} for workspace ${workspaceId}`);
+
+        // Grant 500k AI tokens when the AI Assistant add-on is activated.
+        // Cost to PymesHub: ~$0.08/month (MiMo Flash rate). Perceived value: $9.99.
+        if (addonKey === "ai_assistant") {
+          const AI_ADDON_BONUS_TOKENS = 500_000;
+          await this.aiTokens.addTokens(
+            workspaceId,
+            AI_ADDON_BONUS_TOKENS,
+            "BONUS",
+            "Add-on Asistente IA — 500k tokens IA incluidos en el plan mensual",
+          );
+          this.logger.log(
+            `Granted ${AI_ADDON_BONUS_TOKENS} bonus AI tokens to workspace ${workspaceId} (ai_assistant add-on)`,
+          );
+        }
       } else {
         this.logger.log(`Updating workspace ${workspaceId} plan to ${plan}`);
         await this.prisma.workspace.update({

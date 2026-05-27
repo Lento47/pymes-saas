@@ -3,10 +3,10 @@ import { PrismaService } from "../common/prisma/prisma.service";
 import type { AssistantMessage, ChatTokenUsage } from "../ai/cloudflare-ai.service";
 
 export const AI_TOKEN_PACKS = [
-  { id: "ai_tokens_100k", tokens: 100_000, price_usd: 2.99, label: "100k tokens IA" },
-  { id: "ai_tokens_500k", tokens: 500_000, price_usd: 9.99, label: "500k tokens IA" },
-  { id: "ai_tokens_1500k", tokens: 1_500_000, price_usd: 24.99, label: "1.5M tokens IA" },
-  { id: "ai_tokens_5000k", tokens: 5_000_000, price_usd: 69.99, label: "5M tokens IA" },
+  { id: "ai_tokens_100k",  tokens: 100_000,   price_usd: 2.99,  label: "100k tokens IA" },
+  { id: "ai_tokens_500k",  tokens: 500_000,   price_usd: 9.99,  label: "500k tokens IA" },
+  { id: "ai_tokens_1500k", tokens: 1_500_000, price_usd: 19.99, label: "1.5M tokens IA" },
+  { id: "ai_tokens_5000k", tokens: 5_000_000, price_usd: 49.99, label: "5M tokens IA" },
 ];
 
 export interface AiTokenBalanceSnapshot {

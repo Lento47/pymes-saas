@@ -192,7 +192,7 @@ export const ADD_ONS: AddOn[] = [
     key: 'ai_assistant',
     name: 'Asistente IA',
     monthlyUSD: 29,
-    description: 'Sugerencias y automatizaciones con inteligencia artificial',
+    description: 'Incluye 500k tokens IA/mes + sugerencias y automatizaciones con inteligencia artificial',
     paddlePriceIdMonthly: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PADDLE_PRICE_AI_ASSISTANT_MONTHLY) || undefined,
     paddlePriceIdAnnual: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PADDLE_PRICE_AI_ASSISTANT_ANNUAL) || undefined,
   },
