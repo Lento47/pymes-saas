@@ -204,10 +204,14 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
         `[platform-admin] MiMo call failed (model=${model}, status=${statusHint}): ${err?.message ?? err}`,
       );
 
-      // Fall back on ANY MiMo error — retry once with CF gateway
-      const cfFallback =
+      // Fall back on ANY MiMo error — retry once with CF gateway.
+      // If SYSTEM_AI_MODEL is also a MiMo model, skip it to avoid the same error.
+      let cfFallback =
         this.config.get<string>("SYSTEM_AI_MODEL") ??
         "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+      if (cfFallback.startsWith("mimo/")) {
+        cfFallback = "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+      }
       this.logger.warn(
         `[platform-admin] Falling back to CF gateway model: ${cfFallback}`,
       );
