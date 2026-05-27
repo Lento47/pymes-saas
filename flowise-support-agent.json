@@ -1,0 +1,195 @@
+{
+  "nodes": [
+    {
+      "id": "openAIFunctionAgent_0",
+      "position": { "x": 600, "y": 300 },
+      "type": "customNode",
+      "data": {
+        "id": "openAIFunctionAgent_0",
+        "label": "OpenAI Function Agent",
+        "name": "openAIFunctionAgent",
+        "type": "AgentExecutor",
+        "category": "Agents",
+        "inputs": {
+          "tools": ["tool_read_file", "tool_recent_commits", "tool_apply_fix", "tool_railway_logs", "tool_get_errors", "tool_list_fix_cases"],
+          "memory": "bufferMemory_0",
+          "model": "chatOpenAI_0",
+          "systemMessage": "Eres un SRE senior de PymesHub, una plataforma SaaS para pymes en Latinoamérica.\nStack: NestJS + Prisma (PostgreSQL) en apps/api, React/Vite en apps/web.\nRepo: github.com/lento47/pymes-saas, rama master.\n\nCuando recibas un reporte de error, sigue este proceso:\n\n1. USA get_railway_logs para ver los logs recientes. Busca errores relevantes.\n2. USA get_errors para ver los error reports del workspace si aplica.\n3. Identifica el archivo más probable que causó el error.\n4. USA read_github_file para leer ese archivo y entender el código real.\n5. USA get_recent_commits para ese archivo. ¿Hubo un commit reciente que lo rompió?\n6. Analiza el bug con el código real que leíste.\n7. Genera el código corregido COMPLETO del archivo (no solo el diff).\n8. USA apply_github_fix con el archivo corregido para crear un PR real.\n\nReglas importantes:\n- SIEMPRE lee el código real antes de proponer un fix (nunca adivines).\n- El campo 'content' en apply_github_fix debe ser el archivo COMPLETO corregido (no un diff).\n- Si el fix involucra múltiples archivos, inclúyelos todos en el mismo PR.\n- Sé conciso en tus explicaciones: el admin es técnico.\n- Si no podés determinar el fix con certeza, reporta tus hallazgos y pide más contexto.\n- Escribe los mensajes de commit en inglés y los body del PR en español."
+        },
+        "outputAnchors": [{ "id": "openAIFunctionAgent_0-output", "label": "AgentExecutor" }]
+      }
+    },
+    {
+      "id": "chatOpenAI_0",
+      "position": { "x": 200, "y": 100 },
+      "type": "customNode",
+      "data": {
+        "id": "chatOpenAI_0",
+        "label": "ChatOpenAI (DeepSeek via CF Gateway)",
+        "name": "chatOpenAI",
+        "type": "BaseChatModel",
+        "inputs": {
+          "modelName": "deepseek-chat",
+          "temperature": 0.2,
+          "maxTokens": 8000,
+          "openAIApiKey": "{{GATEWAY_KEY_DEEPSEEK}}",
+          "openAIBasePath": "https://gateway.ai.cloudflare.com/v1/{{CF_GATEWAY_ACCOUNT_ID}}/{{CF_GATEWAY_ID}}/deepseek"
+        }
+      }
+    },
+    {
+      "id": "bufferMemory_0",
+      "position": { "x": 200, "y": 300 },
+      "type": "customNode",
+      "data": {
+        "id": "bufferMemory_0",
+        "label": "Buffer Memory",
+        "name": "bufferMemory",
+        "type": "BaseChatMemory",
+        "inputs": { "memoryKey": "chat_history", "inputKey": "input" }
+      }
+    },
+    {
+      "id": "tool_read_file",
+      "position": { "x": 1000, "y": 100 },
+      "type": "customNode",
+      "data": {
+        "id": "tool_read_file",
+        "label": "Read GitHub File",
+        "name": "customTool",
+        "type": "Tool",
+        "inputs": {
+          "name": "read_github_file",
+          "description": "Lee el contenido de un archivo del repositorio de PymesHub en GitHub. Úsalo para ver el código real antes de proponer un fix. Args: { path: string (ej: 'apps/api/src/ai/diagnostic.service.ts'), ref?: string (default: 'master') }",
+          "url": "{{API_BASE_URL}}/api/agent/tool",
+          "method": "POST",
+          "headers": "{\"Authorization\": \"Bearer {{PYMESHUB_FOUNDER_API_KEY}}\", \"Content-Type\": \"application/json\"}",
+          "body": "{\"workspace_slug\": \"{{WORKSPACE_SLUG}}\", \"tool\": \"read_github_file\", \"arguments\": {input} }"
+        }
+      }
+    },
+    {
+      "id": "tool_recent_commits",
+      "position": { "x": 1000, "y": 250 },
+      "type": "customNode",
+      "data": {
+        "id": "tool_recent_commits",
+        "label": "Get Recent Commits",
+        "name": "customTool",
+        "type": "Tool",
+        "inputs": {
+          "name": "get_recent_commits",
+          "description": "Obtiene los commits recientes que modificaron un archivo específico. Úsalo para detectar si un commit reciente introdujo una regresión. Args: { path: string, limit?: number (default: 10) }",
+          "url": "{{API_BASE_URL}}/api/agent/tool",
+          "method": "POST",
+          "headers": "{\"Authorization\": \"Bearer {{PYMESHUB_FOUNDER_API_KEY}}\", \"Content-Type\": \"application/json\"}",
+          "body": "{\"workspace_slug\": \"{{WORKSPACE_SLUG}}\", \"tool\": \"get_recent_commits\", \"arguments\": {input} }"
+        }
+      }
+    },
+    {
+      "id": "tool_apply_fix",
+      "position": { "x": 1000, "y": 400 },
+      "type": "customNode",
+      "data": {
+        "id": "tool_apply_fix",
+        "label": "Apply GitHub Fix (Real PR)",
+        "name": "customTool",
+        "type": "Tool",
+        "inputs": {
+          "name": "apply_github_fix",
+          "description": "Crea un branch, commitea los archivos corregidos y abre un PR REAL en GitHub con los cambios de código. El contenido de cada archivo debe ser el archivo COMPLETO corregido (no un diff). Args: { branch_name: string, files: [{path: string, content: string}], pr_title: string, pr_body?: string, base_branch?: string, diagnostic_case_id?: string }",
+          "url": "{{API_BASE_URL}}/api/agent/tool",
+          "method": "POST",
+          "headers": "{\"Authorization\": \"Bearer {{PYMESHUB_FOUNDER_API_KEY}}\", \"Content-Type\": \"application/json\"}",
+          "body": "{\"workspace_slug\": \"{{WORKSPACE_SLUG}}\", \"tool\": \"apply_github_fix\", \"arguments\": {input} }"
+        }
+      }
+    },
+    {
+      "id": "tool_railway_logs",
+      "position": { "x": 1000, "y": 550 },
+      "type": "customNode",
+      "data": {
+        "id": "tool_railway_logs",
+        "label": "Get Railway Logs",
+        "name": "customTool",
+        "type": "Tool",
+        "inputs": {
+          "name": "get_railway_logs",
+          "description": "Obtiene los logs recientes del deployment de la API en Railway. Úsalo SIEMPRE primero para ver qué errores están ocurriendo en producción. Args: { limit?: number (default: 100, max: 500) }",
+          "url": "{{API_BASE_URL}}/api/agent/tool",
+          "method": "POST",
+          "headers": "{\"Authorization\": \"Bearer {{PYMESHUB_FOUNDER_API_KEY}}\", \"Content-Type\": \"application/json\"}",
+          "body": "{\"workspace_slug\": \"{{WORKSPACE_SLUG}}\", \"tool\": \"get_railway_logs\", \"arguments\": {input} }"
+        }
+      }
+    },
+    {
+      "id": "tool_get_errors",
+      "position": { "x": 1000, "y": 700 },
+      "type": "customNode",
+      "data": {
+        "id": "tool_get_errors",
+        "label": "Get Error Reports",
+        "name": "customTool",
+        "type": "Tool",
+        "inputs": {
+          "name": "get_errors",
+          "description": "Obtiene los error reports recientes del workspace. Útil para ver errores categorizados. Args: { limit?: number (default: 10) }",
+          "url": "{{API_BASE_URL}}/api/agent/tool",
+          "method": "POST",
+          "headers": "{\"Authorization\": \"Bearer {{PYMESHUB_FOUNDER_API_KEY}}\", \"Content-Type\": \"application/json\"}",
+          "body": "{\"workspace_slug\": \"{{WORKSPACE_SLUG}}\", \"tool\": \"get_errors\", \"arguments\": {input} }"
+        }
+      }
+    },
+    {
+      "id": "tool_list_fix_cases",
+      "position": { "x": 1000, "y": 850 },
+      "type": "customNode",
+      "data": {
+        "id": "tool_list_fix_cases",
+        "label": "List Fix Cases",
+        "name": "customTool",
+        "type": "Tool",
+        "inputs": {
+          "name": "list_fix_cases",
+          "description": "Lista los casos de fix de ingeniería pendientes o en progreso. Úsalo para ver qué bugs ya están siendo trabajados. Args: {}",
+          "url": "{{API_BASE_URL}}/api/agent/tool",
+          "method": "POST",
+          "headers": "{\"Authorization\": \"Bearer {{PYMESHUB_FOUNDER_API_KEY}}\", \"Content-Type\": \"application/json\"}",
+          "body": "{\"workspace_slug\": \"{{WORKSPACE_SLUG}}\", \"tool\": \"list_fix_cases\", \"arguments\": {} }"
+        }
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "chatOpenAI_0", "target": "openAIFunctionAgent_0", "sourceHandle": "chatOpenAI_0-output", "targetHandle": "openAIFunctionAgent_0-model" },
+    { "id": "e2", "source": "bufferMemory_0", "target": "openAIFunctionAgent_0", "sourceHandle": "bufferMemory_0-output", "targetHandle": "openAIFunctionAgent_0-memory" },
+    { "id": "e3", "source": "tool_read_file", "target": "openAIFunctionAgent_0", "sourceHandle": "tool_read_file-output", "targetHandle": "openAIFunctionAgent_0-tools" },
+    { "id": "e4", "source": "tool_recent_commits", "target": "openAIFunctionAgent_0", "sourceHandle": "tool_recent_commits-output", "targetHandle": "openAIFunctionAgent_0-tools" },
+    { "id": "e5", "source": "tool_apply_fix", "target": "openAIFunctionAgent_0", "sourceHandle": "tool_apply_fix-output", "targetHandle": "openAIFunctionAgent_0-tools" },
+    { "id": "e6", "source": "tool_railway_logs", "target": "openAIFunctionAgent_0", "sourceHandle": "tool_railway_logs-output", "targetHandle": "openAIFunctionAgent_0-tools" },
+    { "id": "e7", "source": "tool_get_errors", "target": "openAIFunctionAgent_0", "sourceHandle": "tool_get_errors-output", "targetHandle": "openAIFunctionAgent_0-tools" },
+    { "id": "e8", "source": "tool_list_fix_cases", "target": "openAIFunctionAgent_0", "sourceHandle": "tool_list_fix_cases-output", "targetHandle": "openAIFunctionAgent_0-tools" }
+  ],
+  "_comment": {
+    "setup": "1. Importa este JSON en Flowise → Load Chatflow",
+    "placeholders": {
+      "{{API_BASE_URL}}": "https://api.pymeshub.lat",
+      "{{PYMESHUB_FOUNDER_API_KEY}}": "tu PYMESHUB_FOUNDER_API_KEY (del env de Railway)",
+      "{{WORKSPACE_SLUG}}": "el slug del workspace de plataforma (ej: pymeshub-internal)",
+      "{{GATEWAY_KEY_DEEPSEEK}}": "tu GATEWAY_KEY_DEEPSEEK (del env de Railway)",
+      "{{CF_GATEWAY_ACCOUNT_ID}}": "tu CF_GATEWAY_ACCOUNT_ID",
+      "{{CF_GATEWAY_ID}}": "tu CF_GATEWAY_ID (ej: pymeshub)"
+    },
+    "env_vars_in_api_service": [
+      "RAILWAY_API_TOKEN — PAT de Railway con permisos de lectura",
+      "RAILWAY_PROJECT_ID — inyectado automáticamente por Railway",
+      "RAILWAY_SERVICE_ID — inyectado automáticamente por Railway",
+      "FLOWISE_MAX_OUTPUT_CHARS — cambiar a 32000"
+    ],
+    "model_alternatives": "Por defecto usa DeepSeek via Cloudflare AI Gateway. MiMo NO es compatible con Flowise (header api-key no estándar). Alternativa: apuntar openAIBasePath a https://api.deepseek.com/v1 con API key directa de DeepSeek."
+  }
+}

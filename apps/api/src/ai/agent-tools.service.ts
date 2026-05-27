@@ -1,9 +1,12 @@
-import { Injectable, Logger, BadRequestException } from "@nestjs/common";
+import { Injectable, Logger, BadRequestException, Optional } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { InsightsService } from "../insights/insights.service";
 import { SearchService } from "../search/search.service";
 import { DiagnosticService } from "./diagnostic.service";
 import { EngineeringFixService } from "./engineering-fix.service";
+import { GitHubService } from "../platform/github.service";
+import { RailwayService } from "../platform/railway.service";
+import { PlatformSettingsService } from "../platform/platform-settings.service";
 
 @Injectable()
 export class AgentToolsService {
@@ -15,6 +18,9 @@ export class AgentToolsService {
     private readonly searchService: SearchService,
     private readonly diagnostic: DiagnosticService,
     private readonly fixService: EngineeringFixService,
+    @Optional() private readonly github?: GitHubService,
+    @Optional() private readonly railway?: RailwayService,
+    @Optional() private readonly platformSettings?: PlatformSettingsService,
   ) {}
 
   async execute(workspaceId: string, tool: string, args: Record<string, any>): Promise<any> {
@@ -75,6 +81,15 @@ export class AgentToolsService {
         return this.approveFix(workspaceId, args);
       case "reject_fix":
         return this.rejectFix(workspaceId, args);
+      // ── Platform / SRE tools (require GitHub token in PlatformSettings) ──
+      case "read_github_file":
+        return this.readGitHubFile(args);
+      case "get_recent_commits":
+        return this.getRecentCommits(args);
+      case "apply_github_fix":
+        return this.applyGitHubFix(args);
+      case "get_railway_logs":
+        return this.getRailwayLogs(args);
       default:
         throw new BadRequestException(`Unknown tool: ${tool}`);
     }
@@ -454,5 +469,136 @@ export class AgentToolsService {
       workspaceId,
       isPlatformAdmin: false,
     });
+  }
+
+  // ── Platform / SRE tools ─────────────────────────────────────────────────
+
+  private async getGitHubCreds(): Promise<{ token: string; owner: string; repo: string } | null> {
+    if (!this.github || !this.platformSettings) return null;
+    try {
+      const cfg = await this.platformSettings.getDecrypted();
+      if (!cfg.github_token || !cfg.github_repo_owner || !cfg.github_repo_name) return null;
+      return { token: cfg.github_token, owner: cfg.github_repo_owner, repo: cfg.github_repo_name };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Read a file from the GitHub repository.
+   * args: { path: string, ref?: string }
+   */
+  private async readGitHubFile(args: Record<string, any>) {
+    if (!args.path) throw new BadRequestException("read_github_file requires path");
+    const creds = await this.getGitHubCreds();
+    if (!creds) {
+      return { error: "GitHub not configured. Set github_token, github_repo_owner, github_repo_name in /settings/platform." };
+    }
+    const result = await this.github!.readFile({ ...creds, path: args.path, ref: args.ref ?? "master" });
+    if (!result) return { error: `File not found: ${args.path}` };
+    return {
+      path: args.path,
+      content: result.content.length > 12000
+        ? result.content.slice(0, 12000) + "\n... (truncated)"
+        : result.content,
+      sha: result.sha,
+      size: result.content.length,
+    };
+  }
+
+  /**
+   * Get recent commits that touched a file.
+   * args: { path: string, limit?: number }
+   */
+  private async getRecentCommits(args: Record<string, any>) {
+    if (!args.path) throw new BadRequestException("get_recent_commits requires path");
+    const creds = await this.getGitHubCreds();
+    if (!creds) {
+      return { error: "GitHub not configured." };
+    }
+    const commits = await this.github!.getRecentCommits({ ...creds, path: args.path, limit: args.limit ?? 10 });
+    return { path: args.path, commits };
+  }
+
+  /**
+   * Apply code changes to a branch and open a real PR.
+   * args: {
+   *   branch_name: string,
+   *   files: Array<{ path: string, content: string }>,
+   *   pr_title: string,
+   *   pr_body: string,
+   *   base_branch?: string,
+   *   diagnostic_case_id?: string  // optional: links back to a diagnostic case
+   * }
+   */
+  private async applyGitHubFix(args: Record<string, any>) {
+    if (!args.branch_name) throw new BadRequestException("apply_github_fix requires branch_name");
+    if (!Array.isArray(args.files) || args.files.length === 0) {
+      throw new BadRequestException("apply_github_fix requires files[]");
+    }
+    if (!args.pr_title) throw new BadRequestException("apply_github_fix requires pr_title");
+
+    const creds = await this.getGitHubCreds();
+    if (!creds) {
+      return { error: "GitHub not configured. Set github_token, github_repo_owner, github_repo_name in /settings/platform." };
+    }
+
+    try {
+      const result = await this.github!.applyFileChanges({
+        ...creds,
+        branchName: args.branch_name,
+        baseBranch: args.base_branch ?? "master",
+        files: args.files,
+        prTitle: args.pr_title,
+        prBody: args.pr_body ?? `Fix propuesto por agente de soporte PymesHub\n\nArchivos modificados: ${args.files.map((f: any) => f.path).join(", ")}`,
+      });
+
+      // If a diagnostic_case_id was provided, update its fix case with the PR URL
+      if (args.diagnostic_case_id) {
+        try {
+          const fixCase = await (this.prisma as any).engineeringFixCase.findFirst({
+            where: { diagnostic_case_id: args.diagnostic_case_id },
+            select: { id: true },
+          });
+          if (fixCase) {
+            await (this.prisma as any).engineeringFixCase.update({
+              where: { id: fixCase.id },
+              data: { pr_url: result.prUrl, pr_number: result.prNumber, status: "PR_OPENED" },
+            });
+          }
+        } catch (err: any) {
+          this.logger.warn(`[tools] Failed to update fix case with PR: ${err?.message}`);
+        }
+      }
+
+      return {
+        success: true,
+        pr_url: result.prUrl,
+        pr_number: result.prNumber,
+        branch: result.branchName,
+        files_committed: args.files.map((f: any) => f.path),
+      };
+    } catch (err: any) {
+      this.logger.error(`[tools] apply_github_fix failed: ${err?.message}`);
+      return { error: err?.message ?? "Unknown error creating PR" };
+    }
+  }
+
+  /**
+   * Get recent Railway deployment logs for the API service.
+   * args: { limit?: number }
+   */
+  private async getRailwayLogs(args: Record<string, any>) {
+    if (!this.railway) {
+      return { error: "RailwayService not available." };
+    }
+    const limit = Math.min(args.limit ?? 100, 500);
+    const { logs, deploymentId } = await this.railway.getRecentLogs(limit);
+    return {
+      deployment_id: deploymentId,
+      log_count: logs.length,
+      logs,
+      summary: `${logs.length} líneas de log del deployment ${deploymentId ?? "desconocido"}.`,
+    };
   }
 }
