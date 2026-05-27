@@ -34,11 +34,19 @@ export interface AgentRun {
   artifact: AgentArtifact | null;
 }
 
+type InteractiveHint = "products_list" | "services_list" | "delivery_buttons";
+
 interface FieldDef {
   key: string;
   question: string | null;
   condition?: { field: string; value: string };
+  interactiveHint?: InteractiveHint;
 }
+
+/** Payload we build internally before dispatching to WA / Telegram */
+type AgentInteractivePayload =
+  | { type: "button"; body: string; footer?: string; buttons: Array<{ id: string; title: string }> }
+  | { type: "list";   body: string; footer?: string; buttonText: string; sections: Array<{ title?: string; rows: Array<{ id: string; title: string; description?: string }> }> };
 
 interface IntentFlow {
   label: string;
@@ -51,36 +59,40 @@ const INTENT_FLOWS: Record<AgentIntent, IntentFlow> = {
     label: "Pedido",
     taskPriority: "MEDIUM",
     fields: [
-      { key: "product", question: null },
-      { key: "delivery_type", question: "¿Prefiere entrega a domicilio 🏍️ o pasa a recoger en local? 🏪" },
-      { key: "address", question: "¿Cuál es su dirección de entrega? 📍", condition: { field: "delivery_type", value: "delivery" } },
-      { key: "time", question: "¿A qué hora necesita el pedido? ⏰" },
+      // product: try auto-extract first; if null → ask with interactive list
+      { key: "product",       question: "¿Qué deseas pedir? 🛒",                                              interactiveHint: "products_list" },
+      { key: "delivery_type", question: "¿Entrega a domicilio o pasas a recoger?",                             interactiveHint: "delivery_buttons" },
+      { key: "address",       question: "¿Cuál es tu dirección de entrega? 📍",                               condition: { field: "delivery_type", value: "delivery" } },
+      { key: "time",          question: "¿A qué hora necesitas el pedido? ⏰" },
     ],
   },
   APPOINTMENT: {
     label: "Cita",
     taskPriority: "MEDIUM",
     fields: [
-      { key: "service", question: null },
-      { key: "date", question: "¿Para qué fecha necesita la cita? 📅" },
-      { key: "time", question: "¿Qué horario le viene mejor? ⏰" },
+      // service: try auto-extract first; if null → show services list
+      { key: "service", question: "¿Qué servicio necesitas? ✨", interactiveHint: "services_list" },
+      { key: "date",    question: "¿Para qué fecha necesitas la cita? 📅" },
+      { key: "time",    question: "¿Qué horario te viene mejor? ⏰" },
     ],
   },
   QUOTE: {
     label: "Cotización",
     taskPriority: "LOW",
     fields: [
-      { key: "product", question: null },
-      { key: "quantity", question: "¿Qué cantidad necesita? 📦" },
-      { key: "special_reqs", question: "¿Tiene algún requerimiento especial? (responda 'ninguno' si no tiene) 📝" },
+      // product: try auto-extract first; if null → show products list
+      { key: "product",      question: "¿Sobre qué producto o servicio deseas cotizar? 📋", interactiveHint: "products_list" },
+      { key: "quantity",     question: "¿Qué cantidad necesitas? 📦" },
+      { key: "special_reqs", question: "¿Tienes algún requerimiento especial? (responde 'ninguno' si no) 📝" },
     ],
   },
   COMPLAINT: {
     label: "Reclamo",
     taskPriority: "HIGH",
     fields: [
-      { key: "issue", question: null },
-      { key: "order_ref", question: "¿Tiene el número de su pedido o referencia? (responda 'no' si no tiene) 📋" },
+      // issue: always extracted from the complaint message — never need a list
+      { key: "issue",     question: null },
+      { key: "order_ref", question: "¿Tienes el número de tu pedido o referencia? (responde 'no' si no tienes) 📋" },
     ],
   },
 };
@@ -197,12 +209,14 @@ export class AgentRunService {
     await this.saveRun(conversationId, meta, run);
 
     if (pendingFields.length > 0) {
-      const q = this.getQuestion(intent, pendingFields[0]);
-      if (q) {
-        await this.sendAgentMessage(workspaceId, conversationId, conv, q);
-        run.steps.push({ type: "QUESTION_SENT", label: q, at: new Date().toISOString() });
-        await this.saveRun(conversationId, meta, run);
-      }
+      const q = this.getQuestion(intent, pendingFields[0]) ?? pendingFields[0];
+      const hint = this.getInteractiveHint(intent, pendingFields[0]);
+      const interactive = hint
+        ? this.buildInteractiveForField(pendingFields[0], hint, ctx.productsServices, intent)
+        : null;
+      await this.sendAgentMessage(workspaceId, conversationId, conv, q, interactive ?? undefined);
+      run.steps.push({ type: "QUESTION_SENT", label: q, at: new Date().toISOString() });
+      await this.saveRun(conversationId, meta, run);
     } else {
       await this.finalize(workspaceId, conversationId, conv, meta, run);
     }
@@ -259,12 +273,16 @@ export class AgentRunService {
     if (run.pending_fields.length === 0) {
       await this.finalize(workspaceId, conversationId, conv, meta, run);
     } else {
-      const nextQ = this.getQuestion(run.intent, run.pending_fields[0]);
-      if (nextQ) {
-        await this.sendAgentMessage(workspaceId, conversationId, conv, nextQ);
-        run.steps.push({ type: "QUESTION_SENT", label: nextQ, at: new Date().toISOString() });
-        await this.saveRun(conversationId, meta, run);
-      }
+      const nextField = run.pending_fields[0];
+      const nextQ = this.getQuestion(run.intent, nextField) ?? nextField;
+      const hint = this.getInteractiveHint(run.intent, nextField);
+      const productsServices = hint ? await this.loadProductsServices(workspaceId) : null;
+      const interactive = hint
+        ? this.buildInteractiveForField(nextField, hint, productsServices, run.intent)
+        : null;
+      await this.sendAgentMessage(workspaceId, conversationId, conv, nextQ, interactive ?? undefined);
+      run.steps.push({ type: "QUESTION_SENT", label: nextQ, at: new Date().toISOString() });
+      await this.saveRun(conversationId, meta, run);
     }
 
     this.events.emitAgentUpdated(conversationId, workspaceId, run);
@@ -425,7 +443,13 @@ Si indica que no tiene la información, responde "N/A".`;
     }
   }
 
-  private async sendAgentMessage(workspaceId: string, conversationId: string, conv: ConvShape, text: string): Promise<void> {
+  private async sendAgentMessage(
+    workspaceId: string,
+    conversationId: string,
+    conv: ConvShape,
+    text: string,
+    interactive?: AgentInteractivePayload,
+  ): Promise<void> {
     const msg = await this.prisma.message.create({
       data: {
         workspace_id: workspaceId,
@@ -464,24 +488,151 @@ Si indica que no tiene la información, responde "N/A".`;
       media_status: "none",
     });
 
-    if (conv.channel_id) {
-      const channel = await this.prisma.channel.findUnique({
-        where: { id: conv.channel_id },
-        select: { id: true, type: true, config_json: true },
-      });
-      if (channel?.type === "WHATSAPP" && conv.contact?.phone) {
-        const to = conv.contact.phone.replace(/\D/g, "");
-        if (!to) return;
+    if (!conv.channel_id) return;
+
+    const channel = await this.prisma.channel.findUnique({
+      where: { id: conv.channel_id },
+      select: { id: true, type: true, config_json: true },
+    });
+
+    if (channel?.type === "WHATSAPP" && conv.contact?.phone) {
+      const to = conv.contact.phone.replace(/\D/g, "");
+      if (!to) return;
+      if (interactive) {
+        // Try interactive first; fall back to plain text on error
+        this.dispatchWhatsAppInteractive(channel as Record<string, any>, to, interactive).catch((err) => {
+          this.logger.warn(`[agent] WA interactive failed, falling back to text: ${err.message}`);
+          this.whatsapp.sendMessage(channel as Record<string, any>, to, text).catch(() => {});
+        });
+      } else {
         this.whatsapp.sendMessage(channel as Record<string, any>, to, text).catch((err) =>
           this.logger.error("AgentRun WA dispatch failed", err),
         );
       }
-      if (channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
+    }
+
+    if (channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
+      if (interactive) {
+        this.dispatchTelegramInteractive(channel.id, conv.contact.telegram_chat_id, interactive).catch((err) => {
+          this.logger.warn(`[agent] TG interactive failed, falling back to text: ${err.message}`);
+          this.telegramOutbound.sendMessage(channel.id, conv.contact.telegram_chat_id!, text).catch(() => {});
+        });
+      } else {
         this.telegramOutbound
           .sendMessage(channel.id, conv.contact.telegram_chat_id, text)
           .catch((err) => this.logger.error("AgentRun Telegram dispatch failed", err));
       }
     }
+  }
+
+  /** Dispatch an interactive payload via WhatsApp (buttons or list) */
+  private async dispatchWhatsAppInteractive(
+    channel: Record<string, any>,
+    to: string,
+    interactive: AgentInteractivePayload,
+  ): Promise<void> {
+    if (interactive.type === "button") {
+      await this.whatsapp.sendReplyButtons(channel, to, interactive.body, interactive.buttons, interactive.footer);
+    } else {
+      await this.whatsapp.sendListMessage(channel, to, interactive.body, interactive.buttonText, interactive.sections, interactive.footer);
+    }
+  }
+
+  /** Dispatch an interactive payload via Telegram inline keyboard */
+  private async dispatchTelegramInteractive(
+    channelId: string,
+    chatId: string,
+    interactive: AgentInteractivePayload,
+  ): Promise<void> {
+    if (interactive.type === "button") {
+      await this.telegramOutbound.sendWithInlineKeyboard(channelId, chatId, interactive.body, interactive.buttons);
+    } else {
+      const rows = interactive.sections.flatMap((s) => s.rows);
+      await this.telegramOutbound.sendListAsKeyboard(channelId, chatId, interactive.body, rows);
+    }
+  }
+
+  /** Parse the free-text products/services field into list rows (max 8) */
+  private parseProductRows(
+    text: string,
+    prefix: string,
+  ): Array<{ id: string; title: string; description?: string }> {
+    const lines = text
+      .split(/\n+/)
+      .map((l) => l.trim().replace(/^[-•*]\s*/, ""))
+      .filter((l) => l.length > 1 && l.length < 120);
+
+    // Fall back to comma-split if only one line
+    const items = lines.length >= 2 ? lines : text.split(/,\s*/).map((l) => l.trim()).filter((l) => l.length > 1);
+
+    return items.slice(0, 8).map((line, i) => {
+      // "Name - description" or "Name | description"
+      const sepMatch = line.match(/^(.+?)\s*[-–|]\s*(.+)$/);
+      // "Name $price" or "Name ₡1,200"
+      const priceMatch = line.match(/^(.+?)\s+([\$₡€₽£]\s*[\d,.]+.*)$/);
+
+      if (sepMatch) {
+        return { id: `${prefix}_${i}`, title: sepMatch[1].trim().slice(0, 24), description: sepMatch[2].trim().slice(0, 72) };
+      }
+      if (priceMatch) {
+        return { id: `${prefix}_${i}`, title: priceMatch[1].trim().slice(0, 24), description: priceMatch[2].trim().slice(0, 72) };
+      }
+      return { id: `${prefix}_${i}`, title: line.slice(0, 24) };
+    });
+  }
+
+  /** Return the interactiveHint for a given field in the given intent */
+  private getInteractiveHint(intent: AgentIntent, field: string): InteractiveHint | null {
+    return INTENT_FLOWS[intent].fields.find((f) => f.key === field)?.interactiveHint ?? null;
+  }
+
+  /** Build the AgentInteractivePayload for a field, or null if not applicable */
+  private buildInteractiveForField(
+    field: string,
+    hint: InteractiveHint,
+    productsServices: string | null,
+    intent: AgentIntent,
+  ): AgentInteractivePayload | null {
+    if (hint === "delivery_buttons") {
+      return {
+        type: "button",
+        body: "¿Cómo prefieres recibir tu pedido?",
+        buttons: [
+          { id: "delivery", title: "🏍️ A domicilio" },
+          { id: "pickup",   title: "🏪 Recoger en local" },
+        ],
+      };
+    }
+
+    if (!productsServices?.trim()) return null;
+
+    const prefix = hint === "products_list" ? "prod" : "svc";
+    const rows = this.parseProductRows(productsServices, prefix);
+    if (rows.length === 0) return null;
+
+    const body =
+      intent === "ORDER"   ? "¿Qué deseas ordenar? 🛒" :
+      intent === "QUOTE"   ? "¿Sobre qué te gustaría cotizar? 📋" :
+                             "¿Qué servicio necesitas? ✨";
+
+    return {
+      type: "list",
+      body,
+      buttonText: "Ver opciones",
+      sections: [{ rows }],
+    };
+  }
+
+  /** Quick DB query to get productsServices text for a workspace */
+  private async loadProductsServices(workspaceId: string): Promise<string | null> {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { settings_json: true },
+    });
+    const settings = (workspace?.settings_json as Record<string, any>) ?? {};
+    return typeof settings.ai_business_products_services === "string"
+      ? settings.ai_business_products_services.trim() || null
+      : null;
   }
 
   private async finalize(
@@ -650,7 +801,9 @@ Si indica que no tiene la información, responde "N/A".`;
   private computePending(intent: AgentIntent, collected: Record<string, string | null>): string[] {
     return INTENT_FLOWS[intent].fields
       .filter((f) => {
-        if (f.question === null) return false; // auto-extracted, already filled or skipped
+        // question===null AND no interactiveHint → purely auto-extracted (COMPLAINT.issue), never ask
+        if (f.question === null && !f.interactiveHint) return false;
+        // question===null WITH interactiveHint → ask only if NOT already collected
         if (f.condition) {
           const val = collected[f.condition.field] ?? "";
           if (!val.toLowerCase().includes(f.condition.value)) return false;
@@ -661,7 +814,10 @@ Si indica que no tiene la información, responde "N/A".`;
   }
 
   private getQuestion(intent: AgentIntent, field: string): string | null {
-    return INTENT_FLOWS[intent].fields.find((f) => f.key === field)?.question ?? null;
+    const f = INTENT_FLOWS[intent].fields.find((fd) => fd.key === field);
+    if (!f) return null;
+    // Return the question text (may be null for complaint.issue which is auto-extract only)
+    return f.question;
   }
 
   private fieldLabel(field: string): string {
