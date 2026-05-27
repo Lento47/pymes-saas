@@ -151,31 +151,49 @@ export class FlowiseClient {
       type: "CHATFLOW",
     };
 
+    return this._postChatflow(url, body);
+  }
+
+  /** Create a chatflow using arbitrary pre-built flowData JSON (for tool-calling agents) */
+  async createChatflowWithData(name: string, flowDataJson: string): Promise<string> {
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
+    const body = { name, flowData: flowDataJson, deployed: true, isPublic: false, type: "CHATFLOW" };
+    return this._postChatflow(url, body);
+  }
+
+  /** List all chatflows — returns array of { id, name } */
+  async listChatflows(): Promise<Array<{ id: string; name: string }>> {
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
+    try {
+      const res = await fetch(url, { headers: { "Content-Type": "application/json", ...this.authHeaders } });
+      if (!res.ok) return [];
+      const data = (await res.json()) as any[];
+      return data.map((c: any) => ({ id: c.id as string, name: c.name as string }));
+    } catch {
+      return [];
+    }
+  }
+
+  private async _postChatflow(url: string, body: Record<string, any>): Promise<string> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
-
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...this.authHeaders,
-        },
+        headers: { "Content-Type": "application/json", ...this.authHeaders },
         body: JSON.stringify(body),
         signal: controller.signal,
       });
-
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(`Flowise chatflow creation failed: ${res.status} ${text}`);
       }
-
       const data = (await res.json()) as FlowiseChatflowResponse;
-      this.logger.log(`Chatflow created in Flowise: ${data.id} (${name})`);
+      this.logger.log(`Chatflow created in Flowise: ${data.id} (${body.name})`);
       return data.id;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`FlowiseClient.createChatflow failed: ${msg}`);
+      this.logger.error(`FlowiseClient._postChatflow failed: ${msg}`);
       throw err;
     } finally {
       clearTimeout(timer);

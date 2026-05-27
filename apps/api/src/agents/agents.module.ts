@@ -9,9 +9,11 @@ import { TtsModule } from "../tts/tts.module";
 import { LearningModule } from "../learning/learning.module";
 import { PlanLimitsModule } from "../common/plan-limits/plan-limits.module";
 import { SupportAgentTemplateSeed } from "./support-agent-template.seed";
+import { FlowiseSetupService } from "./flowise-setup.service";
+import { PrismaModule } from "../common/prisma/prisma.module";
 
 @Module({
-  imports: [TtsModule, LearningModule, PlanLimitsModule],
+  imports: [TtsModule, LearningModule, PlanLimitsModule, PrismaModule],
   controllers: [AgentsController],
   providers: [
     AgentsService,
@@ -20,13 +22,21 @@ import { SupportAgentTemplateSeed } from "./support-agent-template.seed";
     AgentGuardrailsService,
     AgentUsageService,
     SupportAgentTemplateSeed,
+    FlowiseSetupService,
   ],
-  exports: [AgentRuntimeService],
+  exports: [AgentRuntimeService, FlowiseSetupService],
 })
 export class AgentsModule implements OnModuleInit {
-  constructor(private readonly supportSeed: SupportAgentTemplateSeed) {}
+  constructor(
+    private readonly supportSeed: SupportAgentTemplateSeed,
+    private readonly flowiseSetup: FlowiseSetupService,
+  ) {}
 
   async onModuleInit() {
     await this.supportSeed.seed();
+    // Auto-import 4 tiered support chatflows into Flowise (non-fatal)
+    this.flowiseSetup.setup().catch((err: any) =>
+      console.warn("[flowise-setup] Non-fatal setup error:", err?.message),
+    );
   }
 }

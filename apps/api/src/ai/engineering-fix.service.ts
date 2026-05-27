@@ -1,8 +1,9 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger, NotFoundException, Optional, Inject, forwardRef } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { AiService } from "./ai.service";
 import { GitHubService } from "../platform/github.service";
 import { PlatformSettingsService } from "../platform/platform-settings.service";
+import { FixApprovalService } from "./fix-approval.service";
 
 interface RbacActor {
   workspaceId: string;
@@ -18,6 +19,8 @@ export class EngineeringFixService {
     private readonly aiService: AiService,
     @Optional() private readonly github?: GitHubService,
     @Optional() private readonly platformSettings?: PlatformSettingsService,
+    @Optional() @Inject(forwardRef(() => FixApprovalService))
+    private readonly fixApproval?: FixApprovalService,
   ) {}
 
   /**
@@ -132,6 +135,15 @@ export class EngineeringFixService {
     });
 
     this.logger.log(`Fix proposal generated for ${fixCaseId}`);
+
+    // Notify workspace OWNER via WA (fire-and-forget)
+    if (this.fixApproval) {
+      this.fixApproval
+        .notifyFixReady(fixCaseId, workspaceId)
+        .catch((err: any) =>
+          this.logger.warn(`[fix-approval] WA notify failed: ${err?.message}`),
+        );
+    }
   }
 
   /**
