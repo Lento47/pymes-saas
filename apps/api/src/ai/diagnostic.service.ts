@@ -5,8 +5,8 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { EngineeringFixService } from "./engineering-fix.service";
 import { SupportNotificationService } from "./support-notification.service";
 import { KnowledgeBaseService } from "./knowledge-base.service";
+import { AiGatewayService } from "./ai-gateway.service";
 import { Prisma } from "@prisma/client";
-import { AgentRuntimeService } from "../agents/runtime/agent-runtime.service";
 
 export interface DiagnosticInput {
   workspaceId: string;
@@ -61,7 +61,7 @@ export class DiagnosticService {
     private readonly supportNotifications: SupportNotificationService,
     private readonly knowledgeBase: KnowledgeBaseService,
     private readonly triage: AiTriageService,
-    @Optional() private readonly agentRuntime?: AgentRuntimeService,
+    @Optional() private readonly gateway?: AiGatewayService,
   ) {}
 
   // ADMIN/platform-admin: full workspace view. Otherwise scope to caller's
@@ -290,20 +290,22 @@ export class DiagnosticService {
         );
     }
 
-    // Auto-dispatch support agent for critical/high bugs (fire-and-forget)
+    // Auto-analyze and create fix case for critical/high bugs (fire-and-forget)
     const AUTO_TRIGGER_CATEGORIES = ["PRODUCT_BUG", "PLATFORM_INCIDENT"];
     const AUTO_TRIGGER_RISKS = ["critical", "high", "CRITICAL", "HIGH"];
     if (
       AUTO_TRIGGER_CATEGORIES.includes(classification.category) &&
       AUTO_TRIGGER_RISKS.includes(classification.risk_level)
     ) {
-      this.autoDispatchSupportAgent(
+      this.autoAnalyzeAndFix(
         caseRecord.id,
         input.workspaceId,
+        classification.category,
+        classification.risk_level,
         `Error detectado — ${classification.title}\n${classification.recommendation}\n${input.user_description ?? ""}`.trim(),
       ).catch((err: unknown) =>
         this.logger.warn(
-          `[support-agent] auto-dispatch failed: ${err instanceof Error ? err.message : String(err)}`,
+          `[support-agent] auto-analyze-fix failed: ${err instanceof Error ? err.message : String(err)}`,
         ),
       );
     }
@@ -326,51 +328,145 @@ export class DiagnosticService {
   }
 
   /**
-   * Auto-dispatch a support agent session via Flowise when a critical error is detected.
-   * Looks for an AgentInstance with config_json.is_support_agent === true.
-   * Silently skips if no support agent is installed for the workspace.
+   * Run AI analysis directly (no Flowise dependency) for a critical/high bug.
+   * Stores structured analysis in evidence_json, auto-creates an engineering fix
+   * case with the proposal, and auto-approves CRITICAL cases to trigger a GitHub PR.
    */
-  private async autoDispatchSupportAgent(
+  private async autoAnalyzeAndFix(
     diagnosticCaseId: string,
     workspaceId: string,
+    category: string,
+    riskLevel: string,
     errorContext: string,
   ): Promise<void> {
-    if (!this.agentRuntime) return;
+    if (!this.gateway) {
+      this.logger.warn("[support-agent] AiGatewayService not injected — skipping auto-analysis");
+      return;
+    }
 
-    // Find a support agent instance in this workspace
-    const supportInstance = await this.prisma.agentInstance.findFirst({
-      where: { workspace_id: workspaceId, status: "ACTIVE" },
-    });
-    if (!supportInstance) return;
+    this.logger.log(`[support-agent] Running direct AI analysis for case ${diagnosticCaseId} (${category}/${riskLevel})`);
 
-    // Check the is_support_agent flag in config_json
-    const cfg = (supportInstance.config_json as Record<string, unknown>) ?? {};
-    if (!cfg.is_support_agent) return;
+    const systemPrompt = `Eres un SRE senior analizando un bug de producción en PymesHub (plataforma SaaS para pymes).
+El stack es NestJS + Prisma + PostgreSQL en apps/api, React/Vite en apps/web.
+Repo: github.com/lento47/pymes-saas
 
-    const question = `DIAGNÓSTICO AUTOMÁTICO — Case ID: ${diagnosticCaseId}\n\n${errorContext}\n\nAnaliza este error y propón un fix detallado en JSON: { "analysis": "...", "root_cause": "...", "fix_steps": ["..."], "files_to_check": ["..."] }`;
+Tu objetivo: analizar el error y devolver un JSON estructurado con el diagnóstico y archivos a revisar.
+IMPORTANTE: Responde SOLO con JSON válido, sin texto adicional antes o después del JSON.
 
-    this.logger.log(`[support-agent] dispatching to instance ${supportInstance.id} for case ${diagnosticCaseId}`);
+Formato requerido:
+{
+  "root_cause": "descripción técnica de la causa raíz",
+  "fix_summary": "resumen de qué hay que cambiar y por qué",
+  "files_to_check": [
+    {
+      "file": "apps/api/src/ruta/al/archivo.ts",
+      "reason": "por qué este archivo es relevante",
+      "diff_suggestion": "cambio sugerido en pseudocódigo o diff"
+    }
+  ]
+}`;
 
-    const result = await this.agentRuntime.run({
-      agent_instance_id: supportInstance.id,
-      workspace_id: workspaceId,
-      question,
-      channel: "ALL",
-      conversation_id: diagnosticCaseId, // use case ID as session key
-    });
+    let rawResponse: string;
+    try {
+      rawResponse = await this.gateway.chatCompletion(
+        [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: errorContext },
+        ],
+        { maxTokens: 2000 },
+      );
+    } catch (err: any) {
+      this.logger.error(`[support-agent] AI analysis call failed: ${err?.message ?? err}`);
+      return;
+    }
 
-    if (result.text) {
-      // Store the agent's analysis in the diagnostic case evidence
+    // Extract JSON from response
+    let analysis: {
+      root_cause?: string;
+      fix_summary?: string;
+      files_to_check?: Array<{ file: string; reason: string; diff_suggestion?: string }>;
+    } = {};
+    try {
+      const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        analysis = JSON.parse(jsonMatch[0]);
+      } else {
+        this.logger.warn("[support-agent] No JSON found in AI response");
+        analysis = { root_cause: rawResponse.slice(0, 500), fix_summary: rawResponse.slice(0, 300), files_to_check: [] };
+      }
+    } catch (err: any) {
+      this.logger.warn(`[support-agent] Failed to parse AI JSON response: ${err?.message}`);
+      analysis = { root_cause: rawResponse.slice(0, 500), fix_summary: rawResponse.slice(0, 300), files_to_check: [] };
+    }
+
+    // Store analysis in diagnostic case evidence
+    try {
       await this.prisma.supportDiagnosticCase.update({
         where: { id: diagnosticCaseId },
         data: {
           evidence_json: {
-            support_agent_analysis: result.text.slice(0, 4000),
+            support_agent_analysis: analysis,
             support_agent_dispatched_at: new Date().toISOString(),
           } as any,
         },
       });
-      this.logger.log(`[support-agent] analysis stored for case ${diagnosticCaseId}`);
+      this.logger.log(`[support-agent] Analysis stored for case ${diagnosticCaseId}`);
+    } catch (err: any) {
+      this.logger.warn(`[support-agent] Failed to store analysis: ${err?.message}`);
+    }
+
+    // Auto-create fix case if AI found files to review
+    const filesToCheck = Array.isArray(analysis.files_to_check) ? analysis.files_to_check : [];
+    if (filesToCheck.length === 0) {
+      this.logger.log(`[support-agent] No files identified — skipping fix case creation for ${diagnosticCaseId}`);
+      return;
+    }
+
+    const internalActor = { workspaceId: "system", isPlatformAdmin: true as const };
+
+    try {
+      // Check if a fix case already exists (e.g., created by known issue auto-match)
+      const existingFixCase = await (this.prisma as any).engineeringFixCase.findFirst({
+        where: { diagnostic_case_id: diagnosticCaseId },
+        select: { id: true, status: true },
+      });
+
+      let fixCaseId: string;
+      if (existingFixCase) {
+        fixCaseId = existingFixCase.id;
+        // Update the existing fix case with AI-generated proposal data
+        await (this.prisma as any).engineeringFixCase.update({
+          where: { id: fixCaseId },
+          data: {
+            fix_summary: analysis.fix_summary ?? existingFixCase.fix_summary,
+            files_changed_json: filesToCheck,
+            status: "FIX_READY",
+            updated_at: new Date(),
+          },
+        });
+        this.logger.log(`[support-agent] Updated existing fix case ${fixCaseId} with AI proposal`);
+      } else {
+        // Create new fix case with proposal already included
+        const newFixCase = await this.fixService.createFixCaseWithProposal(
+          diagnosticCaseId,
+          {
+            fix_summary: analysis.fix_summary ?? analysis.root_cause ?? "Fix sugerido por IA",
+            files_to_check: filesToCheck,
+          },
+          internalActor,
+        );
+        fixCaseId = newFixCase.id;
+        this.logger.log(`[support-agent] Created fix case ${fixCaseId} for case ${diagnosticCaseId}`);
+      }
+
+      // Auto-approve CRITICAL bugs to trigger GitHub PR creation
+      const isCritical = ["critical", "CRITICAL"].includes(riskLevel);
+      if (isCritical) {
+        this.logger.log(`[support-agent] Auto-approving CRITICAL fix case ${fixCaseId} → triggering GitHub PR`);
+        await this.fixService.approveFix(fixCaseId, internalActor);
+      }
+    } catch (err: any) {
+      this.logger.error(`[support-agent] Fix case create/approve failed for ${diagnosticCaseId}: ${err?.message ?? err}`);
     }
   }
 

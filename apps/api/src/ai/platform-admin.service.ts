@@ -85,6 +85,30 @@ export class PlatformAdminService {
     );
   }
 
+  /** Read a file from the GitHub repository via REST API v3. Returns null on failure. */
+  private async readGitHubFile(path: string, token: string): Promise<string | null> {
+    try {
+      const url = `https://api.github.com/repos/lento47/pymes-saas/contents/${path.replace(/^\//, "")}?ref=master`;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3.raw",
+          "User-Agent": "PymesHub-Admin-Bot/1.0",
+        },
+      });
+      if (!res.ok) {
+        this.logger.warn(`[platform-admin] GitHub file read failed: ${path} → ${res.status}`);
+        return null;
+      }
+      const text = await res.text();
+      // Truncate large files to avoid hitting token limits
+      return text.length > 8000 ? text.slice(0, 8000) + "\n... (truncado — archivo demasiado largo)" : text;
+    } catch (err: any) {
+      this.logger.warn(`[platform-admin] GitHub file fetch error: ${err?.message}`);
+      return null;
+    }
+  }
+
   /**
    * Handle an inbound message from a platform admin.
    * Bypasses all business logic and responds with a platform-level AI.
@@ -104,7 +128,7 @@ export class PlatformAdminService {
       return;
     }
 
-    // ── System prompt: no business restrictions ──────────────────────────────
+    // ── System prompt: no business restrictions + architecture context ────────
     const systemPrompt = `Eres el asistente de administración de la plataforma PymesHub.
 Estás hablando directamente con el administrador de la plataforma (dueño del sistema).
 Workspace activo: ${workspaceId}
@@ -112,12 +136,46 @@ Canal: ${channelType}
 
 MODO ADMINISTRADOR — sin restricciones de negocio, sin prompt de cliente.
 
+== ARQUITECTURA PYMESHUB ==
+Stack: NestJS + Prisma (PostgreSQL) → apps/api  ·  React/Vite → apps/web
+Repo: github.com/lento47/pymes-saas · Rama principal: master
+
+Módulos clave (apps/api/src/):
+  ai/              → AiGatewayService, DiagnosticService, EngineeringFixService,
+                     PlatformAdminService, AiService, AiTriageService, AiProviderBalancerService,
+                     KnowledgeBaseService, SupportNotificationService, ElevenLabsService
+  platform/        → PlatformSettingsService (config singleton DB), GitHubService (REST v3)
+  agents/          → AgentRuntimeService (requiere Flowise), SupportAgentTemplateSeed
+  whatsapp/        → WhatsAppService, webhooks Meta Cloud API
+  telegram/        → TelegramService, TelegramOutboundService
+  conversations/   → MessagesService (routeo inbound → admin AI o workspace AI)
+  common/crypto/   → CryptoService (AES-256-GCM para secrets en PlatformSettings)
+  billing/         → Paddle (planes) + PayPal (créditos)
+
+Variables Railway importantes:
+  SYSTEM_AI_MODEL, PLATFORM_ADMIN_AI_MODEL, DIRECT_KEY_MIMO, DIRECT_BASE_MIMO
+  DATABASE_URL, ENCRYPTION_KEY (AES key para PlatformSettings)
+  FLOWISE_ENABLED, FLOWISE_BASE_URL, FLOWISE_API_KEY
+  PADDLE_API_KEY, PADDLE_WEBHOOK_SECRET (billing), PAYPAL_CLIENT_ID (créditos)
+  RESEND_API_KEY (emails), OPENAI_API_KEY, CF_GATEWAY_ACCOUNT_ID
+
+Pipeline de soporte automático:
+  Error detectado → DiagnosticService.diagnose() → SupportDiagnosticCase creado
+  → autoAnalyzeAndFix() usa AiGatewayService directamente (sin Flowise)
+  → EngineeringFixCase creado con status FIX_READY
+  → Para CRITICAL: auto-approve → GitHubService.createDescriptionPR() → PR en GitHub
+
+Para leer un archivo del repo, escribe su ruta: apps/api/src/... o apps/web/...
+El admin puede pedirte que leas cualquier archivo para obtener contexto real del código.
+==
+
 Puedes ayudar con cualquier consulta:
+- Diagnóstico de errores: leer logs, revisar código, proponer fixes
 - Configuración de workspaces, planes, facturación
-- Pruebas de IA: modelos, proveedores, prompts
-- Estado técnico del sistema
+- Pruebas de IA: modelos, proveedores, prompts, temperatura
+- Estado técnico del sistema, variables de entorno Railway
 - Gestión de usuarios y contactos
-- Cualquier solicitud operativa
+- Revisión de código de cualquier archivo del repositorio
 
 Responde en español salvo que el admin use otro idioma.
 Sé directo, técnico y conciso — el admin conoce el sistema.
@@ -139,10 +197,61 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
         content: m.body_text!,
       }));
 
-    const messages: AssistantMessage[] = [
-      { role: "system", content: systemPrompt },
-      ...history,
-    ];
+    // ── GitHub file injection ─────────────────────────────────────────────────
+    // If the admin mentions a file path (e.g. "lee apps/api/src/ai/..."),
+    // fetch its contents from GitHub and prepend to the user message so
+    // the AI can reason about real code.
+    let enrichedText = text;
+    const filePathMatch = text.match(
+      /(?:apps|prisma|packages)\/[\w.\-/]+\.(?:ts|tsx|prisma|json|md|sql|yaml|yml)/i,
+    );
+    if (filePathMatch) {
+      let githubToken: string | undefined;
+      if (this.platformSettings) {
+        try {
+          const cfg = await this.platformSettings.getDecrypted();
+          githubToken = cfg.github_token;
+        } catch {
+          // ignore
+        }
+      }
+      if (githubToken) {
+        const filePath = filePathMatch[0];
+        const fileContent = await this.readGitHubFile(filePath, githubToken);
+        if (fileContent) {
+          const ext = filePath.split(".").pop() ?? "ts";
+          enrichedText =
+            `[Archivo: ${filePath}]\n\`\`\`${ext}\n${fileContent}\n\`\`\`\n\n` +
+            text;
+          this.logger.log(`[platform-admin] Injected GitHub file: ${filePath}`);
+        }
+      } else {
+        this.logger.warn(
+          "[platform-admin] File path detected in message but no GitHub token configured — skipping file injection",
+        );
+      }
+    }
+
+    // When a file was injected, replace the last user message in history with
+    // the enriched version (file content prepended). The inbound message was
+    // already saved to DB before this method is called, so it appears as the
+    // last item in `history`. We swap it out so the AI sees real code.
+    let finalMessages: AssistantMessage[];
+    if (enrichedText !== text && history.length > 0) {
+      // Replace last entry (current inbound message) with enriched version
+      finalMessages = [
+        { role: "system", content: systemPrompt },
+        ...history.slice(0, -1),
+        { role: "user", content: enrichedText },
+      ];
+    } else {
+      finalMessages = [
+        { role: "system", content: systemPrompt },
+        ...history,
+      ];
+    }
+
+    const messages: AssistantMessage[] = finalMessages;
 
     // ── Resolve model + MiMo API key from DB (UI-configured), fallback to env ──
     let model =
