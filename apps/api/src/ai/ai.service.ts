@@ -8,7 +8,7 @@ import { PrismaService } from "../common/prisma/prisma.service";
 import { CryptoService } from "../common/crypto/crypto.service";
 import { parseJsonValue } from "../common/prisma/json";
 
-export type AiProvider = "openai" | "anthropic" | "gemini" | "moonshot";
+export type AiProvider = "openai" | "anthropic" | "gemini" | "moonshot" | "mimo";
 
 export interface AiProviderConfig {
   provider: AiProvider;
@@ -35,6 +35,7 @@ const DEFAULT_MODELS: Record<AiProvider, string> = {
   anthropic: "claude-haiku-4-5-20251001",
   gemini: "gemini-2.0-flash",
   moonshot: "moonshot-v1-8k",
+  mimo: "mimo-v2.5-pro",
 };
 
 @Injectable()
@@ -109,6 +110,7 @@ export class AiService {
     switch (config.provider) {
       case "openai":
       case "moonshot":
+      case "mimo":
         return this.chatOpenAICompat(config, system, user, maxTokens, temperature);
       case "anthropic":
         return this.chatAnthropic(config, system, user, maxTokens, temperature);
@@ -125,8 +127,11 @@ export class AiService {
     maxTokens: number,
     temperature: number,
   ) {
-    const base =
-      config.provider === "moonshot" ? "https://api.moonshot.cn/v1" : "https://api.openai.com/v1";
+    const OPENAI_COMPAT_BASES: Partial<Record<AiProvider, string>> = {
+      moonshot: "https://api.moonshot.cn/v1",
+      mimo:     "https://api.xiaomimimo.com/v1",
+    };
+    const base = OPENAI_COMPAT_BASES[config.provider] ?? "https://api.openai.com/v1";
 
     const res = await fetch(`${base}/chat/completions`, {
       method: "POST",

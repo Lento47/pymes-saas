@@ -6,13 +6,21 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ClipboardList, TrendingUp, MessageCircle, Receipt, Target,
   Loader2, ChevronDown, ChevronUp, User, Hash, Copy, ExternalLink, UserPlus,
-  Bot, PauseCircle, CreditCard,
+  Bot, PauseCircle, CreditCard, ShoppingCart, Calendar, FileText, AlertTriangle, Tag,
 } from "lucide-react";
 
 const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
   OPEN:     { label: "Abierto",   cls: "bg-emerald-500/10 text-emerald-400" },
   RESOLVED: { label: "Resuelto",  cls: "bg-blue-500/10 text-blue-400" },
   PENDING:  { label: "Pendiente", cls: "bg-amber-500/10 text-amber-400" },
+};
+
+const INTENT_CONFIG: Record<string, { label: string; icon: React.ElementType; cls: string }> = {
+  ORDER:       { label: "Pedido",     icon: ShoppingCart, cls: "bg-violet-500/10 text-violet-400 border-violet-500/20" },
+  APPOINTMENT: { label: "Cita",       icon: Calendar,     cls: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+  QUOTE:       { label: "Cotización", icon: FileText,     cls: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  COMPLAINT:   { label: "Reclamo",    icon: AlertTriangle,cls: "bg-red-500/10 text-red-400 border-red-500/20" },
+  OTHER:       { label: "Consulta",   icon: Tag,          cls: "bg-muted/40 text-muted-foreground border-border/50" },
 };
 
 function SectionHeader({ label }: { label: string }) {
@@ -234,6 +242,46 @@ export function CustomerContextPanel({
           </div>
         </div>
       </div>
+
+      {/* AI Context — intent detected */}
+      {(() => {
+        const intentKey = meta.intent_detected as string | undefined;
+        const intentCfg = intentKey ? INTENT_CONFIG[intentKey] : null;
+        if (!intentCfg) return null;
+        const IntentIcon = intentCfg.icon;
+        return (
+          <div className="px-4 py-3 border-b border-border/40 space-y-2.5">
+            <SectionHeader label="Contexto detectado" />
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${intentCfg.cls}`}>
+                <IntentIcon className="h-2.5 w-2.5 shrink-0" />
+                {intentCfg.label}
+              </span>
+            </div>
+            {/* Quick-create actions tied to the detected intent */}
+            <div className="flex flex-wrap gap-1.5">
+              {(intentKey === "ORDER" || intentKey === "QUOTE") && contactId && (
+                <a
+                  href={`/invoices/new?contact=${contactId}&conversation=${(conversation as any).id}`}
+                  className="flex items-center gap-1 rounded-md border border-border/50 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                >
+                  <Receipt className="w-2.5 h-2.5 shrink-0" />
+                  + Factura
+                </a>
+              )}
+              {contactId && (
+                <a
+                  href={`/tasks?contact=${contactId}&conversation=${(conversation as any).id}`}
+                  className="flex items-center gap-1 rounded-md border border-border/50 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                >
+                  <ClipboardList className="w-2.5 h-2.5 shrink-0" />
+                  + Tarea
+                </a>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Quick actions */}
       {(contactId || (conversation as any)?.external_id) && (

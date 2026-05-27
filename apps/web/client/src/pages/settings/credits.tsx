@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders, Loader2, ArrowRightLeft, Flame, Gem, Rocket } from "lucide-react";
+import { Bot, Coins, History, ShoppingCart, Zap, TrendingUp, CheckCircle2, Clock, Sliders, Loader2, ArrowRightLeft, Flame, Gem, Rocket, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -647,6 +647,12 @@ export default function CreditsSettingsPage() {
   const tokenHistory: any[] = aiTokenData?.history ?? [];
   const tokenPacks: any[] = aiTokenData?.packs ?? [];
 
+  const HISTORY_PREVIEW = 5;
+  const [showAllTokens, setShowAllTokens] = useState(false);
+  const [showAllCredits, setShowAllCredits] = useState(false);
+  const visibleTokenHistory = showAllTokens ? tokenHistory : tokenHistory.slice(0, HISTORY_PREVIEW);
+  const visibleHistory = showAllCredits ? history : history.slice(0, HISTORY_PREVIEW);
+
   useEffect(() => {
     if (aiTokenData) setLiveTokenBalance(null);
   }, [aiTokenData]);
@@ -844,9 +850,18 @@ export default function CreditsSettingsPage() {
             </div>
           ) : (
             <div className="rounded-xl border border-border/60 bg-card/40 px-4 py-1">
-              {tokenHistory.map((tx) => (
+              {visibleTokenHistory.map((tx) => (
                 <AiTokenTransactionRow key={tx.id} tx={tx} />
               ))}
+              {tokenHistory.length > HISTORY_PREVIEW && (
+                <button
+                  onClick={() => setShowAllTokens(v => !v)}
+                  className="w-full py-2.5 text-xs text-primary hover:text-primary/80 font-medium flex items-center justify-center gap-1.5 border-t border-border/40 mt-1"
+                >
+                  {showAllTokens ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  {showAllTokens ? "Ver menos" : `Ver ${tokenHistory.length - HISTORY_PREVIEW} más`}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -931,9 +946,18 @@ export default function CreditsSettingsPage() {
             </div>
           ) : (
             <div className="rounded-xl border border-border/60 bg-card/40 px-4 py-1">
-              {history.map((tx) => (
+              {visibleHistory.map((tx) => (
                 <TransactionRow key={tx.id} tx={tx} />
               ))}
+              {history.length > HISTORY_PREVIEW && (
+                <button
+                  onClick={() => setShowAllCredits(v => !v)}
+                  className="w-full py-2.5 text-xs text-primary hover:text-primary/80 font-medium flex items-center justify-center gap-1.5 border-t border-border/40 mt-1"
+                >
+                  {showAllCredits ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  {showAllCredits ? "Ver menos" : `Ver ${history.length - HISTORY_PREVIEW} más`}
+                </button>
+              )}
             </div>
           )}
         </div>

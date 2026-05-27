@@ -201,6 +201,7 @@ const AI_PROVIDERS = [
   { id: "cerebras",        label: "Cerebras",               models: ["llama3.1-8b", "llama3.3-70b"] },
   { id: "workers-ai",      label: "Workers AI (gratis)",    models: ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct", "@cf/moonshotai/kimi-k2.6"] },
   { id: "moonshot",        label: "Moonshot (Kimi)",        models: ["moonshot-v1-8k", "moonshot-v1-32k"] },
+  { id: "mimo",            label: "Xiaomi MiMo",            models: ["mimo-v2.5-pro"] },
 ];
 
 const GATEWAY_MODELS = [

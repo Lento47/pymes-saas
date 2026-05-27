@@ -7,6 +7,15 @@ import type { AssistantMessage, ChatCompletionWithUsage } from "./cloudflare-ai.
 // configured in the CF AI Gateway dashboard (or passed via Authorization header).
 const COMPAT_UNSUPPORTED = new Set(["workers-ai"]);
 
+// Direct providers bypass CF Gateway entirely and are called with their own base URL + API key.
+// Env var pattern: DIRECT_KEY_<PROVIDER_UPPER>  (e.g. DIRECT_KEY_MIMO)
+const DIRECT_PROVIDERS: Record<string, { baseUrl: string; envKey: string }> = {
+  mimo: {
+    baseUrl: "https://api.xiaomimimo.com/v1",
+    envKey:  "DIRECT_KEY_MIMO",
+  },
+};
+
 @Injectable()
 export class AiGatewayService {
   private readonly logger = new Logger(AiGatewayService.name);
@@ -105,8 +114,15 @@ export class AiGatewayService {
   ): Promise<ChatCompletionWithUsage> {
     const modelStr = options?.model ?? this.defaultModel;
 
-    // ── Compat mode (preferred): single endpoint, single token, all providers ──
     const providerPrefix = modelStr.split("/")[0];
+
+    // ── Direct mode: providers that bypass CF Gateway entirely ──
+    const directCfg = DIRECT_PROVIDERS[providerPrefix];
+    if (directCfg) {
+      return this.chatDirectOpenAICompat(modelStr, providerPrefix, directCfg, messages, options);
+    }
+
+    // ── Compat mode (preferred): single endpoint, single token, all providers ──
     const useLegacy = COMPAT_UNSUPPORTED.has(providerPrefix);
     if (this.compatUrl && this.compatToken && !useLegacy) {
       const providerApiKey = options?.apiKey ?? null;
@@ -310,6 +326,58 @@ export class AiGatewayService {
       this.logger.warn(`AI Gateway legacy [${provider}/${model}] empty text. Raw keys: ${Object.keys(json).join(", ")}`);
     }
     return this.withUsage(text, usage, { provider, model, messages });
+  }
+
+  /** Direct OpenAI-compat call — bypasses CF Gateway, uses provider's own base URL. */
+  private async chatDirectOpenAICompat(
+    modelStr: string,
+    providerPrefix: string,
+    cfg: { baseUrl: string; envKey: string },
+    messages: AssistantMessage[],
+    options?: { model?: string; apiKey?: string; maxTokens?: number; temperature?: number },
+  ): Promise<ChatCompletionWithUsage> {
+    const apiKey = options?.apiKey ?? this.config.get<string>(cfg.envKey) ?? null;
+    if (!apiKey) {
+      throw new Error(
+        `Direct provider '${providerPrefix}' requires an API key. ` +
+        `Set the ${cfg.envKey} environment variable.`,
+      );
+    }
+
+    // Model sent to the provider is everything after the provider prefix (e.g. "mimo-v2.5-pro")
+    const modelId = modelStr.slice(providerPrefix.length + 1) || modelStr;
+
+    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: modelId,
+        messages,
+        max_tokens: options?.maxTokens ?? 1024,
+        temperature: options?.temperature ?? 0.3,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      this.logger.error(`Direct provider [${providerPrefix}/${modelId}] ${res.status}: ${text}`);
+      throw new Error(`Direct provider request failed: ${res.status}`);
+    }
+
+    const json = (await res.json()) as any;
+    const text =
+      json.choices?.[0]?.message?.content?.trim() ??
+      json.result?.choices?.[0]?.message?.content?.trim() ??
+      "";
+
+    if (!text) {
+      this.logger.warn(`Direct provider [${providerPrefix}/${modelId}] returned empty text. Keys: ${Object.keys(json).join(", ")}`);
+    }
+
+    return this.withUsage(text, json.usage, { provider: providerPrefix, model: modelId, messages });
   }
 
   private getProviderApiKey(provider: string, override?: string): string | null {
