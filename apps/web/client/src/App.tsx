@@ -63,6 +63,7 @@ import AgentsPage from "@/pages/agents/AgentsPage";
 import AgentDetailPage from "@/pages/agents/AgentDetailPage";
 import AgentTemplatesPage from "@/pages/agents/AgentTemplatesPage";
 import PlaybookSuggestionsPage from "@/pages/agents/PlaybookSuggestionsPage";
+import SolutionPage from "@/pages/solutions/SolutionPage";
 import AdminDashboard from "@/pages/admin/dashboard";
 import { NoindexMeta } from "@/components/shared/noindex-meta";
 import AdminWorkspaces from "@/pages/admin/workspaces";
@@ -136,6 +137,21 @@ function AppRouter() {
       </Route>
       <Route path="/team-inbox">
         {() => <SeoLandingPage slug="team-inbox" />}
+      </Route>
+      <Route path="/solutions/small-teams">
+        {() => <SolutionPage slug="small-teams" />}
+      </Route>
+      <Route path="/solutions/retail">
+        {() => <SolutionPage slug="retail" />}
+      </Route>
+      <Route path="/solutions/services">
+        {() => <SolutionPage slug="services" />}
+      </Route>
+      <Route path="/solutions/agencies">
+        {() => <SolutionPage slug="agencies" />}
+      </Route>
+      <Route path="/solutions/ecommerce">
+        {() => <SolutionPage slug="ecommerce" />}
       </Route>
       <Route path="/documentation">
         {() => <DocumentationCenterPage />}
