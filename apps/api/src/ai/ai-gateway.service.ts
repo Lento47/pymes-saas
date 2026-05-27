@@ -9,11 +9,24 @@ const COMPAT_UNSUPPORTED = new Set(["workers-ai"]);
 
 // Direct providers bypass CF Gateway entirely and are called with their own base URL + API key.
 // Env var pattern: DIRECT_KEY_<PROVIDER_UPPER>  (e.g. DIRECT_KEY_MIMO)
-const DIRECT_PROVIDERS: Record<string, { baseUrl: string; envKey: string }> = {
+const DIRECT_PROVIDERS: Record<string, {
+  baseUrl: string;
+  envKey: string;
+  /** Override base URL from a separate env var (e.g. for Token Plan vs standard) */
+  baseUrlEnvKey?: string;
+  /** Auth header style: "Bearer" (default) or "api-key" (Azure/MiMo style) */
+  authHeader?: "Bearer" | "api-key";
+  /** Token limit field name: "max_tokens" (default) or "max_completion_tokens" */
+  tokenField?: string;
+}> = {
   mimo: {
-    // Updated to token-plan endpoint (OpenAI-compat)
-    baseUrl: "https://token-plan-cn.xiaomimimo.com/v1",
-    envKey:  "DIRECT_KEY_MIMO",
+    // Standard MiMo API (Pay-as-you-go / personal accounts).
+    // For Token Plan users, set DIRECT_BASE_MIMO=https://token-plan-cn.xiaomimimo.com/v1
+    baseUrl: "https://api.xiaomimimo.com/v1",
+    envKey: "DIRECT_KEY_MIMO",
+    baseUrlEnvKey: "DIRECT_BASE_MIMO",
+    authHeader: "api-key",         // MiMo uses "api-key" header, not "Authorization: Bearer"
+    tokenField: "max_completion_tokens",
   },
 };
 
@@ -96,6 +109,8 @@ export class AiGatewayService {
     options?: {
       model?: string;
       apiKey?: string;
+      /** Override base URL for direct providers (e.g. MiMo Token Plan vs standard) */
+      baseUrl?: string;
       maxTokens?: number;
       temperature?: number;
     },
@@ -109,6 +124,7 @@ export class AiGatewayService {
     options?: {
       model?: string;
       apiKey?: string;
+      baseUrl?: string;
       maxTokens?: number;
       temperature?: number;
     },
@@ -333,9 +349,15 @@ export class AiGatewayService {
   private async chatDirectOpenAICompat(
     modelStr: string,
     providerPrefix: string,
-    cfg: { baseUrl: string; envKey: string },
+    cfg: {
+      baseUrl: string;
+      envKey: string;
+      baseUrlEnvKey?: string;
+      authHeader?: "Bearer" | "api-key";
+      tokenField?: string;
+    },
     messages: AssistantMessage[],
-    options?: { model?: string; apiKey?: string; maxTokens?: number; temperature?: number },
+    options?: { model?: string; apiKey?: string; baseUrl?: string; maxTokens?: number; temperature?: number },
   ): Promise<ChatCompletionWithUsage> {
     const apiKey = options?.apiKey ?? this.config.get<string>(cfg.envKey) ?? null;
     if (!apiKey) {
@@ -345,20 +367,34 @@ export class AiGatewayService {
       );
     }
 
+    // Resolve base URL: explicit override > env var > hardcoded default
+    const envBaseUrl = cfg.baseUrlEnvKey ? this.config.get<string>(cfg.baseUrlEnvKey) ?? null : null;
+    const baseUrl = options?.baseUrl ?? envBaseUrl ?? cfg.baseUrl;
+
     // Model sent to the provider is everything after the provider prefix (e.g. "mimo-v2.5-pro")
     const modelId = modelStr.slice(providerPrefix.length + 1) || modelStr;
 
-    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+    // Build auth header — MiMo uses "api-key" (Azure style), others use "Authorization: Bearer"
+    const authStyle = cfg.authHeader ?? "Bearer";
+    const authHeaders: Record<string, string> =
+      authStyle === "api-key"
+        ? { "api-key": apiKey }
+        : { Authorization: `Bearer ${apiKey}` };
+
+    // Token limit field — MiMo uses "max_completion_tokens", most providers use "max_tokens"
+    const tokenField = cfg.tokenField ?? "max_tokens";
+    const maxTokens = options?.maxTokens ?? 1024;
+
+    const res = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify({
         model: modelId,
         messages,
-        max_tokens: options?.maxTokens ?? 1024,
-        temperature: options?.temperature ?? 0.3,
+        [tokenField]: maxTokens,
+        temperature: options?.temperature ?? 1.0,
+        top_p: 0.95,
+        stream: false,
       }),
     });
 
@@ -369,6 +405,8 @@ export class AiGatewayService {
     }
 
     const json = (await res.json()) as any;
+    // MiMo thinking models may return reasoning separately in reasoning_content;
+    // the final answer is always in choices[0].message.content
     const text =
       json.choices?.[0]?.message?.content?.trim() ??
       json.result?.choices?.[0]?.message?.content?.trim() ??
