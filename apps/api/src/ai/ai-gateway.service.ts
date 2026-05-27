@@ -11,7 +11,8 @@ const COMPAT_UNSUPPORTED = new Set(["workers-ai"]);
 // Env var pattern: DIRECT_KEY_<PROVIDER_UPPER>  (e.g. DIRECT_KEY_MIMO)
 const DIRECT_PROVIDERS: Record<string, { baseUrl: string; envKey: string }> = {
   mimo: {
-    baseUrl: "https://api.xiaomimimo.com/v1",
+    // Updated to token-plan endpoint (OpenAI-compat)
+    baseUrl: "https://token-plan-cn.xiaomimimo.com/v1",
     envKey:  "DIRECT_KEY_MIMO",
   },
 };

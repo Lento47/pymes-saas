@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, NotFoundException, forwardRef } from "@nestjs/common";
+import { Injectable, Inject, Logger, NotFoundException, forwardRef, Optional } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { AuthUser } from "../auth/strategies/jwt.strategy";
@@ -7,6 +7,7 @@ import { EventsGateway } from "../gateways/events.gateway";
 import { AiService } from "../ai/ai.service";
 import { AgentRunService } from "../ai/agent-run.service";
 import { AiConversationControlService } from "../ai/ai-conversation-control.service";
+import { PlatformAdminService } from "../ai/platform-admin.service";
 import { TasksService } from "../tasks/tasks.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { Contact, Priority } from "@prisma/client";
@@ -48,6 +49,8 @@ export class MessagesService {
     private readonly whatsappService: WhatsAppService,
     private readonly telegramOutbound: TelegramOutboundService,
     private readonly storage: StorageService,
+    @Optional() @Inject(forwardRef(() => PlatformAdminService))
+    private readonly platformAdmin?: PlatformAdminService,
   ) {}
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 100) {
@@ -1088,6 +1091,41 @@ export class MessagesService {
     isInteractive?: boolean,
   ): Promise<void> {
     this.logger.debug(`[ai-auto] triggered — workspace=${workspaceId} conv=${conversationId}`);
+
+    // ── Platform admin fast-path ────────────────────────────────────────────
+    // If the sender is a platform admin, bypass all workspace logic entirely.
+    // Admin gets a restriction-free AI with direct MiMo access.
+    if (this.platformAdmin) {
+      const convForAdmin = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: {
+          channel_id: true,
+          contact: { select: { phone: true, telegram_chat_id: true } },
+        },
+      });
+      const senderPhone = convForAdmin?.contact?.phone ?? "";
+      if (senderPhone && this.platformAdmin.isPlatformAdmin(senderPhone)) {
+        this.logger.log(`[platform-admin] admin message detected — conv=${conversationId}`);
+        const channel = convForAdmin?.channel_id
+          ? await this.prisma.channel.findUnique({
+              where: { id: convForAdmin.channel_id },
+              select: { id: true, type: true, config_json: true },
+            })
+          : null;
+        if (channel) {
+          await this.platformAdmin.handleAdminMessage({
+            workspaceId,
+            conversationId,
+            phone: senderPhone,
+            text: inboundText,
+            channelId: channel.id,
+            channelType: channel.type,
+          });
+        }
+        return; // Do NOT fall through to normal workspace AI
+      }
+    }
+
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { plan: true, settings_json: true },
