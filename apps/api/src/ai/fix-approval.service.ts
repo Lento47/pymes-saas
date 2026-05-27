@@ -24,6 +24,7 @@ export class FixApprovalService {
 
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => EngineeringFixService))
     private readonly fixService: EngineeringFixService,
     @Optional() @Inject(forwardRef(() => WhatsAppService))
     private readonly whatsapp?: WhatsAppService,
