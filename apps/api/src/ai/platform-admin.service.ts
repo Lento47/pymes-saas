@@ -159,6 +159,22 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
       } catch { /* use env defaults */ }
     }
 
+    // If the selected model is a MiMo direct model but no API key is available
+    // (neither from DB nor from env), fall back to a CF-gateway model so the
+    // admin chat still responds instead of failing silently.
+    const isMimoModel = model.startsWith("mimo/");
+    const envMimoKey = this.config.get<string>("DIRECT_KEY_MIMO");
+    if (isMimoModel && !mimoApiKey && !envMimoKey) {
+      const fallback =
+        this.config.get<string>("SYSTEM_AI_MODEL") ??
+        "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+      this.logger.warn(
+        `[platform-admin] No MiMo API key found — falling back to ${fallback}. ` +
+        `Configure the key at /settings/platform or set DIRECT_KEY_MIMO env var.`,
+      );
+      model = fallback;
+    }
+
     let response: string;
     try {
       response = await this.gateway.chatCompletion(messages, {
@@ -167,8 +183,8 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
         temperature: 0.4,
         ...(mimoApiKey ? { apiKey: mimoApiKey } : {}),
       });
-    } catch (err) {
-      this.logger.error("[platform-admin] AI call failed", err);
+    } catch (err: any) {
+      this.logger.error(`[platform-admin] AI call failed (model=${model}): ${err?.message ?? err}`);
       response = "❌ Error al procesar tu mensaje. Revisa los logs del servidor.";
     }
 
