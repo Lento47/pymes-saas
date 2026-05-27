@@ -25,14 +25,15 @@
       "type": "customNode",
       "data": {
         "id": "chatOpenAI_0",
-        "label": "ChatOpenAI",
+        "label": "ChatOpenAI (DeepSeek via CF Gateway)",
         "name": "chatOpenAI",
         "type": "BaseChatModel",
         "inputs": {
-          "modelName": "gpt-4o",
+          "modelName": "deepseek-chat",
           "temperature": 0.2,
           "maxTokens": 8000,
-          "openAIApiKey": "{{OPENAI_API_KEY}}"
+          "openAIApiKey": "{{GATEWAY_KEY_DEEPSEEK}}",
+          "openAIBasePath": "https://gateway.ai.cloudflare.com/v1/{{CF_GATEWAY_ACCOUNT_ID}}/{{CF_GATEWAY_ID}}/deepseek"
         }
       }
     },
@@ -179,7 +180,9 @@
       "{{API_BASE_URL}}": "https://api.pymeshub.lat",
       "{{PYMESHUB_FOUNDER_API_KEY}}": "tu PYMESHUB_FOUNDER_API_KEY (del env de Railway)",
       "{{WORKSPACE_SLUG}}": "el slug del workspace de plataforma (ej: pymeshub-internal)",
-      "{{OPENAI_API_KEY}}": "tu OpenAI API key"
+      "{{GATEWAY_KEY_DEEPSEEK}}": "tu GATEWAY_KEY_DEEPSEEK (del env de Railway)",
+      "{{CF_GATEWAY_ACCOUNT_ID}}": "tu CF_GATEWAY_ACCOUNT_ID",
+      "{{CF_GATEWAY_ID}}": "tu CF_GATEWAY_ID (ej: pymeshub)"
     },
     "env_vars_in_api_service": [
       "RAILWAY_API_TOKEN — PAT de Railway con permisos de lectura",
@@ -187,6 +190,6 @@
       "RAILWAY_SERVICE_ID — inyectado automáticamente por Railway",
       "FLOWISE_MAX_OUTPUT_CHARS — cambiar a 32000"
     ],
-    "model_alternatives": "Podés usar DeepSeek o GPT-4o-mini en el nodo ChatOpenAI para reducir costos. GPT-4o es el más confiable para seguir instrucciones de multi-step tooling."
+    "model_alternatives": "Por defecto usa DeepSeek via Cloudflare AI Gateway. MiMo NO es compatible con Flowise (header api-key no estándar). Alternativa: apuntar openAIBasePath a https://api.deepseek.com/v1 con API key directa de DeepSeek."
   }
 }
