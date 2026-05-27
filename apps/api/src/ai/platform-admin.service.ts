@@ -156,7 +156,15 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
         const cfg = await this.platformSettings.getDecrypted();
         if (cfg.admin_ai_model) model = cfg.admin_ai_model;
         if (cfg.mimo_api_key)   mimoApiKey = cfg.mimo_api_key;
-      } catch { /* use env defaults */ }
+        this.logger.debug(
+          `[platform-admin] DB cfg resolved — model=${model} mimo_key_set=${!!mimoApiKey}`,
+        );
+      } catch (err: any) {
+        this.logger.warn(`[platform-admin] getDecrypted failed: ${err?.message ?? err}`);
+        // fall through to env defaults
+      }
+    } else {
+      this.logger.warn("[platform-admin] PlatformSettingsService not injected — using env fallback");
     }
 
     // If the selected model is a MiMo direct model but no API key is available
@@ -184,8 +192,35 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
         ...(mimoApiKey ? { apiKey: mimoApiKey } : {}),
       });
     } catch (err: any) {
-      this.logger.error(`[platform-admin] AI call failed (model=${model}): ${err?.message ?? err}`);
-      response = "❌ Error al procesar tu mensaje. Revisa los logs del servidor.";
+      const is429 = err?.message?.includes("429") || String(err).includes("429");
+      this.logger.error(
+        `[platform-admin] AI call failed (model=${model}): ${err?.message ?? err}`,
+      );
+
+      if (is429) {
+        // MiMo rate-limited — wait 1 s, then retry once with CF gateway fallback
+        const cfFallback =
+          this.config.get<string>("SYSTEM_AI_MODEL") ??
+          "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+        this.logger.warn(
+          `[platform-admin] MiMo 429 rate-limit — retrying with fallback model ${cfFallback}`,
+        );
+        await new Promise((r) => setTimeout(r, 1000));
+        try {
+          response = await this.gateway.chatCompletion(messages, {
+            model: cfFallback,
+            maxTokens: 1500,
+            temperature: 0.4,
+          });
+        } catch (fallbackErr: any) {
+          this.logger.error(
+            `[platform-admin] Fallback model also failed: ${fallbackErr?.message ?? fallbackErr}`,
+          );
+          response = "⚠️ Límite de peticiones alcanzado en MiMo. Intenta de nuevo en un momento.";
+        }
+      } else {
+        response = "❌ Error al procesar tu mensaje. Revisa los logs del servidor.";
+      }
     }
 
     // ── Store in DB ──────────────────────────────────────────────────────────
