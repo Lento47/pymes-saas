@@ -1,6 +1,8 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { AiService } from "./ai.service";
+import { GitHubService } from "../platform/github.service";
+import { PlatformSettingsService } from "../platform/platform-settings.service";
 
 interface RbacActor {
   workspaceId: string;
@@ -14,6 +16,8 @@ export class EngineeringFixService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiService: AiService,
+    @Optional() private readonly github?: GitHubService,
+    @Optional() private readonly platformSettings?: PlatformSettingsService,
   ) {}
 
   /**
@@ -135,7 +139,59 @@ export class EngineeringFixService {
     if (fixCase.status !== "FIX_READY" && fixCase.status !== "PENDING_APPROVAL") {
       throw new Error("Fix case must be in FIX_READY or PENDING_APPROVAL status to approve");
     }
-    return this.updateFixStatus(fixCaseId, { status: "PR_OPENED" });
+
+    const updated = await this.updateFixStatus(fixCaseId, { status: "PR_OPENED" });
+
+    // Fire-and-forget: create GitHub PR if GitHub is configured
+    this.createGitHubPRForFix(fixCase).catch((err: unknown) => {
+      this.logger.error(
+        `[github] PR creation failed for fix ${fixCaseId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    });
+
+    return updated;
+  }
+
+  /** Create a GitHub description PR from an approved fix case */
+  private async createGitHubPRForFix(fixCase: any): Promise<void> {
+    if (!this.github || !this.platformSettings) return;
+
+    const cfg = await this.platformSettings.getDecrypted();
+    if (!cfg.github_token || !cfg.github_repo_owner || !cfg.github_repo_name) {
+      this.logger.warn("[github] PR skipped — GitHub not configured in platform settings");
+      return;
+    }
+
+    const diagnostic = fixCase.diagnosticCase ?? {};
+    const filesChanged: Array<{ file: string; reason: string; diff_suggestion?: string }> =
+      Array.isArray(fixCase.files_changed_json) ? fixCase.files_changed_json : [];
+
+    const prBody = this.github.buildPRBody({
+      fixSummary:       fixCase.fix_summary ?? "Propuesta de fix generada por IA",
+      diagnosticTitle:  diagnostic.title ?? "Error de plataforma",
+      category:         diagnostic.category ?? "PRODUCT_BUG",
+      riskLevel:        diagnostic.risk_level ?? "HIGH",
+      module:           diagnostic.module ?? null,
+      errorCode:        diagnostic.error_code ?? null,
+      filesChanged,
+    });
+
+    const result = await this.github.createDescriptionPR({
+      token:      cfg.github_token,
+      owner:      cfg.github_repo_owner,
+      repo:       cfg.github_repo_name,
+      branchName: fixCase.branch_name,
+      title:      `fix: ${diagnostic.title ?? fixCase.id} [AI]`,
+      body:       prBody,
+    });
+
+    // Save PR url + number back to the fix case
+    await (this.prisma as any).engineeringFixCase.update({
+      where: { id: fixCase.id },
+      data: { pr_url: result.prUrl, pr_number: result.prNumber },
+    });
+
+    this.logger.log(`[github] PR #${result.prNumber} created for fix ${fixCase.id}: ${result.prUrl}`);
   }
 
   async rejectFix(fixCaseId: string, reason: string, actor: RbacActor) {

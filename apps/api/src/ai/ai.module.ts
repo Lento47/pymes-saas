@@ -40,6 +40,7 @@ import { EmprendePlaybooksService } from "./emprende-playbooks.service";
 import { PlaybookExecutionService } from "./playbook-execution.service";
 import { PlatformAdminService } from "./platform-admin.service";
 import { ProductMetricsModule } from "../common/metrics/product-metrics.module";
+import { PlatformModule } from "../platform/platform.module";
 
 // NOTE: do NOT import EmailModule here. Adding it creates a cycle
 // AiModule → EmailModule → ConversationsModule → AiModule (the last
@@ -65,6 +66,7 @@ import { ProductMetricsModule } from "../common/metrics/product-metrics.module";
     StorageModule,
     ProductMetricsModule,
     forwardRef(() => AgentsModule),
+    forwardRef(() => PlatformModule),
   ],
   providers: [
     AiService,

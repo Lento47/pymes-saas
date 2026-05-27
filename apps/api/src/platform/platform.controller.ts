@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
 import { PlatformService } from "./platform.service";
+import { PlatformSettingsService, UpdatePlatformSettingsDto } from "./platform-settings.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { PlatformAdminGuard } from "../auth/guards/platform-admin.guard";
 import { AssignMemberDto } from "./dto/assign-member.dto";
@@ -26,7 +27,10 @@ import { AuthUser } from "../auth/strategies/jwt.strategy";
 @Controller("platform")
 @UseGuards(JwtAuthGuard, PlatformAdminGuard)
 export class PlatformController {
-  constructor(private readonly service: PlatformService) {}
+  constructor(
+    private readonly service: PlatformService,
+    private readonly platformSettings: PlatformSettingsService,
+  ) {}
 
   @Get("workspaces")
   listWorkspaces() {
@@ -144,6 +148,23 @@ export class PlatformController {
   async deleteWorkspace(@Param("slug") slug: string) {
     return this.service.deleteWorkspace(slug);
   }
+
+  // ── Platform AI / GitHub config ───────────────────────────────────────────
+
+  @Get("ai-config")
+  getPlatformAiConfig() {
+    return this.platformSettings.get();
+  }
+
+  @Patch("ai-config")
+  updatePlatformAiConfig(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: UpdatePlatformSettingsDto,
+  ) {
+    return this.platformSettings.update(dto, user.id);
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
 
   @Get("stats")
   getStats() {

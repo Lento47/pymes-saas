@@ -17,13 +17,14 @@ import { AiGatewayService } from "./ai-gateway.service";
 import type { AssistantMessage } from "./cloudflare-ai.service";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
+import { PlatformSettingsService } from "../platform/platform-settings.service";
 
 @Injectable()
 export class PlatformAdminService {
   private readonly logger = new Logger(PlatformAdminService.name);
 
-  /** Normalised phone numbers of platform admins (digits only, no spaces/+ etc.) */
-  private readonly adminPhones: Set<string>;
+  /** Env-var fallback phones (digits only) */
+  private readonly envAdminPhones: Set<string>;
 
   constructor(
     private readonly config: ConfigService,
@@ -33,31 +34,54 @@ export class PlatformAdminService {
     private readonly whatsapp?: WhatsAppService,
     @Optional()
     private readonly telegramOutbound?: TelegramOutboundService,
+    @Optional()
+    private readonly platformSettings?: PlatformSettingsService,
   ) {
     const raw = config.get<string>("PLATFORM_ADMIN_PHONES") ?? "";
-    this.adminPhones = new Set(
+    this.envAdminPhones = new Set(
       raw
         .split(",")
         .map((p) => p.trim().replace(/\D/g, ""))
         .filter((p) => p.length >= 7),
     );
-    if (this.adminPhones.size > 0) {
-      this.logger.log(`[platform-admin] ${this.adminPhones.size} admin phone(s) registered`);
+    if (this.envAdminPhones.size > 0) {
+      this.logger.log(`[platform-admin] ${this.envAdminPhones.size} admin phone(s) from env`);
     }
   }
 
   /**
    * Returns true if the given phone number belongs to a platform admin.
-   * Handles both exact match and suffix match (country-code prefix differences).
+   * Checks DB phones first (configured via UI), then env var fallback.
    */
-  isPlatformAdmin(phone: string): boolean {
-    if (this.adminPhones.size === 0) return false;
+  async isPlatformAdmin(phone: string): Promise<boolean> {
     const normalized = phone.replace(/\D/g, "");
+    if (normalized.length < 7) return false;
+
+    // DB phones (UI-configured) take priority
+    if (this.platformSettings) {
+      try {
+        const cfg = await this.platformSettings.getDecrypted();
+        if (cfg.admin_phones) {
+          const dbPhones = cfg.admin_phones
+            .split(",")
+            .map((p) => p.trim().replace(/\D/g, ""))
+            .filter((p) => p.length >= 7);
+          if (this.phoneMatches(normalized, new Set(dbPhones))) return true;
+        }
+      } catch {
+        // DB unavailable — fall through to env fallback
+      }
+    }
+
+    // Env var fallback
+    return this.phoneMatches(normalized, this.envAdminPhones);
+  }
+
+  private phoneMatches(normalized: string, phones: Set<string>): boolean {
+    if (phones.size === 0) return false;
     return (
-      this.adminPhones.has(normalized) ||
-      [...this.adminPhones].some(
-        (p) => normalized.endsWith(p) || p.endsWith(normalized),
-      )
+      phones.has(normalized) ||
+      [...phones].some((p) => normalized.endsWith(p) || p.endsWith(normalized))
     );
   }
 
@@ -120,11 +144,20 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
       ...history,
     ];
 
-    // ── AI call ──────────────────────────────────────────────────────────────
-    const model =
+    // ── Resolve model + MiMo API key from DB (UI-configured), fallback to env ──
+    let model =
       this.config.get<string>("PLATFORM_ADMIN_AI_MODEL") ??
       this.config.get<string>("SYSTEM_AI_MODEL") ??
       "mimo/mimo-v2.5-pro";
+    let mimoApiKey: string | undefined;
+
+    if (this.platformSettings) {
+      try {
+        const cfg = await this.platformSettings.getDecrypted();
+        if (cfg.admin_ai_model) model = cfg.admin_ai_model;
+        if (cfg.mimo_api_key)   mimoApiKey = cfg.mimo_api_key;
+      } catch { /* use env defaults */ }
+    }
 
     let response: string;
     try {
@@ -132,6 +165,7 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
         model,
         maxTokens: 1500,
         temperature: 0.4,
+        ...(mimoApiKey ? { apiKey: mimoApiKey } : {}),
       });
     } catch (err) {
       this.logger.error("[platform-admin] AI call failed", err);

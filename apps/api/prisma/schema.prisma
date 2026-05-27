@@ -2598,3 +2598,24 @@ model PlaybookSuggestion {
   @@index([workspace_id, status])
   @@map("playbook_suggestions")
 }
+
+// ── Platform-level settings (singleton row, id="singleton") ──────────────────
+model PlatformSettings {
+  id                String    @id @default("singleton")
+  /// MiMo API key — encrypted with CryptoService (AES-256-GCM)
+  mimo_api_key_enc  String?
+  /// Comma-separated admin phone numbers (digits only, no +)
+  admin_phones      String?
+  /// AI model for platform admin chat, e.g. "mimo/mimo-v2.5-pro"
+  admin_ai_model    String?
+  /// GitHub Personal Access Token — encrypted
+  github_token_enc  String?
+  /// GitHub repo owner, e.g. "lento47"
+  github_repo_owner String?
+  /// GitHub repo name, e.g. "pymes-saas"
+  github_repo_name  String?
+  updated_at        DateTime  @updatedAt
+  updated_by_id     String?
+
+  @@map("platform_settings")
+}
