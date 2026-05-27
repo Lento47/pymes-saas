@@ -19,7 +19,7 @@ export class TtsService {
       config.get<string>("ELEVENLABS_DEFAULT_VOICE_ID") ??
       "JBFqnCBsd6RMkjVDRZzb";
     this.modelId =
-      config.get<string>("ELEVENLABS_MODEL_ID") ?? "eleven_multilingual_v2";
+      config.get<string>("ELEVENLABS_MODEL_ID") ?? "eleven_turbo_v2_5";
   }
 
   get isEnabled(): boolean {

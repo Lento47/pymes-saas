@@ -20,7 +20,7 @@ export class WebhookEventsProcessor {
     private readonly whatsapp: WhatsAppService,
   ) {}
 
-  @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron(CronExpression.EVERY_5_SECONDS)
   async pollEvents() {
     const events = await this.webhookEvents.claimBatch(WORKER_ID, BATCH_SIZE);
     if (!events || events.length === 0) return;

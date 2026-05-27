@@ -212,12 +212,16 @@ export class AiConversationControlService {
       this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_on").catch(() => {});
     }
 
-    // Telegram typing expires after ~5s — refresh every 4s
+    // Typing indicators expire — refresh periodically (Telegram ~5s, WhatsApp ~25s)
     let typingInterval: ReturnType<typeof setInterval> | null = null;
     if (isTelegram && tgChatId) {
       typingInterval = setInterval(() => {
         this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
       }, 4000);
+    } else if (isWhatsApp && waPhone) {
+      typingInterval = setInterval(() => {
+        this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_on").catch(() => {});
+      }, 8000);
     }
 
     await this.persistInboundMemory(workspaceId, conv, inboundText);
@@ -306,6 +310,10 @@ export class AiConversationControlService {
         delegateTypingInterval = setInterval(() => {
           this.telegramOutbound.sendTyping(conv.channel!.id, tgChatId).catch(() => {});
         }, 4000);
+      } else if (isWhatsApp && waPhone) {
+        delegateTypingInterval = setInterval(() => {
+          this.whatsapp.sendTypingIndicator(conv.channel as any, waPhone, "typing_on").catch(() => {});
+        }, 8000);
       }
 
       // Call the Flowise agent
@@ -592,7 +600,7 @@ Reglas de interactive:
 - Usa interactive solo si el canal lo soporta.
 - Botones: máximo 3, títulos cortos.
 - Listas: opciones claras, máximo 8 filas.
-- Location request: solo si necesitas ubicación para entrega, visita o servicio a domicilio.
+- Location request: OBLIGATORIO en WhatsApp cuando necesites la dirección de entrega de un pedido, visita a domicilio o servicio presencial. NUNCA pidas la dirección de entrega como texto plano en WhatsApp — usa siempre location_request.
 - No incluyas markdown fuera del JSON.
 Reglas de invoice_action:
 - Solo genera invoice_action cuando el cliente haya CONFIRMADO explícitamente su pedido o servicio.
@@ -617,7 +625,7 @@ ${ctx.escalationConditions ? `  ${ctx.escalationConditions}` : "  (sin condicion
 - Cuando NO escales: handoff_reason debe ser null.`;
 
     const user = `Canal: ${channelType}
-Interactivo disponible: ${supportsRichInteractive ? "sí (botones, listas)" : "no"}
+Interactivo disponible: ${channelType === "WHATSAPP" ? "sí (botones, listas, location_request)" : supportsRichInteractive ? "sí (botones, listas)" : "no"}
 Cliente: ${conv.contact?.full_name ?? "Cliente"}
 Memoria previa: ${memory ? JSON.stringify(memory).slice(0, 1200) : "Sin memoria activa"}
 Templates aprobados:
