@@ -45,6 +45,15 @@ const LEGAL_LINKS = [
   { href: "/legal/trust-center-overview", key: "security" },
 ] as const;
 
+// Extra legal/compliance links (hardcoded — no i18n key needed)
+const COMPLIANCE_LINKS = [
+  { href: "/legal/billing-refunds-policy", label: "Reembolsos" },
+  { href: "/legal/cookies-policy",         label: "Política de Cookies" },
+  { href: "/legal/data-processing-addendum", label: "Tratamiento de Datos" },
+  { href: "/data-request",                 label: "Solicitud de Datos" },
+  { href: "/accessibility",                label: "Accesibilidad" },
+] as const;
+
 const SOCIAL_LINKS = [
   { href: "https://x.com/pymeshub", Icon: Twitter, label: "X" },
   { href: "https://linkedin.com/company/pymeshub", Icon: Linkedin, label: "LinkedIn" },
@@ -161,25 +170,30 @@ export function Footer({ className }: { className?: string }) {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 pt-8">
-          <p className="text-xs text-gray-400">
-            &copy; 2025 PymesHub Inc. &middot; {f.builtIn}
-          </p>
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
-            {LEGAL_LINKS.map(({ href, key }) => (
-              <a
-                key={key}
-                href={href}
-                className="text-xs text-gray-400 transition hover:text-gray-700"
-              >
-                {f[key]}
-              </a>
+        <div className="mt-12 border-t border-gray-200 pt-8 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-xs text-gray-400">
+              &copy; {new Date().getFullYear()} PymesHub Inc. &middot; {f.builtIn} &middot; Costa Rica
+            </p>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {LEGAL_LINKS.map(({ href, key }) => (
+                <a key={key} href={href} className="text-xs text-gray-400 transition hover:text-gray-700">
+                  {(f as any)[key]}
+                </a>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {COMPLIANCE_LINKS.map(({ href, label }) => (
+              <Link key={href} href={href} className="text-xs text-gray-400 transition hover:text-gray-700">
+                {label}
+              </Link>
             ))}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("open-cookie-preferences"))}
               className="text-xs text-gray-400 transition hover:text-gray-700"
             >
-              Preferencias de cookies
+              Preferencias de Cookies
             </button>
           </div>
         </div>
