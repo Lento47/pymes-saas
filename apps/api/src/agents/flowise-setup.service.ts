@@ -149,7 +149,7 @@ export class FlowiseSetupService {
 
     const existingChatflows = await this.flowise.listChatflows().catch(() => []);
     const existingNames = new Set(existingChatflows.map((c) => c.name));
-    const existingByName = new Map(existingChatflows.map((c) => [c.name, c.id]));
+    const existingByName = new Map<string, string>(existingChatflows.map((c) => [c.name, c.id] as [string, string]));
 
     for (const tier of tiers) {
       try {
