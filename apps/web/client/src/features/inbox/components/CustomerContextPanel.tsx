@@ -25,7 +25,7 @@ const INTENT_CONFIG: Record<string, { label: string; icon: React.ElementType; cl
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.12em] mb-2">
+    <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-[0.1em] mb-3">
       {label}
     </p>
   );
@@ -34,8 +34,8 @@ function SectionHeader({ label }: { label: string }) {
 function DataRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] text-muted-foreground/70">{label}</p>
-      <p className="text-[12px] text-foreground leading-snug">{value}</p>
+      <p className="text-[11px] text-muted-foreground/60">{label}</p>
+      <p className="text-sm text-foreground leading-snug">{value}</p>
     </div>
   );
 }
@@ -128,7 +128,7 @@ export function CustomerContextPanel({
   return (
     <aside className="min-h-0 overflow-y-auto bg-background border-l border-border">
       {/* Contact section */}
-      <div className="px-4 pt-4 pb-3 border-b border-border/40 space-y-2.5">
+      <div className="px-4 pt-4 pb-3 border-b border-border/50 space-y-2.5">
         <SectionHeader label="Contacto" />
         <DataRow label="Nombre" value={conversation.contact?.full_name || "—"} />
         {conversation.contact?.email && (
@@ -142,7 +142,7 @@ export function CustomerContextPanel({
           <button
             type="button"
             onClick={onAddContact}
-            className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted/40"
+            className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/40"
           >
             <UserPlus className="h-3 w-3 text-muted-foreground" />
             Agregar contacto
@@ -151,7 +151,7 @@ export function CustomerContextPanel({
       </div>
 
       {/* Conversation state section */}
-      <div className="px-4 py-3 border-b border-border/40 space-y-2.5">
+      <div className="px-4 py-3 border-b border-border/50 space-y-2.5">
         <SectionHeader label="Conversación" />
         <div className="flex flex-wrap gap-1.5">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusStyle.cls}`}>
@@ -181,24 +181,24 @@ export function CustomerContextPanel({
 
       <div className="px-4 py-3 border-b border-border/40 space-y-3">
         <SectionHeader label="Agente IA" />
-        <div className="rounded-lg border border-border/50 bg-muted/15 p-3 space-y-3">
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                <Bot className="w-3.5 h-3.5 text-primary" />
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Bot className="w-4 h-4 text-primary" />
               </div>
               <div className="min-w-0">
-                <p className="text-[12px] font-medium text-foreground">Control conversacional</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-sm font-semibold text-foreground">Control conversacional</p>
+                <p className="text-xs text-muted-foreground">
                   {aiState === "AI_ACTIVE" ? "IA activa" : aiState === "HUMAN_ACTIVE" ? "Humano activo" : "Inactivo"}
                 </p>
               </div>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-[12px] font-semibold text-foreground tabular-nums">
+              <p className="text-base font-bold text-foreground tabular-nums">
                 {tokensQuery.isLoading ? "..." : formatTokens(tokenAvailable)}
               </p>
-              <p className="text-[9px] text-muted-foreground">tokens IA</p>
+              <p className="text-[10px] text-muted-foreground">tokens IA</p>
             </div>
           </div>
 
@@ -214,9 +214,9 @@ export function CustomerContextPanel({
               type="button"
               onClick={() => startAiMut.mutate()}
               disabled={startAiMut.isPending || !hasTokens}
-              className="flex w-full items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-2 text-[11px] font-medium text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {startAiMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}
+              {startAiMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
               Tomar control y responder
             </button>
             {aiState === "AI_ACTIVE" && (
@@ -224,18 +224,18 @@ export function CustomerContextPanel({
                 type="button"
                 onClick={() => stopAiMut.mutate()}
                 disabled={stopAiMut.isPending}
-                className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border/50 bg-background/30 px-2.5 py-1.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-background/30 px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-50"
               >
-                {stopAiMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <PauseCircle className="w-3 h-3" />}
+                {stopAiMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PauseCircle className="w-3.5 h-3.5" />}
                 Pausar IA
               </button>
             )}
             {!hasTokens && !tokensQuery.isLoading && (
               <a
                 href="/settings/credits"
-                className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border/50 bg-background/30 px-2.5 py-1.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-background/30 px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
               >
-                <CreditCard className="w-3 h-3" />
+                <CreditCard className="w-3.5 h-3.5" />
                 Comprar tokens IA
               </a>
             )}
@@ -250,10 +250,10 @@ export function CustomerContextPanel({
         if (!intentCfg) return null;
         const IntentIcon = intentCfg.icon;
         return (
-          <div className="px-4 py-3 border-b border-border/40 space-y-2.5">
+          <div className="px-4 py-3 border-b border-border/50 space-y-2.5">
             <SectionHeader label="Contexto detectado" />
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${intentCfg.cls}`}>
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${intentCfg.cls}`}>
                 <IntentIcon className="h-2.5 w-2.5 shrink-0" />
                 {intentCfg.label}
               </span>
@@ -263,18 +263,18 @@ export function CustomerContextPanel({
               {(intentKey === "ORDER" || intentKey === "QUOTE") && contactId && (
                 <a
                   href={`/invoices/new?contact=${contactId}&conversation=${(conversation as any).id}`}
-                  className="flex items-center gap-1 rounded-md border border-border/50 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                  className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
                 >
-                  <Receipt className="w-2.5 h-2.5 shrink-0" />
+                  <Receipt className="w-3 h-3 shrink-0" />
                   + Factura
                 </a>
               )}
               {contactId && (
                 <a
                   href={`/tasks?contact=${contactId}&conversation=${(conversation as any).id}`}
-                  className="flex items-center gap-1 rounded-md border border-border/50 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                  className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
                 >
-                  <ClipboardList className="w-2.5 h-2.5 shrink-0" />
+                  <ClipboardList className="w-3 h-3 shrink-0" />
                   + Tarea
                 </a>
               )}
@@ -295,18 +295,18 @@ export function CustomerContextPanel({
                   navigator.clipboard.writeText((conversation as any).external_id);
                   toast({ title: "ID copiado" });
                 }}
-                className="flex items-center gap-1 rounded-md border border-border/50 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
               >
-                <Copy className="w-2.5 h-2.5 shrink-0" />
+                <Copy className="w-3 h-3 shrink-0" />
                 Copiar ID externo
               </button>
             )}
             {contactId && (
               <a
                 href={`/contacts/${contactId}`}
-                className="flex items-center gap-1 rounded-md border border-border/50 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
               >
-                <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                <ExternalLink className="w-3 h-3 shrink-0" />
                 Ver en contactos
               </a>
             )}
@@ -320,13 +320,13 @@ export function CustomerContextPanel({
           <button
             type="button"
             onClick={() => setShowMetrics(!showMetrics)}
-            className="w-full flex items-center justify-between gap-2 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+            className="w-full flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <span className="flex items-center gap-1.5">
-              <TrendingUp className="w-3 h-3" />
+              <TrendingUp className="w-3.5 h-3.5" />
               Dashboard del cliente
             </span>
-            {showMetrics ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            {showMetrics ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
           {showMetrics && <ClientMetrics contactId={contactId} queryClient={queryClient} />}
@@ -398,7 +398,7 @@ function ClientMetrics({ contactId, queryClient }: { contactId: string; queryCli
 
       {m.extracted_data && Object.keys(m.extracted_data).length > 1 && (
         <div className="rounded-lg border border-border/40 bg-muted/20 p-3 space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
             Datos extraídos
           </p>
           {m.extracted_data.location && <ExtractedRow label="Ubicación" value={m.extracted_data.location} />}
@@ -420,16 +420,16 @@ function ClientMetrics({ contactId, queryClient }: { contactId: string; queryCli
         type="button"
         onClick={() => extractMut.mutate()}
         disabled={extractMut.isPending}
-        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-medium border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
       >
         {extractMut.isPending ? (
           <>
-            <Loader2 className="w-3 h-3 animate-spin" />
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
             Analizando...
           </>
         ) : (
           <>
-            <ClipboardList className="w-3 h-3" />
+            <ClipboardList className="w-3.5 h-3.5" />
             Extraer datos del cliente
           </>
         )}
@@ -446,11 +446,11 @@ function ClientMetrics({ contactId, queryClient }: { contactId: string; queryCli
 
 function MetricBadge({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: number }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-lg border border-border/40 bg-muted/20 px-2.5 py-1.5">
-      <Icon className="w-3 h-3 text-primary/50 shrink-0" />
+    <div className="flex items-center gap-1.5 rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+      <Icon className="w-3.5 h-3.5 text-primary/50 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[12px] font-semibold text-foreground leading-none">{value}</p>
-        <p className="text-[9px] text-muted-foreground/60 truncate mt-0.5">{label}</p>
+        <p className="text-sm font-bold text-foreground leading-none">{value}</p>
+        <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{label}</p>
       </div>
     </div>
   );
@@ -459,8 +459,8 @@ function MetricBadge({ icon: Icon, label, value }: { icon: React.ElementType; la
 function ExtractedRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] text-muted-foreground/60">{label}</p>
-      <p className="text-[11px] text-foreground/85 leading-relaxed">{value}</p>
+      <p className="text-xs text-muted-foreground/60">{label}</p>
+      <p className="text-[13px] text-foreground/85 leading-relaxed">{value}</p>
     </div>
   );
 }
