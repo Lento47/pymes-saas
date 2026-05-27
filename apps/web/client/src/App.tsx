@@ -44,6 +44,8 @@ import HelpDocumentPage from "@/pages/help-document";
 import DocumentationCenterPage from "@/pages/documentation";
 import DocumentationDocumentPage from "@/pages/documentation-document";
 import { LegalCenterPage, LegalDocumentPage } from "@/pages/legal-center";
+import DataRequestPage from "@/pages/data-request";
+import AccessibilityPage from "@/pages/accessibility";
 import PlatformPage from "@/pages/platform";
 import WorkflowsPage from "@/pages/workflows";
 import InsightsPage from "@/pages/insights-page";
@@ -146,6 +148,12 @@ function AppRouter() {
       </Route>
       <Route path="/legal/:slug">
         {(params) => <LegalDocumentPage slug={params.slug} />}
+      </Route>
+      <Route path="/data-request">
+        {() => <DataRequestPage />}
+      </Route>
+      <Route path="/accessibility">
+        {() => <AccessibilityPage />}
       </Route>
       <Route path="/platform">
         {() => <PlatformPage />}
