@@ -39,6 +39,7 @@ import { ElevenLabsService } from "./elevenlabs.service";
 import { EmprendePlaybooksService } from "./emprende-playbooks.service";
 import { PlaybookExecutionService } from "./playbook-execution.service";
 import { PlatformAdminService } from "./platform-admin.service";
+import { FixApprovalService } from "./fix-approval.service";
 import { ProductMetricsModule } from "../common/metrics/product-metrics.module";
 import { PlatformModule } from "../platform/platform.module";
 
@@ -89,6 +90,7 @@ import { PlatformModule } from "../platform/platform.module";
     EmprendePlaybooksService,
     PlaybookExecutionService,
     PlatformAdminService,
+    FixApprovalService,
   ],
   controllers: [
     AgentController,
@@ -114,6 +116,7 @@ import { PlatformModule } from "../platform/platform.module";
     EmprendePlaybooksService,
     PlaybookExecutionService,
     PlatformAdminService,
+    FixApprovalService,
   ],
 })
 export class AiModule {}

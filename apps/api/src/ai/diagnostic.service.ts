@@ -7,6 +7,7 @@ import { SupportNotificationService } from "./support-notification.service";
 import { KnowledgeBaseService } from "./knowledge-base.service";
 import { AiGatewayService } from "./ai-gateway.service";
 import { Prisma } from "@prisma/client";
+import { PLAN_TO_TIER, SUPPORT_TIER_SLUGS, FlowiseSetupService } from "../agents/flowise-setup.service";
 
 export interface DiagnosticInput {
   workspaceId: string;
@@ -62,6 +63,7 @@ export class DiagnosticService {
     private readonly knowledgeBase: KnowledgeBaseService,
     private readonly triage: AiTriageService,
     @Optional() private readonly gateway?: AiGatewayService,
+    @Optional() private readonly flowiseSetup?: FlowiseSetupService,
   ) {}
 
   // ADMIN/platform-admin: full workspace view. Otherwise scope to caller's
@@ -290,18 +292,26 @@ export class DiagnosticService {
         );
     }
 
-    // Auto-analyze and create fix case for critical/high bugs (fire-and-forget)
+    // Auto-analyze and create fix case based on workspace support tier (fire-and-forget)
     const AUTO_TRIGGER_CATEGORIES = ["PRODUCT_BUG", "PLATFORM_INCIDENT"];
     const AUTO_TRIGGER_RISKS = ["critical", "high", "CRITICAL", "HIGH"];
     if (
       AUTO_TRIGGER_CATEGORIES.includes(classification.category) &&
       AUTO_TRIGGER_RISKS.includes(classification.risk_level)
     ) {
+      // Get workspace plan to determine support tier
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: input.workspaceId },
+        select: { plan: true },
+      }).catch(() => null);
+      const plan = workspace?.plan ?? "FREE";
+
       this.autoAnalyzeAndFix(
         caseRecord.id,
         input.workspaceId,
         classification.category,
         classification.risk_level,
+        plan,
         `Error detectado — ${classification.title}\n${classification.recommendation}\n${input.user_description ?? ""}`.trim(),
       ).catch((err: unknown) =>
         this.logger.warn(
@@ -328,14 +338,120 @@ export class DiagnosticService {
   }
 
   /**
-   * Run AI analysis directly (no Flowise dependency) for a critical/high bug.
-   * Stores structured analysis in evidence_json, auto-creates an engineering fix
-   * case with the proposal, and auto-approves CRITICAL cases to trigger a GitHub PR.
+   * Run support pipeline based on workspace plan tier.
+   *
+   * Tier 1 (FREE/BETA)        : store notification, no AI analysis
+   * Tier 2 (STARTER/EMPRENDE) : Flowise triage agent → recommendation only
+   * Tier 3 (GROWTH/BUSINESS)  : Flowise full analysis → FIX_READY, manual approval
+   * Tier 4 (ENTERPRISE/PLUS)  : Flowise full analysis → auto-approve → GitHub PR
+   *
+   * Falls back to direct AiGatewayService if Flowise is unavailable.
    */
   private async autoAnalyzeAndFix(
     diagnosticCaseId: string,
     workspaceId: string,
     category: string,
+    riskLevel: string,
+    plan: string,
+    errorContext: string,
+  ): Promise<void> {
+    const tierKey = PLAN_TO_TIER[plan] ?? "TIER_1";
+    this.logger.log(`[support-agent] Plan=${plan} → ${tierKey} for case ${diagnosticCaseId}`);
+
+    // Tier 1: FREE / BETA — just store a notification, no deep analysis
+    if (tierKey === "TIER_1") {
+      await this.prisma.supportDiagnosticCase.update({
+        where: { id: diagnosticCaseId },
+        data: {
+          evidence_json: {
+            support_note: "Caso registrado. El equipo de PymesHub revisará este reporte.",
+            tier: "FREE",
+            dispatched_at: new Date().toISOString(),
+          } as any,
+        },
+      }).catch(() => {});
+      this.logger.log(`[support-agent] Tier 1 (FREE) — notification stored for ${diagnosticCaseId}`);
+      return;
+    }
+
+    // Tiers 2-4: try Flowise first, fallback to direct AI
+    const chatflowId = this.flowiseSetup
+      ? await this.flowiseSetup.getChatflowIdForPlan(plan)
+      : null;
+
+    if (chatflowId) {
+      await this.runFlowiseTierPipeline(diagnosticCaseId, workspaceId, plan, tierKey, chatflowId, errorContext);
+    } else {
+      // Flowise not configured or chatflow not yet created → direct AI fallback
+      this.logger.warn(`[support-agent] No Flowise chatflow for plan ${plan} — using direct AI fallback`);
+      await this.runDirectAiAnalysis(diagnosticCaseId, workspaceId, riskLevel, errorContext);
+    }
+  }
+
+  /** Tier 2-4: invoke Flowise support agent chatflow */
+  private async runFlowiseTierPipeline(
+    diagnosticCaseId: string,
+    workspaceId: string,
+    plan: string,
+    tierKey: string,
+    chatflowId: string,
+    errorContext: string,
+  ): Promise<void> {
+    // Build question for Flowise — include diagnostic case ID so apply_github_fix can link back
+    const question =
+      `CASO: ${diagnosticCaseId}\nWORKSPACE: ${workspaceId}\n\n${errorContext}\n\n` +
+      `Si generás un fix, incluí diagnostic_case_id="${diagnosticCaseId}" en apply_github_fix.`;
+
+    try {
+      // Call Flowise directly via HTTP predict (reusing FlowiseClient pattern)
+      const flowiseBaseUrl = (this.flowiseSetup as any)?.flowise?.baseUrl ??
+        process.env.FLOWISE_BASE_URL ?? "http://localhost:3001";
+      const flowiseApiKey = (this.flowiseSetup as any)?.flowise?.apiKey ?? process.env.FLOWISE_API_KEY;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (flowiseApiKey) headers["Authorization"] = `Bearer ${flowiseApiKey}`;
+
+      const res = await fetch(`${flowiseBaseUrl}/api/v1/prediction/${chatflowId}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ question, overrideConfig: { sessionId: diagnosticCaseId } }),
+      });
+
+      const raw = res.ok ? ((await res.json()) as any)?.text ?? "" : "";
+
+      await this.prisma.supportDiagnosticCase.update({
+        where: { id: diagnosticCaseId },
+        data: {
+          evidence_json: {
+            support_agent_analysis: raw.slice(0, 6000),
+            support_tier: tierKey,
+            support_agent_dispatched_at: new Date().toISOString(),
+          } as any,
+        },
+      });
+
+      this.logger.log(`[support-agent] Flowise ${tierKey} response stored for ${diagnosticCaseId}`);
+
+      // Tier 4: auto-approve if PR was not already created by apply_github_fix tool
+      if (tierKey === "TIER_4" && this.flowiseSetup?.isAutoApprovePlan(plan)) {
+        const fixCase = await (this.prisma as any).engineeringFixCase.findFirst({
+          where: { diagnostic_case_id: diagnosticCaseId, status: "FIX_READY" },
+          select: { id: true },
+        });
+        if (fixCase) {
+          await this.fixService.approveFix(fixCase.id, { workspaceId: "system", isPlatformAdmin: true });
+          this.logger.log(`[support-agent] Tier 4 auto-approved fix ${fixCase.id}`);
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`[support-agent] Flowise pipeline failed: ${err?.message} — falling back to direct AI`);
+      await this.runDirectAiAnalysis(diagnosticCaseId, workspaceId, "high", errorContext);
+    }
+  }
+
+  /** Direct AI fallback (no Flowise) — used when Flowise is unavailable */
+  private async runDirectAiAnalysis(
+    diagnosticCaseId: string,
+    workspaceId: string,
     riskLevel: string,
     errorContext: string,
   ): Promise<void> {
@@ -344,7 +460,7 @@ export class DiagnosticService {
       return;
     }
 
-    this.logger.log(`[support-agent] Running direct AI analysis for case ${diagnosticCaseId} (${category}/${riskLevel})`);
+    this.logger.log(`[support-agent] Running direct AI analysis for case ${diagnosticCaseId}`);
 
     const systemPrompt = `Eres un SRE senior analizando un bug de producción en PymesHub (plataforma SaaS para pymes).
 El stack es NestJS + Prisma + PostgreSQL en apps/api, React/Vite en apps/web.
