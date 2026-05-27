@@ -134,6 +134,48 @@ export class EngineeringFixService {
     this.logger.log(`Fix proposal generated for ${fixCaseId}`);
   }
 
+  /**
+   * Create a fix case with a pre-generated AI proposal (status: FIX_READY immediately).
+   * Used by the automated support pipeline that calls AiGatewayService directly
+   * instead of re-generating through the standard AI flow.
+   */
+  async createFixCaseWithProposal(
+    diagnosticCaseId: string,
+    proposal: {
+      fix_summary: string;
+      files_to_check: Array<{ file: string; reason: string; diff_suggestion?: string }>;
+    },
+    actor: RbacActor,
+  ) {
+    const diagnostic = await this.assertDiagnosticAccessible(diagnosticCaseId, actor);
+
+    const branchName =
+      `fix/${diagnostic.module}-${diagnostic.error_code || diagnostic.id.slice(0, 8)}-${diagnostic.id.slice(0, 6)}`
+        .toLowerCase()
+        .replace(/[^a-z0-9/-]/g, "-");
+
+    const fixCase = await (this.prisma as any).engineeringFixCase.create({
+      data: {
+        diagnostic_case_id: diagnosticCaseId,
+        branch_name: branchName,
+        status: "FIX_READY",
+        fix_summary: proposal.fix_summary,
+        files_changed_json: proposal.files_to_check,
+      },
+    });
+
+    await this.prisma.supportDiagnosticCase.update({
+      where: { id: diagnosticCaseId },
+      data: { status: "INVESTIGATING" },
+    });
+
+    this.logger.log(
+      `[fix] Pre-proposed fix case created: ${fixCase.id} (FIX_READY immediately), branch: ${branchName}`,
+    );
+
+    return fixCase;
+  }
+
   async approveFix(fixCaseId: string, actor: RbacActor) {
     const fixCase = await this.assertFixCaseAccessible(fixCaseId, actor);
     if (fixCase.status !== "FIX_READY" && fixCase.status !== "PENDING_APPROVAL") {
