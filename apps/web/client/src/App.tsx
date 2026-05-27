@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { Switch, Route, Router, Redirect } from "wouter";
+import { Switch, Route, Router, Redirect, useLocation } from "wouter";
 import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
@@ -73,6 +74,12 @@ import AdminPlanLimits from "@/pages/admin/plan-limits";
 import AdminLogin from "@/pages/admin/login";
 import AdminLandingEditor from "@/pages/admin/landing-editor";
 import BusinessProfilePage from "@/pages/business-profile";
+
+function ScrollToTop() {
+  const [location] = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [location]);
+  return null;
+}
 
 function AppLoader() {
   return (
@@ -326,6 +333,7 @@ export default function App() {
             <TooltipProvider>
               <Toaster />
               <Router hook={useWorkspaceHashLocation}>
+                <ScrollToTop />
                 <AppRouter />
                 <OfflineBanner />
               </Router>
