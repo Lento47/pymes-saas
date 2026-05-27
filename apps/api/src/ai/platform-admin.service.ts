@@ -184,42 +184,48 @@ No uses el formato de "asistente de empresa" ni frases como "¿En qué puedo ayu
     }
 
     let response: string;
+    // MiMo thinking models (v2.5-pro, v2.5, v2-pro, v2-omni) use temperature 1.0
+    // by default and override any custom value internally. Using 1.0 aligns with
+    // their docs for "General Conversation" tasks.
+    const isMimoThinkingModel = /mimo\/(mimo-)?v2(\.\d+)?(-pro|-omni)?$|mimo\/(mimo-)?v2\.\d+-pro/.test(model);
+    const temperature = isMimoThinkingModel ? 1.0 : 0.7;
+
     try {
       response = await this.gateway.chatCompletion(messages, {
         model,
         maxTokens: 1500,
-        temperature: 0.4,
+        temperature,
         ...(mimoApiKey ? { apiKey: mimoApiKey } : {}),
       });
     } catch (err: any) {
-      const is429 = err?.message?.includes("429") || String(err).includes("429");
+      // Extract HTTP status from error message for better diagnostics
+      const statusHint = err?.message?.match(/\b(\d{3})\b/)?.[1] ?? "?";
       this.logger.error(
-        `[platform-admin] AI call failed (model=${model}): ${err?.message ?? err}`,
+        `[platform-admin] MiMo call failed (model=${model}, status=${statusHint}): ${err?.message ?? err}`,
       );
 
-      if (is429) {
-        // MiMo rate-limited — wait 1 s, then retry once with CF gateway fallback
-        const cfFallback =
-          this.config.get<string>("SYSTEM_AI_MODEL") ??
-          "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-        this.logger.warn(
-          `[platform-admin] MiMo 429 rate-limit — retrying with fallback model ${cfFallback}`,
+      // Fall back on ANY MiMo error — retry once with CF gateway
+      const cfFallback =
+        this.config.get<string>("SYSTEM_AI_MODEL") ??
+        "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+      this.logger.warn(
+        `[platform-admin] Falling back to CF gateway model: ${cfFallback}`,
+      );
+      await new Promise((r) => setTimeout(r, 800));
+      try {
+        // No temperature for workers-ai — let it use its own default
+        response = await this.gateway.chatCompletion(messages, {
+          model: cfFallback,
+          maxTokens: 1500,
+        });
+      } catch (fallbackErr: any) {
+        this.logger.error(
+          `[platform-admin] Fallback also failed: ${fallbackErr?.message ?? fallbackErr}`,
         );
-        await new Promise((r) => setTimeout(r, 1000));
-        try {
-          response = await this.gateway.chatCompletion(messages, {
-            model: cfFallback,
-            maxTokens: 1500,
-            temperature: 0.4,
-          });
-        } catch (fallbackErr: any) {
-          this.logger.error(
-            `[platform-admin] Fallback model also failed: ${fallbackErr?.message ?? fallbackErr}`,
-          );
-          response = "⚠️ Límite de peticiones alcanzado en MiMo. Intenta de nuevo en un momento.";
-        }
-      } else {
-        response = "❌ Error al procesar tu mensaje. Revisa los logs del servidor.";
+        response =
+          statusHint === "429"
+            ? "⚠️ Límite de peticiones en MiMo. Intenta de nuevo en un momento."
+            : `❌ Error ${statusHint} al procesar tu mensaje. Revisa los logs del servidor.`;
       }
     }
 
