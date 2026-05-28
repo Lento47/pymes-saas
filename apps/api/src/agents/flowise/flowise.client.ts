@@ -281,27 +281,21 @@ export class FlowiseClient {
     const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
     const model = this.config.get<string>("FLOWISE_DEFAULT_MODEL") ?? "deepseek-v4-flash";
     const basepath = this.config.get<string>("DEEPSEEK_BASE_URL") ?? "https://api.deepseek.com";
-    const apiKey = this.config.get<string>("FLOWISE_DEFAULT_API_KEY") ?? "";
+    // chatOpenAI node requires an openAIApi-type credential.
+    // FLOWISE_DEFAULT_API_KEY may be unset, so fall back to GATEWAY_KEY_DEEPSEEK
+    // (same key used by FlowiseSetupService to provision support agents).
+    const apiKey =
+      this.config.get<string>("FLOWISE_DEFAULT_API_KEY") ||
+      this.config.get<string>("GATEWAY_KEY_DEEPSEEK") ||
+      "";
 
-    // Resolve the credential to bind to this chatflow.
-    // Priority:
-    //   1. "PymesHub Default" if FLOWISE_DEFAULT_API_KEY is set
-    //   2. "PymesHub Default" if it already exists in Flowise (created manually)
-    //   3. "PymesHub DeepSeek" — always provisioned on startup, reliable fallback
+    // "PymesHub DeepSeek" is always created as openAIApi type by FlowiseSetupService.
+    // Prefer it over "PymesHub Default" which may have been manually created as the
+    // incompatible deepseekApi type. Fall back to creating "PymesHub Default" only
+    // if neither openAIApi credential exists yet.
     let credentialId: string | undefined;
     try {
-      const existing = await this.listCredentials();
-      const byName = new Map(existing.map((c) => [c.name, c.id] as [string, string]));
-
-      if (apiKey) {
-        credentialId = await this.getOrCreateCredential("PymesHub Default", apiKey);
-      } else if (byName.has("PymesHub Default")) {
-        credentialId = byName.get("PymesHub Default");
-        this.credentialCache.set("PymesHub Default", credentialId!);
-      } else if (byName.has("PymesHub DeepSeek")) {
-        // Fallback to the credential guaranteed to exist after FlowiseSetupService.setup()
-        credentialId = byName.get("PymesHub DeepSeek");
-      }
+      credentialId = await this.getOrCreateCredential("PymesHub DeepSeek", apiKey);
     } catch {
       // non-fatal — chatflow will be created but may fail at runtime
     }
