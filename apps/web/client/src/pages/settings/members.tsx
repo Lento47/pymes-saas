@@ -13,10 +13,10 @@ import { UserPlus } from "lucide-react";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 
 const ROLE_COLORS: Record<string, string> = {
-  OWNER: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
-  ADMIN: "bg-blue-500/10 text-blue-400 border-blue-500/30",
-  AGENT: "bg-green-500/10 text-green-400 border-green-500/30",
-  VIEWER: "bg-gray-500/10 text-gray-400 border-gray-500/30",
+  OWNER: "bg-gray-100 text-gray-600 border-gray-200",
+  ADMIN: "bg-gray-100 text-gray-600 border-gray-200",
+  AGENT: "bg-gray-100 text-gray-600 border-gray-200",
+  VIEWER: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
 export default function MembersSettingsPage() {
