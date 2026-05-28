@@ -289,15 +289,16 @@ export class FlowiseClient {
       this.config.get<string>("GATEWAY_KEY_DEEPSEEK") ||
       "";
 
-    // "PymesHub DeepSeek" is always created as openAIApi type by FlowiseSetupService.
-    // Prefer it over "PymesHub Default" which may have been manually created as the
-    // incompatible deepseekApi type. Fall back to creating "PymesHub Default" only
-    // if neither openAIApi credential exists yet.
+    // Only bind a credential when we actually have a non-empty API key.
+    // Creating a credential with an empty key produces a garbage entry in Flowise
+    // that causes "Missing credentials" at runtime (ChatOpenAI rejects falsy keys).
     let credentialId: string | undefined;
-    try {
-      credentialId = await this.getOrCreateCredential("PymesHub DeepSeek", apiKey);
-    } catch {
-      // non-fatal — chatflow will be created but may fail at runtime
+    if (apiKey) {
+      try {
+        credentialId = await this.getOrCreateCredential("PymesHub DeepSeek", apiKey);
+      } catch {
+        // non-fatal — chatflow will be created but may fail at runtime
+      }
     }
 
     const body = {

@@ -195,9 +195,16 @@ export class AgentRuntimeService {
       // Stale or broken chatflow — Flowise DB was reset, chatflow was deleted,
       // or the chatflow was created without a credential binding.
       // Reprovision transparently and retry once.
+      // "Missing credentials" is a config problem (empty API key), not a stale-ID
+      // problem. Only reprovision for it when we actually have a key — otherwise
+      // we'd just recreate the same broken flow in a loop.
+      const hasApiKey = !!(
+        this.config.get<string>("FLOWISE_DEFAULT_API_KEY") ||
+        this.config.get<string>("GATEWAY_KEY_DEEPSEEK")
+      );
       const isBrokenFlow =
         (msg.includes("returned 404") ||
-          (msg.includes("returned 500") && msg.includes("Missing credentials"))) &&
+          (msg.includes("returned 500") && msg.includes("Missing credentials") && hasApiKey)) &&
         instance.chatflow_id;
       if (isBrokenFlow) {
         this.logger.warn(
