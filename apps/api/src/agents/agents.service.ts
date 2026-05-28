@@ -60,7 +60,7 @@ export class AgentsService {
 
     // 2. Auto-provision chatflow in Flowise if not provided manually
     if (this.flowise.isEnabled && !dto.chatflow_id) {
-      return this.provisionChatflow(agent.id, dto.name);
+      return this.provisionChatflow(agent.id, dto.name, agent.system_instructions);
     }
 
     return agent;
@@ -148,7 +148,7 @@ export class AgentsService {
 
     // 2. Auto-provision chatflow in Flowise
     if (this.flowise.isEnabled) {
-      return this.provisionChatflow(agent.id, template.name);
+      return this.provisionChatflow(agent.id, template.name, agent.system_instructions);
     }
 
     return agent;
@@ -171,12 +171,12 @@ export class AgentsService {
     if (!this.flowise.isEnabled) {
       throw new ServiceUnavailableException("Flowise integration is disabled");
     }
-    return this.provisionChatflow(agent.id, agent.name);
+    return this.provisionChatflow(agent.id, agent.name, agent.system_instructions);
   }
 
-  private async provisionChatflow(agentId: string, name: string) {
+  private async provisionChatflow(agentId: string, name: string, systemInstructions?: string | null) {
     try {
-      const chatflowId = await this.flowise.createChatflow(name);
+      const chatflowId = await this.flowise.createChatflow(name, systemInstructions ?? undefined);
       return this.prisma.agentInstance.update({
         where: { id: agentId },
         data: { chatflow_id: chatflowId, status: "DRAFT" },
