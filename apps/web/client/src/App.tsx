@@ -65,6 +65,7 @@ import AgentDetailPage from "@/pages/agents/AgentDetailPage";
 import AgentTemplatesPage from "@/pages/agents/AgentTemplatesPage";
 import PlaybookSuggestionsPage from "@/pages/agents/PlaybookSuggestionsPage";
 import SolutionPage from "@/pages/solutions/SolutionPage";
+import ComingSoonPage from "@/pages/coming-soon";
 import AdminDashboard from "@/pages/admin/dashboard";
 import { NoindexMeta } from "@/components/shared/noindex-meta";
 import AdminWorkspaces from "@/pages/admin/workspaces";
@@ -160,6 +161,13 @@ function AppRouter() {
       <Route path="/solutions/ecommerce">
         {() => <SolutionPage slug="ecommerce" />}
       </Route>
+      <Route path="/about">{() => <ComingSoonPage eyebrow="Empresa" title="Sobre PymesHub" description="Conocé al equipo detrás de PymesHub: nuestra misión, historia y valores." />}</Route>
+      <Route path="/customers">{() => <ComingSoonPage eyebrow="Clientes" title="Casos de éxito" description="Descubrí cómo empresas como la tuya usan PymesHub para crecer y atender mejor." />}</Route>
+      <Route path="/careers">{() => <ComingSoonPage eyebrow="Carreras" title="Únete al equipo" description="Buscamos personas apasionadas por construir software que cambia la vida de las PYMEs." />}</Route>
+      <Route path="/press">{() => <ComingSoonPage eyebrow="Prensa" title="PymesHub en los medios" description="Recursos, logos y contacto para periodistas y comunicadores." />}</Route>
+      <Route path="/blog">{() => <ComingSoonPage eyebrow="Blog" title="Recursos y artículos" description="Estrategias de atención al cliente, automatización y crecimiento para tu empresa." />}</Route>
+      <Route path="/community">{() => <ComingSoonPage eyebrow="Comunidad" title="Comunidad PymesHub" description="Conectá con otros dueños de empresas, comparte tips y aprende de la experiencia colectiva." />}</Route>
+      <Route path="/changelog">{() => <ComingSoonPage eyebrow="Novedades" title="Cambios y actualizaciones" description="Todo lo nuevo en PymesHub: funciones lanzadas, mejoras y correcciones." />}</Route>
       <Route path="/documentation">
         {() => <DocumentationCenterPage />}
       </Route>
@@ -190,6 +198,8 @@ function AppRouter() {
       <Route path="/security">
         {() => <SecurityPage />}
       </Route>
+      <Route path="/crm">{() => <ProtectedLayout><Contacts /></ProtectedLayout>}</Route>
+      <Route path="/analytics">{() => <ProtectedLayout><InsightsPage /></ProtectedLayout>}</Route>
       <Route path="/">
         {() => <RootRoute />}
       </Route>
