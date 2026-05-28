@@ -257,10 +257,27 @@ export class SupportOrchestratorService {
     const started = Date.now();
     try {
       const safeContext = this.guardrails.sanitizeInputBeforeModel(context, 12000);
-      const res = await this.flowise.predict(chatflowId, {
-        question: safeContext,
-        sessionId: `${sessionId}:${slug}`,
-      });
+      let activeId = chatflowId;
+      let res;
+      try {
+        res = await this.flowise.predict(activeId, {
+          question: safeContext,
+          sessionId: `${sessionId}:${slug}`,
+        });
+      } catch (predictErr: any) {
+        if ((predictErr?.message as string | undefined)?.includes("returned 404")) {
+          this.logger.warn(`[orchestrator] stale chatflow for ${slug} — reprovisioning`);
+          const newId = await this.flowiseSetup.reprovisionSupportAgent(slug);
+          if (!newId) throw predictErr;
+          activeId = newId;
+          res = await this.flowise.predict(activeId, {
+            question: safeContext,
+            sessionId: `${sessionId}:${slug}`,
+          });
+        } else {
+          throw predictErr;
+        }
+      }
       const safeText = this.guardrails.sanitizeOutputAfterModel(res.text ?? "", MAX_PREVIEW);
       const rec: StageRecord = {
         agent_slug: slug,

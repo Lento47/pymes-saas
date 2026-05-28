@@ -184,10 +184,36 @@ export class AgentRuntimeService {
         ].join("\n")
       : safeUserMessage;
 
-    const flowiseResponse = await this.flowise.predict(instance.chatflow_id, {
-      question,
-      sessionId: session.flowise_session_id,
-    });
+    let flowiseResponse;
+    try {
+      flowiseResponse = await this.flowise.predict(instance.chatflow_id, {
+        question,
+        sessionId: session.flowise_session_id,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Stale chatflow ID — Flowise DB was reset or chatflow deleted.
+      // Reprovision transparently and retry once.
+      if (msg.includes("returned 404") && instance.chatflow_id) {
+        this.logger.warn(
+          `Chatflow ${instance.chatflow_id} not found in Flowise — reprovisioning agent ${instance.id}`,
+        );
+        const newId = await this.flowise.createChatflow(
+          instance.name,
+          instance.system_instructions ?? undefined,
+        );
+        await this.prisma.agentInstance.update({
+          where: { id: instance.id },
+          data: { chatflow_id: newId },
+        });
+        flowiseResponse = await this.flowise.predict(newId, {
+          question,
+          sessionId: session.flowise_session_id,
+        });
+      } else {
+        throw err;
+      }
+    }
 
     // 6. Apply guardrails
     const safeText = this.guardrails.apply(

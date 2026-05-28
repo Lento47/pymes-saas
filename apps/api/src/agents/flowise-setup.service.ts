@@ -52,6 +52,11 @@ interface TierConfig {
 export class FlowiseSetupService {
   private readonly logger = new Logger(FlowiseSetupService.name);
 
+  // Cached after setup() so reprovisionSupportAgent() can rebuild a single flow.
+  private _deepseekBaseUrl = "https://api.deepseek.com";
+  private _deepseekCredentialId: string | undefined;
+  private _toolIdByName = new Map<string, string>();
+
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
@@ -238,6 +243,11 @@ export class FlowiseSetupService {
     // Step 5: Provision one agentflow per specialized support agent (catalog).
     await this.setupSpecializedAgents(deepseekBaseUrl, deepseekCredentialId, toolIdByName);
 
+    // Cache params so reprovisionSupportAgent() can rebuild any single flow later.
+    this._deepseekBaseUrl = deepseekBaseUrl;
+    this._deepseekCredentialId = deepseekCredentialId;
+    this._toolIdByName = toolIdByName;
+
     this.logger.log("[flowise-setup] Support tier agentflows ready");
   }
 
@@ -322,6 +332,52 @@ export class FlowiseSetupService {
     }
 
     this.logger.log(`[flowise-setup] ${SUPPORT_AGENTS.length} specialized agentflows ready`);
+  }
+
+  /**
+   * Re-create the Flowise AgentFlow for a single support agent and update the
+   * AgentTemplate record. Called when the orchestrator detects a stale chatflow ID.
+   * Returns the new chatflow ID, or null if reprovisioning failed.
+   */
+  async reprovisionSupportAgent(slug: string): Promise<string | null> {
+    if (!this.flowise.isEnabled) return null;
+    const agent = SUPPORT_AGENTS.find((a) => a.slug === slug);
+    if (!agent) return null;
+    try {
+      const flowName = `PymesHub Agente — ${agent.name}`;
+      const toolIds = agent.tools
+        .map((name) => this._toolIdByName.get(name))
+        .filter(Boolean) as string[];
+      const flowData = this.flowise.buildSupportFlowData({
+        modelName: SUPPORT_MODEL_NAME[agent.model],
+        systemPrompt: agent.systemPrompt,
+        toolIds,
+        basepath: this._deepseekBaseUrl,
+        temperature: agent.temperature,
+        credentialId: this._deepseekCredentialId,
+      });
+      const chatflowId = await this.flowise.createChatflowWithData(flowName, flowData);
+      await this.prisma.agentTemplate.update({
+        where: { slug: `support-agent-${slug}` },
+        data: {
+          config_json: {
+            is_support_agent: true,
+            support_agent_slug: slug,
+            flowise_chatflow_id: chatflowId,
+            tier_access: agent.tierAccess,
+            tools: agent.tools,
+            can_create_pr: agent.canCreatePr,
+            requires_security_review: agent.requiresSecurityReview,
+            requires_human_approval: agent.requiresHumanApproval,
+          },
+        },
+      });
+      this.logger.log(`[flowise-setup] Reprovisioned support agent ${slug} → ${chatflowId}`);
+      return chatflowId;
+    } catch (err: any) {
+      this.logger.error(`[flowise-setup] reprovisionSupportAgent(${slug}) failed: ${err?.message}`);
+      return null;
+    }
   }
 
   /** Get the Flowise chatflow ID for a workspace plan */
