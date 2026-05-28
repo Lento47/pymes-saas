@@ -335,11 +335,12 @@ export class FlowiseClient {
     const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/tools`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const body = { ...tool, color: tool.color ?? "#4DD0E1" };
     try {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...this.authHeaders },
-        body: JSON.stringify(tool),
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
       if (!res.ok) {
