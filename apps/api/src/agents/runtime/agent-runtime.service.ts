@@ -192,9 +192,14 @@ export class AgentRuntimeService {
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      // Stale chatflow ID — Flowise DB was reset or chatflow deleted.
+      // Stale or broken chatflow — Flowise DB was reset, chatflow was deleted,
+      // or the chatflow was created without a credential binding.
       // Reprovision transparently and retry once.
-      if (msg.includes("returned 404") && instance.chatflow_id) {
+      const isBrokenFlow =
+        (msg.includes("returned 404") ||
+          (msg.includes("returned 500") && msg.includes("Missing credentials"))) &&
+        instance.chatflow_id;
+      if (isBrokenFlow) {
         this.logger.warn(
           `Chatflow ${instance.chatflow_id} not found in Flowise — reprovisioning agent ${instance.id}`,
         );
