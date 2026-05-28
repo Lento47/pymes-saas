@@ -76,45 +76,45 @@ function toneConfig(tone: Tone) {
       return {
         dot: "bg-red-500",
         text: "text-red-400",
-        accent: "#ef4444",
-        cardBg: "rgba(239,68,68,0.05)",
-        cardBorder: "rgba(239,68,68,0.2)",
+        accent: "#9CA3AF",
+        cardBg: "#FFFFFF",
+        cardBorder: "#E5E7EB",
         pillBg: "rgba(239,68,68,0.08)",
         pillBorder: "rgba(239,68,68,0.25)",
-        pillText: "#f87171",
+        pillText: "#ef4444",
       };
     case "warning":
       return {
         dot: "bg-orange-400",
         text: "text-orange-400",
-        accent: "#fb923c",
-        cardBg: "rgba(251,146,60,0.05)",
-        cardBorder: "rgba(251,146,60,0.2)",
+        accent: "#9CA3AF",
+        cardBg: "#FFFFFF",
+        cardBorder: "#E5E7EB",
         pillBg: "rgba(251,146,60,0.08)",
         pillBorder: "rgba(251,146,60,0.25)",
         pillText: "#fb923c",
       };
     case "success":
       return {
-        dot: "bg-emerald-500",
-        text: "text-emerald-400",
-        accent: "#10b981",
-        cardBg: "rgba(16,185,129,0.04)",
-        cardBorder: "rgba(16,185,129,0.18)",
-        pillBg: "rgba(16,185,129,0.08)",
-        pillBorder: "rgba(16,185,129,0.2)",
-        pillText: "#34d399",
+        dot: "bg-gray-400",
+        text: "text-gray-500",
+        accent: "#9CA3AF",
+        cardBg: "#FFFFFF",
+        cardBorder: "#E5E7EB",
+        pillBg: "rgba(0,0,0,0.05)",
+        pillBorder: "rgba(0,0,0,0.1)",
+        pillText: "#6B7280",
       };
     default:
       return {
-        dot: "bg-primary/50",
-        text: "text-primary/70",
-        accent: "hsl(var(--primary) / 0.5)",
-        cardBg: "hsl(var(--primary) / 0.04)",
-        cardBorder: "hsl(var(--primary) / 0.14)",
-        pillBg: "hsl(var(--primary) / 0.08)",
-        pillBorder: "hsl(var(--primary) / 0.2)",
-        pillText: "hsl(var(--primary) / 0.9)",
+        dot: "bg-gray-400",
+        text: "text-gray-500",
+        accent: "#9CA3AF",
+        cardBg: "#FFFFFF",
+        cardBorder: "#E5E7EB",
+        pillBg: "rgba(0,0,0,0.05)",
+        pillBorder: "rgba(0,0,0,0.1)",
+        pillText: "#6B7280",
       };
   }
 }
@@ -461,7 +461,7 @@ export default function DashboardPage() {
 
         {/* AI Summary card */}
         {(summaryLoading || statsLoading || todaySummary?.generated_text || generateMutation.isPending) && (
-          <section className="rounded-card border border-primary/20 bg-primary/[0.05] px-4 py-3">
+          <section className="rounded-card border border-[#E5E7EB] bg-[#F7F8FC] px-4 py-3">
             {summaryLoading || statsLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-3.5 w-full" />
@@ -641,7 +641,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         {task.priority === "HIGH" && (
-                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
                         )}
                       </div>
                     </Link>

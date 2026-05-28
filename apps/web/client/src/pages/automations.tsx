@@ -177,7 +177,7 @@ export default function AutomationsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-[14px] font-medium text-foreground">{auto.name}</h3>
-                    <span className={auto.enabled ? 'text-emerald-400' : 'text-muted-foreground'} style={{ fontSize: 10 }}>
+                    <span className={auto.enabled ? 'text-gray-700' : 'text-gray-400'} style={{ fontSize: 10 }}>
                       {auto.enabled ? '● Activa' : '○ Pausada'}
                     </span>
                   </div>

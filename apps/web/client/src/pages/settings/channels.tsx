@@ -11,16 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, MessageCircle, Radio, ExternalLink, PowerOff, Trash2, PlugZap, Plug, Sparkles } from "lucide-react";
+import { Mail, MessageCircle, Radio, ExternalLink, PowerOff, Trash2, PlugZap, Plug, Bot } from "lucide-react";
 import { SecretInput } from "@/components/settings/secret-input";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 
 const CHANNEL_TYPE_COLORS: Record<string, string> = {
-  EMAIL: "bg-blue-500/10 text-blue-400",
-  WHATSAPP: "bg-green-500/10 text-green-400",
-  FORM: "bg-purple-500/10 text-purple-400",
-  API: "bg-orange-500/10 text-orange-400",
-  MANUAL: "bg-gray-500/10 text-gray-400",
+  EMAIL: "bg-gray-100 text-gray-600",
+  WHATSAPP: "bg-gray-100 text-gray-600",
+  FORM: "bg-gray-100 text-gray-600",
+  API: "bg-gray-100 text-gray-600",
+  MANUAL: "bg-gray-100 text-gray-600",
 };
 
 const CHANNEL_ICONS: Record<string, any> = {
@@ -61,7 +61,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
 
   return (
     <div className="space-y-4 pt-2">
-      <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
+      <div className="p-3 rounded-lg bg-[#F7F8FC] border border-[#E5E7EB] text-xs text-gray-600">
         Obtené tu API key en{" "}
         <a
           href="https://resend.com/api-keys"
@@ -143,7 +143,7 @@ function EmailConfigModal({ channel, onClose }: { channel: any; onClose: () => v
           </div>
         </div>
 
-        <div className="rounded border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-blue-200">
+        <div className="rounded border border-[#E5E7EB] bg-[#F7F8FC] px-3 py-2 text-gray-600">
           <p>
             Dirección inbound activa: <span className="font-mono">{resolvedInboundEmail || "sin definir"}</span>
           </p>
@@ -191,7 +191,7 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
 
   return (
     <div className="space-y-4 pt-2">
-      <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-300">
+      <div className="p-3 rounded-lg bg-[#F7F8FC] border border-[#E5E7EB] text-xs text-gray-600">
         Obtené los datos en{" "}
         <a
           href="https://developers.facebook.com/apps"
@@ -253,7 +253,7 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: any; onClose: () =
       <Button
         onClick={() => save.mutate()}
         disabled={(!isEdit && !accessToken) || !phoneNumberId || !wabaId || save.isPending}
-        className="w-full bg-green-600 hover:bg-green-700"
+        className="w-full bg-primary hover:bg-primary/90"
       >
         {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
       </Button>
@@ -327,11 +327,11 @@ function AiAutoReplyToggle() {
   if (!isEligible) return null;
 
   return (
-    <div className="mb-6 rounded-lg border border-primary/20 bg-primary/[0.04] p-4">
+    <div className="mb-6 rounded-lg border border-[#E5E7EB] bg-[#F7F8FC] p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
-            <Sparkles className="h-4 w-4 text-primary" />
+            <Bot className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">IA responde automáticamente</p>
@@ -432,7 +432,7 @@ export default function ChannelsSettingsPage() {
           <DialogContent className="bg-card border-border max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                {isEmail ? <Mail className="h-4 w-4 text-blue-400" /> : <MessageCircle className="h-4 w-4 text-green-400" />}
+                {isEmail ? <Mail className="h-4 w-4 text-muted-foreground" /> : <MessageCircle className="h-4 w-4 text-muted-foreground" />}
                 {configChannel?.status === "ACTIVE" ? "Editar" : "Configurar"} {configChannel?.type}
                 <span className="text-muted-foreground font-normal text-sm ml-1">— {configChannel?.name}</span>
               </DialogTitle>
@@ -471,17 +471,17 @@ export default function ChannelsSettingsPage() {
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className={
                       isActive
-                        ? "text-green-400 border-green-500/30"
+                        ? "text-green-600 border-green-200"
                         : ch.status === "INACTIVE"
-                          ? "text-red-400 border-red-500/30"
-                          : "text-gray-400 border-gray-500/30"
+                          ? "text-red-600 border-red-200"
+                          : "text-gray-500 border-gray-200"
                     }>
                       {isActive ? "Activo" : ch.status === "INACTIVE" ? "Inactivo" : ch.status}
                     </Badge>
 
                     {needsConfig && (
                       <Button size="sm" variant="outline"
-                        className={`h-7 text-xs ${ch.type === "EMAIL" ? "border-blue-500/30 text-blue-400" : "border-green-500/30 text-green-400"}`}
+                        className="h-7 text-xs border-border text-muted-foreground hover:text-foreground"
                         onClick={() => setConfigChannel(ch)}
                       >
                         <PlugZap className="h-3 w-3 mr-1" />Configurar
@@ -508,7 +508,7 @@ export default function ChannelsSettingsPage() {
                     {isActive && (
                       <Button
                         size="sm" variant="outline"
-                        className="h-7 text-xs border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                        className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50"
                         disabled={disconnect.isPending}
                         onClick={() => disconnect.mutate(ch.id)}
                         title="Desactivar canal"
@@ -519,7 +519,7 @@ export default function ChannelsSettingsPage() {
 
                     <Button
                       size="sm" variant="outline"
-                      className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+                      className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50"
                       onClick={() => setDeleteChannel(ch)}
                       title="Eliminar canal"
                     >

@@ -537,9 +537,9 @@ export default function InvoicesPage() {
 
       <div className="px-4 md:px-6 py-4 space-y-4">
         {(totalOverdue > 0 || overdueAmount > 0) && (
-          <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+          <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-[#FEF9F0] px-4 py-3">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
               <div>
                 <div className="text-sm font-medium text-foreground">
                   {totalOverdue} factura{totalOverdue === 1 ? "" : "s"} vencida{totalOverdue === 1 ? "" : "s"}
@@ -552,9 +552,9 @@ export default function InvoicesPage() {
           </div>
         )}
 
-        <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 px-4 py-3">
+        <div className="rounded-lg border border-[#E5E7EB] bg-[#F7F8FC] px-4 py-3">
           <div className="flex items-start gap-3">
-            <BookOpen className="mt-0.5 h-4 w-4 text-sky-400" />
+            <BookOpen className="mt-0.5 h-4 w-4 text-gray-500" />
             <div className="space-y-1">
               <div className="text-sm font-medium text-foreground">Ayuda para PYMES</div>
               <p className="text-xs leading-5 text-muted-foreground/60">
@@ -566,9 +566,9 @@ export default function InvoicesPage() {
           </div>
         </div>
         {!isHaciendaWorkspaceReady && (
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+          <div className="rounded-lg border border-amber-200 bg-[#FEF9F0] px-4 py-3">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-400" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600" />
               <div className="space-y-1">
                 <div className="text-sm font-medium text-foreground">Hacienda aún no está lista para emitir</div>
                 <p className="text-xs leading-5 text-muted-foreground/60">
@@ -659,10 +659,7 @@ export default function InvoicesPage() {
                   return (
                     <TableRow
                       key={invoice.id}
-                      className={cn(
-                        "border-border hover:bg-foreground/[0.015]",
-                        (invoice.status === "OVERDUE" || highlightedIds.includes(invoice.id)) && "bg-amber-500/5",
-                      )}
+                      className="border-border hover:bg-foreground/[0.015]"
                     >
                       <TableCell className="text-sm font-medium text-foreground">{invoice.number}</TableCell>
                       <TableCell>
@@ -687,7 +684,7 @@ export default function InvoicesPage() {
                       <TableCell className="text-sm text-foreground">
                         <div>{formatMoney(invoice.balance_due, invoice.currency)}</div>
                         {invoice.status === "OVERDUE" && (
-                          <div className="text-[11px] text-amber-400">{overdueDays}d vencida</div>
+                          <div className="text-[11px] text-amber-700">{overdueDays}d vencida</div>
                         )}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground/60">
@@ -760,7 +757,7 @@ export default function InvoicesPage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-8 text-xs text-green-400 hover:text-green-300"
+                              className="h-8 text-xs text-muted-foreground hover:text-foreground"
                               onClick={() => validateHaciendaMutation.mutate(invoice.id)}
                               disabled={validateHaciendaMutation.isPending}
                             >
@@ -772,7 +769,7 @@ export default function InvoicesPage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-8 text-xs text-amber-400 hover:text-amber-300"
+                              className="h-8 text-xs text-muted-foreground hover:text-foreground"
                               onClick={() => explainErrorMutation.mutate(invoice.id)}
                               disabled={explainErrorMutation.isPending}
                             >
@@ -833,7 +830,7 @@ export default function InvoicesPage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-8 text-xs text-amber-400 hover:text-amber-300"
+                              className="h-8 text-xs text-destructive/70 hover:text-destructive"
                               disabled={cancelMutation.isPending}
                               onClick={() => {
                                 if (window.confirm(`¿Cancelar factura ${invoice.number}? Esta acción no se puede deshacer.`)) {
@@ -907,7 +904,7 @@ export default function InvoicesPage() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div><span className="text-muted-foreground/60">Total</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.amount, selectedInvoice.currency)}</div></div>
-                <div><span className="text-muted-foreground/60">Pagado</span><div className="text-green-400 font-medium mt-0.5">{formatMoney(selectedInvoice.amount_paid, selectedInvoice.currency)}</div></div>
+                <div><span className="text-muted-foreground/60">Pagado</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.amount_paid, selectedInvoice.currency)}</div></div>
                 <div><span className="text-muted-foreground/60">Saldo</span><div className="text-foreground font-medium mt-0.5">{formatMoney(selectedInvoice.balance_due, selectedInvoice.currency)}</div></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -1105,7 +1102,7 @@ export default function InvoicesPage() {
                 </div>
               ))}
             </div>
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+            <div className="rounded-lg border border-amber-200 bg-[#FEF9F0] px-4 py-3">
               <div className="text-sm font-medium text-foreground">Pendiente importante</div>
               <p className="mt-1 text-xs leading-5 text-muted-foreground/60">
                 El flujo ya contempla la estructura de Hacienda, pero para operar en serio aún debes tener configurados
@@ -1313,7 +1310,7 @@ export default function InvoicesPage() {
         <DialogContent className="bg-card border-border sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle className="text-sm flex items-center gap-2">
-              {validationResult?.valid ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <AlertTriangle className="w-4 h-4 text-amber-400" />}
+              {validationResult?.valid ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <AlertTriangle className="w-4 h-4 text-amber-600" />}
               Validación Hacienda — {validationResult?.valid ? "Listo para enviar" : "Requiere correcciones"}
             </DialogTitle>
           </DialogHeader>
@@ -1324,17 +1321,17 @@ export default function InvoicesPage() {
                   {validationResult.issues.map((issue: Record<string, any>, i: number) => (
                     <div key={i} className={cn(
                       "rounded-md border px-3 py-2",
-                      issue.severity === "error" ? "border-red-500/20 bg-red-500/5" : "border-amber-500/20 bg-amber-500/5",
+                      issue.severity === "error" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50",
                     )}>
-                      <span className={issue.severity === "error" ? "text-red-400" : "text-amber-400"}>{issue.field}</span>
+                      <span className={issue.severity === "error" ? "text-red-600" : "text-amber-700"}>{issue.field}</span>
                       <p className="text-muted-foreground mt-0.5">{issue.message}</p>
                     </div>
                   ))}
                 </div>
               )}
               {validationResult.ai_review && (
-                <div className="rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2">
-                  <span className="text-blue-400 font-medium">Revisión IA</span>
+                <div className="rounded-md border border-[#E5E7EB] bg-[#F7F8FC] px-3 py-2">
+                  <span className="text-gray-700 font-medium">Revisión IA</span>
                   <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{validationResult.ai_review}</p>
                 </div>
               )}
@@ -1350,14 +1347,14 @@ export default function InvoicesPage() {
         <DialogContent className="bg-card border-border sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle className="text-sm flex items-center gap-2">
-              <Info className="w-4 h-4 text-amber-400" />
+              <Info className="w-4 h-4 text-gray-500" />
               Error de Hacienda explicado
             </DialogTitle>
           </DialogHeader>
           {errorExplainData && (
             <div className="space-y-3 text-xs">
-              <div className="rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2">
-                <span className="text-red-400 font-medium">Mensaje técnico</span>
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2">
+                <span className="text-red-600 font-medium">Mensaje técnico</span>
                 <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{errorExplainData.technical_message?.slice(0, 500)}</p>
               </div>
               <div className="rounded-md border border-border/60 bg-background px-3 py-2">
@@ -1365,8 +1362,8 @@ export default function InvoicesPage() {
                 <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{errorExplainData.plain_explanation}</p>
               </div>
               {errorExplainData.suggested_fix && (
-                <div className="rounded-md border border-green-500/20 bg-green-500/5 px-3 py-2">
-                  <span className="text-green-400 font-medium">Sugerencia para corregir</span>
+                <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2">
+                  <span className="text-green-700 font-medium">Sugerencia para corregir</span>
                   <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{errorExplainData.suggested_fix}</p>
                 </div>
               )}
@@ -1382,7 +1379,7 @@ export default function InvoicesPage() {
         <DialogContent className="bg-card border-border sm:max-w-[680px] max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-sm flex items-center gap-2">
-              <Code2 className="w-4 h-4 text-blue-400" />
+              <Code2 className="w-4 h-4 text-gray-500" />
               Vista previa XML — Factura Electrónica
             </DialogTitle>
           </DialogHeader>

@@ -190,7 +190,7 @@ export default function TasksPage() {
         <div className="px-4 md:px-6 py-4 space-y-4">
         {/* Overdue banner */}
         {overdueList.length > 0 && (
-          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400" data-testid="alert-overdue">
+          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-[#FEF2F2] border border-red-200 text-red-600" data-testid="alert-overdue">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             <span className="text-xs">
               Tienes <strong>{overdueList.length}</strong> tarea{overdueList.length > 1 ? "s" : ""} vencida{overdueList.length > 1 ? "s" : ""} que requieren atención.
@@ -205,15 +205,15 @@ export default function TasksPage() {
               <ListChecks className="w-3.5 h-3.5" />
               <span><strong className="text-foreground">{taskList.length}</strong> totales</span>
             </div>
-            <div className="flex items-center gap-1.5 text-emerald-400">
+            <div className="flex items-center gap-1.5 text-gray-500">
               <Check className="w-3.5 h-3.5" />
               <span><strong>{taskList.filter((t: any) => t.status === "DONE").length}</strong> completadas</span>
             </div>
-            <div className="flex items-center gap-1.5 text-amber-400">
+            <div className="flex items-center gap-1.5 text-gray-500">
               <Timer className="w-3.5 h-3.5" />
               <span><strong>{taskList.filter((t: any) => t.status === "IN_PROGRESS").length}</strong> en progreso</span>
             </div>
-            <div className="flex items-center gap-1.5 text-red-400">
+            <div className="flex items-center gap-1.5 text-gray-500">
               <AlertCircle className="w-3.5 h-3.5" />
               <span><strong>{overdueList.length}</strong> vencidas</span>
             </div>
@@ -288,7 +288,6 @@ export default function TasksPage() {
               <TableBody>
                 {taskList.map((task: any) => {
                   const dueStr = task.dueDate || task.due_date || task.due_at;
-                  const isOverdue = dueStr && isPast(new Date(dueStr)) && !isToday(new Date(dueStr)) && task.status !== "DONE";
                   const assigneeName = task.assigned_user?.name
                     ? task.assigned_user.name
                     : null;
@@ -296,7 +295,7 @@ export default function TasksPage() {
                   return (
                     <TableRow
                       key={task.id}
-                      className={cn("border-border hover:bg-foreground/[0.015]", isOverdue && "bg-red-500/5")}
+                      className="border-border hover:bg-foreground/[0.015]"
                       data-testid={`task-row-${task.id}`}
                     >
                       <TableCell>
@@ -308,8 +307,8 @@ export default function TasksPage() {
                               className={cn(
                                 "w-5 h-5 rounded border flex items-center justify-center transition-colors",
                                 task.status === "DONE"
-                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                                  : "border-border hover:border-emerald-500/60 hover:bg-emerald-500/10 text-transparent hover:text-emerald-400"
+                                  ? "border-[#E5E7EB] bg-[#F7F8FC] text-gray-400"
+                                  : "border-border hover:border-gray-300 hover:bg-gray-50 text-transparent hover:text-gray-500"
                               )}
                             >
                               <Check className="w-3 h-3" />
