@@ -148,6 +148,8 @@ export class GitHubService {
     files: Array<{ path: string; content: string; commitMessage?: string }>;
     prTitle: string;
     prBody: string;
+    /** Labels applied to the PR after creation (best-effort, non-fatal). */
+    labels?: string[];
   }): Promise<CreatedPR> {
     const { token, owner, repo, branchName, prTitle, prBody } = params;
     const base = params.baseBranch ?? "master";
@@ -216,7 +218,56 @@ export class GitHubService {
     }
     const prData = (await prRes.json()) as any;
     this.logger.log(`[github] Real-code PR #${prData.number} created: ${prData.html_url}`);
+
+    // 5. Apply labels (best-effort — never fail the PR over a missing label).
+    if (params.labels?.length) {
+      try {
+        const labelRes = await fetch(
+          `${GH_API}/repos/${owner}/${repo}/issues/${prData.number}/labels`,
+          { method: "POST", headers, body: JSON.stringify({ labels: params.labels }) },
+        );
+        if (!labelRes.ok) {
+          this.logger.warn(`[github] Failed to apply labels to PR #${prData.number}: ${labelRes.status}`);
+        }
+      } catch (err: any) {
+        this.logger.warn(`[github] Label apply error on PR #${prData.number}: ${err?.message}`);
+      }
+    }
+
     return { prUrl: prData.html_url as string, prNumber: prData.number as number, branchName };
+  }
+
+  /**
+   * Search for files in the repository by content/path query (GitHub code search).
+   * Returns matching file paths. Best-effort — returns [] on error.
+   */
+  async searchFiles(params: {
+    token: string;
+    owner: string;
+    repo: string;
+    query: string;
+    limit?: number;
+  }): Promise<Array<{ path: string; name: string }>> {
+    const { token, owner, repo, query } = params;
+    const limit = Math.min(params.limit ?? 10, 30);
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+    const q = encodeURIComponent(`${query} repo:${owner}/${repo}`);
+    try {
+      const res = await fetch(`${GH_API}/search/code?q=${q}&per_page=${limit}`, { headers });
+      if (!res.ok) {
+        this.logger.warn(`[github] searchFiles failed (${res.status})`);
+        return [];
+      }
+      const data = (await res.json()) as any;
+      return (data.items ?? []).map((it: any) => ({ path: it.path as string, name: it.name as string }));
+    } catch (err: any) {
+      this.logger.warn(`[github] searchFiles error: ${err?.message}`);
+      return [];
+    }
   }
 
   /** Build the markdown body for a fix PR from EngineeringFixCase data */
