@@ -6,6 +6,8 @@ import type {
   FlowiseChatflowResponse,
   FlowiseToolDef,
   FlowiseToolResponse,
+  FlowiseCredentialDef,
+  FlowiseCredentialResponse,
 } from "./flowise.types";
 
 @Injectable()
@@ -14,6 +16,7 @@ export class FlowiseClient {
   private readonly baseUrl: string;
   private readonly apiKey: string | null;
   private readonly timeoutMs: number;
+  private readonly credentialCache = new Map<string, string>(); // name → Flowise credential ID
 
   constructor(private readonly config: ConfigService) {
     this.baseUrl =
@@ -74,13 +77,14 @@ export class FlowiseClient {
     temperature?: number;
     streaming?: boolean;
     basepath?: string;
+    credentialId?: string;
     systemMessages?: Array<{ role: string; content: string }>;
     tools?: Array<{ agentSelectedTool: string; agentSelectedToolRequiresHumanInput?: boolean }>;
     enableMemory?: boolean;
   }) {
     const id = opts.id ?? "agentAgentflow_0";
     const agentModelConfig: Record<string, unknown> = {
-      credential: "",
+      credential: opts.credentialId ?? "",
       modelName: opts.modelName,
       temperature: opts.temperature ?? 0.3,
       streaming: opts.streaming !== false,
@@ -186,6 +190,7 @@ export class FlowiseClient {
     modelName: string,
     systemMessage?: string,
     basepath?: string,
+    credentialId?: string,
   ): string {
     const agentId = "agentAgentflow_0";
     const messages = systemMessage ? [{ role: "system", content: systemMessage }] : [];
@@ -195,6 +200,7 @@ export class FlowiseClient {
       id: agentId,
       modelName,
       basepath,
+      credentialId,
       systemMessages: messages,
     });
     const reply = FlowiseClient.buildDirectReplyNode(agentId);
@@ -227,6 +233,7 @@ export class FlowiseClient {
     toolIds: string[];
     basepath?: string;
     temperature?: number;
+    credentialId?: string;
   }): string {
     const agentId = "agentAgentflow_0";
     const tools = opts.toolIds.map((id) => ({
@@ -240,6 +247,7 @@ export class FlowiseClient {
       modelName: opts.modelName,
       temperature: opts.temperature,
       basepath: opts.basepath,
+      credentialId: opts.credentialId,
       systemMessages: [{ role: "system", content: opts.systemPrompt }],
       tools,
     });
@@ -272,10 +280,16 @@ export class FlowiseClient {
   async createChatflow(name: string, systemMessage?: string): Promise<string> {
     const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
     const model = this.config.get<string>("FLOWISE_DEFAULT_MODEL") ?? "gpt-4o-mini";
+    const apiKey = this.config.get<string>("FLOWISE_DEFAULT_API_KEY") ?? "";
+
+    let credentialId: string | undefined;
+    if (apiKey) {
+      credentialId = await this.getOrCreateCredential("PymesHub Default", apiKey).catch(() => undefined);
+    }
 
     const body = {
       name,
-      flowData: this.buildFlowData(model, systemMessage),
+      flowData: this.buildFlowData(model, systemMessage, undefined, credentialId),
       deployed: true,
       isPublic: false,
       type: "AGENTFLOW",
@@ -341,6 +355,62 @@ export class FlowiseClient {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  // ── Credential CRUD ────────────────────────────────────────────────────────
+
+  async listCredentials(): Promise<FlowiseCredentialResponse[]> {
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/credentials`;
+    try {
+      const res = await fetch(url, { headers: { "Content-Type": "application/json", ...this.authHeaders } });
+      if (!res.ok) return [];
+      return (await res.json()) as FlowiseCredentialResponse[];
+    } catch {
+      return [];
+    }
+  }
+
+  async createCredential(def: FlowiseCredentialDef): Promise<string> {
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/credentials`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...this.authHeaders },
+        body: JSON.stringify(def),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Flowise credential creation failed: ${res.status} ${text}`);
+      }
+      const data = (await res.json()) as FlowiseCredentialResponse;
+      this.logger.log(`Credential created in Flowise: ${data.id} (${def.name})`);
+      return data.id;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** Find an existing credential by name or create it. Result is cached in-process. */
+  async getOrCreateCredential(name: string, apiKey: string): Promise<string> {
+    if (this.credentialCache.has(name)) return this.credentialCache.get(name)!;
+
+    const existing = await this.listCredentials();
+    const found = existing.find((c) => c.name === name);
+    if (found) {
+      this.credentialCache.set(name, found.id);
+      return found.id;
+    }
+
+    const id = await this.createCredential({
+      credentialName: "openAIApi",
+      name,
+      plainDataObj: { openAIApiKey: apiKey },
+    });
+    this.credentialCache.set(name, id);
+    return id;
   }
 
   // ── Internal ───────────────────────────────────────────────────────────────

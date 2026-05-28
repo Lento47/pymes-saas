@@ -45,3 +45,15 @@ export interface FlowiseToolResponse {
   id: string;
   name: string;
 }
+
+export interface FlowiseCredentialDef {
+  credentialName: string;
+  name: string;
+  plainDataObj: Record<string, string>;
+}
+
+export interface FlowiseCredentialResponse {
+  id: string;
+  name: string;
+  credentialName: string;
+}

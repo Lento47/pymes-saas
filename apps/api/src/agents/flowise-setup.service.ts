@@ -146,7 +146,19 @@ export class FlowiseSetupService {
       },
     ];
 
-    // Step 1: Ensure all tool entities exist in Flowise
+    // Step 1: Get/create DeepSeek credential in Flowise so Agent nodes can authenticate
+    const deepseekKey = this.config.get<string>("GATEWAY_KEY_DEEPSEEK") ?? "";
+    let deepseekCredentialId: string | undefined;
+    if (deepseekKey) {
+      deepseekCredentialId = await this.flowise
+        .getOrCreateCredential("PymesHub DeepSeek", deepseekKey)
+        .catch((err: any) => {
+          this.logger.error(`[flowise-setup] Failed to create DeepSeek credential: ${err?.message}`);
+          return undefined;
+        });
+    }
+
+    // Step 3: Ensure all tool entities exist in Flowise
     const toolDefs = this.buildToolDefs(apiBase, founderKey);
     const existingTools = await this.flowise.listTools().catch(() => []);
     const toolIdByName = new Map(existingTools.map((t) => [t.name, t.id] as [string, string]));
@@ -163,7 +175,7 @@ export class FlowiseSetupService {
       }
     }
 
-    // Step 2: Create tier agentflows
+    // Step 4: Create tier agentflows
     const existingChatflows = await this.flowise.listChatflows().catch(() => []);
     const existingByName = new Map<string, string>(existingChatflows.map((c) => [c.name, c.id] as [string, string]));
 
@@ -188,6 +200,7 @@ export class FlowiseSetupService {
             toolIds,
             basepath: baseUrl,
             temperature: isProModel ? 1.0 : 0.2,
+            credentialId: deepseekCredentialId,
           });
 
           chatflowId = await this.flowise.createChatflowWithData(tier.name, flowData);
