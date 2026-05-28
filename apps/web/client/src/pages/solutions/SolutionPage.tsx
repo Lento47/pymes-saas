@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { Link, Redirect } from "wouter";
 import {
   ArrowRight, CheckCircle2, Inbox, Users, Bot, FileText,
@@ -198,9 +199,13 @@ export default function SolutionPage({ slug }: { slug: string }) {
           ¿Te suena familiar?
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
-          {pains.map(({ icon: Icon, title, text }) => (
-            <div
+          {pains.map(({ icon: Icon, title, text }, idx) => (
+            <motion.div
               key={title}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.4, delay: idx * 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="rounded-2xl border bg-white p-6"
               style={{ borderColor: BORDER }}
             >
@@ -209,7 +214,7 @@ export default function SolutionPage({ slug }: { slug: string }) {
               </div>
               <h3 className="text-sm font-semibold text-gray-900 mb-1">{title}</h3>
               <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
@@ -225,9 +230,13 @@ export default function SolutionPage({ slug }: { slug: string }) {
           </h2>
         </div>
         <div className="grid gap-6 sm:grid-cols-2">
-          {features.map(({ icon: Icon, title, text }) => (
-            <div
+          {features.map(({ icon: Icon, title, text }, idx) => (
+            <motion.div
               key={title}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.4, delay: idx * 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="rounded-2xl border bg-white p-6 flex gap-4"
               style={{ borderColor: BORDER }}
             >
@@ -241,7 +250,7 @@ export default function SolutionPage({ slug }: { slug: string }) {
                 <h3 className="text-sm font-semibold text-gray-900 mb-1">{title}</h3>
                 <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>

@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { TextEffect } from "@/components/ui/text-effect";
+import { InfiniteSlider } from "@/components/ui/infinite-slider";
 type LucideIcon = any;
 import {
   ArrowRight,
@@ -522,7 +524,7 @@ export default function Landing() {
                 </h1>
 
                 <p className="mx-auto mt-5 max-w-2xl text-lg leading-7 text-gray-500 md:text-xl md:leading-8">
-                  Centraliza WhatsApp, Telegram, email, clientes, tareas y agentes IA para que tu negocio responda más rápido sin perder el control humano.
+                  <TextEffect words="Centraliza WhatsApp, Telegram, email, clientes, tareas y agentes IA para que tu negocio responda más rápido sin perder el control humano." />
                 </p>
 
                 <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -585,6 +587,34 @@ export default function Landing() {
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* ════════════════════════════════════════
+              CHANNEL STRIP
+          ════════════════════════════════════════ */}
+          <section className="py-10 border-y border-[#E6E8EF] bg-white">
+            <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-6">
+              Conecta tus canales
+            </p>
+            <InfiniteSlider duration={30} gap={20}>
+              {[
+                { name: "WhatsApp", color: "#25D366" },
+                { name: "Telegram", color: "#2AABEE" },
+                { name: "Email", color: "#6757E8" },
+                { name: "Instagram", color: "#E1306C" },
+                { name: "Web Chat", color: "#FF6B35" },
+                { name: "Voz", color: "#10B981" },
+                { name: "SMS", color: "#8B5CF6" },
+              ].map(({ name, color }) => (
+                <span
+                  key={name}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#E6E8EF] bg-white px-4 py-2 text-sm font-medium text-gray-700 whitespace-nowrap"
+                >
+                  <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                  {name}
+                </span>
+              ))}
+            </InfiniteSlider>
           </section>
 
           {/* ════════════════════════════════════════
