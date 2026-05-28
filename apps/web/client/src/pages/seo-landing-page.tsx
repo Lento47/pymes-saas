@@ -293,6 +293,8 @@ function createFaqSchema(config: SeoPageConfig) {
   };
 }
 
+const ACCENT = "#4F46E5";
+
 export default function SeoLandingPage({ slug }: { slug: string }) {
   const config = seoPages[slug];
 
@@ -320,12 +322,8 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
   if (!config) return null;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#05091d] text-white">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(79,110,247,0.22),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(245,158,11,0.10),transparent_30%)]" />
-      </div>
-
-      <main className="relative z-10">
+    <div className="min-h-screen bg-[#F7F8FC] text-[#111827]">
+      <main>
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 md:px-8">
           <Link href="/" aria-label="PymesHub home">
             <BrandLockup compact />
@@ -334,7 +332,7 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
             <LanguageSwitcher variant="marketing" />
             <Link
               href="/pricing"
-              className="font-marketing rounded-full border border-white/12 px-4 py-2 text-sm text-white/78 transition hover:border-white/24 hover:text-white"
+              className="font-marketing rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm text-gray-600 transition hover:border-gray-300 hover:text-gray-900"
             >
               Pricing
             </Link>
@@ -344,41 +342,42 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
         <section className="px-4 py-14 md:px-8 md:py-20">
           <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.04fr_0.96fr] lg:items-center">
             <article>
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.36em] text-[#F59E0B]/72">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-gray-400">
                 {config.eyebrow}
               </p>
-              <h1 className="font-marketing mt-5 text-4xl font-semibold tracking-[-0.05em] md:text-6xl">
+              <h1 className="font-marketing mt-5 text-4xl font-bold tracking-[-0.04em] text-gray-900 md:text-5xl">
                 {config.title}
               </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-[#c9d0f5]/74">
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-gray-500">
                 {config.description}
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/register"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#F59E0B] px-6 py-3 font-marketing text-sm font-semibold text-[#07101f] transition hover:translate-y-[-1px]"
+                  className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-marketing text-sm font-semibold text-white transition hover:opacity-90"
+                  style={{ background: ACCENT }}
                 >
-                  Start a workspace <ArrowRight className="h-4 w-4" />
+                  Empezar gratis <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   href="/"
-                  className="inline-flex items-center justify-center rounded-full border border-white/12 px-6 py-3 font-marketing text-sm font-semibold text-white/78 transition hover:border-white/24 hover:text-white"
+                  className="inline-flex items-center justify-center rounded-full border border-[#E5E7EB] bg-white px-6 py-3 font-marketing text-sm font-semibold text-gray-700 transition hover:border-gray-300"
                 >
-                  Explore PymesHub
+                  Ver PymesHub
                 </Link>
               </div>
             </article>
 
-            <aside className="glass-panel rounded-[32px] p-6 md:p-8">
+            <aside className="rounded-2xl border border-[#E5E7EB] bg-white p-6 md:p-8">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F59E0B]/10 text-[#F59E0B]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">
                   <MessageCircle className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="font-marketing text-xs uppercase tracking-[0.24em] text-white/42">
-                    Primary keyword
+                  <p className="font-marketing text-xs uppercase tracking-[0.24em] text-gray-400">
+                    Tema principal
                   </p>
-                  <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
+                  <h2 className="font-marketing text-xl font-semibold tracking-[-0.02em] text-gray-900">
                     {config.primaryKeyword}
                   </h2>
                 </div>
@@ -387,10 +386,10 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
                 {config.bullets.map((bullet) => (
                   <div
                     key={bullet}
-                    className="flex items-center gap-3 rounded-2xl bg-white/[0.04] px-4 py-3"
+                    className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#F7F8FC] px-4 py-3"
                   >
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-[#F59E0B]" />
-                    <span className="text-sm text-[#d7ddff]/78">{bullet}</span>
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-gray-400" />
+                    <span className="text-sm text-gray-700">{bullet}</span>
                   </div>
                 ))}
               </div>
@@ -403,19 +402,19 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
             {config.sections.map((section, index) => (
               <article
                 key={section.title}
-                className="glass-panel rounded-[28px] p-6 md:p-8"
+                className="rounded-2xl border border-[#E5E7EB] bg-white p-6 md:p-8"
               >
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.06] text-white/72">
+                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">
                   {index === 0 ? (
                     <Workflow className="h-5 w-5" />
                   ) : (
                     <ShieldCheck className="h-5 w-5" />
                   )}
                 </div>
-                <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em]">
+                <h2 className="font-marketing text-2xl font-semibold tracking-[-0.03em] text-gray-900">
                   {section.title}
                 </h2>
-                <p className="mt-4 text-sm leading-7 text-[#bcc5ee]/72">
+                <p className="mt-4 text-sm leading-7 text-gray-500">
                   {section.body}
                 </p>
               </article>
@@ -426,23 +425,23 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
         <section className="px-4 pb-20 md:px-8">
           <div className="mx-auto max-w-5xl">
             <div className="text-center">
-              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.32em] text-[#F59E0B]/68">
+              <p className="font-marketing text-sm font-semibold uppercase tracking-[0.3em] text-gray-400">
                 FAQ
               </p>
-              <h2 className="font-marketing mt-3 text-3xl font-semibold tracking-[-0.04em]">
-                Common questions about {config.primaryKeyword}
+              <h2 className="font-marketing mt-3 text-3xl font-bold tracking-[-0.04em] text-gray-900">
+                Preguntas frecuentes sobre {config.primaryKeyword}
               </h2>
             </div>
             <div className="mt-8 grid gap-4">
               {config.faqs.map((faq) => (
                 <article
                   key={faq.question}
-                  className="glass-panel rounded-2xl p-6"
+                  className="rounded-2xl border border-[#E5E7EB] bg-white p-6"
                 >
-                  <h3 className="font-marketing text-lg font-semibold text-white/90">
+                  <h3 className="font-marketing text-lg font-semibold text-gray-900">
                     {faq.question}
                   </h3>
-                  <p className="mt-3 text-sm leading-7 text-[#bcc5ee]/72">
+                  <p className="mt-3 text-sm leading-7 text-gray-500">
                     {faq.answer}
                   </p>
                 </article>
@@ -451,17 +450,17 @@ export default function SeoLandingPage({ slug }: { slug: string }) {
           </div>
         </section>
 
-        <section className="border-t border-white/10 px-4 py-10 md:px-8">
+        <section className="border-t border-[#E5E7EB] px-4 py-10 md:px-8">
           <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <p className="font-marketing text-sm uppercase tracking-[0.26em] text-white/38">
-              Related PymesHub pages
+            <p className="font-marketing text-sm uppercase tracking-[0.26em] text-gray-400">
+              Páginas relacionadas
             </p>
             <div className="flex flex-wrap gap-3">
               {config.related.map((relatedSlug) => (
                 <Link
                   key={relatedSlug}
                   href={`/${relatedSlug}`}
-                  className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-[#F59E0B]/40 hover:text-white"
+                  className="rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm text-gray-600 transition hover:border-gray-300 hover:text-gray-900"
                 >
                   {seoPages[relatedSlug]?.primaryKeyword ?? relatedSlug}
                 </Link>
