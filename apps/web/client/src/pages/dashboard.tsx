@@ -441,10 +441,10 @@ export default function DashboardPage() {
               <StatusPill
                 label={
                   operatingTone === "danger"
-                    ? "Atención requerida"
+                    ? "Tenés facturas vencidas"
                     : operatingTone === "warning"
-                      ? "Revisar hoy"
-                      : "Sin pendientes críticos"
+                      ? "Mensajes sin responder"
+                      : "Al día"
                 }
                 tone={operatingTone}
               />
@@ -466,7 +466,7 @@ export default function DashboardPage() {
             ) : (
               <BrainCircuit className="h-3.5 w-3.5" />
             )}
-            Resumen IA
+            Resumen del día
           </Button>
         </header>
 
@@ -488,7 +488,7 @@ export default function DashboardPage() {
             ) : (
               <div className="flex items-center gap-3 text-sm text-primary/80">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Generando resumen operativo...
+                Preparando el resumen...
               </div>
             )}
           </section>
@@ -499,7 +499,7 @@ export default function DashboardPage() {
           <OperationalMetric
             label="Por cobrar"
             value={crc(totalOutstanding)}
-            detail={`${outstandingInvoices.length} facturas abiertas`}
+            detail={outstandingInvoices.length > 0 ? `${outstandingInvoices.length} facturas abiertas` : "Nada pendiente de cobro"}
             tone={overdueInvoices.length > 0 ? "danger" : "neutral"}
             loading={statsLoading}
             icon={Wallet}
@@ -510,7 +510,7 @@ export default function DashboardPage() {
             value={String(overdueInvoices.length)}
             detail={overdueInvoices.length > 0
               ? `${crc(overdueInvoices.reduce((sum: number, inv: any) => sum + (Number(inv.balance_due ?? inv.amount) || 0), 0))} atrasado`
-              : "Sin atraso"}
+              : "Todo cobrado al día"}
             tone={overdueInvoices.length > 0 ? "danger" : "neutral"}
             loading={statsLoading}
             icon={Receipt}
@@ -519,7 +519,7 @@ export default function DashboardPage() {
           <OperationalMetric
             label="Ventas abiertas"
             value={String(pipelineTotalDeals)}
-            detail={pipelineTotalDeals > 0 ? crc(pipelineTotalValue) : "Sin negocios activos"}
+            detail={pipelineTotalDeals > 0 ? crc(pipelineTotalValue) : "Sin tratos en el pipeline"}
             tone="neutral"
             loading={pipelineLoading}
             icon={KanbanSquare}
@@ -528,7 +528,7 @@ export default function DashboardPage() {
           <OperationalMetric
             label="Sin atender"
             value={String(unreadCount)}
-            detail={urgentTasks.length > 0 ? `${urgentTasks.length} tareas urgentes` : "Sin conversaciones pendientes"}
+            detail={urgentTasks.length > 0 ? `${urgentTasks.length} tareas urgentes` : "Todo atendido"}
             tone={unreadCount > 0 ? "warning" : "neutral"}
             loading={statsLoading}
             icon={MessageCircle}
@@ -546,7 +546,7 @@ export default function DashboardPage() {
               <AttentionList
                 isEmpty={convList.length === 0}
                 emptyIcon={MessageCircle}
-                emptyText="Sin actividad reciente"
+                emptyText="Ningún mensaje nuevo por ahora"
                 emptyCta="Conectar un canal"
                 emptyHref="/settings?tab=channels"
               >
@@ -589,7 +589,7 @@ export default function DashboardPage() {
               <AttentionList
                 isEmpty={priorityInvoices.length === 0}
                 emptyIcon={Receipt}
-                emptyText="No tenés facturas por cobrar"
+                emptyText="No hay facturas por vencer esta semana"
                 emptyCta="Ir a facturación"
                 emptyHref="/invoices"
               >
@@ -628,7 +628,7 @@ export default function DashboardPage() {
               <AttentionList
                 isEmpty={attentionTasks.length === 0}
                 emptyIcon={CheckSquare}
-                emptyText="No tenés tareas pendientes"
+                emptyText="Sin tareas asignadas por ahora"
                 emptyCta="Crear primera tarea"
                 emptyHref="/tasks"
               >
