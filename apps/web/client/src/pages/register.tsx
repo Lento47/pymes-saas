@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "wouter";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -238,9 +237,9 @@ export default function RegisterPage() {
           <div className="mt-7 flex flex-col items-center gap-3 text-center">
             <p className="text-sm" style={{ color: "rgba(255,255,255,0.60)" }}>
               ¿Ya tienes cuenta?{" "}
-              <Link href="/login" className="font-medium transition" style={{ color: "#a78bfa" }}>
+              <a href="#/login" className="font-medium transition" style={{ color: "#a78bfa" }}>
                 Iniciar sesión
-              </Link>
+              </a>
             </p>
 
             <p className="text-xs" style={{ color: "rgba(255,255,255,0.40)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
