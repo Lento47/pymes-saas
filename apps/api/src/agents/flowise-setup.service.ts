@@ -64,11 +64,7 @@ export class FlowiseSetupService {
 
     const apiBase = this.config.get<string>("API_BASE_URL") ?? "https://api.pymeshub.lat";
     const founderKey = this.config.get<string>("PYMESHUB_FOUNDER_API_KEY") ?? "";
-    const cfAccountId = this.config.get<string>("CF_GATEWAY_ACCOUNT_ID") ?? "";
-    const cfGatewayId = this.config.get<string>("CF_GATEWAY_ID") ?? "pymeshub";
-
-    const flashBaseUrl = `https://gateway.ai.cloudflare.com/v1/${cfAccountId}/${cfGatewayId}/deepseek`;
-    const proBaseUrl   = `https://gateway.ai.cloudflare.com/v1/${cfAccountId}/${cfGatewayId}/deepseek`;
+    const deepseekBaseUrl = this.config.get<string>("DEEPSEEK_BASE_URL") ?? "https://api.deepseek.com";
 
     const tiers: TierConfig[] = [
       {
@@ -187,8 +183,7 @@ export class FlowiseSetupService {
           chatflowId = existingByName.get(tier.name)!;
           this.logger.log(`[flowise-setup] Tier agentflow already exists: ${tier.name} (${chatflowId})`);
         } else {
-          const isProModel = tier.model === "deepseek-reasoner";
-          const baseUrl = isProModel ? proBaseUrl : flashBaseUrl;
+          const isProModel = tier.model === "deepseek-v4-pro";
 
           const toolIds = tier.tools
             .map((name) => toolIdByName.get(name))
@@ -198,7 +193,7 @@ export class FlowiseSetupService {
             modelName: tier.model,
             systemPrompt: tier.systemPrompt,
             toolIds,
-            basepath: baseUrl,
+            basepath: deepseekBaseUrl,
             temperature: isProModel ? 1.0 : 0.2,
             credentialId: deepseekCredentialId,
           });

@@ -280,7 +280,7 @@ export class FlowiseClient {
   async createChatflow(name: string, systemMessage?: string): Promise<string> {
     const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
     const model = this.config.get<string>("FLOWISE_DEFAULT_MODEL") ?? "deepseek-v4-flash";
-    const basepath = this.config.get<string>("FLOWISE_DEFAULT_BASEPATH");
+    const basepath = this.config.get<string>("DEEPSEEK_BASE_URL") ?? "https://api.deepseek.com";
     const apiKey = this.config.get<string>("FLOWISE_DEFAULT_API_KEY") ?? "";
 
     let credentialId: string | undefined;
