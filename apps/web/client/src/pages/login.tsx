@@ -268,7 +268,7 @@ export default function LoginPage() {
       />
 
       {/* Top bar */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-5">
+      <div className="relative z-10 flex items-center justify-between px-6 py-3 md:py-5">
         <Link href="/" className="inline-flex items-center gap-2 text-sm transition" style={{ color: "rgba(255,255,255,0.65)" }}>
           <ArrowLeft className="h-4 w-4" />
           {copy.back}
@@ -277,19 +277,18 @@ export default function LoginPage() {
       </div>
 
       {/* Center content */}
-      <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-10">
+      <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-4 md:py-10">
         <div className="w-full max-w-[26rem]">
 
           {/* Card */}
           <div
-            className="relative overflow-hidden"
+            className="relative overflow-hidden p-5 sm:p-8"
             style={{
               borderRadius: 16,
               border: "1px solid rgba(139,92,246,0.22)",
               background: "rgba(15,10,30,0.85)",
               backdropFilter: "blur(24px)",
               boxShadow: "0 0 0 1px rgba(139,92,246,0.06), 0 32px 64px rgba(0,0,0,0.6), 0 0 80px rgba(124,58,237,0.08)",
-              padding: "2rem 2rem 2rem",
             }}
           >
             {/* Subtle top glow line */}
@@ -298,7 +297,7 @@ export default function LoginPage() {
               style={{ background: "linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.5) 50%, transparent 100%)" }}
             />
 
-            <BrandLockup className="justify-center" textClassName="text-lg" />
+            <BrandLockup className="justify-center" textClassName="text-base sm:text-lg" />
 
             {/* Expired session banner */}
             {expired && (
@@ -360,9 +359,9 @@ export default function LoginPage() {
             ) : (
               <>
                 {/* Heading */}
-                <div className="mt-7 text-center">
+                <div className="mt-5 text-center">
                   <h1
-                    className="text-2xl font-bold tracking-tight"
+                    className="text-xl sm:text-2xl font-bold tracking-tight"
                     style={{
                       background: "linear-gradient(135deg, #ffffff 40%, #c4b5fd 80%, #818cf8 100%)",
                       WebkitBackgroundClip: "text",
@@ -372,13 +371,13 @@ export default function LoginPage() {
                   >
                     {copy.welcome}
                   </h1>
-                  <p className="mt-2 text-sm leading-6" style={{ color: "rgba(255,255,255,0.65)" }}>
+                  <p className="mt-1 text-sm leading-6" style={{ color: "rgba(255,255,255,0.65)" }}>
                     {copy.description}
                   </p>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+                <form onSubmit={handleSubmit} className="mt-5 space-y-3">
                   <Field
                     id="email"
                     label={copy.email}
@@ -440,7 +439,7 @@ export default function LoginPage() {
                 </form>
 
                 {/* Divider + SSO */}
-                <div className="mt-6">
+                <div className="mt-4">
                   <div className="flex items-center gap-3">
                     <div className="h-px flex-1" style={{ background: "rgba(139,92,246,0.15)" }} />
                     <span className="text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>{copy.orContinueWith}</span>
@@ -470,19 +469,19 @@ export default function LoginPage() {
                   </button>
 
                   {/* Telegram */}
-                  <div className="mt-3 flex justify-center">
+                  <div className="mt-2 flex justify-center">
                     <div id="telegram-login-btn" className="w-full" />
                   </div>
                 </div>
 
                 {/* Footer links */}
-                <div className="mt-6">
+                <div className="mt-4">
                   <div className="flex items-center gap-3">
                     <div className="h-px flex-1" style={{ background: "rgba(139,92,246,0.12)" }} />
                     <span className="text-xs" style={{ color: "rgba(255,255,255,0.50)" }}>{copy.forgot}</span>
                     <div className="h-px flex-1" style={{ background: "rgba(139,92,246,0.12)" }} />
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="mt-3 grid grid-cols-2 gap-2">
                     {[
                       { href: "/accept-invite", label: copy.acceptInvite },
                       { href: "/legal", label: copy.legalCenter },
@@ -508,7 +507,7 @@ export default function LoginPage() {
             )}
 
             {/* Bottom: terms + register */}
-            <div className="mt-7 flex flex-col items-center gap-3 text-center">
+            <div className="mt-5 flex flex-col items-center gap-2 text-center">
               <div className="flex items-center gap-3 text-xs" style={{ color: "rgba(255,255,255,0.50)" }}>
                 <Link href="/legal/terms-of-service" className="transition hover:text-white/50">{copy.terms}</Link>
                 <span className="h-1 w-1 rounded-full" style={{ background: "rgba(255,255,255,0.2)" }} />
@@ -528,7 +527,7 @@ export default function LoginPage() {
                 </Link>
               </p>
 
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.40)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              <p className="hidden sm:block text-xs" style={{ color: "rgba(255,255,255,0.40)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
                 &copy; {new Date().getFullYear()} PymesHub S.A., Lim&oacute;n, Costa Rica
               </p>
             </div>
