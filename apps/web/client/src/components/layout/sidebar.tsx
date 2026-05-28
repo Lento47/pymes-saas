@@ -492,7 +492,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
-              "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-colors shrink-0",
+              "hidden lg:flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-colors shrink-0",
               "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             )}
             title={sidebarOpen ? copy.closeMenu : copy.openMenu}
