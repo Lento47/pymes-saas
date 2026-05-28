@@ -64,17 +64,13 @@ export class FlowiseSetupService {
 
     const apiBase = this.config.get<string>("API_BASE_URL") ?? "https://api.pymeshub.lat";
     const founderKey = this.config.get<string>("PYMESHUB_FOUNDER_API_KEY") ?? "";
-    const cfAccountId = this.config.get<string>("CF_GATEWAY_ACCOUNT_ID") ?? "";
-    const cfGatewayId = this.config.get<string>("CF_GATEWAY_ID") ?? "pymeshub";
-
-    const flashBaseUrl = `https://gateway.ai.cloudflare.com/v1/${cfAccountId}/${cfGatewayId}/deepseek`;
-    const proBaseUrl   = `https://gateway.ai.cloudflare.com/v1/${cfAccountId}/${cfGatewayId}/deepseek`;
+    const deepseekBaseUrl = this.config.get<string>("DEEPSEEK_BASE_URL") ?? "https://api.deepseek.com";
 
     const tiers: TierConfig[] = [
       {
         slug: SUPPORT_TIER_SLUGS.TIER_1,
         name: "PymesHub Soporte — Tier 1 (Free)",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         tools: [],
         autoApprove: false,
         systemPrompt:
@@ -85,7 +81,7 @@ export class FlowiseSetupService {
       {
         slug: SUPPORT_TIER_SLUGS.TIER_2,
         name: "PymesHub Soporte — Tier 2 (Starter/Emprende)",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         tools: ["get_railway_logs", "get_errors", "list_diagnostic_cases"],
         autoApprove: false,
         systemPrompt:
@@ -101,7 +97,7 @@ export class FlowiseSetupService {
       {
         slug: SUPPORT_TIER_SLUGS.TIER_3,
         name: "PymesHub Soporte — Tier 3 (Growth/Business)",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         tools: ["get_railway_logs", "get_errors", "read_github_file", "get_recent_commits", "list_fix_cases"],
         autoApprove: false,
         systemPrompt:
@@ -122,7 +118,7 @@ export class FlowiseSetupService {
       {
         slug: SUPPORT_TIER_SLUGS.TIER_4,
         name: "PymesHub Soporte — Tier 4 (Enterprise/Business+)",
-        model: "deepseek-reasoner",
+        model: "deepseek-v4-pro",
         tools: ["get_railway_logs", "get_errors", "read_github_file", "get_recent_commits", "apply_github_fix", "list_fix_cases"],
         autoApprove: true,
         systemPrompt:
@@ -187,8 +183,7 @@ export class FlowiseSetupService {
           chatflowId = existingByName.get(tier.name)!;
           this.logger.log(`[flowise-setup] Tier agentflow already exists: ${tier.name} (${chatflowId})`);
         } else {
-          const isProModel = tier.model === "deepseek-reasoner";
-          const baseUrl = isProModel ? proBaseUrl : flashBaseUrl;
+          const isProModel = tier.model === "deepseek-v4-pro";
 
           const toolIds = tier.tools
             .map((name) => toolIdByName.get(name))
@@ -198,7 +193,7 @@ export class FlowiseSetupService {
             modelName: tier.model,
             systemPrompt: tier.systemPrompt,
             toolIds,
-            basepath: baseUrl,
+            basepath: deepseekBaseUrl,
             temperature: isProModel ? 1.0 : 0.2,
             credentialId: deepseekCredentialId,
           });
