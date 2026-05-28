@@ -328,6 +328,7 @@ model Workspace {
   diagnostic_cases      SupportDiagnosticCase[]
   runbook_executions    RunbookExecution[]
   support_case_comments SupportCaseComment[]
+  orchestration_runs    SupportOrchestrationRun[]
 
   // Business+ Enterprise relations
   enterprise_config  WorkspaceEnterpriseConfig?
@@ -2110,6 +2111,36 @@ model RunbookExecution {
   @@index([status])
   @@index([workspace_id, created_at(sort: Desc)])
   @@map("runbook_executions")
+}
+
+// ============================================================
+// SUPPORT ORCHESTRATION — audit trail for the multi-agent
+// support pipeline. One row per pipeline run; stages_json holds
+// the ordered list of agent stages with their inputs/outputs so
+// "what did the support agents do" is fully auditable.
+// ============================================================
+
+model SupportOrchestrationRun {
+  id                 String  @id @default(cuid())
+  workspace_id       String
+  diagnostic_case_id String?
+  tier               String // TIER_1..TIER_4
+  status             String  @default("RUNNING") // RUNNING | COMPLETED | NEEDS_HUMAN | FAILED
+  case_type          String? // from triage classification
+  severity           String?
+  needs_human_review Boolean @default(false)
+  stages_json        Json    @db.JsonB // [{ agent_slug, allowed, output_preview, structured, duration_ms, error }]
+  summary            String? @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@index([status])
+  @@map("support_orchestration_runs")
 }
 
 // ============================================================

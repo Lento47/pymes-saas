@@ -15,9 +15,11 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
 import { AgentsService } from "./agents.service";
 import { AgentRuntimeService } from "./runtime/agent-runtime.service";
+import { SupportOrchestratorService } from "./support/support-orchestrator.service";
 import { CreateAgentDto } from "./dto/create-agent.dto";
 import { UpdateAgentDto } from "./dto/update-agent.dto";
 import { TestAgentDto } from "./dto/test-agent.dto";
+import { OrchestrateSupportDto } from "./dto/orchestrate-support.dto";
 
 @Controller("agents")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -25,7 +27,38 @@ export class AgentsController {
   constructor(
     private readonly agentsService: AgentsService,
     private readonly runtime: AgentRuntimeService,
+    private readonly orchestrator: SupportOrchestratorService,
   ) {}
+
+  // NOTE: /support routes must be declared before /:id to avoid route shadowing
+  @Post("support/orchestrate")
+  @Roles(
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
+  orchestrateSupport(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Body() dto: OrchestrateSupportDto,
+  ) {
+    return this.orchestrator.orchestrate({
+      workspace_id: workspaceId,
+      message: dto.message,
+      diagnostic_case_id: dto.diagnostic_case_id,
+      allow_pr_creation: dto.allow_pr_creation,
+    });
+  }
+
+  @Get("support/runs")
+  @Roles(
+    WorkspaceUserRole.VIEWER,
+    WorkspaceUserRole.AGENT,
+    WorkspaceUserRole.ADMIN,
+    WorkspaceUserRole.OWNER,
+  )
+  listSupportRuns(@CurrentUser("workspace_id") workspaceId: string) {
+    return this.orchestrator.listRuns(workspaceId);
+  }
 
   @Get()
   @Roles(
