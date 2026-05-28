@@ -76,9 +76,9 @@ function toneConfig(tone: Tone) {
       return {
         dot: "bg-red-500",
         text: "text-red-400",
-        accent: "#9CA3AF",
-        cardBg: "#FFFFFF",
-        cardBorder: "#E5E7EB",
+        accent: "hsl(var(--muted-foreground))",
+        cardBg: "hsl(var(--card))",
+        cardBorder: "hsl(var(--border))",
         pillBg: "rgba(239,68,68,0.08)",
         pillBorder: "rgba(239,68,68,0.25)",
         pillText: "#ef4444",
@@ -87,9 +87,9 @@ function toneConfig(tone: Tone) {
       return {
         dot: "bg-orange-400",
         text: "text-orange-400",
-        accent: "#9CA3AF",
-        cardBg: "#FFFFFF",
-        cardBorder: "#E5E7EB",
+        accent: "hsl(var(--muted-foreground))",
+        cardBg: "hsl(var(--card))",
+        cardBorder: "hsl(var(--border))",
         pillBg: "rgba(251,146,60,0.08)",
         pillBorder: "rgba(251,146,60,0.25)",
         pillText: "#fb923c",
@@ -98,9 +98,9 @@ function toneConfig(tone: Tone) {
       return {
         dot: "bg-gray-400",
         text: "text-gray-500",
-        accent: "#9CA3AF",
-        cardBg: "#FFFFFF",
-        cardBorder: "#E5E7EB",
+        accent: "hsl(var(--muted-foreground))",
+        cardBg: "hsl(var(--card))",
+        cardBorder: "hsl(var(--border))",
         pillBg: "rgba(0,0,0,0.05)",
         pillBorder: "rgba(0,0,0,0.1)",
         pillText: "#6B7280",
@@ -109,9 +109,9 @@ function toneConfig(tone: Tone) {
       return {
         dot: "bg-gray-400",
         text: "text-gray-500",
-        accent: "#9CA3AF",
-        cardBg: "#FFFFFF",
-        cardBorder: "#E5E7EB",
+        accent: "hsl(var(--muted-foreground))",
+        cardBg: "hsl(var(--card))",
+        cardBorder: "hsl(var(--border))",
         pillBg: "rgba(0,0,0,0.05)",
         pillBorder: "rgba(0,0,0,0.1)",
         pillText: "#6B7280",
@@ -461,7 +461,7 @@ export default function DashboardPage() {
 
         {/* AI Summary card */}
         {(summaryLoading || statsLoading || todaySummary?.generated_text || generateMutation.isPending) && (
-          <section className="rounded-card border border-[#E5E7EB] bg-[#F7F8FC] px-4 py-3">
+          <section className="rounded-card border border-border bg-card px-4 py-3">
             {summaryLoading || statsLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-3.5 w-full" />

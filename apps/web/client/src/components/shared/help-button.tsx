@@ -12,18 +12,12 @@ export function HelpButton({ page, className }: HelpButtonProps) {
     <Link
       href={`/agent?page=${encodeURIComponent(page)}`}
       className={cn(
-        'fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-semibold shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl',
+        'fixed bottom-4 right-4 z-40 flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-gray-400 shadow-sm transition-colors hover:text-gray-600',
         className,
       )}
-      style={{
-        background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.85))',
-        color: 'hsl(var(--primary-foreground))',
-        boxShadow: '0 4px 24px hsl(var(--primary) / 0.3)',
-      }}
       title={`Ayuda con ${page}`}
     >
-      <LifeBuoy className="h-3.5 w-3.5" />
-      Ayuda
+      <LifeBuoy className="h-4 w-4" />
     </Link>
   );
 }
