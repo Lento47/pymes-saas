@@ -145,8 +145,9 @@ export default function LoginPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Telegram widget
+  // Telegram widget — inject script once the SSO section is visible in the DOM
   useEffect(() => {
+    if (!ssoExpanded) return;
     const container = document.getElementById('telegram-login-btn');
     if (!container || container.children.length > 0) return;
     const script = document.createElement('script');
@@ -157,7 +158,7 @@ export default function LoginPage() {
     script.setAttribute('data-onauth', 'onTelegramAuth(user)');
     script.setAttribute('data-request-access', 'write');
     container.appendChild(script);
-  }, []);
+  }, [ssoExpanded]);
 
   useEffect(() => {
     (window as any).onTelegramAuth = (user: Record<string, any>) => {
