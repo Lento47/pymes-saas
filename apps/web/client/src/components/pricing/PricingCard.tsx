@@ -154,7 +154,6 @@ export function PricingCard({ tier, isAnnual }: PricingCardProps) {
           </div>
         ) : (
           <div className="space-y-1 text-[11px] text-foreground/75">
-            <div>Contactos: <span className="font-semibold text-foreground">{tier.limits.contacts.toLocaleString()}</span></div>
             <div>Facturas/mes: <span className="font-semibold text-foreground">{tier.limits.invoicesPerMonth.toLocaleString()}</span></div>
             <div>Automatizaciones: <span className="font-semibold text-foreground">{tier.limits.automations}</span></div>
             <div>Almacenamiento: <span className="font-semibold text-foreground">{tier.limits.storageGB} GB</span></div>

@@ -10,7 +10,7 @@ interface HelpButtonProps {
 export function HelpButton({ page, className }: HelpButtonProps) {
   return (
     <Link
-      href={`/agent?page=${encodeURIComponent(page)}`}
+      href={`/support?context=${encodeURIComponent(page)}`}
       className={cn(
         'fixed bottom-4 right-4 z-40 flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-gray-400 shadow-sm transition-colors hover:text-gray-600',
         className,

@@ -316,7 +316,6 @@ export default function PricingPage() {
                 <tbody className="divide-y divide-border">
                   {[
                     { label: 'Miembros del equipo', key: 'users' },
-                    { label: 'Contactos', key: 'contacts' },
                     { label: 'Facturas/mes', key: 'invoicesPerMonth' },
                     { label: 'Automatizaciones', key: 'automations' },
                     { label: 'Almacenamiento', key: 'storageGB' },
@@ -335,7 +334,6 @@ export default function PricingPage() {
                                   <Check className="h-4 w-4 text-success" />
                                   <span className="ml-2 font-semibold text-foreground">
                                     {row.key === 'users' && tier.users}
-                                    {row.key === 'contacts' && tier.limits.contacts.toLocaleString()}
                                     {row.key === 'invoicesPerMonth' && tier.limits.invoicesPerMonth.toLocaleString()}
                                     {row.key === 'automations' && tier.limits.automations}
                                     {row.key === 'storageGB' && `${tier.limits.storageGB} GB`}

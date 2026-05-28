@@ -87,8 +87,6 @@ export class ContactsService {
   // ── POST /contacts ─────────────────────────────────────────────────────────
 
   async create(workspaceId: string, dto: CreateContactDto) {
-    await this.planLimits.checkContactLimit(workspaceId);
-
     // Evitar duplicados por email dentro del mismo workspace
     if (dto.email) {
       const existing = await this.prisma.contact.findFirst({
