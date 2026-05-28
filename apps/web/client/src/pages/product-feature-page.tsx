@@ -1,4 +1,5 @@
 import { ElementType } from "react";
+import { motion } from "framer-motion";
 import { Link, Redirect } from "wouter";
 import {
   ArrowRight, CheckCircle2,
@@ -154,14 +155,22 @@ export default function ProductFeaturePage({ slug }: { slug: string }) {
           {pf.painLabel}
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
-          {pains.map(({ icon: Icon, title, text }) => (
-            <div key={title} className="rounded-2xl border bg-white p-6" style={{ borderColor: BORDER }}>
+          {pains.map(({ icon: Icon, title, text }, idx) => (
+            <motion.div
+              key={title}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.4, delay: idx * 0.08, ease: [0.22, 1, 0.36, 1] }}
+              className="rounded-2xl border bg-white p-6"
+              style={{ borderColor: BORDER }}
+            >
               <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-red-50">
                 <Icon className="h-5 w-5 text-red-400" />
               </div>
               <h3 className="text-sm font-semibold text-gray-900 mb-1">{title}</h3>
               <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
@@ -177,9 +186,13 @@ export default function ProductFeaturePage({ slug }: { slug: string }) {
           </h2>
         </div>
         <div className="grid gap-6 sm:grid-cols-2">
-          {features.map(({ icon: Icon, title, text }) => (
-            <div
+          {features.map(({ icon: Icon, title, text }, idx) => (
+            <motion.div
               key={title}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.4, delay: idx * 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="rounded-2xl border bg-white p-6 flex gap-4"
               style={{ borderColor: BORDER }}
             >
@@ -193,7 +206,7 @@ export default function ProductFeaturePage({ slug }: { slug: string }) {
                 <h3 className="text-sm font-semibold text-gray-900 mb-1">{title}</h3>
                 <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
