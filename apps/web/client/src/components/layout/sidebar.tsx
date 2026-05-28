@@ -328,12 +328,11 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           )}
           {NAV_GROUPS.map((group) => (
-            <div key={group.key} className="space-y-1.5">
-              <div className="flex items-center gap-2 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/65">
-                <div className="h-px w-3 bg-border" />
-                <span>{(copy.groups as any)[group.key]}</span>
+            <div key={group.key} className="space-y-1">
+              <div className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/45">
+                {(copy.groups as any)[group.key]}
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {group.items.filter(({ key }) => canShowNavItem(key)).map(({ path, icon: Icon, key, badge: bk }) => {
                   const active = isActive(path);
                   const b = badgeVal(bk);
@@ -341,33 +340,35 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     <Link key={path} href={path}>
                       <div
                         className={cn(
-                          "group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
+                          "group relative flex items-center gap-2.5 px-3 py-[7px] rounded-lg cursor-pointer transition-all duration-150",
                           active
-                            ? "bg-primary/10 text-foreground font-medium"
-                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
+                            ? "bg-primary/[0.16] text-foreground font-medium"
+                            : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50"
                         )}
                       >
                         {active && (
-                          <div className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
+                          <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
                         )}
 
                         <Icon
                           className={cn(
-                            "w-4 h-4 shrink-0 transition-colors",
-                            active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                            "w-[15px] h-[15px] shrink-0 transition-colors",
+                            active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground"
                           )}
-                          strokeWidth={active ? 2.2 : 1.8}
+                          strokeWidth={active ? 2.2 : 1.7}
                         />
 
-                        <span className="flex-1 text-sm">{navLabel(copy, key, isBeta)}</span>
+                        <span className="flex-1 text-[13px]">{navLabel(copy, key, isBeta)}</span>
 
                         {b > 0 && (
                           <span
                             className={cn(
-                              "text-[11px] font-semibold px-1.5 py-0.5 rounded-md leading-none transition-colors",
+                              "text-[11px] font-semibold min-w-[20px] text-center px-1.5 py-0.5 rounded-md leading-none transition-colors",
                               bk === "overdue"
-                                ? "border border-destructive/25 bg-transparent text-destructive"
-                                : "border border-border bg-transparent text-muted-foreground"
+                                ? "bg-destructive/15 text-destructive"
+                                : active
+                                  ? "bg-primary/20 text-primary"
+                                  : "bg-muted-foreground/10 text-muted-foreground"
                             )}
                           >
                             {b}
@@ -382,12 +383,11 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           ))}
 
           {user?.is_platform_admin && (
-            <div className="space-y-1.5 border-t border-border/60 pt-2">
-              <div className="flex items-center gap-2 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/65">
-                <div className="h-px w-3 bg-border" />
-                <span>{copy.admin}</span>
+            <div className="space-y-1 border-t border-border/40 pt-2">
+              <div className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/45">
+                {copy.admin}
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {ADMIN_ITEMS.map(({ href, icon: Icon, key }) => {
                   const active = isActive(href);
                   const label = key === "adminDashboard" ? copy.adminDashboard : key === "adminWorkspaces" ? copy.adminWorkspaces : key === "adminLanding" ? "Landing Page" : copy.adminPlanLimits;
@@ -395,17 +395,17 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     <Link key={href} to={href}>
                       <div
                         className={cn(
-                          "group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
+                          "group relative flex items-center gap-2.5 px-3 py-[7px] rounded-lg cursor-pointer transition-all duration-150",
                           active
-                            ? "bg-primary/10 text-foreground font-medium"
-                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
+                            ? "bg-primary/[0.16] text-foreground font-medium"
+                            : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50"
                         )}
                       >
                         {active && (
-                          <div className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
+                          <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
                         )}
-                        <Icon className={cn("w-4 h-4 shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} strokeWidth={active ? 2.2 : 1.8} />
-                        <span className="flex-1 text-sm">{label}</span>
+                        <Icon className={cn("w-[15px] h-[15px] shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground")} strokeWidth={active ? 2.2 : 1.7} />
+                        <span className="flex-1 text-[13px]">{label}</span>
                       </div>
                     </Link>
                   );
@@ -419,20 +419,20 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <Link to="/settings/workspace">
             <div
               className={cn(
-                "group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
+                "group relative flex items-center gap-2.5 px-3 py-[7px] rounded-lg cursor-pointer transition-all duration-150",
                 location.startsWith("/settings")
-                  ? "bg-primary/10 text-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
+                  ? "bg-primary/[0.16] text-foreground font-medium"
+                  : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50"
               )}
             >
               {location.startsWith("/settings") && (
-                <div className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
+                <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
               )}
               <Settings
-                className={cn("w-4 h-4 shrink-0 transition-colors", location.startsWith("/settings") ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}
-                strokeWidth={location.startsWith("/settings") ? 2.2 : 1.8}
+                className={cn("w-[15px] h-[15px] shrink-0 transition-colors", location.startsWith("/settings") ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground")}
+                strokeWidth={location.startsWith("/settings") ? 2.2 : 1.7}
               />
-              <span className="flex-1 text-sm text-left">{copy.settingsButton}</span>
+              <span className="flex-1 text-[13px] text-left">{copy.settingsButton}</span>
             </div>
           </Link>
         </div>
@@ -446,21 +446,21 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <div className="shrink-0 space-y-2 border-t border-border bg-sidebar px-3 py-3 pb-safe">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="shrink-0 space-y-2 border-t border-border/50 bg-sidebar px-3 py-3 pb-safe">
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={toggle}
               className={cn(
-                "h-8 rounded-md transition-colors flex items-center justify-center",
-                "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/35"
+                "h-8 rounded-lg transition-colors flex items-center justify-center gap-1.5",
+                "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50 text-[11px]"
               )}
               aria-label={theme === "dark" ? copy.lightMode : copy.darkMode}
               title={theme === "dark" ? copy.lightMode : copy.darkMode}
             >
               {theme === "dark" ? (
-                <Sun className="w-4 h-4" />
+                <Sun className="w-3.5 h-3.5" />
               ) : (
-                <Moon className="w-4 h-4" />
+                <Moon className="w-3.5 h-3.5" />
               )}
             </button>
             <div className="h-8">
@@ -468,8 +468,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-md border px-2.5 py-2" style={{ borderColor: "rgba(139,92,246,0.18)", background: "rgba(139,92,246,0.04)" }}>
-            <div className="w-7 h-7 rounded-md border flex items-center justify-center shrink-0 text-xs font-semibold" style={{ borderColor: "rgba(139,92,246,0.25)", background: "rgba(139,92,246,0.15)", color: "hsl(var(--primary))" }}>
+          <div className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-sidebar-accent/30 px-2.5 py-2">
+            <div className="w-7 h-7 rounded-lg border border-primary/30 bg-primary/20 flex items-center justify-center shrink-0 text-[11px] font-bold text-primary">
               {initials}
             </div>
             <div className="flex-1 min-w-0">

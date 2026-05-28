@@ -4,16 +4,16 @@
 
 /* ── Dark theme (default) - premium violet/indigo palette ── */
 :root {
-  --bg:           256 22% 6%;
-  --bg-sidebar:   258 26% 5%;
-  --bg-card:      258 18% 9%;
-  --bg-elevated:  258 16% 12%;
-  --bg-hover:     258 15% 15%;
-  --bg-active:    262 22% 18%;
-  --border:       258 16% 20%;
-  --fg:           258 14% 95%;
-  --fg-2:         258 8% 65%;
-  --fg-3:         258 6% 46%;
+  --bg:           258 22% 5%;
+  --bg-sidebar:   258 24% 11%;
+  --bg-card:      258 20% 10%;
+  --bg-elevated:  258 18% 15%;
+  --bg-hover:     258 16% 18%;
+  --bg-active:    262 26% 23%;
+  --border:       258 15% 23%;
+  --fg:           258 14% 96%;
+  --fg-2:         258 8% 66%;
+  --fg-3:         258 6% 47%;
   --accent:       262 83% 68%;
   --accent-fg:    0 0% 100%;
   --danger:       0 72% 51%;
@@ -80,35 +80,34 @@
 
 /* ── Light theme (opt-in) ── */
 html.light {
-  /* Background: #F7F8FC — neutral cool-white */
-  --bg:           230 25% 97%;
-  --bg-sidebar:   0 0% 100%;
-  --bg-card:      0 0% 100%;
-  --bg-elevated:  0 0% 100%;
-  /* Hover/active: barely tinted */
-  --bg-hover:     220 14% 96%;
-  --bg-active:    220 14% 93%;
-  /* Borders: #E5E7EB neutral gray */
-  --border:       220 13% 91%;
-  --border-subtle: 220 13% 94%;
-  /* Text: #111827 dark gray */
-  --fg:           222 47% 11%;
-  /* Text secondary: #6B7280 */
-  --fg-2:         220 9% 46%;
-  /* Text tertiary: #9CA3AF */
-  --fg-3:         220 8% 64%;
-  /* Violet accent — same hue, good contrast on white */
-  --accent:       262 83% 56%;
-  --accent-fg:    0 0% 100%;
-  --danger:       0 72% 45%;
-  --danger-fg:    0 0% 100%;
-  --success:      156 58% 34%;
-  --warning:      35 90% 48%;
-  --bg-2:         220 13% 95%;
-  --surface:      var(--bg-card);
-  --surface-subtle: 220 14% 97%;
+  /* Content bg: cool off-white */
+  --bg:            240 20% 96%;
+  /* Sidebar: clean white, visible against content */
+  --bg-sidebar:    0 0% 100%;
+  --bg-card:       0 0% 100%;
+  --bg-elevated:   0 0% 100%;
+  /* Hover/active: subtle tint */
+  --bg-hover:      240 14% 94%;
+  --bg-active:     262 60% 96%;
+  /* Borders: slightly stronger */
+  --border:        220 13% 88%;
+  --border-subtle: 220 13% 92%;
+  /* Text */
+  --fg:            222 47% 11%;
+  --fg-2:          220 9% 44%;
+  --fg-3:          220 8% 62%;
+  /* Violet accent — good contrast on white */
+  --accent:        262 83% 54%;
+  --accent-fg:     0 0% 100%;
+  --danger:        0 72% 45%;
+  --danger-fg:     0 0% 100%;
+  --success:       156 58% 34%;
+  --warning:       35 90% 48%;
+  --bg-2:          240 15% 95%;
+  --surface:       var(--bg-card);
+  --surface-subtle: 240 15% 97%;
   --surface-raised: 0 0% 100%;
-  --link:         262 83% 52%;
+  --link:          262 83% 50%;
 }
 
 /* Light mode: glass panels become solid cards */
@@ -121,22 +120,22 @@ html.light .glass-panel-raised {
 html.light .glass-panel {
   background: #ffffff;
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 0 rgba(0, 0, 0, 0.03);
 }
 html.light .glass-panel-soft {
-  background: hsl(var(--bg-card));
+  background: #ffffff;
   border: 1px solid hsl(var(--border-subtle));
-  box-shadow: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 html.light .glass-panel-raised {
   background: #ffffff;
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10), 0 1px 0 rgba(0, 0, 0, 0.04);
 }
-/* Light mode: sidebar border clean, no glow */
+/* Light mode: sidebar border clean, subtle shadow for separation */
 html.light aside {
   border-right-color: hsl(var(--border));
-  box-shadow: none;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.06);
 }
 /* Light mode: no ambient gradient in app shell */
 html.light .premium-ambient {
@@ -217,23 +216,23 @@ nav, aside, header, [role="navigation"], [role="banner"] {
 
 /* ── Glass panels ── */
 .glass-panel {
-  background: rgba(120, 80, 220, 0.04);
-  border: 1px solid rgba(160, 100, 255, 0.12);
+  background: rgba(120, 80, 220, 0.07);
+  border: 1px solid rgba(160, 100, 255, 0.18);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
 }
 .glass-panel-soft {
-  background: rgba(120, 80, 220, 0.025);
-  border: 1px solid rgba(160, 100, 255, 0.07);
+  background: rgba(120, 80, 220, 0.04);
+  border: 1px solid rgba(160, 100, 255, 0.10);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
 
 /* ── Elevated card (border-raised, subtle violet glow) ── */
 .glass-panel-raised {
-  background: rgba(120, 80, 220, 0.05);
-  border: 1px solid rgba(160, 100, 255, 0.14);
-  box-shadow: 0 0 24px rgba(120, 60, 220, 0.08);
+  background: rgba(120, 80, 220, 0.08);
+  border: 1px solid rgba(160, 100, 255, 0.20);
+  box-shadow: 0 4px 32px rgba(120, 60, 220, 0.12), 0 1px 0 rgba(160, 100, 255, 0.08) inset;
 }
 
 /* ── Premium glow utilities ── */
