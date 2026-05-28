@@ -210,6 +210,9 @@ export class AgentRuntimeService {
         this.logger.warn(
           `Chatflow ${instance.chatflow_id} not found in Flowise — reprovisioning agent ${instance.id}`,
         );
+        // Clear credential cache so createChatflow re-discovers IDs from Flowise
+        // rather than using a stale ID from before a potential Flowise reset.
+        this.flowise.clearCredentialCache();
         const newId = await this.flowise.createChatflow(
           instance.name,
           instance.system_instructions ?? undefined,
