@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { AgentStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { FlowiseClient } from "./flowise/flowise.client";
@@ -164,18 +164,27 @@ export class AgentsService {
     return ws.plan;
   }
 
+  async reprovisionChatflow(workspaceId: string, agentId: string) {
+    const agent = await this.prisma.agentInstance.findUniqueOrThrow({
+      where: { id: agentId, workspace_id: workspaceId },
+    });
+    if (!this.flowise.isEnabled) {
+      throw new ServiceUnavailableException("Flowise integration is disabled");
+    }
+    return this.provisionChatflow(agent.id, agent.name);
+  }
+
   private async provisionChatflow(agentId: string, name: string) {
     try {
       const chatflowId = await this.flowise.createChatflow(name);
       return this.prisma.agentInstance.update({
         where: { id: agentId },
-        data: { chatflow_id: chatflowId },
+        data: { chatflow_id: chatflowId, status: "DRAFT" },
       });
     } catch (err) {
       this.logger.error(
         `Auto-provision Flowise chatflow failed for agent ${agentId}: ${(err as Error).message}`,
       );
-      // Return agent with empty chatflow_id — user can retry or set manually
       return this.prisma.agentInstance.findUniqueOrThrow({
         where: { id: agentId },
       });

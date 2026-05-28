@@ -112,6 +112,15 @@ export class AgentsController {
     });
   }
 
+  @Post(":id/reprovision")
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  reprovision(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
+  ) {
+    return this.agentsService.reprovisionChatflow(workspaceId, id);
+  }
+
   @Post(":id/activate")
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
   activate(

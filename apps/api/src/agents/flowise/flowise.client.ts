@@ -29,108 +29,83 @@ export class FlowiseClient {
   }
 
   private buildFlowData(model: string): string {
-    // Minimal ConversationChain chatflow: ChatOpenAI + BufferMemory.
-    // system_instructions is injected per-call via overrideConfig.systemMessagePrompt.
+    // OpenAI Function Agent chatflow (no tools): ChatOpenAI + BufferMemory + OpenAIFunctionAgent.
+    // Uses the same node types as the working Tier support chatflows.
+    // system_instructions is injected per-call via overrideConfig.systemMessage.
     const flow = {
       nodes: [
         {
           id: "chatOpenAI_0",
-          position: { x: 922, y: 205 },
+          position: { x: 100, y: 100 },
           type: "customNode",
           data: {
             id: "chatOpenAI_0",
             label: "ChatOpenAI",
-            version: 6,
             name: "chatOpenAI",
-            type: "ChatOpenAI",
-            baseClasses: [
-              "ChatOpenAI",
-              "BaseChatModel",
-              "BaseLanguageModel",
-              "Runnable",
-            ],
-            category: "Chat Models",
+            type: "BaseChatModel",
             inputs: {
               modelName: model,
-              temperature: "0.3",
-              streaming: true,
-              maxTokens: "",
+              temperature: 0.3,
+              maxTokens: 4096,
             },
-            outputs: {},
+            outputs: { output: "chatOpenAI_0-output-BaseChatModel" },
+            outputAnchors: [
+              { id: "chatOpenAI_0-output-BaseChatModel", label: "BaseChatModel", name: "output" },
+            ],
           },
-          width: 300,
-          height: 574,
         },
         {
           id: "bufferMemory_0",
-          position: { x: 430, y: 50 },
+          position: { x: 100, y: 300 },
           type: "customNode",
           data: {
             id: "bufferMemory_0",
             label: "Buffer Memory",
-            version: 2,
             name: "bufferMemory",
-            type: "BufferMemory",
-            baseClasses: ["BufferMemory", "BaseChatMemory", "BaseMemory"],
-            category: "Memory",
-            inputs: {
-              memoryKey: "chat_history",
-              inputKey: "input",
-              sessionId: "",
-              sessionTimeOut: "",
-            },
-            outputs: {},
+            type: "BaseChatMemory",
+            inputs: { memoryKey: "chat_history", inputKey: "input" },
+            outputs: { output: "bufferMemory_0-output-BaseChatMemory" },
+            outputAnchors: [
+              { id: "bufferMemory_0-output-BaseChatMemory", label: "BaseChatMemory", name: "output" },
+            ],
           },
-          width: 300,
-          height: 377,
         },
         {
-          id: "conversationChain_0",
-          position: { x: 1487, y: 350 },
+          id: "openAIFunctionAgent_0",
+          position: { x: 700, y: 300 },
           type: "customNode",
           data: {
-            id: "conversationChain_0",
-            label: "Conversation Chain",
-            version: 3,
-            name: "conversationChain",
-            type: "ConversationChain",
-            baseClasses: [
-              "ConversationChain",
-              "LLMChain",
-              "BaseChain",
-              "Runnable",
-            ],
-            category: "Chains",
+            id: "openAIFunctionAgent_0",
+            label: "OpenAI Function Agent",
+            name: "openAIFunctionAgent",
+            type: "AgentExecutor",
             inputs: {
-              model: "{{chatOpenAI_0.data.instance}}",
-              memory: "{{bufferMemory_0.data.instance}}",
-              // Empty by default; PymesHub injects via overrideConfig per call
-              systemMessagePrompt: "",
+              tools: [],
+              memory: "bufferMemory_0",
+              model: "chatOpenAI_0",
+              systemMessage: "",
             },
-            outputs: {},
+            outputs: { output: "openAIFunctionAgent_0-output-AgentExecutor" },
+            outputAnchors: [
+              { id: "openAIFunctionAgent_0-output-AgentExecutor", label: "AgentExecutor", name: "output" },
+            ],
           },
-          width: 300,
-          height: 430,
         },
       ],
       edges: [
         {
+          id: "e-model",
           source: "chatOpenAI_0",
-          sourceHandle:
-            "chatOpenAI_0-output-chatOpenAI-ChatOpenAI|BaseChatModel|BaseLanguageModel|Runnable",
-          target: "conversationChain_0",
-          targetHandle: "conversationChain_0-input-model-BaseChatModel",
-          type: "buttonedge",
-          id: "edge-chatOpenAI-conversationChain",
+          sourceHandle: "chatOpenAI_0-output-BaseChatModel",
+          target: "openAIFunctionAgent_0",
+          targetHandle: "openAIFunctionAgent_0-input-model-BaseChatModel",
         },
         {
+          id: "e-memory",
           source: "bufferMemory_0",
-          sourceHandle:
-            "bufferMemory_0-output-bufferMemory-BufferMemory|BaseChatMemory|BaseMemory",
-          target: "conversationChain_0",
-          targetHandle: "conversationChain_0-input-memory-BaseChatMemory",
-          type: "buttonedge",
-          id: "edge-bufferMemory-conversationChain",
+          sourceHandle: "bufferMemory_0-output-BaseChatMemory",
+          target: "openAIFunctionAgent_0",
+          targetHandle: "openAIFunctionAgent_0-input-memory-BaseChatMemory",
         },
       ],
     };

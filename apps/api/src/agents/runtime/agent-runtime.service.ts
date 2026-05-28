@@ -152,7 +152,7 @@ export class AgentRuntimeService {
     const overrideConfig: Record<string, unknown> = {};
     const systemPrompt = `${instance.system_instructions ?? ""}${memoryBlock}`;
     if (systemPrompt.trim()) {
-      overrideConfig.systemMessagePrompt = systemPrompt;
+      overrideConfig.systemMessage = systemPrompt;
     }
 
     const flowiseResponse = await this.flowise.predict(instance.chatflow_id, {
