@@ -194,19 +194,13 @@ function OperationalMetric({
 
   const inner = (
     <div
-      className="relative overflow-hidden rounded-card px-4 py-4 transition-all duration-200 h-full"
+      className="rounded-card px-4 py-4 transition-all duration-200 h-full"
       style={{
         border: `1px solid ${t.cardBorder}`,
         background: t.cardBg,
         cursor: linkTo ? "pointer" : undefined,
       }}
     >
-      {/* Left accent bar */}
-      <div
-        className="absolute left-0 inset-y-0 w-[3px] rounded-l-card"
-        style={{ background: t.accent }}
-      />
-
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {label}
@@ -283,9 +277,8 @@ function AttentionList({
   );
 }
 
-function RowStatus({ tone }: { tone: Tone }) {
-  const t = toneConfig(tone);
-  return <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${t.dot}`} />;
+function RowStatus(_props: { tone: Tone }) {
+  return null;
 }
 
 function PipelineBand({ stages }: { stages: PipelineStage[] }) {
