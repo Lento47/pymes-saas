@@ -1,10 +1,17 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
-import { AgentStatus, Prisma } from "@prisma/client";
+import { AgentInstance, AgentStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { FlowiseClient } from "./flowise/flowise.client";
 import { CreateAgentDto } from "./dto/create-agent.dto";
 import { UpdateAgentDto } from "./dto/update-agent.dto";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+
+export interface EnsureFlowiseChatflowResult {
+  agent: AgentInstance;
+  reprovisioned: boolean;
+  old_chatflow_id?: string | null;
+  new_chatflow_id?: string | null;
+}
 
 @Injectable()
 export class AgentsService {
@@ -102,6 +109,11 @@ export class AgentsService {
 
   async setStatus(workspaceId: string, id: string, status: AgentStatus) {
     await this.getAgent(workspaceId, id);
+
+    if (status === AgentStatus.ACTIVE) {
+      await this.ensureFlowiseChatflow(workspaceId, id);
+    }
+
     return this.prisma.agentInstance.update({ where: { id }, data: { status } });
   }
 
@@ -154,6 +166,50 @@ export class AgentsService {
     return agent;
   }
 
+  async ensureFlowiseChatflow(
+    workspaceId: string,
+    agentId: string,
+    opts: { force?: boolean } = {},
+  ): Promise<EnsureFlowiseChatflowResult> {
+    const agent = await this.getAgent(workspaceId, agentId);
+
+    if (agent.provider !== "FLOWISE") {
+      return { agent, reprovisioned: false };
+    }
+
+    if (!this.flowise.isEnabled) {
+      throw new ServiceUnavailableException("Flowise integration is disabled");
+    }
+
+    const oldChatflowId = agent.chatflow_id || null;
+    const shouldProvision = opts.force || !oldChatflowId;
+
+    if (!shouldProvision && oldChatflowId) {
+      const existing = await this.flowise.listChatflows().catch(() => []);
+      const exists = existing.some((flow) => flow.id === oldChatflowId);
+      if (exists) return { agent, reprovisioned: false };
+    }
+
+    const updated = await this.provisionChatflow(
+      agent.id,
+      agent.name,
+      agent.system_instructions,
+      agent.status,
+      true,
+    );
+
+    this.logger.warn(
+      `Flowise AgentFlow recreated for agent ${agent.id} in workspace ${workspaceId}: ${oldChatflowId ?? "<empty>"} -> ${updated.chatflow_id}`,
+    );
+
+    return {
+      agent: updated,
+      reprovisioned: true,
+      old_chatflow_id: oldChatflowId,
+      new_chatflow_id: updated.chatflow_id,
+    };
+  }
+
   // ── Internal helpers ─────────────────────────────────────────────────────
 
   private async getWorkspacePlan(workspaceId: string): Promise<string> {
@@ -174,17 +230,24 @@ export class AgentsService {
     return this.provisionChatflow(agent.id, agent.name, agent.system_instructions);
   }
 
-  private async provisionChatflow(agentId: string, name: string, systemInstructions?: string | null) {
+  private async provisionChatflow(
+    agentId: string,
+    name: string,
+    systemInstructions?: string | null,
+    status: AgentStatus = AgentStatus.DRAFT,
+    throwOnFailure = false,
+  ) {
     try {
       const chatflowId = await this.flowise.createChatflow(name, systemInstructions ?? undefined);
       return this.prisma.agentInstance.update({
         where: { id: agentId },
-        data: { chatflow_id: chatflowId, status: "DRAFT" },
+        data: { chatflow_id: chatflowId, status },
       });
     } catch (err) {
       this.logger.error(
         `Auto-provision Flowise chatflow failed for agent ${agentId}: ${(err as Error).message}`,
       );
+      if (throwOnFailure) throw err;
       return this.prisma.agentInstance.findUniqueOrThrow({
         where: { id: agentId },
       });
