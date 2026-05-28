@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Switch, Route, Router, Redirect, useLocation } from "wouter";
 import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
@@ -66,6 +66,7 @@ import AgentTemplatesPage from "@/pages/agents/AgentTemplatesPage";
 import PlaybookSuggestionsPage from "@/pages/agents/PlaybookSuggestionsPage";
 import SolutionPage from "@/pages/solutions/SolutionPage";
 import ComingSoonPage from "@/pages/coming-soon";
+import ProductFeaturePage from "@/pages/product-feature-page";
 import AdminDashboard from "@/pages/admin/dashboard";
 import { NoindexMeta } from "@/components/shared/noindex-meta";
 import AdminWorkspaces from "@/pages/admin/workspaces";
@@ -112,6 +113,23 @@ function RootRoute() {
   if (!isAuthenticated) return <Landing />;
   return <ProtectedLayout><Dashboard /></ProtectedLayout>;
 }
+
+function makeFeatureRoute(slug: string, AppComp: React.ComponentType) {
+  return function FeatureRoute() {
+    const { isAuthenticated, user, initialized } = useAuth();
+    if (!initialized || (isAuthenticated && !user)) return <AppLoader />;
+    if (!isAuthenticated) return <ProductFeaturePage slug={slug} />;
+    return <AppSidebar><AppComp /></AppSidebar>;
+  };
+}
+
+const InboxFeatureRoute     = makeFeatureRoute("inbox",       Inbox);
+const CrmFeatureRoute       = makeFeatureRoute("crm",         Contacts);
+const TasksFeatureRoute     = makeFeatureRoute("tasks",       Tasks);
+const DocumentsFeatureRoute = makeFeatureRoute("documents",   Documents);
+const BillingFeatureRoute   = makeFeatureRoute("billing",     Invoices);
+const AutomationsFeatureRoute = makeFeatureRoute("automations", Automations);
+const AnalyticsFeatureRoute = makeFeatureRoute("analytics",   InsightsPage);
 
 function AppRouter() {
   return (
@@ -198,14 +216,12 @@ function AppRouter() {
       <Route path="/security">
         {() => <SecurityPage />}
       </Route>
-      <Route path="/crm">{() => <ProtectedLayout><Contacts /></ProtectedLayout>}</Route>
-      <Route path="/analytics">{() => <ProtectedLayout><InsightsPage /></ProtectedLayout>}</Route>
+      <Route path="/crm" component={CrmFeatureRoute} />
+      <Route path="/analytics" component={AnalyticsFeatureRoute} />
       <Route path="/">
         {() => <RootRoute />}
       </Route>
-      <Route path="/inbox">
-        {() => <ProtectedLayout><Inbox /></ProtectedLayout>}
-      </Route>
+      <Route path="/inbox" component={InboxFeatureRoute} />
       <Route path="/inbox/:id">
         {() => <ProtectedLayout><Inbox /></ProtectedLayout>}
       </Route>
@@ -215,18 +231,13 @@ function AppRouter() {
       <Route path="/contacts/:id">
         {() => <ProtectedLayout><ContactDetail /></ProtectedLayout>}
       </Route>
-      <Route path="/tasks">
-        {() => <ProtectedLayout><Tasks /></ProtectedLayout>}
-      </Route>
-      <Route path="/documents">
-        {() => <ProtectedLayout><Documents /></ProtectedLayout>}
-      </Route>
+      <Route path="/tasks" component={TasksFeatureRoute} />
+      <Route path="/documents" component={DocumentsFeatureRoute} />
+      <Route path="/billing" component={BillingFeatureRoute} />
       <Route path="/invoices">
         {() => <ProtectedLayout><Invoices /></ProtectedLayout>}
       </Route>
-      <Route path="/automations">
-        {() => <ProtectedLayout><Automations /></ProtectedLayout>}
-      </Route>
+      <Route path="/automations" component={AutomationsFeatureRoute} />
       <Route path="/notifications">
         {() => <ProtectedLayout><Notifications /></ProtectedLayout>}
       </Route>
