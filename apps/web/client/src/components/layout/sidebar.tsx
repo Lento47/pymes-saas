@@ -14,12 +14,12 @@ import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
 import { api } from "@/lib/api";
 import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
-  Settings, CircleHelp, LogOut, ChevronDown, Check, Shield,
+  Settings, CircleHelp, LifeBuoy, LogOut, ChevronDown, Check, Shield,
   Sun, Moon, Search, Menu, X,
   ShieldCheck, LayoutTemplate, Bot, Plug,
 } from "lucide-react";
 
-type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "invoices" | "pipeline" | "agents" | "automations" | "integrations" | "documents" | "inventory" | "notifications" | "settings" | "help";
+type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "invoices" | "pipeline" | "agents" | "automations" | "integrations" | "documents" | "inventory" | "notifications" | "settings" | "help" | "support";
 type NavItem = { path: string; icon: React.ElementType; key: NavKey; badge?: "unread" | "overdue" };
 
 const BETA_LABELS: Partial<Record<NavKey, string>> = {
@@ -37,6 +37,7 @@ function navLabel(copy: Record<string, any>, key: NavKey, isBeta?: boolean): str
   if (isBeta && BETA_LABELS[key]) return BETA_LABELS[key]!;
   if (key === "settings") return copy.settings;
   if (key === "help") return copy.help;
+  if (key === "support") return copy.nav.support ?? "Soporte";
   return copy.nav[key] ?? key;
 }
 
@@ -73,8 +74,9 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: "operations",
     items: [
-      { path: "/documents",     icon: FileText, key: "documents" },
-      { path: "/inventory",     icon: Package,  key: "inventory" },
+      { path: "/documents",     icon: FileText,  key: "documents" },
+      { path: "/inventory",     icon: Package,   key: "inventory" },
+      { path: "/support",       icon: LifeBuoy,  key: "support" },
     ],
   },
 ];
@@ -84,6 +86,7 @@ const ADMIN_ITEMS = [
   { href: "/admin/workspaces", icon: Shield, key: "adminWorkspaces" as const },
   { href: "/admin/plan-limits", icon: ShieldCheck, key: "adminPlanLimits" as const },
   { href: "/admin/landing", icon: LayoutTemplate, key: "adminLanding" as const },
+  { href: "/admin/support", icon: LifeBuoy, key: "adminSupport" as const },
 ] as const;
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {

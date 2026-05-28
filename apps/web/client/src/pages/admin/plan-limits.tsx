@@ -10,13 +10,13 @@ import { Save, Loader2, RotateCcw } from "lucide-react";
 
 const PLANS = ["FREE", "STARTER", "GROWTH", "BUSINESS", "ENTERPRISE", "BUSINESS_PLUS"];
 const RESOURCES = [
-  "users", "automations", "contacts", "documents",
+  "users", "automations", "documents",
   "invoices_per_month", "storage_bytes", "locations",
   "invite_codes", "products", "product_categories",
   "diagnostics_per_day", "media_messages_per_day",
 ];
 const RESOURCE_LABELS: Record<string, string> = {
-  users: "Users", automations: "Automations", contacts: "Contacts",
+  users: "Users", automations: "Automations",
   documents: "Documents", invoices_per_month: "Invoices/mes",
   storage_bytes: "Storage (bytes)", locations: "Locations",
   invite_codes: "Invite Codes", products: "Products",

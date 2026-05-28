@@ -58,6 +58,7 @@ import Agent from "@/pages/agent";
 import OnboardingPage from "@/pages/onboarding";
 import SetupPage from "@/pages/setup";
 import SupportPage from "@/pages/support";
+import AdminSupportPage from "@/pages/admin/support";
 import InventoryPage from "@/pages/inventory";
 import InventoryDetailPage from "@/pages/inventory-detail";
 import InventoryMovementsPage from "@/pages/inventory-movements";
@@ -334,6 +335,9 @@ function AppRouter() {
       </Route>
       <Route path="/admin/landing">
         {() => <PlatformAdminLayout><AdminLandingEditor /></PlatformAdminLayout>}
+      </Route>
+      <Route path="/admin/support">
+        {() => <PlatformAdminLayout><AdminSupportPage /></PlatformAdminLayout>}
       </Route>
       <Route path="/help">
         {() => <ProtectedLayout><HelpPage /></ProtectedLayout>}

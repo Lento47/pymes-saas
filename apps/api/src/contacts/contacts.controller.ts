@@ -42,7 +42,6 @@ export class ContactsController {
   @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.AGENT)
   async create(@CurrentUser("workspace_id") workspaceId: string, @Body() dto: CreateContactDto) {
     await this.features.assertEnabled(workspaceId, "contacts");
-    await this.planLimits.enforceContacts(workspaceId);
     return this.service.create(workspaceId, dto);
   }
 

@@ -145,8 +145,9 @@ export default function LoginPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Telegram widget
+  // Telegram widget — inject script once the SSO section is visible in the DOM
   useEffect(() => {
+    if (!ssoExpanded) return;
     const container = document.getElementById('telegram-login-btn');
     if (!container || container.children.length > 0) return;
     const script = document.createElement('script');
@@ -157,7 +158,7 @@ export default function LoginPage() {
     script.setAttribute('data-onauth', 'onTelegramAuth(user)');
     script.setAttribute('data-request-access', 'write');
     container.appendChild(script);
-  }, []);
+  }, [ssoExpanded]);
 
   useEffect(() => {
     (window as any).onTelegramAuth = (user: Record<string, any>) => {
@@ -230,9 +231,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-[#F7F8FC]">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#F7F8FC]">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex shrink-0 items-center justify-between px-6 py-3">
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-[#6B7280] transition hover:text-[#111827]">
           <ArrowLeft className="h-4 w-4" />
           {copy.back}
@@ -240,8 +241,8 @@ export default function LoginPage() {
         <LanguageSwitcher variant="marketing" />
       </div>
 
-      {/* Center content */}
-      <div className="flex flex-1 items-center justify-center px-4 py-8">
+      {/* Center content — scrollable if content taller than screen */}
+      <div className="flex flex-1 items-center justify-center overflow-y-auto px-4 py-4 min-h-0">
         <div className="w-full max-w-[22rem]">
 
           {/* Card */}

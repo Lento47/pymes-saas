@@ -64,7 +64,6 @@ export default function EnterpriseSettingsTab() {
       setEnabledCaps(config.enabled_capabilities ?? []);
       const cl = config.custom_limits ?? {};
       setLimits({
-        contacts: String(cl.contacts ?? ""),
         invoicesPerMonth: String(cl.invoicesPerMonth ?? ""),
         automations: String(cl.automations ?? ""),
         storageGb: String(cl.storageGb ?? ""),
@@ -87,7 +86,6 @@ export default function EnterpriseSettingsTab() {
         internal_notes: internalNotes,
         enabled_capabilities: enabledCaps,
         custom_limits: {
-          contacts: limits.contacts ? parseInt(limits.contacts) : undefined,
           invoicesPerMonth: limits.invoicesPerMonth ? parseInt(limits.invoicesPerMonth) : undefined,
           automations: limits.automations ? parseInt(limits.automations) : undefined,
           storageGb: limits.storageGb ? parseInt(limits.storageGb) : undefined,
@@ -173,7 +171,7 @@ export default function EnterpriseSettingsTab() {
       <div className="space-y-3">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase">Límites personalizados</h4>
         <div className="grid gap-3 md:grid-cols-3">
-          {["contacts", "invoicesPerMonth", "automations", "storageGb", "locations", "users"].map((key) => (
+          {["invoicesPerMonth", "automations", "storageGb", "locations", "users"].map((key) => (
             <div key={key}>
               <Label className="text-xs capitalize">{key.replace(/([A-Z])/g, " $1")}</Label>
               <Input

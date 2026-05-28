@@ -48,7 +48,6 @@ export interface PlanLimitEvaluation {
 interface PlanLimits {
   users: number | "custom";
   automations: number | "custom";
-  contacts: number | "custom";
   documents: number | "custom";
   invoices_per_month: number | "custom";
   storage_bytes: number | "custom";
@@ -72,7 +71,6 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   FREE: {
     users: 1,
     automations: 5,
-    contacts: 100,
     documents: 50,
     invoices_per_month: 50,
     storage_bytes: 100 * 1024 * 1024,
@@ -90,7 +88,6 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   STARTER: {
     users: 1,
     automations: 15,
-    contacts: 500,
     documents: 500,
     invoices_per_month: 100,
     storage_bytes: 5 * 1024 * 1024 * 1024,
@@ -108,7 +105,6 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   GROWTH: {
     users: 5,
     automations: 25,
-    contacts: 2_500,
     documents: 500,
     invoices_per_month: 500,
     storage_bytes: 10 * 1024 * 1024 * 1024,
@@ -126,7 +122,6 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   EMPRENDE: {
     users: 1,
     automations: 10,
-    contacts: 500,
     documents: 100,
     invoices_per_month: 25,
     storage_bytes: 500 * 1024 * 1024,
@@ -144,7 +139,6 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   BUSINESS: {
     users: 15,
     automations: 100,
-    contacts: 15_000,
     documents: 5_000,
     invoices_per_month: 2_000,
     storage_bytes: 50 * 1024 * 1024 * 1024,
@@ -162,7 +156,6 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   ENTERPRISE: {
     users: 15,
     automations: 100,
-    contacts: 15_000,
     documents: 5_000,
     invoices_per_month: 2_000,
     storage_bytes: 50 * 1024 * 1024 * 1024,
@@ -180,7 +173,6 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   BUSINESS_PLUS: {
     users: "custom",
     automations: "custom",
-    contacts: "custom",
     documents: "custom",
     invoices_per_month: "custom",
     storage_bytes: "custom",
@@ -603,18 +595,6 @@ export class PlanLimitsService {
     }
   }
 
-  async checkContactLimit(workspaceId: string): Promise<void> {
-    const plan = await this.getWorkspacePlan(workspaceId);
-    const limits = await this.getEffectiveLimits(workspaceId);
-    const limit = limits.contacts;
-    if (limit === "custom" || limit === Infinity) return;
-
-    const current = await this.prisma.contact.count({ where: { workspace_id: workspaceId } });
-    if (current >= (limit as number)) {
-      throw new QuotaExceededError("contactos", current, limit, plan, this.getUpgradePlan(plan));
-    }
-  }
-
   async checkInvoiceLimit(workspaceId: string): Promise<void> {
     const plan = await this.getWorkspacePlan(workspaceId);
     const limits = await this.getEffectiveLimits(workspaceId);
@@ -677,10 +657,6 @@ export class PlanLimitsService {
 
   async enforceAutomations(workspaceId: string): Promise<void> {
     await this.checkAutomationLimit(workspaceId);
-  }
-
-  async enforceContacts(workspaceId: string): Promise<void> {
-    await this.checkContactLimit(workspaceId);
   }
 
   async enforceDocuments(workspaceId: string, newFileSizeBytes: number): Promise<void> {

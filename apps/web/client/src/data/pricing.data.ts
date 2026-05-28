@@ -7,7 +7,6 @@ export interface PricingTier {
   features: string[];
   featureStatuses?: Record<string, string>; // Business+ capability status per feature
   limits: {
-    contacts: number;
     invoicesPerMonth: number;
     automations: number;
     storageGB: number;
@@ -47,12 +46,10 @@ export const PRICING_TIERS: PricingTier[] = [
       'Facturación básica',
       'Dashboard',
       'Soporte por email',
-      '500 contactos',
       'Pipeline de ventas',
       '100 facturas/mes',
     ],
     limits: {
-      contacts: 500,
       invoicesPerMonth: 100,
       automations: 15,
       storageGB: 5,
@@ -78,12 +75,10 @@ export const PRICING_TIERS: PricingTier[] = [
       'Roles de usuario',
       'Soporte prioritario',
       'Migración de datos básica',
-      '2,500 contactos',
       '500 facturas/mes',
       '25 automatizaciones',
     ],
     limits: {
-      contacts: 2500,
       invoicesPerMonth: 500,
       automations: 25,
       storageGB: 10,
@@ -110,12 +105,10 @@ export const PRICING_TIERS: PricingTier[] = [
       'Marca personalizada',
       'Proyecciones',
       'Soporte telefónico',
-      '15,000 contactos',
       '2,000 facturas/mes',
       '100 automatizaciones',
     ],
     limits: {
-      contacts: 15000,
       invoicesPerMonth: 2000,
       automations: 100,
       storageGB: 50,
@@ -154,7 +147,6 @@ export const PRICING_TIERS: PricingTier[] = [
       'Contrato personalizado': 'Próximamente',
     },
     limits: {
-      contacts: 999999,
       invoicesPerMonth: 999999,
       automations: 999999,
       storageGB: 999,
@@ -249,7 +241,6 @@ export const FAQS: FAQ[] = [
 
 export const FEATURE_COMPARISON = [
   { feature: 'Usuarios incluidos', starter: '1', growth: '5', business: '15', businessPlus: 'Personalizado' },
-  { feature: 'Contactos', starter: '500', growth: '2,500', business: '15,000', businessPlus: 'Personalizado' },
   { feature: 'Facturas/mes', starter: '100', growth: '500', business: '2,000', businessPlus: 'Personalizado' },
   { feature: 'Automatizaciones', starter: '15', growth: '25', business: '100', businessPlus: 'Personalizado' },
   { feature: 'Almacenamiento', starter: '5 GB', growth: '10 GB', business: '50 GB', businessPlus: 'Personalizado' },
