@@ -10,6 +10,7 @@ import { LearningModule } from "../learning/learning.module";
 import { PlanLimitsModule } from "../common/plan-limits/plan-limits.module";
 import { SupportAgentTemplateSeed } from "./support-agent-template.seed";
 import { FlowiseSetupService } from "./flowise-setup.service";
+import { PrCreationPolicyService } from "./support/pr-creation-policy.service";
 import { PrismaModule } from "../common/prisma/prisma.module";
 
 @Module({
@@ -23,8 +24,9 @@ import { PrismaModule } from "../common/prisma/prisma.module";
     AgentUsageService,
     SupportAgentTemplateSeed,
     FlowiseSetupService,
+    PrCreationPolicyService,
   ],
-  exports: [AgentRuntimeService, FlowiseSetupService],
+  exports: [AgentRuntimeService, FlowiseSetupService, PrCreationPolicyService],
 })
 export class AgentsModule implements OnModuleInit {
   constructor(
