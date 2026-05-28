@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Switch, Route, Router, Redirect, useLocation } from "wouter";
 import { useWorkspaceHashLocation, normalizeInitialLocation } from "@/hooks/use-workspace-location";
@@ -132,7 +133,16 @@ const AutomationsFeatureRoute = makeFeatureRoute("automations", Automations);
 const AnalyticsFeatureRoute = makeFeatureRoute("analytics",   InsightsPage);
 
 function AppRouter() {
+  const [location] = useLocation();
+  const pageKey = "/" + (location.split("/")[1] ?? "");
+
   return (
+    <motion.div
+      key={pageKey}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+    >
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
@@ -339,6 +349,7 @@ function AppRouter() {
       </Route>
       <Route component={NotFound} />
     </Switch>
+    </motion.div>
   );
 }
 

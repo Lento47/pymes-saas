@@ -431,16 +431,12 @@ export default function DashboardPage() {
                   {user?.name?.split(" ")[0] || "Usuario"}
                 </span>
               </h1>
-              <StatusPill
-                label={
-                  operatingTone === "danger"
-                    ? "Tenés facturas vencidas"
-                    : operatingTone === "warning"
-                      ? "Mensajes sin responder"
-                      : "Al día"
-                }
-                tone={operatingTone}
-              />
+              {(operatingTone === "danger" || operatingTone === "warning") && (
+                <StatusPill
+                  label={operatingTone === "danger" ? "Tenés facturas vencidas" : "Mensajes sin responder"}
+                  tone={operatingTone}
+                />
+              )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground capitalize">
               {format(new Date(), "EEEE d 'de' MMMM", { locale: es })}
