@@ -22,7 +22,7 @@ export interface FlowiseChatflowCreateBody {
   flowData: string;
   deployed: boolean;
   isPublic: boolean;
-  type: "CHATFLOW";
+  type: "CHATFLOW" | "AGENTFLOW";
 }
 
 export interface FlowiseChatflowResponse {
@@ -31,4 +31,17 @@ export interface FlowiseChatflowResponse {
   deployed: boolean;
   createdDate: string;
   updatedDate: string;
+}
+
+export interface FlowiseToolDef {
+  name: string;
+  description: string;
+  color?: string;
+  schema: string;
+  func: string;
+}
+
+export interface FlowiseToolResponse {
+  id: string;
+  name: string;
 }

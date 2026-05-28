@@ -1,14 +1,14 @@
 /**
  * FlowiseSetupService
  *
- * Auto-imports 4 tiered support chatflows into Flowise on startup.
+ * Auto-imports 4 tiered support agentflows into Flowise on startup.
  * Called from AgentsModule.onModuleInit().
  *
  * Support tiers:
  *   Tier 1 — FREE / BETA_INFORMAL  : notification only
  *   Tier 2 — STARTER / EMPRENDE    : triage + recommendation (Flash)
- *   Tier 3 — GROWTH / BUSINESS     : full analysis, no auto-PR (V4 Flash)
- *   Tier 4 — ENTERPRISE / BUSINESS_PLUS : full pipeline + auto-PR (V4 Pro)
+ *   Tier 3 — GROWTH / BUSINESS     : full analysis, no auto-PR (Flash)
+ *   Tier 4 — ENTERPRISE / BUSINESS_PLUS : full pipeline + auto-PR (Reasoner)
  *
  * Chatflow IDs are stored in AgentTemplate records (config_json.flowise_chatflow_id).
  * DiagnosticService reads these to route support cases to the right chatflow.
@@ -17,6 +17,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { FlowiseClient } from "./flowise/flowise.client";
+import type { FlowiseToolDef } from "./flowise/flowise.types";
 
 export const SUPPORT_TIER_SLUGS = {
   TIER_1: "support-tier-1-free",
@@ -57,7 +58,7 @@ export class FlowiseSetupService {
 
   async setup(): Promise<void> {
     if (!this.flowise.isEnabled) {
-      this.logger.warn("[flowise-setup] Flowise disabled — skipping tier chatflow setup");
+      this.logger.warn("[flowise-setup] Flowise disabled — skipping tier agentflow setup");
       return;
     }
 
@@ -65,9 +66,7 @@ export class FlowiseSetupService {
     const founderKey = this.config.get<string>("PYMESHUB_FOUNDER_API_KEY") ?? "";
     const cfAccountId = this.config.get<string>("CF_GATEWAY_ACCOUNT_ID") ?? "";
     const cfGatewayId = this.config.get<string>("CF_GATEWAY_ID") ?? "pymeshub";
-    const deepseekFlashKey = this.config.get<string>("GATEWAY_KEY_DEEPSEEK") ?? "";
 
-    // Model base URLs via Cloudflare AI Gateway
     const flashBaseUrl = `https://gateway.ai.cloudflare.com/v1/${cfAccountId}/${cfGatewayId}/deepseek`;
     const proBaseUrl   = `https://gateway.ai.cloudflare.com/v1/${cfAccountId}/${cfGatewayId}/deepseek`;
 
@@ -147,8 +146,25 @@ export class FlowiseSetupService {
       },
     ];
 
+    // Step 1: Ensure all tool entities exist in Flowise
+    const toolDefs = this.buildToolDefs(apiBase, founderKey);
+    const existingTools = await this.flowise.listTools().catch(() => []);
+    const toolIdByName = new Map(existingTools.map((t) => [t.name, t.id] as [string, string]));
+
+    for (const [toolName, def] of Object.entries(toolDefs)) {
+      if (!toolIdByName.has(toolName)) {
+        try {
+          const id = await this.flowise.createTool(def);
+          toolIdByName.set(toolName, id);
+          this.logger.log(`[flowise-setup] Created tool: ${toolName} (${id})`);
+        } catch (err: any) {
+          this.logger.error(`[flowise-setup] Failed to create tool ${toolName}: ${err?.message}`);
+        }
+      }
+    }
+
+    // Step 2: Create tier agentflows
     const existingChatflows = await this.flowise.listChatflows().catch(() => []);
-    const existingNames = new Set(existingChatflows.map((c) => c.name));
     const existingByName = new Map<string, string>(existingChatflows.map((c) => [c.name, c.id] as [string, string]));
 
     for (const tier of tiers) {
@@ -157,14 +173,27 @@ export class FlowiseSetupService {
 
         if (existingByName.has(tier.name)) {
           chatflowId = existingByName.get(tier.name)!;
-          this.logger.log(`[flowise-setup] Tier chatflow already exists: ${tier.name} (${chatflowId})`);
+          this.logger.log(`[flowise-setup] Tier agentflow already exists: ${tier.name} (${chatflowId})`);
         } else {
-          const flowData = this.buildSupportFlowData(tier, apiBase, founderKey, flashBaseUrl, proBaseUrl, deepseekFlashKey);
-          chatflowId = await this.flowise.createChatflowWithData(tier.name, JSON.stringify(flowData));
-          this.logger.log(`[flowise-setup] Created tier chatflow: ${tier.name} (${chatflowId})`);
+          const isProModel = tier.model === "deepseek-reasoner";
+          const baseUrl = isProModel ? proBaseUrl : flashBaseUrl;
+
+          const toolIds = tier.tools
+            .map((name) => toolIdByName.get(name))
+            .filter(Boolean) as string[];
+
+          const flowData = this.flowise.buildSupportFlowData({
+            modelName: tier.model,
+            systemPrompt: tier.systemPrompt,
+            toolIds,
+            basepath: baseUrl,
+            temperature: isProModel ? 1.0 : 0.2,
+          });
+
+          chatflowId = await this.flowise.createChatflowWithData(tier.name, flowData);
+          this.logger.log(`[flowise-setup] Created tier agentflow: ${tier.name} (${chatflowId})`);
         }
 
-        // Upsert AgentTemplate with the chatflow ID
         await this.prisma.agentTemplate.upsert({
           where: { slug: tier.slug },
           create: {
@@ -193,11 +222,10 @@ export class FlowiseSetupService {
         });
       } catch (err: any) {
         this.logger.error(`[flowise-setup] Failed to setup tier ${tier.slug}: ${err?.message}`);
-        // Non-fatal — continue with other tiers
       }
     }
 
-    this.logger.log("[flowise-setup] Support tier chatflows ready");
+    this.logger.log("[flowise-setup] Support tier agentflows ready");
   }
 
   /** Get the Flowise chatflow ID for a workspace plan */
@@ -221,129 +249,105 @@ export class FlowiseSetupService {
     return plan === "ENTERPRISE" || plan === "BUSINESS_PLUS";
   }
 
-  private buildSupportFlowData(
-    tier: TierConfig,
-    apiBase: string,
-    founderKey: string,
-    flashBaseUrl: string,
-    proBaseUrl: string,
-    deepseekKey: string,
-  ) {
-    const isProModel = tier.model === "deepseek-reasoner";
-    const baseUrl = isProModel ? proBaseUrl : flashBaseUrl;
-
-    const modelNode = {
-      id: "chatOpenAI_0",
-      position: { x: 100, y: 100 },
-      type: "customNode",
-      data: {
-        id: "chatOpenAI_0",
-        label: "ChatOpenAI",
-        name: "chatOpenAI",
-        type: "BaseChatModel",
-        inputs: {
-          modelName: tier.model,
-          temperature: isProModel ? 1.0 : 0.2,
-          maxTokens: isProModel ? 16000 : 8000,
-          openAIApiKey: deepseekKey,
-          openAIBasePath: baseUrl,
-        },
-        outputs: { output: "chatOpenAI_0-output-BaseChatModel" },
-        outputAnchors: [{ id: "chatOpenAI_0-output-BaseChatModel", label: "BaseChatModel", name: "output", description: "BaseChatModel" }],
-      },
-    };
-
-    const memoryNode = {
-      id: "bufferMemory_0",
-      position: { x: 100, y: 300 },
-      type: "customNode",
-      data: {
-        id: "bufferMemory_0",
-        label: "Buffer Memory",
-        name: "bufferMemory",
-        type: "BaseChatMemory",
-        inputs: { memoryKey: "chat_history", inputKey: "input" },
-        outputs: { output: "bufferMemory_0-output-BaseChatMemory" },
-        outputAnchors: [{ id: "bufferMemory_0-output-BaseChatMemory", label: "BaseChatMemory", name: "output" }],
-      },
-    };
-
-    const toolNodes = tier.tools.map((toolName, i) => {
-      const toolDescriptions: Record<string, string> = {
-        get_railway_logs: "Obtiene los logs recientes del deployment de la API en Railway. USAR SIEMPRE PRIMERO. Args: { limit?: number }",
-        get_errors: "Obtiene los error reports recientes del workspace. Args: { limit?: number }",
-        read_github_file: "Lee el contenido de un archivo del repositorio. LEER SIEMPRE antes de proponer un fix. Args: { path: string, ref?: string }",
-        get_recent_commits: "Obtiene commits recientes que modificaron un archivo. Args: { path: string, limit?: number }",
-        apply_github_fix: "Crea branch + commits código real + abre PR. El content de cada file debe ser el archivo COMPLETO. Args: { branch_name, files:[{path,content}], pr_title, pr_body?, diagnostic_case_id? }",
-        list_fix_cases: "Lista los fix cases pendientes. Args: {}",
-        list_diagnostic_cases: "Lista los casos de diagnóstico del workspace. Args: {}",
-      };
-
-      return {
-        id: `customTool_${i}`,
-        position: { x: 500 + i * 20, y: 100 + i * 80 },
-        type: "customNode",
-        data: {
-          id: `customTool_${i}`,
-          label: toolName,
-          name: "customTool",
-          type: "Tool",
-          inputs: {
-            name: toolName,
-            description: toolDescriptions[toolName] ?? toolName,
-            url: `${apiBase}/api/agent/tool`,
-            method: "POST",
-            headers: JSON.stringify({
-              Authorization: `Bearer ${founderKey}`,
-              "Content-Type": "application/json",
-            }),
-            body: JSON.stringify({
-              workspace_slug: "{{workspace_slug}}",
-              tool: toolName,
-              arguments: "{{input}}",
-            }),
-          },
-          outputs: { output: `customTool_${i}-output-Tool` },
-          outputAnchors: [{ id: `customTool_${i}-output-Tool`, label: "Tool", name: "output" }],
-        },
-      };
-    });
-
-    const agentNode = {
-      id: "openAIFunctionAgent_0",
-      position: { x: 700, y: 300 },
-      type: "customNode",
-      data: {
-        id: "openAIFunctionAgent_0",
-        label: "OpenAI Function Agent",
-        name: "openAIFunctionAgent",
-        type: "AgentExecutor",
-        inputs: {
-          tools: toolNodes.map((t) => t.id),
-          memory: "bufferMemory_0",
-          model: "chatOpenAI_0",
-          systemMessage: tier.systemPrompt,
-        },
-        outputs: { output: "openAIFunctionAgent_0-output-AgentExecutor" },
-        outputAnchors: [{ id: "openAIFunctionAgent_0-output-AgentExecutor", label: "AgentExecutor", name: "output" }],
-      },
-    };
-
-    const edges = [
-      { id: "e-model", source: "chatOpenAI_0", target: "openAIFunctionAgent_0", sourceHandle: "chatOpenAI_0-output-BaseChatModel", targetHandle: "openAIFunctionAgent_0-input-model-BaseChatModel" },
-      { id: "e-memory", source: "bufferMemory_0", target: "openAIFunctionAgent_0", sourceHandle: "bufferMemory_0-output-BaseChatMemory", targetHandle: "openAIFunctionAgent_0-input-memory-BaseChatMemory" },
-      ...toolNodes.map((t, i) => ({
-        id: `e-tool-${i}`,
-        source: t.id,
-        target: "openAIFunctionAgent_0",
-        sourceHandle: `${t.id}-output-Tool`,
-        targetHandle: "openAIFunctionAgent_0-input-tools-Tool",
-      })),
-    ];
+  private buildToolDefs(apiBase: string, founderKey: string): Record<string, FlowiseToolDef> {
+    const makeFunc = (toolName: string): string =>
+      [
+        `const args = typeof input === 'string' ? JSON.parse(input || '{}') : (input || {});`,
+        `const res = await fetch('${apiBase}/api/agent/tool', {`,
+        `  method: 'POST',`,
+        `  headers: { 'Authorization': 'Bearer ${founderKey}', 'Content-Type': 'application/json' },`,
+        `  body: JSON.stringify({ tool: '${toolName}', arguments: args })`,
+        `});`,
+        `if (!res.ok) { const e = await res.text(); throw new Error('Tool error: ' + e); }`,
+        `const data = await res.json();`,
+        `return JSON.stringify(data);`,
+      ].join("\n");
 
     return {
-      nodes: [modelNode, memoryNode, ...toolNodes, agentNode],
-      edges,
+      get_railway_logs: {
+        name: "get_railway_logs",
+        description: "Obtiene los logs recientes del deployment de la API en Railway. USAR SIEMPRE PRIMERO para diagnosticar errores en producción.",
+        schema: JSON.stringify({
+          type: "object",
+          properties: { limit: { type: "number", description: "Número máximo de líneas de log a retornar" } },
+          required: [],
+        }),
+        func: makeFunc("get_railway_logs"),
+      },
+      get_errors: {
+        name: "get_errors",
+        description: "Obtiene los error reports recientes del workspace o del sistema.",
+        schema: JSON.stringify({
+          type: "object",
+          properties: { limit: { type: "number", description: "Número máximo de errores a retornar" } },
+          required: [],
+        }),
+        func: makeFunc("get_errors"),
+      },
+      read_github_file: {
+        name: "read_github_file",
+        description: "Lee el contenido de un archivo del repositorio de GitHub. SIEMPRE leer antes de proponer un fix.",
+        schema: JSON.stringify({
+          type: "object",
+          properties: {
+            path: { type: "string", description: "Ruta del archivo en el repositorio (ej: apps/api/src/auth/auth.service.ts)" },
+            ref: { type: "string", description: "Branch o commit SHA (opcional, default: master)" },
+          },
+          required: ["path"],
+        }),
+        func: makeFunc("read_github_file"),
+      },
+      get_recent_commits: {
+        name: "get_recent_commits",
+        description: "Obtiene commits recientes que modificaron un archivo específico. Útil para detectar regresiones.",
+        schema: JSON.stringify({
+          type: "object",
+          properties: {
+            path: { type: "string", description: "Ruta del archivo a revisar" },
+            limit: { type: "number", description: "Número máximo de commits" },
+          },
+          required: ["path"],
+        }),
+        func: makeFunc("get_recent_commits"),
+      },
+      apply_github_fix: {
+        name: "apply_github_fix",
+        description: "Crea un branch, commitea el código corregido y abre un PR. El content de cada archivo debe ser el archivo COMPLETO.",
+        schema: JSON.stringify({
+          type: "object",
+          properties: {
+            branch_name: { type: "string", description: "Nombre del branch (ej: fix/auto-auth-1234567890)" },
+            files: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  path: { type: "string" },
+                  content: { type: "string", description: "Contenido completo del archivo corregido" },
+                },
+                required: ["path", "content"],
+              },
+            },
+            pr_title: { type: "string", description: "Título del PR" },
+            pr_body: { type: "string", description: "Descripción del PR (opcional)" },
+            diagnostic_case_id: { type: "string", description: "ID del caso de diagnóstico (opcional)" },
+          },
+          required: ["branch_name", "files", "pr_title"],
+        }),
+        func: makeFunc("apply_github_fix"),
+      },
+      list_fix_cases: {
+        name: "list_fix_cases",
+        description: "Lista los casos de fix pendientes o en proceso.",
+        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
+        func: makeFunc("list_fix_cases"),
+      },
+      list_diagnostic_cases: {
+        name: "list_diagnostic_cases",
+        description: "Lista los casos de diagnóstico del workspace.",
+        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
+        func: makeFunc("list_diagnostic_cases"),
+      },
     };
   }
 }

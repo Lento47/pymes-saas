@@ -149,16 +149,13 @@ export class AgentRuntimeService {
       this.logger.warn(`Memory context build failed: ${(err as Error).message}`);
     }
 
-    const overrideConfig: Record<string, unknown> = {};
-    const systemPrompt = `${instance.system_instructions ?? ""}${memoryBlock}`;
-    if (systemPrompt.trim()) {
-      overrideConfig.systemMessagePrompt = systemPrompt;
-    }
+    // System message is baked into the AgentFlow at creation time.
+    // Per-call memory context is prepended to the question.
+    const question = memoryBlock ? `${memoryBlock}\n\n${opts.question}` : opts.question;
 
     const flowiseResponse = await this.flowise.predict(instance.chatflow_id, {
-      question: opts.question,
+      question,
       sessionId: session.flowise_session_id,
-      ...(Object.keys(overrideConfig).length > 0 && { overrideConfig }),
     });
 
     // 6. Apply guardrails

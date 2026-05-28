@@ -4,6 +4,8 @@ import type {
   FlowisePredictRequest,
   FlowisePredictResponse,
   FlowiseChatflowResponse,
+  FlowiseToolDef,
+  FlowiseToolResponse,
 } from "./flowise.types";
 
 @Injectable()
@@ -28,142 +30,268 @@ export class FlowiseClient {
     return this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {};
   }
 
-  private buildFlowData(model: string): string {
-    // Minimal ConversationChain chatflow: ChatOpenAI + BufferMemory.
-    // system_instructions is injected per-call via overrideConfig.systemMessagePrompt.
-    const flow = {
-      nodes: [
-        {
-          id: "chatOpenAI_0",
-          position: { x: 922, y: 205 },
-          type: "customNode",
-          data: {
-            id: "chatOpenAI_0",
-            label: "ChatOpenAI",
-            version: 6,
-            name: "chatOpenAI",
-            type: "ChatOpenAI",
-            baseClasses: [
-              "ChatOpenAI",
-              "BaseChatModel",
-              "BaseLanguageModel",
-              "Runnable",
-            ],
-            category: "Chat Models",
-            inputs: {
-              modelName: model,
-              temperature: "0.3",
-              streaming: true,
-              maxTokens: "",
-            },
-            outputs: {},
-          },
-          width: 300,
-          height: 574,
-        },
-        {
-          id: "bufferMemory_0",
-          position: { x: 430, y: 50 },
-          type: "customNode",
-          data: {
-            id: "bufferMemory_0",
-            label: "Buffer Memory",
-            version: 2,
-            name: "bufferMemory",
-            type: "BufferMemory",
-            baseClasses: ["BufferMemory", "BaseChatMemory", "BaseMemory"],
-            category: "Memory",
-            inputs: {
-              memoryKey: "chat_history",
-              inputKey: "input",
-              sessionId: "",
-              sessionTimeOut: "",
-            },
-            outputs: {},
-          },
-          width: 300,
-          height: 377,
-        },
-        {
-          id: "conversationChain_0",
-          position: { x: 1487, y: 350 },
-          type: "customNode",
-          data: {
-            id: "conversationChain_0",
-            label: "Conversation Chain",
-            version: 3,
-            name: "conversationChain",
-            type: "ConversationChain",
-            baseClasses: [
-              "ConversationChain",
-              "LLMChain",
-              "BaseChain",
-              "Runnable",
-            ],
-            category: "Chains",
-            inputs: {
-              model: "{{chatOpenAI_0.data.instance}}",
-              memory: "{{bufferMemory_0.data.instance}}",
-              // Empty by default; PymesHub injects via overrideConfig per call
-              systemMessagePrompt: "",
-            },
-            outputs: {},
-          },
-          width: 300,
-          height: 430,
-        },
-      ],
-      edges: [
-        {
-          source: "chatOpenAI_0",
-          sourceHandle:
-            "chatOpenAI_0-output-chatOpenAI-ChatOpenAI|BaseChatModel|BaseLanguageModel|Runnable",
-          target: "conversationChain_0",
-          targetHandle: "conversationChain_0-input-model-BaseChatModel",
-          type: "buttonedge",
-          id: "edge-chatOpenAI-conversationChain",
-        },
-        {
-          source: "bufferMemory_0",
-          sourceHandle:
-            "bufferMemory_0-output-bufferMemory-BufferMemory|BaseChatMemory|BaseMemory",
-          target: "conversationChain_0",
-          targetHandle: "conversationChain_0-input-memory-BaseChatMemory",
-          type: "buttonedge",
-          id: "edge-bufferMemory-conversationChain",
-        },
-      ],
-    };
+  // ── AgentFlow v2 node builders ─────────────────────────────────────────────
 
-    return JSON.stringify(flow);
+  static buildStartNode() {
+    return {
+      id: "startAgentflow_0",
+      type: "agentFlow",
+      position: { x: 100, y: 100 },
+      data: {
+        id: "startAgentflow_0",
+        label: "Start",
+        version: 1.1,
+        name: "startAgentflow",
+        type: "Start",
+        color: "#7EE787",
+        hideInput: true,
+        baseClasses: ["Start"],
+        category: "Agent Flows",
+        description: "Starting point of the agentflow",
+        inputParams: [],
+        inputAnchors: [],
+        inputs: {
+          startInputType: "chatInput",
+          startEphemeralMemory: "",
+          startState: "",
+          startPersistState: "",
+        },
+        outputAnchors: [
+          { id: "startAgentflow_0-output-startAgentflow", label: "Start", name: "startAgentflow" },
+        ],
+        outputs: {},
+        selected: false,
+      },
+      width: 103,
+      height: 66,
+    };
   }
 
-  async createChatflow(name: string): Promise<string> {
+  static buildAgentNode(opts: {
+    id?: string;
+    label?: string;
+    modelName: string;
+    temperature?: number;
+    streaming?: boolean;
+    basepath?: string;
+    systemMessages?: Array<{ role: string; content: string }>;
+    tools?: Array<{ agentSelectedTool: string; agentSelectedToolRequiresHumanInput?: boolean }>;
+    enableMemory?: boolean;
+  }) {
+    const id = opts.id ?? "agentAgentflow_0";
+    const agentModelConfig: Record<string, unknown> = {
+      credential: "",
+      modelName: opts.modelName,
+      temperature: opts.temperature ?? 0.3,
+      streaming: opts.streaming !== false,
+      maxTokens: "",
+      agentModel: "chatOpenAI",
+    };
+    if (opts.basepath) agentModelConfig.basepath = opts.basepath;
+
+    return {
+      id,
+      type: "agentFlow",
+      position: { x: 280, y: 83.5 },
+      data: {
+        id,
+        label: opts.label ?? "Agent 0",
+        version: 1,
+        name: "agentAgentflow",
+        type: "Agent",
+        color: "#4DD0E1",
+        baseClasses: ["Agent"],
+        category: "Agent Flows",
+        description: "Dynamically choose and utilize tools during runtime, enabling multi-step reasoning",
+        inputParams: [],
+        inputAnchors: [],
+        inputs: {
+          agentModel: "chatOpenAI",
+          agentMessages: opts.systemMessages ?? [],
+          agentTools: opts.tools ?? [],
+          agentKnowledgeDocumentStores: [],
+          agentKnowledgeVSEmbeddings: "",
+          agentEnableMemory: opts.enableMemory !== false,
+          agentMemoryType: "allMessages",
+          agentMemoryWindowSize: "",
+          agentMemoryMaxTokenLimit: "",
+          agentUserMessage: "",
+          agentReturnResponseAs: "userMessage",
+          agentUpdateState: "",
+          agentModelConfig,
+        },
+        outputAnchors: [
+          { id: `${id}-output-agentAgentflow`, label: "Agent", name: "agentAgentflow" },
+        ],
+        outputs: {},
+        selected: false,
+      },
+      width: 176,
+      height: 100,
+    };
+  }
+
+  static buildDirectReplyNode(sourceNodeId: string) {
+    return {
+      id: "directReplyAgentflow_0",
+      type: "agentFlow",
+      position: { x: 540, y: 100 },
+      data: {
+        id: "directReplyAgentflow_0",
+        label: "Direct Reply 0",
+        version: 1,
+        name: "directReplyAgentflow",
+        type: "DirectReply",
+        color: "#4DDBBB",
+        hideOutput: true,
+        baseClasses: ["DirectReply"],
+        category: "Agent Flows",
+        description: "Directly reply to the user with a message",
+        inputParams: [],
+        inputAnchors: [],
+        inputs: {
+          directReplyMessage: `{{ ${sourceNodeId} }}`,
+        },
+        outputAnchors: [],
+        outputs: {},
+        selected: false,
+      },
+      width: 171,
+      height: 66,
+    };
+  }
+
+  static buildEdge(
+    source: string,
+    sourceHandle: string,
+    target: string,
+    targetHandle: string,
+    sourceColor = "#7EE787",
+    targetColor = "#4DD0E1",
+  ) {
+    return {
+      source,
+      sourceHandle,
+      target,
+      targetHandle,
+      data: { sourceColor, targetColor, isHumanInput: false },
+      type: "agentFlow",
+      id: `${source}-${sourceHandle}-${target}-${targetHandle}`,
+    };
+  }
+
+  // ── Flow builders ──────────────────────────────────────────────────────────
+
+  private buildFlowData(
+    modelName: string,
+    systemMessage?: string,
+    basepath?: string,
+  ): string {
+    const agentId = "agentAgentflow_0";
+    const messages = systemMessage ? [{ role: "system", content: systemMessage }] : [];
+
+    const start = FlowiseClient.buildStartNode();
+    const agent = FlowiseClient.buildAgentNode({
+      id: agentId,
+      modelName,
+      basepath,
+      systemMessages: messages,
+    });
+    const reply = FlowiseClient.buildDirectReplyNode(agentId);
+
+    const edges = [
+      FlowiseClient.buildEdge(
+        "startAgentflow_0",
+        "startAgentflow_0-output-startAgentflow",
+        agentId,
+        agentId,
+        "#7EE787",
+        "#4DD0E1",
+      ),
+      FlowiseClient.buildEdge(
+        agentId,
+        `${agentId}-output-agentAgentflow`,
+        "directReplyAgentflow_0",
+        "directReplyAgentflow_0",
+        "#4DD0E1",
+        "#4DDBBB",
+      ),
+    ];
+
+    return JSON.stringify({ nodes: [start, agent, reply], edges });
+  }
+
+  buildSupportFlowData(opts: {
+    modelName: string;
+    systemPrompt: string;
+    toolIds: string[];
+    basepath?: string;
+    temperature?: number;
+  }): string {
+    const agentId = "agentAgentflow_0";
+    const tools = opts.toolIds.map((id) => ({
+      agentSelectedTool: id,
+      agentSelectedToolRequiresHumanInput: false,
+    }));
+
+    const start = FlowiseClient.buildStartNode();
+    const agent = FlowiseClient.buildAgentNode({
+      id: agentId,
+      modelName: opts.modelName,
+      temperature: opts.temperature,
+      basepath: opts.basepath,
+      systemMessages: [{ role: "system", content: opts.systemPrompt }],
+      tools,
+    });
+    const reply = FlowiseClient.buildDirectReplyNode(agentId);
+
+    const edges = [
+      FlowiseClient.buildEdge(
+        "startAgentflow_0",
+        "startAgentflow_0-output-startAgentflow",
+        agentId,
+        agentId,
+        "#7EE787",
+        "#4DD0E1",
+      ),
+      FlowiseClient.buildEdge(
+        agentId,
+        `${agentId}-output-agentAgentflow`,
+        "directReplyAgentflow_0",
+        "directReplyAgentflow_0",
+        "#4DD0E1",
+        "#4DDBBB",
+      ),
+    ];
+
+    return JSON.stringify({ nodes: [start, agent, reply], edges });
+  }
+
+  // ── Chatflow CRUD ──────────────────────────────────────────────────────────
+
+  async createChatflow(name: string, systemMessage?: string): Promise<string> {
     const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
-    const model =
-      this.config.get<string>("FLOWISE_DEFAULT_MODEL") ?? "gpt-4o-mini";
+    const model = this.config.get<string>("FLOWISE_DEFAULT_MODEL") ?? "gpt-4o-mini";
 
     const body = {
       name,
-      flowData: this.buildFlowData(model),
+      flowData: this.buildFlowData(model, systemMessage),
       deployed: true,
       isPublic: false,
-      type: "CHATFLOW",
+      type: "AGENTFLOW",
     };
 
     return this._postChatflow(url, body);
   }
 
-  /** Create a chatflow using arbitrary pre-built flowData JSON (for tool-calling agents) */
   async createChatflowWithData(name: string, flowDataJson: string): Promise<string> {
     const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
-    const body = { name, flowData: flowDataJson, deployed: true, isPublic: false, type: "CHATFLOW" };
+    const body = { name, flowData: flowDataJson, deployed: true, isPublic: false, type: "AGENTFLOW" };
     return this._postChatflow(url, body);
   }
 
-  /** List all chatflows — returns array of { id, name } */
   async listChatflows(): Promise<Array<{ id: string; name: string }>> {
-    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows?type=AGENTFLOW`;
     try {
       const res = await fetch(url, { headers: { "Content-Type": "application/json", ...this.authHeaders } });
       if (!res.ok) return [];
@@ -173,6 +301,49 @@ export class FlowiseClient {
       return [];
     }
   }
+
+  // ── Tool CRUD ──────────────────────────────────────────────────────────────
+
+  async listTools(): Promise<Array<{ id: string; name: string }>> {
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/tools`;
+    try {
+      const res = await fetch(url, { headers: { "Content-Type": "application/json", ...this.authHeaders } });
+      if (!res.ok) return [];
+      const data = (await res.json()) as any[];
+      return data.map((t: any) => ({ id: t.id as string, name: t.name as string }));
+    } catch {
+      return [];
+    }
+  }
+
+  async createTool(tool: FlowiseToolDef): Promise<string> {
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/tools`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...this.authHeaders },
+        body: JSON.stringify(tool),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Flowise tool creation failed: ${res.status} ${text}`);
+      }
+      const data = (await res.json()) as FlowiseToolResponse;
+      this.logger.log(`Tool created in Flowise: ${data.id} (${tool.name})`);
+      return data.id;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`FlowiseClient.createTool failed for "${tool.name}": ${msg}`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // ── Internal ───────────────────────────────────────────────────────────────
 
   private async _postChatflow(url: string, body: Record<string, any>): Promise<string> {
     const controller = new AbortController();
@@ -186,10 +357,10 @@ export class FlowiseClient {
       });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new Error(`Flowise chatflow creation failed: ${res.status} ${text}`);
+        throw new Error(`Flowise agentflow creation failed: ${res.status} ${text}`);
       }
       const data = (await res.json()) as FlowiseChatflowResponse;
-      this.logger.log(`Chatflow created in Flowise: ${data.id} (${body.name})`);
+      this.logger.log(`AgentFlow created in Flowise: ${data.id} (${body.name})`);
       return data.id;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -212,10 +383,7 @@ export class FlowiseClient {
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...this.authHeaders,
-        },
+        headers: { "Content-Type": "application/json", ...this.authHeaders },
         body: JSON.stringify(body),
         signal: controller.signal,
       });
