@@ -408,10 +408,18 @@ export class FlowiseClient {
     }
   }
 
-  /** Find an existing credential by name or create it. Result is cached in-process. */
-  async getOrCreateCredential(name: string, apiKey: string): Promise<string> {
-    if (this.credentialCache.has(name)) return this.credentialCache.get(name)!;
+  /** Clear the in-process credential ID cache (call when Flowise may have been reset). */
+  clearCredentialCache(): void {
+    this.credentialCache.clear();
+  }
 
+  /**
+   * Find an existing credential by name or create it.
+   * Always queries Flowise to avoid returning stale IDs after a Flowise reset.
+   * The cache is still written so multiple calls within the same flow-creation
+   * path stay fast, but we never blindly trust it across requests.
+   */
+  async getOrCreateCredential(name: string, apiKey: string): Promise<string> {
     const existing = await this.listCredentials();
     const found = existing.find((c) => c.name === name);
     if (found) {
