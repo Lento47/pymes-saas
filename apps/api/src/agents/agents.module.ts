@@ -11,6 +11,7 @@ import { PlanLimitsModule } from "../common/plan-limits/plan-limits.module";
 import { SupportAgentTemplateSeed } from "./support-agent-template.seed";
 import { FlowiseSetupService } from "./flowise-setup.service";
 import { PrCreationPolicyService } from "./support/pr-creation-policy.service";
+import { SupportOrchestratorService } from "./support/support-orchestrator.service";
 import { PrismaModule } from "../common/prisma/prisma.module";
 
 @Module({
@@ -25,8 +26,9 @@ import { PrismaModule } from "../common/prisma/prisma.module";
     SupportAgentTemplateSeed,
     FlowiseSetupService,
     PrCreationPolicyService,
+    SupportOrchestratorService,
   ],
-  exports: [AgentRuntimeService, FlowiseSetupService, PrCreationPolicyService],
+  exports: [AgentRuntimeService, FlowiseSetupService, PrCreationPolicyService, SupportOrchestratorService],
 })
 export class AgentsModule implements OnModuleInit {
   constructor(

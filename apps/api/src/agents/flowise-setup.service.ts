@@ -345,6 +345,20 @@ export class FlowiseSetupService {
     return plan === "ENTERPRISE" || plan === "BUSINESS_PLUS";
   }
 
+  /** Get the Flowise chatflow ID for a specialized support agent by slug. */
+  async getChatflowIdForAgent(slug: string): Promise<string | null> {
+    try {
+      const template = await this.prisma.agentTemplate.findUnique({
+        where: { slug: `support-agent-${slug}` },
+        select: { config_json: true },
+      });
+      const cfg = template?.config_json as Record<string, any> | null;
+      return (cfg?.flowise_chatflow_id as string) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   private buildToolDefs(apiBase: string, founderKey: string): Record<string, FlowiseToolDef> {
     const makeFunc = (toolName: string): string =>
       [
