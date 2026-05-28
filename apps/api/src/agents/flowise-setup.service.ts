@@ -74,7 +74,7 @@ export class FlowiseSetupService {
       {
         slug: SUPPORT_TIER_SLUGS.TIER_1,
         name: "PymesHub Soporte — Tier 1 (Free)",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         tools: [],
         autoApprove: false,
         systemPrompt:
@@ -85,7 +85,7 @@ export class FlowiseSetupService {
       {
         slug: SUPPORT_TIER_SLUGS.TIER_2,
         name: "PymesHub Soporte — Tier 2 (Starter/Emprende)",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         tools: ["get_railway_logs", "get_errors", "list_diagnostic_cases"],
         autoApprove: false,
         systemPrompt:
@@ -101,7 +101,7 @@ export class FlowiseSetupService {
       {
         slug: SUPPORT_TIER_SLUGS.TIER_3,
         name: "PymesHub Soporte — Tier 3 (Growth/Business)",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         tools: ["get_railway_logs", "get_errors", "read_github_file", "get_recent_commits", "list_fix_cases"],
         autoApprove: false,
         systemPrompt:
@@ -122,7 +122,7 @@ export class FlowiseSetupService {
       {
         slug: SUPPORT_TIER_SLUGS.TIER_4,
         name: "PymesHub Soporte — Tier 4 (Enterprise/Business+)",
-        model: "deepseek-reasoner",
+        model: "deepseek-v4-pro",
         tools: ["get_railway_logs", "get_errors", "read_github_file", "get_recent_commits", "apply_github_fix", "list_fix_cases"],
         autoApprove: true,
         systemPrompt:
