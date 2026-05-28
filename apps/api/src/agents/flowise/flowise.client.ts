@@ -283,9 +283,27 @@ export class FlowiseClient {
     const basepath = this.config.get<string>("DEEPSEEK_BASE_URL") ?? "https://api.deepseek.com";
     const apiKey = this.config.get<string>("FLOWISE_DEFAULT_API_KEY") ?? "";
 
+    // Resolve the credential to bind to this chatflow.
+    // Priority:
+    //   1. "PymesHub Default" if FLOWISE_DEFAULT_API_KEY is set
+    //   2. "PymesHub Default" if it already exists in Flowise (created manually)
+    //   3. "PymesHub DeepSeek" — always provisioned on startup, reliable fallback
     let credentialId: string | undefined;
-    if (apiKey) {
-      credentialId = await this.getOrCreateCredential("PymesHub Default", apiKey).catch(() => undefined);
+    try {
+      const existing = await this.listCredentials();
+      const byName = new Map(existing.map((c) => [c.name, c.id] as [string, string]));
+
+      if (apiKey) {
+        credentialId = await this.getOrCreateCredential("PymesHub Default", apiKey);
+      } else if (byName.has("PymesHub Default")) {
+        credentialId = byName.get("PymesHub Default");
+        this.credentialCache.set("PymesHub Default", credentialId!);
+      } else if (byName.has("PymesHub DeepSeek")) {
+        // Fallback to the credential guaranteed to exist after FlowiseSetupService.setup()
+        credentialId = byName.get("PymesHub DeepSeek");
+      }
+    } catch {
+      // non-fatal — chatflow will be created but may fail at runtime
     }
 
     const body = {
