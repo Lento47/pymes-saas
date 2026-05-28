@@ -337,7 +337,7 @@ export class AiConversationControlService {
       }
 
       if (agentText?.trim()) {
-        let agentMsgId: string | undefined;
+        let voiceMsgId: string = interimMsg.id;
         if (isTelegram && tgPlaceholderMsgId && conv.channel?.id && tgChatId) {
           // Telegram: edit the placeholder with the final Flowise response
           await this.telegramOutbound.editMessage(conv.channel.id, tgChatId, tgPlaceholderMsgId, agentText);
@@ -347,7 +347,7 @@ export class AiConversationControlService {
               data: { body_text: agentText },
               select: { id: true },
             });
-            agentMsgId = tgPlaceholderDbId;
+            voiceMsgId = tgPlaceholderDbId;
           }
         } else {
           // WhatsApp and others: send as a new message
@@ -362,13 +362,14 @@ export class AiConversationControlService {
             const dispatched = await this.dispatchMessage(conv, agentMsg, agentText, null);
             this.events.emitNewMessage(conversationId, workspaceId, this.serializeMessage(dispatched ?? agentMsg));
           }
-          agentMsgId = agentMsg.id;
+          voiceMsgId = agentMsg.id;
         }
 
+        // Voice dispatch for Flowise responses
         const supportsVoice = conv.channel?.type === "WHATSAPP" || conv.channel?.type === "TELEGRAM";
-        if (supportsVoice && agentMsgId) {
-          this.handleVoiceDispatch(workspaceId, conv, agentText, agentMsgId).catch(
-            (err: Error) => this.logger.warn(`[agent-voice] TTS failed: ${err.message}`),
+        if (supportsVoice) {
+          this.handleVoiceDispatch(workspaceId, conv, agentText, voiceMsgId).catch(
+            (err: Error) => this.logger.warn(`[voice] TTS failed (flowise): ${err.message}`),
           );
         }
       }
@@ -875,9 +876,21 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
     const cleanText = replyText.replace(/[*_`~#>\[\]!]/g, "").trim();
     if (!cleanText) return;
 
-    const voiceId = (s.ai_voice_id as string) || undefined;
     const apiKeyEnc = s.elevenlabs_api_key_enc as string | undefined;
     const apiKey = apiKeyEnc ? this.crypto.decrypt(apiKeyEnc) : undefined;
+    const voiceId = (s.ai_voice_id as string) || undefined;
+
+    // Si el workspace no tiene key/voice propios, verificar que el sistema los tenga
+    if (!apiKey && !voiceId && !this.elevenLabs.isConfigured()) {
+      const errMsg = "Falta API key y Voice ID de ElevenLabs (ni en workspace ni en sistema)";
+      this.logger.warn(`[voice] config incompleta workspace=${workspaceId}: ${errMsg}`);
+      await this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { settings_json: { ...s, voice_last_error: errMsg } as any },
+        select: { id: true },
+      });
+      return;
+    }
 
     const mp3Buffer = await this.elevenLabs.textToSpeech(cleanText, apiKey, voiceId);
 
@@ -895,6 +908,15 @@ ${inboundText || "(sin texto; inicia con un saludo breve y pide el dato más út
       await this.storage.upload(key, mp3Buffer, "audio/mpeg");
       const url = await this.storage.getPresignedUrl(key, 1800);
       await this.telegramService.sendVoice(conv.channel.id, conv.contact.telegram_chat_id, url);
+    }
+
+    // Clear any previous config error on success
+    if (s.voice_last_error) {
+      await this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { settings_json: { ...s, voice_last_error: null } as any },
+        select: { id: true },
+      });
     }
 
     this.logger.log(`[voice] TTS sent for message=${outboundMessageId} workspace=${workspaceId}`);

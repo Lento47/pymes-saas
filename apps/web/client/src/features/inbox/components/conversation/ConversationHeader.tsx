@@ -62,7 +62,7 @@ export function ConversationHeader({
   className,
 }: ConversationHeaderProps) {
   return (
-    <div className={`flex items-center gap-2.5 border-b border-border bg-background/95 px-3 py-2.5 backdrop-blur-sm sm:px-4 shrink-0 ${className ?? ""}`}>
+    <div className={`flex items-center gap-2.5 border-b border-border bg-background px-3 py-2.5 sm:px-4 shrink-0 ${className ?? ""}`}>
       {onBack && (
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onBack} aria-label="Volver">
           <ArrowLeft className="w-4 h-4" />

@@ -63,7 +63,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 h-9 text-xs">
+        <Button size="sm" className="bg-primary hover:bg-primary/90 h-9 text-xs">
           <Plus className="h-3.5 w-3.5 mr-1.5" />Nueva
         </Button>
       </DialogTrigger>
@@ -114,7 +114,7 @@ export function NewConversationModal({ onCreated }: NewConversationModalProps) {
           <Button
             onClick={() => create.mutate()}
             disabled={!channelId || create.isPending}
-            className="w-full bg-gradient-to-r from-primary to-primary/80 hover:opacity-90"
+            className="w-full bg-primary hover:bg-primary/90"
           >
             {create.isPending ? "Creando..." : "Crear conversación"}
           </Button>
