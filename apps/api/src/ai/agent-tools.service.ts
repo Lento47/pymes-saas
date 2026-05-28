@@ -7,6 +7,9 @@ import { EngineeringFixService } from "./engineering-fix.service";
 import { GitHubService } from "../platform/github.service";
 import { RailwayService } from "../platform/railway.service";
 import { PlatformSettingsService } from "../platform/platform-settings.service";
+import { PrCreationPolicyService } from "../agents/support/pr-creation-policy.service";
+import { PLAN_TO_TIER } from "../agents/flowise-setup.service";
+import type { SupportTier } from "../agents/support/support-agent.types";
 
 @Injectable()
 export class AgentToolsService {
@@ -21,7 +24,17 @@ export class AgentToolsService {
     @Optional() private readonly github?: GitHubService,
     @Optional() private readonly railway?: RailwayService,
     @Optional() private readonly platformSettings?: PlatformSettingsService,
+    @Optional() private readonly prPolicy?: PrCreationPolicyService,
   ) {}
+
+  /** Resolve a workspace's support tier from its plan (TIER_1..TIER_4). */
+  private async resolveTier(workspaceId: string): Promise<SupportTier> {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { plan: true },
+    });
+    return (PLAN_TO_TIER[ws?.plan ?? "FREE"] ?? "TIER_1") as SupportTier;
+  }
 
   async execute(workspaceId: string, tool: string, args: Record<string, any>): Promise<any> {
     switch (tool) {
@@ -81,13 +94,41 @@ export class AgentToolsService {
         return this.approveFix(workspaceId, args);
       case "reject_fix":
         return this.rejectFix(workspaceId, args);
+      // ── Support multi-agent: read-only context tools ──
+      case "get_workspace_context":
+        return this.getWorkspaceContext(workspaceId);
+      case "get_workspace_plan":
+        return this.getWorkspacePlan(workspaceId);
+      case "get_recent_errors":
+        return this.getErrors(workspaceId, args);
+      case "get_conversation_context":
+        return this.getConversationDetail(workspaceId, args);
+      case "get_channel_status":
+        return this.getChannelStatus(workspaceId, args);
+      case "get_whatsapp_status":
+        return this.getChannelStatus(workspaceId, { ...args, type: "WHATSAPP" });
+      case "get_telegram_status":
+        return this.getChannelStatus(workspaceId, { ...args, type: "TELEGRAM" });
+      case "get_billing_status":
+        return this.getBilling(workspaceId);
+      case "get_workflow_config":
+        return this.getWorkflowConfig(workspaceId, args);
+      case "add_internal_case_note":
+        return this.addInternalCaseNote(workspaceId, args);
       // ── Platform / SRE tools (require GitHub token in PlatformSettings) ──
       case "read_github_file":
         return this.readGitHubFile(args);
+      case "search_github_files":
+        return this.searchGitHubFiles(args);
       case "get_recent_commits":
         return this.getRecentCommits(args);
+      case "create_fix_proposal":
+        return this.createFixProposal(workspaceId, args);
+      case "create_github_pr":
+        return this.createGitHubPr(workspaceId, args);
       case "apply_github_fix":
-        return this.applyGitHubFix(args);
+        // Legacy alias — now routed through the same policy gate as create_github_pr.
+        return this.createGitHubPr(workspaceId, args);
       case "get_railway_logs":
         return this.getRailwayLogs(args);
       default:
@@ -471,6 +512,91 @@ export class AgentToolsService {
     });
   }
 
+  // ── Support multi-agent: read-only context tools ──────────────────────────
+
+  /** Workspace identity + plan + high-level counts in one call. */
+  private async getWorkspaceContext(workspaceId: string) {
+    const [ws, stats] = await Promise.all([
+      this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { id: true, name: true, slug: true, plan: true, status: true, locale: true, timezone: true, created_at: true },
+      }),
+      this.getStats(workspaceId),
+    ]);
+    return { workspace: ws, ...stats, tier: await this.resolveTier(workspaceId) };
+  }
+
+  /** Plan + tier + enforced limits snapshot. */
+  private async getWorkspacePlan(workspaceId: string) {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { plan: true, status: true },
+    });
+    return { plan: ws?.plan, status: ws?.status, tier: await this.resolveTier(workspaceId) };
+  }
+
+  /** Connection status of channels (optionally filtered by type). Never returns secrets. */
+  private async getChannelStatus(workspaceId: string, args: Record<string, any>) {
+    const where: Record<string, any> = { workspace_id: workspaceId };
+    if (args.type) where.type = args.type;
+    const channels = await this.prisma.channel.findMany({
+      where,
+      // Deliberately exclude config_json — it holds encrypted secrets.
+      select: { id: true, type: true, provider: true, name: true, status: true, updated_at: true },
+      take: 50,
+    });
+    return {
+      channels,
+      count: channels.length,
+      summary:
+        channels.length === 0
+          ? "No hay canales configurados que coincidan."
+          : `${channels.length} canal(es). Estados: ${[...new Set(channels.map((c) => c.status))].join(", ")}.`,
+    };
+  }
+
+  /** Automation/workflow rule configuration for diagnosis (no secrets). */
+  private async getWorkflowConfig(workspaceId: string, args: Record<string, any>) {
+    const where: Record<string, any> = { workspace_id: workspaceId };
+    if (args.id) where.id = args.id;
+    const rules = await this.prisma.automationRule.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        enabled: true,
+        trigger_type: true,
+        trigger_config_json: true,
+        condition_config_json: true,
+        action_config_json: true,
+      },
+      take: 50,
+    });
+    return { automations: rules, count: rules.length };
+  }
+
+  /**
+   * Append an internal note to a diagnostic case for audit/handoff.
+   * Workspace-scoped: the case must belong to this workspace.
+   */
+  private async addInternalCaseNote(workspaceId: string, args: Record<string, any>) {
+    const caseId = args.diagnostic_case_id || args.case_id;
+    const note = (args.note || args.text || "").toString().slice(0, 4000);
+    if (!caseId || !note) {
+      throw new BadRequestException("add_internal_case_note requires diagnostic_case_id and note");
+    }
+    const dc = await (this.prisma as any).supportDiagnosticCase.findFirst({
+      where: { id: caseId, workspace_id: workspaceId },
+      select: { id: true },
+    });
+    if (!dc) {
+      // Don't leak whether the case exists in another workspace — treat as not found.
+      return { error: "Diagnostic case not found in this workspace" };
+    }
+    this.logger.log(`[tools] internal note added to case ${caseId} (ws ${workspaceId})`);
+    return { ok: true, case_id: caseId, note_preview: note.slice(0, 120) };
+  }
+
   // ── Platform / SRE tools ─────────────────────────────────────────────────
 
   private async getGitHubCreds(): Promise<{ token: string; owner: string; repo: string } | null> {
@@ -521,22 +647,99 @@ export class AgentToolsService {
   }
 
   /**
-   * Apply code changes to a branch and open a real PR.
-   * args: {
-   *   branch_name: string,
-   *   files: Array<{ path: string, content: string }>,
-   *   pr_title: string,
-   *   pr_body: string,
-   *   base_branch?: string,
-   *   diagnostic_case_id?: string  // optional: links back to a diagnostic case
-   * }
+   * Search repository files by content/path query.
+   * args: { query: string, limit?: number }
    */
-  private async applyGitHubFix(args: Record<string, any>) {
-    if (!args.branch_name) throw new BadRequestException("apply_github_fix requires branch_name");
+  private async searchGitHubFiles(args: Record<string, any>) {
+    const query = (args.query || args.q || "").toString();
+    if (!query) throw new BadRequestException("search_github_files requires query");
+    const creds = await this.getGitHubCreds();
+    if (!creds) return { error: "GitHub not configured." };
+    const results = await this.github!.searchFiles({ ...creds, query, limit: args.limit });
+    return { query, results, count: results.length };
+  }
+
+  /**
+   * Store a fix proposal WITHOUT opening a PR. Safe for Tier 3 propose-only mode.
+   * args: { diagnostic_case_id?, fix_summary, files: [{path, content, reason?}], rollback_notes? }
+   */
+  private async createFixProposal(workspaceId: string, args: Record<string, any>) {
     if (!Array.isArray(args.files) || args.files.length === 0) {
-      throw new BadRequestException("apply_github_fix requires files[]");
+      throw new BadRequestException("create_fix_proposal requires files[]");
     }
-    if (!args.pr_title) throw new BadRequestException("apply_github_fix requires pr_title");
+    // Validate the proposed content even though no PR is created yet — surfaces
+    // secrets / destructive migrations early.
+    if (this.prPolicy) {
+      const decision = this.prPolicy.validateProposal({
+        tier: await this.resolveTier(workspaceId),
+        branch_name: "fix/ai/proposal/0",
+        base_branch: "master",
+        files: args.files,
+        // Proposals are not PRs; bypass the tier-PR gate but keep content checks.
+        allowPrOverride: true,
+        securityReviewPassed: true,
+      });
+      const contentViolations = decision.violations.filter(
+        (v) => /secreto|destructiva|prohibido/i.test(v),
+      );
+      if (contentViolations.length) {
+        this.logger.warn(`[tools] create_fix_proposal blocked: ${contentViolations.join("; ")}`);
+        return { error: "Propuesta rechazada por política de contenido", violations: contentViolations };
+      }
+    }
+    const fixCase = await (this.prisma as any).engineeringFixCase.create({
+      data: {
+        diagnostic_case_id: args.diagnostic_case_id ?? null,
+        status: "FIX_READY",
+        fix_summary: (args.fix_summary ?? "").toString().slice(0, 4000),
+        rollback_notes: (args.rollback_notes ?? "").toString().slice(0, 2000),
+        files_changed_json: args.files.map((f: any) => ({ file: f.path, reason: f.reason ?? "" })),
+      },
+      select: { id: true, status: true },
+    });
+    this.logger.log(`[tools] fix proposal ${fixCase.id} stored (ws ${workspaceId}, no PR)`);
+    return { fix_case_id: fixCase.id, status: fixCase.status, requires_human_approval: true };
+  }
+
+  /**
+   * Create a real GitHub PR from an agent proposal — gated by PrCreationPolicyService.
+   * Always draft, always labelled for human review. The agent can never merge,
+   * approve, or auto-merge (those endpoints are not exposed).
+   * args: { branch_name, files:[{path,content}], pr_title, pr_body?, base_branch?,
+   *         security_review_passed?, allow_pr_creation?, diagnostic_case_id? }
+   */
+  private async createGitHubPr(workspaceId: string, args: Record<string, any>) {
+    if (!args.branch_name) throw new BadRequestException("create_github_pr requires branch_name");
+    if (!Array.isArray(args.files) || args.files.length === 0) {
+      throw new BadRequestException("create_github_pr requires files[]");
+    }
+    if (!args.pr_title) throw new BadRequestException("create_github_pr requires pr_title");
+
+    const tier = await this.resolveTier(workspaceId);
+    const baseBranch = args.base_branch ?? "master";
+
+    // RUNTIME VALIDATION — the policy gate decides if this PR may be created.
+    if (!this.prPolicy) {
+      return { error: "PR creation policy unavailable — refusing to create PR" };
+    }
+    const decision = this.prPolicy.validateProposal({
+      tier,
+      allowPrOverride: args.allow_pr_creation === true,
+      securityReviewPassed: args.security_review_passed === true,
+      branch_name: args.branch_name,
+      base_branch: baseBranch,
+      files: args.files,
+    });
+    if (!decision.allowed) {
+      this.logger.warn(
+        `[tools] create_github_pr BLOCKED (ws ${workspaceId}, ${tier}): ${decision.violations.join("; ")}`,
+      );
+      return {
+        error: "PR bloqueado por política de seguridad. Requiere revisión humana.",
+        violations: decision.violations,
+        tier,
+      };
+    }
 
     const creds = await this.getGitHubCreds();
     if (!creds) {
@@ -547,13 +750,15 @@ export class AgentToolsService {
       const result = await this.github!.applyFileChanges({
         ...creds,
         branchName: args.branch_name,
-        baseBranch: args.base_branch ?? "master",
+        baseBranch,
         files: args.files,
         prTitle: args.pr_title,
-        prBody: args.pr_body ?? `Fix propuesto por agente de soporte PymesHub\n\nArchivos modificados: ${args.files.map((f: any) => f.path).join(", ")}`,
+        prBody:
+          (args.pr_body ?? `Fix propuesto por agente de soporte PymesHub\n\nArchivos: ${args.files.map((f: any) => f.path).join(", ")}`) +
+          "\n\n---\n_PR generado por agente — requiere aprobación humana. El agente no puede mergear ni aprobar._",
+        labels: decision.labels,
       });
 
-      // If a diagnostic_case_id was provided, update its fix case with the PR URL
       if (args.diagnostic_case_id) {
         try {
           const fixCase = await (this.prisma as any).engineeringFixCase.findFirst({
@@ -571,15 +776,19 @@ export class AgentToolsService {
         }
       }
 
+      this.logger.log(`[tools] create_github_pr OK (ws ${workspaceId}, ${tier}): PR #${result.prNumber}`);
       return {
         success: true,
         pr_url: result.prUrl,
         pr_number: result.prNumber,
         branch: result.branchName,
+        draft: true,
+        labels: decision.labels,
         files_committed: args.files.map((f: any) => f.path),
+        note: "PR creado como draft. Requiere revisión y merge manual por un humano.",
       };
     } catch (err: any) {
-      this.logger.error(`[tools] apply_github_fix failed: ${err?.message}`);
+      this.logger.error(`[tools] create_github_pr failed: ${err?.message}`);
       return { error: err?.message ?? "Unknown error creating PR" };
     }
   }

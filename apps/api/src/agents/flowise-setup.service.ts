@@ -18,6 +18,8 @@ import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { FlowiseClient } from "./flowise/flowise.client";
 import type { FlowiseToolDef } from "./flowise/flowise.types";
+import { SUPPORT_AGENTS } from "./support/support-agents.catalog";
+import { SUPPORT_MODEL_NAME } from "./support/support-agent.types";
 
 export const SUPPORT_TIER_SLUGS = {
   TIER_1: "support-tier-1-free",
@@ -233,7 +235,93 @@ export class FlowiseSetupService {
       }
     }
 
+    // Step 5: Provision one agentflow per specialized support agent (catalog).
+    await this.setupSpecializedAgents(deepseekBaseUrl, deepseekCredentialId, toolIdByName);
+
     this.logger.log("[flowise-setup] Support tier agentflows ready");
+  }
+
+  /**
+   * Provision one Flowise AgentFlow per specialized agent in the catalog.
+   * Each flow is created with the agent's prompt, model, temperature, and the
+   * subset of its declared tools that actually exist in Flowise. The chatflow
+   * id is stored in an AgentTemplate (slug `support-agent-<slug>`) so the
+   * orchestrator/runtime can route to it. Idempotent (skips existing by name).
+   *
+   * NOTE: provisioning a flow does NOT grant runtime permissions. PR creation
+   * still flows through PrCreationPolicyService and plan checks at execution.
+   */
+  private async setupSpecializedAgents(
+    deepseekBaseUrl: string,
+    deepseekCredentialId: string | undefined,
+    toolIdByName: Map<string, string>,
+  ): Promise<void> {
+    const existing = await this.flowise.listChatflows().catch(() => []);
+    const existingByName = new Map(existing.map((c) => [c.name, c.id] as [string, string]));
+
+    for (const agent of SUPPORT_AGENTS) {
+      const flowName = `PymesHub Agente — ${agent.name}`;
+      try {
+        let chatflowId: string;
+        if (existingByName.has(flowName)) {
+          chatflowId = existingByName.get(flowName)!;
+        } else {
+          const toolIds = agent.tools
+            .map((name) => toolIdByName.get(name))
+            .filter(Boolean) as string[];
+
+          const flowData = this.flowise.buildSupportFlowData({
+            modelName: SUPPORT_MODEL_NAME[agent.model],
+            systemPrompt: agent.systemPrompt,
+            toolIds,
+            basepath: deepseekBaseUrl,
+            temperature: agent.temperature,
+            credentialId: deepseekCredentialId,
+          });
+          chatflowId = await this.flowise.createChatflowWithData(flowName, flowData);
+          this.logger.log(`[flowise-setup] Created specialized agentflow: ${flowName} (${chatflowId})`);
+        }
+
+        await this.prisma.agentTemplate.upsert({
+          where: { slug: `support-agent-${agent.slug}` },
+          create: {
+            slug: `support-agent-${agent.slug}`,
+            name: agent.name,
+            description: agent.role,
+            provider: "FLOWISE",
+            channel_scope: "ALL",
+            is_published: false,
+            is_free_tier: false,
+            config_json: {
+              is_support_agent: true,
+              support_agent_slug: agent.slug,
+              flowise_chatflow_id: chatflowId,
+              tier_access: agent.tierAccess,
+              tools: agent.tools,
+              can_create_pr: agent.canCreatePr,
+              requires_security_review: agent.requiresSecurityReview,
+              requires_human_approval: agent.requiresHumanApproval,
+            },
+          },
+          update: {
+            config_json: {
+              is_support_agent: true,
+              support_agent_slug: agent.slug,
+              flowise_chatflow_id: chatflowId,
+              tier_access: agent.tierAccess,
+              tools: agent.tools,
+              can_create_pr: agent.canCreatePr,
+              requires_security_review: agent.requiresSecurityReview,
+              requires_human_approval: agent.requiresHumanApproval,
+            },
+          },
+        });
+      } catch (err: any) {
+        this.logger.error(`[flowise-setup] Failed to provision agent ${agent.slug}: ${err?.message}`);
+      }
+    }
+
+    this.logger.log(`[flowise-setup] ${SUPPORT_AGENTS.length} specialized agentflows ready`);
   }
 
   /** Get the Flowise chatflow ID for a workspace plan */
@@ -355,6 +443,130 @@ export class FlowiseSetupService {
         description: "Lista los casos de diagnóstico del workspace.",
         schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
         func: makeFunc("list_diagnostic_cases"),
+      },
+
+      // ── Support multi-agent: context + privileged tools ──
+      get_workspace_context: {
+        name: "get_workspace_context",
+        description: "Identidad del workspace + plan + tier + conteos de alto nivel. Úsalo primero para entender el contexto.",
+        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
+        func: makeFunc("get_workspace_context"),
+      },
+      get_workspace_plan: {
+        name: "get_workspace_plan",
+        description: "Plan, estado y tier del workspace.",
+        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
+        func: makeFunc("get_workspace_plan"),
+      },
+      get_recent_errors: {
+        name: "get_recent_errors",
+        description: "Error reports recientes del workspace.",
+        schema: JSON.stringify({ type: "object", properties: { limit: { type: "number" } }, required: [] }),
+        func: makeFunc("get_recent_errors"),
+      },
+      get_conversation_context: {
+        name: "get_conversation_context",
+        description: "Detalle de una conversación y sus mensajes. Requiere id.",
+        schema: JSON.stringify({ type: "object", properties: { id: { type: "string" } }, required: ["id"] }),
+        func: makeFunc("get_conversation_context"),
+      },
+      get_channel_status: {
+        name: "get_channel_status",
+        description: "Estado de conexión de los canales (sin secretos). Opcional: type (WHATSAPP/TELEGRAM/EMAIL).",
+        schema: JSON.stringify({ type: "object", properties: { type: { type: "string" } }, required: [] }),
+        func: makeFunc("get_channel_status"),
+      },
+      get_whatsapp_status: {
+        name: "get_whatsapp_status",
+        description: "Estado de conexión de los canales de WhatsApp (sin secretos).",
+        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
+        func: makeFunc("get_whatsapp_status"),
+      },
+      get_telegram_status: {
+        name: "get_telegram_status",
+        description: "Estado de conexión de los canales de Telegram (sin secretos).",
+        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
+        func: makeFunc("get_telegram_status"),
+      },
+      get_billing_status: {
+        name: "get_billing_status",
+        description: "Estado de suscripción y plan. Nunca modifica nada.",
+        schema: JSON.stringify({ type: "object", properties: {}, required: [] }),
+        func: makeFunc("get_billing_status"),
+      },
+      get_workflow_config: {
+        name: "get_workflow_config",
+        description: "Configuración de automatizaciones/reglas del workspace. Opcional: id.",
+        schema: JSON.stringify({ type: "object", properties: { id: { type: "string" } }, required: [] }),
+        func: makeFunc("get_workflow_config"),
+      },
+      add_internal_case_note: {
+        name: "add_internal_case_note",
+        description: "Añade una nota interna de auditoría a un caso de diagnóstico del workspace.",
+        schema: JSON.stringify({
+          type: "object",
+          properties: { diagnostic_case_id: { type: "string" }, note: { type: "string" } },
+          required: ["diagnostic_case_id", "note"],
+        }),
+        func: makeFunc("add_internal_case_note"),
+      },
+      search_github_files: {
+        name: "search_github_files",
+        description: "Busca archivos en el repositorio por contenido/ruta. Devuelve rutas coincidentes.",
+        schema: JSON.stringify({
+          type: "object",
+          properties: { query: { type: "string" }, limit: { type: "number" } },
+          required: ["query"],
+        }),
+        func: makeFunc("search_github_files"),
+      },
+      create_fix_proposal: {
+        name: "create_fix_proposal",
+        description: "Guarda una propuesta de fix SIN abrir PR. files[].content debe ser el archivo completo.",
+        schema: JSON.stringify({
+          type: "object",
+          properties: {
+            diagnostic_case_id: { type: "string" },
+            fix_summary: { type: "string" },
+            rollback_notes: { type: "string" },
+            files: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: { path: { type: "string" }, content: { type: "string" }, reason: { type: "string" } },
+                required: ["path", "content"],
+              },
+            },
+          },
+          required: ["files"],
+        }),
+        func: makeFunc("create_fix_proposal"),
+      },
+      create_github_pr: {
+        name: "create_github_pr",
+        description:
+          "Crea un PR draft (nunca merge/aprobación) desde una propuesta. Pasa por la política de seguridad. files[].content debe ser el archivo completo. Requiere security_review_passed=true para áreas sensibles.",
+        schema: JSON.stringify({
+          type: "object",
+          properties: {
+            branch_name: { type: "string", description: "fix/ai/<area>/<timestamp>" },
+            base_branch: { type: "string" },
+            pr_title: { type: "string" },
+            pr_body: { type: "string" },
+            security_review_passed: { type: "boolean" },
+            diagnostic_case_id: { type: "string" },
+            files: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: { path: { type: "string" }, content: { type: "string" } },
+                required: ["path", "content"],
+              },
+            },
+          },
+          required: ["branch_name", "files", "pr_title"],
+        }),
+        func: makeFunc("create_github_pr"),
       },
     };
   }
