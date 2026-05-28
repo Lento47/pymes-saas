@@ -181,9 +181,11 @@ export default function ProductFeaturePage({ slug }: { slug: string }) {
           <p className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: ACCENT }}>
             {pf.solutionLabel}
           </p>
-          <h2 className="font-marketing text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            {pf.solutionSubtitle}
-          </h2>
+          {pf.solutionSubtitle && (
+            <h2 className="font-marketing text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+              {pf.solutionSubtitle}
+            </h2>
+          )}
         </div>
         <div className="grid gap-6 sm:grid-cols-2">
           {features.map(({ icon: Icon, title, text }, idx) => (

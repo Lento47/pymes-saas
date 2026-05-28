@@ -196,11 +196,14 @@ export class HaciendaProcessor extends WorkerHost {
     return date.toISOString().replace(/\.\d{3}Z$/, "") + "-06:00";
   }
 
-  // ── Cron: poll pending Hacienda statuses every 15 min ────────────────────
+  // ── Cron: hourly catch-all for invoices the webhook missed ───────────────
+  // Hacienda pushes status via webhook (callbackUrl on submission). This cron
+  // only acts as a safety net for invoices that have been pending for >30 min
+  // without an update — giving webhooks time to arrive first.
 
-  @Cron("*/15 * * * *")
+  @Cron("0 * * * *")
   async pollPendingHaciendaStatuses(): Promise<void> {
-    this.logger.log("Running Hacienda status polling cron");
+    this.logger.log("Running Hacienda status polling cron (hourly catch-all)");
 
     const workspaces = await this.prisma.invoice.findMany({
       where: {
@@ -208,7 +211,7 @@ export class HaciendaProcessor extends WorkerHost {
           in: [HaciendaStatus.SUBMITTED, HaciendaStatus.RECIBIDO, HaciendaStatus.PROCESANDO],
         },
         clave: { not: null },
-        hacienda_last_checked_at: { lt: new Date(Date.now() - 5 * 60 * 1000) },
+        hacienda_last_checked_at: { lt: new Date(Date.now() - 30 * 60 * 1000) },
       },
       select: { workspace_id: true },
       distinct: ["workspace_id"],

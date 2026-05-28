@@ -62,17 +62,16 @@ function Field({
 }) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.45)", display: "block" }}>
+      <label htmlFor={id} style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.72)", display: "block" }}>
         {label}
       </label>
       <div
-        className="group flex items-center gap-3 px-3 py-2.5 transition-all duration-200"
+        className="group flex items-center gap-3 px-3 py-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-violet-500/25 focus-within:border-violet-400/50"
         style={{
           borderRadius: 10,
           border: "1px solid rgba(139,92,246,0.18)",
           background: "rgba(255,255,255,0.03)",
         }}
-        onFocus={() => {}}
       >
         <span style={{ color: "rgba(139,92,246,0.6)" }}>{icon}</span>
         <input
@@ -96,7 +95,7 @@ function Field({
         />
         {rightAdornment}
       </div>
-      {hint && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>{hint}</p>}
+      {hint && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.60)", lineHeight: 1.6 }}>{hint}</p>}
     </div>
   );
 }
@@ -270,7 +269,7 @@ export default function LoginPage() {
 
       {/* Top bar */}
       <div className="relative z-10 flex items-center justify-between px-6 py-5">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm transition" style={{ color: "rgba(255,255,255,0.45)" }}>
+        <Link href="/" className="inline-flex items-center gap-2 text-sm transition" style={{ color: "rgba(255,255,255,0.65)" }}>
           <ArrowLeft className="h-4 w-4" />
           {copy.back}
         </Link>
@@ -323,7 +322,7 @@ export default function LoginPage() {
                 <h2 className="text-center text-lg font-semibold" style={{ color: "rgba(255,255,255,0.92)" }}>
                   {copy.workspacePickerTitle}
                 </h2>
-                <p className="mt-1.5 text-center text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+                <p className="mt-1.5 text-center text-sm" style={{ color: "rgba(255,255,255,0.65)" }}>
                   {copy.workspacePickerDescription}
                 </p>
                 <div className="mt-5 space-y-2">
@@ -344,7 +343,7 @@ export default function LoginPage() {
                         <Building2 className="h-4 w-4 shrink-0" style={{ color: "#8b5cf6" }} />
                         <div>
                           <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.88)" }}>{ws.name}</p>
-                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{ws.slug}</p>
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.60)" }}>{ws.slug}</p>
                         </div>
                       </div>
                     </button>
@@ -373,7 +372,7 @@ export default function LoginPage() {
                   >
                     {copy.welcome}
                   </h1>
-                  <p className="mt-2 text-sm leading-6" style={{ color: "rgba(255,255,255,0.38)" }}>
+                  <p className="mt-2 text-sm leading-6" style={{ color: "rgba(255,255,255,0.65)" }}>
                     {copy.description}
                   </p>
                 </div>
@@ -419,7 +418,7 @@ export default function LoginPage() {
                     className="relative mt-2 inline-flex w-full items-center justify-center gap-2 font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
                     style={{
                       borderRadius: 10,
-                      padding: "11px 20px",
+                      padding: "13px 20px",
                       fontSize: 14,
                       background: loading
                         ? "rgba(124,58,237,0.5)"
@@ -444,7 +443,7 @@ export default function LoginPage() {
                 <div className="mt-6">
                   <div className="flex items-center gap-3">
                     <div className="h-px flex-1" style={{ background: "rgba(139,92,246,0.15)" }} />
-                    <span className="text-xs" style={{ color: "rgba(255,255,255,0.28)" }}>{copy.orContinueWith}</span>
+                    <span className="text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>{copy.orContinueWith}</span>
                     <div className="h-px flex-1" style={{ background: "rgba(139,92,246,0.15)" }} />
                   </div>
 
@@ -460,10 +459,10 @@ export default function LoginPage() {
                     className="mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-3 text-sm font-semibold transition-all duration-200"
                     style={{
                       borderRadius: 10,
-                      padding: "10px 20px",
+                      padding: "12px 20px",
                       border: "1px solid rgba(139,92,246,0.18)",
                       background: "rgba(255,255,255,0.03)",
-                      color: "rgba(255,255,255,0.75)",
+                      color: "rgba(255,255,255,0.80)",
                     }}
                   >
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
@@ -480,7 +479,7 @@ export default function LoginPage() {
                 <div className="mt-6">
                   <div className="flex items-center gap-3">
                     <div className="h-px flex-1" style={{ background: "rgba(139,92,246,0.12)" }} />
-                    <span className="text-xs" style={{ color: "rgba(255,255,255,0.22)" }}>{copy.forgot}</span>
+                    <span className="text-xs" style={{ color: "rgba(255,255,255,0.50)" }}>{copy.forgot}</span>
                     <div className="h-px flex-1" style={{ background: "rgba(139,92,246,0.12)" }} />
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-3">
@@ -497,7 +496,7 @@ export default function LoginPage() {
                           padding: "9px 12px",
                           border: "1px solid rgba(139,92,246,0.14)",
                           background: "rgba(255,255,255,0.02)",
-                          color: "rgba(255,255,255,0.45)",
+                          color: "rgba(255,255,255,0.65)",
                         }}
                       >
                         {label}
@@ -510,13 +509,13 @@ export default function LoginPage() {
 
             {/* Bottom: terms + register */}
             <div className="mt-7 flex flex-col items-center gap-3 text-center">
-              <div className="flex items-center gap-3 text-xs" style={{ color: "rgba(255,255,255,0.28)" }}>
+              <div className="flex items-center gap-3 text-xs" style={{ color: "rgba(255,255,255,0.50)" }}>
                 <Link href="/legal/terms-of-service" className="transition hover:text-white/50">{copy.terms}</Link>
                 <span className="h-1 w-1 rounded-full" style={{ background: "rgba(255,255,255,0.2)" }} />
                 <Link href="/legal/privacy-policy" className="transition hover:text-white/50">{copy.privacy}</Link>
               </div>
 
-              <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.60)" }}>
                 {copy.noWorkspace}{" "}
                 <Link href="/" className="font-medium transition" style={{ color: "#a78bfa" }}>
                   {copy.explore}
@@ -529,7 +528,7 @@ export default function LoginPage() {
                 </Link>
               </p>
 
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.18)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.40)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
                 &copy; {new Date().getFullYear()} PymesHub S.A., Lim&oacute;n, Costa Rica
               </p>
             </div>

@@ -196,7 +196,7 @@ export default function SolutionPage({ slug }: { slug: string }) {
       {/* Pain points */}
       <section className="mx-auto max-w-5xl px-4 pb-16 md:px-8">
         <p className="text-center text-sm font-semibold uppercase tracking-wider text-gray-400 mb-8">
-          ¿Te suena familiar?
+          ¿Pasa esto en tu empresa?
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
           {pains.map(({ icon: Icon, title, text }, idx) => (
@@ -223,11 +223,8 @@ export default function SolutionPage({ slug }: { slug: string }) {
       <section className="mx-auto max-w-5xl px-4 py-16 md:px-8">
         <div className="text-center mb-12">
           <p className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: ACCENT }}>
-            La solución
+            Qué cambia
           </p>
-          <h2 className="font-marketing text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            Todo lo que necesitás, sin lo que no necesitás
-          </h2>
         </div>
         <div className="grid gap-6 sm:grid-cols-2">
           {features.map(({ icon: Icon, title, text }, idx) => (

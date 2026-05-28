@@ -514,7 +514,7 @@ export default function Landing() {
               <div className="mx-auto max-w-3xl text-center">
                 <div className="landing-badge inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium mb-6">
                   <span className="h-2 w-2 rounded-full" style={{ background: ACCENT }} />
-                  Sistema operativo de atención y ventas para PyMEs
+                  Para equipos que atienden clientes por WhatsApp, Telegram y email
                 </div>
 
                 <h1 className="font-marketing text-[2.1rem] leading-[1.08] tracking-[-0.04em] font-bold sm:text-[2.9rem] md:text-[3.6rem] text-gray-900">
@@ -524,7 +524,7 @@ export default function Landing() {
                 </h1>
 
                 <p className="mx-auto mt-5 max-w-2xl text-lg leading-7 text-gray-500 md:text-xl md:leading-8">
-                  <TextEffect words="Centraliza WhatsApp, Telegram, email, clientes, tareas y agentes IA para que tu negocio responda más rápido sin perder el control humano." />
+                  <TextEffect words="Tu cliente escribe por WhatsApp. Tu equipo responde desde la computadora, ve el historial, crea una tarea y manda la factura — sin cambiar de pantalla." />
                 </p>
 
                 <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -594,7 +594,7 @@ export default function Landing() {
           ════════════════════════════════════════ */}
           <section className="py-10 border-y border-[#E6E8EF] bg-white">
             <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-6">
-              Conecta tus canales
+              Todos tus canales en una pantalla
             </p>
             <InfiniteSlider duration={30} gap={20}>
               {[
@@ -623,12 +623,12 @@ export default function Landing() {
           <section className="px-4 py-20 md:px-8">
             <div className="mx-auto max-w-7xl">
               <div className="mb-14 text-center">
-                <p className="landing-eyebrow font-marketing mb-3">El problema</p>
+                <p className="landing-eyebrow font-marketing mb-3">Por qué se pierden ventas</p>
                 <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-gray-900 sm:text-4xl">
-                  Tu equipo ya trabaja duro.<br className="hidden sm:block" /> El problema es la visibilidad.
+                  El cliente escribió.<br className="hidden sm:block" /> ¿Quién lo atiende?
                 </h2>
                 <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-gray-500">
-                  Las PyMEs pierden ventas, tiempo y clientes cada semana porque la operación está fragmentada.
+                  Cuando WhatsApp está en un celular, el email en otro y las tareas en un papel, alguien siempre se cae.
                 </p>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
@@ -651,12 +651,12 @@ export default function Landing() {
           <section className="px-4 py-20 md:px-8 bg-white border-y border-[#E6E8EF]">
             <div className="mx-auto max-w-7xl">
               <div className="mb-14 text-center">
-                <p className="landing-eyebrow font-marketing mb-3">La solución</p>
+                <p className="landing-eyebrow font-marketing mb-3">Cómo funciona</p>
                 <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-gray-900 sm:text-4xl">
-                  Cada mensaje se convierte<br className="hidden sm:block" /> en trabajo organizado
+                  Del mensaje a la factura<br className="hidden sm:block" /> en una sola pantalla
                 </h2>
                 <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-gray-500">
-                  PymesHub transforma conversaciones en clientes, tareas, ventas, facturas y seguimientos — con o sin IA.
+                  PymesHub conecta el mensaje con el cliente, la tarea, la cotización y el pago. Cada paso visible para todo el equipo.
                 </p>
               </div>
               <div className="relative flex flex-col gap-4 md:flex-row md:items-start md:gap-0">
@@ -844,10 +844,10 @@ export default function Landing() {
               <div className="mb-14 text-center">
                 <p className="landing-eyebrow font-marketing mb-3">Agentes IA</p>
                 <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-gray-900 sm:text-4xl">
-                  Agentes que ayudan,<br className="hidden sm:block" /> no que toman el control
+                  El agente responde.<br className="hidden sm:block" /> Vos aprobás lo que importa.
                 </h2>
                 <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-gray-500">
-                  Configura agentes para ventas, soporte y facturación. Define qué pueden responder, cuándo deben escalar y qué acciones requieren aprobación humana.
+                  Configura qué puede contestar solo, qué debe preguntarte antes, y qué nunca puede hacer sin que vos lo confirmes.
                 </p>
               </div>
 
@@ -892,7 +892,7 @@ export default function Landing() {
               <div className="mb-14 text-center">
                 <p className="landing-eyebrow font-marketing mb-3">Casos de uso</p>
                 <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-gray-900 sm:text-4xl">
-                  Lo que tu negocio hace<br className="hidden sm:block" /> todos los días, optimizado
+                  Lo que pasa en tu negocio<br className="hidden sm:block" /> todos los días
                 </h2>
               </div>
 
@@ -1027,7 +1027,7 @@ export default function Landing() {
                     </Link>
                   </div>
                   <p className="mt-6 text-sm text-gray-400">
-                    Diseñado para PyMEs que atienden, venden y dan seguimiento todos los días.
+                    Sin setup de semanas. Funciona desde el primer día.
                   </p>
                 </div>
               </div>
