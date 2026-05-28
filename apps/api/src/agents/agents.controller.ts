@@ -131,18 +131,51 @@ export class AgentsController {
     WorkspaceUserRole.ADMIN,
     WorkspaceUserRole.OWNER,
   )
-  testAgent(
+  async testAgent(
     @CurrentUser("workspace_id") workspaceId: string,
     @Param("id", ValidateUUIDPipe) id: string,
     @Body() dto: TestAgentDto,
   ) {
-    return this.runtime.run({
-      agent_instance_id: id,
-      workspace_id: workspaceId,
-      question: dto.question,
-      channel: dto.channel ?? AgentChannelScope.WEB,
-      flowise_session_id: dto.flowise_session_id,
-    });
+    const ensured = await this.agentsService.ensureFlowiseChatflow(workspaceId, id);
+
+    try {
+      const result = await this.runtime.run({
+        agent_instance_id: id,
+        workspace_id: workspaceId,
+        question: dto.question,
+        channel: dto.channel ?? AgentChannelScope.WEB,
+        flowise_session_id: dto.flowise_session_id,
+      });
+
+      return ensured.reprovisioned
+        ? {
+            ...result,
+            reprovisioned: true,
+            old_chatflow_id: ensured.old_chatflow_id,
+            new_chatflow_id: ensured.new_chatflow_id,
+          }
+        : result;
+    } catch (err) {
+      if (this.isMissingFlowiseChatflowError(err)) {
+        const healed = await this.agentsService.ensureFlowiseChatflow(workspaceId, id, { force: true });
+        const retry = await this.runtime.run({
+          agent_instance_id: id,
+          workspace_id: workspaceId,
+          question: dto.question,
+          channel: dto.channel ?? AgentChannelScope.WEB,
+          flowise_session_id: dto.flowise_session_id,
+        });
+
+        return {
+          ...retry,
+          reprovisioned: true,
+          old_chatflow_id: healed.old_chatflow_id,
+          new_chatflow_id: healed.new_chatflow_id,
+        };
+      }
+
+      throw err;
+    }
   }
 
   @Post(":id/reprovision")
@@ -170,5 +203,14 @@ export class AgentsController {
     @Param("id", ValidateUUIDPipe) id: string,
   ) {
     return this.agentsService.setStatus(workspaceId, id, "INACTIVE");
+  }
+
+  private isMissingFlowiseChatflowError(err: unknown): boolean {
+    const message = err instanceof Error ? err.message : String(err);
+    return (
+      message.includes("Flowise returned 404") &&
+      message.includes("Chatflow") &&
+      message.includes("not found in the database")
+    );
   }
 }
