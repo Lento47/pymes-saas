@@ -48,20 +48,6 @@ export class CsvImportService {
     let imported = 0;
     let skipped = 0;
 
-    // Check plan limit once before loop instead of per-row (N calls → 1 call)
-    const evalResult = await this.planLimits.evaluatePlanLimit(
-      workspaceId,
-      "contacts",
-      rows.length,
-    );
-    if (!evalResult.allowed) {
-      return {
-        imported: 0,
-        skipped: rows.length,
-        errors: [{ row: 0, reason: evalResult.message ?? "Límite de contactos alcanzado" }],
-      };
-    }
-
     for (let i = 0; i < rows.length; i++) {
       try {
         const contactData: Record<string, any> = {

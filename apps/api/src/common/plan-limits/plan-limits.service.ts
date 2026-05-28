@@ -258,7 +258,6 @@ export class PlanLimitsService {
         // Map custom limit keys to PlanLimits fields
         const limitMap: Record<string, keyof PlanLimits> = {
           users: "users",
-          contacts: "contacts",
           automations: "automations",
           documents: "documents",
           invoicesPerMonth: "invoices_per_month",
@@ -485,8 +484,6 @@ export class PlanLimitsService {
         return this.prisma.workspaceUser.count({ where: { workspace_id: workspaceId } });
       case "automations":
         return this.prisma.automationRule.count({ where: { workspace_id: workspaceId } });
-      case "contacts":
-        return this.prisma.contact.count({ where: { workspace_id: workspaceId } });
       case "documents":
         return this.prisma.document.count({ where: { workspace_id: workspaceId } });
       case "invoices_per_month": {
