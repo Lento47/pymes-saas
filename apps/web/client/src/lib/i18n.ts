@@ -425,9 +425,8 @@ export const translations = {
     },
     login: {
       back: "Back to landing",
-      welcome: "Welcome back",
-      description:
-        "Log in to continue managing conversations, invoices, and team workflows from one workspace.",
+      welcome: "Sign in",
+      description: "Access your workspace.",
       workspaceSlug: "Workspace slug",
       workspaceHint: "Use the workspace identifier you were invited to.",
       email: "Email address",
@@ -441,6 +440,8 @@ export const translations = {
       acceptInvite: "Accept an invite",
       legalCenter: "Legal center",
       logIn: "Log in",
+      ssoButton: "Continue with SSO",
+      hideSso: "Hide options",
       googleLogin: "Continue with Google",
       facebookLogin: "Continue with Facebook",
       telegramLogin: "Continue with Telegram",
@@ -1340,9 +1341,8 @@ export const translations = {
     },
     login: {
       back: "Volver al landing",
-      welcome: "Listo para cobrar más rápido",
-      description:
-        "Accede a tu bandeja unificada, facturas, pipeline y reportes. Todo en un lugar.",
+      welcome: "Iniciar sesión",
+      description: "Accede a tu workspace.",
       workspaceSlug: "Tu workspace",
       workspaceHint: "El nombre de tu empresa o workspace",
       email: "Correo",
@@ -1355,7 +1355,9 @@ export const translations = {
       forgot: "¿Olvidaste tu contraseña?",
       acceptInvite: "Aceptar invitación",
       legalCenter: "Centro legal",
-      logIn: "Entrar a mi workspace",
+      logIn: "Entrar",
+      ssoButton: "Continuar con SSO",
+      hideSso: "Ocultar opciones",
       googleLogin: "Continuar con Google",
       facebookLogin: "Continuar con Facebook",
       telegramLogin: "Continuar con Telegram",
