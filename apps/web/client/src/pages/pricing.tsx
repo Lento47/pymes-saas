@@ -103,6 +103,17 @@ export default function PricingPage() {
                 />
               ))}
             </div>
+
+            {/* Channel billing disclaimer */}
+            <div className="mt-8 rounded-md border border-border/60 bg-muted/30 px-5 py-3.5">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground">WhatsApp Business:</span>{" "}
+                PymesHub se conecta con tu propia cuenta de WhatsApp Business (WABA).
+                Los cargos por mensajes de plantilla que aplique Meta se cobran directamente a tu cuenta de Meta — no están incluidos en tu suscripción de PymesHub.{" "}
+                <span className="font-medium text-foreground">Telegram:</span>{" "}
+                El uso normal de Telegram no genera cargos adicionales de la plataforma.
+              </p>
+            </div>
           </div>
         </section>
 

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, MessageCircle, Radio, ExternalLink, PowerOff, Trash2, PlugZap, Plug, Bot, Send, Pencil, RefreshCw } from "lucide-react";
+import { Mail, MessageCircle, Radio, ExternalLink, PowerOff, Trash2, PlugZap, Plug, Bot, Send, Pencil, RefreshCw, Info } from "lucide-react";
 import { SecretInput } from "@/components/settings/secret-input";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 
@@ -534,6 +534,12 @@ export default function ChannelsSettingsPage() {
                         {statusLabel}
                       </Badge>
                     </div>
+                    {ch.type === "WHATSAPP" && (
+                      <p className="flex items-center gap-1 text-[10px] text-muted-foreground/60 mt-1">
+                        <Info className="h-3 w-3 shrink-0" />
+                        Plantillas cobradas directamente por Meta
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">

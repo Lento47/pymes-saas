@@ -230,8 +230,8 @@ export const FAQS: FAQ[] = [
     answer: 'Aceptamos todas las tarjetas principales (Visa, Mastercard, American Express) vía Paddle. Transferencias bancarias disponibles para planes Business+.',
   },
   {
-    question: '¿Hay costos adicionales por WhatsApp?',
-    answer: 'La bandeja de WhatsApp está incluida para gestionar conversaciones, asignar clientes y dar seguimiento. Los costos oficiales de mensajería de Meta WhatsApp Business Platform pueden aplicar según el uso, categoría del mensaje, país del destinatario y configuración del proveedor. Estos son independientes de tu suscripción de PymesHub.',
+    question: '¿Hay costos adicionales por WhatsApp o Telegram?',
+    answer: 'La bandeja omnicanal está incluida en el plan. PymesHub se conecta con tu propia cuenta de WhatsApp Business (WABA) — los cargos por mensajes de plantilla que aplique Meta los cobra Meta directamente a tu negocio, no PymesHub. PymesHub solo cobra el software. Telegram no tiene cargos por mensaje en uso normal.',
   },
   {
     question: '¿Están listas las funciones enterprise de Business+?',
