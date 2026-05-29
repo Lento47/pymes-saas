@@ -230,6 +230,8 @@ function normalizePlan(plan: string): string {
 
 @Injectable()
 export class PlanLimitsService {
+  private readonly logger = new Logger(PlanLimitsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly i18n: I18nService,
