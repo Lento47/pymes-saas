@@ -15,7 +15,7 @@ import { api } from "@/lib/api";
 import {
   LayoutDashboard, Inbox, Users, CheckSquare, FileText, Receipt, Zap, KanbanSquare, Package,
   Settings, CircleHelp, LifeBuoy, LogOut, ChevronDown, Check, Shield,
-  Sun, Moon, Search, Menu, X,
+  Sun, Moon, Search, Menu, X, Loader2,
   ShieldCheck, LayoutTemplate, Bot, Plug,
 } from "lucide-react";
 
@@ -103,6 +103,11 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     () => typeof window !== 'undefined' && window.innerWidth < 1024,
   );
   const wsMenuRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [bottomNavHidden, setBottomNavHidden] = useState(false);
+  const pullStartY = useRef(0);
+  const [pullDistance, setPullDistance] = useState(0);
+  const isPulling = useRef(false);
   const copy = messages.sidebar;
 
   useNotificationsSocket();
@@ -174,6 +179,27 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     }
     return () => { document.body.style.overflow = ''; };
   }, [isMobile, sidebarOpen]);
+
+  // Hide bottom nav on scroll-down, show on scroll-up
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let lastY = el.scrollTop;
+    const onScroll = () => {
+      const currentY = el.scrollTop;
+      if (currentY > lastY && currentY > 60) {
+        setBottomNavHidden(true);
+      } else if (currentY < lastY) {
+        setBottomNavHidden(false);
+      }
+      lastY = currentY;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Always show bottom nav on route change
+  useEffect(() => { setBottomNavHidden(false); }, [location]);
 
   // Close workspace menu on outside click
   useEffect(() => {
@@ -538,7 +564,43 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
         <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-        <div className="flex-1 overflow-y-auto minimal-scrollbar pb-[52px] lg:pb-0">
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto minimal-scrollbar pb-[52px] lg:pb-0"
+          onTouchStart={(e) => {
+            if (scrollRef.current && scrollRef.current.scrollTop === 0) {
+              pullStartY.current = e.touches[0].clientY;
+              isPulling.current = true;
+            }
+          }}
+          onTouchMove={(e) => {
+            if (!isPulling.current) return;
+            const dy = e.touches[0].clientY - pullStartY.current;
+            if (dy > 0 && scrollRef.current?.scrollTop === 0) {
+              setPullDistance(Math.min(dy, 80));
+            } else {
+              isPulling.current = false;
+              setPullDistance(0);
+            }
+          }}
+          onTouchEnd={() => {
+            if (pullDistance >= 60) window.location.reload();
+            isPulling.current = false;
+            setPullDistance(0);
+          }}
+        >
+          {/* Pull-to-refresh indicator */}
+          {pullDistance > 0 && (
+            <div
+              className="flex items-center justify-center"
+              style={{ height: pullDistance, overflow: "hidden", opacity: pullDistance / 60 }}
+            >
+              <Loader2
+                className="h-5 w-5 text-primary"
+                style={{ animation: pullDistance >= 60 ? "spin 0.8s linear infinite" : "none" }}
+              />
+            </div>
+          )}
           {children}
         </div>
       </main>
@@ -548,6 +610,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         isItemVisible={canShowNavItem}
         unreadCount={unreadCount}
         overdueCount={overdueCount}
+        hidden={bottomNavHidden}
       />
 
     </div>

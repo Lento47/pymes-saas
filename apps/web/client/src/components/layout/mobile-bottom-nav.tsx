@@ -17,11 +17,13 @@ export function MobileBottomNav({
   isItemVisible,
   unreadCount = 0,
   overdueCount = 0,
+  hidden = false,
 }: {
   onMenuClick: () => void;
   isItemVisible?: (key: string) => boolean;
   unreadCount?: number;
   overdueCount?: number;
+  hidden?: boolean;
 }) {
   const [location] = useLocation();
   const { messages } = useI18n();
@@ -40,7 +42,11 @@ export function MobileBottomNav({
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t lg:hidden"
+      className={cn(
+        "fixed inset-x-0 bottom-0 z-50 border-t lg:hidden",
+        "transition-transform duration-300 ease-in-out",
+        hidden ? "translate-y-full" : "translate-y-0",
+      )}
       style={{ background: "hsl(var(--bg-sidebar))", borderColor: "rgba(139,92,246,0.14)" }}
     >
       <div className="flex h-[52px] items-stretch justify-around gap-0.5 px-1 pb-safe">
