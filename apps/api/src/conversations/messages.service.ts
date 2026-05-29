@@ -6,6 +6,7 @@ import { ConversationsService } from "./conversations.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { AiService } from "../ai/ai.service";
 import { AgentRunService } from "../ai/agent-run.service";
+import { FlowiseAutoReplyService } from "../ai/flowise-auto-reply.service";
 import { AiConversationControlService } from "../ai/ai-conversation-control.service";
 import { PlatformAdminService } from "../ai/platform-admin.service";
 import { TasksService } from "../tasks/tasks.service";
@@ -51,6 +52,8 @@ export class MessagesService {
     private readonly storage: StorageService,
     @Optional() @Inject(forwardRef(() => PlatformAdminService))
     private readonly platformAdmin?: PlatformAdminService,
+    @Optional() @Inject(forwardRef(() => FlowiseAutoReplyService))
+    private readonly flowiseAutoReply?: FlowiseAutoReplyService,
   ) {}
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 100) {
@@ -701,9 +704,23 @@ export class MessagesService {
       .processMessage(workspaceId, conversationId, bodyText)
       .then((consumedByAgent) => {
         if (consumedByAgent) return;
-        this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch((err) =>
-          this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
-        );
+        // Flowise tier agent takes priority; Emprende AI is the fallback.
+        const flowise = this.flowiseAutoReply;
+        if (flowise) {
+          flowise
+            .dispatch(workspaceId, conversationId, bodyText)
+            .then((handled) => {
+              if (handled) return;
+              this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
+                (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
+              );
+            })
+            .catch((err) => this.logger.error("Error en Flowise auto-reply", err?.stack ?? err));
+        } else {
+          this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
+            (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
+          );
+        }
       })
       .catch((err) => this.logger.error("Error en agent run processMessage", err?.stack ?? err));
   }

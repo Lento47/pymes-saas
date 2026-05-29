@@ -13,9 +13,10 @@ import { FlowiseSetupService } from "./flowise-setup.service";
 import { PrCreationPolicyService } from "./support/pr-creation-policy.service";
 import { SupportOrchestratorService } from "./support/support-orchestrator.service";
 import { PrismaModule } from "../common/prisma/prisma.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 
 @Module({
-  imports: [TtsModule, LearningModule, PlanLimitsModule, PrismaModule],
+  imports: [TtsModule, LearningModule, PlanLimitsModule, PrismaModule, NotificationsModule],
   controllers: [AgentsController],
   providers: [
     AgentsService,
@@ -28,7 +29,7 @@ import { PrismaModule } from "../common/prisma/prisma.module";
     PrCreationPolicyService,
     SupportOrchestratorService,
   ],
-  exports: [AgentRuntimeService, FlowiseSetupService, PrCreationPolicyService, SupportOrchestratorService],
+  exports: [AgentRuntimeService, FlowiseSetupService, FlowiseClient, PrCreationPolicyService, SupportOrchestratorService],
 })
 export class AgentsModule implements OnModuleInit {
   constructor(

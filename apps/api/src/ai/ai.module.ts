@@ -40,6 +40,7 @@ import { EmprendePlaybooksService } from "./emprende-playbooks.service";
 import { PlaybookExecutionService } from "./playbook-execution.service";
 import { PlatformAdminService } from "./platform-admin.service";
 import { FixApprovalService } from "./fix-approval.service";
+import { FlowiseAutoReplyService } from "./flowise-auto-reply.service";
 import { ProductMetricsModule } from "../common/metrics/product-metrics.module";
 import { PlatformModule } from "../platform/platform.module";
 
@@ -91,6 +92,7 @@ import { PlatformModule } from "../platform/platform.module";
     PlaybookExecutionService,
     PlatformAdminService,
     FixApprovalService,
+    FlowiseAutoReplyService,
   ],
   controllers: [
     AgentController,
@@ -117,6 +119,7 @@ import { PlatformModule } from "../platform/platform.module";
     PlaybookExecutionService,
     PlatformAdminService,
     FixApprovalService,
+    FlowiseAutoReplyService,
   ],
 })
 export class AiModule {}

@@ -56,6 +56,8 @@ export class FlowiseSetupService {
   private _deepseekBaseUrl = "https://api.deepseek.com";
   private _deepseekCredentialId: string | undefined;
   private _toolIdByName = new Map<string, string>();
+  // Tracks per-tier success/failure from the most recent setup() run.
+  private readonly _lastTierResults = new Map<string, string>();
 
   constructor(
     private readonly config: ConfigService,
@@ -241,8 +243,10 @@ export class FlowiseSetupService {
             },
           },
         });
+        this._lastTierResults.set(tier.slug, "ok");
       } catch (err: any) {
         this.logger.error(`[flowise-setup] Failed to setup tier ${tier.slug}: ${err?.message}`);
+        this._lastTierResults.set(tier.slug, err?.message ?? "unknown");
       }
     }
 
@@ -392,12 +396,23 @@ export class FlowiseSetupService {
     const rebuilt: string[] = [];
     const failed: string[] = [];
     this.logger.log("[flowise-setup] reprovisionAllFlows triggered manually");
+    this._lastTierResults.clear();
     try {
       await this.setup();
-      rebuilt.push("all");
     } catch (err: any) {
       this.logger.error(`[flowise-setup] reprovisionAllFlows failed: ${err?.message}`);
       failed.push(err?.message ?? "unknown");
+      return { rebuilt, failed };
+    }
+    for (const slug of Object.values(SUPPORT_TIER_SLUGS)) {
+      const result = this._lastTierResults.get(slug);
+      if (result === "ok") {
+        rebuilt.push(slug);
+      } else if (result) {
+        failed.push(`${slug}: ${result}`);
+      } else {
+        failed.push(`${slug}: not reached`);
+      }
     }
     return { rebuilt, failed };
   }
