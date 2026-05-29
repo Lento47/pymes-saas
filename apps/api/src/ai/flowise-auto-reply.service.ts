@@ -6,7 +6,7 @@ import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
 import { FlowiseClient } from "../agents/flowise/flowise.client";
 import { FlowiseSetupService } from "../agents/flowise-setup.service";
 import type { ContextEnrichment } from "./message-router/types";
-import { toWhatsAppMarkdown } from "./whatsapp-markdown.util";
+import { toWhatsAppMarkdown, toTelegramHtml } from "./whatsapp-markdown.util";
 
 export interface FlowiseDispatchOptions {
   systemPromptAddendum?: string;
@@ -180,11 +180,8 @@ export class FlowiseAutoReplyService {
         sent = true;
       }
     } else if (conv.channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
-      await this.telegram.sendMessage(
-        conv.channel.id,
-        conv.contact.telegram_chat_id,
-        replyText,
-      );
+      const tgText = toTelegramHtml(replyText);
+      await this.telegram.sendMessage(conv.channel.id, conv.contact.telegram_chat_id, tgText);
       sent = true;
     }
 
