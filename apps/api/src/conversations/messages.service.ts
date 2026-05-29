@@ -708,24 +708,68 @@ export class MessagesService {
       .then(async (consumedByAgent) => {
         if (consumedByAgent) return;
 
-        // Route through the policy + intent decision engine before calling AI
         const router = this.messageRouter;
-        if (router) {
-          const decision = await router.evaluate({
-            workspaceId,
-            conversationId,
-            messageId,
-            contactId,
-            text: bodyText,
-            receivedAt: new Date(),
-            isInteractive,
-          });
+        const flowise = this.flowiseAutoReply;
 
-          if (!decision.shouldCallAi) return;
+        // ── Decision engine ─────────────────────────────────────────────
+        if (router) {
+          let decision;
+          try {
+            decision = await router.evaluate({
+              workspaceId,
+              conversationId,
+              messageId,
+              contactId,
+              text: bodyText,
+              receivedAt: new Date(),
+              isInteractive,
+            });
+          } catch (err) {
+            this.logger.error("Error en router.evaluate", err);
+            // Fall through to AI chain on router failure
+            decision = null;
+          }
+
+          if (decision) {
+            // Quick reply: send directly, skip AI chain
+            if (decision.quickReplyText && flowise) {
+              flowise
+                .sendQuickReply(workspaceId, conversationId, decision.quickReplyText)
+                .then((replied) => router.recordOutcome(workspaceId, decision, replied).catch(() => undefined))
+                .catch((err) => this.logger.error("Error en quick reply", err?.stack ?? err));
+              return;
+            }
+
+            if (!decision.shouldCallAi) {
+              router.recordOutcome(workspaceId, decision, false).catch(() => undefined);
+              return;
+            }
+
+            // AI chain with agent persona + context enrichment
+            const dispatchOpts = {
+              systemPromptAddendum: decision.systemPromptAddendum,
+              contextEnrichment: decision.contextEnrichment,
+            };
+
+            if (flowise) {
+              flowise
+                .dispatch(workspaceId, conversationId, bodyText, dispatchOpts)
+                .then(async (handled) => {
+                  router.recordOutcome(workspaceId, decision, handled).catch(() => undefined);
+                  if (handled) return;
+                  await this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive);
+                })
+                .catch((err) => this.logger.error("Error en Flowise auto-reply", err?.stack ?? err));
+            } else {
+              this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
+                (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
+              );
+            }
+            return;
+          }
         }
 
-        // Flowise tier agent takes priority; Emprende AI is the fallback.
-        const flowise = this.flowiseAutoReply;
+        // Fallback when router is absent: original chain
         if (flowise) {
           flowise
             .dispatch(workspaceId, conversationId, bodyText)

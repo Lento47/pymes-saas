@@ -5,6 +5,12 @@ import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { TelegramOutboundService } from "../telegram/telegram-outbound.service";
 import { FlowiseClient } from "../agents/flowise/flowise.client";
 import { FlowiseSetupService } from "../agents/flowise-setup.service";
+import type { ContextEnrichment } from "./message-router/types";
+
+export interface FlowiseDispatchOptions {
+  systemPromptAddendum?: string;
+  contextEnrichment?: ContextEnrichment;
+}
 
 @Injectable()
 export class FlowiseAutoReplyService {
@@ -25,12 +31,13 @@ export class FlowiseAutoReplyService {
    *
    * Returns true if a reply was sent; false if Flowise is disabled, no chatflow
    * was found, the conversation's ai_state is HUMAN_ACTIVE, or any error occurs.
-   * Never throws — all errors are caught and logged.
+   * Never throws.
    */
   async dispatch(
     workspaceId: string,
     conversationId: string,
     inboundText: string,
+    options?: FlowiseDispatchOptions,
   ): Promise<boolean> {
     if (!this.flowise.isEnabled) return false;
 
@@ -53,95 +60,154 @@ export class FlowiseAutoReplyService {
 
       if (!workspace || !conv) return false;
 
-      // Respect human takeover
       const meta = (conv.metadata_json as Record<string, unknown>) ?? {};
       if (meta.ai_state === "HUMAN_ACTIVE") return false;
 
-      // Respect workspace AI auto-reply toggle (same guard as Emprende AI)
       const wsSettings = (workspace.settings_json as Record<string, unknown>) ?? {};
       const wsAutoActive = wsSettings.ai_agent_auto_active === true;
       if (!wsAutoActive && meta.ai_state !== "AI_ACTIVE") return false;
 
       const chatflowId = await this.flowiseSetup.getChatflowIdForPlan(workspace.plan);
       if (!chatflowId) {
-        this.logger.debug(`[flowise-auto-reply] no chatflow for plan=${workspace.plan} workspace=${workspaceId}`);
+        this.logger.debug(
+          `[flowise-auto-reply] no chatflow for plan=${workspace.plan} workspace=${workspaceId}`,
+        );
         return false;
       }
 
+      // Phase 3: prepend agent persona + context enrichment to the question
+      const question = this.buildQuestion(inboundText, options);
+
       const res = await this.flowise.predict(chatflowId, {
-        question: inboundText,
+        question,
         sessionId: conversationId,
       });
 
       const replyText = res.text?.trim();
       if (!replyText) return false;
 
-      // Persist outbound message
-      const message = await this.prisma.message.create({
-        data: {
-          workspace_id: workspaceId,
-          conversation_id: conversationId,
-          direction: "OUTBOUND",
-          sender_name: "Agente IA",
-          sender_ref: "ai-agent@flowise",
-          body_text: replyText,
-          sent_at: new Date(),
-          delivery_status: "PENDING",
-          message_type: "TEXT",
-          has_media: false,
-          media_status: "NONE",
-          raw_payload_json: { source: "flowise-auto-reply" } as any,
-        },
-      });
-
-      // Dispatch via channel
-      let sent = false;
-      let providerMsgId: string | null = null;
-
-      if (conv.channel?.type === "WHATSAPP" && conv.contact?.phone) {
-        const to = conv.contact.phone.replace(/\D/g, "");
-        if (to) {
-          const result = await this.whatsapp.sendMessage(conv.channel, to, replyText);
-          providerMsgId = result.message_id ?? null;
-          sent = true;
-        }
-      } else if (conv.channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
-        await this.telegram.sendMessage(conv.channel.id, conv.contact.telegram_chat_id, replyText);
-        sent = true;
-      }
-
-      // Update delivery status
-      await this.prisma.message.update({
-        where: { id: message.id },
-        data: {
-          delivery_status: sent ? "SENT" : "DISPATCH_FAILED",
-          ...(providerMsgId ? { provider_message_id: providerMsgId } : {}),
-        },
-      });
-
-      // Real-time push
-      this.events.emitNewMessage(conversationId, workspaceId, {
-        id: message.id,
-        workspace_id: workspaceId,
-        conversation_id: conversationId,
-        direction: "OUTBOUND",
-        sender_name: "Agente IA",
-        body_text: replyText,
-        sent_at: message.sent_at.toISOString(),
-        delivery_status: sent ? "SENT" : "DISPATCH_FAILED",
-        message_type: "TEXT",
-        has_media: false,
-      });
-
-      this.logger.log(
-        `[flowise-auto-reply] sent conv=${conversationId} chatflow=${chatflowId} plan=${workspace.plan}`
-      );
-      return true;
+      return this.persistAndSend(workspaceId, conversationId, replyText, conv, "flowise-auto-reply");
     } catch (err: unknown) {
       this.logger.error(
         `[flowise-auto-reply] workspace=${workspaceId} conv=${conversationId}: ${err instanceof Error ? err.message : String(err)}`,
       );
       return false;
     }
+  }
+
+  /**
+   * Sends a pre-composed reply directly, bypassing Flowise.
+   * Used by the Message Router for quick replies (greetings, opt-out acks, etc.).
+   * Never throws.
+   */
+  async sendQuickReply(
+    workspaceId: string,
+    conversationId: string,
+    text: string,
+  ): Promise<boolean> {
+    try {
+      const conv = await this.prisma.conversation.findFirst({
+        where: { id: conversationId, workspace_id: workspaceId },
+        select: {
+          channel: { select: { id: true, type: true, config_json: true } },
+          contact: { select: { phone: true, telegram_chat_id: true } },
+        },
+      });
+      if (!conv) return false;
+
+      return this.persistAndSend(workspaceId, conversationId, text, conv, "quick-reply");
+    } catch (err: unknown) {
+      this.logger.error(
+        `[flowise-quick-reply] workspace=${workspaceId} conv=${conversationId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return false;
+    }
+  }
+
+  // ── Private helpers ────────────────────────────────────────────────────────
+
+  private buildQuestion(text: string, options?: FlowiseDispatchOptions): string {
+    const parts: string[] = [];
+
+    if (options?.contextEnrichment?.summary) {
+      parts.push(`[CONTEXTO]\n${options.contextEnrichment.summary}`);
+    }
+    if (options?.systemPromptAddendum) {
+      parts.push(`[INSTRUCCIONES]\n${options.systemPromptAddendum}`);
+    }
+    parts.push(parts.length > 0 ? `[MENSAJE]\n${text}` : text);
+
+    return parts.join("\n\n");
+  }
+
+  private async persistAndSend(
+    workspaceId: string,
+    conversationId: string,
+    replyText: string,
+    conv: {
+      channel: { id: string; type: string; config_json: unknown } | null;
+      contact: { phone: string | null; telegram_chat_id: string | null } | null;
+    },
+    source: string,
+  ): Promise<boolean> {
+    const message = await this.prisma.message.create({
+      data: {
+        workspace_id: workspaceId,
+        conversation_id: conversationId,
+        direction: "OUTBOUND",
+        sender_name: "Agente IA",
+        sender_ref: "ai-agent@flowise",
+        body_text: replyText,
+        sent_at: new Date(),
+        delivery_status: "PENDING",
+        message_type: "TEXT",
+        has_media: false,
+        media_status: "NONE",
+        raw_payload_json: { source } as Record<string, unknown>,
+      },
+    });
+
+    let sent = false;
+    let providerMsgId: string | null = null;
+
+    if (conv.channel?.type === "WHATSAPP" && conv.contact?.phone) {
+      const to = conv.contact.phone.replace(/\D/g, "");
+      if (to) {
+        const result = await this.whatsapp.sendMessage(conv.channel, to, replyText);
+        providerMsgId = result.message_id ?? null;
+        sent = true;
+      }
+    } else if (conv.channel?.type === "TELEGRAM" && conv.contact?.telegram_chat_id) {
+      await this.telegram.sendMessage(
+        conv.channel.id,
+        conv.contact.telegram_chat_id,
+        replyText,
+      );
+      sent = true;
+    }
+
+    await this.prisma.message.update({
+      where: { id: message.id },
+      data: {
+        delivery_status: sent ? "SENT" : "DISPATCH_FAILED",
+        ...(providerMsgId ? { provider_message_id: providerMsgId } : {}),
+      },
+    });
+
+    this.events.emitNewMessage(conversationId, workspaceId, {
+      id: message.id,
+      workspace_id: workspaceId,
+      conversation_id: conversationId,
+      direction: "OUTBOUND",
+      sender_name: "Agente IA",
+      body_text: replyText,
+      sent_at: message.sent_at!.toISOString(),
+      delivery_status: sent ? "SENT" : "DISPATCH_FAILED",
+      message_type: "TEXT",
+      has_media: false,
+    });
+
+    this.logger.log(`[flowise] ${source} sent conv=${conversationId}`);
+    return true;
   }
 }
