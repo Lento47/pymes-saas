@@ -156,7 +156,7 @@ export class FlowiseClient {
         inputParams: [],
         inputAnchors: [],
         inputs: {
-          directReplyMessage: `{{ ${sourceNodeId} }}`,
+          directReplyMessage: "",
         },
         outputAnchors: [],
         outputs: {},
