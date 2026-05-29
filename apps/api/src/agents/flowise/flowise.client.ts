@@ -571,6 +571,7 @@ export class FlowiseClient {
     { key: "logsSummary", value: "" },
     { key: "errorReportsSummary", value: "" },
     { key: "codeEvidence", value: "" },
+    { key: "targetFilePath", value: "" },
     { key: "rootCause", value: "" },
     { key: "fixProposal", value: "" },
   ];
@@ -896,8 +897,8 @@ Responde SOLO con JSON: {"escalate": true/false, "reason": "..."}` }],
     });
 
     // Code reading path
-    const toolSearch = FlowiseClient.buildToolNode({ id: "toolAgentflow_9", label: "search_github_files", toolId: T("search_github_files"), inputValue: '{"query":"{{ $flow.state.codeEvidence }}","limit":5}', position: { x: 3000, y: 700 } });
-    const toolReadFile = FlowiseClient.buildToolNode({ id: "toolAgentflow_10", label: "read_github_file", toolId: T("read_github_file"), inputValue: '{"path":"{{ $flow.state.codeEvidence }}"}', position: { x: 3250, y: 700 }, updateState: JSON.stringify([{ key: "codeEvidence", value: "{{ toolAgentflow_10.output }}" }]) });
+    const toolSearch = FlowiseClient.buildToolNode({ id: "toolAgentflow_9", label: "search_github_files", toolId: T("search_github_files"), inputValue: '{"query":"{{ $flow.state.codeEvidence }}","limit":5}', position: { x: 3000, y: 700 }, updateState: JSON.stringify([{ key: "targetFilePath", value: "{{ toolAgentflow_9.output }}" }]) });
+    const toolReadFile = FlowiseClient.buildToolNode({ id: "toolAgentflow_10", label: "read_github_file", toolId: T("read_github_file"), inputValue: '{"path":"{{ $flow.state.targetFilePath }}"}', position: { x: 3250, y: 700 }, updateState: JSON.stringify([{ key: "codeEvidence", value: "{{ toolAgentflow_10.output }}" }]) });
     const llmRootCause = FlowiseClient.buildLLMNode({ id: "llmAgentflow_7", label: "Root Cause Analyst", messages: [{ role: "system", content: "Eres un SRE senior. Con los logs, errores y código real, identifica la causa raíz del bug. Sé específico: archivo, línea, función. Evidencia: {{ $flow.state.codeEvidence }}. Logs: {{ $flow.state.logsSummary }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 3000, y: 900 }, updateState: JSON.stringify([{ key: "rootCause", value: "{{ llmAgentflow_7.output }}" }]) });
     const llmFixProposal = FlowiseClient.buildLLMNode({ id: "llmAgentflow_8", label: "Fix Proposal Writer", messages: [{ role: "system", content: "Con la causa raíz identificada, genera una propuesta de fix detallada con el código corregido. Causa raíz: {{ $flow.state.rootCause }}. Incluye: archivo, cambio, razón." }], model: m, userMessage: "Generar fix", position: { x: 3250, y: 900 }, updateState: JSON.stringify([{ key: "fixProposal", value: "{{ llmAgentflow_8.output }}" }, { key: "agentResponse", value: "{{ llmAgentflow_8.output }}" }, { key: "finalResponse", value: "{{ llmAgentflow_8.output }}" }]) });
     const toolCreateFix = FlowiseClient.buildToolNode({ id: "toolAgentflow_11", label: "create_fix_proposal", toolId: T("create_fix_proposal"), inputValue: "{{ $flow.state.fixProposal }}", position: { x: 3500, y: 900 } });
@@ -1052,8 +1053,8 @@ Responde SOLO con JSON: {"classification": "safe|injection|sensitive_data|abuse"
     const toolErrors = FlowiseClient.buildToolNode({ id: "toolAgentflow_5", label: "get_recent_errors", toolId: T("get_recent_errors"), inputValue: '{"limit":30}', position: { x: 1750, y: 600 }, updateState: JSON.stringify([{ key: "errorReportsSummary", value: "{{ toolAgentflow_5.output }}" }]) });
     const toolLogs = FlowiseClient.buildToolNode({ id: "toolAgentflow_6", label: "get_railway_logs", toolId: T("get_railway_logs"), inputValue: '{"limit":100}', position: { x: 2000, y: 600 }, updateState: JSON.stringify([{ key: "logsSummary", value: "{{ toolAgentflow_6.output }}" }]) });
     const toolCommits = FlowiseClient.buildToolNode({ id: "toolAgentflow_7", label: "get_recent_commits", toolId: T("get_recent_commits"), inputValue: '{"limit":10}', position: { x: 2250, y: 600 } });
-    const toolSearch = FlowiseClient.buildToolNode({ id: "toolAgentflow_8", label: "search_github_files", toolId: T("search_github_files"), inputValue: '{"query":"{{ $flow.state.inputSanitized }}","limit":5}', position: { x: 2500, y: 600 } });
-    const toolReadFile = FlowiseClient.buildToolNode({ id: "toolAgentflow_9", label: "read_github_file", toolId: T("read_github_file"), inputValue: '{"path":"{{ $flow.state.codeEvidence }}"}', position: { x: 2750, y: 600 }, updateState: JSON.stringify([{ key: "codeEvidence", value: "{{ toolAgentflow_9.output }}" }]) });
+    const toolSearch = FlowiseClient.buildToolNode({ id: "toolAgentflow_8", label: "search_github_files", toolId: T("search_github_files"), inputValue: '{"query":"{{ $flow.state.inputSanitized }}","limit":5}', position: { x: 2500, y: 600 }, updateState: JSON.stringify([{ key: "targetFilePath", value: "{{ toolAgentflow_8.output }}" }]) });
+    const toolReadFile = FlowiseClient.buildToolNode({ id: "toolAgentflow_9", label: "read_github_file", toolId: T("read_github_file"), inputValue: '{"path":"{{ $flow.state.targetFilePath }}"}', position: { x: 2750, y: 600 }, updateState: JSON.stringify([{ key: "codeEvidence", value: "{{ toolAgentflow_9.output }}" }]) });
     const llmRootCause = FlowiseClient.buildLLMNode({
       id: "llmAgentflow_3", label: "Root Cause Analyst",
       messages: [{ role: "system", content: "Con toda la evidencia (logs, errores, código), identifica la causa raíz exacta. Especifica archivo, función, línea. Logs: {{ $flow.state.logsSummary }}. Errores: {{ $flow.state.errorReportsSummary }}. Código: {{ $flow.state.codeEvidence }}" }],
@@ -1145,6 +1146,8 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
       E("conditionAgentAgentflow_0", "conditionAgentAgentflow_0-output-1", "humanInputAgentflow_0", "humanInputAgentflow_0"),
       E("conditionAgentAgentflow_0", "conditionAgentAgentflow_0-output-2", "llmAgentflow_8", "llmAgentflow_8"),
       E("humanInputAgentflow_0", "humanInputAgentflow_0-output-option0", "toolAgentflow_0", "toolAgentflow_0"),
+      E("humanInputAgentflow_0", "humanInputAgentflow_0-output-option1", "llmAgentflow_8", "llmAgentflow_8"),
+      E("humanInputAgentflow_0", "humanInputAgentflow_0-output-option2", "llmAgentflow_7", "llmAgentflow_7"),
       E("toolAgentflow_0", "toolAgentflow_0-output-toolAgentflow", "toolAgentflow_1", "toolAgentflow_1"),
       E("toolAgentflow_1", "toolAgentflow_1-output-toolAgentflow", "conditionAgentAgentflow_1", "conditionAgentAgentflow_1"),
       // Routes
