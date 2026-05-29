@@ -184,27 +184,26 @@ export class FlowiseSetupService {
 
     for (const tier of tiers) {
       try {
-        let chatflowId: string;
+        const isProModel = tier.model === "deepseek-v4-pro";
+        const toolIds = tier.tools
+          .map((name) => toolIdByName.get(name))
+          .filter(Boolean) as string[];
+        const flowData = this.flowise.buildSupportFlowData({
+          modelName: tier.model,
+          systemPrompt: tier.systemPrompt,
+          toolIds,
+          basepath: deepseekBaseUrl,
+          temperature: isProModel ? 1.0 : 0.2,
+          credentialId: deepseekCredentialId,
+        });
 
+        let chatflowId: string;
         if (existingByName.has(tier.name)) {
           chatflowId = existingByName.get(tier.name)!;
-          this.logger.log(`[flowise-setup] Tier agentflow already exists: ${tier.name} (${chatflowId})`);
+          this.logger.log(`[flowise-setup] Rebuilding tier agentflow: ${tier.name} (${chatflowId}), flowData ${flowData.length} bytes`);
+          await this.flowise.updateChatflowWithData(chatflowId, tier.name, flowData);
+          this.logger.log(`[flowise-setup] Updated tier agentflow: ${tier.name} (${chatflowId})`);
         } else {
-          const isProModel = tier.model === "deepseek-v4-pro";
-
-          const toolIds = tier.tools
-            .map((name) => toolIdByName.get(name))
-            .filter(Boolean) as string[];
-
-          const flowData = this.flowise.buildSupportFlowData({
-            modelName: tier.model,
-            systemPrompt: tier.systemPrompt,
-            toolIds,
-            basepath: deepseekBaseUrl,
-            temperature: isProModel ? 1.0 : 0.2,
-            credentialId: deepseekCredentialId,
-          });
-
           chatflowId = await this.flowise.createChatflowWithData(tier.name, flowData);
           this.logger.log(`[flowise-setup] Created tier agentflow: ${tier.name} (${chatflowId})`);
         }
@@ -272,23 +271,24 @@ export class FlowiseSetupService {
     for (const agent of SUPPORT_AGENTS) {
       const flowName = `PymesHub Agente — ${agent.name}`;
       try {
+        const toolIds = agent.tools
+          .map((name) => toolIdByName.get(name))
+          .filter(Boolean) as string[];
+        const agentFlowData = this.flowise.buildSupportFlowData({
+          modelName: SUPPORT_MODEL_NAME[agent.model],
+          systemPrompt: agent.systemPrompt,
+          toolIds,
+          basepath: deepseekBaseUrl,
+          temperature: agent.temperature,
+          credentialId: deepseekCredentialId,
+        });
+
         let chatflowId: string;
         if (existingByName.has(flowName)) {
           chatflowId = existingByName.get(flowName)!;
+          await this.flowise.updateChatflowWithData(chatflowId, flowName, agentFlowData);
         } else {
-          const toolIds = agent.tools
-            .map((name) => toolIdByName.get(name))
-            .filter(Boolean) as string[];
-
-          const flowData = this.flowise.buildSupportFlowData({
-            modelName: SUPPORT_MODEL_NAME[agent.model],
-            systemPrompt: agent.systemPrompt,
-            toolIds,
-            basepath: deepseekBaseUrl,
-            temperature: agent.temperature,
-            credentialId: deepseekCredentialId,
-          });
-          chatflowId = await this.flowise.createChatflowWithData(flowName, flowData);
+          chatflowId = await this.flowise.createChatflowWithData(flowName, agentFlowData);
           this.logger.log(`[flowise-setup] Created specialized agentflow: ${flowName} (${chatflowId})`);
         }
 
@@ -378,6 +378,21 @@ export class FlowiseSetupService {
       this.logger.error(`[flowise-setup] reprovisionSupportAgent(${slug}) failed: ${err?.message}`);
       return null;
     }
+  }
+
+  /** Force-rebuild all tier agentflows and specialized agent flows. Safe to call at any time. */
+  async reprovisionAllFlows(): Promise<{ rebuilt: string[]; failed: string[] }> {
+    const rebuilt: string[] = [];
+    const failed: string[] = [];
+    this.logger.log("[flowise-setup] reprovisionAllFlows triggered manually");
+    try {
+      await this.setup();
+      rebuilt.push("all");
+    } catch (err: any) {
+      this.logger.error(`[flowise-setup] reprovisionAllFlows failed: ${err?.message}`);
+      failed.push(err?.message ?? "unknown");
+    }
+    return { rebuilt, failed };
   }
 
   /** Get the Flowise chatflow ID for a workspace plan */

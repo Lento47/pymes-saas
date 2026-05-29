@@ -156,7 +156,7 @@ export class FlowiseClient {
         inputParams: [],
         inputAnchors: [],
         inputs: {
-          directReplyMessage: `{{ ${sourceNodeId} }}`,
+          directReplyMessage: `{{ ${sourceNodeId}.output }}`,
         },
         outputAnchors: [],
         outputs: {},
@@ -318,6 +318,34 @@ export class FlowiseClient {
     const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
     const body = { name, flowData: flowDataJson, deployed: true, isPublic: false, type: "AGENTFLOW" };
     return this._postChatflow(url, body);
+  }
+
+  async updateChatflowWithData(id: string, name: string, flowDataJson: string): Promise<void> {
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows/${id}`;
+    const body = { name, flowData: flowDataJson, deployed: true, isPublic: false, type: "AGENTFLOW" };
+    const bodyJson = JSON.stringify(body);
+    this.logger.log(`FlowiseClient.updateChatflowWithData → PUT ${url} (body ${bodyJson.length} bytes, auth=${!!this.apiKey})`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...this.authHeaders },
+        body: bodyJson,
+        signal: controller.signal,
+      });
+      const responseText = await res.text().catch(() => "");
+      if (!res.ok) {
+        throw new Error(`Flowise chatflow update failed: ${res.status} ${responseText}`);
+      }
+      this.logger.log(`Chatflow updated in Flowise: ${id} (${name}) — HTTP ${res.status}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`FlowiseClient.updateChatflowWithData failed for "${name}": ${msg}`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async listChatflows(): Promise<Array<{ id: string; name: string }>> {
