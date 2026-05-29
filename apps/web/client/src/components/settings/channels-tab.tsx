@@ -603,33 +603,39 @@ export function ChannelsTab() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
+                  {/* Primary action: always one of configure / connect / edit */}
                   {needsConfig && (
                     <button
-                      className="p-1.5 rounded-md border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                      title="Configurar"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted border border-border hover:bg-accent transition-colors text-xs font-medium text-foreground"
+                      title="Configurar canal"
                       onClick={() => setConfigChannel(ch)}
                     >
                       <PlugZap className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {canEdit && (
-                    <button
-                      className="p-1.5 rounded-md border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                      title="Editar"
-                      onClick={() => setConfigChannel(ch)}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
+                      Configurar
                     </button>
                   )}
                   {canConnect && (
                     <button
-                      className="p-1.5 rounded-md border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                      title="Conectar"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted border border-border hover:bg-accent transition-colors text-xs font-medium text-foreground"
+                      title="Conectar canal"
                       onClick={() => api.connectChannel(ch.id).then(() => qc.invalidateQueries({ queryKey: ["/api/channels"] }))}
                     >
                       <Plug className="h-3.5 w-3.5" />
+                      Conectar
                     </button>
                   )}
+                  {canEdit && (
+                    <button
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted border border-border hover:bg-accent transition-colors text-xs font-medium text-foreground"
+                      title="Editar canal"
+                      onClick={() => setConfigChannel(ch)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Editar
+                    </button>
+                  )}
+
+                  {/* Secondary: disconnect */}
                   {isActive && (
                     <button
                       className="p-1.5 rounded-md border border-border hover:bg-orange-500/10 hover:border-orange-500/30 transition-colors text-muted-foreground hover:text-orange-400"
@@ -640,6 +646,7 @@ export function ChannelsTab() {
                       <PowerOff className="h-3.5 w-3.5" />
                     </button>
                   )}
+                  {/* Destructive: delete */}
                   <button
                     className="p-1.5 rounded-md border border-border hover:bg-destructive/10 hover:border-destructive/30 transition-colors text-muted-foreground hover:text-destructive"
                     title="Eliminar canal"
