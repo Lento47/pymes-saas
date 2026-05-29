@@ -487,14 +487,14 @@ export class FlowiseSetupService {
       },
       get_recent_commits: {
         name: "get_recent_commits",
-        description: "Obtiene commits recientes que modificaron un archivo específico. Útil para detectar regresiones.",
+        description: "Obtiene commits recientes. Si se provee path, filtra por archivo específico. Útil para detectar regresiones.",
         schema: JSON.stringify({
           type: "object",
           properties: {
-            path: { type: "string", description: "Ruta del archivo a revisar" },
+            path: { type: "string", description: "Ruta del archivo a revisar (opcional)" },
             limit: { type: "number", description: "Número máximo de commits" },
           },
-          required: ["path"],
+          required: [],
         }),
         func: makeFunc("get_recent_commits"),
       },
