@@ -102,8 +102,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 1024,
   );
-  const wsMenuRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const wsMenuRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const [bottomNavHidden, setBottomNavHidden] = useState(false);
   const pullStartY = useRef(0);
   const [pullDistance, setPullDistance] = useState(0);
@@ -567,13 +567,13 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         <div
           ref={scrollRef}
           className="flex-1 overflow-y-auto minimal-scrollbar pb-[52px] lg:pb-0"
-          onTouchStart={(e) => {
+          onTouchStart={(e: React.TouchEvent<HTMLDivElement>) => {
             if (scrollRef.current && scrollRef.current.scrollTop === 0) {
               pullStartY.current = e.touches[0].clientY;
               isPulling.current = true;
             }
           }}
-          onTouchMove={(e) => {
+          onTouchMove={(e: React.TouchEvent<HTMLDivElement>) => {
             if (!isPulling.current) return;
             const dy = e.touches[0].clientY - pullStartY.current;
             if (dy > 0 && scrollRef.current?.scrollTop === 0) {
