@@ -1315,20 +1315,22 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
   async updateChatflowWithData(id: string, name: string, flowDataJson: string): Promise<void> {
     const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows/${id}`;
     const body = { name, flowData: flowDataJson, deployed: true, isPublic: false, type: "AGENTFLOW" };
+    const bodyJson = JSON.stringify(body);
+    this.logger.log(`FlowiseClient.updateChatflowWithData → PUT ${url} (body ${bodyJson.length} bytes, auth=${!!this.apiKey})`);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       const res = await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...this.authHeaders },
-        body: JSON.stringify(body),
+        body: bodyJson,
         signal: controller.signal,
       });
+      const responseText = await res.text().catch(() => "");
       if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`Flowise chatflow update failed: ${res.status} ${text}`);
+        throw new Error(`Flowise chatflow update failed: ${res.status} ${responseText}`);
       }
-      this.logger.log(`Chatflow updated in Flowise: ${id} (${name})`);
+      this.logger.log(`Chatflow updated in Flowise: ${id} (${name}) — HTTP ${res.status}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`FlowiseClient.updateChatflowWithData failed for "${name}": ${msg}`);
@@ -1428,6 +1430,12 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     }
   }
 
+  /**
+   * Overwrite the stored secret on an existing credential (same ID).
+   * Used to refresh a stale/empty key, or one encrypted under a previous
+   * FLOWISE_SECRETKEY_OVERWRITE, without changing the ID — so any flow that
+   * already references this credential is healed in place.
+   */
   async updateCredential(id: string, def: FlowiseCredentialDef): Promise<void> {
     const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/credentials/${id}`;
     const controller = new AbortController();
@@ -1449,6 +1457,7 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     }
   }
 
+  /** Clear the in-process credential ID cache (call when Flowise may have been reset). */
   clearCredentialCache(): void {
     this.credentialCache.clear();
   }
@@ -1457,6 +1466,10 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     const existing = await this.listCredentials();
     const found = existing.find((c) => c.name === name);
     if (found) {
+      // Refresh the stored key in place. The credential may have been created
+      // earlier with an empty/stale key, or encrypted under a previous
+      // FLOWISE_SECRETKEY_OVERWRITE (un-decryptable → "Missing credentials").
+      // Reusing the same ID heals every flow that already references it.
       try {
         await this.updateCredential(found.id, {
           credentialName: "openAIApi",
@@ -1464,7 +1477,7 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
           plainDataObj: { openAIApiKey: apiKey },
         });
       } catch {
-        // non-fatal
+        // non-fatal — fall back to the existing credential as-is
       }
       this.credentialCache.set(name, found.id);
       return found.id;
