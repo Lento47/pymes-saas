@@ -63,10 +63,24 @@ export interface SendPlan {
   reason: string;
 }
 
+export type AgentType = "sales" | "support" | "billing" | "human" | "general";
+
+export type ModelTier = "fast" | "balanced" | "powerful";
+
+export interface ContextEnrichment {
+  summary: string;
+  data: Record<string, unknown>;
+}
+
 export interface RouterDecision {
   intent: Intent;
   intentConfidence: "high" | "medium" | "low";
   policy: PolicyDecision;
   sendPlan: SendPlan | null;
   shouldCallAi: boolean;
+  quickReplyText?: string;
+  agentType?: AgentType;
+  modelTier?: ModelTier;
+  systemPromptAddendum?: string;
+  contextEnrichment?: ContextEnrichment;
 }
