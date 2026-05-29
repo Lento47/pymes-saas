@@ -184,33 +184,32 @@ export class FlowiseSetupService {
 
     for (const tier of tiers) {
       try {
-        let chatflowId: string;
+        const isProModel = tier.model === "deepseek-v4-pro";
+        const modelConfig: FlowiseModelConfig = {
+          credentialId: deepseekCredentialId,
+          modelName: tier.model,
+          basepath: deepseekBaseUrl,
+          temperature: isProModel ? 1.0 : 0.2,
+        };
+        const toolIdMap = Object.fromEntries(toolIdByName.entries()) as Record<string, string>;
 
+        let flowData: string;
+        if (tier.slug === SUPPORT_TIER_SLUGS.TIER_1) {
+          flowData = this.flowise.buildTier1FlowData(modelConfig);
+        } else if (tier.slug === SUPPORT_TIER_SLUGS.TIER_2) {
+          flowData = this.flowise.buildTier2FlowData(modelConfig, toolIdMap);
+        } else if (tier.slug === SUPPORT_TIER_SLUGS.TIER_3) {
+          flowData = this.flowise.buildTier3FlowData(modelConfig, toolIdMap);
+        } else {
+          flowData = this.flowise.buildTier4FlowData(modelConfig, toolIdMap);
+        }
+
+        let chatflowId: string;
         if (existingByName.has(tier.name)) {
           chatflowId = existingByName.get(tier.name)!;
-          this.logger.log(`[flowise-setup] Tier agentflow already exists: ${tier.name} (${chatflowId})`);
+          await this.flowise.updateChatflowWithData(chatflowId, tier.name, flowData);
+          this.logger.log(`[flowise-setup] Updated tier agentflow: ${tier.name} (${chatflowId})`);
         } else {
-          const isProModel = tier.model === "deepseek-v4-pro";
-
-          const modelConfig: FlowiseModelConfig = {
-            credentialId: deepseekCredentialId,
-            modelName: tier.model,
-            basepath: deepseekBaseUrl,
-            temperature: isProModel ? 1.0 : 0.2,
-          };
-          const toolIdMap = Object.fromEntries(toolIdByName.entries()) as Record<string, string>;
-
-          let flowData: string;
-          if (tier.slug === SUPPORT_TIER_SLUGS.TIER_1) {
-            flowData = this.flowise.buildTier1FlowData(modelConfig);
-          } else if (tier.slug === SUPPORT_TIER_SLUGS.TIER_2) {
-            flowData = this.flowise.buildTier2FlowData(modelConfig, toolIdMap);
-          } else if (tier.slug === SUPPORT_TIER_SLUGS.TIER_3) {
-            flowData = this.flowise.buildTier3FlowData(modelConfig, toolIdMap);
-          } else {
-            flowData = this.flowise.buildTier4FlowData(modelConfig, toolIdMap);
-          }
-
           chatflowId = await this.flowise.createChatflowWithData(tier.name, flowData);
           this.logger.log(`[flowise-setup] Created tier agentflow: ${tier.name} (${chatflowId})`);
         }
@@ -278,23 +277,24 @@ export class FlowiseSetupService {
     for (const agent of SUPPORT_AGENTS) {
       const flowName = `PymesHub Agente — ${agent.name}`;
       try {
+        const toolIds = agent.tools
+          .map((name) => toolIdByName.get(name))
+          .filter(Boolean) as string[];
+        const agentFlowData = this.flowise.buildSupportFlowData({
+          modelName: SUPPORT_MODEL_NAME[agent.model],
+          systemPrompt: agent.systemPrompt,
+          toolIds,
+          basepath: deepseekBaseUrl,
+          temperature: agent.temperature,
+          credentialId: deepseekCredentialId,
+        });
+
         let chatflowId: string;
         if (existingByName.has(flowName)) {
           chatflowId = existingByName.get(flowName)!;
+          await this.flowise.updateChatflowWithData(chatflowId, flowName, agentFlowData);
         } else {
-          const toolIds = agent.tools
-            .map((name) => toolIdByName.get(name))
-            .filter(Boolean) as string[];
-
-          const flowData = this.flowise.buildSupportFlowData({
-            modelName: SUPPORT_MODEL_NAME[agent.model],
-            systemPrompt: agent.systemPrompt,
-            toolIds,
-            basepath: deepseekBaseUrl,
-            temperature: agent.temperature,
-            credentialId: deepseekCredentialId,
-          });
-          chatflowId = await this.flowise.createChatflowWithData(flowName, flowData);
+          chatflowId = await this.flowise.createChatflowWithData(flowName, agentFlowData);
           this.logger.log(`[flowise-setup] Created specialized agentflow: ${flowName} (${chatflowId})`);
         }
 
