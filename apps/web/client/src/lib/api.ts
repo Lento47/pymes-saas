@@ -659,6 +659,16 @@ export const api = {
     request<Record<string, any>>("GET", "/api/platform/ai-config"),
   platformUpdateAiConfig: (data: Record<string, any>) =>
     request<Record<string, any>>("PATCH", "/api/platform/ai-config", data),
+
+  // ── Router metrics (platform admin) ─────────────────────────────────────
+  platformGetRouterMetrics: (days?: number) =>
+    request<Record<string, any>>("GET", `/api/platform/router-metrics${days ? `?days=${days}` : ""}`),
+
+  // ── Support case orchestration (platform admin) ───────────────────────────
+  platformOrchestrateSupportCase: (caseId: string, message?: string) =>
+    request<Record<string, any>>("POST", `/api/platform/support-cases/${caseId}/orchestrate`, { message }),
+  platformGetCaseRuns: (caseId: string) =>
+    request<Record<string, any>[]>("GET", `/api/platform/support-cases/${caseId}/runs`),
 };
 
 // ── Session activity tracking ────────────────────────────────────────────
