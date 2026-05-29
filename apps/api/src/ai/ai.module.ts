@@ -36,6 +36,11 @@ import { AiTokensModule } from "../ai-tokens/ai-tokens.module";
 
 import { AiTriageService } from "./ai-triage.service";
 import { ElevenLabsService } from "./elevenlabs.service";
+import { MessageRouterService } from "./message-router/message-router.service";
+import { IntentClassifierService } from "./message-router/intent-classifier.service";
+import { PolicyEngineService } from "./message-router/policy-engine.service";
+import { SmartSendService } from "./message-router/smart-send.service";
+import { AiDecisionAuditService } from "./message-router/ai-decision-audit.service";
 import { EmprendePlaybooksService } from "./emprende-playbooks.service";
 import { PlaybookExecutionService } from "./playbook-execution.service";
 import { PlatformAdminService } from "./platform-admin.service";
@@ -93,6 +98,11 @@ import { PlatformModule } from "../platform/platform.module";
     PlatformAdminService,
     FixApprovalService,
     FlowiseAutoReplyService,
+    MessageRouterService,
+    IntentClassifierService,
+    PolicyEngineService,
+    SmartSendService,
+    AiDecisionAuditService,
   ],
   controllers: [
     AgentController,
@@ -120,6 +130,11 @@ import { PlatformModule } from "../platform/platform.module";
     PlatformAdminService,
     FixApprovalService,
     FlowiseAutoReplyService,
+    MessageRouterService,
+    IntentClassifierService,
+    PolicyEngineService,
+    SmartSendService,
+    AiDecisionAuditService,
   ],
 })
 export class AiModule {}
