@@ -646,7 +646,6 @@ export function ChannelsTab() {
                       <PowerOff className="h-3.5 w-3.5" />
                     </button>
                   )}
-
                   {/* Destructive: delete */}
                   <button
                     className="p-1.5 rounded-md border border-border hover:bg-destructive/10 hover:border-destructive/30 transition-colors text-muted-foreground hover:text-destructive"
