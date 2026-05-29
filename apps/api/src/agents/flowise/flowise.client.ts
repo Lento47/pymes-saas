@@ -56,7 +56,8 @@ export class FlowiseClient {
         inputs: {
           startInputType: "chatInput",
           startEphemeralMemory: "",
-          startState: "",
+          // Declare flow state key so agent can write output and directReply can read it
+          startState: JSON.stringify([{ key: "agentResponse", value: "" }]),
           startPersistState: "",
         },
         outputAnchors: [
@@ -123,7 +124,8 @@ export class FlowiseClient {
           agentMemoryMaxTokenLimit: "",
           agentUserMessage: "",
           agentReturnResponseAs: "userMessage",
-          agentUpdateState: "",
+          // Write agent output to flow state so directReply can reference it
+          agentUpdateState: JSON.stringify([{ key: "agentResponse", value: `{{ ${id}.output }}` }]),
           agentModelConfig,
         },
         outputAnchors: [
@@ -156,7 +158,8 @@ export class FlowiseClient {
         inputParams: [],
         inputAnchors: [],
         inputs: {
-          directReplyMessage: "",
+          // Reference agent output via flow state — documented {{ $flow.state.key }} pattern
+          directReplyMessage: "{{ $flow.state.agentResponse }}",
         },
         outputAnchors: [],
         outputs: {},
