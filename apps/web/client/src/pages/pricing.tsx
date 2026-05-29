@@ -94,7 +94,7 @@ export default function PricingPage() {
         {/* Pricing Cards */}
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
-            <div className="grid gap-4 md:gap-8 lg:grid-cols-4">
+            <div className="grid gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {PRICING_TIERS.map((tier) => (
                 <PricingCard
                   key={tier.name}

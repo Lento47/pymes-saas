@@ -627,6 +627,61 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
     ],
   },
   {
+    slug: "modelo-emprende",
+    title: "Modelo Emprende — Para emprendedores que arrancan solos",
+    summary: "Cómo PymesHub apoya a solopreneurs y micronegocios: qué incluye el plan Emprende, cómo conectar WhatsApp propio y qué cargos corresponden a Meta.",
+    purpose: "Explicar a pequeños emprendedores exactamente qué obtienen con el plan Emprende y cómo empezar sin complicaciones.",
+    category: "business",
+    visibility: "public",
+    audience: "Cliente",
+    repoPath: "docs/business/modelo-emprende.md",
+    highlights: [
+      "WhatsApp Business incluido — conectás tu propio número, PymesHub opera como capa de software",
+      "CRM básico para llevar contactos, historial de conversaciones y notas",
+      "Facturación básica y pipeline de pedidos para gestionar ventas",
+      "50 facturas/mes, 1 usuario, 2 GB de almacenamiento",
+      "Los cargos de plantillas WhatsApp los cobra Meta a tu cuenta — no están en el plan",
+    ],
+    sections: [
+      {
+        title: "¿Para quién es el plan Emprende?",
+        body: [
+          "El plan Emprende está diseñado para dueños de negocio que trabajan solos o con un equipo muy pequeño: tiendas, servicios independientes, freelancers con clientes, o cualquier PyME en sus primeros pasos operativos.",
+          "Si recibís pedidos o consultas por WhatsApp, necesitás llevar un registro de clientes y emitir facturas ocasionalmente, este plan cubre lo esencial sin pagar por funcionalidades que no vas a usar todavía.",
+        ],
+      },
+      {
+        title: "Qué incluye",
+        body: [
+          "Bandeja de WhatsApp: recibís y enviás mensajes desde PymesHub. Podés ver el historial, asignar conversaciones (solo vos) y usar plantillas de respuesta.",
+          "CRM básico: un registro de tus contactos — clientes, proveedores, leads — con historial de conversaciones, notas y etiquetas.",
+          "Facturación básica: creación de facturas simples, envío por WhatsApp o email, y seguimiento de estado (pendiente, pagada, vencida).",
+          "Pipeline de pedidos: seguimiento de pedidos por estado (Recibido → En proceso → Completado).",
+          "Límites del plan: 1 usuario, 50 facturas/mes, 5 automatizaciones básicas, 2 GB de almacenamiento.",
+        ],
+      },
+      {
+        title: "WhatsApp y costos de Meta",
+        body: [
+          "PymesHub conecta con tu propia cuenta de WhatsApp Business (WABA) via la API oficial de Meta. Vos sos el dueño del número y la cuenta — PymesHub opera como capa de software que envía y recibe mensajes en tu nombre.",
+          "Los mensajes de plantilla (como confirmaciones de pedido o recordatorios de pago) tienen cargos establecidos por Meta que se cobran directamente a tu cuenta de Meta Business Manager. Estos costos no están incluidos en el plan Emprende.",
+          "Para habilitar el envío de plantillas, necesitás agregar un método de pago en tu Meta Business Manager antes de usar esa funcionalidad. Los mensajes dentro de la ventana de servicio de 24 horas generalmente no tienen costo adicional.",
+          "Si tu cuenta de Meta no tiene método de pago, PymesHub te mostrará un aviso claro cuando intentés enviar una plantilla, con instrucciones para completar la configuración en Meta.",
+        ],
+      },
+      {
+        title: "Cómo empezar",
+        body: [
+          "1. Registrate en PymesHub y creá tu workspace.",
+          "2. En Settings > Canales, conectá tu número de WhatsApp Business mediante el flujo de configuración.",
+          "3. Completá el onboarding básico: nombre del negocio, productos o servicios principales.",
+          "4. Empezá a responder desde el inbox y registrar tus contactos.",
+          "Cuando tu negocio crezca y necesités más usuarios, automatizaciones o funcionalidades avanzadas, podés actualizar al plan Starter o Growth desde Settings > Facturación.",
+        ],
+      },
+    ],
+  },
+  {
     slug: "whatsapp-billing-model",
     title: "Modelo de facturación de WhatsApp y Telegram",
     summary: "Cómo se cobran los mensajes de WhatsApp Business y Telegram en PymesHub: quién paga a Meta y qué incluye la suscripción.",
