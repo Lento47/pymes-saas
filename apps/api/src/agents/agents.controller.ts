@@ -14,6 +14,7 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import type { AuthUser } from "../auth/strategies/jwt.strategy";
 import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
 import { AgentsService } from "./agents.service";
 import { AgentRuntimeService } from "./runtime/agent-runtime.service";
@@ -42,14 +43,15 @@ export class AgentsController {
     WorkspaceUserRole.OWNER,
   )
   orchestrateSupport(
-    @CurrentUser("workspace_id") workspaceId: string,
+    @CurrentUser() user: AuthUser,
     @Body() dto: OrchestrateSupportDto,
   ) {
     return this.orchestrator.orchestrate({
-      workspace_id: workspaceId,
+      workspace_id: user.workspace_id,
       message: dto.message,
       diagnostic_case_id: dto.diagnostic_case_id,
       allow_pr_creation: dto.allow_pr_creation,
+      triggered_by_user_id: user.id,
     });
   }
 

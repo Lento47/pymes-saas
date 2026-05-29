@@ -17,6 +17,7 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import { FlowiseClient } from "../flowise/flowise.client";
 import { FlowiseSetupService, PLAN_TO_TIER } from "../flowise-setup.service";
 import { AgentGuardrailsService } from "../runtime/agent-guardrails.service";
+import { NotificationsService } from "../../notifications/notifications.service";
 import { getSupportAgent } from "./support-agents.catalog";
 import { buildPipeline } from "./support-pipeline";
 import type {
@@ -33,6 +34,8 @@ export interface OrchestrateInput {
   diagnostic_case_id?: string;
   /** Tier 3 opt-in for the fix→PR branch. */
   allow_pr_creation?: boolean;
+  /** User who triggered the run — receives escalation notification. */
+  triggered_by_user_id?: string;
 }
 
 interface StageRecord {
@@ -67,6 +70,7 @@ export class SupportOrchestratorService {
     private readonly flowise: FlowiseClient,
     private readonly flowiseSetup: FlowiseSetupService,
     private readonly guardrails: AgentGuardrailsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async orchestrate(input: OrchestrateInput): Promise<OrchestrateResult> {
@@ -153,6 +157,17 @@ export class SupportOrchestratorService {
           summary,
         },
       });
+
+      if (needsHuman) {
+        this.notifyHumanEscalation(
+          input.workspace_id,
+          run.id,
+          summary,
+          input.triggered_by_user_id,
+        ).catch((err) =>
+          this.logger.error(`[orchestrator] escalation notification failed: ${err?.message}`)
+        );
+      }
 
       return {
         run_id: run.id,
@@ -347,5 +362,40 @@ export class SupportOrchestratorService {
         : "Pipeline completado sin acciones sensibles pendientes.",
     );
     return parts.join(" ");
+  }
+
+  private async notifyHumanEscalation(
+    workspaceId: string,
+    runId: string,
+    summary: string,
+    triggeredByUserId?: string,
+  ): Promise<void> {
+    const owners = await this.prisma.workspaceUser.findMany({
+      where: { workspace_id: workspaceId, role: { in: ["OWNER", "ADMIN"] } },
+      select: { user_id: true },
+    });
+
+    for (const { user_id } of owners) {
+      await this.notifications.create(workspaceId, {
+        user_id,
+        type: "support_escalation",
+        title: "Caso de soporte requiere revisión",
+        body: summary.slice(0, 200),
+        related_entity_type: "support_run",
+        related_entity_id: runId,
+      });
+    }
+
+    // Also notify the user who triggered the run if they're not already an owner/admin
+    if (triggeredByUserId && !owners.some((o) => o.user_id === triggeredByUserId)) {
+      await this.notifications.create(workspaceId, {
+        user_id: triggeredByUserId,
+        type: "support_escalation",
+        title: "Caso de soporte requiere revisión",
+        body: summary.slice(0, 200),
+        related_entity_type: "support_run",
+        related_entity_id: runId,
+      });
+    }
   }
 }
