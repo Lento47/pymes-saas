@@ -1352,6 +1352,14 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     }
   }
 
+  async deleteChatflow(id: string): Promise<void> {
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows/${id}`;
+    const res = await fetch(url, { method: "DELETE", headers: { "Content-Type": "application/json", ...this.authHeaders } });
+    if (!res.ok && res.status !== 404) {
+      throw new Error(`Flowise DELETE chatflow ${id} returned HTTP ${res.status}`);
+    }
+  }
+
   // ── Tool CRUD ──────────────────────────────────────────────────────────────
 
   async listTools(): Promise<Array<{ id: string; name: string }>> {

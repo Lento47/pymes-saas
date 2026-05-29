@@ -495,7 +495,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
-              "hidden lg:flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-colors shrink-0",
+              "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-colors shrink-0",
               "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             )}
             title={sidebarOpen ? copy.closeMenu : copy.openMenu}
@@ -516,8 +516,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             <span className="flex-1">{copy.searchPlaceholder}</span>
             <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">Ctrl K</kbd>
           </button>
-
-          <div className="flex-1 md:hidden" />
 
           <button
             onClick={() => setSearchOpen(true)}

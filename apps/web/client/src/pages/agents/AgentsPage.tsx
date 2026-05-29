@@ -60,6 +60,16 @@ export default function AgentsPage() {
       toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => api.deleteAgent(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+      toast({ title: "Agente eliminado" });
+    },
+    onError: (e: any) =>
+      toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
@@ -113,6 +123,7 @@ export default function AgentsPage() {
               agent={a}
               onActivate={() => activateMut.mutate(a.id)}
               onDeactivate={() => deactivateMut.mutate(a.id)}
+              onDelete={() => deleteMut.mutate(a.id)}
             />
           ))}
         </div>
