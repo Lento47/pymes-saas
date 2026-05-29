@@ -6,7 +6,6 @@ import { useTheme } from "@/components/providers/theme-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { SearchDialog } from "@/components/shared/search-dialog";
-import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -537,17 +536,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
         <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-        <div className="flex-1 overflow-y-auto minimal-scrollbar pb-16 lg:pb-0">
+        <div className="flex-1 overflow-y-auto minimal-scrollbar">
           {children}
         </div>
       </main>
-
-      <MobileBottomNav
-        onMenuClick={() => setSidebarOpen(true)}
-        isItemVisible={canShowNavItem}
-        unreadCount={unreadCount}
-        overdueCount={overdueCount}
-      />
 
     </div>
   );
