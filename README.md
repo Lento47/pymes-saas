@@ -92,6 +92,7 @@ Usuario (WhatsApp/Telegram)
 | **Pagos** | Paddle + PayPal |
 | **Auth** | JWT + Refresh Token Rotation + SAML SSO |
 | **AI** | OpenAI / Anthropic / Gemini / DeepSeek (via multi-provider adapter) |
+| **AI Agents** | Flowise AgentFlow V2 (chatflows provisionados automáticamente por plan) |
 | **Observabilidad** | OpenTelemetry + Jaeger |
 | **Edge** | Cloudflare Worker (WebSocket proxy, KV cache) |
 | **Hosting** | Railway (backend) + Cloudflare Pages (frontend) |
@@ -167,7 +168,27 @@ Motor de análisis mes-a-mes que genera alertas accionables en español:
 - Notificaciones in-app: mensaje nuevo, tarea vencida, mención
 - Campana de notificaciones con badge
 
-### AI Agent integrado
+### AI Agents (Flowise)
+Motor de agentes IA sobre **Flowise AgentFlow V2**. Cada workspace puede crear y gestionar agentes independientes con alcance por canal:
+
+- Creación de agentflows en Flowise vía API en el momento de provisión
+- `channel_scope`: `ALL | WHATSAPP | TELEGRAM | EMAIL | WEB | MANUAL`
+- Estado: `DRAFT → ACTIVE / INACTIVE`; solo agentes ACTIVE responden mensajes
+- El LLM orquestador selecciona automáticamente el agente correcto por contexto
+- Memoria multi-turno por conversación via `AgentConversationSession`
+- Métricas de uso (tokens, latencia, costo) en `AgentUsageEvent`
+- Endpoint de re-provisión on-demand: `POST /api/agents/admin/flowise-rebuild`
+
+**Soporte técnico por tiers** (basado en el plan del workspace):
+
+| Tier | Plan | Capacidades |
+|------|------|-------------|
+| **Tier 1** | Free | Confirma recepción, recomienda actualizar plan |
+| **Tier 2** | Starter | Lee logs Railway, extrae errores, lista casos diagnóstico |
+| **Tier 3** | Business | + lee código fuente GitHub, detecta regresiones, propone fixes para aprobación manual |
+| **Tier 4** | Business+ | + aplica fixes automáticamente (crea branch, commit y PR en draft) |
+
+### AI integrado en inbox
 - Resúmenes diarios automáticos en español
 - Clasificación de conversaciones por urgencia y categoría
 - Sugerencias de respuestas y productos
@@ -185,8 +206,9 @@ Motor de análisis mes-a-mes que genera alertas accionables en español:
 | `workspaces` | Multi-tenancy, stats, miembros, facturación |
 | `contacts` | CRM: clientes, proveedores, leads |
 | `conversations` | Threads + mensajes + inbox unificado |
-| `whatsapp` | WhatsApp Cloud API (send/receive/templates/media/interactive) |
-| `channels` | Configuración de canales (Email, WhatsApp, Telegram, Form, API) |
+| `whatsapp` | WhatsApp Cloud API (send/receive/templates/media/interactive); billing gestionado por el cliente en Meta |
+| `channels` | Configuración de canales (Email, WhatsApp, Telegram, Form, API); webhooks, tokens, estado |
+| `agents` | Agentes IA: CRUD, provisión en Flowise, runtime, soporte por tiers, admin rebuild |
 | `tasks` | Gestión de tareas con deadlines |
 | `documents` | Upload a S3/MinIO + OCR automático |
 | `automations` | Reglas, triggers, condiciones, historial |
@@ -244,13 +266,17 @@ Motor de análisis mes-a-mes que genera alertas accionables en español:
 
 ## Planes
 
-| Plan | Usuarios | Contactos | Canales | Funcionalidades clave |
-|------|----------|-----------|---------|----------------------|
-| **FREE** | 1 | 100 | 2 | Inbox básico, contactos, tareas |
-| **EMPRENDE** | 1 | 500 | 3 | WhatsApp, pipeline de pedidos, facturación, AI inbox |
-| **BUSINESS** | 15 | Ilimitado | Ilimitado | Automatizaciones, SAML SSO, API, reportes avanzados |
+| Plan | Precio | Usuarios | Funcionalidades clave |
+|------|--------|----------|-----------------------|
+| **Emprende** | $15/mes | 1 | CRM, WhatsApp inbox, facturación ilimitada, pipeline de pedidos |
+| **Starter** | $25/mes | 1 | + facturación avanzada, dashboard, 15 automatizaciones |
+| **Growth** | $59/mes | 5 | + automatizaciones básicas, roles de usuario, migración de datos |
+| **Business** | $119/mes | 15 | + múltiples ubicaciones, API, auditoría, soporte telefónico |
+| **Business+** | Personalizado | Ilimitado | + SSO/SAML, SLA, contratos, onboarding dedicado, AI Tier 4 |
 
-Los límites se aplican en tiempo real via `PlanLimitsService`. Los perfiles (EMPRENDE / BUSINESS) controlan qué features se muestran via `FeatureFlagsService`.
+> **Nota de canales:** PymesHub se conecta con la WABA propia del cliente via WhatsApp Business Cloud API. Los cargos por mensajes de plantilla que aplique Meta se cobran directamente al negocio por Meta — no están incluidos en la suscripción de PymesHub. Telegram no tiene cargos adicionales en uso normal.
+
+Los límites se aplican en tiempo real via `PlanLimitsService`. Los perfiles controlan qué features se muestran via `FeatureFlagsService`.
 
 ---
 

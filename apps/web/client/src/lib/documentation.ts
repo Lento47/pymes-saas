@@ -626,6 +626,147 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
       "Puntos de salida, backups y notas de cumplimiento",
     ],
   },
+  {
+    slug: "modelo-emprende",
+    title: "Modelo Emprende — Para emprendedores que arrancan solos",
+    summary: "Cómo PymesHub apoya a solopreneurs y micronegocios: qué incluye el plan Emprende, cómo conectar WhatsApp propio y qué cargos corresponden a Meta.",
+    purpose: "Explicar a pequeños emprendedores exactamente qué obtienen con el plan Emprende y cómo empezar sin complicaciones.",
+    category: "business",
+    visibility: "public",
+    audience: "Cliente",
+    repoPath: "docs/business/modelo-emprende.md",
+    highlights: [
+      "WhatsApp Business incluido — conectás tu propio número, PymesHub opera como capa de software",
+      "CRM básico para llevar contactos, historial de conversaciones y notas",
+      "Facturación básica y pipeline de pedidos para gestionar ventas",
+      "Facturación ilimitada — sin tope mensual de facturas",
+      "Los cargos de plantillas WhatsApp los cobra Meta a tu cuenta — no están en el plan",
+    ],
+    sections: [
+      {
+        title: "¿Para quién es el plan Emprende?",
+        body: [
+          "El plan Emprende está diseñado para dueños de negocio que trabajan solos o con un equipo muy pequeño: tiendas, servicios independientes, freelancers con clientes, o cualquier PyME en sus primeros pasos operativos.",
+          "Si recibís pedidos o consultas por WhatsApp, necesitás llevar un registro de clientes y emitir facturas ocasionalmente, este plan cubre lo esencial sin pagar por funcionalidades que no vas a usar todavía.",
+        ],
+      },
+      {
+        title: "Qué incluye",
+        body: [
+          "Bandeja de WhatsApp: recibís y enviás mensajes desde PymesHub. Podés ver el historial, asignar conversaciones (solo vos) y usar plantillas de respuesta.",
+          "CRM básico: un registro de tus contactos — clientes, proveedores, leads — con historial de conversaciones, notas y etiquetas.",
+          "Facturación básica: creación de facturas simples, envío por WhatsApp o email, y seguimiento de estado (pendiente, pagada, vencida).",
+          "Pipeline de pedidos: seguimiento de pedidos por estado (Recibido → En proceso → Completado).",
+          "Límites del plan: 1 usuario, facturas ilimitadas, 5 automatizaciones básicas, 2 GB de almacenamiento.",
+        ],
+      },
+      {
+        title: "WhatsApp y costos de Meta",
+        body: [
+          "PymesHub conecta con tu propia cuenta de WhatsApp Business (WABA) via la API oficial de Meta. Vos sos el dueño del número y la cuenta — PymesHub opera como capa de software que envía y recibe mensajes en tu nombre.",
+          "Los mensajes de plantilla (como confirmaciones de pedido o recordatorios de pago) tienen cargos establecidos por Meta que se cobran directamente a tu cuenta de Meta Business Manager. Estos costos no están incluidos en el plan Emprende.",
+          "Para habilitar el envío de plantillas, necesitás agregar un método de pago en tu Meta Business Manager antes de usar esa funcionalidad. Los mensajes dentro de la ventana de servicio de 24 horas generalmente no tienen costo adicional.",
+          "Si tu cuenta de Meta no tiene método de pago, PymesHub te mostrará un aviso claro cuando intentés enviar una plantilla, con instrucciones para completar la configuración en Meta.",
+        ],
+      },
+      {
+        title: "Cómo empezar",
+        body: [
+          "1. Registrate en PymesHub y creá tu workspace.",
+          "2. En Settings > Canales, conectá tu número de WhatsApp Business mediante el flujo de configuración.",
+          "3. Completá el onboarding básico: nombre del negocio, productos o servicios principales.",
+          "4. Empezá a responder desde el inbox y registrar tus contactos.",
+          "Cuando tu negocio crezca y necesités más usuarios, automatizaciones o funcionalidades avanzadas, podés actualizar al plan Starter o Growth desde Settings > Facturación.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "whatsapp-billing-model",
+    title: "Modelo de facturación de WhatsApp y Telegram",
+    summary: "Cómo se cobran los mensajes de WhatsApp Business y Telegram en PymesHub: quién paga a Meta y qué incluye la suscripción.",
+    purpose: "Aclarar a clientes y operadores qué cargos gestiona PymesHub y cuáles corresponden directamente al negocio ante Meta.",
+    category: "business",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "docs/business/whatsapp-billing-model.md",
+    highlights: [
+      "PymesHub opera como capa de software/API — no revende mensajes de WhatsApp",
+      "Los cargos por mensajes de plantilla (templates) los cobra Meta directamente a la cuenta WABA del cliente",
+      "El cliente debe tener un método de pago activo en su Meta Business Manager para enviar plantillas",
+      "Telegram no genera cargos adicionales por mensajes en uso normal de Bot API",
+      "PymesHub cobra únicamente el plan SaaS y créditos de IA",
+    ],
+    sections: [
+      {
+        title: "WhatsApp Business",
+        body: [
+          "PymesHub se conecta con la cuenta de WhatsApp Business (WABA) propia del cliente mediante WhatsApp Business Cloud API y Embedded Signup de Meta. PymesHub actúa como capa de software: envía y recibe mensajes, gestiona el inbox y ejecuta automatizaciones en nombre del cliente.",
+          "Los cargos por mensajes de plantilla (Utility, Marketing, Authentication) son establecidos y cobrados por Meta directamente a la cuenta WABA del cliente. PymesHub no financia ni re-vende esos cargos. El cliente debe mantener un método de pago activo en su Meta Business Manager para poder enviar plantillas.",
+          "Si una plantilla falla por ausencia de método de pago, PymesHub mostrará un mensaje específico indicando que la cuenta de Meta requiere configuración de pago — no un error genérico.",
+          "Los mensajes dentro de la ventana de servicio de 24 horas (respuestas a mensajes iniciados por el usuario) generalmente no tienen costo de plantilla, pero esto depende de las políticas actuales de Meta y puede variar.",
+        ],
+      },
+      {
+        title: "Telegram",
+        body: [
+          "Telegram Bot API es gratuita para uso normal. El cliente crea un bot con @BotFather, pega el token en PymesHub, y PymesHub configura el webhook. Telegram no cobra por conversación ni por mensaje en este modelo.",
+          "El uso de IA en conversaciones de Telegram consume créditos IA de PymesHub (si el workspace tiene un agente IA activo con channel_scope TELEGRAM o ALL). Los créditos IA están incluidos según el plan o add-on contratado.",
+          "Para bots de volumen muy alto (más de 30 mensajes por segundo sostenidos), Telegram tiene un modelo de Paid Broadcasts que requiere condiciones específicas que no aplican al uso operativo normal de una PyME.",
+        ],
+      },
+      {
+        title: "Qué incluye la suscripción de PymesHub",
+        body: [
+          "La suscripción de PymesHub incluye: plan de software (inbox, CRM, facturación, automatizaciones), infraestructura de API, almacenamiento, soporte de la plataforma y créditos de IA según el plan.",
+          "No incluye: cargos por mensajes de plantilla de Meta WhatsApp, costos de otros proveedores que el cliente conecte independientemente, ni saldo de campañas.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "ai-agents",
+    title: "Agentes IA — Flowise y soporte por tiers",
+    summary: "Cómo funcionan los agentes IA de PymesHub: provisión en Flowise, alcance por canal, tiers de soporte técnico y ciclo de vida.",
+    purpose: "Documentar la arquitectura de agentes IA para clientes que quieren entender qué puede hacer cada agente y cómo configurarlos.",
+    category: "architecture",
+    visibility: "public",
+    audience: "Cliente e interno",
+    repoPath: "docs/agents/ai-agents-overview.md",
+    highlights: [
+      "Cada agente IA es un agentflow en Flowise provisionado automáticamente al crear o activar el agente",
+      "Los agentes se limitan por canal: ALL, WHATSAPP, TELEGRAM, EMAIL, WEB o MANUAL",
+      "El LLM orquestador selecciona el agente correcto según el contexto de la conversación",
+      "Soporte técnico de la plataforma en 4 tiers según el plan del workspace",
+      "Tier 4 (Business+) puede crear branches, commits y PRs automáticamente para resolver incidentes",
+    ],
+    sections: [
+      {
+        title: "Ciclo de vida de un agente",
+        body: [
+          "Al crear un agente en PymesHub (Settings > Agentes IA), el sistema provisiona automáticamente un agentflow en Flowise con las instrucciones del sistema definidas por el usuario. El agente inicia en estado DRAFT.",
+          "Al activar el agente (botón Play), su estado cambia a ACTIVE. Solo los agentes ACTIVE participan en conversaciones. Pueden desactivarse en cualquier momento (estado INACTIVE) sin borrar el chatflow en Flowise.",
+          "Al eliminar un agente, PymesHub borra también el chatflow correspondiente en Flowise para mantener consistencia.",
+        ],
+      },
+      {
+        title: "Alcance por canal (channel_scope)",
+        body: [
+          "Cada agente tiene un channel_scope que determina en qué canales puede responder: ALL (todos), WHATSAPP, TELEGRAM, EMAIL, WEB o MANUAL.",
+          "Cuando llega un mensaje, el orquestador consulta los agentes ACTIVE con channel_scope compatible y le presenta la lista al LLM. El LLM decide si delegar al agente o responder directamente.",
+          "Si el agente tiene una descripción clara de su propósito, el LLM puede seleccionarlo con mayor precisión.",
+        ],
+      },
+      {
+        title: "Soporte técnico por tiers",
+        body: [
+          "PymesHub incluye un sistema de soporte técnico IA accesible desde Settings > Soporte. Los 5 agentes especializados (WhatsApp, Telegram, Facturación, Agentes IA, Workspace) están respaldados por agentflows en Flowise.",
+          "El tier de soporte depende del plan del workspace: Tier 1 (Free) solo confirma recepción. Tier 2 (Starter) lee logs de Railway y extrae errores. Tier 3 (Business) además lee código fuente y detecta regresiones, proponiendo fixes para aprobación manual. Tier 4 (Business+) aplica fixes automáticamente creando un PR en draft.",
+          "Todo PR generado por un agente Tier 4 es forzado a draft y lleva las etiquetas ai-generated y needs-human-review. Los agentes nunca hacen merge, nunca force-push, y no pueden tocar archivos sensibles (.env, CI, credenciales).",
+        ],
+      },
+    ],
+  },
 ];
 
 export function getDocumentationBySlug(slug: string) {

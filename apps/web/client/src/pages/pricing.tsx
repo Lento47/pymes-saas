@@ -94,7 +94,7 @@ export default function PricingPage() {
         {/* Pricing Cards */}
         <section className="px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
-            <div className="grid gap-4 md:gap-8 lg:grid-cols-4">
+            <div className="grid gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {PRICING_TIERS.map((tier) => (
                 <PricingCard
                   key={tier.name}
@@ -102,6 +102,17 @@ export default function PricingPage() {
                   isAnnual={isAnnual}
                 />
               ))}
+            </div>
+
+            {/* Channel billing disclaimer */}
+            <div className="mt-8 rounded-md border border-border/60 bg-muted/30 px-5 py-3.5">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground">WhatsApp Business:</span>{" "}
+                PymesHub se conecta con tu propia cuenta de WhatsApp Business (WABA).
+                Los cargos por mensajes de plantilla que aplique Meta se cobran directamente a tu cuenta de Meta — no están incluidos en tu suscripción de PymesHub.{" "}
+                <span className="font-medium text-foreground">Telegram:</span>{" "}
+                El uso normal de Telegram no genera cargos adicionales de la plataforma.
+              </p>
             </div>
           </div>
         </section>
@@ -316,7 +327,7 @@ export default function PricingPage() {
                 <tbody className="divide-y divide-border">
                   {[
                     { label: 'Miembros del equipo', key: 'users' },
-                    { label: 'Facturas/mes', key: 'invoicesPerMonth' },
+                    { label: 'Comprobantes/mes', key: 'invoicesPerMonth' },
                     { label: 'Automatizaciones', key: 'automations' },
                     { label: 'Almacenamiento', key: 'storageGB' },
                   ].map((row) => (
@@ -334,7 +345,7 @@ export default function PricingPage() {
                                   <Check className="h-4 w-4 text-success" />
                                   <span className="ml-2 font-semibold text-foreground">
                                     {row.key === 'users' && tier.users}
-                                    {row.key === 'invoicesPerMonth' && tier.limits.invoicesPerMonth.toLocaleString()}
+                                    {row.key === 'invoicesPerMonth' && tier.limits.invoicesPerMonth.toLocaleString('es')}
                                     {row.key === 'automations' && tier.limits.automations}
                                     {row.key === 'storageGB' && `${tier.limits.storageGB} GB`}
                                   </span>

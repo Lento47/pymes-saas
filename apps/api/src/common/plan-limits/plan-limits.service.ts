@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { I18nService } from "../i18n/i18n.service";
 
@@ -29,6 +29,17 @@ export class QuotaExceededError extends ForbiddenException {
       helpActions,
     });
   }
+}
+
+// ─── Invoice soft-limit status ──────────────────────────────────────────────
+
+export interface InvoiceLimitStatus {
+  /** 'none' < 80 %, 'approaching' 80–99 %, 'exceeded' ≥ 100 % (still allowed) */
+  warning: "none" | "approaching" | "exceeded";
+  percentage: number;
+  current: number;
+  limit: number | "custom";
+  message?: string;
 }
 
 // ─── Evaluation result ──────────────────────────────────────────────────────
@@ -67,12 +78,14 @@ interface PlanLimits {
 
 export type { PlanLimits };
 
+// Invoice limits use a soft-limit model: warn at 80%, allow at 100%+, never hard-block.
+// Amounts reflect generous real-world capacity (e.g. Emprende = ~66 comprobantes/día).
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
   FREE: {
     users: 1,
     automations: 5,
     documents: 50,
-    invoices_per_month: 50,
+    invoices_per_month: 500,
     storage_bytes: 100 * 1024 * 1024,
     locations: 1,
     invite_codes: 3,
@@ -85,11 +98,28 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     ai_context_messages: 0,
     agents: 0,
   },
+  EMPRENDE: {
+    users: 1,
+    automations: 5,
+    documents: 100,
+    invoices_per_month: 2_000,
+    storage_bytes: 2 * 1024 * 1024 * 1024,
+    locations: 1,
+    invite_codes: 3,
+    products: 50,
+    product_categories: 5,
+    diagnostics_per_day: 10,
+    media_messages_per_day: 10,
+    ai_chat_messages_per_day: 100,
+    agent_executions_per_day: 25,
+    ai_context_messages: 10,
+    agents: 2,
+  },
   STARTER: {
     users: 1,
     automations: 15,
     documents: 500,
-    invoices_per_month: 100,
+    invoices_per_month: 5_000,
     storage_bytes: 5 * 1024 * 1024 * 1024,
     locations: 1,
     invite_codes: 10,
@@ -106,7 +136,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     users: 5,
     automations: 25,
     documents: 500,
-    invoices_per_month: 500,
+    invoices_per_month: 10_000,
     storage_bytes: 10 * 1024 * 1024 * 1024,
     locations: 1,
     invite_codes: 50,
@@ -119,28 +149,11 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     ai_context_messages: 25,
     agents: 3,
   },
-  EMPRENDE: {
-    users: 1,
-    automations: 10,
-    documents: 100,
-    invoices_per_month: 25,
-    storage_bytes: 500 * 1024 * 1024,
-    locations: 1,
-    invite_codes: 3,
-    products: 50,
-    product_categories: 5,
-    diagnostics_per_day: 10,
-    media_messages_per_day: 10,
-    ai_chat_messages_per_day: 100,
-    agent_executions_per_day: 25,
-    ai_context_messages: 10,
-    agents: 2,
-  },
   BUSINESS: {
     users: 15,
     automations: 100,
     documents: 5_000,
-    invoices_per_month: 2_000,
+    invoices_per_month: 15_000,
     storage_bytes: 50 * 1024 * 1024 * 1024,
     locations: 3,
     invite_codes: 200,
@@ -157,7 +170,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     users: 15,
     automations: 100,
     documents: 5_000,
-    invoices_per_month: 2_000,
+    invoices_per_month: 15_000,
     storage_bytes: 50 * 1024 * 1024 * 1024,
     locations: 3,
     invite_codes: 200,
@@ -592,26 +605,47 @@ export class PlanLimitsService {
     }
   }
 
-  async checkInvoiceLimit(workspaceId: string): Promise<void> {
+  async checkInvoiceLimit(workspaceId: string): Promise<InvoiceLimitStatus> {
     const plan = await this.getWorkspacePlan(workspaceId);
     const limits = await this.getEffectiveLimits(workspaceId);
     const limit = limits.invoices_per_month;
-    if (limit === "custom" || limit === Infinity) return;
+
+    if (limit === "custom") {
+      return { warning: "none", percentage: 0, current: 0, limit: "custom" };
+    }
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const current = await this.prisma.invoice.count({
       where: { workspace_id: workspaceId, created_at: { gte: monthStart } },
     });
-    if (current >= (limit as number)) {
-      throw new QuotaExceededError(
-        "facturas este mes",
-        current,
-        limit,
-        plan,
-        this.getUpgradePlan(plan),
+
+    const pct = Math.round((current / (limit as number)) * 100);
+
+    if (pct >= 100) {
+      this.logger.warn(
+        `[invoice-quota] workspace=${workspaceId} plan=${plan} current=${current} limit=${limit} (${pct}%) — over limit, allowing continuation`,
       );
+      return {
+        warning: "exceeded",
+        percentage: pct,
+        current,
+        limit: limit as number,
+        message: `Tu negocio está emitiendo un volumen alto de comprobantes (${current}/${limit} este mes). Considerá pasar a un plan superior para más capacidad.`,
+      };
     }
+
+    if (pct >= 80) {
+      return {
+        warning: "approaching",
+        percentage: pct,
+        current,
+        limit: limit as number,
+        message: `Vas al ${pct}% de tu límite mensual de comprobantes (${current}/${limit}). Podés seguir facturando normalmente.`,
+      };
+    }
+
+    return { warning: "none", percentage: pct, current, limit: limit as number };
   }
 
   async checkDocumentLimit(workspaceId: string): Promise<void> {

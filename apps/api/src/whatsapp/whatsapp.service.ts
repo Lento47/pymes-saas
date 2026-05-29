@@ -294,12 +294,28 @@ export class WhatsAppService {
 
     if (!res.ok) {
       this.logger.error("Meta template API error:", JSON.stringify(data));
-      throw new BadGatewayException(
-        data?.error?.message ?? "Error enviando plantilla por WhatsApp",
-      );
+      throw new BadGatewayException(this.buildTemplateErrorMessage(data));
     }
 
     return { message_id: data.messages?.[0]?.id ?? "unknown" };
+  }
+
+  private buildTemplateErrorMessage(data: Record<string, any>): string {
+    const err = data?.error ?? {};
+    const msg: string = err.message ?? "";
+    const code: number = err.code ?? 0;
+    const subcode: number = err.error_subcode ?? 0;
+
+    const isBillingIssue =
+      (code === 100 && subcode === 33) ||
+      code === 368 ||
+      /payment method|billing|método de pago|no tiene un método/i.test(msg);
+
+    if (isBillingIssue) {
+      return "Tu cuenta de Meta no tiene un método de pago configurado. Accedé a tu Meta Business Manager, abrí tu WABA y agregá un método de pago antes de enviar plantillas.";
+    }
+
+    return msg || "Error enviando plantilla por WhatsApp";
   }
 
   // ── Enviar template de factura electrónica ──────────────────────────────────
@@ -387,9 +403,7 @@ export class WhatsAppService {
 
     if (!res.ok) {
       this.logger.error("Meta invoice template error:", JSON.stringify(data));
-      throw new BadGatewayException(
-        data?.error?.message ?? "Error enviando factura por WhatsApp",
-      );
+      throw new BadGatewayException(this.buildTemplateErrorMessage(data));
     }
 
     return { message_id: data.messages?.[0]?.id ?? "unknown" };
