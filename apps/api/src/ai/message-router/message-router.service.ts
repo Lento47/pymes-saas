@@ -54,22 +54,30 @@ export class MessageRouterService {
 
       // ── Phase 2: Intent classification ──────────────────────────────────
       let { intent, confidence } = this.intentClassifier.classify(event.text);
+      let classifyTokensConsumed = 0;
 
       // LLM fallback only when rules are uncertain
       if (confidence === "low") {
-        const llmResult = await this.llmClassifier.classify(event.text, context);
+        const llmResult = await this.llmClassifier.classify(event.text, context, {
+          conversationId: event.conversationId,
+          messageId: event.messageId,
+        });
         if (llmResult.confidence !== "low") {
           intent = llmResult.intent;
           confidence = llmResult.confidence;
         }
+        classifyTokensConsumed = llmResult.tokensConsumed;
       }
+
+      // Estimate tokens a full AI chain call would consume (for savings calculation)
+      const estimatedFullCallTokens = this.estimateFullCallTokens(event.text);
 
       // ── Policy evaluation ─────────────────────────────────────────────
       const policy = this.policyEngine.evaluate(context, intent);
 
       if (!policy.allowed) {
         this.logAudit(event, intent, policy.reason, "none", "none", false, false);
-        this.recordMetrics(event.workspaceId, intent, "fast", "none", false, true).catch(() => undefined);
+        this.recordMetrics(event.workspaceId, intent, "fast", "none", false, true, classifyTokensConsumed, estimatedFullCallTokens).catch(() => undefined);
         return {
           intent,
           intentConfidence: confidence,
@@ -95,7 +103,8 @@ export class MessageRouterService {
           event.text,
         );
         this.logAudit(event, intent, policy.reason, "human", sendPlan.mode, false, false);
-        this.recordMetrics(event.workspaceId, intent, "fast", "human", !!quickReplyText, false).catch(() => undefined);
+        // Human handoff: quick reply sent but full LLM avoided
+        this.recordMetrics(event.workspaceId, intent, "fast", "human", !!quickReplyText, false, classifyTokensConsumed, estimatedFullCallTokens).catch(() => undefined);
         return {
           intent,
           intentConfidence: confidence,
@@ -108,10 +117,10 @@ export class MessageRouterService {
         };
       }
 
-      // Quick reply with no AI needed (e.g. greeting, opt_out already blocked above)
+      // Quick reply: no LLM needed — saves the full AI chain cost
       if (quickReplyText) {
         this.logAudit(event, intent, policy.reason, "quick_reply", sendPlan.mode, false, false);
-        this.recordMetrics(event.workspaceId, intent, "fast", dispatch.agentType, true, false).catch(() => undefined);
+        this.recordMetrics(event.workspaceId, intent, "fast", dispatch.agentType, true, false, classifyTokensConsumed, estimatedFullCallTokens).catch(() => undefined);
         return {
           intent,
           intentConfidence: confidence,
@@ -124,10 +133,10 @@ export class MessageRouterService {
         };
       }
 
-      // Can we even send?
+      // Outside WhatsApp window — approval needed, AI blocked
       if (sendPlan.requiresApproval) {
         this.logAudit(event, intent, policy.reason, dispatch.agentType, sendPlan.mode, false, true);
-        this.recordMetrics(event.workspaceId, intent, "fast", dispatch.agentType, false, false).catch(() => undefined);
+        this.recordMetrics(event.workspaceId, intent, "fast", dispatch.agentType, false, false, classifyTokensConsumed, estimatedFullCallTokens).catch(() => undefined);
         return {
           intent,
           intentConfidence: confidence,
@@ -152,7 +161,8 @@ export class MessageRouterService {
       const { modelTier } = this.modelSelector.selectModel(intent, context.workspacePlan);
 
       this.logAudit(event, intent, policy.reason, dispatch.agentType, sendPlan.mode, true, false);
-      this.recordMetrics(event.workspaceId, intent, modelTier, dispatch.agentType, false /* updated later */, false).catch(() => undefined);
+      // Token savings = 0 here because the AI chain WILL run — tracked via recordOutcome()
+      this.recordMetrics(event.workspaceId, intent, modelTier, dispatch.agentType, false, false, classifyTokensConsumed, 0).catch(() => undefined);
 
       return {
         intent,
@@ -193,7 +203,19 @@ export class MessageRouterService {
       (decision.agentType ?? "none") as AgentType | "none",
       replied,
       !decision.policy.allowed,
+      0, // tokens consumed by AI chain are tracked by AiConversationControl / Flowise directly
+      0,
     );
+  }
+
+  /**
+   * Estimates the tokens that would have been consumed by a full AI chain call.
+   * Used to compute savings when the router short-circuits with a quick reply or block.
+   * Overhead: ~700 tokens for system prompt + conversation history + avg completion.
+   */
+  private estimateFullCallTokens(text: string): number {
+    const OVERHEAD = 700; // avg system prompt + history + completion
+    return OVERHEAD + Math.ceil(text.length / 3);
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────
@@ -230,6 +252,8 @@ export class MessageRouterService {
     agentType: string,
     replied: boolean,
     blocked: boolean,
+    tokensConsumed = 0,
+    tokensSaved = 0,
   ): Promise<void> {
     return this.routerMetrics
       .recordCall(
@@ -239,6 +263,8 @@ export class MessageRouterService {
         agentType as AgentType | "none",
         replied,
         blocked,
+        tokensConsumed,
+        tokensSaved,
       )
       .catch(() => undefined);
   }

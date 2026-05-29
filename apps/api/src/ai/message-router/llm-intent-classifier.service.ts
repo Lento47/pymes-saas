@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { AiGatewayService } from "../ai-gateway.service";
+import { AiTokenMeteringService } from "../../ai-tokens/ai-token-metering.service";
 import type { AssistantMessage } from "../cloudflare-ai.service";
 import { ConversationContext, Intent } from "./types";
 
@@ -37,38 +38,103 @@ Definitions:
 
 Return ONLY valid JSON: {"intent": "<category>", "confidence": "high"|"medium"|"low", "reasoning": "<brief>"}`;
 
+/** Tokens used by the classification system prompt + response. */
+const CLASSIFY_SYSTEM_TOKENS = Math.ceil(SYSTEM_PROMPT.length / 3);
+const CLASSIFY_MAX_COMPLETION = 120;
 const LLM_TIMEOUT_MS = 3000;
 
 @Injectable()
 export class LlmIntentClassifierService {
   private readonly logger = new Logger(LlmIntentClassifierService.name);
 
-  constructor(private readonly aiGateway: AiGatewayService) {}
+  constructor(
+    private readonly aiGateway: AiGatewayService,
+    private readonly aiTokens: AiTokenMeteringService,
+  ) {}
 
   async classify(
     text: string,
-    _context: ConversationContext,
-  ): Promise<{ intent: Intent; confidence: "high" | "medium" | "low"; reasoning: string }> {
+    context: ConversationContext,
+    msgContext?: { conversationId?: string; messageId?: string },
+  ): Promise<{
+    intent: Intent;
+    confidence: "high" | "medium" | "low";
+    reasoning: string;
+    tokensConsumed: number;
+  }> {
     const fallback = {
       intent: "unknown" as Intent,
       confidence: "low" as const,
       reasoning: "llm_unavailable",
+      tokensConsumed: 0,
     };
 
-    try {
-      const messages: AssistantMessage[] = [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `Message: "${text.slice(0, 500)}"` },
-      ];
+    const messages: AssistantMessage[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: `Message: "${text.slice(0, 500)}"` },
+    ];
 
+    const estimatedTokens =
+      CLASSIFY_SYSTEM_TOKENS +
+      Math.ceil(text.slice(0, 500).length / 3) +
+      CLASSIFY_MAX_COMPLETION;
+
+    // Reserve tokens before the AI call (soft-block if balance is 0)
+    const reservation = await this.aiTokens
+      .reserveTokens(context.workspaceId, estimatedTokens, {
+        description: "Clasificación de intención (Router IA)",
+        conversationId: msgContext?.conversationId ?? null,
+        messageId: msgContext?.messageId ?? null,
+        metadata: { source: "llm-intent-classifier" },
+      })
+      .catch(() => null);
+
+    // No balance → skip LLM, fall back to "unknown"
+    if (reservation && !reservation.success) {
+      this.logger.debug(
+        `[llm-classifier] insufficient tokens workspace=${context.workspaceId} — skipping LLM`,
+      );
+      if (reservation.reservationId) {
+        await this.aiTokens
+          .releaseReservation(context.workspaceId, reservation.reservationId)
+          .catch(() => undefined);
+      }
+      return fallback;
+    }
+
+    let actualTokens = 0;
+    let reservationId = reservation?.reservationId ?? null;
+
+    try {
       const raw = await Promise.race([
-        this.aiGateway.chatCompletion(messages, { maxTokens: 120, temperature: 0 }),
+        this.aiGateway.chatCompletion(messages, {
+          maxTokens: CLASSIFY_MAX_COMPLETION,
+          temperature: 0,
+        }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("timeout")), LLM_TIMEOUT_MS),
         ),
       ]);
 
-      // Strip markdown code fences if present
+      // Consume reservation with actual usage estimate
+      actualTokens = CLASSIFY_SYSTEM_TOKENS + Math.ceil(text.slice(0, 500).length / 3) + Math.ceil(raw.length / 3);
+      if (reservationId) {
+        await this.aiTokens
+          .consumeReservation(
+            context.workspaceId,
+            reservationId,
+            { prompt_tokens: actualTokens - Math.ceil(raw.length / 3), completion_tokens: Math.ceil(raw.length / 3), total_tokens: actualTokens, estimated: true, provider: "ai-gateway", model: "router-classifier" },
+            {
+              conversationId: msgContext?.conversationId ?? null,
+              messageId: msgContext?.messageId ?? null,
+              description: "Clasificación de intención (Router IA)",
+              metadata: { source: "llm-intent-classifier" },
+            },
+          )
+          .catch(() => undefined);
+        reservationId = null;
+      }
+
       const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
       const parsed = JSON.parse(cleaned) as {
         intent?: unknown;
@@ -86,11 +152,17 @@ export class LlmIntentClassifierService {
         ? (parsed.confidence as "high" | "medium" | "low")
         : "low";
 
-      return { intent, confidence, reasoning: String(parsed.reasoning ?? "") };
+      return { intent, confidence, reasoning: String(parsed.reasoning ?? ""), tokensConsumed: actualTokens };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg !== "timeout") {
         this.logger.warn(`[llm-classifier] failed: ${msg}`);
+      }
+      // Release reservation on failure/timeout
+      if (reservationId) {
+        await this.aiTokens
+          .releaseReservation(context.workspaceId, reservationId)
+          .catch(() => undefined);
       }
       return fallback;
     }

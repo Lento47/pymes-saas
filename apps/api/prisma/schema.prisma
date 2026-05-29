@@ -2632,17 +2632,19 @@ model PlaybookSuggestion {
 
 // ── Router metrics snapshot (daily rollup) ───────────────────────────────────
 model RouterMetricsSnapshot {
-  id            String   @id @default(cuid())
-  workspace_id  String
-  date          DateTime @db.Date
-  intent        String
-  agent_type    String
-  model_tier    String
-  call_count    Int      @default(0)
-  reply_count   Int      @default(0)
-  blocked_count Int      @default(0)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  workspace_id    String
+  date            DateTime @db.Date
+  intent          String
+  agent_type      String
+  model_tier      String
+  call_count      Int      @default(0)
+  reply_count     Int      @default(0)
+  blocked_count   Int      @default(0)
+  tokens_consumed Int      @default(0)
+  tokens_saved    Int      @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
   @@unique([workspace_id, date, intent, agent_type, model_tier])
   @@index([workspace_id])

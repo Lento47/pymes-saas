@@ -7,6 +7,8 @@ export interface RouterMetrics {
   repliedCalls: number;
   blockedCalls: number;
   replyRate: number;
+  tokensConsumed: number;
+  tokensSaved: number;
   byIntent: Record<string, number>;
   byModelTier: Record<string, number>;
   byAgentType: Record<string, number>;
@@ -20,7 +22,9 @@ export class RouterMetricsService {
 
   /**
    * Upserts a daily rollup row for the given workspace + intent + tier combination.
-   * Never throws — metric failures must not affect message delivery.
+   * `tokensConsumed`: tokens actually spent by LLM calls in this decision.
+   * `tokensSaved`: estimated tokens NOT spent because of quick reply / policy block.
+   * Never throws.
    */
   async recordCall(
     workspaceId: string,
@@ -29,6 +33,8 @@ export class RouterMetricsService {
     agentType: AgentType | "none",
     replied: boolean,
     blocked: boolean,
+    tokensConsumed = 0,
+    tokensSaved = 0,
   ): Promise<void> {
     try {
       const today = new Date();
@@ -48,6 +54,8 @@ export class RouterMetricsService {
           call_count: { increment: 1 },
           reply_count: { increment: replied ? 1 : 0 },
           blocked_count: { increment: blocked ? 1 : 0 },
+          tokens_consumed: { increment: tokensConsumed },
+          tokens_saved: { increment: tokensSaved },
         },
         create: {
           workspace_id: workspaceId,
@@ -58,6 +66,8 @@ export class RouterMetricsService {
           call_count: 1,
           reply_count: replied ? 1 : 0,
           blocked_count: blocked ? 1 : 0,
+          tokens_consumed: tokensConsumed,
+          tokens_saved: tokensSaved,
         },
       });
     } catch (err: unknown) {
@@ -78,6 +88,8 @@ export class RouterMetricsService {
     let totalCalls = 0;
     let repliedCalls = 0;
     let blockedCalls = 0;
+    let tokensConsumed = 0;
+    let tokensSaved = 0;
     const byIntent: Record<string, number> = {};
     const byModelTier: Record<string, number> = {};
     const byAgentType: Record<string, number> = {};
@@ -86,6 +98,8 @@ export class RouterMetricsService {
       totalCalls += row.call_count;
       repliedCalls += row.reply_count;
       blockedCalls += row.blocked_count;
+      tokensConsumed += row.tokens_consumed;
+      tokensSaved += row.tokens_saved;
       byIntent[row.intent] = (byIntent[row.intent] ?? 0) + row.call_count;
       byModelTier[row.model_tier] = (byModelTier[row.model_tier] ?? 0) + row.call_count;
       byAgentType[row.agent_type] = (byAgentType[row.agent_type] ?? 0) + row.call_count;
@@ -96,6 +110,8 @@ export class RouterMetricsService {
       repliedCalls,
       blockedCalls,
       replyRate: totalCalls > 0 ? repliedCalls / totalCalls : 0,
+      tokensConsumed,
+      tokensSaved,
       byIntent,
       byModelTier,
       byAgentType,
