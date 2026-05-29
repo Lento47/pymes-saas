@@ -327,7 +327,7 @@ export default function PricingPage() {
                 <tbody className="divide-y divide-border">
                   {[
                     { label: 'Miembros del equipo', key: 'users' },
-                    { label: 'Facturas', key: 'invoicesPerMonth' },
+                    { label: 'Comprobantes/mes', key: 'invoicesPerMonth' },
                     { label: 'Automatizaciones', key: 'automations' },
                     { label: 'Almacenamiento', key: 'storageGB' },
                   ].map((row) => (
@@ -335,7 +335,6 @@ export default function PricingPage() {
                       <td className="px-3 py-2 text-sm text-muted-foreground sm:px-4 sm:py-3 md:px-6 md:py-4">{row.label}</td>
                       {PRICING_TIERS.map((tier) => {
                         const isBusinessPlus = tier.name === 'Business+';
-                        const isUnlimited = (val: number) => val >= 999999;
                         return (
                           <td key={tier.name} className="px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 text-center">
                             <div className="flex items-center justify-center">
@@ -346,7 +345,7 @@ export default function PricingPage() {
                                   <Check className="h-4 w-4 text-success" />
                                   <span className="ml-2 font-semibold text-foreground">
                                     {row.key === 'users' && tier.users}
-                                    {row.key === 'invoicesPerMonth' && (isUnlimited(tier.limits.invoicesPerMonth) ? 'Ilimitadas' : tier.limits.invoicesPerMonth.toLocaleString())}
+                                    {row.key === 'invoicesPerMonth' && tier.limits.invoicesPerMonth.toLocaleString('es')}
                                     {row.key === 'automations' && tier.limits.automations}
                                     {row.key === 'storageGB' && `${tier.limits.storageGB} GB`}
                                   </span>

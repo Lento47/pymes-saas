@@ -44,12 +44,12 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       'CRM básico',
       'Bandeja WhatsApp',
-      'Facturación ilimitada',
+      'Hasta 2.000 comprobantes/mes',
       'Pipeline de pedidos',
       'Soporte por email',
     ],
     limits: {
-      invoicesPerMonth: 999999,
+      invoicesPerMonth: 2000,
       automations: 5,
       storageGB: 2,
       locations: 1,
@@ -66,12 +66,13 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       'Todo lo de Emprende',
       'Facturación avanzada',
+      'Hasta 5.000 comprobantes/mes',
       'Dashboard',
       'Pipeline de ventas',
       '15 automatizaciones',
     ],
     limits: {
-      invoicesPerMonth: 999999,
+      invoicesPerMonth: 5000,
       automations: 15,
       storageGB: 5,
       locations: 1,
@@ -90,6 +91,7 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       'Todo lo de Starter',
       'Pipeline de ventas',
+      'Hasta 10.000 comprobantes/mes',
       'Automatizaciones básicas',
       'Dashboard del dueño',
       'Roles de usuario',
@@ -98,7 +100,7 @@ export const PRICING_TIERS: PricingTier[] = [
       '25 automatizaciones',
     ],
     limits: {
-      invoicesPerMonth: 999999,
+      invoicesPerMonth: 10000,
       automations: 25,
       storageGB: 10,
       locations: 1,
@@ -116,6 +118,7 @@ export const PRICING_TIERS: PricingTier[] = [
     users: 15,
     features: [
       'Todo lo de Growth',
+      'Hasta 15.000 comprobantes/mes',
       'Múltiples ubicaciones',
       'Dashboards avanzados',
       'Roles y permisos avanzados',
@@ -127,7 +130,7 @@ export const PRICING_TIERS: PricingTier[] = [
       '100 automatizaciones',
     ],
     limits: {
-      invoicesPerMonth: 999999,
+      invoicesPerMonth: 15000,
       automations: 100,
       storageGB: 50,
       locations: 3,
@@ -259,7 +262,7 @@ export const FAQS: FAQ[] = [
 
 export const FEATURE_COMPARISON = [
   { feature: 'Usuarios incluidos', emprende: '1', starter: '1', growth: '5', business: '15', businessPlus: 'Personalizado' },
-  { feature: 'Facturas', emprende: 'Ilimitadas', starter: 'Ilimitadas', growth: 'Ilimitadas', business: 'Ilimitadas', businessPlus: 'Ilimitadas' },
+  { feature: 'Comprobantes/mes', emprende: '2.000', starter: '5.000', growth: '10.000', business: '15.000', businessPlus: 'Personalizado' },
   { feature: 'Automatizaciones', emprende: '5', starter: '15', growth: '25', business: '100', businessPlus: 'Personalizado' },
   { feature: 'Almacenamiento', emprende: '2 GB', starter: '5 GB', growth: '10 GB', business: '50 GB', businessPlus: 'Personalizado' },
   { feature: 'Ubicaciones', emprende: '1', starter: '1', growth: '1', business: '3', businessPlus: 'Personalizado' },

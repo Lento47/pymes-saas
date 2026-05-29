@@ -120,8 +120,7 @@ export class InvoicesService {
   }
 
   async create(workspaceId: string, dto: CreateInvoiceDto) {
-    // Check invoice limit for workspace plan
-    await this.planLimits.checkInvoiceLimit(workspaceId);
+    const invoiceQuota = await this.planLimits.checkInvoiceLimit(workspaceId);
 
     await this.assertContact(workspaceId, dto.contact_id);
     await this.ensureUniqueNumber(workspaceId, dto.number);
@@ -207,7 +206,11 @@ export class InvoicesService {
 
     this.trackQuickStart(workspaceId, "invoicing_configured");
 
-    return this.serializeInvoice(invoice);
+    const serialized = this.serializeInvoice(invoice);
+    if (invoiceQuota.warning !== "none") {
+      return { ...serialized, _quota_warning: invoiceQuota.message };
+    }
+    return serialized;
   }
 
   async update(workspaceId: string, id: string, dto: UpdateInvoiceDto) {
