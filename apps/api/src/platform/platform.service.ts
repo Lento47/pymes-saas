@@ -892,6 +892,76 @@ export class PlatformService {
     return user;
   }
 
+  // ── Router metrics (platform-wide) ────────────────────────────────────────
+
+  async getRouterMetrics(days = 30) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const rows = await this.prisma.routerMetricsSnapshot.findMany({
+      where: { date: { gte: since } },
+    });
+
+    const wsIds = [...new Set(rows.map((r) => r.workspace_id))];
+    const workspaces = await this.prisma.workspace.findMany({
+      where: { id: { in: wsIds } },
+      select: { id: true, name: true, slug: true },
+    });
+    const wsMap = Object.fromEntries(workspaces.map((w) => [w.id, w]));
+
+    let totalCalls = 0;
+    let repliedCalls = 0;
+    let blockedCalls = 0;
+    let tokensConsumed = 0;
+    let tokensSaved = 0;
+    const byIntent: Record<string, number> = {};
+    const byModelTier: Record<string, number> = {};
+    const byAgentType: Record<string, number> = {};
+    const byWorkspace: Record<string, { name: string; slug: string; calls: number; replied: number; blocked: number; tokensSaved: number }> = {};
+
+    for (const row of rows) {
+      totalCalls += row.call_count;
+      repliedCalls += row.reply_count;
+      blockedCalls += row.blocked_count;
+      tokensConsumed += row.tokens_consumed;
+      tokensSaved += row.tokens_saved;
+      byIntent[row.intent] = (byIntent[row.intent] ?? 0) + row.call_count;
+      byModelTier[row.model_tier] = (byModelTier[row.model_tier] ?? 0) + row.call_count;
+      byAgentType[row.agent_type] = (byAgentType[row.agent_type] ?? 0) + row.call_count;
+
+      if (!byWorkspace[row.workspace_id]) {
+        const ws = wsMap[row.workspace_id];
+        byWorkspace[row.workspace_id] = {
+          name: ws?.name ?? row.workspace_id,
+          slug: ws?.slug ?? row.workspace_id,
+          calls: 0, replied: 0, blocked: 0, tokensSaved: 0,
+        };
+      }
+      byWorkspace[row.workspace_id].calls += row.call_count;
+      byWorkspace[row.workspace_id].replied += row.reply_count;
+      byWorkspace[row.workspace_id].blocked += row.blocked_count;
+      byWorkspace[row.workspace_id].tokensSaved += row.tokens_saved;
+    }
+
+    const topWorkspaces = Object.values(byWorkspace)
+      .sort((a, b) => b.calls - a.calls)
+      .slice(0, 20);
+
+    return {
+      days,
+      totalCalls,
+      repliedCalls,
+      blockedCalls,
+      replyRate: totalCalls > 0 ? repliedCalls / totalCalls : 0,
+      tokensConsumed,
+      tokensSaved,
+      byIntent: Object.entries(byIntent).sort((a, b) => b[1] - a[1]).map(([intent, count]) => ({ intent, count })),
+      byModelTier: Object.entries(byModelTier).sort((a, b) => b[1] - a[1]).map(([tier, count]) => ({ tier, count })),
+      byAgentType: Object.entries(byAgentType).sort((a, b) => b[1] - a[1]).map(([agent, count]) => ({ agent, count })),
+      topWorkspaces,
+    };
+  }
+
   private generateTemporaryPassword() {
     return `${randomBytes(9).toString("base64url")}aA1!`;
   }

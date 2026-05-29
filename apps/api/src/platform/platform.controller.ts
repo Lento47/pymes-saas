@@ -171,6 +171,11 @@ export class PlatformController {
     return this.service.getStats();
   }
 
+  @Get("router-metrics")
+  getRouterMetrics(@Query("days") days?: string) {
+    return this.service.getRouterMetrics(days ? parseInt(days, 10) : 30);
+  }
+
   @Get("workspaces/:slug")
   getWorkspaceBySlug(@Param("slug") slug: string) {
     return this.service.getWorkspaceBySlug(slug);

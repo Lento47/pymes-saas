@@ -659,6 +659,10 @@ export const api = {
     request<Record<string, any>>("GET", "/api/platform/ai-config"),
   platformUpdateAiConfig: (data: Record<string, any>) =>
     request<Record<string, any>>("PATCH", "/api/platform/ai-config", data),
+
+  // ── Router metrics (platform admin) ─────────────────────────────────────
+  platformGetRouterMetrics: (days?: number) =>
+    request<Record<string, any>>("GET", `/api/platform/router-metrics${days ? `?days=${days}` : ""}`),
 };
 
 // ── Session activity tracking ────────────────────────────────────────────
