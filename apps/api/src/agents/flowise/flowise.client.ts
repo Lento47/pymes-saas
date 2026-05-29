@@ -44,6 +44,21 @@ export class FlowiseClient {
 
   // ── AgentFlow v2 node builders ─────────────────────────────────────────────
 
+  // Flowise stores state as plain objects {key: value}, not [{key,value}] arrays.
+  private static stateToObj(raw: string): string {
+    if (!raw) return "";
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        const arr = parsed as Array<{ key: string; value: string }>;
+        return JSON.stringify(Object.fromEntries(arr.map(({ key, value }) => [key, value])));
+      }
+      return raw;
+    } catch {
+      return raw;
+    }
+  }
+
   static buildStartNode(flowStateKeys: Array<{ key: string; value: string }> = [{ key: "agentResponse", value: "" }]) {
     return {
       id: "startAgentflow_0",
@@ -65,7 +80,7 @@ export class FlowiseClient {
         inputs: {
           startInputType: "chatInput",
           startEphemeralMemory: "",
-          startState: JSON.stringify(flowStateKeys),
+          startState: FlowiseClient.stateToObj(JSON.stringify(flowStateKeys)),
           startPersistState: "",
         },
         outputAnchors: [
@@ -125,7 +140,7 @@ export class FlowiseClient {
           llmUserMessage: opts.userMessage ?? "",
           llmReturnResponseAs: "userMessage",
           llmJsonStructuredOutput: "",
-          llmUpdateState: opts.updateState ?? "",
+          llmUpdateState: FlowiseClient.stateToObj(opts.updateState ?? ""),
           llmModelConfig: modelConfig,
         },
         outputAnchors: [
@@ -200,8 +215,8 @@ export class FlowiseClient {
           agentMemoryMaxTokenLimit: "",
           agentUserMessage: "",
           agentReturnResponseAs: "userMessage",
-          agentUpdateState: opts.updateState
-            ?? JSON.stringify([{ key: "agentResponse", value: `{{ ${id}.output }}` }]),
+          agentUpdateState: FlowiseClient.stateToObj(opts.updateState
+            ?? JSON.stringify([{ key: "agentResponse", value: `{{ ${id}.output }}` }])),
           agentModelConfig,
         },
         outputAnchors: [
@@ -343,7 +358,7 @@ export class FlowiseClient {
         inputs: {
           toolNodeName: opts.toolId,
           toolNodeInput: opts.inputValue,
-          toolNodeUpdateState: opts.updateState ?? "",
+          toolNodeUpdateState: FlowiseClient.stateToObj(opts.updateState ?? ""),
         },
         outputAnchors: [
           { id: `${opts.id}-output-toolAgentflow`, label: "Tool", name: "toolAgentflow" },
@@ -424,7 +439,7 @@ export class FlowiseClient {
         inputs: {
           functionInputVariables: opts.inputVars ?? [],
           javascriptFunction: opts.jsFunction,
-          functionUpdateState: opts.updateState ?? "",
+          functionUpdateState: FlowiseClient.stateToObj(opts.updateState ?? ""),
         },
         outputAnchors: [
           { id: `${opts.id}-output-customFunctionAgentflow`, label: "Output", name: "customFunctionAgentflow" },
@@ -466,7 +481,7 @@ export class FlowiseClient {
           executeFlowInput: opts.input,
           executeFlowReturnResponseAs: "userMessage",
           executeFlowOverrideConfig: "",
-          executeFlowUpdateState: opts.updateState ?? "",
+          executeFlowUpdateState: FlowiseClient.stateToObj(opts.updateState ?? ""),
         },
         outputAnchors: [
           { id: `${opts.id}-output-executeFlowAgentflow`, label: "Output", name: "executeFlowAgentflow" },
@@ -1189,7 +1204,7 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
       credentialId,
       systemMessages: messages,
     });
-    const reply = FlowiseClient.buildDirectReplyNode();
+    const reply = FlowiseClient.buildDirectReplyNode(`{{ ${agentId}.output }}`);
 
     const edges = [
       FlowiseClient.buildEdge(
@@ -1292,6 +1307,32 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows`;
     const body = { name, flowData: flowDataJson, deployed: true, isPublic: false, type: "AGENTFLOW" };
     return this._postChatflow(url, body);
+  }
+
+  async updateChatflowWithData(id: string, name: string, flowDataJson: string): Promise<void> {
+    const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows/${id}`;
+    const body = { name, flowData: flowDataJson, deployed: true, isPublic: false, type: "AGENTFLOW" };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...this.authHeaders },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Flowise chatflow update failed: ${res.status} ${text}`);
+      }
+      this.logger.log(`Chatflow updated in Flowise: ${id} (${name})`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`FlowiseClient.updateChatflowWithData failed for "${name}": ${msg}`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async listChatflows(): Promise<Array<{ id: string; name: string }>> {
