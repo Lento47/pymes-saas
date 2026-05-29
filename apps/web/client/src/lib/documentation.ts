@@ -639,7 +639,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
       "WhatsApp Business incluido — conectás tu propio número, PymesHub opera como capa de software",
       "CRM básico para llevar contactos, historial de conversaciones y notas",
       "Facturación básica y pipeline de pedidos para gestionar ventas",
-      "50 facturas/mes, 1 usuario, 2 GB de almacenamiento",
+      "Facturación ilimitada — sin tope mensual de facturas",
       "Los cargos de plantillas WhatsApp los cobra Meta a tu cuenta — no están en el plan",
     ],
     sections: [
@@ -657,7 +657,7 @@ export const DOCUMENTATION_ENTRIES: DocumentationEntry[] = [
           "CRM básico: un registro de tus contactos — clientes, proveedores, leads — con historial de conversaciones, notas y etiquetas.",
           "Facturación básica: creación de facturas simples, envío por WhatsApp o email, y seguimiento de estado (pendiente, pagada, vencida).",
           "Pipeline de pedidos: seguimiento de pedidos por estado (Recibido → En proceso → Completado).",
-          "Límites del plan: 1 usuario, 50 facturas/mes, 5 automatizaciones básicas, 2 GB de almacenamiento.",
+          "Límites del plan: 1 usuario, facturas ilimitadas, 5 automatizaciones básicas, 2 GB de almacenamiento.",
         ],
       },
       {

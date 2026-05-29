@@ -268,8 +268,8 @@ Motor de agentes IA sobre **Flowise AgentFlow V2**. Cada workspace puede crear y
 
 | Plan | Precio | Usuarios | Funcionalidades clave |
 |------|--------|----------|-----------------------|
-| **Emprende** | $15/mes | 1 | CRM, WhatsApp inbox, facturación básica, pipeline de pedidos |
-| **Starter** | $25/mes | 1 | + facturación avanzada, dashboard, 100 facturas/mes |
+| **Emprende** | $15/mes | 1 | CRM, WhatsApp inbox, facturación ilimitada, pipeline de pedidos |
+| **Starter** | $25/mes | 1 | + facturación avanzada, dashboard, 15 automatizaciones |
 | **Growth** | $59/mes | 5 | + automatizaciones básicas, roles de usuario, migración de datos |
 | **Business** | $119/mes | 15 | + múltiples ubicaciones, API, auditoría, soporte telefónico |
 | **Business+** | Personalizado | Ilimitado | + SSO/SAML, SLA, contratos, onboarding dedicado, AI Tier 4 |
