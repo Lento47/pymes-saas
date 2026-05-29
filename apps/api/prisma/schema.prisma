@@ -2630,6 +2630,27 @@ model PlaybookSuggestion {
   @@map("playbook_suggestions")
 }
 
+// ── AI decision audit log ─────────────────────────────────────────────────────
+model AiDecisionAuditLog {
+  id                      String   @id @default(cuid())
+  workspace_id            String
+  conversation_id         String
+  message_id              String
+  intent                  String
+  agent_used              String
+  llm_used                Boolean  @default(false)
+  tools_used              String[]
+  policy_decision         String
+  send_mode               String
+  human_approval_required Boolean  @default(false)
+  created_at              DateTime @default(now())
+
+  @@index([workspace_id])
+  @@index([workspace_id, conversation_id])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@map("ai_decision_audit_logs")
+}
+
 // ── Platform-level settings (singleton row, id="singleton") ──────────────────
 model PlatformSettings {
   id                String    @id @default("singleton")

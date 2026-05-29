@@ -7,6 +7,7 @@ import { EventsGateway } from "../gateways/events.gateway";
 import { AiService } from "../ai/ai.service";
 import { AgentRunService } from "../ai/agent-run.service";
 import { FlowiseAutoReplyService } from "../ai/flowise-auto-reply.service";
+import { MessageRouterService } from "../ai/message-router/message-router.service";
 import { AiConversationControlService } from "../ai/ai-conversation-control.service";
 import { PlatformAdminService } from "../ai/platform-admin.service";
 import { TasksService } from "../tasks/tasks.service";
@@ -54,6 +55,8 @@ export class MessagesService {
     private readonly platformAdmin?: PlatformAdminService,
     @Optional() @Inject(forwardRef(() => FlowiseAutoReplyService))
     private readonly flowiseAutoReply?: FlowiseAutoReplyService,
+    @Optional() @Inject(forwardRef(() => MessageRouterService))
+    private readonly messageRouter?: MessageRouterService,
   ) {}
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 100) {
@@ -702,8 +705,25 @@ export class MessagesService {
 
     this.agentRunService
       .processMessage(workspaceId, conversationId, bodyText)
-      .then((consumedByAgent) => {
+      .then(async (consumedByAgent) => {
         if (consumedByAgent) return;
+
+        // Route through the policy + intent decision engine before calling AI
+        const router = this.messageRouter;
+        if (router) {
+          const decision = await router.evaluate({
+            workspaceId,
+            conversationId,
+            messageId,
+            contactId,
+            text: bodyText,
+            receivedAt: new Date(),
+            isInteractive,
+          });
+
+          if (!decision.shouldCallAi) return;
+        }
+
         // Flowise tier agent takes priority; Emprende AI is the fallback.
         const flowise = this.flowiseAutoReply;
         if (flowise) {
