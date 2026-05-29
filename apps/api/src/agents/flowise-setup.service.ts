@@ -16,7 +16,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../common/prisma/prisma.service";
-import { FlowiseClient } from "./flowise/flowise.client";
+import { FlowiseClient, FlowiseModelConfig } from "./flowise/flowise.client";
 import type { FlowiseToolDef } from "./flowise/flowise.types";
 import { SUPPORT_AGENTS } from "./support/support-agents.catalog";
 import { SUPPORT_MODEL_NAME } from "./support/support-agent.types";
@@ -185,17 +185,24 @@ export class FlowiseSetupService {
     for (const tier of tiers) {
       try {
         const isProModel = tier.model === "deepseek-v4-pro";
-        const toolIds = tier.tools
-          .map((name) => toolIdByName.get(name))
-          .filter(Boolean) as string[];
-        const flowData = this.flowise.buildSupportFlowData({
+        const modelConfig: FlowiseModelConfig = {
+          credentialId: deepseekCredentialId,
           modelName: tier.model,
-          systemPrompt: tier.systemPrompt,
-          toolIds,
           basepath: deepseekBaseUrl,
           temperature: isProModel ? 1.0 : 0.2,
-          credentialId: deepseekCredentialId,
-        });
+        };
+        const toolIdMap = Object.fromEntries(toolIdByName.entries()) as Record<string, string>;
+
+        let flowData: string;
+        if (tier.slug === SUPPORT_TIER_SLUGS.TIER_1) {
+          flowData = this.flowise.buildTier1FlowData(modelConfig);
+        } else if (tier.slug === SUPPORT_TIER_SLUGS.TIER_2) {
+          flowData = this.flowise.buildTier2FlowData(modelConfig, toolIdMap);
+        } else if (tier.slug === SUPPORT_TIER_SLUGS.TIER_3) {
+          flowData = this.flowise.buildTier3FlowData(modelConfig, toolIdMap);
+        } else {
+          flowData = this.flowise.buildTier4FlowData(modelConfig, toolIdMap);
+        }
 
         let chatflowId: string;
         if (existingByName.has(tier.name)) {
