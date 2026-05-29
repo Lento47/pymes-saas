@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Plug, PlugZap, PowerOff, Trash2, Mail, MessageCircle, ExternalLink, Radio, Send, RefreshCw } from "lucide-react";
+import { Plus, Plug, PlugZap, PowerOff, Trash2, Mail, MessageCircle, ExternalLink, Radio, Send, RefreshCw, Pencil } from "lucide-react";
 import { api } from "@/lib/api";
 import { openExternal } from "@/lib/platform";
 import { useToast } from "@/hooks/use-toast";
@@ -60,7 +60,7 @@ function EmailConfigModal({ channel, onClose }: { channel: Record<string, any>; 
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const isEdit = channel?.status === "ACTIVE";
+  const isEdit = channel?.status !== "PENDING_SETUP";
 
   return (
     <div className="space-y-4 pt-2">
@@ -190,7 +190,7 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: Record<string, any
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const isEdit = channel?.status === "ACTIVE";
+  const isEdit = channel?.status !== "PENDING_SETUP";
 
   return (
     <div className="space-y-4 pt-2">
@@ -272,7 +272,7 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const isEdit = channel?.status === "ACTIVE";
+  const isEdit = channel?.status !== "PENDING_SETUP";
 
   const checkWebhookStatus = async () => {
     setCheckingStatus(true);
@@ -387,6 +387,42 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
         className="w-full bg-sky-600 hover:bg-sky-700"
       >
         {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
+      </Button>
+    </div>
+  );
+}
+
+function GenericChannelEditModal({ channel, onClose }: { channel: Record<string, any>; onClose: () => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [name, setName] = useState(channel?.name ?? "");
+
+  const save = useMutation({
+    mutationFn: () => api.updateChannel(channel.id, { name }),
+    onSuccess: () => {
+      toast({ title: "Canal actualizado" });
+      qc.invalidateQueries({ queryKey: ["/api/channels"] });
+      onClose();
+    },
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="space-y-4 pt-2">
+      <div>
+        <Label>Nombre del canal</Label>
+        <Input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          className="mt-1 bg-[hsl(var(--elevated))] border-border"
+        />
+      </div>
+      <Button
+        onClick={() => save.mutate()}
+        disabled={!name.trim() || save.isPending}
+        className="w-full bg-primary hover:bg-primary/90"
+      >
+        {save.isPending ? "Guardando..." : "Guardar cambios"}
       </Button>
     </div>
   );
@@ -511,13 +547,14 @@ export function ChannelsTab() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isEmail ? <Mail className="h-4 w-4 text-blue-400" /> : isWA ? <MessageCircle className="h-4 w-4 text-green-400" /> : isTG ? <Send className="h-4 w-4 text-sky-400" /> : null}
-              {configChannel?.status === "ACTIVE" ? "Editar" : "Configurar"} {configChannel?.type}
+              {configChannel?.status !== "PENDING_SETUP" ? "Editar" : "Configurar"} {configChannel?.type}
               <span className="text-muted-foreground font-normal text-sm ml-1">— {configChannel?.name}</span>
             </DialogTitle>
           </DialogHeader>
           {isEmail && <EmailConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
           {isWA && <WhatsAppConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
           {isTG && <TelegramConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
+          {!isEmail && !isWA && !isTG && <GenericChannelEditModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
         </DialogContent>
       </Dialog>
 
@@ -531,79 +568,85 @@ export function ChannelsTab() {
         <div className="space-y-2">
           {channels.map((ch) => {
             const Icon = CHANNEL_ICONS[ch.type] ?? Radio;
-            const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
-            const canConnect = ch.status !== "ACTIVE" && !needsConfig;
+            const configurable = ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM";
+            const needsConfig = ch.status === "PENDING_SETUP" && configurable;
+            const canConnect = ch.status === "PENDING_SETUP" && !configurable;
             const isActive = ch.status === "ACTIVE";
-            const canEdit = isActive && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
+            const canEdit = ch.status !== "PENDING_SETUP";
+
+            const statusLabel = isActive ? "Activo" : ch.status === "INACTIVE" ? "Inactivo" : ch.status === "ERROR" ? "Error" : "Sin configurar";
+            const statusClass = isActive
+              ? "text-green-600 border-green-500/30 bg-green-500/5"
+              : ch.status === "ERROR"
+                ? "text-red-500 border-red-500/30 bg-red-500/5"
+                : ch.status === "INACTIVE"
+                  ? "text-muted-foreground border-border"
+                  : "text-amber-500 border-amber-500/30 bg-amber-500/5";
 
             return (
-              <div key={ch.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
-                <div className="flex items-center gap-3">
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">{ch.name}</p>
-                    <Badge variant="outline" className={`text-xs mt-0.5 ${CHANNEL_TYPE_COLORS[ch.type] ?? ""}`}>
+              <div key={ch.id} className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border min-w-0">
+                {/* Icon */}
+                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{ch.name}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${CHANNEL_TYPE_COLORS[ch.type] ?? ""}`}>
                       {ch.type}
+                    </Badge>
+                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${statusClass}`}>
+                      {statusLabel}
                     </Badge>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={
-                    isActive
-                      ? "text-green-400 border-green-500/30"
-                      : ch.status === "INACTIVE"
-                        ? "text-red-400 border-red-500/30"
-                        : "text-gray-400 border-gray-500/30"
-                  }>
-                    {isActive ? "Activo" : ch.status === "INACTIVE" ? "Inactivo" : ch.status}
-                  </Badge>
 
+                {/* Actions */}
+                <div className="flex items-center gap-1 shrink-0">
                   {needsConfig && (
-                    <Button size="sm" variant="outline"
-                      className={`h-7 text-xs ${ch.type === "EMAIL" ? "border-blue-500/30 text-blue-400" : ch.type === "WHATSAPP" ? "border-green-500/30 text-green-400" : "border-sky-500/30 text-sky-400"}`}
+                    <button
+                      className="p-1.5 rounded-md border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                      title="Configurar"
                       onClick={() => setConfigChannel(ch)}
                     >
-                      <PlugZap className="h-3 w-3 mr-1" />Configurar
-                    </Button>
+                      <PlugZap className="h-3.5 w-3.5" />
+                    </button>
                   )}
-
                   {canEdit && (
-                    <Button size="sm" variant="outline"
-                      className="h-7 text-xs border-border text-muted-foreground hover:text-foreground"
+                    <button
+                      className="p-1.5 rounded-md border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                      title="Editar"
                       onClick={() => setConfigChannel(ch)}
                     >
-                      Editar
-                    </Button>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
                   )}
-
                   {canConnect && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs border-border"
+                    <button
+                      className="p-1.5 rounded-md border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                      title="Conectar"
                       onClick={() => api.connectChannel(ch.id).then(() => qc.invalidateQueries({ queryKey: ["/api/channels"] }))}
                     >
-                      <Plug className="h-3 w-3 mr-1" />Conectar
-                    </Button>
+                      <Plug className="h-3.5 w-3.5" />
+                    </button>
                   )}
-
                   {isActive && (
-                    <Button
-                      size="sm" variant="outline"
-                      className="h-7 text-xs border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                    <button
+                      className="p-1.5 rounded-md border border-border hover:bg-orange-500/10 hover:border-orange-500/30 transition-colors text-muted-foreground hover:text-orange-400"
+                      title="Desactivar canal"
                       disabled={disconnect.isPending}
                       onClick={() => disconnect.mutate(ch.id)}
-                      title="Desactivar canal"
                     >
-                      <PowerOff className="h-3 w-3" />
-                    </Button>
+                      <PowerOff className="h-3.5 w-3.5" />
+                    </button>
                   )}
-
-                  <Button
-                    size="sm" variant="outline"
-                    className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
-                    onClick={() => setDeleteChannel(ch)}
+                  <button
+                    className="p-1.5 rounded-md border border-border hover:bg-destructive/10 hover:border-destructive/30 transition-colors text-muted-foreground hover:text-destructive"
                     title="Eliminar canal"
+                    onClick={() => setDeleteChannel(ch)}
                   >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
             );
