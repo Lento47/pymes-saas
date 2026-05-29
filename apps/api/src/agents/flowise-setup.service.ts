@@ -207,6 +207,7 @@ export class FlowiseSetupService {
         let chatflowId: string;
         if (existingByName.has(tier.name)) {
           chatflowId = existingByName.get(tier.name)!;
+          this.logger.log(`[flowise-setup] Rebuilding tier agentflow: ${tier.name} (${chatflowId}), flowData ${flowData.length} bytes`);
           await this.flowise.updateChatflowWithData(chatflowId, tier.name, flowData);
           this.logger.log(`[flowise-setup] Updated tier agentflow: ${tier.name} (${chatflowId})`);
         } else {
@@ -384,6 +385,21 @@ export class FlowiseSetupService {
       this.logger.error(`[flowise-setup] reprovisionSupportAgent(${slug}) failed: ${err?.message}`);
       return null;
     }
+  }
+
+  /** Force-rebuild all tier agentflows and specialized agent flows. Safe to call at any time. */
+  async reprovisionAllFlows(): Promise<{ rebuilt: string[]; failed: string[] }> {
+    const rebuilt: string[] = [];
+    const failed: string[] = [];
+    this.logger.log("[flowise-setup] reprovisionAllFlows triggered manually");
+    try {
+      await this.setup();
+      rebuilt.push("all");
+    } catch (err: any) {
+      this.logger.error(`[flowise-setup] reprovisionAllFlows failed: ${err?.message}`);
+      failed.push(err?.message ?? "unknown");
+    }
+    return { rebuilt, failed };
   }
 
   /** Get the Flowise chatflow ID for a workspace plan */

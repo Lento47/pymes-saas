@@ -16,6 +16,7 @@ import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
 import { AgentsService } from "./agents.service";
 import { AgentRuntimeService } from "./runtime/agent-runtime.service";
 import { SupportOrchestratorService } from "./support/support-orchestrator.service";
+import { FlowiseSetupService } from "./flowise-setup.service";
 import { CreateAgentDto } from "./dto/create-agent.dto";
 import { UpdateAgentDto } from "./dto/update-agent.dto";
 import { TestAgentDto } from "./dto/test-agent.dto";
@@ -28,6 +29,7 @@ export class AgentsController {
     private readonly agentsService: AgentsService,
     private readonly runtime: AgentRuntimeService,
     private readonly orchestrator: SupportOrchestratorService,
+    private readonly flowiseSetup: FlowiseSetupService,
   ) {}
 
   // NOTE: /support routes must be declared before /:id to avoid route shadowing
@@ -203,6 +205,13 @@ export class AgentsController {
     @Param("id", ValidateUUIDPipe) id: string,
   ) {
     return this.agentsService.setStatus(workspaceId, id, "INACTIVE");
+  }
+
+  /** Force-rebuild all Flowise agentflows without redeploying. OWNER only. */
+  @Post("admin/flowise-rebuild")
+  @Roles(WorkspaceUserRole.OWNER)
+  async adminFlowiseRebuild() {
+    return this.flowiseSetup.reprovisionAllFlows();
   }
 
   private isMissingFlowiseChatflowError(err: unknown): boolean {

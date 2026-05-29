@@ -210,8 +210,7 @@ export class FlowiseClient {
           agentMemoryMaxTokenLimit: "",
           agentUserMessage: "",
           agentReturnResponseAs: opts.returnResponseAs ?? "userMessage",
-          agentUpdateState: opts.updateState
-            ?? JSON.stringify([{ key: "agentResponse", value: `{{ ${id}.output }}` }]),
+          agentUpdateState: opts.updateState ?? "",
           agentModelConfig,
         },
         outputAnchors: [
@@ -1315,20 +1314,22 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
   async updateChatflowWithData(id: string, name: string, flowDataJson: string): Promise<void> {
     const url = `${this.baseUrl.replace(/\/$/, "")}/api/v1/chatflows/${id}`;
     const body = { name, flowData: flowDataJson, deployed: true, isPublic: false, type: "AGENTFLOW" };
+    const bodyJson = JSON.stringify(body);
+    this.logger.log(`FlowiseClient.updateChatflowWithData → PUT ${url} (body ${bodyJson.length} bytes, auth=${!!this.apiKey})`);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       const res = await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...this.authHeaders },
-        body: JSON.stringify(body),
+        body: bodyJson,
         signal: controller.signal,
       });
+      const responseText = await res.text().catch(() => "");
       if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`Flowise chatflow update failed: ${res.status} ${text}`);
+        throw new Error(`Flowise chatflow update failed: ${res.status} ${responseText}`);
       }
-      this.logger.log(`Chatflow updated in Flowise: ${id} (${name})`);
+      this.logger.log(`Chatflow updated in Flowise: ${id} (${name}) — HTTP ${res.status}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`FlowiseClient.updateChatflowWithData failed for "${name}": ${msg}`);
