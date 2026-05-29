@@ -2630,6 +2630,49 @@ model PlaybookSuggestion {
   @@map("playbook_suggestions")
 }
 
+// ── Router metrics snapshot (daily rollup) ───────────────────────────────────
+model RouterMetricsSnapshot {
+  id              String   @id @default(cuid())
+  workspace_id    String
+  date            DateTime @db.Date
+  intent          String
+  agent_type      String
+  model_tier      String
+  call_count      Int      @default(0)
+  reply_count     Int      @default(0)
+  blocked_count   Int      @default(0)
+  tokens_consumed Int      @default(0)
+  tokens_saved    Int      @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@unique([workspace_id, date, intent, agent_type, model_tier])
+  @@index([workspace_id])
+  @@index([workspace_id, date])
+  @@map("router_metrics_snapshots")
+}
+
+// ── AI decision audit log ─────────────────────────────────────────────────────
+model AiDecisionAuditLog {
+  id                      String   @id @default(cuid())
+  workspace_id            String
+  conversation_id         String
+  message_id              String
+  intent                  String
+  agent_used              String
+  llm_used                Boolean  @default(false)
+  tools_used              String[]
+  policy_decision         String
+  send_mode               String
+  human_approval_required Boolean  @default(false)
+  created_at              DateTime @default(now())
+
+  @@index([workspace_id])
+  @@index([workspace_id, conversation_id])
+  @@index([workspace_id, created_at(sort: Desc)])
+  @@map("ai_decision_audit_logs")
+}
+
 // ── Platform-level settings (singleton row, id="singleton") ──────────────────
 model PlatformSettings {
   id                String    @id @default("singleton")

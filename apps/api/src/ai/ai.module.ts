@@ -36,6 +36,18 @@ import { AiTokensModule } from "../ai-tokens/ai-tokens.module";
 
 import { AiTriageService } from "./ai-triage.service";
 import { ElevenLabsService } from "./elevenlabs.service";
+import { MessageRouterService } from "./message-router/message-router.service";
+import { IntentClassifierService } from "./message-router/intent-classifier.service";
+import { LlmIntentClassifierService } from "./message-router/llm-intent-classifier.service";
+import { QuickReplyService } from "./message-router/quick-reply.service";
+import { PolicyEngineService } from "./message-router/policy-engine.service";
+import { SmartSendService } from "./message-router/smart-send.service";
+import { AgentDispatcherService } from "./message-router/agent-dispatcher.service";
+import { HumanHandoffService } from "./message-router/human-handoff.service";
+import { ContextEnricherService } from "./message-router/context-enricher.service";
+import { ModelSelectorService } from "./message-router/model-selector.service";
+import { RouterMetricsService } from "./message-router/router-metrics.service";
+import { AiDecisionAuditService } from "./message-router/ai-decision-audit.service";
 import { EmprendePlaybooksService } from "./emprende-playbooks.service";
 import { PlaybookExecutionService } from "./playbook-execution.service";
 import { PlatformAdminService } from "./platform-admin.service";
@@ -93,6 +105,18 @@ import { PlatformModule } from "../platform/platform.module";
     PlatformAdminService,
     FixApprovalService,
     FlowiseAutoReplyService,
+    MessageRouterService,
+    IntentClassifierService,
+    LlmIntentClassifierService,
+    QuickReplyService,
+    PolicyEngineService,
+    SmartSendService,
+    AgentDispatcherService,
+    HumanHandoffService,
+    ContextEnricherService,
+    ModelSelectorService,
+    RouterMetricsService,
+    AiDecisionAuditService,
   ],
   controllers: [
     AgentController,
@@ -120,6 +144,18 @@ import { PlatformModule } from "../platform/platform.module";
     PlatformAdminService,
     FixApprovalService,
     FlowiseAutoReplyService,
+    MessageRouterService,
+    IntentClassifierService,
+    LlmIntentClassifierService,
+    QuickReplyService,
+    PolicyEngineService,
+    SmartSendService,
+    AgentDispatcherService,
+    HumanHandoffService,
+    ContextEnricherService,
+    ModelSelectorService,
+    RouterMetricsService,
+    AiDecisionAuditService,
   ],
 })
 export class AiModule {}

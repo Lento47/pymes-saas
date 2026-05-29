@@ -7,6 +7,7 @@ import { EventsGateway } from "../gateways/events.gateway";
 import { AiService } from "../ai/ai.service";
 import { AgentRunService } from "../ai/agent-run.service";
 import { FlowiseAutoReplyService } from "../ai/flowise-auto-reply.service";
+import { MessageRouterService } from "../ai/message-router/message-router.service";
 import { AiConversationControlService } from "../ai/ai-conversation-control.service";
 import { PlatformAdminService } from "../ai/platform-admin.service";
 import { TasksService } from "../tasks/tasks.service";
@@ -54,6 +55,8 @@ export class MessagesService {
     private readonly platformAdmin?: PlatformAdminService,
     @Optional() @Inject(forwardRef(() => FlowiseAutoReplyService))
     private readonly flowiseAutoReply?: FlowiseAutoReplyService,
+    @Optional() @Inject(forwardRef(() => MessageRouterService))
+    private readonly messageRouter?: MessageRouterService,
   ) {}
 
   async findAll(workspaceId: string, conversationId: string, page = 1, limit = 100) {
@@ -702,10 +705,71 @@ export class MessagesService {
 
     this.agentRunService
       .processMessage(workspaceId, conversationId, bodyText)
-      .then((consumedByAgent) => {
+      .then(async (consumedByAgent) => {
         if (consumedByAgent) return;
-        // Flowise tier agent takes priority; Emprende AI is the fallback.
+
+        const router = this.messageRouter;
         const flowise = this.flowiseAutoReply;
+
+        // ── Decision engine ─────────────────────────────────────────────
+        if (router) {
+          let decision;
+          try {
+            decision = await router.evaluate({
+              workspaceId,
+              conversationId,
+              messageId,
+              contactId,
+              text: bodyText,
+              receivedAt: new Date(),
+              isInteractive,
+            });
+          } catch (err) {
+            this.logger.error("Error en router.evaluate", err);
+            // Fall through to AI chain on router failure
+            decision = null;
+          }
+
+          if (decision) {
+            // Quick reply: send directly, skip AI chain
+            if (decision.quickReplyText && flowise) {
+              flowise
+                .sendQuickReply(workspaceId, conversationId, decision.quickReplyText)
+                .then((replied) => router.recordOutcome(workspaceId, decision, replied).catch(() => undefined))
+                .catch((err) => this.logger.error("Error en quick reply", err?.stack ?? err));
+              return;
+            }
+
+            if (!decision.shouldCallAi) {
+              router.recordOutcome(workspaceId, decision, false).catch(() => undefined);
+              return;
+            }
+
+            // AI chain with agent persona + context enrichment
+            const dispatchOpts = {
+              systemPromptAddendum: decision.systemPromptAddendum,
+              contextEnrichment: decision.contextEnrichment,
+            };
+
+            if (flowise) {
+              flowise
+                .dispatch(workspaceId, conversationId, bodyText, dispatchOpts)
+                .then(async (handled) => {
+                  router.recordOutcome(workspaceId, decision, handled).catch(() => undefined);
+                  if (handled) return;
+                  await this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive);
+                })
+                .catch((err) => this.logger.error("Error en Flowise auto-reply", err?.stack ?? err));
+            } else {
+              this.triggerEmrendeAutoReply(workspaceId, conversationId, bodyText, isInteractive).catch(
+                (err) => this.logger.error("Error en auto-reply IA Emprende", err?.stack ?? err),
+              );
+            }
+            return;
+          }
+        }
+
+        // Fallback when router is absent: original chain
         if (flowise) {
           flowise
             .dispatch(workspaceId, conversationId, bodyText)
