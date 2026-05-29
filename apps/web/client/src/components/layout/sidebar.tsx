@@ -6,6 +6,7 @@ import { useTheme } from "@/components/providers/theme-provider";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { SearchDialog } from "@/components/shared/search-dialog";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { BrandLockup } from "@/components/marketing/brand-lockup";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -491,10 +492,11 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="relative z-40 flex shrink-0 items-center gap-3 border-b border-primary/15 bg-[hsl(var(--bg-sidebar))] px-3 py-2.5 pt-safe lg:px-5">
+          {/* Only show sidebar toggle in header on desktop — mobile uses bottom nav "More" button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
-              "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-colors shrink-0",
+              "hidden lg:flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-colors shrink-0",
               "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             )}
             title={sidebarOpen ? copy.closeMenu : copy.openMenu}
@@ -536,10 +538,17 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
         <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-        <div className="flex-1 overflow-y-auto minimal-scrollbar">
+        <div className="flex-1 overflow-y-auto minimal-scrollbar pb-[52px] lg:pb-0">
           {children}
         </div>
       </main>
+
+      <MobileBottomNav
+        onMenuClick={() => setSidebarOpen(true)}
+        isItemVisible={canShowNavItem}
+        unreadCount={unreadCount}
+        overdueCount={overdueCount}
+      />
 
     </div>
   );
