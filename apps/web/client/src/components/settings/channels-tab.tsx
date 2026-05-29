@@ -60,7 +60,7 @@ function EmailConfigModal({ channel, onClose }: { channel: Record<string, any>; 
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const isEdit = channel?.status === "ACTIVE";
+  const isEdit = channel?.status !== "PENDING_SETUP";
 
   return (
     <div className="space-y-4 pt-2">
@@ -190,7 +190,7 @@ function WhatsAppConfigModal({ channel, onClose }: { channel: Record<string, any
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const isEdit = channel?.status === "ACTIVE";
+  const isEdit = channel?.status !== "PENDING_SETUP";
 
   return (
     <div className="space-y-4 pt-2">
@@ -272,7 +272,7 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const isEdit = channel?.status === "ACTIVE";
+  const isEdit = channel?.status !== "PENDING_SETUP";
 
   const checkWebhookStatus = async () => {
     setCheckingStatus(true);
@@ -387,6 +387,42 @@ function TelegramConfigModal({ channel, onClose }: { channel: Record<string, any
         className="w-full bg-sky-600 hover:bg-sky-700"
       >
         {save.isPending ? "Guardando..." : isEdit ? "Guardar cambios" : "Guardar y activar canal"}
+      </Button>
+    </div>
+  );
+}
+
+function GenericChannelEditModal({ channel, onClose }: { channel: Record<string, any>; onClose: () => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [name, setName] = useState(channel?.name ?? "");
+
+  const save = useMutation({
+    mutationFn: () => api.updateChannel(channel.id, { name }),
+    onSuccess: () => {
+      toast({ title: "Canal actualizado" });
+      qc.invalidateQueries({ queryKey: ["/api/channels"] });
+      onClose();
+    },
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="space-y-4 pt-2">
+      <div>
+        <Label>Nombre del canal</Label>
+        <Input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          className="mt-1 bg-[hsl(var(--elevated))] border-border"
+        />
+      </div>
+      <Button
+        onClick={() => save.mutate()}
+        disabled={!name.trim() || save.isPending}
+        className="w-full bg-primary hover:bg-primary/90"
+      >
+        {save.isPending ? "Guardando..." : "Guardar cambios"}
       </Button>
     </div>
   );
@@ -511,13 +547,14 @@ export function ChannelsTab() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isEmail ? <Mail className="h-4 w-4 text-blue-400" /> : isWA ? <MessageCircle className="h-4 w-4 text-green-400" /> : isTG ? <Send className="h-4 w-4 text-sky-400" /> : null}
-              {configChannel?.status === "ACTIVE" ? "Editar" : "Configurar"} {configChannel?.type}
+              {configChannel?.status !== "PENDING_SETUP" ? "Editar" : "Configurar"} {configChannel?.type}
               <span className="text-muted-foreground font-normal text-sm ml-1">— {configChannel?.name}</span>
             </DialogTitle>
           </DialogHeader>
           {isEmail && <EmailConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
           {isWA && <WhatsAppConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
           {isTG && <TelegramConfigModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
+          {!isEmail && !isWA && !isTG && <GenericChannelEditModal channel={configChannel} onClose={() => setConfigChannel(null)} />}
         </DialogContent>
       </Dialog>
 
@@ -531,10 +568,11 @@ export function ChannelsTab() {
         <div className="space-y-2">
           {channels.map((ch) => {
             const Icon = CHANNEL_ICONS[ch.type] ?? Radio;
-            const needsConfig = ch.status !== "ACTIVE" && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
-            const canConnect = ch.status !== "ACTIVE" && !needsConfig;
+            const configurable = ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM";
+            const needsConfig = ch.status === "PENDING_SETUP" && configurable;
+            const canConnect = ch.status === "PENDING_SETUP" && !configurable;
             const isActive = ch.status === "ACTIVE";
-            const canEdit = isActive && (ch.type === "EMAIL" || ch.type === "WHATSAPP" || ch.type === "TELEGRAM");
+            const canEdit = ch.status !== "PENDING_SETUP";
 
             return (
               <div key={ch.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border">
