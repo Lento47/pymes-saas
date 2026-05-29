@@ -12,6 +12,7 @@ import {
 import { ValidateUUIDPipe } from "../common/pipes/validate-uuid.pipe";
 import { PlatformService } from "./platform.service";
 import { PlatformSettingsService, UpdatePlatformSettingsDto } from "./platform-settings.service";
+import { SupportOrchestratorService } from "../agents/support/support-orchestrator.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { PlatformAdminGuard } from "../auth/guards/platform-admin.guard";
 import { AssignMemberDto } from "./dto/assign-member.dto";
@@ -30,6 +31,7 @@ export class PlatformController {
   constructor(
     private readonly service: PlatformService,
     private readonly platformSettings: PlatformSettingsService,
+    private readonly orchestrator: SupportOrchestratorService,
   ) {}
 
   @Get("workspaces")
@@ -174,6 +176,28 @@ export class PlatformController {
   @Get("router-metrics")
   getRouterMetrics(@Query("days") days?: string) {
     return this.service.getRouterMetrics(days ? parseInt(days, 10) : 30);
+  }
+
+  // ── Support case orchestration (platform admin) ───────────────────────────
+
+  @Post("support-cases/:id/orchestrate")
+  async orchestrateSupportCase(
+    @Param("id", ValidateUUIDPipe) caseId: string,
+    @Body("message") message: string | undefined,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const caseRecord = await this.service.getSupportCaseWorkspace(caseId);
+    return this.orchestrator.orchestrate({
+      workspace_id: caseRecord.workspace_id,
+      message: message ?? `Analizar caso de soporte ${caseId}`,
+      diagnostic_case_id: caseId,
+      triggered_by_user_id: user.id,
+    });
+  }
+
+  @Get("support-cases/:id/runs")
+  async getSupportCaseRuns(@Param("id", ValidateUUIDPipe) caseId: string) {
+    return this.service.getOrchestrationRunsForCase(caseId);
   }
 
   @Get("workspaces/:slug")

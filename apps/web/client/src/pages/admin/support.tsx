@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth, useRequireAuth } from "@/hooks/use-auth";
-import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink, ChevronDown, ChevronUp, Building2, UserCircle, LayoutList, Map, MessageSquare, Send, Loader2 } from "lucide-react";
+import { Search, Bug, ShieldAlert, AlertTriangle, Info, Clock, Check, ExternalLink, ChevronDown, ChevronUp, Building2, UserCircle, LayoutList, Map, MessageSquare, Send, Loader2, Bot, CheckCircle2, AlertCircle, SkipForward, History } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PlaygroundBoard } from "@/components/playground/PlaygroundBoard";
 
@@ -61,6 +61,131 @@ function parseEvidence(evidence: unknown): { workspace?: EvidenceWorkspace; user
   }
 }
 
+const SEVERITY_COLORS: Record<string, string> = {
+  critical: "bg-red-500/10 text-red-500 border-red-500/30",
+  high: "bg-orange-500/10 text-orange-500 border-orange-500/30",
+  medium: "bg-yellow-500/10 text-yellow-500 border-yellow-500/30",
+  low: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+};
+
+const STAGE_LABELS: Record<string, string> = {
+  "intake-triage": "Triage",
+  "customer-support": "Soporte al cliente",
+  "channel-integration": "Integración de canal",
+  "crm-workflow": "CRM",
+  "billing-subscription": "Facturación",
+  "technical-diagnostic": "Diagnóstico técnico",
+  "code-fix-proposal": "Propuesta de fix",
+  "security-compliance": "Seguridad",
+  "human-handoff": "Handoff humano",
+};
+
+function OrchestrationResult({ result }: { result: Record<string, any> }) {
+  const [expandedStage, setExpandedStage] = useState<string | null>(null);
+  const stages: any[] = Array.isArray(result.stages) ? result.stages : [];
+
+  return (
+    <div className="rounded-lg border border-border/60 bg-muted/30 p-3 mb-3 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${STATUS_COLORS[result.status] ?? "bg-muted text-muted-foreground"}`}>
+          {result.status}
+        </span>
+        {result.case_type && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">
+            {result.case_type}
+          </span>
+        )}
+        {result.severity && (
+          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${SEVERITY_COLORS[result.severity] ?? "bg-muted text-muted-foreground"}`}>
+            {result.severity}
+          </span>
+        )}
+        {result.needs_human_review && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full border bg-orange-500/10 text-orange-400 border-orange-500/30 flex items-center gap-1">
+            <AlertCircle className="w-2.5 h-2.5" /> Requiere revisión humana
+          </span>
+        )}
+      </div>
+
+      {result.summary && (
+        <p className="text-xs text-foreground/80 leading-relaxed">{result.summary}</p>
+      )}
+
+      {stages.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Etapas ejecutadas</p>
+          {stages.map((stage: any, i: number) => {
+            const isEx = expandedStage === `${i}`;
+            return (
+              <div key={i} className="rounded-md border border-border/40 bg-background/60">
+                <button
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left"
+                  onClick={() => setExpandedStage(isEx ? null : `${i}`)}
+                >
+                  {stage.allowed === false ? (
+                    <SkipForward className="w-3 h-3 shrink-0 text-muted-foreground/50" />
+                  ) : stage.error ? (
+                    <AlertCircle className="w-3 h-3 shrink-0 text-red-400" />
+                  ) : (
+                    <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-500" />
+                  )}
+                  <span className="flex-1 text-[11px] font-medium text-foreground/80">
+                    {STAGE_LABELS[stage.agent_slug] ?? stage.agent_slug}
+                  </span>
+                  {stage.duration_ms && (
+                    <span className="text-[10px] text-muted-foreground/60">{stage.duration_ms}ms</span>
+                  )}
+                  {isEx ? <ChevronUp className="w-3 h-3 text-muted-foreground/50" /> : <ChevronDown className="w-3 h-3 text-muted-foreground/50" />}
+                </button>
+                {isEx && (
+                  <div className="px-2.5 pb-2.5">
+                    {stage.skipped_reason && (
+                      <p className="text-[10px] text-muted-foreground/70 italic">{stage.skipped_reason}</p>
+                    )}
+                    {stage.error && (
+                      <p className="text-[10px] text-red-400">{stage.error}</p>
+                    )}
+                    {stage.output_preview && (
+                      <p className="text-[11px] text-foreground/70 leading-relaxed whitespace-pre-wrap">{stage.output_preview}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CaseRunHistory({ caseId }: { caseId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["case-runs", caseId],
+    queryFn: () => api.platformGetCaseRuns(caseId),
+    staleTime: 30_000,
+  });
+
+  if (isLoading) return <div className="flex items-center gap-2 py-2"><Loader2 className="w-3 h-3 animate-spin text-muted-foreground" /><span className="text-[11px] text-muted-foreground">Cargando historial...</span></div>;
+
+  const runs: any[] = Array.isArray(data) ? data : [];
+  if (runs.length === 0) return <p className="text-[11px] text-muted-foreground/70 mb-2">Sin ejecuciones anteriores.</p>;
+
+  return (
+    <div className="space-y-1.5 mb-3">
+      {runs.map((run: any) => (
+        <div key={run.id} className="flex items-center gap-2 text-[11px] text-muted-foreground rounded-md border border-border/40 bg-background/60 px-2.5 py-1.5">
+          <span className={`px-1.5 py-0.5 rounded text-[10px] border ${STATUS_COLORS[run.status] ?? "bg-muted"}`}>{run.status}</span>
+          {run.case_type && <span>{run.case_type}</span>}
+          {run.severity && <span className={`px-1.5 py-0.5 rounded text-[10px] border ${SEVERITY_COLORS[run.severity] ?? ""}`}>{run.severity}</span>}
+          {run.needs_human_review && <AlertCircle className="w-3 h-3 text-orange-400 shrink-0" />}
+          <span className="ml-auto text-[10px] text-muted-foreground/60">{new Date(run.created_at).toLocaleDateString("es-CR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   USER_GUIDANCE: "Guía de usuario",
   PERMISSION_ISSUE: "Permisos",
@@ -81,6 +206,8 @@ export default function SupportPage() {
   const [filter, setFilter] = useState("OPEN");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
+  const [orchestrationResults, setOrchestrationResults] = useState<Record<string, any>>({});
+  const [showRunHistory, setShowRunHistory] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Deep-link from API-error toasts: ApiError appends "Ticket #abc abierto"
@@ -115,6 +242,13 @@ export default function SupportPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["case-comments", expandedId] });
       setNewComment("");
+    },
+  });
+
+  const orchestrateMut = useMutation({
+    mutationFn: (caseId: string) => api.platformOrchestrateSupportCase(caseId),
+    onSuccess: (result: Record<string, any>, caseId: string) => {
+      setOrchestrationResults(prev => ({ ...prev, [caseId]: result }));
     },
   });
 
@@ -377,6 +511,46 @@ export default function SupportPage() {
                       <div className="text-[10px] text-muted-foreground/75 font-mono">
                         ID: {c.id}
                       </div>
+
+                      {/* ── AI Orchestration ───────────────────────────── */}
+                      {isAdmin && user?.is_platform_admin && (
+                        <div className="border-t border-border/40 pt-4 mt-3">
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                              <Bot className="w-3 h-3" /> Análisis con agentes IA
+                            </p>
+                            <div className="flex gap-1.5">
+                              <button
+                                onClick={() => setShowRunHistory(showRunHistory === c.id ? null : c.id)}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                <History className="w-3 h-3" /> Historial
+                              </button>
+                              <button
+                                onClick={() => orchestrateMut.mutate(c.id)}
+                                disabled={orchestrateMut.isPending && orchestrateMut.variables === c.id}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium rounded-md border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-50 transition-colors"
+                              >
+                                {orchestrateMut.isPending && orchestrateMut.variables === c.id ? (
+                                  <><Loader2 className="w-3 h-3 animate-spin" /> Analizando...</>
+                                ) : (
+                                  <><Bot className="w-3 h-3" /> Analizar con IA</>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Run history */}
+                          {showRunHistory === c.id && (
+                            <CaseRunHistory caseId={c.id} />
+                          )}
+
+                          {/* Latest orchestration result */}
+                          {orchestrationResults[c.id] && (
+                            <OrchestrationResult result={orchestrationResults[c.id]} />
+                          )}
+                        </div>
+                      )}
 
                       {isAdmin && (
                         <div className="border-t border-border/40 pt-4 mt-3">

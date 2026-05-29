@@ -892,6 +892,36 @@ export class PlatformService {
     return user;
   }
 
+  // ── Support case helpers (platform admin) ─────────────────────────────────
+
+  async getSupportCaseWorkspace(caseId: string) {
+    const rec = await this.prisma.supportDiagnosticCase.findUnique({
+      where: { id: caseId },
+      select: { workspace_id: true },
+    });
+    if (!rec) throw new NotFoundException("Caso no encontrado.");
+    return rec;
+  }
+
+  async getOrchestrationRunsForCase(caseId: string) {
+    return this.prisma.supportOrchestrationRun.findMany({
+      where: { diagnostic_case_id: caseId },
+      orderBy: { created_at: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        tier: true,
+        status: true,
+        case_type: true,
+        severity: true,
+        needs_human_review: true,
+        stages_json: true,
+        summary: true,
+        created_at: true,
+      },
+    });
+  }
+
   // ── Router metrics (platform-wide) ────────────────────────────────────────
 
   async getRouterMetrics(days = 30) {

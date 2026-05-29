@@ -663,6 +663,12 @@ export const api = {
   // ── Router metrics (platform admin) ─────────────────────────────────────
   platformGetRouterMetrics: (days?: number) =>
     request<Record<string, any>>("GET", `/api/platform/router-metrics${days ? `?days=${days}` : ""}`),
+
+  // ── Support case orchestration (platform admin) ───────────────────────────
+  platformOrchestrateSupportCase: (caseId: string, message?: string) =>
+    request<Record<string, any>>("POST", `/api/platform/support-cases/${caseId}/orchestrate`, { message }),
+  platformGetCaseRuns: (caseId: string) =>
+    request<Record<string, any>[]>("GET", `/api/platform/support-cases/${caseId}/runs`),
 };
 
 // ── Session activity tracking ────────────────────────────────────────────
