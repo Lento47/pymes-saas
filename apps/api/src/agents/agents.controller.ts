@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -125,6 +127,16 @@ export class AgentsController {
     @Body() dto: UpdateAgentDto,
   ) {
     return this.agentsService.updateAgent(workspaceId, id, dto);
+  }
+
+  @Delete(":id")
+  @HttpCode(204)
+  @Roles(WorkspaceUserRole.ADMIN, WorkspaceUserRole.OWNER)
+  deleteAgent(
+    @CurrentUser("workspace_id") workspaceId: string,
+    @Param("id", ValidateUUIDPipe) id: string,
+  ) {
+    return this.agentsService.deleteAgent(workspaceId, id);
   }
 
   @Post(":id/test")

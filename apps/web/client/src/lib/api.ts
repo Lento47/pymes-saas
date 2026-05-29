@@ -625,6 +625,8 @@ export const api = {
     request<Record<string, any>>("POST", `/api/agents/${id}/activate`),
   deactivateAgent: (id: string) =>
     request<Record<string, any>>("POST", `/api/agents/${id}/deactivate`),
+  deleteAgent: (id: string) =>
+    request<void>("DELETE", `/api/agents/${id}`),
   listAgentTemplates: () =>
     request<Record<string, any>[]>("GET", "/api/agents/templates"),
   installAgentTemplate: (templateId: string) =>

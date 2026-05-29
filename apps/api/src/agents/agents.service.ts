@@ -220,6 +220,22 @@ export class AgentsService {
     return ws.plan;
   }
 
+  async deleteAgent(workspaceId: string, id: string): Promise<void> {
+    const agent = await this.getAgent(workspaceId, id);
+
+    if (this.flowise.isEnabled && agent.chatflow_id) {
+      try {
+        await this.flowise.deleteChatflow(agent.chatflow_id);
+      } catch (err) {
+        this.logger.warn(
+          `Failed to delete Flowise chatflow ${agent.chatflow_id} for agent ${id}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    await this.prisma.agentInstance.delete({ where: { id } });
+  }
+
   async reprovisionChatflow(workspaceId: string, agentId: string) {
     const agent = await this.prisma.agentInstance.findUniqueOrThrow({
       where: { id: agentId, workspace_id: workspaceId },
