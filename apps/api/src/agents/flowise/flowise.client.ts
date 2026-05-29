@@ -107,6 +107,8 @@ export class FlowiseClient {
         baseClasses: ["Agent"],
         category: "Agent Flows",
         description: "Dynamically choose and utilize tools during runtime, enabling multi-step reasoning",
+        // Flowise credential resolver reads data.credential at this level
+        credential: opts.credentialId ?? "",
         inputParams: [],
         inputAnchors: [],
         inputs: {
