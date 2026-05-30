@@ -15,9 +15,10 @@ import { SupportOrchestratorService } from "./support/support-orchestrator.servi
 import { PrismaModule } from "../common/prisma/prisma.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { EventsModule } from "../gateways/events.module";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
-  imports: [TtsModule, LearningModule, PlanLimitsModule, PrismaModule, NotificationsModule, EventsModule],
+  imports: [TtsModule, LearningModule, PlanLimitsModule, PrismaModule, NotificationsModule, EventsModule, AuditModule],
   controllers: [AgentsController],
   providers: [
     AgentsService,
@@ -30,7 +31,7 @@ import { EventsModule } from "../gateways/events.module";
     PrCreationPolicyService,
     SupportOrchestratorService,
   ],
-  exports: [AgentRuntimeService, FlowiseSetupService, FlowiseClient, PrCreationPolicyService, SupportOrchestratorService],
+  exports: [AgentRuntimeService, AgentGuardrailsService, FlowiseSetupService, FlowiseClient, PrCreationPolicyService, SupportOrchestratorService],
 })
 export class AgentsModule implements OnModuleInit {
   constructor(
