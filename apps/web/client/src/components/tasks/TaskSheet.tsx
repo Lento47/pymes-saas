@@ -50,7 +50,7 @@ export function TaskSheet({ open, onOpenChange, editingId, initialData, onSave, 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[520px] sm:max-w-[520px] p-0 gap-0 flex flex-col h-full">
+      <SheetContent side="right" className="w-full sm:w-[520px] sm:max-w-[520px] p-0 gap-0 flex flex-col h-full">
         <SheetHeader className="px-6 py-4 border-b border-border/60 space-y-1 shrink-0">
           <SheetTitle className="text-sm font-semibold">
             {isEdit ? "Editar tarea" : "Nueva tarea"}

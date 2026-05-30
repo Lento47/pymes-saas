@@ -131,7 +131,7 @@ export function InvoiceSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[580px] sm:max-w-[580px] p-0 gap-0 flex flex-col h-full">
+      <SheetContent side="right" className="w-full sm:w-[580px] sm:max-w-[580px] p-0 gap-0 flex flex-col h-full">
         <SheetHeader className="px-6 py-4 border-b border-border/60 space-y-1 shrink-0">
           <SheetTitle className="text-sm font-semibold">Nueva factura</SheetTitle>
         </SheetHeader>
