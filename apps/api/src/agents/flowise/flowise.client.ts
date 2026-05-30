@@ -676,10 +676,9 @@ Responde SOLO con JSON: {"intent": "...", "summary": "una línea"}` }],
     return JSON.stringify({ nodes, edges });
   }
 
-  buildTier2FlowData(model: FlowiseModelConfig, toolIdMap: Record<string, string>): string {
+  buildTier2FlowData(model: FlowiseModelConfig, _toolIdMap?: Record<string, string>): string {
     const m = { ...model, temperature: model.temperature ?? 0.3 };
     const fast = { ...m, temperature: 0.1 };
-    const T = (name: string) => toolIdMap[name] ?? "";
 
     const start = FlowiseClient.buildStartNode(FlowiseClient.TIER2_STATE);
 
@@ -710,8 +709,8 @@ Responde SOLO con JSON: {"safe": true} o {"safe": false, "risk": "..."}` }],
       model: fast, position: { x: 1000, y: 100 }, returnResponseAs: "assistantMessage",
     });
 
-    const toolPlan = FlowiseClient.buildToolNode({ id: "toolAgentflow_0", label: "get_workspace_plan", toolId: T("get_workspace_plan"), inputValue: "{}", position: { x: 1000, y: 400 }, updateState: JSON.stringify([{ key: "workspacePlan", value: "{{ toolAgentflow_0.output }}" }]) });
-    const toolCtx = FlowiseClient.buildToolNode({ id: "toolAgentflow_1", label: "get_workspace_context", toolId: T("get_workspace_context"), inputValue: "{}", position: { x: 1250, y: 400 }, updateState: JSON.stringify([{ key: "workspaceContext", value: "{{ toolAgentflow_1.output }}" }]) });
+    const toolPlan = FlowiseClient.buildToolNode({ id: "toolAgentflow_0", label: "get_workspace_plan", toolId: "get_workspace_plan", inputValue: "{}", position: { x: 1000, y: 400 }, updateState: JSON.stringify([{ key: "workspacePlan", value: "{{ toolAgentflow_0.output }}" }]) });
+    const toolCtx = FlowiseClient.buildToolNode({ id: "toolAgentflow_1", label: "get_workspace_context", toolId: "get_workspace_context", inputValue: "{}", position: { x: 1250, y: 400 }, updateState: JSON.stringify([{ key: "workspaceContext", value: "{{ toolAgentflow_1.output }}" }]) });
 
     const llmClassify = FlowiseClient.buildLLMNode({
       id: "llmAgentflow_2", label: "Case Classifier",
@@ -737,20 +736,20 @@ Responde SOLO con JSON: {"area": "...", "severity": "low|medium|high", "summary"
     });
 
     // WhatsApp branch
-    const toolCh = FlowiseClient.buildToolNode({ id: "toolAgentflow_2", label: "get_channel_status", toolId: T("get_channel_status"), inputValue: '{"type":"WHATSAPP"}', position: { x: 2000, y: 100 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_2.output }}" }]) });
-    const toolWa = FlowiseClient.buildToolNode({ id: "toolAgentflow_3", label: "get_whatsapp_status", toolId: T("get_whatsapp_status"), inputValue: "{}", position: { x: 2250, y: 100 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_3.output }}" }]) });
+    const toolCh = FlowiseClient.buildToolNode({ id: "toolAgentflow_2", label: "get_channel_status", toolId: "get_channel_status", inputValue: '{"type":"WHATSAPP"}', position: { x: 2000, y: 100 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_2.output }}" }]) });
+    const toolWa = FlowiseClient.buildToolNode({ id: "toolAgentflow_3", label: "get_whatsapp_status", toolId: "get_whatsapp_status", inputValue: "{}", position: { x: 2250, y: 100 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_3.output }}" }]) });
     const llmWa = FlowiseClient.buildLLMNode({ id: "llmAgentflow_3", label: "WhatsApp Analyst", messages: [{ role: "system", content: "Analiza el estado del canal de WhatsApp y el problema reportado. Da una solución clara con pasos concretos. Contexto del workspace: {{ $flow.state.workspaceContext }}. Estado del canal: {{ $flow.state.channelStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2500, y: 100 }, updateState: JSON.stringify([{ key: "agentResponse", value: "{{ llmAgentflow_3.output }}" }, { key: "finalResponse", value: "{{ llmAgentflow_3.output }}" }]) });
 
     // Telegram branch
-    const toolTg = FlowiseClient.buildToolNode({ id: "toolAgentflow_4", label: "get_telegram_status", toolId: T("get_telegram_status"), inputValue: "{}", position: { x: 2000, y: 250 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_4.output }}" }]) });
+    const toolTg = FlowiseClient.buildToolNode({ id: "toolAgentflow_4", label: "get_telegram_status", toolId: "get_telegram_status", inputValue: "{}", position: { x: 2000, y: 250 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_4.output }}" }]) });
     const llmTg = FlowiseClient.buildLLMNode({ id: "llmAgentflow_4", label: "Telegram Analyst", messages: [{ role: "system", content: "Analiza el estado del canal de Telegram y el problema reportado. Da una solución con pasos concretos. Estado: {{ $flow.state.channelStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2250, y: 250 }, updateState: JSON.stringify([{ key: "agentResponse", value: "{{ llmAgentflow_4.output }}" }, { key: "finalResponse", value: "{{ llmAgentflow_4.output }}" }]) });
 
     // CRM/Workflow branch
-    const toolWf = FlowiseClient.buildToolNode({ id: "toolAgentflow_5", label: "get_workflow_config", toolId: T("get_workflow_config"), inputValue: "{}", position: { x: 2000, y: 400 }, updateState: JSON.stringify([{ key: "workflowStatus", value: "{{ toolAgentflow_5.output }}" }]) });
+    const toolWf = FlowiseClient.buildToolNode({ id: "toolAgentflow_5", label: "get_workflow_config", toolId: "get_workflow_config", inputValue: "{}", position: { x: 2000, y: 400 }, updateState: JSON.stringify([{ key: "workflowStatus", value: "{{ toolAgentflow_5.output }}" }]) });
     const llmWf = FlowiseClient.buildLLMNode({ id: "llmAgentflow_5", label: "Workflow Analyst", messages: [{ role: "system", content: "Analiza la configuración de automatizaciones y el problema reportado. Da una solución con pasos claros. Config: {{ $flow.state.workflowStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2250, y: 400 }, updateState: JSON.stringify([{ key: "agentResponse", value: "{{ llmAgentflow_5.output }}" }, { key: "finalResponse", value: "{{ llmAgentflow_5.output }}" }]) });
 
     // Billing branch
-    const toolBill = FlowiseClient.buildToolNode({ id: "toolAgentflow_6", label: "get_billing_status", toolId: T("get_billing_status"), inputValue: "{}", position: { x: 2000, y: 550 }, updateState: JSON.stringify([{ key: "billingStatus", value: "{{ toolAgentflow_6.output }}" }]) });
+    const toolBill = FlowiseClient.buildToolNode({ id: "toolAgentflow_6", label: "get_billing_status", toolId: "get_billing_status", inputValue: "{}", position: { x: 2000, y: 550 }, updateState: JSON.stringify([{ key: "billingStatus", value: "{{ toolAgentflow_6.output }}" }]) });
     const llmBill = FlowiseClient.buildLLMNode({ id: "llmAgentflow_6", label: "Billing Analyst", messages: [{ role: "system", content: "Explica claramente el estado de la suscripción y responde la pregunta del usuario. NO realices cambios. Estado: {{ $flow.state.billingStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2250, y: 550 }, updateState: JSON.stringify([{ key: "agentResponse", value: "{{ llmAgentflow_6.output }}" }, { key: "finalResponse", value: "{{ llmAgentflow_6.output }}" }]) });
 
     // General branch
@@ -831,10 +830,9 @@ Responde SOLO con JSON: {"escalate": true/false, "reason": "..."}` }],
     return JSON.stringify({ nodes, edges });
   }
 
-  buildTier3FlowData(model: FlowiseModelConfig, toolIdMap: Record<string, string>): string {
+  buildTier3FlowData(model: FlowiseModelConfig, _toolIdMap?: Record<string, string>): string {
     const m = { ...model, temperature: model.temperature ?? 0.3 };
     const fast = { ...m, temperature: 0.1 };
-    const T = (name: string) => toolIdMap[name] ?? "";
 
     const start = FlowiseClient.buildStartNode(FlowiseClient.TIER3_STATE);
 
@@ -843,8 +841,8 @@ Responde SOLO con JSON: {"escalate": true/false, "reason": "..."}` }],
     const condSafe = FlowiseClient.buildConditionNode({ id: "conditionAgentflow_0", label: "¿Unsafe?", conditions: [{ type: "string", value1: "{{ $flow.state.riskLevel }}", operation: "contains", value2: '"safe":false' }], position: { x: 750, y: 300 } });
     const llmRefusal = FlowiseClient.buildLLMNode({ id: "llmAgentflow_12", label: "Refusal Composer", messages: [{ role: "system", content: "Responde exactamente con este texto y nada más: \"No puedo procesar esa solicitud.\"" }], model: fast, position: { x: 1000, y: 100 }, returnResponseAs: "assistantMessage" });
 
-    const toolPlan = FlowiseClient.buildToolNode({ id: "toolAgentflow_0", label: "get_workspace_plan", toolId: T("get_workspace_plan"), inputValue: "{}", position: { x: 1000, y: 400 }, updateState: JSON.stringify([{ key: "workspacePlan", value: "{{ toolAgentflow_0.output }}" }]) });
-    const toolCtx = FlowiseClient.buildToolNode({ id: "toolAgentflow_1", label: "get_workspace_context", toolId: T("get_workspace_context"), inputValue: "{}", position: { x: 1250, y: 400 }, updateState: JSON.stringify([{ key: "workspaceContext", value: "{{ toolAgentflow_1.output }}" }]) });
+    const toolPlan = FlowiseClient.buildToolNode({ id: "toolAgentflow_0", label: "get_workspace_plan", toolId: "get_workspace_plan", inputValue: "{}", position: { x: 1000, y: 400 }, updateState: JSON.stringify([{ key: "workspacePlan", value: "{{ toolAgentflow_0.output }}" }]) });
+    const toolCtx = FlowiseClient.buildToolNode({ id: "toolAgentflow_1", label: "get_workspace_context", toolId: "get_workspace_context", inputValue: "{}", position: { x: 1250, y: 400 }, updateState: JSON.stringify([{ key: "workspaceContext", value: "{{ toolAgentflow_1.output }}" }]) });
 
     const condRoute = FlowiseClient.buildConditionAgentNode({
       id: "conditionAgentAgentflow_0", label: "Case Router",
@@ -865,24 +863,24 @@ Responde SOLO con JSON: {"escalate": true/false, "reason": "..."}` }],
     const llmProdSupport = FlowiseClient.buildLLMNode({ id: "llmAgentflow_2", label: "Product Support", messages: [{ role: "system", content: "Eres un SRE senior de PymesHub. Responde la pregunta con base en el contexto del workspace. Contexto: {{ $flow.state.workspaceContext }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 1750, y: 100 }, returnResponseAs: "assistantMessage" });
 
     // Channel diagnostic branch
-    const toolCh = FlowiseClient.buildToolNode({ id: "toolAgentflow_2", label: "get_channel_status", toolId: T("get_channel_status"), inputValue: "{}", position: { x: 1750, y: 250 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_2.output }}" }]) });
-    const toolWa = FlowiseClient.buildToolNode({ id: "toolAgentflow_3", label: "get_whatsapp_status", toolId: T("get_whatsapp_status"), inputValue: "{}", position: { x: 2000, y: 200 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_3.output }}" }]) });
+    const toolCh = FlowiseClient.buildToolNode({ id: "toolAgentflow_2", label: "get_channel_status", toolId: "get_channel_status", inputValue: "{}", position: { x: 1750, y: 250 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_2.output }}" }]) });
+    const toolWa = FlowiseClient.buildToolNode({ id: "toolAgentflow_3", label: "get_whatsapp_status", toolId: "get_whatsapp_status", inputValue: "{}", position: { x: 2000, y: 200 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_3.output }}" }]) });
     const llmChanAnalyst = FlowiseClient.buildLLMNode({ id: "llmAgentflow_3", label: "Channel Analyst", messages: [{ role: "system", content: "Analiza el estado del canal y diagnostica el problema. Distingue entre: problema del proveedor, error de configuración, o bug interno. Estado: {{ $flow.state.channelStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2250, y: 250 }, returnResponseAs: "assistantMessage" });
 
     // Workflow diagnostic branch
-    const toolWf = FlowiseClient.buildToolNode({ id: "toolAgentflow_4", label: "get_workflow_config", toolId: T("get_workflow_config"), inputValue: "{}", position: { x: 1750, y: 450 }, updateState: JSON.stringify([{ key: "workflowStatus", value: "{{ toolAgentflow_4.output }}" }]) });
+    const toolWf = FlowiseClient.buildToolNode({ id: "toolAgentflow_4", label: "get_workflow_config", toolId: "get_workflow_config", inputValue: "{}", position: { x: 1750, y: 450 }, updateState: JSON.stringify([{ key: "workflowStatus", value: "{{ toolAgentflow_4.output }}" }]) });
     const llmWfAnalyst = FlowiseClient.buildLLMNode({ id: "llmAgentflow_4", label: "Workflow Analyst", messages: [{ role: "system", content: "Analiza la configuración de automatizaciones. Detecta loops, condiciones mal configuradas o triggers problemáticos. Config: {{ $flow.state.workflowStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2000, y: 450 }, returnResponseAs: "assistantMessage" });
 
     // Billing branch
-    const toolBill = FlowiseClient.buildToolNode({ id: "toolAgentflow_5", label: "get_billing_status", toolId: T("get_billing_status"), inputValue: "{}", position: { x: 1750, y: 600 }, updateState: JSON.stringify([{ key: "billingStatus", value: "{{ toolAgentflow_5.output }}" }]) });
+    const toolBill = FlowiseClient.buildToolNode({ id: "toolAgentflow_5", label: "get_billing_status", toolId: "get_billing_status", inputValue: "{}", position: { x: 1750, y: 600 }, updateState: JSON.stringify([{ key: "billingStatus", value: "{{ toolAgentflow_5.output }}" }]) });
     const condBillingDanger = FlowiseClient.buildConditionNode({ id: "conditionAgentflow_1", label: "¿Acción financiera?", conditions: [{ type: "string", value1: "{{ $flow.state.inputSanitized }}", operation: "contains", value2: "cancelar" }], position: { x: 2000, y: 600 } });
     const humanBilling = FlowiseClient.buildHumanInputNode({ id: "humanInputAgentflow_0", label: "Billing Human Review", prompt: "Este caso puede requerir una acción financiera. ¿Deseas tomar el caso?", options: ["Tomar caso", "Enviar info"], position: { x: 2250, y: 500 } });
     const llmBillAnalyst = FlowiseClient.buildLLMNode({ id: "llmAgentflow_5", label: "Billing Analyst", messages: [{ role: "system", content: "Explica el estado de la suscripción. NO realices cambios. Estado: {{ $flow.state.billingStatus }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2250, y: 680 }, returnResponseAs: "assistantMessage" });
 
     // Technical bug branch (full diagnostic)
-    const toolErrors = FlowiseClient.buildToolNode({ id: "toolAgentflow_6", label: "get_recent_errors", toolId: T("get_recent_errors"), inputValue: '{"limit":20}', position: { x: 1750, y: 800 }, updateState: JSON.stringify([{ key: "errorReportsSummary", value: "{{ toolAgentflow_6.output }}" }]) });
-    const toolLogs = FlowiseClient.buildToolNode({ id: "toolAgentflow_7", label: "get_railway_logs", toolId: T("get_railway_logs"), inputValue: '{"limit":50}', position: { x: 2000, y: 800 }, updateState: JSON.stringify([{ key: "logsSummary", value: "{{ toolAgentflow_7.output }}" }]) });
-    const toolCommits = FlowiseClient.buildToolNode({ id: "toolAgentflow_8", label: "get_recent_commits", toolId: T("get_recent_commits"), inputValue: '{"limit":10}', position: { x: 2250, y: 800 } });
+    const toolErrors = FlowiseClient.buildToolNode({ id: "toolAgentflow_6", label: "get_recent_errors", toolId: "get_recent_errors", inputValue: '{"limit":20}', position: { x: 1750, y: 800 }, updateState: JSON.stringify([{ key: "errorReportsSummary", value: "{{ toolAgentflow_6.output }}" }]) });
+    const toolLogs = FlowiseClient.buildToolNode({ id: "toolAgentflow_7", label: "get_railway_logs", toolId: "get_railway_logs", inputValue: '{"limit":50}', position: { x: 2000, y: 800 }, updateState: JSON.stringify([{ key: "logsSummary", value: "{{ toolAgentflow_7.output }}" }]) });
+    const toolCommits = FlowiseClient.buildToolNode({ id: "toolAgentflow_8", label: "get_recent_commits", toolId: "get_recent_commits", inputValue: '{"limit":10}', position: { x: 2250, y: 800 } });
     const llmEvidSynth = FlowiseClient.buildLLMNode({ id: "llmAgentflow_6", label: "Evidence Synthesizer", messages: [{ role: "system", content: "Sintetiza los logs, errores y commits para identificar el problema. Determina si necesitas leer código fuente. Errores: {{ $flow.state.errorReportsSummary }}. Logs: {{ $flow.state.logsSummary }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 2500, y: 800 }, updateState: JSON.stringify([{ key: "codeEvidence", value: "{{ llmAgentflow_6.output }}" }]) });
 
     const condNeedsCode = FlowiseClient.buildConditionAgentNode({
@@ -897,11 +895,11 @@ Responde SOLO con JSON: {"escalate": true/false, "reason": "..."}` }],
     });
 
     // Code reading path
-    const toolSearch = FlowiseClient.buildToolNode({ id: "toolAgentflow_9", label: "search_github_files", toolId: T("search_github_files"), inputValue: '{"query":"{{ $flow.state.codeEvidence }}","limit":5}', position: { x: 3000, y: 700 }, updateState: JSON.stringify([{ key: "targetFilePath", value: "{{ toolAgentflow_9.output }}" }]) });
-    const toolReadFile = FlowiseClient.buildToolNode({ id: "toolAgentflow_10", label: "read_github_file", toolId: T("read_github_file"), inputValue: '{"path":"{{ $flow.state.targetFilePath }}"}', position: { x: 3250, y: 700 }, updateState: JSON.stringify([{ key: "codeEvidence", value: "{{ toolAgentflow_10.output }}" }]) });
+    const toolSearch = FlowiseClient.buildToolNode({ id: "toolAgentflow_9", label: "search_github_files", toolId: "search_github_files", inputValue: '{"query":"{{ $flow.state.codeEvidence }}","limit":5}', position: { x: 3000, y: 700 }, updateState: JSON.stringify([{ key: "targetFilePath", value: "{{ toolAgentflow_9.output }}" }]) });
+    const toolReadFile = FlowiseClient.buildToolNode({ id: "toolAgentflow_10", label: "read_github_file", toolId: "read_github_file", inputValue: '{"path":"{{ $flow.state.targetFilePath }}"}', position: { x: 3250, y: 700 }, updateState: JSON.stringify([{ key: "codeEvidence", value: "{{ toolAgentflow_10.output }}" }]) });
     const llmRootCause = FlowiseClient.buildLLMNode({ id: "llmAgentflow_7", label: "Root Cause Analyst", messages: [{ role: "system", content: "Eres un SRE senior. Con los logs, errores y código real, identifica la causa raíz del bug. Sé específico: archivo, línea, función. Evidencia: {{ $flow.state.codeEvidence }}. Logs: {{ $flow.state.logsSummary }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 3000, y: 900 }, updateState: JSON.stringify([{ key: "rootCause", value: "{{ llmAgentflow_7.output }}" }]) });
     const llmFixProposal = FlowiseClient.buildLLMNode({ id: "llmAgentflow_8", label: "Fix Proposal Writer", messages: [{ role: "system", content: "Con la causa raíz identificada, genera una propuesta de fix detallada con el código corregido. Causa raíz: {{ $flow.state.rootCause }}. Incluye: archivo, cambio, razón." }], model: m, userMessage: "Generar fix", position: { x: 3250, y: 900 }, updateState: JSON.stringify([{ key: "fixProposal", value: "{{ llmAgentflow_8.output }}" }, { key: "agentResponse", value: "{{ llmAgentflow_8.output }}" }, { key: "finalResponse", value: "{{ llmAgentflow_8.output }}" }]) });
-    const toolCreateFix = FlowiseClient.buildToolNode({ id: "toolAgentflow_11", label: "create_fix_proposal", toolId: T("create_fix_proposal"), inputValue: "{{ $flow.state.fixProposal }}", position: { x: 3500, y: 900 } });
+    const toolCreateFix = FlowiseClient.buildToolNode({ id: "toolAgentflow_11", label: "create_fix_proposal", toolId: "create_fix_proposal", inputValue: "{{ $flow.state.fixProposal }}", position: { x: 3500, y: 900 } });
 
     // No-code path (terminal)
     const llmRootCauseSimple = FlowiseClient.buildLLMNode({ id: "llmAgentflow_9", label: "Root Cause (logs)", messages: [{ role: "system", content: "Con los logs y errores, identifica la causa raíz y propón pasos de solución. Errores: {{ $flow.state.errorReportsSummary }}. Logs: {{ $flow.state.logsSummary }}" }], model: m, userMessage: "{{ $flow.state.inputSanitized }}", position: { x: 3000, y: 1050 }, returnResponseAs: "assistantMessage" });
@@ -966,10 +964,9 @@ Responde SOLO con JSON: {"escalate": true/false, "reason": "..."}` }],
     return JSON.stringify({ nodes, edges });
   }
 
-  buildTier4FlowData(model: FlowiseModelConfig, toolIdMap: Record<string, string>): string {
+  buildTier4FlowData(model: FlowiseModelConfig, _toolIdMap?: Record<string, string>): string {
     const m = { ...model, temperature: model.temperature ?? 0.7 };
     const fast = { ...m, temperature: 0.1 };
-    const T = (name: string) => toolIdMap[name] ?? "";
 
     const start = FlowiseClient.buildStartNode(FlowiseClient.TIER4_STATE);
 
@@ -1012,8 +1009,8 @@ Responde SOLO con JSON: {"classification": "safe|injection|sensitive_data|abuse"
     });
 
     // Workspace context
-    const toolPlan = FlowiseClient.buildToolNode({ id: "toolAgentflow_0", label: "get_workspace_plan", toolId: T("get_workspace_plan"), inputValue: "{}", position: { x: 1000, y: 450 }, updateState: JSON.stringify([{ key: "workspacePlan", value: "{{ toolAgentflow_0.output }}" }]) });
-    const toolCtx = FlowiseClient.buildToolNode({ id: "toolAgentflow_1", label: "get_workspace_context", toolId: T("get_workspace_context"), inputValue: "{}", position: { x: 1250, y: 450 }, updateState: JSON.stringify([{ key: "workspaceContext", value: "{{ toolAgentflow_1.output }}" }]) });
+    const toolPlan = FlowiseClient.buildToolNode({ id: "toolAgentflow_0", label: "get_workspace_plan", toolId: "get_workspace_plan", inputValue: "{}", position: { x: 1000, y: 450 }, updateState: JSON.stringify([{ key: "workspacePlan", value: "{{ toolAgentflow_0.output }}" }]) });
+    const toolCtx = FlowiseClient.buildToolNode({ id: "toolAgentflow_1", label: "get_workspace_context", toolId: "get_workspace_context", inputValue: "{}", position: { x: 1250, y: 450 }, updateState: JSON.stringify([{ key: "workspaceContext", value: "{{ toolAgentflow_1.output }}" }]) });
 
     // Enterprise router
     const condRouter = FlowiseClient.buildConditionAgentNode({
@@ -1039,9 +1036,9 @@ Responde SOLO con JSON: {"classification": "safe|injection|sensitive_data|abuse"
     });
 
     // Channel incident
-    const toolCh = FlowiseClient.buildToolNode({ id: "toolAgentflow_2", label: "get_channel_status", toolId: T("get_channel_status"), inputValue: "{}", position: { x: 1750, y: 350 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_2.output }}" }]) });
-    const toolWa = FlowiseClient.buildToolNode({ id: "toolAgentflow_3", label: "get_whatsapp_status", toolId: T("get_whatsapp_status"), inputValue: "{}", position: { x: 2000, y: 300 } });
-    const toolChanErrors = FlowiseClient.buildToolNode({ id: "toolAgentflow_4", label: "get_recent_errors (channel)", toolId: T("get_recent_errors"), inputValue: '{"limit":20}', position: { x: 2000, y: 400 }, updateState: JSON.stringify([{ key: "errorReportsSummary", value: "{{ toolAgentflow_4.output }}" }]) });
+    const toolCh = FlowiseClient.buildToolNode({ id: "toolAgentflow_2", label: "get_channel_status", toolId: "get_channel_status", inputValue: "{}", position: { x: 1750, y: 350 }, updateState: JSON.stringify([{ key: "channelStatus", value: "{{ toolAgentflow_2.output }}" }]) });
+    const toolWa = FlowiseClient.buildToolNode({ id: "toolAgentflow_3", label: "get_whatsapp_status", toolId: "get_whatsapp_status", inputValue: "{}", position: { x: 2000, y: 300 } });
+    const toolChanErrors = FlowiseClient.buildToolNode({ id: "toolAgentflow_4", label: "get_recent_errors (channel)", toolId: "get_recent_errors", inputValue: '{"limit":20}', position: { x: 2000, y: 400 }, updateState: JSON.stringify([{ key: "errorReportsSummary", value: "{{ toolAgentflow_4.output }}" }]) });
     const llmChanIncident = FlowiseClient.buildLLMNode({
       id: "llmAgentflow_2", label: "Channel Incident Analyst",
       messages: [{ role: "system", content: "Analiza el incidente del canal. Determina si es problema del proveedor, configuración o bug interno. Estado: {{ $flow.state.channelStatus }}. Errores: {{ $flow.state.errorReportsSummary }}" }],
@@ -1050,11 +1047,11 @@ Responde SOLO con JSON: {"classification": "safe|injection|sensitive_data|abuse"
     });
 
     // Technical bug — full pipeline with PR
-    const toolErrors = FlowiseClient.buildToolNode({ id: "toolAgentflow_5", label: "get_recent_errors", toolId: T("get_recent_errors"), inputValue: '{"limit":30}', position: { x: 1750, y: 600 }, updateState: JSON.stringify([{ key: "errorReportsSummary", value: "{{ toolAgentflow_5.output }}" }]) });
-    const toolLogs = FlowiseClient.buildToolNode({ id: "toolAgentflow_6", label: "get_railway_logs", toolId: T("get_railway_logs"), inputValue: '{"limit":100}', position: { x: 2000, y: 600 }, updateState: JSON.stringify([{ key: "logsSummary", value: "{{ toolAgentflow_6.output }}" }]) });
-    const toolCommits = FlowiseClient.buildToolNode({ id: "toolAgentflow_7", label: "get_recent_commits", toolId: T("get_recent_commits"), inputValue: '{"limit":10}', position: { x: 2250, y: 600 } });
-    const toolSearch = FlowiseClient.buildToolNode({ id: "toolAgentflow_8", label: "search_github_files", toolId: T("search_github_files"), inputValue: '{"query":"{{ $flow.state.inputSanitized }}","limit":5}', position: { x: 2500, y: 600 }, updateState: JSON.stringify([{ key: "targetFilePath", value: "{{ toolAgentflow_8.output }}" }]) });
-    const toolReadFile = FlowiseClient.buildToolNode({ id: "toolAgentflow_9", label: "read_github_file", toolId: T("read_github_file"), inputValue: '{"path":"{{ $flow.state.targetFilePath }}"}', position: { x: 2750, y: 600 }, updateState: JSON.stringify([{ key: "codeEvidence", value: "{{ toolAgentflow_9.output }}" }]) });
+    const toolErrors = FlowiseClient.buildToolNode({ id: "toolAgentflow_5", label: "get_recent_errors", toolId: "get_recent_errors", inputValue: '{"limit":30}', position: { x: 1750, y: 600 }, updateState: JSON.stringify([{ key: "errorReportsSummary", value: "{{ toolAgentflow_5.output }}" }]) });
+    const toolLogs = FlowiseClient.buildToolNode({ id: "toolAgentflow_6", label: "get_railway_logs", toolId: "get_railway_logs", inputValue: '{"limit":100}', position: { x: 2000, y: 600 }, updateState: JSON.stringify([{ key: "logsSummary", value: "{{ toolAgentflow_6.output }}" }]) });
+    const toolCommits = FlowiseClient.buildToolNode({ id: "toolAgentflow_7", label: "get_recent_commits", toolId: "get_recent_commits", inputValue: '{"limit":10}', position: { x: 2250, y: 600 } });
+    const toolSearch = FlowiseClient.buildToolNode({ id: "toolAgentflow_8", label: "search_github_files", toolId: "search_github_files", inputValue: '{"query":"{{ $flow.state.inputSanitized }}","limit":5}', position: { x: 2500, y: 600 }, updateState: JSON.stringify([{ key: "targetFilePath", value: "{{ toolAgentflow_8.output }}" }]) });
+    const toolReadFile = FlowiseClient.buildToolNode({ id: "toolAgentflow_9", label: "read_github_file", toolId: "read_github_file", inputValue: '{"path":"{{ $flow.state.targetFilePath }}"}', position: { x: 2750, y: 600 }, updateState: JSON.stringify([{ key: "codeEvidence", value: "{{ toolAgentflow_9.output }}" }]) });
     const llmRootCause = FlowiseClient.buildLLMNode({
       id: "llmAgentflow_3", label: "Root Cause Analyst",
       messages: [{ role: "system", content: "Con toda la evidencia (logs, errores, código), identifica la causa raíz exacta. Especifica archivo, función, línea. Logs: {{ $flow.state.logsSummary }}. Errores: {{ $flow.state.errorReportsSummary }}. Código: {{ $flow.state.codeEvidence }}" }],
@@ -1085,7 +1082,7 @@ Responde JSON: {"security_ok": true/false, "risk_areas": [...], "requires_human"
       model: m, userMessage: "Generar fix completo", position: { x: 3750, y: 700 },
       updateState: JSON.stringify([{ key: "fixProposal", value: "{{ llmAgentflow_5.output }}" }]),
     });
-    const toolCreateFix = FlowiseClient.buildToolNode({ id: "toolAgentflow_10", label: "create_fix_proposal", toolId: T("create_fix_proposal"), inputValue: "{{ $flow.state.fixProposal }}", position: { x: 4000, y: 700 } });
+    const toolCreateFix = FlowiseClient.buildToolNode({ id: "toolAgentflow_10", label: "create_fix_proposal", toolId: "create_fix_proposal", inputValue: "{{ $flow.state.fixProposal }}", position: { x: 4000, y: 700 } });
     const llmPRWriter = FlowiseClient.buildLLMNode({
       id: "llmAgentflow_6", label: "PR Drafter",
       messages: [{ role: "system", content: `¿Es este fix elegible para un PR automático? Criterios: no toca auth/billing/PII, el fix es claro, hay tests disponibles.
@@ -1104,10 +1101,10 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
       options: ["Aprobar PR", "Rechazar PR", "Solicitar cambios"],
       position: { x: 4750, y: 600 },
     });
-    const toolCreatePR = FlowiseClient.buildToolNode({ id: "toolAgentflow_11", label: "create_github_pr", toolId: T("create_github_pr"), inputValue: "{{ $flow.state.prDraft }}", position: { x: 5000, y: 600 }, updateState: JSON.stringify([{ key: "finalResponse", value: "{{ toolAgentflow_11.output }}" }]) });
+    const toolCreatePR = FlowiseClient.buildToolNode({ id: "toolAgentflow_11", label: "create_github_pr", toolId: "create_github_pr", inputValue: "{{ $flow.state.prDraft }}", position: { x: 5000, y: 600 }, updateState: JSON.stringify([{ key: "finalResponse", value: "{{ toolAgentflow_11.output }}" }]) });
 
     // Billing branch
-    const toolBill = FlowiseClient.buildToolNode({ id: "toolAgentflow_12", label: "get_billing_status", toolId: T("get_billing_status"), inputValue: "{}", position: { x: 1750, y: 850 }, updateState: JSON.stringify([{ key: "billingStatus", value: "{{ toolAgentflow_12.output }}" }]) });
+    const toolBill = FlowiseClient.buildToolNode({ id: "toolAgentflow_12", label: "get_billing_status", toolId: "get_billing_status", inputValue: "{}", position: { x: 1750, y: 850 }, updateState: JSON.stringify([{ key: "billingStatus", value: "{{ toolAgentflow_12.output }}" }]) });
     const humanBillingReview = FlowiseClient.buildHumanInputNode({
       id: "humanInputAgentflow_3", label: "Billing Human Review",
       prompt: "Caso de facturación Enterprise. Estado: {{ $flow.state.billingStatus }}",
@@ -1116,8 +1113,8 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     });
 
     // Security incident
-    const toolSecErrors = FlowiseClient.buildToolNode({ id: "toolAgentflow_13", label: "get_recent_errors (security)", toolId: T("get_recent_errors"), inputValue: '{"limit":50}', position: { x: 1750, y: 1050 } });
-    const toolSecLogs = FlowiseClient.buildToolNode({ id: "toolAgentflow_14", label: "get_railway_logs (security)", toolId: T("get_railway_logs"), inputValue: '{"limit":200}', position: { x: 2000, y: 1050 } });
+    const toolSecErrors = FlowiseClient.buildToolNode({ id: "toolAgentflow_13", label: "get_recent_errors (security)", toolId: "get_recent_errors", inputValue: '{"limit":50}', position: { x: 1750, y: 1050 } });
+    const toolSecLogs = FlowiseClient.buildToolNode({ id: "toolAgentflow_14", label: "get_railway_logs (security)", toolId: "get_railway_logs", inputValue: '{"limit":200}', position: { x: 2000, y: 1050 } });
     const humanSecIncident = FlowiseClient.buildHumanInputNode({
       id: "humanInputAgentflow_4", label: "Security Incident Response",
       prompt: "INCIDENTE DE SEGURIDAD DETECTADO. Requiere respuesta inmediata.",
@@ -1281,7 +1278,7 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
       const toolNode = FlowiseClient.buildToolNode({
         id: nodeId,
         label: toolName,
-        toolId,
+        toolId: toolName,
         inputValue: "{}",
         updateState: JSON.stringify([{
           key: "toolContext",
