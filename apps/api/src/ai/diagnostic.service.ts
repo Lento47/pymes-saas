@@ -278,15 +278,33 @@ export class DiagnosticService {
     );
 
     // Auto-trigger orchestration pipeline for all new cases (fire-and-forget).
+    //
+    // The agents cannot fetch case data themselves (stage flows are LLM-only),
+    // so we serialize everything the system already knows about the case into
+    // the message. Without this, triage receives an empty description and the
+    // support agent ends up asking the user to re-describe the problem.
     if (this.orchestrator) {
       const orchestrationMessage = [
-        input.user_description ?? "",
-        evidence ? `Evidencia: ${JSON.stringify(evidence).slice(0, 500)}` : "",
-      ].filter(Boolean).join("\n\n");
+        `[Caso de diagnóstico ${caseRecord.id}]`,
+        `Título: ${classification.title}`,
+        `Categoría: ${classification.category} | Riesgo: ${classification.risk_level}`,
+        input.module ? `Módulo: ${input.module}` : "",
+        input.error_code ? `Código de error: ${input.error_code}` : "",
+        input.trace_id ? `Trace ID: ${input.trace_id}` : "",
+        input.user_description
+          ? `Descripción del usuario:\n${input.user_description}`
+          : "Descripción del usuario: (no proporcionada — diagnostica a partir de la evidencia y el código de error)",
+        classification.recommendation
+          ? `Resumen de clasificación:\n${classification.recommendation}`
+          : "",
+        evidence ? `Evidencia:\n${JSON.stringify(evidence).slice(0, 1500)}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
       this.orchestrator
         .orchestrate({
           workspace_id: input.workspaceId,
-          message: orchestrationMessage || `Caso de diagnóstico creado: ${classification.title}`,
+          message: orchestrationMessage,
           diagnostic_case_id: caseRecord.id,
           triggered_by_user_id: input.userId ?? undefined,
         })
