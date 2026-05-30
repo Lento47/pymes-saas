@@ -164,7 +164,7 @@ export class FlowiseAutoReplyService {
         message_type: "TEXT",
         has_media: false,
         media_status: "NONE",
-        raw_payload_json: { source } as Record<string, unknown>,
+        raw_payload_json: { source },
       },
     });
 

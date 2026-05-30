@@ -45,7 +45,7 @@ export class ContextEnricherService {
           where: {
             workspace_id: workspaceId,
             contact_id: contactId,
-            status: { notIn: ["CANCELLED", "DRAFT", "VOID"] },
+            status: { notIn: ["CANCELLED", "DRAFT"] },
           },
           select: { status: true, amount: true, due_date: true },
           orderBy: { due_date: "desc" },
@@ -53,7 +53,7 @@ export class ContextEnricherService {
         });
 
         const pending = invoices.filter(
-          (i) => i.status === "PENDING" || i.status === "OVERDUE",
+          (i) => i.status === "SENT" || i.status === "PARTIALLY_PAID" || i.status === "OVERDUE",
         );
         const totalOwed = pending.reduce((s, i) => s + Number(i.amount), 0);
 
