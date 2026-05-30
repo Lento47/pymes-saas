@@ -17,7 +17,7 @@ import {
   Settings, CircleHelp, LifeBuoy, LogOut, ChevronDown, Check, Shield,
   Sun, Moon, Search, Menu, X,
   ShieldCheck, LayoutTemplate, Bot, Plug, BarChart3,
-  Building2, PlugZap, Layers, BrainCircuit, Coins,
+  Building2, PlugZap, Layers, BrainCircuit, Coins, ClipboardList,
 } from "lucide-react";
 
 type NavKey = "dashboard" | "inbox" | "contacts" | "tasks" | "invoices" | "pipeline" | "agents" | "automations" | "integrations" | "documents" | "inventory" | "notifications" | "settings" | "help" | "support";
@@ -98,7 +98,8 @@ const SETTINGS_ITEMS = [
   { path: "/settings/integrations", icon: Plug,         label: "Integraciones" },
   { path: "/settings/ai",           icon: BrainCircuit, label: "Inteligencia Artificial" },
   { path: "/settings/credits",      icon: Coins,        label: "Créditos IA" },
-  { path: "/settings/templates",    icon: FileText,     label: "Plantillas" },
+  { path: "/settings/templates",    icon: FileText,      label: "Plantillas" },
+  { path: "/settings/audit",        icon: ClipboardList, label: "Auditoría" },
 ] as const;
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {

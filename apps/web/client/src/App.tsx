@@ -39,6 +39,7 @@ import IntegrationsSettingsPage from "@/pages/settings/integrations";
 import AiSettingsPage from "@/pages/settings/ai";
 import CreditsSettingsPage from "@/pages/settings/credits";
 import TemplatesSettingsPage from "@/pages/settings/templates";
+import AuditLogPage from "@/pages/settings/audit";
 import PlatformSettingsPage from "@/pages/settings/platform";
 import Billing from "@/pages/billing";
 import HelpPage from "@/pages/help";
@@ -312,6 +313,9 @@ function AppRouter() {
       </Route>
       <Route path="/settings/templates">
         {() => <ProtectedLayout><TemplatesSettingsPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/settings/audit">
+        {() => <ProtectedLayout><AuditLogPage /></ProtectedLayout>}
       </Route>
       <Route path="/settings/platform">
         {() => <ProtectedLayout><PlatformSettingsPage /></ProtectedLayout>}

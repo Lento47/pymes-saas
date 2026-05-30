@@ -18,6 +18,7 @@ import { TestAiConnectionDto } from "./dto/test-ai-connection.dto";
 import { EmailService } from "../email/email.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { AuditService } from "../audit/audit.service";
 
 @Injectable()
 export class WorkspacesService {
@@ -31,6 +32,7 @@ export class WorkspacesService {
     private readonly emailService: EmailService,
     private readonly events: EventsGateway,
     private readonly planLimits: PlanLimitsService,
+    private readonly audit: AuditService,
   ) {}
 
   private serializeWorkspace<T extends { settings_json?: Record<string, any> | null }>(
@@ -638,9 +640,15 @@ export class WorkspacesService {
   // En producción: enviar email con token firmado y redirigir a /auth/accept-invite.
 
   async inviteUser(workspaceId: string, requestingUser: AuthUser, dto: InviteUserDto) {
-    // Solo ADMIN u OWNER pueden invitar
-    if (!["ADMIN", "OWNER"].includes(requestingUser.role)) {
-      throw new ForbiddenException("Solo ADMIN u OWNER pueden invitar usuarios.");
+    const canInvite = ["ADMIN", "OWNER", "MANAGER"].includes(requestingUser.role);
+    if (!canInvite) {
+      throw new ForbiddenException("Solo ADMIN, MANAGER u OWNER pueden invitar usuarios.");
+    }
+
+    // MANAGER solo puede invitar roles iguales o inferiores a AGENT
+    const managerAllowedRoles = ["AGENT", "BILLING", "VIEWER"];
+    if (requestingUser.role === "MANAGER" && !managerAllowedRoles.includes(dto.role)) {
+      throw new ForbiddenException("MANAGER solo puede invitar con rol AGENT, BILLING o VIEWER.");
     }
 
     // No se puede invitar OWNERs adicionales
@@ -712,6 +720,14 @@ export class WorkspacesService {
       browserUrl,
     });
 
+    await this.audit.log(workspaceId, {
+      user_id: requestingUser.id,
+      action: "member.invited",
+      entity_type: "workspace_user",
+      entity_id: membership.id,
+      after: { email: dto.email, role: dto.role },
+    });
+
     return {
       message: `Invitación enviada a ${dto.email}`,
       membership_id: membership.id,
@@ -776,7 +792,8 @@ export class WorkspacesService {
     targetUserId: string,
     dto: ChangeMemberRoleDto,
   ) {
-    if (!["ADMIN", "OWNER"].includes(requestingUser.role)) {
+    const canChangeRoles = ["ADMIN", "OWNER", "MANAGER"].includes(requestingUser.role);
+    if (!canChangeRoles) {
       throw new ForbiddenException("Sin permisos para cambiar roles.");
     }
 
@@ -797,12 +814,31 @@ export class WorkspacesService {
       throw new BadRequestException("Usa la ruta de transferencia de propiedad.");
     }
 
-    return this.prisma.workspaceUser.update({
+    // MANAGER solo puede asignar roles iguales o inferiores a AGENT
+    const managerAllowedRoles = ["AGENT", "BILLING", "VIEWER"];
+    if (requestingUser.role === "MANAGER") {
+      if (!managerAllowedRoles.includes(dto.role) || !managerAllowedRoles.includes(membership.role)) {
+        throw new ForbiddenException("MANAGER solo puede cambiar roles entre AGENT, BILLING y VIEWER.");
+      }
+    }
+
+    const updated = await this.prisma.workspaceUser.update({
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
       },
       data: { role: dto.role },
     });
+
+    await this.audit.log(workspaceId, {
+      user_id: requestingUser.id,
+      action: "member.role_changed",
+      entity_type: "workspace_user",
+      entity_id: membership.id,
+      before: { role: membership.role },
+      after: { role: dto.role },
+    });
+
+    return updated;
   }
 
   // ── DELETE /workspaces/current/members/:userId ────────────────────────────
@@ -812,7 +848,7 @@ export class WorkspacesService {
       throw new BadRequestException("No puedes removerte a ti mismo.");
     }
 
-    if (!["ADMIN", "OWNER"].includes(requestingUser.role)) {
+    if (!["ADMIN", "OWNER", "MANAGER"].includes(requestingUser.role)) {
       throw new ForbiddenException("Sin permisos para remover miembros.");
     }
 
@@ -830,6 +866,14 @@ export class WorkspacesService {
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
       },
+    });
+
+    await this.audit.log(workspaceId, {
+      user_id: requestingUser.id,
+      action: "member.removed",
+      entity_type: "workspace_user",
+      entity_id: membership.id,
+      before: { user_id: targetUserId, role: membership.role },
     });
 
     return { message: "Miembro removido del workspace." };

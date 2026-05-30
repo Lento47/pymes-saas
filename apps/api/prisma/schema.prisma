@@ -71,7 +71,9 @@ enum UserStatus {
 enum WorkspaceUserRole {
   OWNER
   ADMIN
+  MANAGER
   AGENT
+  BILLING
   VIEWER
 }
 
