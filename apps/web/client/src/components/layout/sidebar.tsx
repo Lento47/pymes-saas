@@ -107,6 +107,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const { messages } = useI18n();
   const { theme, toggle } = useTheme();
   const [wsMenuOpen, setWsMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(
+    () => typeof window !== 'undefined' && location.startsWith("/settings"),
+  );
   const [sidebarOpen, setSidebarOpen] = useState(
     () => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
   );
@@ -212,6 +215,11 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
   // Always show bottom nav on route change
   useEffect(() => { setBottomNavHidden(false); }, [location]);
+
+  // Auto-expand settings section when navigating into /settings
+  useEffect(() => {
+    if (location.startsWith("/settings")) setSettingsOpen(true);
+  }, [location]);
 
   // Close workspace menu on outside click
   useEffect(() => {
@@ -420,36 +428,50 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           ))}
 
-          <div className="space-y-1 border-t border-border/40 pt-2">
-            <div className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/45">
-              {copy.settingsButton}
-            </div>
-            <div className="space-y-0.5">
-              {SETTINGS_ITEMS.map(({ path, icon: Icon, label }) => {
-                const active = location === path || location.startsWith(path + "/");
-                return (
-                  <Link key={path} href={path}>
-                    <div
-                      className={cn(
-                        "group relative flex items-center gap-2.5 px-3 py-[7px] rounded-lg cursor-pointer transition-all duration-150",
-                        active
-                          ? "bg-primary/[0.16] text-foreground font-medium"
-                          : "text-muted-foreground/80 hover:text-foreground hover:bg-sidebar-accent/50"
-                      )}
-                    >
-                      {active && (
-                        <div className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
-                      )}
-                      <Icon
-                        className={cn("w-[15px] h-[15px] shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground")}
-                        strokeWidth={active ? 2.2 : 1.7}
-                      />
-                      <span className="flex-1 text-[13px]">{label}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+          <div className="space-y-0.5 border-t border-border/40 pt-2">
+            <button
+              onClick={() => setSettingsOpen(o => !o)}
+              className="w-full flex items-center gap-2 px-3 py-1 text-left"
+            >
+              <Settings
+                className={cn("w-[15px] h-[15px] shrink-0", location.startsWith("/settings") ? "text-primary" : "text-muted-foreground/60")}
+                strokeWidth={1.7}
+              />
+              <span className={cn("flex-1 text-[10px] font-semibold uppercase tracking-[0.1em]", location.startsWith("/settings") ? "text-primary/80" : "text-muted-foreground/45")}>
+                {copy.settingsButton}
+              </span>
+              <ChevronDown
+                className={cn("w-3 h-3 text-muted-foreground/40 transition-transform duration-200", settingsOpen && "rotate-180")}
+              />
+            </button>
+            {settingsOpen && (
+              <div className="space-y-0.5 pb-1">
+                {SETTINGS_ITEMS.map(({ path, icon: Icon, label }) => {
+                  const active = location === path || location.startsWith(path + "/");
+                  return (
+                    <Link key={path} href={path}>
+                      <div
+                        className={cn(
+                          "group relative flex items-center gap-2.5 pl-7 pr-3 py-[6px] rounded-lg cursor-pointer transition-all duration-150",
+                          active
+                            ? "bg-primary/[0.16] text-foreground font-medium"
+                            : "text-muted-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50"
+                        )}
+                      >
+                        {active && (
+                          <div className="absolute left-0 top-1/2 h-[16px] w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+                        )}
+                        <Icon
+                          className={cn("w-[14px] h-[14px] shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground/60 group-hover:text-foreground")}
+                          strokeWidth={active ? 2.2 : 1.7}
+                        />
+                        <span className="flex-1 text-[12.5px]">{label}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {user?.is_platform_admin && (
