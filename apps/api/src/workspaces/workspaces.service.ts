@@ -18,6 +18,7 @@ import { TestAiConnectionDto } from "./dto/test-ai-connection.dto";
 import { EmailService } from "../email/email.service";
 import { EventsGateway } from "../gateways/events.gateway";
 import { PlanLimitsService } from "../common/plan-limits/plan-limits.service";
+import { AuditService } from "../audit/audit.service";
 
 @Injectable()
 export class WorkspacesService {
@@ -31,6 +32,7 @@ export class WorkspacesService {
     private readonly emailService: EmailService,
     private readonly events: EventsGateway,
     private readonly planLimits: PlanLimitsService,
+    private readonly audit: AuditService,
   ) {}
 
   private serializeWorkspace<T extends { settings_json?: Record<string, any> | null }>(
@@ -718,6 +720,14 @@ export class WorkspacesService {
       browserUrl,
     });
 
+    await this.audit.log(workspaceId, {
+      user_id: requestingUser.id,
+      action: "member.invited",
+      entity_type: "workspace_user",
+      entity_id: membership.id,
+      after: { email: dto.email, role: dto.role },
+    });
+
     return {
       message: `Invitación enviada a ${dto.email}`,
       membership_id: membership.id,
@@ -812,12 +822,23 @@ export class WorkspacesService {
       }
     }
 
-    return this.prisma.workspaceUser.update({
+    const updated = await this.prisma.workspaceUser.update({
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
       },
       data: { role: dto.role },
     });
+
+    await this.audit.log(workspaceId, {
+      user_id: requestingUser.id,
+      action: "member.role_changed",
+      entity_type: "workspace_user",
+      entity_id: membership.id,
+      before: { role: membership.role },
+      after: { role: dto.role },
+    });
+
+    return updated;
   }
 
   // ── DELETE /workspaces/current/members/:userId ────────────────────────────
@@ -845,6 +866,14 @@ export class WorkspacesService {
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
       },
+    });
+
+    await this.audit.log(workspaceId, {
+      user_id: requestingUser.id,
+      action: "member.removed",
+      entity_type: "workspace_user",
+      entity_id: membership.id,
+      before: { user_id: targetUserId, role: membership.role },
     });
 
     return { message: "Miembro removido del workspace." };

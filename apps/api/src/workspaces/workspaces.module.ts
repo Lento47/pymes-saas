@@ -8,6 +8,7 @@ import { AuthModule } from "../auth/auth.module";
 import { EmailModule } from "../email/email.module";
 import { EventsModule } from "../gateways/events.module";
 import { FeaturesModule } from "../features/features.module";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { FeaturesModule } from "../features/features.module";
     EmailModule,
     EventsModule,
     FeaturesModule,
+    AuditModule,
   ],
   controllers: [WorkspacesController],
   providers: [WorkspacesService],
