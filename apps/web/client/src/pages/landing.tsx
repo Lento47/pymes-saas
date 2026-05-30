@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { applySeoMetadata, buildSoftwareSchema } from "@/lib/seo";
 
 const ACCENT = "#4F46E5";
+const DARK_BG = "#0B0C10";
 
 const navItems = [
   { id: "platform",  key: "platform"  },
@@ -90,7 +91,7 @@ function InboxMockup() {
   ];
 
   return (
-    <div className="w-full rounded-2xl border border-[#E2E4EE] bg-white overflow-hidden" style={{ boxShadow: "0 24px 64px -12px rgba(0,0,0,0.08), 0 4px 16px -4px rgba(0,0,0,0.04)" }}>
+    <div className="w-full rounded-2xl border border-[#E2E4EE] bg-white overflow-hidden">
       {/* Clean header bar */}
       <div className="flex items-center justify-between border-b border-[#E6E8EF] bg-[#F7F8FC] px-4 py-3">
         <span className="text-[11px] font-semibold text-gray-500 font-marketing tracking-wide">PymesHub — Inbox</span>
@@ -403,178 +404,181 @@ export default function Landing() {
 
       <div className="marketing-light-theme relative overflow-hidden bg-[#F7F8FC]">
 
-
         <main className="relative">
 
           {/* ════════════════════════════════════════
-              NAV
+              DARK HEADER — nav + hero share dark background
           ════════════════════════════════════════ */}
-          <section className="px-4 pt-6 md:px-8">
-            <div className="mx-auto max-w-7xl">
-              <div className="relative" onClick={handleOutsideClick} onTouchEnd={handleOutsideClick as any}>
-                <nav className={cn(
-                  "flex items-center justify-between rounded-2xl px-5 py-3.5 md:px-7 transition-all duration-500",
-                  scrolled
-                    ? "bg-white/95 backdrop-blur-2xl border border-[#E6E8EF] shadow-sm"
-                    : "bg-white/80 backdrop-blur-md border border-[#EBEBF0]"
-                )}>
-                  <BrandLockup compact />
-                  <div className="hidden items-center gap-7 lg:flex">
-                    {navItems.map(item => (
-                      <button key={item.id} type="button" data-nav-button
-                        onClick={() => setActiveMenu(c => c === item.key ? null : item.key)}
-                        className="font-marketing text-sm font-medium text-gray-500 transition hover:text-gray-900">
-                        {copy.nav[item.key]}
-                        <ChevronDown className={cn("ml-1 inline h-3.5 w-3.5 text-gray-400 transition", activeMenu === item.key && "rotate-180")} />
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-1 md:gap-3 flex-shrink-0">
-                    <div className="hidden md:flex items-center gap-4">
-                      <Link href="/pricing" className="font-marketing text-sm font-medium text-gray-500 transition hover:text-gray-900">{copy.nav.pricing}</Link>
-                      <Link href="/documentation" className="font-marketing text-sm font-medium text-gray-500 transition hover:text-gray-900">{copy.nav.documentation}</Link>
-                    </div>
-                    <Link href="/login" className="font-marketing hidden sm:block text-sm font-medium text-gray-500 transition hover:text-gray-900 px-3">{copy.nav.logIn}</Link>
-                    <Link href="/register"
-                      className="font-marketing hidden sm:inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-                      style={{ background: ACCENT }}>
-                      {copy.nav.getStarted}
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                    <button type="button" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                      className="md:hidden text-gray-500 transition hover:text-gray-900">
-                      {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                    </button>
-                  </div>
-                </nav>
+          <div style={{ background: DARK_BG }}>
 
-                {mobileMenuOpen && (
-                  <div className="md:hidden mt-2 rounded-xl border border-[#E6E8EF] bg-white p-3" data-mobile-menu>
-                    <div className="space-y-0.5">
-                      {[{href:"/product",label:copy.nav.platform},{href:"/insights",label:copy.nav.insights},{href:"/security",label:copy.nav.security}].map(({href,label}) => (
-                        <Link key={label} href={href} className="block rounded-lg px-4 py-2.5 font-marketing text-sm font-medium text-gray-600 hover:bg-gray-50">{label}</Link>
+            {/* ── NAV ─────────────────────────────────── */}
+            <section className="px-4 pt-6 md:px-8">
+              <div className="mx-auto max-w-7xl">
+                <div className="relative" onClick={handleOutsideClick} onTouchEnd={handleOutsideClick as any}>
+                  <nav className={cn(
+                    "flex items-center justify-between rounded-2xl px-5 py-3.5 md:px-7 transition-all duration-500",
+                    scrolled
+                      ? "bg-white/95 backdrop-blur-2xl border border-[#E6E8EF] shadow-sm"
+                      : "bg-white/90 backdrop-blur-md border border-white/20"
+                  )}>
+                    <BrandLockup compact />
+                    <div className="hidden items-center gap-7 lg:flex">
+                      {navItems.map(item => (
+                        <button key={item.id} type="button" data-nav-button
+                          onClick={() => setActiveMenu(c => c === item.key ? null : item.key)}
+                          className="font-marketing text-sm font-medium text-gray-500 transition hover:text-gray-900">
+                          {copy.nav[item.key]}
+                          <ChevronDown className={cn("ml-1 inline h-3.5 w-3.5 text-gray-400 transition", activeMenu === item.key && "rotate-180")} />
+                        </button>
                       ))}
-                      <div className="my-1.5 border-t border-gray-100" />
-                      <Link href="/pricing" className="block rounded-lg px-4 py-2.5 font-marketing text-sm font-medium text-gray-600 hover:bg-gray-50">{copy.nav.pricing}</Link>
-                      <Link href="/login" className="block rounded-lg px-4 py-2.5 font-marketing text-sm font-medium text-gray-600 hover:bg-gray-50">{copy.nav.logIn}</Link>
-                      <Link href="/register" className="mt-1 block w-full rounded-full px-4 py-2.5 text-center font-marketing text-sm font-semibold text-white" style={{ background: ACCENT }}>
+                    </div>
+                    <div className="flex items-center gap-1 md:gap-3 flex-shrink-0">
+                      <div className="hidden md:flex items-center gap-4">
+                        <Link href="/pricing" className="font-marketing text-sm font-medium text-gray-500 transition hover:text-gray-900">{copy.nav.pricing}</Link>
+                        <Link href="/documentation" className="font-marketing text-sm font-medium text-gray-500 transition hover:text-gray-900">{copy.nav.documentation}</Link>
+                      </div>
+                      <Link href="/login" className="font-marketing hidden sm:block text-sm font-medium text-gray-500 transition hover:text-gray-900 px-3">{copy.nav.logIn}</Link>
+                      <Link href="/register"
+                        className="font-marketing hidden sm:inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                        style={{ background: ACCENT }}>
                         {copy.nav.getStarted}
+                        <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
+                      <button type="button" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        className="md:hidden text-gray-500 transition hover:text-gray-900">
+                        {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                      </button>
                     </div>
-                  </div>
-                )}
+                  </nav>
 
-                {activeMenu && (
-                  <div className="absolute inset-x-0 top-full z-20 pt-2 pointer-events-auto" data-nav-dropdown>
-                    <div className="rounded-2xl border border-[#E6E8EF] bg-white/98 backdrop-blur-xl shadow-xl">
-                      <div className="px-6 pt-4 pb-1">
-                        <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-500">{dropdownMenus[activeMenu].eyebrow}</p>
-                        <h2 className="font-marketing mt-0.5 text-xl font-semibold tracking-[-0.02em] text-gray-900">{dropdownMenus[activeMenu].title}</h2>
+                  {mobileMenuOpen && (
+                    <div className="md:hidden mt-2 rounded-xl border border-[#E6E8EF] bg-white p-3" data-mobile-menu>
+                      <div className="space-y-0.5">
+                        {[{href:"/product",label:copy.nav.platform},{href:"/insights",label:copy.nav.insights},{href:"/security",label:copy.nav.security}].map(({href,label}) => (
+                          <Link key={label} href={href} className="block rounded-lg px-4 py-2.5 font-marketing text-sm font-medium text-gray-600 hover:bg-gray-50">{label}</Link>
+                        ))}
+                        <div className="my-1.5 border-t border-gray-100" />
+                        <Link href="/pricing" className="block rounded-lg px-4 py-2.5 font-marketing text-sm font-medium text-gray-600 hover:bg-gray-50">{copy.nav.pricing}</Link>
+                        <Link href="/login" className="block rounded-lg px-4 py-2.5 font-marketing text-sm font-medium text-gray-600 hover:bg-gray-50">{copy.nav.logIn}</Link>
+                        <Link href="/register" className="mt-1 block w-full rounded-full px-4 py-2.5 text-center font-marketing text-sm font-semibold text-white" style={{ background: ACCENT }}>
+                          {copy.nav.getStarted}
+                        </Link>
                       </div>
-                      <div className="grid gap-2 p-4 pt-2 lg:grid-cols-[1fr_1.5fr]">
-                        <div>
-                          <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400 px-1 pb-2">{copy.menus[activeMenu].featuredLabel}</p>
-                          <MarketingMenuAction {...dropdownMenus[activeMenu].featured} featured onNavigate={() => setActiveMenu(null)} />
+                    </div>
+                  )}
+
+                  {activeMenu && (
+                    <div className="absolute inset-x-0 top-full z-20 pt-2 pointer-events-auto" data-nav-dropdown>
+                      <div className="rounded-2xl border border-[#E6E8EF] bg-white/98 backdrop-blur-xl shadow-xl">
+                        <div className="px-6 pt-4 pb-1">
+                          <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-500">{dropdownMenus[activeMenu].eyebrow}</p>
+                          <h2 className="font-marketing mt-0.5 text-xl font-semibold tracking-[-0.02em] text-gray-900">{dropdownMenus[activeMenu].title}</h2>
                         </div>
-                        <div className="space-y-0.5">
-                          {dropdownMenus[activeMenu].links.map((item: any) => (
-                            <MarketingMenuAction key={item.title} {...item} onNavigate={() => setActiveMenu(null)} />
-                          ))}
+                        <div className="grid gap-2 p-4 pt-2 lg:grid-cols-[1fr_1.5fr]">
+                          <div>
+                            <p className="font-marketing text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400 px-1 pb-2">{copy.menus[activeMenu].featuredLabel}</p>
+                            <MarketingMenuAction {...dropdownMenus[activeMenu].featured} featured onNavigate={() => setActiveMenu(null)} />
+                          </div>
+                          <div className="space-y-0.5">
+                            {dropdownMenus[activeMenu].links.map((item: any) => (
+                              <MarketingMenuAction key={item.title} {...item} onNavigate={() => setActiveMenu(null)} />
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          {/* ════════════════════════════════════════
-              HERO
-          ════════════════════════════════════════ */}
-          <section className="px-4 pt-16 pb-16 md:px-8 md:pt-24">
-            <div className="mx-auto max-w-7xl">
-              <div className="mx-auto max-w-3xl text-center">
-                <div className="landing-badge inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium mb-6">
-                  <span className="h-2 w-2 rounded-full" style={{ background: ACCENT }} />
-                  Para equipos que atienden clientes por WhatsApp, Telegram y email
-                </div>
+            {/* ── HERO ─────────────────────────────────── */}
+            <section className="px-4 pt-14 pb-28 md:px-8 md:pt-20">
+              <div className="mx-auto max-w-7xl">
+                <div className="mx-auto max-w-3xl text-center">
 
-                <h1 className="font-marketing text-[2.1rem] leading-[1.08] tracking-[-0.04em] font-bold sm:text-[2.9rem] md:text-[3.6rem] text-gray-900">
-                  El inbox donde tus clientes se{" "}
-                  <span style={{ color: ACCENT }}>convierten en ventas</span>,{" "}
-                  tareas y facturas
-                </h1>
-
-                <p className="mx-auto mt-5 max-w-2xl text-lg leading-7 text-gray-500 md:text-xl md:leading-8">
-                  PymesHub centraliza WhatsApp, Telegram, email y CRM para que tu equipo responda con contexto, automatice seguimientos y mantenga control humano sobre la IA.
-                </p>
-
-                <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                  <Link href="/register"
-                    className="font-marketing inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-base font-semibold text-white transition hover:opacity-90"
-                    style={{ background: ACCENT }}>
-                    Empezar gratis
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <Link href="/product"
-                    className="font-marketing inline-flex items-center gap-2 rounded-full border border-[#E6E8EF] bg-white px-6 py-3.5 text-base font-semibold text-gray-700 transition hover:border-violet-200">
-                    Ver la plataforma
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  </Link>
-                </div>
-
-                <p className="mt-4 text-sm text-gray-400">Sin tarjeta de crédito · Gratis para comenzar · Cancela cuando quieras</p>
-
-                <div className="mt-7 flex items-center justify-center gap-3">
-                  <div className="flex -space-x-2">
-                    {["#9CA3AF","#6B7280","#4B5563","#374151"].map((c, i) => (
-                      <span key={i} className="h-7 w-7 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-bold text-white" style={{ background: c }}>
-                        {["AR","BM","CS","DL"][i]}
-                      </span>
-                    ))}
+                  <div className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium mb-7 bg-white/[0.07] border border-white/[0.12] text-white/60">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80 flex-shrink-0" />
+                    Para equipos que atienden clientes por WhatsApp, Telegram y email
                   </div>
-                  <p className="text-sm text-gray-500">
-                    {copy.trustedByPrefix}<span className="font-semibold text-gray-700">{copy.trustedByCount}</span>{copy.trustedBySuffix}
+
+                  <h1 className="font-display text-[2.4rem] leading-[1.1] tracking-[-0.01em] sm:text-[3.2rem] md:text-[4rem] text-white">
+                    El inbox donde tus clientes se{" "}
+                    <span className="italic">convierten en ventas</span>,{" "}
+                    tareas y facturas
+                  </h1>
+
+                  <p className="mx-auto mt-6 max-w-2xl text-lg leading-7 text-white/50 md:text-xl md:leading-8">
+                    PymesHub centraliza WhatsApp, Telegram, email y CRM para que tu equipo responda con contexto, automatice seguimientos y mantenga control humano sobre la IA.
                   </p>
-                </div>
-              </div>
 
-              {/* Product mockup */}
-              <div ref={revealHero} className="reveal-up mx-auto mt-14 max-w-6xl">
-                <div className="hidden md:block">
-                  <InboxMockup />
-                </div>
-                {/* Mobile simplified mockup */}
-                <div className="md:hidden rounded-xl border border-[#E6E8EF] bg-white overflow-hidden shadow-sm">
-                  <div className="flex items-center justify-between border-b border-[#E6E8EF] bg-[#F7F8FC] px-4 py-2.5">
-                    <span className="text-[11px] font-semibold text-gray-500">PymesHub — Inbox</span>
-                    <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">En línea</span>
+                  <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                    <Link href="/register"
+                      className="font-marketing inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-base font-semibold text-white transition hover:opacity-90"
+                      style={{ background: ACCENT }}>
+                      Empezar gratis
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link href="/product"
+                      className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/[0.15] bg-white/[0.06] px-6 py-3.5 text-base font-semibold text-white/75 transition hover:bg-white/[0.10] hover:border-white/[0.22]">
+                      Ver la plataforma
+                      <ChevronRight className="h-4 w-4 text-white/35" />
+                    </Link>
                   </div>
-                  <div className="p-4 space-y-2.5">
-                    {[{ch:"WA",n:"María González",m:"Quisiera cotizar 3 locales",tag:"Venta"},{ch:"TG",n:"Carlos Ríos",m:"¿Cuánto cuesta el plan?",tag:null},{ch:"EM",n:"Beatriz Salas",m:"Factura #1042 — pagada",tag:"Pagado"}].map(row => (
-                      <div key={row.n} className="flex items-center gap-3 rounded-xl border border-[#E6E8EF] bg-white px-3 py-2.5">
-                        <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">{row.ch}</div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-gray-800">{row.n}</p>
-                          <p className="truncate text-[11px] text-gray-400">{row.m}</p>
+
+                  <p className="mt-4 text-sm text-white/30">Sin tarjeta de crédito · Gratis para comenzar · Cancela cuando quieras</p>
+
+                  <div className="mt-7 flex items-center justify-center gap-3">
+                    <div className="flex -space-x-2">
+                      {["#374151","#4B5563","#6B7280","#9CA3AF"].map((c, i) => (
+                        <span key={i} className="h-7 w-7 rounded-full border-2 flex items-center justify-center text-[9px] font-bold text-white" style={{ background: c, borderColor: DARK_BG }}>
+                          {["AR","BM","CS","DL"][i]}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-sm text-white/45">
+                      {copy.trustedByPrefix}<span className="font-semibold text-white/70">{copy.trustedByCount}</span>{copy.trustedBySuffix}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Product mockup — white card "lit" against dark */}
+                <div ref={revealHero} className="reveal-up mx-auto mt-14 max-w-6xl">
+                  <div className="hidden md:block rounded-2xl overflow-hidden" style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.06), 0 40px 100px rgba(0,0,0,0.55)' }}>
+                    <InboxMockup />
+                  </div>
+                  {/* Mobile simplified mockup */}
+                  <div className="md:hidden rounded-xl overflow-hidden" style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.06), 0 16px 40px rgba(0,0,0,0.4)' }}>
+                    <div className="flex items-center justify-between border-b border-[#E6E8EF] bg-[#F7F8FC] px-4 py-2.5">
+                      <span className="text-[11px] font-semibold text-gray-500">PymesHub — Inbox</span>
+                      <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">En línea</span>
+                    </div>
+                    <div className="bg-white p-4 space-y-2.5">
+                      {[{ch:"WA",n:"María González",m:"Quisiera cotizar 3 locales",tag:"Venta"},{ch:"TG",n:"Carlos Ríos",m:"¿Cuánto cuesta el plan?",tag:null},{ch:"EM",n:"Beatriz Salas",m:"Factura #1042 — pagada",tag:"Pagado"}].map(row => (
+                        <div key={row.n} className="flex items-center gap-3 rounded-xl border border-[#E6E8EF] bg-white px-3 py-2.5">
+                          <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">{row.ch}</div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-gray-800">{row.n}</p>
+                            <p className="truncate text-[11px] text-gray-400">{row.m}</p>
+                          </div>
+                          {row.tag && <span className="text-[10px] font-medium text-gray-500">{row.tag}</span>}
                         </div>
-                        {row.tag && <span className="text-[10px] font-medium text-gray-500">{row.tag}</span>}
+                      ))}
+                      <div className="rounded-lg border border-[#E6E8EF] bg-[#F7F8FC] px-3 py-2">
+                        <span className="text-xs text-gray-500 font-medium">Sugerencia: Crear cotización para María</span>
                       </div>
-                    ))}
-                    <div className="rounded-lg border border-[#E6E8EF] bg-[#F7F8FC] px-3 py-2">
-                      <span className="text-xs text-gray-500 font-medium">Sugerencia: Crear cotización para María</span>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+
+          </div>{/* ─── end dark header ─── */}
 
           {/* ════════════════════════════════════════
               CHANNEL STRIP
           ════════════════════════════════════════ */}
-          <section className="py-10 border-y border-[#E6E8EF] bg-white">
+          <section className="py-10 border-b border-[#E6E8EF] bg-white">
             <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-6">
               Todos tus canales en una pantalla
             </p>
@@ -628,16 +632,16 @@ export default function Landing() {
           </section>
 
           {/* ════════════════════════════════════════
-              SOLUTION FLOW
+              SOLUTION FLOW — dark
           ════════════════════════════════════════ */}
-          <section className="px-4 py-20 md:px-8 bg-white border-y border-[#E6E8EF]">
+          <section className="px-4 py-20 md:px-8" style={{ background: DARK_BG }}>
             <div className="mx-auto max-w-7xl">
               <div className="mb-14 text-center">
-                <p className="landing-eyebrow font-marketing mb-3">Cómo funciona</p>
-                <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-gray-900 sm:text-4xl">
+                <p className="font-marketing text-[11px] font-bold uppercase tracking-[0.22em] text-white/35 mb-3">Cómo funciona</p>
+                <h2 className="font-display text-3xl tracking-[-0.01em] text-white sm:text-4xl">
                   Del mensaje a la factura<br className="hidden sm:block" /> en una sola pantalla
                 </h2>
-                <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-gray-500">
+                <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-white/50">
                   PymesHub conecta el mensaje con el cliente, la tarea, la cotización y el pago. Cada paso visible para todo el equipo.
                 </p>
               </div>
@@ -645,13 +649,13 @@ export default function Landing() {
                 {FLOW_STEPS.map(({ icon: Icon, label, sub }, i) => (
                   <div key={label} className="relative flex-1 flex flex-col items-center text-center px-2">
                     {i < FLOW_STEPS.length - 1 && (
-                      <div className="hidden md:block absolute top-5 left-1/2 w-full h-px bg-[#E6E8EF]" />
+                      <div className="hidden md:block absolute top-5 left-1/2 w-full h-px bg-white/[0.08]" />
                     )}
-                    <div className="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl mb-3 bg-gray-100 border border-[#E6E8EF]">
-                      <Icon className="h-5 w-5 text-gray-500" />
+                    <div className="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl mb-3 bg-white/[0.06] border border-white/[0.10]">
+                      <Icon className="h-5 w-5 text-white/55" />
                     </div>
-                    <p className="text-sm font-semibold text-gray-800">{label}</p>
-                    <p className="mt-0.5 text-xs text-gray-400">{sub}</p>
+                    <p className="text-sm font-semibold text-white/85">{label}</p>
+                    <p className="mt-0.5 text-xs text-white/40">{sub}</p>
                   </div>
                 ))}
               </div>
@@ -699,7 +703,7 @@ export default function Landing() {
                   <div className="flex flex-wrap gap-1.5 mb-4">
                     {["Todos","Sin responder","Requiere humano","Ventas","Soporte","Facturación"].map((f, i) => (
                       <span key={f} className={cn("rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer",
-                        i === 0 ? "text-white" : "border border-[#E6E8EF] bg-white text-gray-500 hover:border-violet-200")}
+                        i === 0 ? "text-white" : "border border-[#E6E8EF] bg-white text-gray-500 hover:border-gray-300")}
                         style={i === 0 ? { background: ACCENT } : undefined}>{f}</span>
                     ))}
                   </div>
@@ -808,7 +812,7 @@ export default function Landing() {
                       "Control de IA: activa, pausada o requiere aprobación",
                     ].map(item => (
                       <div key={item} className="flex items-start gap-3">
-                        <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: ACCENT }} />
+                        <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0 text-gray-400" />
                         <span className="text-sm text-gray-600">{item}</span>
                       </div>
                     ))}
@@ -837,7 +841,7 @@ export default function Landing() {
                 {[{k:"sales",l:"Ventas"},{k:"support",l:"Soporte"},{k:"billing",l:"Facturación"}].map(({k,l}) => (
                   <button key={k} type="button" onClick={() => setAgentTab(k as any)}
                     className={cn("rounded-full px-4 py-2 text-sm font-semibold transition",
-                      agentTab === k ? "text-white" : "border border-[#E6E8EF] bg-white text-gray-600 hover:border-violet-200")}
+                      agentTab === k ? "text-white" : "border border-[#E6E8EF] bg-white text-gray-600 hover:border-gray-300")}
                     style={agentTab === k ? { background: ACCENT } : undefined}>
                     {l}
                   </button>
@@ -856,7 +860,7 @@ export default function Landing() {
                 ].map(({ icon: Icon, title, body }) => (
                   <div key={title} className="rounded-2xl border border-[#E6E8EF] bg-white p-5 space-y-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100">
-                      <Icon className="h-4.5 w-4.5 text-gray-500" />
+                      <Icon className="h-4 w-4 text-gray-500" />
                     </div>
                     <h3 className="font-marketing text-sm font-semibold text-gray-900">{title}</h3>
                     <p className="text-sm leading-6 text-gray-500">{body}</p>
@@ -924,7 +928,7 @@ export default function Landing() {
                 {SECURITY_ITEMS.map(({ icon: Icon, title, body }) => (
                   <div key={title} className="rounded-2xl border border-[#E6E8EF] bg-white p-5 space-y-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F7F8FC] border border-[#E6E8EF]">
-                      <Icon className="h-4.5 w-4.5 text-gray-600" />
+                      <Icon className="h-4 w-4 text-gray-600" />
                     </div>
                     <h3 className="font-marketing text-sm font-semibold text-gray-900">{title}</h3>
                     <p className="text-sm leading-6 text-gray-500">{body}</p>
@@ -980,39 +984,35 @@ export default function Landing() {
           </section>
 
           {/* ════════════════════════════════════════
-              CTA FINAL
+              CTA FINAL — dark
           ════════════════════════════════════════ */}
-          <section className="px-4 py-24 md:px-8">
-            <div ref={revealCta} className="reveal-up mx-auto max-w-4xl">
-              <div className="rounded-3xl border border-[#E6E8EF] bg-white p-1" style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
-                <div className="rounded-[calc(1.5rem-4px)] px-8 py-16 text-center md:px-16">
-                  <div className="landing-badge inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
-                    <CheckCircle2 className="h-3.5 w-3.5" style={{ color: ACCENT }} />
-                    Sin tarjeta de crédito · Plan gratuito siempre disponible
-                  </div>
-                  <h2 className="font-marketing text-3xl font-bold tracking-[-0.04em] text-gray-900 sm:text-4xl md:text-5xl mb-4">
-                    Empieza con lo esencial.<br className="hidden sm:block" /> Escala cuando crezcas.
-                  </h2>
-                  <p className="mx-auto max-w-lg text-base leading-7 text-gray-500 mb-8">
-                    PymesHub funciona desde el día uno. Sin setup complejo, sin contratos anuales, sin promesas de "10x productividad".
-                  </p>
-                  <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-                    <Link href="/register"
-                      className="font-marketing inline-flex items-center gap-2 rounded-full px-8 py-4 text-base font-semibold text-white transition hover:opacity-90"
-                      style={{ background: ACCENT }}>
-                      Empezar gratis
-                      <ArrowRight className="h-5 w-5" />
-                    </Link>
-                    <Link href="/pricing"
-                      className="font-marketing inline-flex items-center gap-2 rounded-full border border-[#E6E8EF] bg-white px-7 py-4 text-base font-semibold text-gray-700 transition hover:border-violet-200">
-                      Ver planes
-                    </Link>
-                  </div>
-                  <p className="mt-6 text-sm text-gray-400">
-                    Sin setup de semanas. Funciona desde el primer día.
-                  </p>
-                </div>
+          <section className="px-4 py-28 md:px-8" style={{ background: DARK_BG }}>
+            <div ref={revealCta} className="reveal-up mx-auto max-w-4xl text-center">
+              <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium mb-8 bg-white/[0.06] border border-white/[0.12] text-white/55">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400/80" />
+                Sin tarjeta de crédito · Plan gratuito siempre disponible
               </div>
+              <h2 className="font-display text-4xl text-white sm:text-5xl md:text-[3.5rem] mb-6">
+                Empieza con lo esencial.<br className="hidden sm:block" /> Escala cuando crezcas.
+              </h2>
+              <p className="mx-auto max-w-lg text-base leading-7 text-white/50 mb-10">
+                PymesHub funciona desde el día uno. Sin setup complejo, sin contratos anuales, sin promesas de "10x productividad".
+              </p>
+              <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link href="/register"
+                  className="font-marketing inline-flex items-center gap-2 rounded-full px-8 py-4 text-base font-semibold text-white transition hover:opacity-90"
+                  style={{ background: ACCENT }}>
+                  Empezar gratis
+                  <ArrowRight className="h-5 w-5" />
+                </Link>
+                <Link href="/pricing"
+                  className="font-marketing inline-flex items-center gap-2 rounded-full border border-white/[0.15] bg-white/[0.05] px-7 py-4 text-base font-semibold text-white/75 transition hover:bg-white/[0.10]">
+                  Ver planes
+                </Link>
+              </div>
+              <p className="mt-6 text-sm text-white/30">
+                Sin setup de semanas. Funciona desde el primer día.
+              </p>
             </div>
           </section>
 
@@ -1028,7 +1028,7 @@ export default function Landing() {
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 {copy.seoHub.links.map((link: { href: string; label: string }) => (
                   <Link key={link.href} href={link.href}
-                    className="rounded-full border border-[#E6E8EF] bg-white px-4 py-2 text-sm text-gray-500 transition hover:border-violet-200 hover:text-gray-800">
+                    className="rounded-full border border-[#E6E8EF] bg-white px-4 py-2 text-sm text-gray-500 transition hover:border-gray-300 hover:text-gray-800">
                     {link.label}
                   </Link>
                 ))}
