@@ -114,7 +114,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1,
+        version: 1.1,
         name: "llmAgentflow",
         type: "LLM",
         color: "#64B5F6",
@@ -188,7 +188,7 @@ export class FlowiseClient {
       data: {
         id,
         label: opts.label ?? "Agent 0",
-        version: 1,
+        version: 1.1,
         name: "agentAgentflow",
         type: "Agent",
         color: "#4DD0E1",
@@ -243,7 +243,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1,
+        version: 1.1,
         name: "conditionAgentflow",
         type: "Condition",
         color: "#FF9800",
@@ -292,7 +292,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1,
+        version: 1.1,
         name: "conditionAgentAgentflow",
         type: "ConditionAgent",
         color: "#FF9800",
@@ -341,7 +341,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1,
+        version: 1.1,
         name: "toolAgentflow",
         type: "Tool",
         color: "#4CAF50",
@@ -381,7 +381,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1,
+        version: 1.1,
         name: "humanInputAgentflow",
         type: "HumanInput",
         color: "#E91E63",
@@ -422,7 +422,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1,
+        version: 1.1,
         name: "customFunctionAgentflow",
         type: "CustomFunction",
         color: "#9C27B0",
@@ -462,7 +462,7 @@ export class FlowiseClient {
       data: {
         id: opts.id,
         label: opts.label,
-        version: 1,
+        version: 1.1,
         name: "executeFlowAgentflow",
         type: "ExecuteFlow",
         color: "#00BCD4",
@@ -501,7 +501,7 @@ export class FlowiseClient {
       data: {
         id: "directReplyAgentflow_0",
         label: "Direct Reply",
-        version: 1,
+        version: 1.1,
         name: "directReplyAgentflow",
         type: "DirectReply",
         color: "#4DDBBB",
