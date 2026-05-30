@@ -638,9 +638,15 @@ export class WorkspacesService {
   // En producción: enviar email con token firmado y redirigir a /auth/accept-invite.
 
   async inviteUser(workspaceId: string, requestingUser: AuthUser, dto: InviteUserDto) {
-    // Solo ADMIN u OWNER pueden invitar
-    if (!["ADMIN", "OWNER"].includes(requestingUser.role)) {
-      throw new ForbiddenException("Solo ADMIN u OWNER pueden invitar usuarios.");
+    const canInvite = ["ADMIN", "OWNER", "MANAGER"].includes(requestingUser.role);
+    if (!canInvite) {
+      throw new ForbiddenException("Solo ADMIN, MANAGER u OWNER pueden invitar usuarios.");
+    }
+
+    // MANAGER solo puede invitar roles iguales o inferiores a AGENT
+    const managerAllowedRoles = ["AGENT", "BILLING", "VIEWER"];
+    if (requestingUser.role === "MANAGER" && !managerAllowedRoles.includes(dto.role)) {
+      throw new ForbiddenException("MANAGER solo puede invitar con rol AGENT, BILLING o VIEWER.");
     }
 
     // No se puede invitar OWNERs adicionales
@@ -776,7 +782,8 @@ export class WorkspacesService {
     targetUserId: string,
     dto: ChangeMemberRoleDto,
   ) {
-    if (!["ADMIN", "OWNER"].includes(requestingUser.role)) {
+    const canChangeRoles = ["ADMIN", "OWNER", "MANAGER"].includes(requestingUser.role);
+    if (!canChangeRoles) {
       throw new ForbiddenException("Sin permisos para cambiar roles.");
     }
 
@@ -797,6 +804,14 @@ export class WorkspacesService {
       throw new BadRequestException("Usa la ruta de transferencia de propiedad.");
     }
 
+    // MANAGER solo puede asignar roles iguales o inferiores a AGENT
+    const managerAllowedRoles = ["AGENT", "BILLING", "VIEWER"];
+    if (requestingUser.role === "MANAGER") {
+      if (!managerAllowedRoles.includes(dto.role) || !managerAllowedRoles.includes(membership.role)) {
+        throw new ForbiddenException("MANAGER solo puede cambiar roles entre AGENT, BILLING y VIEWER.");
+      }
+    }
+
     return this.prisma.workspaceUser.update({
       where: {
         workspace_id_user_id: { workspace_id: workspaceId, user_id: targetUserId },
@@ -812,7 +827,7 @@ export class WorkspacesService {
       throw new BadRequestException("No puedes removerte a ti mismo.");
     }
 
-    if (!["ADMIN", "OWNER"].includes(requestingUser.role)) {
+    if (!["ADMIN", "OWNER", "MANAGER"].includes(requestingUser.role)) {
       throw new ForbiddenException("Sin permisos para remover miembros.");
     }
 

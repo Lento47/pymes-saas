@@ -7,7 +7,9 @@ import { AuthUser } from "../strategies/jwt.strategy";
 /** Jerarquía de roles: índice mayor = más permisos */
 const ROLE_HIERARCHY: WorkspaceUserRole[] = [
   WorkspaceUserRole.VIEWER,
+  WorkspaceUserRole.BILLING,
   WorkspaceUserRole.AGENT,
+  WorkspaceUserRole.MANAGER,
   WorkspaceUserRole.ADMIN,
   WorkspaceUserRole.OWNER,
 ];

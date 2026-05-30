@@ -1,0 +1,3 @@
+-- AlterEnum: Add MANAGER and BILLING to WorkspaceUserRole
+ALTER TYPE "WorkspaceUserRole" ADD VALUE IF NOT EXISTS 'MANAGER';
+ALTER TYPE "WorkspaceUserRole" ADD VALUE IF NOT EXISTS 'BILLING';
