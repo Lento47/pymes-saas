@@ -1242,40 +1242,81 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     modelName: string;
     systemPrompt: string;
     toolIds: string[];
+    toolNames?: string[];
     basepath?: string;
     temperature?: number;
     credentialId?: string;
   }): string {
-    const agentId = "agentAgentflow_0";
-    const tools = opts.toolIds.map((id) => ({
-      agentSelectedTool: id,
-      agentSelectedToolRequiresHumanInput: false,
-    }));
+    // Build a deterministic chain: Start → Tool_0 → ... → Tool_n → LLM.
+    //
+    // WHY Tool nodes instead of an Agent node with agentTools:
+    // Flowise's Agent node pre-initialises ALL referenced tools during
+    // buildChatflow (at prediction request time), before any node runs.
+    // If even one tool ID no longer exists in Flowise (e.g. after a DB
+    // reset or a re-deploy that recreated tools with new IDs), the Agent
+    // node throws "Cannot read properties of undefined (reading 'filePath')"
+    // and the entire chatflow refuses to start.
+    //
+    // Tool nodes are executed lazily — they are only resolved when that
+    // specific node is reached during the flow run. This matches the
+    // pattern used by the Tier 2/3/4 flows, which work correctly.
+    // Tool outputs are accumulated in the "toolContext" flow-state key
+    // so the terminal LLM node can reference them in its system prompt.
 
-    const start = FlowiseClient.buildStartNode();
-    // Flow terminates at the Agent node — Flowise returns its output as
-    // response.text. No DirectReply node (its {{ }} interpolation is unreliable).
-    const agent = FlowiseClient.buildAgentNode({
-      id: agentId,
-      modelName: opts.modelName,
-      temperature: opts.temperature,
-      basepath: opts.basepath,
-      credentialId: opts.credentialId,
-      systemMessages: [{ role: "system", content: opts.systemPrompt }],
-      tools,
+    const validTools = opts.toolIds
+      .map((id, i) => ({ id, name: opts.toolNames?.[i] ?? `tool_${i}` }))
+      .filter((t): t is { id: string; name: string } => !!t.id);
+
+    const stateKeys = [{ key: "toolContext", value: "" }];
+    const start = FlowiseClient.buildStartNode(stateKeys);
+    const nodes: unknown[] = [start];
+    const edges: unknown[] = [];
+
+    let prevId = "startAgentflow_0";
+    let prevHandle = "startAgentflow_0-output-startAgentflow";
+
+    for (let i = 0; i < validTools.length; i++) {
+      const { id: toolId, name: toolName } = validTools[i];
+      const nodeId = `toolAgentflow_${i}`;
+      const toolNode = FlowiseClient.buildToolNode({
+        id: nodeId,
+        label: toolName,
+        toolId,
+        inputValue: "{}",
+        updateState: JSON.stringify([{
+          key: "toolContext",
+          value: `{{ $flow.state.toolContext }}${i > 0 ? "\n---\n" : ""}[${toolName}]:\n{{ ${nodeId}.output }}`,
+        }]),
+        position: { x: 250 + i * 280, y: 250 },
+      });
+      nodes.push(toolNode);
+      edges.push(FlowiseClient.buildEdge(prevId, prevHandle, nodeId, nodeId, "#7EE787", "#4CAF50"));
+      prevId = nodeId;
+      prevHandle = `${nodeId}-output-toolAgentflow`;
+    }
+
+    const llmId = "llmAgentflow_0";
+    const systemContent = validTools.length > 0
+      ? `${opts.systemPrompt}\n\n---\nContexto recopilado:\n{{ $flow.state.toolContext }}`
+      : opts.systemPrompt;
+
+    const llm = FlowiseClient.buildLLMNode({
+      id: llmId,
+      label: "Stage Agent",
+      messages: [{ role: "system", content: systemContent }],
+      model: {
+        credentialId: opts.credentialId,
+        modelName: opts.modelName,
+        temperature: opts.temperature ?? 0.3,
+        basepath: opts.basepath,
+      },
       returnResponseAs: "assistantMessage",
+      position: { x: 250 + validTools.length * 280, y: 250 },
     });
+    nodes.push(llm);
+    edges.push(FlowiseClient.buildEdge(prevId, prevHandle, llmId, llmId, "#7EE787", "#64B5F6"));
 
-    const edges = [
-      FlowiseClient.buildEdge(
-        "startAgentflow_0",
-        "startAgentflow_0-output-startAgentflow",
-        agentId,
-        agentId,
-      ),
-    ];
-
-    return JSON.stringify({ nodes: [start, agent], edges });
+    return JSON.stringify({ nodes, edges });
   }
 
   // ── Chatflow CRUD ──────────────────────────────────────────────────────────

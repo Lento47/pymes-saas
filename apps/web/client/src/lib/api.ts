@@ -596,8 +596,10 @@ export const api = {
   listSystemTemplates: (type: string, category?: string) => {
     const qs = new URLSearchParams({ type });
     if (category) qs.set("category", category);
-    return request<Record<string, any>>("GET", `/api/templates/system?${qs}`);
+    return request<Record<string, any>[]>("GET", `/api/templates/system?${qs}`);
   },
+  installMessageTemplate: (id: string, overrides?: Record<string, any>) =>
+    request<Record<string, any>>("POST", `/api/templates/system/${id}/instantiate/message`, overrides ?? {}),
   // Feature flags & profile
   platformUpdateWorkspaceProfile: (slug: string, profile: string) =>
     request<any>("PATCH", `/api/platform/workspaces/${slug}/profile`, { profile }),

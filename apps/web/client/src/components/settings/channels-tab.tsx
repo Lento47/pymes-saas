@@ -598,6 +598,16 @@ export function ChannelsTab() {
                     <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${statusClass}`}>
                       {statusLabel}
                     </Badge>
+                    {ch.type === "WHATSAPP" && ch.config?.phone_number_id && (
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        #{String(ch.config.phone_number_id).slice(-6)}
+                      </span>
+                    )}
+                    {ch.type === "WHATSAPP" && isActive && (
+                      <span className="text-[10px] text-muted-foreground border border-border rounded px-1 py-0">
+                        Facturación Meta
+                      </span>
+                    )}
                   </div>
                 </div>
 

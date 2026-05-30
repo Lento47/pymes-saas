@@ -282,13 +282,14 @@ export class FlowiseSetupService {
     for (const agent of SUPPORT_AGENTS) {
       const flowName = `PymesHub Agente — ${agent.name}`;
       try {
-        const toolIds = agent.tools
-          .map((name) => toolIdByName.get(name))
-          .filter(Boolean) as string[];
+        const toolPairs = agent.tools
+          .map((name) => ({ name, id: toolIdByName.get(name) }))
+          .filter((p): p is { name: string; id: string } => !!p.id);
         const agentFlowData = this.flowise.buildSupportFlowData({
           modelName: SUPPORT_MODEL_NAME[agent.model],
           systemPrompt: agent.systemPrompt,
-          toolIds,
+          toolIds: toolPairs.map((p) => p.id),
+          toolNames: toolPairs.map((p) => p.name),
           basepath: deepseekBaseUrl,
           temperature: agent.temperature,
           credentialId: deepseekCredentialId,
@@ -356,13 +357,14 @@ export class FlowiseSetupService {
     if (!agent) return null;
     try {
       const flowName = `PymesHub Agente — ${agent.name}`;
-      const toolIds = agent.tools
-        .map((name) => this._toolIdByName.get(name))
-        .filter(Boolean) as string[];
+      const toolPairs = agent.tools
+        .map((name) => ({ name, id: this._toolIdByName.get(name) }))
+        .filter((p): p is { name: string; id: string } => !!p.id);
       const flowData = this.flowise.buildSupportFlowData({
         modelName: SUPPORT_MODEL_NAME[agent.model],
         systemPrompt: agent.systemPrompt,
-        toolIds,
+        toolIds: toolPairs.map((p) => p.id),
+        toolNames: toolPairs.map((p) => p.name),
         basepath: this._deepseekBaseUrl,
         temperature: agent.temperature,
         credentialId: this._deepseekCredentialId,

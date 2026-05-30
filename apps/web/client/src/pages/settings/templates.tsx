@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { RefreshCw, Plus, Pencil, Trash2, FileText } from "lucide-react";
+import { RefreshCw, Plus, Pencil, Trash2, FileText, Download, MessageCircle, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -27,6 +27,13 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING_APPROVAL: "bg-amber-500/10 text-amber-500 border-amber-500/20",
   REJECTED: "bg-red-500/10 text-red-400 border-red-500/20",
   DISABLED: "bg-muted text-muted-foreground/50 border-border",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  UTILITY: "Utilidad",
+  MARKETING: "Marketing",
+  SERVICE: "Servicio",
+  AUTHENTICATION: "Autenticación",
 };
 
 const WA_CATEGORIES = ["UTILITY", "SERVICE", "MARKETING", "AUTHENTICATION"];
@@ -49,6 +56,18 @@ interface Template {
   status: string;
   external_template_id?: string;
   created_at: string;
+}
+
+interface SystemTemplate {
+  id: string;
+  key: string;
+  name: string;
+  description?: string;
+  type: string;
+  category?: string;
+  channel?: string;
+  body: Record<string, any>;
+  order: number;
 }
 
 interface TemplateFormProps {
@@ -307,8 +326,133 @@ function TemplateList({ channel }: { channel: "WHATSAPP" | "TELEGRAM" }) {
   );
 }
 
+function TemplateLibrary() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [filterChannel, setFilterChannel] = useState<"ALL" | "WHATSAPP" | "TELEGRAM">("ALL");
+
+  const { data: systemTemplates = [], isLoading } = useQuery<SystemTemplate[]>({
+    queryKey: ["system-templates", "message"],
+    queryFn: () => api.listSystemTemplates("message") as Promise<SystemTemplate[]>,
+  });
+
+  const installMut = useMutation({
+    mutationFn: (id: string) => api.installMessageTemplate(id),
+    onSuccess: (result: Record<string, any>) => {
+      qc.invalidateQueries({ queryKey: ["message-templates"] });
+      toast({ title: "Plantilla instalada", description: `"${result.name}" agregada a tus plantillas como borrador.` });
+    },
+    onError: (e: any) => toast({ title: "Error al instalar", description: e.message, variant: "destructive" }),
+  });
+
+  const filtered = systemTemplates.filter((t) => {
+    if (filterChannel === "ALL") return true;
+    return t.channel === filterChannel;
+  });
+
+  const waCount = systemTemplates.filter((t) => t.channel === "WHATSAPP").length;
+  const tgCount = systemTemplates.filter((t) => t.channel === "TELEGRAM").length;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-amber-700">
+        <p className="font-medium">Plantillas de WhatsApp requieren aprobación de Meta</p>
+        <p className="mt-0.5 text-amber-600/80">
+          Al instalar una plantilla de WhatsApp, se guarda como borrador en tu cuenta. Debés enviarla a Meta para aprobación antes de usarla para mensajes iniciados por el negocio. Los cargos por plantillas los cobra Meta directamente, no PymesHub.
+        </p>
+      </div>
+
+      {/* Filter */}
+      <div className="flex items-center gap-2">
+        {(["ALL", "WHATSAPP", "TELEGRAM"] as const).map((ch) => (
+          <button
+            key={ch}
+            onClick={() => setFilterChannel(ch)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
+              filterChannel === ch
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
+          >
+            {ch === "WHATSAPP" && <MessageCircle className="h-3 w-3" />}
+            {ch === "TELEGRAM" && <Send className="h-3 w-3" />}
+            {ch === "ALL" ? `Todas (${systemTemplates.length})` : ch === "WHATSAPP" ? `WhatsApp (${waCount})` : `Telegram (${tgCount})`}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground py-8 text-center">Cargando biblioteca...</div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-12 text-center">
+          <FileText className="h-8 w-8 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">No hay plantillas en la biblioteca.</p>
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {filtered.map((tpl) => {
+            const bodyText = typeof tpl.body === "object" ? (tpl.body.body ?? "") : String(tpl.body);
+            const isWA = tpl.channel === "WHATSAPP";
+            return (
+              <div
+                key={tpl.id}
+                className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4 hover:bg-muted/20 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium truncate">{tpl.name}</span>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-[10px] px-1.5 py-0 shrink-0",
+                          isWA
+                            ? "bg-green-500/10 text-green-600 border-green-500/20"
+                            : "bg-sky-500/10 text-sky-600 border-sky-500/20"
+                        )}
+                      >
+                        {isWA ? "WhatsApp" : "Telegram"}
+                      </Badge>
+                      {tpl.category && (
+                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
+                          {CATEGORY_LABELS[tpl.category] ?? tpl.category}
+                        </span>
+                      )}
+                    </div>
+                    {tpl.description && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{tpl.description}</p>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground bg-muted/50 rounded px-2.5 py-2 line-clamp-3 font-mono leading-relaxed">
+                  {bodyText}
+                </p>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1.5 self-end"
+                  onClick={() => installMut.mutate(tpl.id)}
+                  disabled={installMut.isPending && installMut.variables === tpl.id}
+                >
+                  <Download className="h-3 w-3" />
+                  {installMut.isPending && installMut.variables === tpl.id ? "Instalando..." : "Instalar"}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type Tab = "WHATSAPP" | "TELEGRAM" | "LIBRARY";
+
 export default function TemplatesSettingsPage() {
-  const [tab, setTab] = useState<"WHATSAPP" | "TELEGRAM">("WHATSAPP");
+  const [tab, setTab] = useState<Tab>("WHATSAPP");
 
   return (
     <SettingsLayout>
@@ -316,29 +460,37 @@ export default function TemplatesSettingsPage() {
         <div>
           <h2 className="text-lg font-semibold">Plantillas de mensajes</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Gestioná las plantillas de WhatsApp (requieren aprobación de Meta) y Telegram (uso libre).
+            Gestioná las plantillas de WhatsApp (requieren aprobación de Meta) y Telegram (uso libre), o instalá plantillas prediseñadas de la biblioteca.
           </p>
         </div>
 
         {/* Tab selector */}
         <div className="flex gap-1 p-1 bg-muted/40 rounded-lg w-fit">
-          {(["WHATSAPP", "TELEGRAM"] as const).map((ch) => (
+          {([
+            { key: "WHATSAPP", label: "WhatsApp" },
+            { key: "TELEGRAM", label: "Telegram" },
+            { key: "LIBRARY", label: "Biblioteca" },
+          ] as { key: Tab; label: string }[]).map(({ key, label }) => (
             <button
-              key={ch}
-              onClick={() => setTab(ch)}
+              key={key}
+              onClick={() => setTab(key)}
               className={cn(
                 "px-4 py-1.5 rounded-md text-sm font-medium transition-colors",
-                tab === ch
+                tab === key
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {ch === "WHATSAPP" ? "WhatsApp" : "Telegram"}
+              {label}
             </button>
           ))}
         </div>
 
-        <TemplateList key={tab} channel={tab} />
+        {tab === "LIBRARY" ? (
+          <TemplateLibrary />
+        ) : (
+          <TemplateList key={tab} channel={tab} />
+        )}
       </div>
     </SettingsLayout>
   );
