@@ -1246,36 +1246,37 @@ Responde JSON: {"pr_eligible": true/false, "reason": "...", "branch_name": "fix/
     temperature?: number;
     credentialId?: string;
   }): string {
-    const agentId = "agentAgentflow_0";
-    const tools = opts.toolIds.map((id) => ({
-      agentSelectedTool: id,
-      agentSelectedToolRequiresHumanInput: false,
-    }));
+    // Each orchestrator stage receives pre-built context from the orchestrator;
+    // it does not need to call tools itself. Using an LLM node (not Agent) avoids
+    // Flowise's "Cannot read properties of undefined (reading 'filePath')" crash
+    // that occurs when agentTools references IDs that no longer exist in Flowise.
+    const llmId = "llmAgentflow_0";
 
     const start = FlowiseClient.buildStartNode();
-    // Flow terminates at the Agent node — Flowise returns its output as
-    // response.text. No DirectReply node (its {{ }} interpolation is unreliable).
-    const agent = FlowiseClient.buildAgentNode({
-      id: agentId,
-      modelName: opts.modelName,
-      temperature: opts.temperature,
-      basepath: opts.basepath,
-      credentialId: opts.credentialId,
-      systemMessages: [{ role: "system", content: opts.systemPrompt }],
-      tools,
+    const llm = FlowiseClient.buildLLMNode({
+      id: llmId,
+      label: "Support Agent",
+      messages: [{ role: "system", content: opts.systemPrompt }],
+      model: {
+        credentialId: opts.credentialId,
+        modelName: opts.modelName,
+        temperature: opts.temperature ?? 0.3,
+        basepath: opts.basepath,
+      },
       returnResponseAs: "assistantMessage",
+      position: { x: 300, y: 250 },
     });
 
     const edges = [
       FlowiseClient.buildEdge(
         "startAgentflow_0",
         "startAgentflow_0-output-startAgentflow",
-        agentId,
-        agentId,
+        llmId,
+        llmId,
       ),
     ];
 
-    return JSON.stringify({ nodes: [start, agent], edges });
+    return JSON.stringify({ nodes: [start, llm], edges });
   }
 
   // ── Chatflow CRUD ──────────────────────────────────────────────────────────

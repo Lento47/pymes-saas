@@ -8,6 +8,7 @@ import { KnowledgeBaseService } from "./knowledge-base.service";
 import { AiGatewayService } from "./ai-gateway.service";
 import { Prisma } from "@prisma/client";
 import { PLAN_TO_TIER, SUPPORT_TIER_SLUGS, FlowiseSetupService } from "../agents/flowise-setup.service";
+import { SupportOrchestratorService } from "../agents/support/support-orchestrator.service";
 
 export interface DiagnosticInput {
   workspaceId: string;
@@ -64,6 +65,7 @@ export class DiagnosticService {
     private readonly triage: AiTriageService,
     @Optional() private readonly gateway?: AiGatewayService,
     @Optional() private readonly flowiseSetup?: FlowiseSetupService,
+    @Optional() private readonly orchestrator?: SupportOrchestratorService,
   ) {}
 
   // ADMIN/platform-admin: full workspace view. Otherwise scope to caller's
@@ -274,6 +276,26 @@ export class DiagnosticService {
         `Failed to notify admins of diagnostic case: ${err instanceof Error ? err.message : String(err)}`,
       ),
     );
+
+    // Auto-trigger orchestration pipeline for all new cases (fire-and-forget).
+    if (this.orchestrator) {
+      const orchestrationMessage = [
+        input.user_description ?? "",
+        evidence ? `Evidencia: ${JSON.stringify(evidence).slice(0, 500)}` : "",
+      ].filter(Boolean).join("\n\n");
+      this.orchestrator
+        .orchestrate({
+          workspace_id: input.workspaceId,
+          message: orchestrationMessage || `Caso de diagnóstico creado: ${classification.title}`,
+          diagnostic_case_id: caseRecord.id,
+          triggered_by_user_id: input.userId ?? undefined,
+        })
+        .catch((err: unknown) =>
+          this.logger.warn(
+            `[diagnostic] auto-orchestration failed for ${caseRecord.id}: ${err instanceof Error ? err.message : String(err)}`,
+          ),
+        );
+    }
 
     // Proactive resolution: if a known issue matched, auto-create a fix case.
     // Internal/system-triggered call: actor is the case's own workspace
