@@ -509,17 +509,17 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               <p className="text-xs font-medium text-foreground truncate">{name}</p>
               <p className="text-[10px] text-muted-foreground/60 truncate capitalize">{user?.role?.toLowerCase()}</p>
             </div>
-            <button
-              onClick={logout}
-              className={cn(
-                "p-1.5 rounded-md transition-all duration-200 shrink-0",
-                "text-muted-foreground/80 hover:text-destructive hover:bg-destructive/10"
-              )}
-              title={copy.logout}
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
           </div>
+          <button
+            onClick={logout}
+            className={cn(
+              "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
+              "text-muted-foreground/80 hover:text-destructive hover:bg-destructive/10"
+            )}
+          >
+            <LogOut className="w-[15px] h-[15px] shrink-0" strokeWidth={1.7} />
+            <span className="text-[13px]">{copy.logout}</span>
+          </button>
         </div>
       </aside>
 
